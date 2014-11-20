@@ -10,7 +10,10 @@ from astrometry.blind.plotstuff import *
 from astrometry.util.resample import *
 from astrometry.util.fits import *
 
+from scipy.ndimage.filters import gaussian_filter
+
 def index(req):
+    layer = req.GET.get('layer', 'image')
     ra, dec, zoom = 242.0, 7.0, 11
 
     try:
@@ -29,7 +32,8 @@ def index(req):
     lat,long = dec, 180-ra
     
     return render(req, 'index.html',
-                  dict(ra=ra, dec=dec, lat=lat, long=long, zoom=zoom))
+                  dict(ra=ra, dec=dec, lat=lat, long=long, zoom=zoom,
+                       layer=layer))
 
 def get_tile_wcs(zoom, x, y):
     zoom = int(zoom)
@@ -53,38 +57,120 @@ def get_tile_wcs(zoom, x, y):
                                   zoomscale, W, H, 1)
     return wcs, W, H, zoomscale, zoom,x,y
 
+def get_scaled(scalepat, scalekwargs, scale, basefn):
+    if scale <= 0:
+        return basefn
+    fn = scalepat % dict(scale=scale, **scalekwargs)
+    if not os.path.exists(fn):
+        print 'Does not exist:', fn
+        sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn)
+        print 'Source:', sourcefn
+        if sourcefn is None or not os.path.exists(sourcefn):
+            print 'No source'
+            return None
+        I = fitsio.read(sourcefn)
+        print 'source image:', I.shape
+        H,W = I.shape
+        # make even size; smooth down
+        if H % 2 == 1:
+            I = I[:-1,:]
+        if W % 2 == 1:
+            I = I[:,:-1]
+        im = gaussian_filter(I, 1.)
+        print 'im', im.shape
+        # bin
+        I2 = (im[::2,::2] + im[1::2,::2] + im[1::2,1::2] + im[::2,1::2])/4.
+        print 'I2:', I2.shape
+        # shrink WCS too
+        wcs = Tan(sourcefn, 0)
+        # include the even size clip; this may be a no-op
+        H,W = im.shape
+        wcs = wcs.get_subimage(0, 0, W, H)
+        subwcs = wcs.scale(0.5)
+        hdr = fitsio.FITSHDR()
+        subwcs.add_to_header(hdr)
+        fitsio.write(fn, I2, header=hdr)
+        print 'Wrote', fn
+    return fn
+        
+
 def map_coadd(req, zoom, x, y):
     from desi.common import *
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
         return HttpResponse(e.strerror)
-    print 'WCS size', W,H
-    
-    ok,r,d = wcs.pixelxy2radec([1,1,W,W], [1,H,H,1])
+    tilefn = 'decals-web/tiles/%i/%i/%i.jpg' % (zoom, x, y)
+    if os.path.exists(tilefn):
+        print 'Cached:', tilefn
+        f = open(tilefn)
+        return HttpResponse(f, content_type="image/jpeg")
+
+    ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
+                               [1,H/2,H,H,H,H/2,1,1])
     print 'RA,Dec corners', r,d
-    print 'RA range', r.min(), r.max()
-    print 'Dec range', d.min(), d.max()
+    # print 'RA range', r.min(), r.max()
+    # print 'Dec range', d.min(), d.max()
+    # print 'Zoom', zoom, 'pixel scale', wcs.pixel_scale()
+
+    basepat = 'tunebrick/coadd/image-%(brick)06i-%(band)s.fits'
+    scaled = 0
+    scalepat = None
+    if zoom < 14:
+        scaled = (14 - zoom)
+        scaled = np.clip(scaled, 1, 8)
+        #print 'Scaled-down:', scaled
+        scalepat = 'decals-web/scaled/image2-%(brick)06i-%(band)s-%(scale)i.fits'
 
     D = Decals()
     B = D.get_bricks()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
-    print len(I), 'bricks touching'
+    print len(I), 'bricks touching:', B.brickid[I]
     bands = 'grz'
     rimgs = []
     for band in bands:
         rimg = np.zeros((H,W), np.float32)
         rn   = np.zeros((H,W), np.uint8)
         for brickid in B.brickid[I]:
-            fn = 'tunebrick/coadd/image-%06i-%s.fits' % (brickid, band)
-            print 'Reading', fn
-            img = fitsio.read(fn)
-            bwcs = Tan(fn, 0)
-            print 'Img', img.shape, img.dtype
-            print 'WCS', bwcs
-
+            fnargs = dict(brick=brickid, band=band)
+            basefn = basepat % fnargs
+            fn = get_scaled(scalepat, fnargs, scaled, basefn)
+            print 'Filename:', fn
+            if fn is None:
+                continue
+            if not os.path.exists(fn):
+                continue
+            #fn = 'tunebrick/coadd/image-%06i-%s.fits' % (brickid, band)
+            #print 'Reading', fn
             try:
-                Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, bwcs, [], 3)
+                bwcs = Tan(fn, 0)
+            except:
+                print 'Failed to read WCS:', fn
+                continue
+
+            ok,xx,yy = bwcs.radec2pixelxy(r, d)
+            xx = xx.astype(np.int)
+            yy = yy.astype(np.int)
+            #print 'x,y', x,y
+            imW,imH = bwcs.get_width(), bwcs.get_height()
+            M = 10
+            xlo = np.clip(xx.min() - M, 0, imW)
+            xhi = np.clip(xx.max() + M, 0, imW)
+            ylo = np.clip(yy.min() - M, 0, imH)
+            yhi = np.clip(yy.max() + M, 0, imH)
+            if xlo >= xhi or ylo >= yhi:
+                continue
+
+            subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
+            slc = slice(ylo,yhi), slice(xlo,xhi)
+            try:
+                f = fitsio.FITS(fn)[0]
+                img = f[slc]
+            except:
+                print 'Failed to read image and WCS:', fn
+                continue
+            try:
+                Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
             except:
                 continue
 
@@ -94,11 +180,23 @@ def map_coadd(req, zoom, x, y):
         rimgs.append(rimg)
     rgb = get_rgb(rimgs, bands)
 
-    f,fn = tempfile.mkstemp(suffix='.jpg')
-    os.close(f)
-    plt.imsave(fn, rgb, origin='lower')
-    f = open(fn)
-    os.unlink(fn)
+    #f,fn = tempfile.mkstemp(suffix='.jpg')
+    #os.close(f)
+    try:
+        os.makedirs(os.path.dirname(tilefn))
+    except:
+        pass
+
+    plt.figure(figsize=(2.56, 2.56))
+    plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
+    plt.imshow(rgb, interpolation='nearest')
+    plt.axis('off')
+    plt.text(128, 128, 'z%i,(%i,%i)' % (zoom, x, y), color='red', ha='center', va='center')
+    plt.savefig(tilefn)
+    
+    #plt.imsave(tilefn, rgb)
+    f = open(tilefn)
+    #os.unlink(fn)
     return HttpResponse(f, content_type="image/jpeg")
     
             

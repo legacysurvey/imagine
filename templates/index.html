@@ -19,7 +19,7 @@ var map = L.map('map').setView([ {{ lat }}, {{ long }}], {{ zoom }});
 L.tileLayer('{id}/{z}/{x}/{y}.jpg', {
 			maxZoom: 18,
 			attribution: 'DECaLS',
-			id: 'image'
+			id: '{{ layer }}'
 		}).addTo(map);
 
 L.marker([ {{ lat }}, {{ long }}]).addTo(map)
@@ -41,9 +41,12 @@ L.marker([ {{ lat }}, {{ long }}]).addTo(map)
 var popup = L.popup();
 
 function onMapClick(e) {
+ra = 180 - e.latlng.lng;
+dec = e.latlng.lat;
 popup
 .setLatLng(e.latlng)
-.setContent("You clicked the map at RA,Dec = " + (180 - e.latlng.lng).toString() + ", " + e.latlng.lat.toString())
+//.setContent("You clicked the map at RA,Dec = " + .toString() + ", " + .toString())
+.setContent("Click: RA,Dec = " + ra.toFixed(2) + ", " + dec.toFixed(2))
 .openOn(map);
 }
 
