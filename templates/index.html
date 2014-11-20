@@ -14,7 +14,7 @@
 
 <script>
 
-var map = L.map('map').setView([7.0, 242.0], 11);
+var map = L.map('map').setView([ {{ dec }}, {{ ra }}], {{ zoom }});
 
 L.tileLayer('{id}/{z}/{x}/{y}.jpg', {
 			maxZoom: 18,

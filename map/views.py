@@ -8,7 +8,23 @@ from astrometry.util.util import *
 from astrometry.blind.plotstuff import *
 
 def index(req):
-    return render(req, 'index.html')
+    ra, dec, zoom = 242.0, 7.0, 11
+
+    try:
+        zoom = int(req.GET.get('zoom', zoom))
+    except:
+        pass
+    try:
+        ra = float(req.GET.get('ra',ra))
+    except:
+        pass
+    try:
+        dec = float(req.GET.get('dec', dec))
+    except:
+        pass
+
+    return render(req, 'index.html',
+                  dict(ra=ra, dec=dec, zoom=zoom))
     
 
 def map_image(req, zoom, x, y):
