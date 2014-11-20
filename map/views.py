@@ -108,12 +108,13 @@ def map_coadd(req, zoom, x, y):
 
     ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                [1,H/2,H,H,H,H/2,1,1])
-    print 'RA,Dec corners', r,d
+    #print 'RA,Dec corners', r,d
     # print 'RA range', r.min(), r.max()
     # print 'Dec range', d.min(), d.max()
     # print 'Zoom', zoom, 'pixel scale', wcs.pixel_scale()
 
-    basepat = 'tunebrick/coadd/image-%(brick)06i-%(band)s.fits'
+    #basepat = 'tunebrick/coadd/image-%(brick)06i-%(band)s.fits'
+    basepat = 'cosmos/coadd/image-%(brick)06i-%(band)s.fits'
     scaled = 0
     scalepat = None
     if zoom < 14:
@@ -121,7 +122,13 @@ def map_coadd(req, zoom, x, y):
         scaled = np.clip(scaled, 1, 8)
         #print 'Scaled-down:', scaled
         scalepat = 'decals-web/scaled/image2-%(brick)06i-%(band)s-%(scale)i.fits'
-
+        dirnm = 'decals-web/scaled'
+        if not os.path.exists(dirnm):
+            try:
+                os.makedirs(dirnm)
+            except:
+                pass
+        
     D = Decals()
     B = D.get_bricks()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
@@ -140,8 +147,6 @@ def map_coadd(req, zoom, x, y):
                 continue
             if not os.path.exists(fn):
                 continue
-            #fn = 'tunebrick/coadd/image-%06i-%s.fits' % (brickid, band)
-            #print 'Reading', fn
             try:
                 bwcs = Tan(fn, 0)
             except:
