@@ -12,6 +12,8 @@ from astrometry.util.fits import *
 
 from scipy.ndimage.filters import gaussian_filter
 
+from decals import settings
+
 def index(req):
     layer = req.GET.get('layer', 'image')
     ra, dec, zoom = 242.0, 7.0, 11
@@ -30,10 +32,13 @@ def index(req):
         pass
 
     lat,long = dec, 180-ra
+
+    tileurl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.jpg'
+    #tileurl = '{id}/{z}/{x}/{y}.jpg'
     
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, lat=lat, long=long, zoom=zoom,
-                       layer=layer))
+                       layer=layer, tileurl=tileurl))
 
 def get_tile_wcs(zoom, x, y):
     zoom = int(zoom)
@@ -100,7 +105,7 @@ def map_coadd(req, zoom, x, y):
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
         return HttpResponse(e.strerror)
-    tilefn = 'decals-web/tiles/%i/%i/%i.jpg' % (zoom, x, y)
+    tilefn = os.path.join(settings.WEB_DIR, 'decals-web/tiles/%i/%i/%i.jpg' % (zoom, x, y))
     if os.path.exists(tilefn):
         print 'Cached:', tilefn
         f = open(tilefn)
@@ -114,15 +119,15 @@ def map_coadd(req, zoom, x, y):
     # print 'Zoom', zoom, 'pixel scale', wcs.pixel_scale()
 
     #basepat = 'tunebrick/coadd/image-%(brick)06i-%(band)s.fits'
-    basepat = 'cosmos/coadd/image-%(brick)06i-%(band)s.fits'
+    basepat = os.path.join(settings.WEB_DIR, 'cosmos/coadd/image2-%(brick)06i-%(band)s.fits')
     scaled = 0
     scalepat = None
     if zoom < 14:
         scaled = (14 - zoom)
         scaled = np.clip(scaled, 1, 8)
         #print 'Scaled-down:', scaled
-        scalepat = 'decals-web/scaled/image2-%(brick)06i-%(band)s-%(scale)i.fits'
-        dirnm = 'decals-web/scaled'
+        scalepat = os.path.join(settings.WEB_DIR, 'decals-web/scaled/image2-%(brick)06i-%(band)s-%(scale)i.fits')
+        dirnm = os.path.join(settings.WEB_DIR, 'decals-web/scaled')
         if not os.path.exists(dirnm):
             try:
                 os.makedirs(dirnm)
@@ -192,14 +197,14 @@ def map_coadd(req, zoom, x, y):
     except:
         pass
 
-    plt.figure(figsize=(2.56, 2.56))
-    plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
-    plt.imshow(rgb, interpolation='nearest')
-    plt.axis('off')
-    plt.text(128, 128, 'z%i,(%i,%i)' % (zoom, x, y), color='red', ha='center', va='center')
-    plt.savefig(tilefn)
+    # plt.figure(figsize=(2.56, 2.56))
+    # plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
+    # plt.imshow(rgb, interpolation='nearest')
+    # plt.axis('off')
+    # plt.text(128, 128, 'z%i,(%i,%i)' % (zoom, x, y), color='red', ha='center', va='center')
+    # plt.savefig(tilefn)
     
-    #plt.imsave(tilefn, rgb)
+    plt.imsave(tilefn, rgb)
     f = open(tilefn)
     #os.unlink(fn)
     return HttpResponse(f, content_type="image/jpeg")

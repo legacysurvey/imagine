@@ -16,14 +16,14 @@
 
 var map = L.map('map').setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
-L.tileLayer('{id}/{z}/{x}/{y}.jpg', {
+L.tileLayer('{{ tileurl }}', {
 			maxZoom: 18,
 			attribution: 'DECaLS',
 			id: '{{ layer }}'
 		}).addTo(map);
 
-L.marker([ {{ lat }}, {{ long }}]).addTo(map)
-.bindPopup("<b>Hello world!</b><br />I am a popup.").openPopup();
+// L.marker([ {{ lat }}, {{ long }}]).addTo(map)
+// .bindPopup("<b>Hello world!</b><br />I am a popup.").openPopup();
 
 // L.circle([ {{ lat }}, {{ long }}], 500, {
 // color: 'red',
