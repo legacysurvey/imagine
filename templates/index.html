@@ -16,7 +16,7 @@
 
 var map = L.map('map').setView([7.0, 242.0], 11);
 
-L.tileLayer('http://localhost:8000/{id}/{z}/{x}/{y}.jpg', {
+L.tileLayer('{id}/{z}/{x}/{y}.jpg', {
 			maxZoom: 18,
 			attribution: 'DECaLS',
 			id: 'image'
