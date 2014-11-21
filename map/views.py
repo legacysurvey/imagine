@@ -97,15 +97,25 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         fitsio.write(fn, I2, header=hdr)
         print 'Wrote', fn
     return fn
-        
+
 
 def map_coadd(req, zoom, x, y):
+    return map_coadd_bands(req, zoom, x, y, 'grz', 'coadd-grz')
+
+def map_coadd_urz(req, zoom, x, y):
+    return map_coadd_bands(req, zoom, x, y, 'urz', 'coadd-urz')
+
+
+def map_coadd_bands(req, zoom, x, y, bands, tag):
     from desi.common import *
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
         return HttpResponse(e.strerror)
-    tilefn = os.path.join(settings.WEB_DIR, 'decals-web/tiles/%i/%i/%i.jpg' % (zoom, x, y))
+
+    basedir = os.path.join(settings.WEB_DIR, 'decals-web')
+
+    tilefn = os.path.join(basedir, 'tiles-%s' % tag, '%i/%i/%i.jpg' % (zoom, x, y))
     if os.path.exists(tilefn):
         print 'Cached:', tilefn
         f = open(tilefn)
@@ -113,12 +123,11 @@ def map_coadd(req, zoom, x, y):
 
     ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                [1,H/2,H,H,H,H/2,1,1])
-    #print 'RA,Dec corners', r,d
+    # print 'RA,Dec corners', r,d
     # print 'RA range', r.min(), r.max()
     # print 'Dec range', d.min(), d.max()
     # print 'Zoom', zoom, 'pixel scale', wcs.pixel_scale()
 
-    #basepat = 'tunebrick/coadd/image-%(brick)06i-%(band)s.fits'
     basepat = os.path.join(settings.WEB_DIR, 'cosmos/coadd/image2-%(brick)06i-%(band)s.fits')
     scaled = 0
     scalepat = None
@@ -126,8 +135,8 @@ def map_coadd(req, zoom, x, y):
         scaled = (14 - zoom)
         scaled = np.clip(scaled, 1, 8)
         #print 'Scaled-down:', scaled
-        scalepat = os.path.join(settings.WEB_DIR, 'decals-web/scaled/image2-%(brick)06i-%(band)s-%(scale)i.fits')
-        dirnm = os.path.join(settings.WEB_DIR, 'decals-web/scaled')
+        dirnm = os.path.join(basedir, 'scaled-'+tag)
+        scalepat = os.path.join(dirnm, 'image2-%(brick)06i-%(band)s-%(scale)i.fits')
         if not os.path.exists(dirnm):
             try:
                 os.makedirs(dirnm)
@@ -138,7 +147,6 @@ def map_coadd(req, zoom, x, y):
     B = D.get_bricks()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
     print len(I), 'bricks touching:', B.brickid[I]
-    bands = 'grz'
     rimgs = []
     for band in bands:
         rimg = np.zeros((H,W), np.float32)
@@ -190,8 +198,6 @@ def map_coadd(req, zoom, x, y):
         rimgs.append(rimg)
     rgb = get_rgb(rimgs, bands)
 
-    #f,fn = tempfile.mkstemp(suffix='.jpg')
-    #os.close(f)
     try:
         os.makedirs(os.path.dirname(tilefn))
     except:
@@ -206,7 +212,6 @@ def map_coadd(req, zoom, x, y):
     
     plt.imsave(tilefn, rgb)
     f = open(tilefn)
-    #os.unlink(fn)
     return HttpResponse(f, content_type="image/jpeg")
     
             
