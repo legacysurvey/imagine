@@ -5,6 +5,16 @@
 
 <style type="text/css">
 #map { height: 100%; width: 100%; }
+
+.info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
 </style>
 
 </head>
@@ -43,14 +53,30 @@ var popup = L.popup();
 function onMapClick(e) {
 ra = 180 - e.latlng.lng;
 dec = e.latlng.lat;
-popup
-.setLatLng(e.latlng)
-//.setContent("You clicked the map at RA,Dec = " + .toString() + ", " + .toString())
-.setContent("Click: RA,Dec = " + ra.toFixed(2) + ", " + dec.toFixed(2))
-.openOn(map);
+popup.setLatLng(e.latlng)
+     .setContent("Click: RA,Dec = " + ra.toFixed(4) + ", " + dec.toFixed(4))
+     .openOn(map);
 }
 
 map.on('click', onMapClick);
+
+
+var info = L.control();
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this._div.innerHTML = '    0,0    ';
+    return this._div;
+};
+info.addTo(map);
+
+function onMouseMove(e) {
+    ra = 180 - e.latlng.lng;
+    dec = e.latlng.lat;
+    info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4);
+}
+
+map.on('mousemove', onMouseMove);
+
 </script>
 
 </body>
