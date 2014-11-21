@@ -15,8 +15,8 @@ from scipy.ndimage.filters import gaussian_filter
 from decals import settings
 
 def index(req):
-    layer = req.GET.get('layer', 'image')
-    ra, dec, zoom = 242.0, 7.0, 11
+    layer = req.GET.get('layer', 'decals')
+    ra, dec, zoom = 242.0, 7.0, 13
 
     try:
         zoom = int(req.GET.get('zoom', zoom))
@@ -35,10 +35,21 @@ def index(req):
 
     tileurl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.jpg'
     #tileurl = '{id}/{z}/{x}/{y}.jpg'
+
+    polygons = ''
+    if False and layer == 'decals':
+        T = fits_table(os.path.join(settings.WEB_DIR, 'edr-bricks.fits'))
+        print len(T), 'bricks'
+        for t in T:
+            rd = [(t.ra1, t.dec1), (t.ra1,t.dec2), (t.ra2,t.dec2), (t.ra2,t.dec1)]
+            p = ('L.polygon([' +
+                 ','.join(['[%.4f,%.4f]' % (d, 180.-r) for r,d in rd])
+                 + '], {fill:false}).addTo(map);')
+            polygons += p + '\n'
     
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, lat=lat, long=long, zoom=zoom,
-                       layer=layer, tileurl=tileurl))
+                       layer=layer, tileurl=tileurl, polygons=polygons))
 
 def get_tile_wcs(zoom, x, y):
     zoom = int(zoom)
@@ -67,14 +78,14 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         return basefn
     fn = scalepat % dict(scale=scale, **scalekwargs)
     if not os.path.exists(fn):
-        print 'Does not exist:', fn
+        #print 'Does not exist:', fn
         sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn)
-        print 'Source:', sourcefn
+        #print 'Source:', sourcefn
         if sourcefn is None or not os.path.exists(sourcefn):
             print 'No source'
             return None
         I = fitsio.read(sourcefn)
-        print 'source image:', I.shape
+        #print 'source image:', I.shape
         H,W = I.shape
         # make even size; smooth down
         if H % 2 == 1:
@@ -82,10 +93,10 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         if W % 2 == 1:
             I = I[:,:-1]
         im = gaussian_filter(I, 1.)
-        print 'im', im.shape
+        #print 'im', im.shape
         # bin
         I2 = (im[::2,::2] + im[1::2,::2] + im[1::2,1::2] + im[::2,1::2])/4.
-        print 'I2:', I2.shape
+        #print 'I2:', I2.shape
         # shrink WCS too
         wcs = Tan(sourcefn, 0)
         # include the even size clip; this may be a no-op
@@ -95,27 +106,31 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         hdr = fitsio.FITSHDR()
         subwcs.add_to_header(hdr)
         fitsio.write(fn, I2, header=hdr)
-        print 'Wrote', fn
+        #print 'Wrote', fn
     return fn
 
 
-def map_coadd(req, zoom, x, y):
-    return map_coadd_bands(req, zoom, x, y, 'grz', 'coadd-grz')
+def map_cosmos_grz(req, zoom, x, y):
+    return map_coadd_bands(req, zoom, x, y, 'grz', 'cosmos-grz', 'cosmos')
 
 def map_coadd_urz(req, zoom, x, y):
-    return map_coadd_bands(req, zoom, x, y, 'urz', 'coadd-urz')
+    return map_coadd_bands(req, zoom, x, y, 'urz', 'cosmos-urz', 'cosmos')
+
+def map_decals(req, zoom, x, y):
+    return map_coadd_bands(req, zoom, x, y, 'grz', 'decals', 'decals')
 
 
-def map_coadd_bands(req, zoom, x, y, bands, tag):
+
+def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir):
     from desi.common import *
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
         return HttpResponse(e.strerror)
 
-    basedir = os.path.join(settings.WEB_DIR, 'decals-web')
+    basedir = os.path.join(settings.WEB_DIR, 'data')
 
-    tilefn = os.path.join(basedir, 'tiles-%s' % tag, '%i/%i/%i.jpg' % (zoom, x, y))
+    tilefn = os.path.join(basedir, 'tiles', tag, '%i/%i/%i.jpg' % (zoom, x, y))
     if os.path.exists(tilefn):
         print 'Cached:', tilefn
         f = open(tilefn)
@@ -128,14 +143,14 @@ def map_coadd_bands(req, zoom, x, y, bands, tag):
     # print 'Dec range', d.min(), d.max()
     # print 'Zoom', zoom, 'pixel scale', wcs.pixel_scale()
 
-    basepat = os.path.join(settings.WEB_DIR, 'cosmos/coadd/image2-%(brick)06i-%(band)s.fits')
+    basepat = os.path.join(basedir, 'coadd', imagedir, 'image2-%(brick)06i-%(band)s.fits')
     scaled = 0
     scalepat = None
     if zoom < 14:
         scaled = (14 - zoom)
         scaled = np.clip(scaled, 1, 8)
         #print 'Scaled-down:', scaled
-        dirnm = os.path.join(basedir, 'scaled-'+tag)
+        dirnm = os.path.join(basedir, 'scaled', imagedir)
         scalepat = os.path.join(dirnm, 'image2-%(brick)06i-%(band)s-%(scale)i.fits')
         if not os.path.exists(dirnm):
             try:
@@ -146,7 +161,7 @@ def map_coadd_bands(req, zoom, x, y, bands, tag):
     D = Decals()
     B = D.get_bricks()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
-    print len(I), 'bricks touching:', B.brickid[I]
+    #print len(I), 'bricks touching:', B.brickid[I]
     rimgs = []
     for band in bands:
         rimg = np.zeros((H,W), np.float32)
@@ -155,7 +170,7 @@ def map_coadd_bands(req, zoom, x, y, bands, tag):
             fnargs = dict(brick=brickid, band=band)
             basefn = basepat % fnargs
             fn = get_scaled(scalepat, fnargs, scaled, basefn)
-            print 'Filename:', fn
+            #print 'Filename:', fn
             if fn is None:
                 continue
             if not os.path.exists(fn):
@@ -170,13 +185,17 @@ def map_coadd_bands(req, zoom, x, y, bands, tag):
             xx = xx.astype(np.int)
             yy = yy.astype(np.int)
             #print 'x,y', x,y
-            imW,imH = bwcs.get_width(), bwcs.get_height()
+            imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
             M = 10
+            #print 'brick coordinates of tile: x', xx.min(), xx.max(), 'y', yy.min(), yy.max()
             xlo = np.clip(xx.min() - M, 0, imW)
             xhi = np.clip(xx.max() + M, 0, imW)
             ylo = np.clip(yy.min() - M, 0, imH)
             yhi = np.clip(yy.max() + M, 0, imH)
+            #print 'brick size', imW, 'x', imH
+            #print 'clipped brick coordinates: x', xlo, xhi, 'y', ylo,yhi
             if xlo >= xhi or ylo >= yhi:
+                #print 'skipping'
                 continue
 
             subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
@@ -187,11 +206,20 @@ def map_coadd_bands(req, zoom, x, y, bands, tag):
             except:
                 print 'Failed to read image and WCS:', fn
                 continue
+            #print 'Subimage shape', img.shape
+            #print 'Sub-WCS shape', subwcs.get_height(), subwcs.get_width()
             try:
                 Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
             except:
+                #print 'Resampling exception'
+                #import traceback
+                #traceback.print_exc()
                 continue
 
+            # print 'Resampling', len(Yo), 'pixels'
+            # print 'out range x', Xo.min(), Xo.max(), 'y', Yo.min(), Yo.max()
+            # print 'in  range x', Xi.min(), Xi.max(), 'y', Yi.min(), Yi.max()
+            
             rimg[Yo,Xo] = img[Yi,Xi]
             rn  [Yo,Xo] += 1
         rimg /= np.maximum(rn, 1)
