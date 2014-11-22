@@ -16,7 +16,7 @@ from decals import settings
 
 def index(req):
     layer = req.GET.get('layer', 'decals')
-    ra, dec, zoom = 242.0, 7.0, 13
+    ra, dec, zoom = 244.7, 7.4, 13
 
     try:
         zoom = int(req.GET.get('zoom', zoom))
@@ -47,7 +47,7 @@ def index(req):
                  + '], {fill:false}).addTo(map);')
             polygons += p + '\n'
 
-    baseurl = req.path + '?'
+    baseurl = req.path + '?layer=%s&' % layer
     
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, lat=lat, long=long, zoom=zoom,
