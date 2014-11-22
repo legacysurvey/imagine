@@ -54,7 +54,9 @@ function onMapClick(e) {
 ra = 180 - e.latlng.lng;
 dec = e.latlng.lat;
 popup.setLatLng(e.latlng)
-     .setContent("Click: RA,Dec = " + ra.toFixed(4) + ", " + dec.toFixed(4))
+     .setContent("Click: RA,Dec = " + ra.toFixed(4) + ", " + dec.toFixed(4) +
+           "<br/><a href=\"{{ baseurl }}ra=" + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom()
+                          + "\">link here</a>")
      .openOn(map);
 }
 
@@ -64,7 +66,7 @@ map.on('click', onMapClick);
 var info = L.control();
 info.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
-    this._div.innerHTML = '    0,0    ';
+    this._div.innerHTML = '{{ ra|floatformat:4}}, {{ dec|floatformat:4}}';
     return this._div;
 };
 info.addTo(map);

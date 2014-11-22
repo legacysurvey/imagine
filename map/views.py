@@ -46,10 +46,13 @@ def index(req):
                  ','.join(['[%.4f,%.4f]' % (d, 180.-r) for r,d in rd])
                  + '], {fill:false}).addTo(map);')
             polygons += p + '\n'
+
+    baseurl = req.path + '?'
     
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, lat=lat, long=long, zoom=zoom,
-                       layer=layer, tileurl=tileurl, polygons=polygons))
+                       layer=layer, tileurl=tileurl, polygons=polygons,
+                       baseurl=baseurl))
 
 def get_tile_wcs(zoom, x, y):
     zoom = int(zoom)
@@ -113,7 +116,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
 def map_cosmos_grz(req, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'cosmos-grz', 'cosmos')
 
-def map_coadd_urz(req, zoom, x, y):
+def map_cosmos_urz(req, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'urz', 'cosmos-urz', 'cosmos')
 
 def map_decals(req, zoom, x, y):
@@ -220,7 +223,7 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir):
             # print 'out range x', Xo.min(), Xo.max(), 'y', Yo.min(), Yo.max()
             # print 'in  range x', Xi.min(), Xi.max(), 'y', Yi.min(), Yi.max()
             
-            rimg[Yo,Xo] = img[Yi,Xi]
+            rimg[Yo,Xo] += img[Yi,Xi]
             rn  [Yo,Xo] += 1
         rimg /= np.maximum(rn, 1)
         rimgs.append(rimg)
