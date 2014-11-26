@@ -122,9 +122,11 @@ def map_cosmos_urz(req, zoom, x, y):
 def map_decals(req, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'decals', 'decals')
 
+def map_decals_model(req, zoom, x, y):
+    return map_coadd_bands(req, zoom, x, y, 'grz', 'decals-model', 'decals-model', imagetag='model')
 
 
-def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir):
+def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir, imagetag='image2'):
     from desi.common import *
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
@@ -146,7 +148,7 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir):
     # print 'Dec range', d.min(), d.max()
     # print 'Zoom', zoom, 'pixel scale', wcs.pixel_scale()
 
-    basepat = os.path.join(basedir, 'coadd', imagedir, 'image2-%(brick)06i-%(band)s.fits')
+    basepat = os.path.join(basedir, 'coadd', imagedir, imagetag + '-%(brick)06i-%(band)s.fits')
     scaled = 0
     scalepat = None
     if zoom < 14:
@@ -154,7 +156,7 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir):
         scaled = np.clip(scaled, 1, 8)
         #print 'Scaled-down:', scaled
         dirnm = os.path.join(basedir, 'scaled', imagedir)
-        scalepat = os.path.join(dirnm, 'image2-%(brick)06i-%(band)s-%(scale)i.fits')
+        scalepat = os.path.join(dirnm, imagetag + '-%(brick)06i-%(band)s-%(scale)i.fits')
         if not os.path.exists(dirnm):
             try:
                 os.makedirs(dirnm)
@@ -166,6 +168,11 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir):
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
     #print len(I), 'bricks touching:', B.brickid[I]
     rimgs = []
+
+    # If any problems are encountered during tile rendering, don't save
+    # the results... at least it'll get fixed upon reload.
+    savecache = True
+
     for band in bands:
         rimg = np.zeros((H,W), np.float32)
         rn   = np.zeros((H,W), np.uint8)
@@ -175,13 +182,16 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir):
             fn = get_scaled(scalepat, fnargs, scaled, basefn)
             #print 'Filename:', fn
             if fn is None:
+                savecache = False
                 continue
             if not os.path.exists(fn):
+                savecache = False
                 continue
             try:
                 bwcs = Tan(fn, 0)
             except:
                 print 'Failed to read WCS:', fn
+                savecache = False
                 continue
 
             ok,xx,yy = bwcs.radec2pixelxy(r, d)
@@ -208,12 +218,13 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir):
                 img = f[slc]
             except:
                 print 'Failed to read image and WCS:', fn
+                savecache = False
                 continue
             #print 'Subimage shape', img.shape
             #print 'Sub-WCS shape', subwcs.get_height(), subwcs.get_width()
             try:
                 Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
-            except:
+            except OverlapError:
                 #print 'Resampling exception'
                 #import traceback
                 #traceback.print_exc()
@@ -240,9 +251,16 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir):
     # plt.axis('off')
     # plt.text(128, 128, 'z%i,(%i,%i)' % (zoom, x, y), color='red', ha='center', va='center')
     # plt.savefig(tilefn)
-    
+
+    if not savecache:
+        f,tilefn = tempfile.mkstemp()
+        os.close(f)
+
     plt.imsave(tilefn, rgb)
     f = open(tilefn)
+    if not savecache:
+        os.unlink(tilefn)
+
     return HttpResponse(f, content_type="image/jpeg")
     
             
