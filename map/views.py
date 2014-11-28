@@ -125,6 +125,9 @@ def map_decals(req, zoom, x, y):
 def map_decals_model(req, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'decals-model', 'decals-model', imagetag='model')
 
+def map_des_stripe82(req, zoom, x, y):
+    return map_coadd_bands(req, zoom, x, y, 'grz', 'des-stripe82', 'des-stripe82')
+
 
 def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir, imagetag='image2'):
     from desi.common import *
