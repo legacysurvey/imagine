@@ -108,7 +108,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         subwcs = wcs.scale(0.5)
         hdr = fitsio.FITSHDR()
         subwcs.add_to_header(hdr)
-        fitsio.write(fn, I2, header=hdr)
+        fitsio.write(fn, I2, header=hdr, clobber=True)
         #print 'Wrote', fn
     return fn
 
@@ -125,11 +125,21 @@ def map_decals(req, zoom, x, y):
 def map_decals_model(req, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'decals-model', 'decals-model', imagetag='model')
 
+def map_decals_pr(req, zoom, x, y):
+    return map_coadd_bands(req, zoom, x, y, 'grz', 'decals-pr', 'decals',
+                           rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
+
 def map_des_stripe82(req, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'des-stripe82', 'des-stripe82')
 
+def map_des_pr(req, zoom, x, y):
+    return map_coadd_bands(req, zoom, x, y, 'grz', 'des-stripe82-pr', 'des-stripe82',
+                           rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
-def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir, imagetag='image2'):
+#rgb = get_rgb(coimgs, bands, mnmx=(0., 100.), arcsinh=1.)
+
+def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
+                    imagetag='image2', rgbkwargs={}):
     from desi.common import *
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
@@ -241,7 +251,8 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir, imagetag='image2'):
             rn  [Yo,Xo] += 1
         rimg /= np.maximum(rn, 1)
         rimgs.append(rimg)
-    rgb = get_rgb(rimgs, bands)
+        #print 'Band', band, ': total of', rn.sum(), 'pixels'
+    rgb = get_rgb(rimgs, bands, **rgbkwargs)
 
     try:
         os.makedirs(os.path.dirname(tilefn))
@@ -256,8 +267,9 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir, imagetag='image2'):
     # plt.savefig(tilefn)
 
     if not savecache:
-        f,tilefn = tempfile.mkstemp()
+        f,tilefn = tempfile.mkstemp(suffix='.jpg')
         os.close(f)
+        #print 'Not caching file... saving to', tilefn
 
     plt.imsave(tilefn, rgb)
     f = open(tilefn)

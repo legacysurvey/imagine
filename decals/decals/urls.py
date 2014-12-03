@@ -8,8 +8,10 @@ urlpatterns = patterns('',
     url(r'^cosmos-grz/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_cosmos_grz'),
     url(r'^cosmos-urz/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_cosmos_urz'),
     url(r'^decals/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_decals'),
+    url(r'^decals-pr/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_decals_pr'),
     url(r'^decals-model/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_decals_model'),
     url(r'^des-stripe82/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_des_stripe82'),
+    url(r'^des-pr/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_des_pr'),
     # fall-through
     url(r'', 'map.views.index'),
     )
