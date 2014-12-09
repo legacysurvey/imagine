@@ -26,11 +26,46 @@
 
 var map = L.map('map').setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
-L.tileLayer('{{ tileurl }}', {
+MyTileLayer = L.TileLayer.extend({
+  _loadTile: function (tile, tilePoint) {
+		tile._layer  = this;
+		tile.onload  = this._tileOnLoad;
+		tile.onerror = this._tileOnError;
+		this._adjustTilePoint(tilePoint);
+		tile.src     = this.getTileUrl(tilePoint);
+		this.fire('tileloadstart', {
+			tile: tile,
+			url: tile.src,
+            x: tilePoint.x,
+            y: tilePoint.y,
+            z: tilePoint.z,
+		});
+	},
+
+});
+
+//tiles = L.tileLayer('{{ tileurl }}', {
+
+tiles = new MyTileLayer('{{ tileurl }}', {
 			maxZoom: 18,
 			attribution: 'DECaLS',
 			id: '{{ layer }}'
-		}).addTo(map);
+		});
+tiles.addTo(map);
+
+function onTileLoadStart(tile) {
+  console.log('TileLoadStart: z ' + tile.z +
+    ', x,y (' + tile.x + ',' + tile.y + ')');
+}
+
+function onTileUnload(tile) {
+  console.log('TileUnload: ' + tile.toString());
+}
+
+tiles.on('tileloadstart', onTileLoadStart);
+tiles.on('tileunload',    onTileUnload);
+
+
 
 // L.marker([ {{ lat }}, {{ long }}]).addTo(map)
 // .bindPopup("<b>Hello world!</b><br />I am a popup.").openPopup();
@@ -61,18 +96,6 @@ popup.setLatLng(e.latlng)
 }
 
 map.on('click', onMapClick);
-
-function onTileLoadStart(tile) {
-//console.log('TileLoadStart'); //: tile: ' + tile.toString());
-alert('TileLoadStart');
-}
-
-function onTileUnload(tile) {
-  console.log('TileUnload'); //: tile: ' + tile.toString());
-}
-
-map.on('tileloadstart', onTileLoadStart);
-map.on('tileunload',    onTileUnload);
 
 
 var info = L.control();
