@@ -5,7 +5,6 @@ from django.shortcuts import render
 from django.http import HttpResponse
 
 from astrometry.util.util import *
-from astrometry.blind.plotstuff import *
 
 from astrometry.util.resample import *
 from astrometry.util.fits import *
@@ -281,6 +280,7 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
             
     
 def map_image(req, zoom, x, y):
+    from astrometry.blind.plotstuff import Plotstuff
 
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
