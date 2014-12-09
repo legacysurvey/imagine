@@ -62,6 +62,18 @@ popup.setLatLng(e.latlng)
 
 map.on('click', onMapClick);
 
+function onTileLoadStart(tile) {
+//console.log('TileLoadStart'); //: tile: ' + tile.toString());
+alert('TileLoadStart');
+}
+
+function onTileUnload(tile) {
+  console.log('TileUnload'); //: tile: ' + tile.toString());
+}
+
+map.on('tileloadstart', onTileLoadStart);
+map.on('tileunload',    onTileUnload);
+
 
 var info = L.control();
 info.onAdd = function (map) {
