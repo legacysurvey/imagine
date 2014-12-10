@@ -13,7 +13,7 @@ urlpatterns = patterns('',
     url(r'^des-stripe82/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_des_stripe82'),
     url(r'^des-pr/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_des_pr'),
     #
-    url(r'decals/(\d*)/(\d*)/(\d*).cat.json', 'map.views.cat_decals')
+    url(r'decals/(\d*)/(\d*)/(\d*).cat.json', 'map.views.cat_decals'),
     # fall-through
     url(r'', 'map.views.index'),
     )

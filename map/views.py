@@ -139,7 +139,8 @@ def map_des_pr(req, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'des-stripe82-pr', 'des-stripe82',
                            rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
-def cat_decals(req, zoom, x, y):
+def cat_decals(req, zoom, x, y, tag='decals'):
+    from desi.common import *
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
@@ -153,7 +154,7 @@ def cat_decals(req, zoom, x, y):
 
     ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                [1,H/2,H,H,H,H/2,1,1])
-    catpat = os.path.join(basedir, 'cats', imagedir,
+    catpat = os.path.join(basedir, 'cats', tag,
                           'tractor-%(brick)06i.fits')
     D = Decals()
     B = D.get_bricks()
@@ -163,17 +164,22 @@ def cat_decals(req, zoom, x, y):
     for brickid in B.brickid[I]:
         fnargs = dict(brick=brickid)
         catfn = catpat % fnargs
+        if not os.path.exists(catfn):
+            continue
         T = fits_table(catfn)
         T.cut(T.brick_primary)
         ok,x,y = radec2pixelxy(T.ra, T.dec)
         T.cut((x > 0) * (y > 0) * (x < W) * (y < H))
         cat.append(T)
-    cat = merge_tables(cat)
-    print 'All catalogs:'
-    cat.about()
+    if len(cat) == 0:
+        rd = []
+    else:
+        cat = merge_tables(cat)
+        print 'All catalogs:'
+        cat.about()
+        rd = zip(cat.ra, cat.dec)
 
-    json = simplejson.dumps(dict(rd=zip(cat.ra, cat.dec)))
-    
+    json = simplejson.dumps(dict(rd=rd))
     try:
         os.makedirs(os.path.dirname(cachefn))
     except:
