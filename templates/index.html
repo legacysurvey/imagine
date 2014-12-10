@@ -33,15 +33,17 @@ MyTileLayer = L.TileLayer.extend({
 		tile.onerror = this._tileOnError;
 		this._adjustTilePoint(tilePoint);
 		tile.src     = this.getTileUrl(tilePoint);
+        tile.x = tilePoint.x;
+        tile.y = tilePoint.y;
+        tile.z = tilePoint.z;
 		this.fire('tileloadstart', {
 			tile: tile,
 			url: tile.src,
-            x: tilePoint.x,
-            y: tilePoint.y,
-            z: tilePoint.z,
+            // x: tilePoint.x,
+            // y: tilePoint.y,
+            // z: tilePoint.z,
 		});
 	},
-
 });
 
 //tiles = L.tileLayer('{{ tileurl }}', {
@@ -53,13 +55,17 @@ tiles = new MyTileLayer('{{ tileurl }}', {
 		});
 tiles.addTo(map);
 
-function onTileLoadStart(tile) {
+function onTileLoadStart(e) {
+  tile = e.tile;
   console.log('TileLoadStart: z ' + tile.z +
     ', x,y (' + tile.x + ',' + tile.y + ')');
 }
 
-function onTileUnload(tile) {
+function onTileUnload(e) {
+  tile = e.tile;
   console.log('TileUnload: ' + tile.toString());
+  console.log('TileUnload: z ' + tile.z +
+    ', x,y (' + tile.x + ',' + tile.y + ')');
 }
 
 tiles.on('tileloadstart', onTileLoadStart);
