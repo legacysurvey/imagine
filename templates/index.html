@@ -36,7 +36,10 @@ MyTileLayer = L.TileLayer.extend({
         // this is special sauce - add zoom,x,y to tile object
         tile.x = tilePoint.x;
         tile.y = tilePoint.y;
+        tile.tilex = tilePoint.x;
+        tile.tiley = tilePoint.y;
         tile.z = tilePoint.z;
+        console.log('loadtile: x,y ' + tile.tilex + ',' + tile.tiley);
         // copied
 		this.fire('tileloadstart', {
 			tile: tile,
@@ -66,14 +69,15 @@ function onTileLoadStart(e) {
 			//s: tiles._getSubdomain(tilePoint),
             s: 'a',
 			z: tile.z,
-			x: tile.x,
-			y: tile.y
+			x: tile.tilex,
+			y: tile.tiley
 		}, tiles.options));
   console.log('caturl: ' + caturl);
 
   $.getJSON(caturl, catLoaded);
   console.log('TileLoadStart: z ' + tile.z +
-    ', x,y (' + tile.x + ',' + tile.y + ')');
+    ', x,y (' + tile.x + ',' + tile.y + ')' +
+    tile.tilex + ',' + tile.tiley);
 }
 
 
@@ -81,7 +85,7 @@ function onTileUnload(e) {
   tile = e.tile;
   console.log('TileUnload: ' + tile.toString());
   console.log('TileUnload: z ' + tile.z +
-    ', x,y (' + tile.x + ',' + tile.y + ')');
+    ', x,y (' + tile.tilex + ',' + tile.tiley + ')');
 }
 
 tiles.on('tileloadstart', onTileLoadStart);

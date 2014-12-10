@@ -165,10 +165,11 @@ def cat_decals(req, zoom, x, y, tag='decals'):
         fnargs = dict(brick=brickid)
         catfn = catpat % fnargs
         if not os.path.exists(catfn):
+            print 'Does not exist:', catfn
             continue
         T = fits_table(catfn)
         T.cut(T.brick_primary)
-        ok,x,y = radec2pixelxy(T.ra, T.dec)
+        ok,x,y = wcs.radec2pixelxy(T.ra, T.dec)
         T.cut((x > 0) * (y > 0) * (x < W) * (y < H))
         cat.append(T)
     if len(cat) == 0:
