@@ -1,7 +1,8 @@
 <html>
 <head>
 <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
-<script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+<script src="/static/leaflet-src.js"></script>
+<script src="/static/jquery-2.1.1.min.js"></script>
 
 <style type="text/css">
 #map { height: 100%; width: 100%; }
@@ -28,25 +29,24 @@ var map = L.map('map').setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
 MyTileLayer = L.TileLayer.extend({
   _loadTile: function (tile, tilePoint) {
+        // this is just copied from the superclass
 		tile._layer  = this;
 		tile.onload  = this._tileOnLoad;
 		tile.onerror = this._tileOnError;
 		this._adjustTilePoint(tilePoint);
 		tile.src     = this.getTileUrl(tilePoint);
+        // this is special sauce - add zoom,x,y to tile object
         tile.x = tilePoint.x;
         tile.y = tilePoint.y;
         tile.z = tilePoint.z;
+        // copied
 		this.fire('tileloadstart', {
 			tile: tile,
 			url: tile.src,
-            // x: tilePoint.x,
-            // y: tilePoint.y,
-            // z: tilePoint.z,
 		});
 	},
-});
 
-//tiles = L.tileLayer('{{ tileurl }}', {
+});
 
 tiles = new MyTileLayer('{{ tileurl }}', {
 			maxZoom: 18,
@@ -55,11 +55,28 @@ tiles = new MyTileLayer('{{ tileurl }}', {
 		});
 tiles.addTo(map);
 
+function catLoaded(result) {
+}
+
 function onTileLoadStart(e) {
   tile = e.tile;
+
+  // fugly
+  tilePoint = L.Point(tile.x, tile.y);
+  caturl = L.Util.template('{{ caturl }}', L.extend({
+			//s: tiles._getSubdomain(tilePoint),
+            s: 'a',
+			z: tile.z,
+			x: tile.x,
+			y: tile.y
+		}, tiles.options));
+  console.log('caturl: ' + caturl);
+
+  $.getJSON(caturl, catLoaded);
   console.log('TileLoadStart: z ' + tile.z +
     ', x,y (' + tile.x + ',' + tile.y + ')');
 }
+
 
 function onTileUnload(e) {
   tile = e.tile;

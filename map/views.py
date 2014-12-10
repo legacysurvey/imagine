@@ -1,6 +1,8 @@
 import os
 import tempfile
 
+import simplejson
+
 from django.shortcuts import render
 from django.http import HttpResponse
 
@@ -33,6 +35,8 @@ def index(req):
     lat,long = dec, 180-ra
 
     tileurl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.jpg'
+    #caturl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
+    caturl = 'http://decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
     #tileurl = '{id}/{z}/{x}/{y}.jpg'
 
     polygons = ''
@@ -51,7 +55,7 @@ def index(req):
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, lat=lat, long=long, zoom=zoom,
                        layer=layer, tileurl=tileurl, polygons=polygons,
-                       baseurl=baseurl))
+                       baseurl=baseurl, caturl=caturl))
 
 def get_tile_wcs(zoom, x, y):
     zoom = int(zoom)
@@ -135,7 +139,55 @@ def map_des_pr(req, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'des-stripe82-pr', 'des-stripe82',
                            rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
-#rgb = get_rgb(coimgs, bands, mnmx=(0., 100.), arcsinh=1.)
+def cat_decals(req, zoom, x, y):
+    try:
+        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
+    except RuntimeError as e:
+        return HttpResponse(e.strerror)
+    basedir = os.path.join(settings.WEB_DIR, 'data')
+    cachefn = os.path.join(basedir, 'cats-cache', tag, '%i/%i/%i.cat.json' % (zoom, x, y))
+    if os.path.exists(cachefn):
+        print 'Cached:', cachefn
+        f = open(cachefn)
+        return HttpResponse(f, content_type='application/json')
+
+    ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
+                               [1,H/2,H,H,H,H/2,1,1])
+    catpat = os.path.join(basedir, 'cats', imagedir,
+                          'tractor-%(brick)06i.fits')
+    D = Decals()
+    B = D.get_bricks()
+    I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
+
+    cat = []
+    for brickid in B.brickid[I]:
+        fnargs = dict(brick=brickid)
+        catfn = catpat % fnargs
+        T = fits_table(catfn)
+        T.cut(T.brick_primary)
+        ok,x,y = radec2pixelxy(T.ra, T.dec)
+        T.cut((x > 0) * (y > 0) * (x < W) * (y < H))
+        cat.append(T)
+    cat = merge_tables(cat)
+    print 'All catalogs:'
+    cat.about()
+
+    json = simplejson.dumps(dict(rd=zip(cat.ra, cat.dec)))
+    
+    try:
+        os.makedirs(os.path.dirname(cachefn))
+    except:
+        pass
+
+    f = open(cachefn, 'w')
+    f.write(json)
+    f.close()
+    
+    f = open(cachefn)
+
+    return HttpResponse(f, content_type='application/json')
+    
+
 
 def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={}):
