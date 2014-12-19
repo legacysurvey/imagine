@@ -56,8 +56,26 @@ tiles = new MyTileLayer('{{ tileurl }}', {
 		});
 tiles.addTo(map);
 
+catLayers = {};
+
 function catLoaded(result) {
   console.log('catloaded:' + result);
+  console.log('catloaded:' + result['rd']);
+  rdlist = result['rd']
+  var circleList = new Array(rdlist.length);
+  for (i=0, len=rdlist.length; i<len; i++) {
+    r = rdlist[i][0];
+    d = rdlist[i][1];
+    lat = d;
+    lng = 180 - r;
+    circleList[i] = L.circle([lat, lng], 10);
+  }
+  circles = L.layerGroup(circleList);
+  circles.addTo(map);
+
+  // save this for later.
+  key = ''+result['zoom']+':'+result['x']+':'+result['y'];
+  catLayers[key] = circles;
 }
 
 function onTileLoadStart(e) {
@@ -83,14 +101,19 @@ function onTileLoadStart(e) {
 
 function onTileUnload(e) {
   tile = e.tile;
-  console.log('TileUnload: ' + tile.toString());
+  // console.log('TileUnload: ' + tile.toString());
   console.log('TileUnload: z ' + tile.z +
     ', x,y (' + tile.tilex + ',' + tile.tiley + ')');
+  key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
+  circles = catLayers[key];
+  map.removeLayer(circles);
+  delete catLayers[key];
 }
 
-tiles.on('tileloadstart', onTileLoadStart);
-tiles.on('tileunload',    onTileUnload);
-
+{% if showsources %}
+  tiles.on('tileloadstart', onTileLoadStart);
+  tiles.on('tileunload',    onTileUnload);
+{% endif %}
 
 
 // L.marker([ {{ lat }}, {{ long }}]).addTo(map)
