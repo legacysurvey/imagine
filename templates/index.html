@@ -28,11 +28,11 @@
 MyTileLayer = L.TileLayer.extend({
     _loadTile: function (tile, tilePoint) {
         // this is just copied from the superclass
-		tile._layer  = this;
-		tile.onload  = this._tileOnLoad;
-		tile.onerror = this._tileOnError;
-		this._adjustTilePoint(tilePoint);
-		tile.src     = this.getTileUrl(tilePoint);
+        tile._layer  = this;
+        tile.onload  = this._tileOnLoad;
+        tile.onerror = this._tileOnError;
+        this._adjustTilePoint(tilePoint);
+        tile.src     = this.getTileUrl(tilePoint);
         // this is special sauce - add zoom,x,y to tile object
         tile.x = tilePoint.x;
         tile.y = tilePoint.y;
@@ -41,11 +41,11 @@ MyTileLayer = L.TileLayer.extend({
         tile.z = tilePoint.z;
         console.log('loadtile: x,y ' + tile.tilex + ',' + tile.tiley);
         // copied
-		this.fire('tileloadstart', {
-			tile: tile,
-			url: tile.src,
-		});
-	},
+        this.fire('tileloadstart', {
+            tile: tile,
+            url: tile.src,
+        });
+    },
 
 });
 
@@ -79,6 +79,11 @@ function catLoaded(result) {
 function onTileLoadStart(e) {
     tile = e.tile;
 
+    key = '' + tile.z + ':' + tile.x + ':' + tile.y;
+    visibleTiles[key] = true;
+
+    console.log('onTileLoadStart: showSources = ' + showSources);
+
     if (!showSources) {
         return;
     }
@@ -86,12 +91,12 @@ function onTileLoadStart(e) {
     // fugly
     tilePoint = L.Point(tile.x, tile.y);
     caturl = L.Util.template('{{ caturl }}', L.extend({
-		s: tiles._getSubdomain(tilePoint),
+        s: tiles._getSubdomain(tilePoint),
         //s: 'a',
-		z: tile.z,
-		x: tile.tilex,
-		y: tile.tiley
-	}));
+        z: tile.z,
+        x: tile.tilex,
+        y: tile.tiley
+    }));
     //, tiles.options));
     console.log('caturl: ' + caturl);
 
@@ -137,6 +142,7 @@ function onMouseMove(e) {
 function overlayAdded(e) {
     console.log('OverlayAdded: ' + e.name);
     if (e.name == 'Sources') {
+        console.log('Set showSources = True');
         // set global 
         showSources = true;
         // request catalogs for currently-visible tiles
@@ -146,20 +152,29 @@ function overlayAdded(e) {
 // "Sources", "Bricks", "CCDs" button unchecked
 function overlayRemoved(e) {
     console.log('OverlayRemoved: ' + e.name);
+    if (e.name == 'Sources') {
+        console.log('Set showSources = False');
+        // set global 
+        showSources = false;
+        // remove all catalogs
+    }
 }
 
 var showSources = false;
 var sourcesGroup = L.layerGroup([]);
 //var sourceGroups = {};
+catLayers = {};
+
+var visibleTiles = {};
 
 var map = L.map('map').setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
 map.on('click', onMapClick);
 
 tiles = new MyTileLayer('{{ tileurl }}', {
-	maxZoom: 18,
-	attribution: 'DECaLS',
-	id: '{{ layer }}',
+    maxZoom: 18,
+    attribution: 'DECaLS',
+    id: '{{ layer }}',
     // ?
     unloadInvisibleTiles: true,
 });
@@ -183,8 +198,6 @@ map.on('mousemove', onMouseMove);
 var baseMaps = {
     "DECaLS": tiles,
 };
-
-catLayers = {};
 
 //var src = L.marker([7.4106, 244.7302]);
 //var sources = L.layerGroup([src]);
