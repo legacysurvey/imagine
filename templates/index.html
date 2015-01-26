@@ -26,7 +26,7 @@
 <script>
 
 MyTileLayer = L.TileLayer.extend({
-  _loadTile: function (tile, tilePoint) {
+    _loadTile: function (tile, tilePoint) {
         // this is just copied from the superclass
 		tile._layer  = this;
 		tile.onload  = this._tileOnLoad;
@@ -50,24 +50,24 @@ MyTileLayer = L.TileLayer.extend({
 });
 
 function catLoaded(result) {
-  console.log('catloaded:' + result);
+    console.log('catloaded:' + result);
 
     if (!showSources) {
         return;
     }
 
-  console.log('catloaded:' + result['rd']);
-  rdlist = result['rd']
-  var circleList = new Array(rdlist.length);
-  for (i=0, len=rdlist.length; i<len; i++) {
-    r = rdlist[i][0];
-    d = rdlist[i][1];
-    lat = d;
-    lng = 180 - r;
-    circleList[i] = L.circle([lat, lng], 10);
-  }
-  circles = L.layerGroup(circleList);
-
+    console.log('catloaded:' + result['rd']);
+    rdlist = result['rd']
+    var circleList = new Array(rdlist.length);
+    for (i=0, len=rdlist.length; i<len; i++) {
+        r = rdlist[i][0];
+        d = rdlist[i][1];
+        lat = d;
+        lng = 180 - r;
+        circleList[i] = L.circle([lat, lng], 10);
+    }
+    circles = L.layerGroup(circleList);
+    
     //circles.addTo(map);
     sourcesGroup.addLayer(circles);
 
@@ -106,25 +106,25 @@ function onTileUnload(e) {
     if (!showSources) {
         return;
     }
-  tile = e.tile;
-  // console.log('TileUnload: ' + tile.toString());
-  console.log('TileUnload: z ' + tile.z +
-    ', x,y (' + tile.tilex + ',' + tile.tiley + ')');
-  key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
-  circles = catLayers[key];
-  map.removeLayer(circles);
-  delete catLayers[key];
+    tile = e.tile;
+    // console.log('TileUnload: ' + tile.toString());
+    console.log('TileUnload: z ' + tile.z +
+                ', x,y (' + tile.tilex + ',' + tile.tiley + ')');
+    key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
+    circles = catLayers[key];
+    map.removeLayer(circles);
+    delete catLayers[key];
 }
 
 function onMapClick(e) {
-  ra = 180 - e.latlng.lng;
-  dec = e.latlng.lat;
-  popup.setLatLng(e.latlng)
-       .setContent("Click: RA,Dec = " + ra.toFixed(4) + ", " + dec.toFixed(4) +
-                   "<br/><a href=\"{{ baseurl }}ra=" + ra.toFixed(4) +
-                   '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom()
-                   + "\">link here</a>")
-       .openOn(map);
+    ra = 180 - e.latlng.lng;
+    dec = e.latlng.lat;
+    popup.setLatLng(e.latlng)
+        .setContent("Click: RA,Dec = " + ra.toFixed(4) + ", " + dec.toFixed(4) +
+                    "<br/><a href=\"{{ baseurl }}ra=" + ra.toFixed(4) +
+                    '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom()
+                    + "\">link here</a>")
+        .openOn(map);
 }
 
 function onMouseMove(e) {
