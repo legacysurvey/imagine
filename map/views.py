@@ -149,10 +149,11 @@ def map_des_pr(req, zoom, x, y):
                            rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
 def cat_decals(req, zoom, x, y, tag='decals'):
-    if zoom < 10:
-        return HttpResonse(simplejson.dumps(dict(rd=[], zoom=zoom,
-                                                 x=x, y=y)),
-                           content_type='application/json')
+    zoom = int(zoom)
+    if zoom < 12:
+        return HttpResponse(simplejson.dumps(dict(rd=[], zoom=zoom,
+                                                  tilex=x, tiley=y)),
+                            content_type='application/json')
     from desi.common import *
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
@@ -184,9 +185,9 @@ def cat_decals(req, zoom, x, y, tag='decals'):
         # FIXME -- all False
         # print 'brick_primary', np.unique(T.brick_primary)
         # T.cut(T.brick_primary)
-        ok,x,y = wcs.radec2pixelxy(T.ra, T.dec)
-        print 'x,y', x.min(), x.max(), y.min(), y.max()
-        T.cut((x > 0) * (y > 0) * (x < W) * (y < H))
+        ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
+        print 'xx,yy', xx.min(), xx.max(), yy.min(), yy.max()
+        T.cut((xx > 0) * (yy > 0) * (xx < W) * (yy < H))
         cat.append(T)
     if len(cat) == 0:
         rd = []
@@ -196,7 +197,8 @@ def cat_decals(req, zoom, x, y, tag='decals'):
         cat.about()
         rd = zip(cat.ra, cat.dec)
 
-    json = simplejson.dumps(dict(rd=rd, zoom=zoom, x=x, y=y))
+    json = simplejson.dumps(dict(rd=rd, zoom=zoom, x=list(xx), y=list(yy),
+                                 tilex=x, tiley=y))
     try:
         os.makedirs(os.path.dirname(cachefn))
     except:

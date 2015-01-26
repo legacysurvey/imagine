@@ -34,8 +34,8 @@ MyTileLayer = L.TileLayer.extend({
         this._adjustTilePoint(tilePoint);
         tile.src     = this.getTileUrl(tilePoint);
         // this is special sauce - add zoom,x,y to tile object
-        tile.x = tilePoint.x;
-        tile.y = tilePoint.y;
+        //tile.x = tilePoint.x;
+        //tile.y = tilePoint.y;
         tile.tilex = tilePoint.x;
         tile.tiley = tilePoint.y;
         tile.z = tilePoint.z;
@@ -56,8 +56,14 @@ function catLoaded(result) {
         return;
     }
 
-    console.log('catloaded:' + result['rd']);
+    //console.log('catloaded:' + result['rd']);
     rdlist = result['rd']
+
+    if ((result['zoom'] == undefined) || 
+        (result['tilex'] == undefined) || 
+        (result['tiley'] == undefined)) {
+        return;
+    }
     var circleList = new Array(rdlist.length);
     for (i=0, len=rdlist.length; i<len; i++) {
         r = rdlist[i][0];
@@ -67,58 +73,66 @@ function catLoaded(result) {
         circleList[i] = L.circle([lat, lng], 10);
     }
     circles = L.layerGroup(circleList);
-    
-    //circles.addTo(map);
     sourcesGroup.addLayer(circles);
-
     // save this for later.
-    key = ''+result['zoom']+':'+result['x']+':'+result['y'];
+    key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
     catLayers[key] = circles;
 }
 
-function onTileLoadStart(e) {
-    tile = e.tile;
+function doLoadTile(tile) {
 
-    key = '' + tile.z + ':' + tile.x + ':' + tile.y;
-    visibleTiles[key] = true;
-
-    console.log('onTileLoadStart: showSources = ' + showSources);
-
-    if (!showSources) {
+    if (tile.z < 12) {
         return;
     }
 
     // fugly
-    tilePoint = L.Point(tile.x, tile.y);
+    //tilePoint = L.Point(tile.tilex, tile.tiley);
+    //s: tiles._getSubdomain(tilePoint),
     caturl = L.Util.template('{{ caturl }}', L.extend({
-        s: tiles._getSubdomain(tilePoint),
-        //s: 'a',
+        s: 'a',
         z: tile.z,
         x: tile.tilex,
-        y: tile.tiley
+        y: tile.tiley,
+        id: idname,
     }));
     //, tiles.options));
-    console.log('caturl: ' + caturl);
+    //console.log('caturl: ' + caturl);
 
     $.getJSON(caturl, catLoaded);
-    console.log('TileLoadStart: z ' + tile.z +
-                ', x,y (' + tile.x + ',' + tile.y + ')' +
-                tile.tilex + ',' + tile.tiley);
+    console.log('doLoadTile: z ' + tile.z +
+                ', x,y (' + tile.tilex + ',' + tile.tiley + ')');
 }
 
-
-function onTileUnload(e) {
+function onTileLoadStart(e) {
+    tile = e.tile;
+    key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
+    visibleTiles[key] = tile;
+    console.log('onTileLoadStart: ' + key);
     if (!showSources) {
         return;
     }
-    tile = e.tile;
-    // console.log('TileUnload: ' + tile.toString());
-    console.log('TileUnload: z ' + tile.z +
-                ', x,y (' + tile.tilex + ',' + tile.tiley + ')');
-    key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
+    doLoadTile(tile);
+}
+
+function doUnloadTile(key) {
+    console.log('doUnloadTile: ' + key);
     circles = catLayers[key];
-    map.removeLayer(circles);
+    //map.removeLayer(circles);
+    sourcesGroup.removeLayer(circles);
     delete catLayers[key];
+}
+
+function onTileUnload(e) {
+    tile = e.tile;
+    key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
+    console.log('onTileUnload: ' + key);
+    delete visibleTiles[key];
+
+    if (!showSources) {
+        return;
+    }
+    // console.log('TileUnload: ' + tile.toString());
+    doUnloadTile(key);
 }
 
 function onMapClick(e) {
@@ -146,6 +160,15 @@ function overlayAdded(e) {
         // set global 
         showSources = true;
         // request catalogs for currently-visible tiles
+        console.log('Visible tiles: ' + visibleTiles);
+
+        //console.log('len: ' + visibleTiles.length);
+        //for (i=0, len=visibleTiles.length; i<len; i++) {
+        for (var i in visibleTiles) {
+            //console.log('visible tile ' + i + ': ' + visibleTiles[i]);
+            doLoadTile(visibleTiles[i]);
+        }
+
     }
 }
 
@@ -157,33 +180,37 @@ function overlayRemoved(e) {
         // set global 
         showSources = false;
         // remove all catalogs
+        for (var i in visibleTiles) {
+            //console.log('visible tile ' + i + ': ' + visibleTiles[i]);
+            doUnloadTile(i);
+        }
     }
 }
 
 var showSources = false;
 var sourcesGroup = L.layerGroup([]);
 //var sourceGroups = {};
-catLayers = {};
-
+var catLayers = {};
 var visibleTiles = {};
 
 var map = L.map('map').setView([ {{ lat }}, {{ long }}], {{ zoom }});
+var popup = L.popup();
 
 map.on('click', onMapClick);
+
+var idname = '{{ layer }}';
 
 tiles = new MyTileLayer('{{ tileurl }}', {
     maxZoom: 18,
     attribution: 'DECaLS',
-    id: '{{ layer }}',
+    id: idname,
     // ?
     unloadInvisibleTiles: true,
 });
-tiles.addTo(map);
-
-//{% if showsources %}
 tiles.on('tileloadstart', onTileLoadStart);
 tiles.on('tileunload',    onTileUnload);
-//{% endif %}
+tiles.addTo(map);
+
 
 var info = L.control();
 info.onAdd = function (map) {
