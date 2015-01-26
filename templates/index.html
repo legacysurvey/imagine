@@ -51,6 +51,11 @@ MyTileLayer = L.TileLayer.extend({
 
 function catLoaded(result) {
   console.log('catloaded:' + result);
+
+    if (!showSources) {
+        return;
+    }
+
   console.log('catloaded:' + result['rd']);
   rdlist = result['rd']
   var circleList = new Array(rdlist.length);
@@ -62,36 +67,45 @@ function catLoaded(result) {
     circleList[i] = L.circle([lat, lng], 10);
   }
   circles = L.layerGroup(circleList);
-  circles.addTo(map);
 
-  // save this for later.
-  key = ''+result['zoom']+':'+result['x']+':'+result['y'];
-  catLayers[key] = circles;
+    //circles.addTo(map);
+    sourcesGroup.addLayer(circles);
+
+    // save this for later.
+    key = ''+result['zoom']+':'+result['x']+':'+result['y'];
+    catLayers[key] = circles;
 }
 
 function onTileLoadStart(e) {
-  tile = e.tile;
+    tile = e.tile;
 
-  // fugly
-  tilePoint = L.Point(tile.x, tile.y);
-  caturl = L.Util.template('{{ caturl }}', L.extend({
-			s: tiles._getSubdomain(tilePoint),
-            //s: 'a',
-			z: tile.z,
-			x: tile.tilex,
-			y: tile.tiley
-		}, tiles.options));
-  // FIXME -- tiles.option ?!
-  console.log('caturl: ' + caturl);
+    if (!showSources) {
+        return;
+    }
 
-  $.getJSON(caturl, catLoaded);
-  console.log('TileLoadStart: z ' + tile.z +
-    ', x,y (' + tile.x + ',' + tile.y + ')' +
-    tile.tilex + ',' + tile.tiley);
+    // fugly
+    tilePoint = L.Point(tile.x, tile.y);
+    caturl = L.Util.template('{{ caturl }}', L.extend({
+		s: tiles._getSubdomain(tilePoint),
+        //s: 'a',
+		z: tile.z,
+		x: tile.tilex,
+		y: tile.tiley
+	}));
+    //, tiles.options));
+    console.log('caturl: ' + caturl);
+
+    $.getJSON(caturl, catLoaded);
+    console.log('TileLoadStart: z ' + tile.z +
+                ', x,y (' + tile.x + ',' + tile.y + ')' +
+                tile.tilex + ',' + tile.tiley);
 }
 
 
 function onTileUnload(e) {
+    if (!showSources) {
+        return;
+    }
   tile = e.tile;
   // console.log('TileUnload: ' + tile.toString());
   console.log('TileUnload: z ' + tile.z +
@@ -119,6 +133,25 @@ function onMouseMove(e) {
     info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4);
 }
 
+// "Sources", "Bricks", "CCDs" button checked
+function overlayAdded(e) {
+    console.log('OverlayAdded: ' + e.name);
+    if (e.name == 'Sources') {
+        // set global 
+        showSources = true;
+        // request catalogs for currently-visible tiles
+    }
+}
+
+// "Sources", "Bricks", "CCDs" button unchecked
+function overlayRemoved(e) {
+    console.log('OverlayRemoved: ' + e.name);
+}
+
+var showSources = false;
+var sourcesGroup = L.layerGroup([]);
+//var sourceGroups = {};
+
 var map = L.map('map').setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
 map.on('click', onMapClick);
@@ -132,10 +165,10 @@ tiles = new MyTileLayer('{{ tileurl }}', {
 });
 tiles.addTo(map);
 
-{% if showsources %}
-  tiles.on('tileloadstart', onTileLoadStart);
-  tiles.on('tileunload',    onTileUnload);
-{% endif %}
+//{% if showsources %}
+tiles.on('tileloadstart', onTileLoadStart);
+tiles.on('tileunload',    onTileUnload);
+//{% endif %}
 
 var info = L.control();
 info.onAdd = function (map) {
@@ -153,8 +186,8 @@ var baseMaps = {
 
 catLayers = {};
 
-var src = L.marker([7.4106, 244.7302]);
-var sources = L.layerGroup([src]);
+//var src = L.marker([7.4106, 244.7302]);
+//var sources = L.layerGroup([src]);
 
 var br = L.marker([7.4246, 244.6618]);
 var bricks = L.layerGroup([br]);
@@ -163,13 +196,15 @@ var ccd = L.marker([7.3677, 244.6700]);
 var ccds = L.layerGroup([ccd]);
 
 var overlayMaps = {
-    "Sources": sources,
+    "Sources": sourcesGroup,
     "Bricks": bricks,
     "CCDs": ccds,
 };
 
-L.control.layers(baseMaps, overlayMaps).addTo(map);
+L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
+map.on('overlayadd', overlayAdded);
+map.on('overlayremove', overlayRemoved);
 
 {{ polygons }}
 
