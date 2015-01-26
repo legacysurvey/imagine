@@ -51,6 +51,22 @@ MyTileLayer = L.TileLayer.extend({
 
 function catLoaded(result) {
   console.log('catloaded:' + result);
+  console.log('catloaded:' + result['rd']);
+  rdlist = result['rd']
+  var circleList = new Array(rdlist.length);
+  for (i=0, len=rdlist.length; i<len; i++) {
+    r = rdlist[i][0];
+    d = rdlist[i][1];
+    lat = d;
+    lng = 180 - r;
+    circleList[i] = L.circle([lat, lng], 10);
+  }
+  circles = L.layerGroup(circleList);
+  circles.addTo(map);
+
+  // save this for later.
+  key = ''+result['zoom']+':'+result['x']+':'+result['y'];
+  catLayers[key] = circles;
 }
 
 function onTileLoadStart(e) {
@@ -59,8 +75,8 @@ function onTileLoadStart(e) {
   // fugly
   tilePoint = L.Point(tile.x, tile.y);
   caturl = L.Util.template('{{ caturl }}', L.extend({
-			//s: tiles._getSubdomain(tilePoint),
-            s: 'a',
+			s: tiles._getSubdomain(tilePoint),
+            //s: 'a',
 			z: tile.z,
 			x: tile.tilex,
 			y: tile.tiley
@@ -77,9 +93,13 @@ function onTileLoadStart(e) {
 
 function onTileUnload(e) {
   tile = e.tile;
-  console.log('TileUnload: ' + tile.toString());
+  // console.log('TileUnload: ' + tile.toString());
   console.log('TileUnload: z ' + tile.z +
     ', x,y (' + tile.tilex + ',' + tile.tiley + ')');
+  key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
+  circles = catLayers[key];
+  map.removeLayer(circles);
+  delete catLayers[key];
 }
 
 function onMapClick(e) {
@@ -112,8 +132,10 @@ tiles = new MyTileLayer('{{ tileurl }}', {
 });
 tiles.addTo(map);
 
-tiles.on('tileloadstart', onTileLoadStart);
-tiles.on('tileunload',    onTileUnload);
+{% if showsources %}
+  tiles.on('tileloadstart', onTileLoadStart);
+  tiles.on('tileunload',    onTileUnload);
+{% endif %}
 
 var info = L.control();
 info.onAdd = function (map) {
@@ -128,6 +150,8 @@ map.on('mousemove', onMouseMove);
 var baseMaps = {
     "DECaLS": tiles,
 };
+
+catLayers = {};
 
 var src = L.marker([7.4106, 244.7302]);
 var sources = L.layerGroup([src]);
