@@ -15,6 +15,8 @@ from scipy.ndimage.filters import gaussian_filter
 
 from decals import settings
 
+from desi.common import *
+
 def index(req):
     layer = req.GET.get('layer', 'decals')
     ra, dec, zoom = 244.7, 7.4, 13
@@ -43,6 +45,7 @@ def index(req):
 
     tileurl = '/{id}/{z}/{x}/{y}.jpg'
     caturl = '/{id}/{z}/{x}/{y}.cat.json'
+    bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
 
     #caturl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
     #tileurl = '{id}/{z}/{x}/{y}.jpg'
@@ -63,7 +66,7 @@ def index(req):
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, lat=lat, long=long, zoom=zoom,
                        layer=layer, tileurl=tileurl, polygons=polygons,
-                       baseurl=baseurl, caturl=caturl,
+                       baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
                        showsources=showsources))
 
 def get_tile_wcs(zoom, x, y):
@@ -148,6 +151,31 @@ def map_des_pr(req, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'des-stripe82-pr', 'des-stripe82',
                            rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
+def brick_list(req):
+    north = float(req.GET['north'])
+    south = float(req.GET['south'])
+    east  = float(req.GET['east'])
+    west  = float(req.GET['west'])
+    print 'N,S,E,W:', north, south, east, west
+
+    D = Decals()
+    B = D.get_bricks()
+    I = D.bricks_touching_radec_box(B, east, west, south, north)
+    # HACK -- limit result size...
+    I = I[:1000]
+    bricks = []
+    for b in B[I]:
+        bricks.append(dict(name=b.brickname,
+                           poly=[[b.dec1, 180.-b.ra1],
+                                 [b.dec2, 180.-b.ra1],
+                                 [b.dec2, 180.-b.ra2],
+                                 [b.dec1, 180.-b.ra2],
+                                 [b.dec1, 180.-b.ra1]]))
+
+    return HttpResponse(simplejson.dumps(dict(bricks=bricks)),
+                        content_type='application/json')
+    
+
 def cat_decals(req, zoom, x, y, tag='decals'):
     zoom = int(zoom)
     if zoom < 12:
@@ -216,7 +244,6 @@ def cat_decals(req, zoom, x, y, tag='decals'):
 
 def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={}):
-    from desi.common import *
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:

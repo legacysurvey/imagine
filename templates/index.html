@@ -39,7 +39,7 @@ MyTileLayer = L.TileLayer.extend({
         tile.tilex = tilePoint.x;
         tile.tiley = tilePoint.y;
         tile.z = tilePoint.z;
-        console.log('loadtile: x,y ' + tile.tilex + ',' + tile.tiley);
+        //console.log('loadtile: x,y ' + tile.tilex + ',' + tile.tiley);
         // copied
         this.fire('tileloadstart', {
             tile: tile,
@@ -50,12 +50,10 @@ MyTileLayer = L.TileLayer.extend({
 });
 
 function catLoaded(result) {
-    console.log('catloaded:' + result);
-
+    //console.log('catloaded:' + result);
     if (!showSources) {
         return;
     }
-
     //console.log('catloaded:' + result['rd']);
     rdlist = result['rd']
 
@@ -99,15 +97,15 @@ function doLoadTile(tile) {
     //console.log('caturl: ' + caturl);
 
     $.getJSON(caturl, catLoaded);
-    console.log('doLoadTile: z ' + tile.z +
-                ', x,y (' + tile.tilex + ',' + tile.tiley + ')');
+    //console.log('doLoadTile: z ' + tile.z +
+    //', x,y (' + tile.tilex + ',' + tile.tiley + ')');
 }
 
 function onTileLoadStart(e) {
     tile = e.tile;
     key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
     visibleTiles[key] = tile;
-    console.log('onTileLoadStart: ' + key);
+    //console.log('onTileLoadStart: ' + key);
     if (!showSources) {
         return;
     }
@@ -115,7 +113,7 @@ function onTileLoadStart(e) {
 }
 
 function doUnloadTile(key) {
-    console.log('doUnloadTile: ' + key);
+    //console.log('doUnloadTile: ' + key);
     circles = catLayers[key];
     //map.removeLayer(circles);
     sourcesGroup.removeLayer(circles);
@@ -125,7 +123,7 @@ function doUnloadTile(key) {
 function onTileUnload(e) {
     tile = e.tile;
     key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
-    console.log('onTileUnload: ' + key);
+    //console.log('onTileUnload: ' + key);
     delete visibleTiles[key];
 
     if (!showSources) {
@@ -170,6 +168,10 @@ function overlayAdded(e) {
         }
 
     }
+    if (e.name == 'Bricks') {
+        showBricks = true;
+        mapBoundsChanged();
+    }
 }
 
 // "Sources", "Bricks", "CCDs" button unchecked
@@ -185,18 +187,107 @@ function overlayRemoved(e) {
             doUnloadTile(i);
         }
     }
+    if (e.name == 'Bricks') {
+        showBricks = false;
+        for (var i in currentBricks) {
+            removeBrick(i);
+        }
+    }
 }
+
+function removeBrick(name) {
+    brick = currentBricks[name];
+    bricksGroup.removeLayer(brick);
+    delete currentBricks[name];
+}
+
+function bricksLoaded(result) {
+    if (!showBricks) {
+        return;
+    }
+    bricks = result['bricks'];
+    for (var i=0, len=bricks.length; i<len; i++) {
+        console.log('brick ' + i + ': ' + bricks[i]);
+        name = bricks[i].name;
+        if (name in currentBricks) {
+            console.log('Brick ' + name + ' already exists');
+            continue;
+        }
+        poly = bricks[i].poly;
+        b = L.polygon(poly, {fill:false});
+        console.log('Adding brick ' + name + ': polygon ' + poly);
+        bricksGroup.addLayer(b);
+        currentBricks[name] = b;
+    }
+}
+
+function mapBoundsChanged() {
+    latlng = map.getCenter();
+    zoom = map.getZoom();
+    ra = 180 - latlng.lng;
+    dec = latlng.lat;
+    console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
+
+    if (showBricks) {
+
+        bounds = map.getBounds();
+
+        bricksurl = L.Util.template('{{ bricksurl|safe }}', L.extend({
+            s: 'a',
+            z: zoom,
+            west: (180 - bounds.getWest()).toFixed(4),
+            east: (180 - bounds.getEast()).toFixed(4),
+            north: bounds.getNorth().toFixed(4),
+            south: bounds.getSouth().toFixed(4),
+            id: idname,
+        }));
+        $.getJSON(bricksurl, bricksLoaded);
+    }
+
+}
+
+// function onMapViewReset(e) {
+//     console.log('Map view reset.');
+//     mapBoundsChanged();
+// }
+// 
+// function onMapMove(e) {
+//     console.log('Map move.');
+//     mapBoundsChanged();
+// }
+// 
+// function onMapLoad(e) {
+//     console.log('Map load.');
+//     mapBoundsChanged();
+// }
+
+function onMapMoveEnd(e) {
+    console.log('Map move end.');
+    mapBoundsChanged();
+}
+
+
 
 var showSources = false;
 var sourcesGroup = L.layerGroup([]);
-//var sourceGroups = {};
 var catLayers = {};
 var visibleTiles = {};
 
-var map = L.map('map').setView([ {{ lat }}, {{ long }}], {{ zoom }});
+var showBricks = false;
+var bricksGroup = L.layerGroup([]);
+var currentBricks = {};
+
+var map = L.map('map');
 var popup = L.popup();
 
 map.on('click', onMapClick);
+
+//map.on('viewreset', onMapViewReset);
+//map.on('move', onMapMove);
+//map.on('load', onMapLoad);
+map.on('moveend', onMapMoveEnd);
+
+map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
 var idname = '{{ layer }}';
 
@@ -226,18 +317,12 @@ var baseMaps = {
     "DECaLS": tiles,
 };
 
-//var src = L.marker([7.4106, 244.7302]);
-//var sources = L.layerGroup([src]);
-
-var br = L.marker([7.4246, 244.6618]);
-var bricks = L.layerGroup([br]);
-
 var ccd = L.marker([7.3677, 244.6700]);
 var ccds = L.layerGroup([ccd]);
 
 var overlayMaps = {
     "Sources": sourcesGroup,
-    "Bricks": bricks,
+    "Bricks": bricksGroup,
     "CCDs": ccds,
 };
 
