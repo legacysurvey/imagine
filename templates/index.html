@@ -5,7 +5,9 @@
 <script src="/static/jquery-2.1.1.min.js"></script>
 
 <style type="text/css">
-#map { height: 100%; width: 100%; }
+#map { height: 100%; width: 100%; padding: 1;}
+
+#thebody { margin:1; }
 
 .info {
     padding: 6px 8px;
@@ -18,12 +20,10 @@
 </style>
 </head>
 
-<body>
+<body id="thebody">
 <div id="map" />
 
 <script>
-
-var map = L.map('map').setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
 MyTileLayer = L.TileLayer.extend({
   _loadTile: function (tile, tilePoint) {
@@ -49,13 +49,6 @@ MyTileLayer = L.TileLayer.extend({
 
 });
 
-tiles = new MyTileLayer('{{ tileurl }}', {
-			maxZoom: 18,
-			attribution: 'DECaLS',
-			id: '{{ layer }}'
-		});
-tiles.addTo(map);
-
 function catLoaded(result) {
   console.log('catloaded:' + result);
 }
@@ -72,6 +65,7 @@ function onTileLoadStart(e) {
 			x: tile.tilex,
 			y: tile.tiley
 		}, tiles.options));
+  // FIXME -- tiles.option ?!
   console.log('caturl: ' + caturl);
 
   $.getJSON(caturl, catLoaded);
@@ -88,49 +82,16 @@ function onTileUnload(e) {
     ', x,y (' + tile.tilex + ',' + tile.tiley + ')');
 }
 
-tiles.on('tileloadstart', onTileLoadStart);
-tiles.on('tileunload',    onTileUnload);
-
-
-
-// L.marker([ {{ lat }}, {{ long }}]).addTo(map)
-// .bindPopup("<b>Hello world!</b><br />I am a popup.").openPopup();
-
-// L.circle([ {{ lat }}, {{ long }}], 500, {
-// color: 'red',
-// fillColor: '#f03',
-// fillOpacity: 0.5
-// }).addTo(map).bindPopup("I am a circle.");
-//
-// L.polygon([
-// [7.0, 242.0],
-// [7.1, 242.0],
-// [7.1, 242.1],
-// [7.0, 242.1],
-// ]).addTo(map).bindPopup("I am a polygon.");
-
-var popup = L.popup();
-
 function onMapClick(e) {
-ra = 180 - e.latlng.lng;
-dec = e.latlng.lat;
-popup.setLatLng(e.latlng)
-     .setContent("Click: RA,Dec = " + ra.toFixed(4) + ", " + dec.toFixed(4) +
-           "<br/><a href=\"{{ baseurl }}ra=" + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom()
-                          + "\">link here</a>")
-     .openOn(map);
+  ra = 180 - e.latlng.lng;
+  dec = e.latlng.lat;
+  popup.setLatLng(e.latlng)
+       .setContent("Click: RA,Dec = " + ra.toFixed(4) + ", " + dec.toFixed(4) +
+                   "<br/><a href=\"{{ baseurl }}ra=" + ra.toFixed(4) +
+                   '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom()
+                   + "\">link here</a>")
+       .openOn(map);
 }
-
-map.on('click', onMapClick);
-
-
-var info = L.control();
-info.onAdd = function (map) {
-    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
-    this._div.innerHTML = '{{ ra|floatformat:4}}, {{ dec|floatformat:4}}';
-    return this._div;
-};
-info.addTo(map);
 
 function onMouseMove(e) {
     ra = 180 - e.latlng.lng;
@@ -138,7 +99,53 @@ function onMouseMove(e) {
     info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4);
 }
 
+var map = L.map('map').setView([ {{ lat }}, {{ long }}], {{ zoom }});
+
+map.on('click', onMapClick);
+
+tiles = new MyTileLayer('{{ tileurl }}', {
+	maxZoom: 18,
+	attribution: 'DECaLS',
+	id: '{{ layer }}',
+    // ?
+    unloadInvisibleTiles: true,
+});
+tiles.addTo(map);
+
+tiles.on('tileloadstart', onTileLoadStart);
+tiles.on('tileunload',    onTileUnload);
+
+var info = L.control();
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info');
+    this._div.innerHTML = '{{ ra|floatformat:4}}, {{ dec|floatformat:4}}';
+    return this._div;
+};
+info.addTo(map);
+
 map.on('mousemove', onMouseMove);
+
+var baseMaps = {
+    "DECaLS": tiles,
+};
+
+var src = L.marker([7.4106, 244.7302]);
+var sources = L.layerGroup([src]);
+
+var br = L.marker([7.4246, 244.6618]);
+var bricks = L.layerGroup([br]);
+
+var ccd = L.marker([7.3677, 244.6700]);
+var ccds = L.layerGroup([ccd]);
+
+var overlayMaps = {
+    "Sources": sources,
+    "Bricks": bricks,
+    "CCDs": ccds,
+};
+
+L.control.layers(baseMaps, overlayMaps).addTo(map);
+
 
 {{ polygons }}
 

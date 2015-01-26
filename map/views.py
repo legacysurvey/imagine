@@ -34,9 +34,14 @@ def index(req):
 
     lat,long = dec, 180-ra
 
-    tileurl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.jpg'
+    # Deployment:
+    # tileurl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.jpg'
+    # caturl = 'http://decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
+
+    tileurl = '/{id}/{z}/{x}/{y}.jpg'
+    caturl = '/{id}/{z}/{x}/{y}.cat.json'
+
     #caturl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
-    caturl = 'http://decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
     #tileurl = '{id}/{z}/{x}/{y}.jpg'
 
     polygons = ''
