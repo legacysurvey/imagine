@@ -172,6 +172,10 @@ function overlayAdded(e) {
         showBricks = true;
         mapBoundsChanged();
     }
+    if (e.name == 'CCDs') {
+        showCcds = true;
+        mapBoundsChanged();
+    }
 }
 
 // "Sources", "Bricks", "CCDs" button unchecked
@@ -193,12 +197,24 @@ function overlayRemoved(e) {
             removeBrick(i);
         }
     }
+    if (e.name == 'CCDs') {
+        showCcds = false;
+        for (var i in currentCcds) {
+            removeCcd(i);
+        }
+    }
 }
 
 function removeBrick(name) {
     brick = currentBricks[name];
     bricksGroup.removeLayer(brick);
     delete currentBricks[name];
+}
+
+function removeCcd(name) {
+    ccd = currentCcds[name];
+    ccdsGroup.removeLayer(ccd);
+    delete currentCcds[name];
 }
 
 function bricksLoaded(result) {
@@ -221,6 +237,26 @@ function bricksLoaded(result) {
     }
 }
 
+function ccdsLoaded(result) {
+    if (!showCcds) {
+        return;
+    }
+    ccds = result['ccds'];
+    for (var i=0, len=ccds.length; i<len; i++) {
+        console.log('ccd ' + i + ': ' + ccds[i]);
+        name = ccds[i].name;
+        if (name in currentCcds) {
+            console.log('Ccd ' + name + ' already exists');
+            continue;
+        }
+        poly = ccds[i].poly;
+        b = L.polygon(poly, {fill:false});
+        console.log('Adding ccd ' + name + ': polygon ' + poly);
+        ccdsGroup.addLayer(b);
+        currentCcds[name] = b;
+    }
+}
+
 function mapBoundsChanged() {
     latlng = map.getCenter();
     zoom = map.getZoom();
@@ -229,9 +265,7 @@ function mapBoundsChanged() {
     console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
 
     if (showBricks) {
-
         bounds = map.getBounds();
-
         bricksurl = L.Util.template('{{ bricksurl|safe }}', L.extend({
             s: 'a',
             z: zoom,
@@ -243,6 +277,21 @@ function mapBoundsChanged() {
         }));
         $.getJSON(bricksurl, bricksLoaded);
     }
+
+    if (showCcds) {
+        bounds = map.getBounds();
+        ccdsurl = L.Util.template('{{ ccdsurl|safe }}', L.extend({
+            s: 'a',
+            z: zoom,
+            west: (180 - bounds.getWest()).toFixed(4),
+            east: (180 - bounds.getEast()).toFixed(4),
+            north: bounds.getNorth().toFixed(4),
+            south: bounds.getSouth().toFixed(4),
+            id: idname,
+        }));
+        $.getJSON(ccdsurl, ccdsLoaded);
+    }
+
 
 }
 
@@ -276,6 +325,10 @@ var visibleTiles = {};
 var showBricks = false;
 var bricksGroup = L.layerGroup([]);
 var currentBricks = {};
+
+var showCcds = false;
+var ccdsGroup = L.layerGroup([]);
+var currentCcds = {};
 
 var map = L.map('map');
 var popup = L.popup();
@@ -323,15 +376,13 @@ var ccds = L.layerGroup([ccd]);
 var overlayMaps = {
     "Sources": sourcesGroup,
     "Bricks": bricksGroup,
-    "CCDs": ccds,
+    "CCDs": ccdsGroup,
 };
 
 L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
 map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
-
-{{ polygons }}
 
 </script>
 

@@ -14,8 +14,10 @@ urlpatterns = patterns('',
     url(r'^des-pr/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_des_pr'),
     # catalog
     url(r'decals/(\d*)/(\d*)/(\d*).cat.json', 'map.views.cat_decals'),
-    # brick list
+    # brick list of polygons
     url(r'bricks/', 'map.views.brick_list'),
+    # CCD list of polygons
+    url(r'ccds/', 'map.views.ccd_list'),
 
     # fall-through
     url(r'', 'map.views.index'),

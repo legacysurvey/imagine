@@ -11,6 +11,8 @@ from astrometry.util.util import *
 from astrometry.util.resample import *
 from astrometry.util.fits import *
 
+from astrometry.libkd.spherematch import *
+
 from scipy.ndimage.filters import gaussian_filter
 
 from decals import settings
@@ -46,27 +48,18 @@ def index(req):
     tileurl = '/{id}/{z}/{x}/{y}.jpg'
     caturl = '/{id}/{z}/{x}/{y}.cat.json'
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
+    ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
 
     #caturl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
     #tileurl = '{id}/{z}/{x}/{y}.jpg'
-
-    polygons = ''
-    if False and layer == 'decals':
-        T = fits_table(os.path.join(settings.WEB_DIR, 'edr-bricks.fits'))
-        print len(T), 'bricks'
-        for t in T:
-            rd = [(t.ra1, t.dec1), (t.ra1,t.dec2), (t.ra2,t.dec2), (t.ra2,t.dec1)]
-            p = ('L.polygon([' +
-                 ','.join(['[%.4f,%.4f]' % (d, 180.-r) for r,d in rd])
-                 + '], {fill:false}).addTo(map);')
-            polygons += p + '\n'
 
     baseurl = req.path + '?layer=%s&' % layer
     
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, lat=lat, long=long, zoom=zoom,
-                       layer=layer, tileurl=tileurl, polygons=polygons,
+                       layer=layer, tileurl=tileurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
+                       ccdsurl=ccdsurl,
                        showsources=showsources))
 
 def get_tile_wcs(zoom, x, y):
@@ -173,6 +166,61 @@ def brick_list(req):
                                  [b.dec1, 180.-b.ra1]]))
 
     return HttpResponse(simplejson.dumps(dict(bricks=bricks)),
+                        content_type='application/json')
+
+ccdtree = None
+CCDs = None
+
+def ccd_list(req):
+    global ccdtree
+    global CCDs
+
+    north = float(req.GET['north'])
+    south = float(req.GET['south'])
+    east  = float(req.GET['east'])
+    west  = float(req.GET['west'])
+    print 'N,S,E,W:', north, south, east, west
+
+    if ccdtree is None:
+        D = Decals()
+        CCDs = D.get_ccds()
+        ccdtree = tree_build_radec(CCDs.ra, CCDs.dec)
+
+    dec = (north + south) / 2.
+    c = (np.cos(np.deg2rad(east)) + np.cos(np.deg2rad(west))) / 2.
+    s = (np.sin(np.deg2rad(east)) + np.sin(np.deg2rad(west))) / 2.
+    ra  = np.rad2deg(np.arctan2(s, c))
+
+    # image size
+    radius = np.hypot(2048, 4096) * 0.262/3600. / 2.
+    # RA,Dec box size
+    radius = radius + degrees_between(east, north, west, south) / 2.
+
+    #np.hypot(np.abs(north - south),
+    #distsq_between_radecs(east, dec, west, dec)
+    #                     ) / 2.
+
+    #I,J,d = match_radec(np.array([ra]), np.array([dec]),
+    #                    C.ra, C.dec, radius)
+    #print len(I), 'CCDs within radius', radius, 'deg of RA,Dec', ra,dec
+
+    J = tree_search_radec(ccdtree, ra, dec, radius)
+
+    # HACK -- limit result size...
+    J = J[:1000]
+
+    ccds = []
+    for c in CCDs[J]:
+        wcs = Tan(*[float(x) for x in [
+            c.ra, c.dec, c.crpix1, c.crpix2, c.cd1_1, c.cd1_2,
+            c.cd2_1, c.cd2_2, c.width, c.height]])
+        x = np.array([1, 1, c.width, c.width, 1])
+        y = np.array([1, c.height, c.height, 1, 1])
+        r,d = wcs.pixelxy2radec(x, y)
+        ccds.append(dict(name='%i[%s]-%s' % (c.expnum, c.extname, c.filter),
+                         poly=zip(d, 180.-r)))
+
+    return HttpResponse(simplejson.dumps(dict(ccds=ccds)),
                         content_type='application/json')
     
 
