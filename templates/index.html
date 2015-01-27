@@ -171,46 +171,22 @@ function onMouseMove(e) {
 
 
 function inbrickccdUpdate(props) {
-    //this._div.innerHTML = 'In bricks:';
     if (props == undefined) {
         return;
     }
     bricks = [];
     ccds = [];
     if (showBricks) {
-        // currentBricks
-        // bricksGroup
-        //for (var name in bricksGroup) {
-        //brick = bricksGroup[name];
-
-        //{ "type": "FeatureCollection",
-        //"features": [
         geos = [];
         for (var name in currentBricks) {
             brick = currentBricks[name];
             gj = brick.toGeoJSON();
-            //console.log('gj:' + gj + typeof(gj));
-            //for (var x in gj) {
-            //console.log(x + '=' + gj[x]);
-            //}
-            //gj.style({color:'red'});
-            //gj['name'] = name;
-            //gj["properties": {"prop0": "value0"}
-            for (var x in gj.properties) {
-                console.log('gj property ' + x + '=' + gj.properties[x]);
-            }
             gj.properties['name'] = name;
-            for (var x in gj.properties) {
-                console.log('gj property ' + x + '=' + gj.properties[x]);
-            }
             geos.push(gj);
         }
         geo = {type:'FeatureCollection', features:geos};
         leafgeo = L.geoJson(geo);
-        
         inside = leafletPip.pointInLayer(props.latlng, leafgeo);
-        //console.log('inside:' + inside);
-        //console.log('inside:' + inside.length);
         for (var i=0; i<inside.length; i++) {
             bricks.push(inside[i].feature.properties.name);
         }
@@ -266,10 +242,7 @@ function overlayAdded(e) {
         // set global 
         showSources = true;
         // request catalogs for currently-visible tiles
-        console.log('Visible tiles: ' + visibleTiles);
-
-        //console.log('len: ' + visibleTiles.length);
-        //for (i=0, len=visibleTiles.length; i<len; i++) {
+        //console.log('Visible tiles: ' + visibleTiles);
         for (var i in visibleTiles) {
             //console.log('visible tile ' + i + ': ' + visibleTiles[i]);
             doLoadTile(visibleTiles[i]);
@@ -422,7 +395,7 @@ function mapBoundsChanged() {
     zoom = map.getZoom();
     ra = 180 - latlng.lng;
     dec = latlng.lat;
-    console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
+    //console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
 
     if (showBricks) {
         bounds = map.getBounds();
