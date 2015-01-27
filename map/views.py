@@ -50,6 +50,8 @@ def index(req):
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
 
+    ccdurl = '/ccd/'
+
     #caturl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
     #tileurl = '{id}/{z}/{x}/{y}.jpg'
 
@@ -59,7 +61,7 @@ def index(req):
                   dict(ra=ra, dec=dec, lat=lat, long=long, zoom=zoom,
                        layer=layer, tileurl=tileurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
-                       ccdsurl=ccdsurl,
+                       ccdsurl=ccdsurl, ccdurl=ccdurl,
                        showsources=showsources))
 
 def get_tile_wcs(zoom, x, y):
@@ -158,12 +160,15 @@ def brick_list(req):
     I = I[:1000]
     bricks = []
     for b in B[I]:
+        mdec = (0.262 * 20 / 3600.)
+        mra = mdec / np.cos(np.deg2rad(b.dec))
         bricks.append(dict(name=b.brickname,
-                           poly=[[b.dec1, 180.-b.ra1],
-                                 [b.dec2, 180.-b.ra1],
-                                 [b.dec2, 180.-b.ra2],
-                                 [b.dec1, 180.-b.ra2],
-                                 [b.dec1, 180.-b.ra1]]))
+                           poly=[[b.dec1-mdec, 180.-(b.ra1-mra)],
+                                 [b.dec2+mdec, 180.-(b.ra1-mra)],
+                                 [b.dec2+mdec, 180.-(b.ra2+mra)],
+                                 [b.dec1-mdec, 180.-(b.ra2+mra)],
+                                 #[b.dec1-mdec, 180.-(b.ra1-mra)]
+                                 ]))
 
     return HttpResponse(simplejson.dumps(dict(bricks=bricks)),
                         content_type='application/json')
@@ -196,14 +201,6 @@ def ccd_list(req):
     # RA,Dec box size
     radius = radius + degrees_between(east, north, west, south) / 2.
 
-    #np.hypot(np.abs(north - south),
-    #distsq_between_radecs(east, dec, west, dec)
-    #                     ) / 2.
-
-    #I,J,d = match_radec(np.array([ra]), np.array([dec]),
-    #                    C.ra, C.dec, radius)
-    #print len(I), 'CCDs within radius', radius, 'deg of RA,Dec', ra,dec
-
     J = tree_search_radec(ccdtree, ra, dec, radius)
 
     # HACK -- limit result size...
@@ -212,17 +209,26 @@ def ccd_list(req):
     ccds = []
     for c in CCDs[J]:
         wcs = Tan(*[float(x) for x in [
-            c.ra, c.dec, c.crpix1, c.crpix2, c.cd1_1, c.cd1_2,
+            c.ra_bore, c.dec_bore, c.crpix1, c.crpix2, c.cd1_1, c.cd1_2,
             c.cd2_1, c.cd2_2, c.width, c.height]])
-        x = np.array([1, 1, c.width, c.width, 1])
-        y = np.array([1, c.height, c.height, 1, 1])
+        #x = np.array([1, 1, c.width, c.width, 1])
+        #y = np.array([1, c.height, c.height, 1, 1])
+        x = np.array([1, 1, c.width, c.width])
+        y = np.array([1, c.height, c.height, 1])
         r,d = wcs.pixelxy2radec(x, y)
-        ccds.append(dict(name='%i[%s]-%s' % (c.expnum, c.extname, c.filter),
+        ccds.append(dict(name='%i-%s-%s' % (c.expnum, c.extname, c.filter),
                          poly=zip(d, 180.-r)))
 
     return HttpResponse(simplejson.dumps(dict(ccds=ccds)),
                         content_type='application/json')
     
+def ccd_detail(req):
+    ccd = req.GET['ccd']
+    return HttpResponse('CCD ' + ccd)
+
+def brick_detail(req):
+    brickname = req.GET['brick']
+    return HttpResponse('Brick ' + brickname)
 
 def cat_decals(req, zoom, x, y, tag='decals'):
     zoom = int(zoom)

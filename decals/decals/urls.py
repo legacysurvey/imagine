@@ -13,11 +13,16 @@ urlpatterns = patterns('',
     url(r'^des-stripe82/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_des_stripe82'),
     url(r'^des-pr/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_des_pr'),
     # catalog
-    url(r'decals/(\d*)/(\d*)/(\d*).cat.json', 'map.views.cat_decals'),
+    url(r'^decals/(\d*)/(\d*)/(\d*).cat.json', 'map.views.cat_decals'),
     # brick list of polygons
-    url(r'bricks/', 'map.views.brick_list'),
+    url(r'^bricks/', 'map.views.brick_list'),
     # CCD list of polygons
-    url(r'ccds/', 'map.views.ccd_list'),
+    url(r'^ccds/', 'map.views.ccd_list'),
+
+    # Brick details
+    url(r'^brick/', 'map.views.brick_detail', name='brick_detail'),
+    # CCD details
+    url(r'^ccd/', 'map.views.ccd_detail', name='ccd_detail'),
 
     # fall-through
     url(r'', 'map.views.index'),
