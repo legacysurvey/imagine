@@ -23,9 +23,6 @@ def index(req):
     layer = req.GET.get('layer', 'decals')
     ra, dec, zoom = 244.7, 7.4, 13
 
-    showsources = 'sources' in req.GET
-    print 'req.GET:', req.GET
-
     try:
         zoom = int(req.GET.get('zoom', zoom))
     except:
@@ -39,8 +36,8 @@ def index(req):
     except:
         pass
 
-    lat,long = dec, 180-ra
-
+    lat,lng = dec, 180-ra
+    
     # Deployment:
     # tileurl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.jpg'
     # caturl = 'http://decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
@@ -50,19 +47,19 @@ def index(req):
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
 
-    ccdurl = '/ccd/'
-
     #caturl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
     #tileurl = '{id}/{z}/{x}/{y}.jpg'
 
     baseurl = req.path + '?layer=%s&' % layer
     
     return render(req, 'index.html',
-                  dict(ra=ra, dec=dec, lat=lat, long=long, zoom=zoom,
+                  dict(ra=ra, dec=dec, lat=lat, long=lng, zoom=zoom,
                        layer=layer, tileurl=tileurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
-                       ccdsurl=ccdsurl, ccdurl=ccdurl,
-                       showsources=showsources))
+                       ccdsurl=ccdsurl,
+                       showBricks='bricks' in req.GET,
+                       showCcds='ccds' in req.GET,
+                       ))
 
 def get_tile_wcs(zoom, x, y):
     zoom = int(zoom)

@@ -284,11 +284,19 @@ function overlayRemoved(e) {
         for (var i in currentBricks) {
             removeBrick(i);
         }
+        for (var name in brickFills) {
+            map.removeLayer(brickFills[name]);
+            delete brickFills[name];
+        }
     }
     if (e.name == 'CCDs') {
         showCcds = false;
         for (var i in currentCcds) {
             removeCcd(i);
+        }
+        for (var name in ccdFills) {
+            map.removeLayer(ccdFills[name]);
+            delete brickFills[name];
         }
     }
 
@@ -322,10 +330,35 @@ function brickClicked(e) {
 }
 
 function brickMouseOver(e) {
+    // About this "brickFills" jazz:
+    // -when you set "fill=true" on a polygon, it affects not only what is drawn,
+    //  but the definition of mouse over/out -- for a filled polygon, the mouse is "in"
+    //  the whole polygon area, vs for an unfilled, only the outline is "in".
+    // Therefore, we instead add a new filled polygon with the same boundary,
+    // recording it in "brickFills".
     e.target.setStyle({color: 'cyan'});
+    //e.target.setStyle({color: 'cyan', fillOpacity:0.05});
+    //console.log('brick mouseover:', e.target.name);
+    brick = e.target;
+    if (brick.name in brickFills) {
+        return;
+    }
+    bf = L.polygon(brick.getLatLngs(),
+                   {fill:true, fillOpacity:0.05, color:'cyan', weight:1});
+    brickFills[brick.name] = bf;
+    bf.addTo(map);
+    bf.bringToBack();
 }
 function brickMouseOut(e) {
+    //console.log('Brick mouseOut: ' + e.target.name);
+    //e.target.setStyle({color: 'blue', fill:false, fillOpacity:0});
     e.target.setStyle({color: 'blue'});
+    brick = e.target;
+    if (brick.name in brickFills) {
+        console.log('Removing brick fill');
+        map.removeLayer(brickFills[brick.name]);
+        delete brickFills[brick.name];
+    }
 }
 
 function bricksLoaded(result) {
@@ -361,9 +394,26 @@ function ccdClicked(e) {
 
 function ccdMouseOver(e) {
     e.target.setStyle({color: 'yellow'});
+    //, fillOpacity:0.05});
+    //fill:true, 
+    ccd = e.target;
+    if (ccd.name in ccdFills) {
+        return;
+    }
+    cf = L.polygon(ccd.getLatLngs(),
+                   {fill:true, fillOpacity:0.05, color:'yellow', weight:1});
+    ccdFills[ccd.name] = cf;
+    cf.addTo(map);
+    cf.bringToBack();
+
 }
 function ccdMouseOut(e) {
-    e.target.setStyle({color: 'green'});
+    e.target.setStyle({color: 'green'}); //, fill:false, fillOpacity:0});
+    ccd = e.target;
+    if (ccd.name in ccdFills) {
+        map.removeLayer(ccdFills[ccd.name]);
+        delete ccdFills[ccd.name];
+    }
 }
 
 function ccdsLoaded(result) {
@@ -465,10 +515,12 @@ var visibleTiles = {};
 var showBricks = false;
 var bricksGroup = L.layerGroup([]);
 var currentBricks = {};
+var brickFills = {};
 
 var showCcds = false;
 var ccdsGroup = L.layerGroup([]);
 var currentCcds = {};
+var ccdFills = {};
 
 var map = L.map('map');
 var popup = L.popup();
@@ -523,6 +575,15 @@ L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
 map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
+
+{% if showBricks %}
+map.addLayer(bricksGroup);
+overlayAdded({name:'Bricks'});
+{% endif %}
+{% if showCcds %}
+map.addLayer(ccdsGroup);
+overlayAdded({name:'CCDs'});
+{% endif %}
 
 </script>
 
