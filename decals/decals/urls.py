@@ -20,9 +20,13 @@ urlpatterns = patterns('',
     url(r'^ccds/', 'map.views.ccd_list'),
 
     # Brick details
-    url(r'^brick/', 'map.views.brick_detail', name='brick_detail'),
+    url(r'^brick/(\d{4}[pm]\d{3})', 'map.views.brick_detail', name='brick_detail'),
+    # this one is here to provide a name for the javascript to refer to.
+    url(r'^brick/', 'map.views.nil', name='brick_detail_blank'),
     # CCD details
-    url(r'^ccd/', 'map.views.ccd_detail', name='ccd_detail'),
+    url(r'^ccd/([\w-]+)', 'map.views.ccd_detail', name='ccd_detail'),
+    # this one is here to provide a name for the javascript to refer to.
+    url(r'^ccd/', 'map.views.nil', name='ccd_detail_blank'),
 
     # fall-through
     url(r'', 'map.views.index'),

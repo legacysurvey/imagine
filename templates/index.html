@@ -35,6 +35,12 @@
 .highccd {
     color: red;
 }
+.highccd:link {
+    color: red;
+}
+.highccd:visited {
+    color: red;
+}
 
 </style>
 </head>
@@ -112,12 +118,7 @@ function doLoadTile(tile) {
         y: tile.tiley,
         id: idname,
     }));
-    //, tiles.options));
-    //console.log('caturl: ' + caturl);
-
     $.getJSON(caturl, catLoaded);
-    //console.log('doLoadTile: z ' + tile.z +
-    //', x,y (' + tile.tilex + ',' + tile.tiley + ')');
 }
 
 function onTileLoadStart(e) {
@@ -152,6 +153,16 @@ function onTileUnload(e) {
     doUnloadTile(key);
 }
 
+function brick_detail(name) {
+    return '<a href="{% url 'brick_detail_blank' %}' + name
+        + '/">' + name + '</a>';
+}
+
+function ccd_detail(name, aparams) {
+    return '<a href="{% url 'ccd_detail_blank' %}' + name
+        + '/"' + aparams + '>' + name + '</a>';
+}
+
 function onMapClick(e) {
     ra = 180 - e.latlng.lng;
     dec = e.latlng.lat;
@@ -166,14 +177,12 @@ function onMapClick(e) {
 
     if (bricks.length) {
         for (var i=0; i<bricks.length; i++) {
-            txt += '<br/>Brick: <a href="{% url 'brick_detail' %}?brick=' + bricks[i]
-                + '">' + bricks[i] + '</a>';
+            txt += '<br/>Brick: ' + brick_detail(bricks[i]);
         }
     }
     if (ccds.length) {
         for (var i=0; i<ccds.length; i++) {
-            txt += '<br/>CCD: <a href="{% url 'ccd_detail' %}?ccd=' + ccds[i]
-                + '">' + ccds[i] + '</a>';
+            txt += '<br/>CCD: ' + ccd_detail(ccds[i], '');
         }
     }
 
@@ -213,6 +222,7 @@ function bricksUnderLatlng(latlng) {
         for (var i=0; i<inside.length; i++) {
             bricks.push(inside[i].feature.properties.name);
         }
+        bricks.sort();
     }
     return bricks;
 }
@@ -233,6 +243,13 @@ function ccdsUnderLatlng(latlng) {
         for (var i=0; i<inside.length; i++) {
             ccds.push(inside[i].feature.properties.name);
         }
+
+        if (highlightedCcdName != '') {
+            if (ccds.indexOf(highlightedCcdName) == -1) {
+                ccds.push(highlightedCcdName);
+            }
+        }
+        ccds.sort();
     }
     return ccds;
 }
@@ -262,12 +279,14 @@ function inbrickccdUpdate(props) {
             txt = txt + 'In CCDs:<ul>';
             for (var i=0; i<ccds.length; i++) {
                 ccdname = ccds[i];
-                ccdtext = ccdname;
+                aparams = '';
                 if (ccdname == highlightedCcdName) {
-                    ccdtext = '<div class="highccd">' + ccdtext + '</div>';
+                    aparams = ' class="highccd"';
                 }
-                ccdtext = '<a href="{% url 'ccd_detail' %}?ccd=' + ccdname + '">'
-                    + ccdtext + '</a>';
+                //ccdtext = ccdname;
+                ccdtext = ccd_detail(ccdname, aparams);
+                //ccdtext = '<div class="highccd">' + ccdtext + '</div>';
+                //}
                 txt = txt + '<li>'+ccdtext+'</li>';
             }
             txt = txt + '</ul>';

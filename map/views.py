@@ -243,12 +243,15 @@ def ccd_list(req):
     return HttpResponse(simplejson.dumps(dict(ccds=ccds)),
                         content_type='application/json')
     
-def ccd_detail(req):
-    ccd = req.GET['ccd']
+def ccd_detail(req, ccd):
+    #ccd = req.GET['ccd']
     return HttpResponse('CCD ' + ccd)
 
-def brick_detail(req):
-    brickname = req.GET['brick']
+def nil(req):
+    pass
+
+def brick_detail(req, brickname):
+    #brickname = req.GET['brick']
     return HttpResponse('Brick ' + brickname)
 
 def cat_decals(req, zoom, x, y, tag='decals'):
