@@ -333,40 +333,6 @@ function brickClicked(e) {
     popup.openOn(map);
 }
 
-/*
-function brickMouseOver(e) {
-    // About this "brickFills" jazz:
-    // -when you set "fill=true" on a polygon, it affects not only what is drawn,
-    //  but the definition of mouse over/out -- for a filled polygon, the mouse is "in"
-    //  the whole polygon area, vs for an unfilled, only the outline is "in".
-    // Therefore, we instead add a new filled polygon with the same boundary,
-    // recording it in "brickFills".
-    e.target.setStyle({color: 'cyan'});
-    //e.target.setStyle({color: 'cyan', fillOpacity:0.05});
-    //console.log('brick mouseover:', e.target.name);
-    brick = e.target;
-    if (brick.name in brickFills) {
-        return;
-    }
-    bf = L.polygon(brick.getLatLngs(),
-                   {fill:true, fillOpacity:0.05, color:'cyan', weight:1});
-    brickFills[brick.name] = bf;
-    bf.addTo(map);
-    bf.bringToBack();
-}
-function brickMouseOut(e) {
-    //console.log('Brick mouseOut: ' + e.target.name);
-    //e.target.setStyle({color: 'blue', fill:false, fillOpacity:0});
-    e.target.setStyle({color: 'blue'});
-    brick = e.target;
-    if (brick.name in brickFills) {
-        console.log('Removing brick fill');
-        map.removeLayer(brickFills[brick.name]);
-        delete brickFills[brick.name];
-    }
-}
-*/
-
 function bricksLoaded(result) {
     if (!showBricks) {
         return;
@@ -383,8 +349,6 @@ function bricksLoaded(result) {
         b = L.polygon(poly, {fill:false, weight:3, color:'blue' });
         b.name = name;
         b.on('click', brickClicked);
-        //b.on('mouseover', brickMouseOver);
-        //b.on('mouseout', brickMouseOut);
         //console.log('Adding brick ' + name + ': polygon ' + poly);
         bricksGroup.addLayer(b);
         currentBricks[name] = b;
