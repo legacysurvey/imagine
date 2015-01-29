@@ -1,5 +1,6 @@
 import os
 import tempfile
+import datetime
 
 import simplejson
 
@@ -18,6 +19,24 @@ from scipy.ndimage.filters import gaussian_filter
 from decals import settings
 
 from desi.common import *
+
+def send_file(fn, content_type, unlink=False):
+    st = os.stat(fn)
+    f = open(fn)
+    if unlink:
+        os.unlink(fn)
+    res = HttpResponse(f, content_type=content_type)
+    # res['Cache-Control'] = 'public, max-age=31536000'
+    res['Content-Length'] = st.st_size
+    # expires in an hour?
+    now = datetime.datetime.utcnow()
+    then = now + datetime.timedelta(0, 3600, 0)
+    timefmt = '%a, %d %b %Y %H:%M:%S GMT'
+    res['Expires'] = then.strftime(timefmt)
+    # file was last modified...
+    then = datetime.datetime.fromtimestamp(st.st_mtime)
+    res['Last-Modified'] = then.strftime(timefmt)
+    return res
 
 def index(req):
     layer = req.GET.get('layer', 'decals')
@@ -148,17 +167,22 @@ def brick_list(req):
     south = float(req.GET['south'])
     east  = float(req.GET['east'])
     west  = float(req.GET['west'])
-    print 'N,S,E,W:', north, south, east, west
+    #print 'N,S,E,W:', north, south, east, west
 
     D = Decals()
     B = D.get_bricks()
     I = D.bricks_touching_radec_box(B, east, west, south, north)
     # HACK -- limit result size...
-    I = I[:1000]
+    if len(I) > 10000:
+        return HttpResponse(simplejson.dumps(dict(bricks=[])),
+                            content_type='application/json')
+    #I = I[:1000]
     bricks = []
     for b in B[I]:
-        mdec = (0.262 * 20 / 3600.)
-        mra = mdec / np.cos(np.deg2rad(b.dec))
+        # brick overlap margin:
+        #mdec = (0.262 * 20 / 3600.)
+        #mra = mdec / np.cos(np.deg2rad(b.dec))
+        mra = mdec = 0.
         bricks.append(dict(name=b.brickname,
                            poly=[[b.dec1-mdec, 180.-(b.ra1-mra)],
                                  [b.dec2+mdec, 180.-(b.ra1-mra)],
@@ -181,7 +205,7 @@ def ccd_list(req):
     south = float(req.GET['south'])
     east  = float(req.GET['east'])
     west  = float(req.GET['west'])
-    print 'N,S,E,W:', north, south, east, west
+    #print 'N,S,E,W:', north, south, east, west
 
     if ccdtree is None:
         D = Decals()
@@ -295,18 +319,23 @@ def cat_decals(req, zoom, x, y, tag='decals'):
 
 def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={}):
+    zoom = int(zoom)
+    zoomscale = 2.**zoom
+    x = int(x)
+    y = int(y)
+    if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
+        raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
+
+    basedir = os.path.join(settings.WEB_DIR, 'data')
+    tilefn = os.path.join(basedir, 'tiles', tag, '%i/%i/%i.jpg' % (zoom, x, y))
+    if os.path.exists(tilefn):
+        print 'Cached:', tilefn
+        return send_file(tilefn, 'image/jpeg')
+
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
         return HttpResponse(e.strerror)
-
-    basedir = os.path.join(settings.WEB_DIR, 'data')
-
-    tilefn = os.path.join(basedir, 'tiles', tag, '%i/%i/%i.jpg' % (zoom, x, y))
-    if os.path.exists(tilefn):
-        print 'Cached:', tilefn
-        f = open(tilefn)
-        return HttpResponse(f, content_type="image/jpeg")
 
     ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                [1,H/2,H,H,H,H/2,1,1])
@@ -315,7 +344,8 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
     # print 'Dec range', d.min(), d.max()
     # print 'Zoom', zoom, 'pixel scale', wcs.pixel_scale()
 
-    basepat = os.path.join(basedir, 'coadd', imagedir, imagetag + '-%(brick)06i-%(band)s.fits')
+    basepat = os.path.join(basedir, 'coadd', imagedir,
+                           imagetag + '-%(brick)06i-%(band)s.fits')
     scaled = 0
     scalepat = None
     if zoom < 14:
@@ -426,13 +456,7 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
         #print 'Not caching file... saving to', tilefn
 
     plt.imsave(tilefn, rgb)
-    f = open(tilefn)
-    if not savecache:
-        os.unlink(tilefn)
-
-    return HttpResponse(f, content_type="image/jpeg")
-    
-            
+    return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
     
 def map_image(req, zoom, x, y):
     from astrometry.blind.plotstuff import Plotstuff
@@ -476,6 +500,4 @@ def map_image(req, zoom, x, y):
     f,fn = tempfile.mkstemp()
     os.close(f)
     plot.write(fn)
-    f = open(fn)
-    os.unlink(fn)
-    return HttpResponse(f, content_type="image/jpeg")
+    return send_file(fn, 'image/jpeg', unlink=True)

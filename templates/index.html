@@ -28,6 +28,10 @@
     border-radius: 5px;
 }
 
+.inbrickccd ul {
+    margin-top: 0pt;
+}
+
 </style>
 </head>
 
@@ -212,7 +216,7 @@ function inbrickccdUpdate(props) {
     txt = '';
     if (bricks.length || ccds.length) {
         if (bricks.length) {
-            txt = txt + 'In bricks: ';
+            txt = txt + 'In brick: ';
             for (var i=0; i<bricks.length; i++) {
                 if (i) {
                     txt = txt + ', ';
@@ -329,6 +333,7 @@ function brickClicked(e) {
     popup.openOn(map);
 }
 
+/*
 function brickMouseOver(e) {
     // About this "brickFills" jazz:
     // -when you set "fill=true" on a polygon, it affects not only what is drawn,
@@ -360,6 +365,7 @@ function brickMouseOut(e) {
         delete brickFills[brick.name];
     }
 }
+*/
 
 function bricksLoaded(result) {
     if (!showBricks) {
@@ -377,8 +383,8 @@ function bricksLoaded(result) {
         b = L.polygon(poly, {fill:false, weight:3, color:'blue' });
         b.name = name;
         b.on('click', brickClicked);
-        b.on('mouseover', brickMouseOver);
-        b.on('mouseout', brickMouseOut);
+        //b.on('mouseover', brickMouseOver);
+        //b.on('mouseout', brickMouseOut);
         //console.log('Adding brick ' + name + ': polygon ' + poly);
         bricksGroup.addLayer(b);
         currentBricks[name] = b;
@@ -515,7 +521,7 @@ var visibleTiles = {};
 var showBricks = false;
 var bricksGroup = L.layerGroup([]);
 var currentBricks = {};
-var brickFills = {};
+//var brickFills = {};
 
 var showCcds = false;
 var ccdsGroup = L.layerGroup([]);
