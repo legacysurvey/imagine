@@ -32,6 +32,10 @@
     margin-top: 0pt;
 }
 
+.highccd {
+    color: red;
+}
+
 </style>
 </head>
 
@@ -151,11 +155,30 @@ function onTileUnload(e) {
 function onMapClick(e) {
     ra = 180 - e.latlng.lng;
     dec = e.latlng.lat;
+
+    bricks = bricksUnderLatlng(e.latlng);
+    ccds = ccdsUnderLatlng(e.latlng);
+
+    txt = 'RA,Dec = ' + ra.toFixed(4) + ', ' + dec.toFixed(4) +
+        '<br/><a href="{{ baseurl }}ra=' + ra.toFixed(4) +
+        '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom()
+        + '">link here</a>';
+
+    if (bricks.length) {
+        for (var i=0; i<bricks.length; i++) {
+            txt += '<br/>Brick: <a href="{% url 'brick_detail' %}?brick=' + bricks[i]
+                + '">' + bricks[i] + '</a>';
+        }
+    }
+    if (ccds.length) {
+        for (var i=0; i<ccds.length; i++) {
+            txt += '<br/>CCD: <a href="{% url 'ccd_detail' %}?ccd=' + ccds[i]
+                + '">' + ccds[i] + '</a>';
+        }
+    }
+
     popup.setLatLng(e.latlng)
-        .setContent("Click: RA,Dec = " + ra.toFixed(4) + ", " + dec.toFixed(4) +
-                    "<br/><a href=\"{{ baseurl }}ra=" + ra.toFixed(4) +
-                    '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom()
-                    + "\">link here</a>")
+        .setContent(txt)
         .openOn(map);
 }
 
@@ -173,13 +196,9 @@ function onMouseMove(e) {
 
 }
 
-
-function inbrickccdUpdate(props) {
-    if (props == undefined) {
-        return;
-    }
+function bricksUnderLatlng(latlng) {
+    // Returns a list of the brick names under a given lat,long
     bricks = [];
-    ccds = [];
     if (showBricks) {
         geos = [];
         for (var name in currentBricks) {
@@ -190,13 +209,16 @@ function inbrickccdUpdate(props) {
         }
         geo = {type:'FeatureCollection', features:geos};
         leafgeo = L.geoJson(geo);
-        inside = leafletPip.pointInLayer(props.latlng, leafgeo);
+        inside = leafletPip.pointInLayer(latlng, leafgeo);
         for (var i=0; i<inside.length; i++) {
             bricks.push(inside[i].feature.properties.name);
         }
-
     }
+    return bricks;
+}
 
+function ccdsUnderLatlng(latlng) {
+    ccds = [];
     if (showCcds) {
         geos = [];
         for (var name in currentCcds) {
@@ -207,11 +229,20 @@ function inbrickccdUpdate(props) {
         }
         geo = {type:'FeatureCollection', features:geos};
         leafgeo = L.geoJson(geo);
-        inside = leafletPip.pointInLayer(props.latlng, leafgeo);
+        inside = leafletPip.pointInLayer(latlng, leafgeo);
         for (var i=0; i<inside.length; i++) {
             ccds.push(inside[i].feature.properties.name);
         }
     }
+    return ccds;
+}
+
+function inbrickccdUpdate(props) {
+    if (props == undefined) {
+        return;
+    }
+    bricks = bricksUnderLatlng(props.latlng);
+    ccds = ccdsUnderLatlng(props.latlng);
 
     txt = '';
     if (bricks.length || ccds.length) {
@@ -230,7 +261,14 @@ function inbrickccdUpdate(props) {
         if (ccds.length) {
             txt = txt + 'In CCDs:<ul>';
             for (var i=0; i<ccds.length; i++) {
-                txt = txt + '<li>'+ccds[i]+'</li>';
+                ccdname = ccds[i];
+                ccdtext = ccdname;
+                if (ccdname == highlightedCcdName) {
+                    ccdtext = '<div class="highccd">' + ccdtext + '</div>';
+                }
+                ccdtext = '<a href="{% url 'ccd_detail' %}?ccd=' + ccdname + '">'
+                    + ccdtext + '</a>';
+                txt = txt + '<li>'+ccdtext+'</li>';
             }
             txt = txt + '</ul>';
         }
@@ -307,7 +345,6 @@ function overlayRemoved(e) {
     if (!(showBricks || showCcds)) {
         if (inbrickccdAdded) {
             map.removeControl(inbrickccd);
-            //inbrickccd.addTo(map);
             inbrickccdAdded = false;
         }
     }
@@ -326,13 +363,6 @@ function removeCcd(name) {
     delete currentCcds[name];
 }
 
-function brickClicked(e) {
-    popup.setLatLng(e.latlng);
-    popup.setContent('Brick <a href="{% url 'brick_detail' %}?brick=' + e.target.name +
-                     '">' + e.target.name + '</a>');
-    popup.openOn(map);
-}
-
 function bricksLoaded(result) {
     if (!showBricks) {
         return;
@@ -346,20 +376,12 @@ function bricksLoaded(result) {
             continue;
         }
         poly = bricks[i].poly;
-        b = L.polygon(poly, {fill:false, weight:3, color:'blue' });
+        b = L.polygon(poly, {fill:false, weight:4, color:'blue' });
         b.name = name;
-        b.on('click', brickClicked);
         //console.log('Adding brick ' + name + ': polygon ' + poly);
         bricksGroup.addLayer(b);
         currentBricks[name] = b;
     }
-}
-
-function ccdClicked(e) {
-    popup.setLatLng(e.latlng);
-    popup.setContent('CCD <a href="{% url 'ccd_detail' %}?ccd=' + e.target.name +
-                     '">' + e.target.name + '</a>');
-    popup.openOn(map);
 }
 
 function ccdMouseOver(e) {
@@ -367,6 +389,8 @@ function ccdMouseOver(e) {
     //, fillOpacity:0.05});
     //fill:true, 
     ccd = e.target;
+    highlightedCcdName = ccd.name;
+    inbrickccdUpdate(e);
     if (ccd.name in ccdFills) {
         return;
     }
@@ -380,10 +404,12 @@ function ccdMouseOver(e) {
 function ccdMouseOut(e) {
     e.target.setStyle({color: 'green'}); //, fill:false, fillOpacity:0});
     ccd = e.target;
+    highlightedCcdName = '';
     if (ccd.name in ccdFills) {
         map.removeLayer(ccdFills[ccd.name]);
         delete ccdFills[ccd.name];
     }
+    inbrickccdUpdate(e);
 }
 
 function ccdsLoaded(result) {
@@ -399,9 +425,8 @@ function ccdsLoaded(result) {
             continue;
         }
         poly = ccds[i].poly;
-        c = L.polygon(poly, {fill:false, color:'green', weight:3 });
+        c = L.polygon(poly, {fill:false, color:'green', weight:4 });
         c.name = name;
-        c.on('click', ccdClicked);
         c.on('mouseover', ccdMouseOver);
         c.on('mouseout', ccdMouseOut);
         // console.log('Adding ccd ' + name + ': polygon ' + poly);
@@ -485,12 +510,12 @@ var visibleTiles = {};
 var showBricks = false;
 var bricksGroup = L.layerGroup([]);
 var currentBricks = {};
-//var brickFills = {};
 
 var showCcds = false;
 var ccdsGroup = L.layerGroup([]);
 var currentCcds = {};
 var ccdFills = {};
+var highlightedCcdName = '';
 
 var map = L.map('map');
 var popup = L.popup();
