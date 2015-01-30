@@ -110,9 +110,10 @@ function doLoadTile(tile) {
 
     // fugly
     //tilePoint = L.Point(tile.tilex, tile.tiley);
-    //s: tiles._getSubdomain(tilePoint),
-    caturl = L.Util.template('{{ caturl }}', L.extend({
-        s: 'a',
+    s: tiles._getSubdomain(tilePoint),
+    //s = (tile.tilex + tile.tiley) % 2;
+    caturl = L.Util.template('{{ caturl|safe }}', L.extend({
+        s: s,
         z: tile.z,
         x: tile.tilex,
         y: tile.tiley,
@@ -550,12 +551,13 @@ map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
 var idname = '{{ layer }}';
 
-tiles = new MyTileLayer('{{ tileurl }}', {
+tiles = new MyTileLayer('{{ tileurl|safe }}', {
     maxZoom: 18,
     attribution: 'DECaLS',
     id: idname,
     // ?
     unloadInvisibleTiles: true,
+    subdomains: ['a','b','c','d'],
 });
 tiles.on('tileloadstart', onTileLoadStart);
 tiles.on('tileunload',    onTileUnload);

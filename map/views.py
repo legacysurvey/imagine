@@ -1,6 +1,7 @@
 import os
 import tempfile
 import datetime
+from urlparse import urlparse
 
 import simplejson
 
@@ -61,13 +62,16 @@ def index(req):
     # tileurl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.jpg'
     # caturl = 'http://decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
 
-    tileurl = '/{id}/{z}/{x}/{y}.jpg'
-    caturl = '/{id}/{z}/{x}/{y}.cat.json'
+    #u = urlparse(req.build_absolute_uri('/{id}/{z}/{x}/{y}.jpg'))
+    #tileurl = u.scheme + '://' + u.netloc + '
+    url = req.build_absolute_uri('/') + '{id}/{z}/{x}/{y}.jpg'
+    tileurl = url.replace('://', '://{s}.')
+    caturl = tileurl.replace('.jpg', '.cat.json')
+
+    #tileurl = '/{id}/{z}/{x}/{y}.jpg'
+    #caturl = '/{id}/{z}/{x}/{y}.cat.json'
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
-
-    #caturl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
-    #tileurl = '{id}/{z}/{x}/{y}.jpg'
 
     baseurl = req.path + '?layer=%s&' % layer
     
