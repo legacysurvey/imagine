@@ -11,9 +11,9 @@ urlpatterns = patterns(
 
     url(r'^decals/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals'),
     url(r'^decals-pr/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_pr'),
-    url(r'^decals-model/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_model'),
-    url(r'^des-stripe82/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_des_stripe82'),
-    url(r'^des-pr/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_des_pr'),
+    url(r'^decals-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_model'),
+    url(r'^des-stripe82/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_des_stripe82'),
+    url(r'^des-pr/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_des_pr'),
     # catalog
     url(r'^decals/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals'),
     url(r'^decals-model/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals'),

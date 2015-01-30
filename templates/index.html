@@ -49,8 +49,6 @@
 <div id="map" />
 
 <script>
-
-
 MyTileLayer = L.TileLayer.extend({
     _loadTile: function (tile, tilePoint) {
         // this is just copied from the superclass
@@ -60,19 +58,15 @@ MyTileLayer = L.TileLayer.extend({
         this._adjustTilePoint(tilePoint);
         tile.src     = this.getTileUrl(tilePoint);
         // this is special sauce - add zoom,x,y to tile object
-        //tile.x = tilePoint.x;
-        //tile.y = tilePoint.y;
         tile.tilex = tilePoint.x;
         tile.tiley = tilePoint.y;
         tile.z = tilePoint.z;
-        //console.log('loadtile: x,y ' + tile.tilex + ',' + tile.tiley);
         // copied
         this.fire('tileloadstart', {
             tile: tile,
             url: tile.src,
         });
     },
-
 });
 
 var subdomains = ['a','b','c','d'];
@@ -88,7 +82,6 @@ function catLoaded(result) {
     }
     //console.log('catloaded:' + result['rd']);
     rdlist = result['rd']
-
     if ((result['zoom'] == undefined) || 
         (result['tilex'] == undefined) || 
         (result['tiley'] == undefined)) {
@@ -110,11 +103,9 @@ function catLoaded(result) {
 }
 
 function doLoadTile(tile) {
-
     if (tile.z < 12) {
         return;
     }
-
     s = getSubdomain(tile.tilex, tile.tiley);
     caturl = L.Util.template('{{ caturl|safe }}', L.extend({
         s: s,
@@ -122,6 +113,7 @@ function doLoadTile(tile) {
         x: tile.tilex,
         y: tile.tiley,
         id: idname,
+        ver: getcatversion(idname),
     }));
     $.getJSON(caturl, catLoaded);
 }
@@ -150,7 +142,6 @@ function onTileUnload(e) {
     key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
     //console.log('onTileUnload: ' + key);
     delete visibleTiles[key];
-
     if (!showSources) {
         return;
     }
@@ -171,15 +162,12 @@ function ccd_detail(name, aparams) {
 function onMapClick(e) {
     ra = 180 - e.latlng.lng;
     dec = e.latlng.lat;
-
     bricks = bricksUnderLatlng(e.latlng);
     ccds = ccdsUnderLatlng(e.latlng);
-
     txt = 'RA,Dec = ' + ra.toFixed(4) + ', ' + dec.toFixed(4) +
         '<br/><a href="{{ baseurl }}ra=' + ra.toFixed(4) +
         '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom()
         + '">link here</a>';
-
     if (bricks.length) {
         for (var i=0; i<bricks.length; i++) {
             txt += '<br/>Brick: ' + brick_detail(bricks[i]);
@@ -190,24 +178,19 @@ function onMapClick(e) {
             txt += '<br/>CCD: ' + ccd_detail(ccds[i], '');
         }
     }
-
-    popup.setLatLng(e.latlng)
-        .setContent(txt)
-        .openOn(map);
+    popup.setLatLng(e.latlng).setContent(txt).openOn(map);
 }
 
 function onMouseMove(e) {
     ra = 180 - e.latlng.lng;
     dec = e.latlng.lat;
     info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4);
-
     if (inbrickccdAdded) {
         //props = { ra:ra, dec:dec };
         e.ra = ra;
         e.dec = dec;
         inbrickccdUpdate(e);
     }
-
 }
 
 function bricksUnderLatlng(latlng) {
@@ -248,7 +231,6 @@ function ccdsUnderLatlng(latlng) {
         for (var i=0; i<inside.length; i++) {
             ccds.push(inside[i].feature.properties.name);
         }
-
         if (highlightedCcdName != '') {
             if (ccds.indexOf(highlightedCcdName) == -1) {
                 ccds.push(highlightedCcdName);
@@ -265,7 +247,6 @@ function inbrickccdUpdate(props) {
     }
     bricks = bricksUnderLatlng(props.latlng);
     ccds = ccdsUnderLatlng(props.latlng);
-
     txt = '';
     if (bricks.length || ccds.length) {
         if (bricks.length) {
@@ -302,18 +283,14 @@ function inbrickccdUpdate(props) {
 
 // "Sources", "Bricks", "CCDs" button checked
 function overlayAdded(e) {
-    console.log('OverlayAdded: ' + e.name);
+    //console.log('OverlayAdded: ' + e.name);
     if (e.name == 'Sources') {
-        console.log('Set showSources = True');
-        // set global 
         showSources = true;
         // request catalogs for currently-visible tiles
         //console.log('Visible tiles: ' + visibleTiles);
         for (var i in visibleTiles) {
-            //console.log('visible tile ' + i + ': ' + visibleTiles[i]);
             doLoadTile(visibleTiles[i]);
         }
-
     }
     if (e.name == 'Bricks') {
         showBricks = true;
@@ -323,7 +300,6 @@ function overlayAdded(e) {
         showCcds = true;
         mapBoundsChanged();
     }
-
     if (showBricks || showCcds) {
         if (!inbrickccdAdded) {
             inbrickccd.addTo(map);
@@ -334,14 +310,11 @@ function overlayAdded(e) {
 
 // "Sources", "Bricks", "CCDs" button unchecked
 function overlayRemoved(e) {
-    console.log('OverlayRemoved: ' + e.name);
+    //console.log('OverlayRemoved: ' + e.name);
     if (e.name == 'Sources') {
-        console.log('Set showSources = False');
-        // set global 
         showSources = false;
         // remove all catalogs
         for (var i in visibleTiles) {
-            //console.log('visible tile ' + i + ': ' + visibleTiles[i]);
             doUnloadTile(i);
         }
     }
@@ -361,14 +334,12 @@ function overlayRemoved(e) {
             delete ccdFills[name];
         }
     }
-
     if (!(showBricks || showCcds)) {
         if (inbrickccdAdded) {
             map.removeControl(inbrickccd);
             inbrickccdAdded = false;
         }
     }
-
 }
 
 function removeBrick(name) {
@@ -406,8 +377,6 @@ function bricksLoaded(result) {
 
 function ccdMouseOver(e) {
     e.target.setStyle({color: 'yellow'});
-    //, fillOpacity:0.05});
-    //fill:true, 
     ccd = e.target;
     highlightedCcdName = ccd.name;
     inbrickccdUpdate(e);
@@ -419,8 +388,8 @@ function ccdMouseOver(e) {
     ccdFills[ccd.name] = cf;
     cf.addTo(map);
     cf.bringToBack();
-
 }
+
 function ccdMouseOut(e) {
     e.target.setStyle({color: 'green'}); //, fill:false, fillOpacity:0});
     ccd = e.target;
@@ -461,7 +430,6 @@ function mapBoundsChanged() {
     ra = 180 - latlng.lng;
     dec = latlng.lat;
     //console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
-
     if (showBricks) {
         bounds = map.getBounds();
         bricksurl = L.Util.template('{{ bricksurl|safe }}', L.extend({
@@ -475,7 +443,6 @@ function mapBoundsChanged() {
         }));
         $.getJSON(bricksurl, bricksLoaded);
     }
-
     if (showCcds) {
         bounds = map.getBounds();
         ccdsurl = L.Util.template('{{ ccdsurl|safe }}', L.extend({
@@ -489,27 +456,10 @@ function mapBoundsChanged() {
         }));
         $.getJSON(ccdsurl, ccdsLoaded);
     }
-
-
 }
 
-// function onMapViewReset(e) {
-//     console.log('Map view reset.');
-//     mapBoundsChanged();
-// }
-// 
-// function onMapMove(e) {
-//     console.log('Map move.');
-//     mapBoundsChanged();
-// }
-// 
-// function onMapLoad(e) {
-//     console.log('Map load.');
-//     mapBoundsChanged();
-// }
-
 function onMapMoveEnd(e) {
-    console.log('Map move end.');
+    //console.log('Map move end.');
     mapBoundsChanged();
 }
 
@@ -540,22 +490,20 @@ var highlightedCcdName = '';
 var map = L.map('map');
 var popup = L.popup();
 
-map.on('click', onMapClick);
-
-//map.on('viewreset', onMapViewReset);
-//map.on('move', onMapMove);
-//map.on('load', onMapLoad);
-map.on('moveend', onMapMoveEnd);
-
-map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
-
-
-// defaults to 1.
+// default to 1.
 var tileversions = {};
+var catversions  = {};
 
 function getversion(layer) {
     if (layer in tileversions) {
         return tileversions[layer];
+    }
+    return 1;
+}
+
+function getcatversion(layer) {
+    if (layer in catversions) {
+        return catversions[layer];
     }
     return 1;
 }
@@ -619,11 +567,6 @@ info.onAdd = function (map) {
 };
 info.addTo(map);
 
-map.on('mousemove', onMouseMove);
-
-var ccd = L.marker([7.3677, 244.6700]);
-var ccds = L.layerGroup([ccd]);
-
 var overlayMaps = {
     "Sources": sourcesGroup,
     "Bricks": bricksGroup,
@@ -632,8 +575,13 @@ var overlayMaps = {
 
 L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
+map.on('mousemove', onMouseMove);
 map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
+map.on('click', onMapClick);
+map.on('moveend', onMapMoveEnd);
+
+map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
 {% if showBricks %}
 map.addLayer(bricksGroup);
@@ -646,8 +594,6 @@ overlayAdded({name:'CCDs'});
 
 </script>
 </body>
-
 <script src="/static/jquery-2.1.1.min.js"></script>
 <script src="/static/leaflet-pip-20150130.min.js"></script>
-
 </html>
