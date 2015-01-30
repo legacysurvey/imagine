@@ -1,19 +1,27 @@
 import os
-import tempfile
-import datetime
-from urlparse import urlparse
-
-import simplejson
 
 from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseNotModified
 
-#from astrometry.util.util import *
-#from desi.common import *
-
 from decals import settings
 
-def send_file(fn, content_type, unlink=False, modsince=None):
+
+# We add a version number to each layer, to allow long cache times
+# for the tile JPEGs.  Increment this version to invalidate
+# client-side caches.
+
+tileversions = {
+    'decals': [1,],
+    'decals-model': [1,],
+    'decals-pr': [1,],
+    'des-stripe82': [1,],
+    'des-pr': [1,],
+    }
+
+oneyear = (3600 * 24 * 365)
+
+def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
+    import datetime
     '''
     modsince: If-Modified-Since header string from the client.
     '''
@@ -38,7 +46,7 @@ def send_file(fn, content_type, unlink=False, modsince=None):
     res['Content-Length'] = st.st_size
     # expires in an hour?
     now = datetime.datetime.utcnow()
-    then = now + datetime.timedelta(0, 3600, 0)
+    then = now + datetime.timedelta(0, expires, 0)
     timefmt = '%a, %d %b %Y %H:%M:%S GMT'
     res['Expires'] = then.strftime(timefmt)
     res['Last-Modified'] = lastmod.strftime(timefmt)
@@ -62,19 +70,17 @@ def index(req):
         pass
 
     lat,lng = dec, 180-ra
-    
-    # Deployment:
-    # tileurl = 'http://{s}.decals.thetractor.org/{id}/{z}/{x}/{y}.jpg'
-    # caturl = 'http://decals.thetractor.org/{id}/{z}/{x}/{y}.cat.json'
 
-    #u = urlparse(req.build_absolute_uri('/{id}/{z}/{x}/{y}.jpg'))
-    #tileurl = u.scheme + '://' + u.netloc + '
-    url = req.build_absolute_uri('/') + '{id}/{z}/{x}/{y}.jpg'
+    # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
+
+    url = req.build_absolute_uri('/') + '{id}/{ver}/{z}/{x}/{y}.jpg'
     tileurl = url.replace('://', '://{s}.')
+    caturl = '/{id}/{ver}/{z}/{x}/{y}.cat.json'
+
     #caturl = tileurl.replace('.jpg', '.cat.json')
-    caturl = '/{id}/{z}/{x}/{y}.cat.json'
     #tileurl = '/{id}/{z}/{x}/{y}.jpg'
     #caturl = '/{id}/{z}/{x}/{y}.cat.json'
+
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
 
@@ -151,6 +157,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         hdr = fitsio.FITSHDR()
         subwcs.add_to_header(hdr)
 
+        import tempfile
         f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=os.path.dirname(fn))
         os.close(f)
         
@@ -160,30 +167,32 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
     return fn
 
 
-def map_cosmos_grz(req, zoom, x, y):
-    return map_coadd_bands(req, zoom, x, y, 'grz', 'cosmos-grz', 'cosmos')
+# def map_cosmos_grz(req, zoom, x, y):
+#     return map_coadd_bands(req, zoom, x, y, 'grz', 'cosmos-grz', 'cosmos')
+# 
+# def map_cosmos_urz(req, zoom, x, y):
+#     return map_coadd_bands(req, zoom, x, y, 'urz', 'cosmos-urz', 'cosmos')
 
-def map_cosmos_urz(req, zoom, x, y):
-    return map_coadd_bands(req, zoom, x, y, 'urz', 'cosmos-urz', 'cosmos')
+def map_decals(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals', 'decals')
 
-def map_decals(req, zoom, x, y):
-    return map_coadd_bands(req, zoom, x, y, 'grz', 'decals', 'decals')
-
-def map_decals_model(req, zoom, x, y):
-    return map_coadd_bands(req, zoom, x, y, 'grz', 'decals-model', 'decals-model', imagetag='model')
+def map_decals_model(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
+                           'decals-model', 'decals-model', imagetag='model')
 
 def map_decals_pr(req, zoom, x, y):
-    return map_coadd_bands(req, zoom, x, y, 'grz', 'decals-pr', 'decals',
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-pr', 'decals',
                            rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
-def map_des_stripe82(req, zoom, x, y):
+def map_des_stripe82(req, ver, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'des-stripe82', 'des-stripe82')
 
-def map_des_pr(req, zoom, x, y):
+def map_des_pr(req, ver, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'des-stripe82-pr', 'des-stripe82',
                            rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
 def brick_list(req):
+    import simplejson
     from desi.common import Decals
 
     north = float(req.GET['north'])
@@ -221,6 +230,7 @@ ccdtree = None
 CCDs = None
 
 def ccd_list(req):
+    import simplejson
     from desi.common import Decals
     from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
     from astrometry.util.starutil_numpy import degrees_between
@@ -283,6 +293,7 @@ def brick_detail(req, brickname):
     return HttpResponse('Brick ' + brickname)
 
 def cat_decals(req, zoom, x, y, tag='decals'):
+    import simplejson
     from desi.common import Decals
     from astrometry.util.fits import fits_table, merge_tables
     import numpy as np
@@ -351,7 +362,7 @@ def cat_decals(req, zoom, x, y, tag='decals'):
     f = open(cachefn)
     return HttpResponse(f, content_type='application/json')
     
-def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
+def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={}):
     from astrometry.util.resample import resample_with_wcs, OverlapError
     from astrometry.util.util import Tan
@@ -366,13 +377,17 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
     y = int(y)
     if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
         raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
+    ver = int(ver)
+
+    if not ver in tileversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
     basedir = os.path.join(settings.WEB_DIR, 'data')
-    tilefn = os.path.join(basedir, 'tiles', tag, '%i/%i/%i.jpg' % (zoom, x, y))
+    tilefn = os.path.join(basedir, 'tiles', tag,
+                          '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
     if os.path.exists(tilefn):
         print 'Cached:', tilefn
-        #if req.header
-        return send_file(tilefn, 'image/jpeg',
+        return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
 
     try:
@@ -492,61 +507,56 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
     except:
         pass
 
-    # plt.figure(figsize=(2.56, 2.56))
-    # plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
-    # plt.imshow(rgb, interpolation='nearest')
-    # plt.axis('off')
-    # plt.text(128, 128, 'z%i,(%i,%i)' % (zoom, x, y), color='red', ha='center', va='center')
-    # plt.savefig(tilefn)
-
     if not savecache:
+        import tempfile
         f,tilefn = tempfile.mkstemp(suffix='.jpg')
         os.close(f)
-        #print 'Not caching file... saving to', tilefn
 
     plt.imsave(tilefn, rgb)
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
+
+
     
-def map_image(req, zoom, x, y):
-    from astrometry.blind.plotstuff import Plotstuff
-
-    try:
-        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-    except RuntimeError as e:
-        return HttpResponse(e.strerror)
-
-    plot = Plotstuff(size=(256,256), outformat='jpg')
-    plot.wcs = wcs
-    plot.color = 'gray'
-
-    grid = 30
-    if zoom >= 2:
-        grid = 10
-    if zoom >= 4:
-        grid = 5
-    if zoom >= 6:
-        grid = 1
-    if zoom >= 8:
-        grid = 0.5
-    if zoom >= 10:
-        grid = 0.1
-    plot.plot_grid(grid*2, grid, ralabelstep=grid*2, declabelstep=grid)
-
-    plot.color = 'white'
-    plot.apply_settings()
-    ok,r,d = wcs.pixelxy2radec(W/2+0.5, H/2+0.5)
-    plot.text_xy(W/2, H/2, 'zoom%i (%i,%i)' % (zoom,x,y))
-    plot.stroke()
-    plot.color = 'green'
-    plot.lw = 2.
-    plot.alpha = 0.3
-    plot.apply_settings()
-    M = 5
-    plot.polygon([(M,M),(W-M,M),(W-M,H-M),(M,H-M)])
-    plot.close_path()
-    plot.stroke()
-    
-    f,fn = tempfile.mkstemp()
-    os.close(f)
-    plot.write(fn)
-    return send_file(fn, 'image/jpeg', unlink=True)
+# def map_image(req, zoom, x, y):
+#     from astrometry.blind.plotstuff import Plotstuff
+# 
+#     try:
+#         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
+#     except RuntimeError as e:
+#         return HttpResponse(e.strerror)
+# 
+#     plot = Plotstuff(size=(256,256), outformat='jpg')
+#     plot.wcs = wcs
+#     plot.color = 'gray'
+# 
+#     grid = 30
+#     if zoom >= 2:
+#         grid = 10
+#     if zoom >= 4:
+#         grid = 5
+#     if zoom >= 6:
+#         grid = 1
+#     if zoom >= 8:
+#         grid = 0.5
+#     if zoom >= 10:
+#         grid = 0.1
+#     plot.plot_grid(grid*2, grid, ralabelstep=grid*2, declabelstep=grid)
+# 
+#     plot.color = 'white'
+#     plot.apply_settings()
+#     ok,r,d = wcs.pixelxy2radec(W/2+0.5, H/2+0.5)
+#     plot.text_xy(W/2, H/2, 'zoom%i (%i,%i)' % (zoom,x,y))
+#     plot.stroke()
+#     plot.color = 'green'
+#     plot.lw = 2.
+#     plot.alpha = 0.3
+#     plot.apply_settings()
+#     M = 5
+#     plot.polygon([(M,M),(W-M,M),(W-M,H-M),(M,H-M)])
+#     plot.close_path()
+#     plot.stroke()
+#     
+#     f,fn = tempfile.mkstemp()
+#     os.close(f)
+#     plot.write(fn)
+#     return send_file(fn, 'image/jpeg', unlink=True)

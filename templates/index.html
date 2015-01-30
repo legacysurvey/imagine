@@ -550,12 +550,23 @@ map.on('moveend', onMapMoveEnd);
 map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
 
+// defaults to 1.
+var tileversions = {};
+
+function getversion(layer) {
+    if (layer in tileversions) {
+        return tileversions[layer];
+    }
+    return 1;
+}
+
 var idname = '{{ layer }}';
 
 tiles = new MyTileLayer('{{ tileurl|safe }}', {
     maxZoom: 18,
     attribution: 'DECaLS',
     id: 'decals',
+    ver: getversion('decals'),
     // ?
     unloadInvisibleTiles: true,
     subdomains: subdomains,
@@ -567,6 +578,7 @@ tilesMod = new MyTileLayer('{{ tileurl|safe }}', {
     maxZoom: 18,
     attribution: 'DECaLS',
     id: 'decals-model',
+    ver: getversion('decals-model'),
     // ?
     unloadInvisibleTiles: true,
     subdomains: subdomains,
@@ -589,6 +601,7 @@ if (idname == 'decals') {
         maxZoom: 18,
         attribution: 'DECaLS',
         id: idname,
+        ver: getversion(idname),
         // ?
         unloadInvisibleTiles: true,
         subdomains: subdomains,
@@ -635,6 +648,6 @@ overlayAdded({name:'CCDs'});
 </body>
 
 <script src="/static/jquery-2.1.1.min.js"></script>
-<script src="/static/leaflet-pip.min.js"></script>
+<script src="/static/leaflet-pip-20150130.min.js"></script>
 
 </html>
