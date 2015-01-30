@@ -336,8 +336,7 @@ def cat_decals(req, zoom, x, y, tag='decals'):
         cat.about()
         rd = zip(cat.ra, cat.dec)
 
-    json = simplejson.dumps(dict(rd=rd, zoom=zoom, x=list(xx), y=list(yy),
-                                 tilex=x, tiley=y))
+    json = simplejson.dumps(dict(rd=rd, zoom=zoom, tilex=x, tiley=y))
     dirnm = os.path.dirname(cachefn)
     if not os.path.exists(dirnm):
         try:
