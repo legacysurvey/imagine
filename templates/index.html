@@ -4,8 +4,6 @@
 <link rel="shortcut icon" href="/static/favicon.ico" />
 <link rel="stylesheet" href="/static/leaflet-0.7.3.css" />
 <script src="/static/leaflet-src.js"></script>
-<script src="/static/jquery-2.1.1.min.js"></script>
-<script src="/static/leaflet-pip.min.js"></script>
 
 <style type="text/css">
 #map { height: 100%; width: 100%; padding: 1;}
@@ -52,6 +50,7 @@
 
 <script>
 
+
 MyTileLayer = L.TileLayer.extend({
     _loadTile: function (tile, tilePoint) {
         // this is just copied from the superclass
@@ -75,6 +74,12 @@ MyTileLayer = L.TileLayer.extend({
     },
 
 });
+
+var subdomains = ['a','b','c','d'];
+
+function getSubdomain(x,y) {
+	return subdomains[Math.abs(x + y) % subdomains.length];
+}
 
 function catLoaded(result) {
     //console.log('catloaded:' + result);
@@ -110,10 +115,7 @@ function doLoadTile(tile) {
         return;
     }
 
-    // fugly
-    //tilePoint = L.Point(tile.tilex, tile.tiley);
-    s: tiles._getSubdomain(tilePoint),
-    //s = (tile.tilex + tile.tiley) % 2;
+    s = getSubdomain(tile.tilex, tile.tiley);
     caturl = L.Util.template('{{ caturl|safe }}', L.extend({
         s: s,
         z: tile.z,
@@ -348,10 +350,6 @@ function overlayRemoved(e) {
         for (var i in currentBricks) {
             removeBrick(i);
         }
-        for (var name in brickFills) {
-            map.removeLayer(brickFills[name]);
-            delete brickFills[name];
-        }
     }
     if (e.name == 'CCDs') {
         showCcds = false;
@@ -360,7 +358,7 @@ function overlayRemoved(e) {
         }
         for (var name in ccdFills) {
             map.removeLayer(ccdFills[name]);
-            delete brickFills[name];
+            delete ccdFills[name];
         }
     }
 
@@ -559,7 +557,7 @@ tiles = new MyTileLayer('{{ tileurl|safe }}', {
     id: idname,
     // ?
     unloadInvisibleTiles: true,
-    subdomains: ['a','b','c','d'],
+    subdomains: subdomains,
 });
 tiles.on('tileloadstart', onTileLoadStart);
 tiles.on('tileunload',    onTileUnload);
@@ -604,7 +602,9 @@ overlayAdded({name:'CCDs'});
 {% endif %}
 
 </script>
-
 </body>
+
+<script src="/static/jquery-2.1.1.min.js"></script>
+<script src="/static/leaflet-pip.min.js"></script>
 
 </html>

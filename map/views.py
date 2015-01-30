@@ -6,26 +6,33 @@ from urlparse import urlparse
 import simplejson
 
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseNotModified
 
-from astrometry.util.util import *
-
-from astrometry.util.resample import *
-from astrometry.util.fits import *
-
-from astrometry.libkd.spherematch import *
-
-from scipy.ndimage.filters import gaussian_filter
+#from astrometry.util.util import *
+#from desi.common import *
 
 from decals import settings
 
-from desi.common import *
-
-def send_file(fn, content_type, unlink=False):
+def send_file(fn, content_type, unlink=False, modsince=None):
+    '''
+    modsince: If-Modified-Since header string from the client.
+    '''
     st = os.stat(fn)
     f = open(fn)
     if unlink:
         os.unlink(fn)
+    # file was last modified...
+    lastmod = datetime.datetime.fromtimestamp(st.st_mtime)
+
+    if modsince:
+        #print 'If-modified-since:', modsince #Sat, 22 Nov 2014 01:12:39 GMT
+        ifmod = datetime.datetime.strptime(modsince, '%a, %d %b %Y %H:%M:%S %Z')
+        #print 'Parsed:', ifmod
+        #print 'Last mod:', lastmod
+        dt = (lastmod - ifmod).total_seconds()
+        if dt < 1:
+            return HttpResponseNotModified()
+
     res = HttpResponse(f, content_type=content_type)
     # res['Cache-Control'] = 'public, max-age=31536000'
     res['Content-Length'] = st.st_size
@@ -34,9 +41,7 @@ def send_file(fn, content_type, unlink=False):
     then = now + datetime.timedelta(0, 3600, 0)
     timefmt = '%a, %d %b %Y %H:%M:%S GMT'
     res['Expires'] = then.strftime(timefmt)
-    # file was last modified...
-    then = datetime.datetime.fromtimestamp(st.st_mtime)
-    res['Last-Modified'] = then.strftime(timefmt)
+    res['Last-Modified'] = lastmod.strftime(timefmt)
     return res
 
 def index(req):
@@ -66,8 +71,8 @@ def index(req):
     #tileurl = u.scheme + '://' + u.netloc + '
     url = req.build_absolute_uri('/') + '{id}/{z}/{x}/{y}.jpg'
     tileurl = url.replace('://', '://{s}.')
-    caturl = tileurl.replace('.jpg', '.cat.json')
-
+    #caturl = tileurl.replace('.jpg', '.cat.json')
+    caturl = '/{id}/{z}/{x}/{y}.cat.json'
     #tileurl = '/{id}/{z}/{x}/{y}.jpg'
     #caturl = '/{id}/{z}/{x}/{y}.cat.json'
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
@@ -85,6 +90,8 @@ def index(req):
                        ))
 
 def get_tile_wcs(zoom, x, y):
+    from astrometry.util.util import anwcs_create_mercator_2
+
     zoom = int(zoom)
     zoomscale = 2.**zoom
     x = int(x)
@@ -107,10 +114,15 @@ def get_tile_wcs(zoom, x, y):
     return wcs, W, H, zoomscale, zoom,x,y
 
 def get_scaled(scalepat, scalekwargs, scale, basefn):
+    from scipy.ndimage.filters import gaussian_filter
+    import fitsio
+    from astrometry.util.util import Tan
+
     if scale <= 0:
         return basefn
     fn = scalepat % dict(scale=scale, **scalekwargs)
     if not os.path.exists(fn):
+
         #print 'Does not exist:', fn
         sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn)
         #print 'Source:', sourcefn
@@ -138,7 +150,12 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         subwcs = wcs.scale(0.5)
         hdr = fitsio.FITSHDR()
         subwcs.add_to_header(hdr)
-        fitsio.write(fn, I2, header=hdr, clobber=True)
+
+        f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=os.path.dirname(fn))
+        os.close(f)
+        
+        fitsio.write(tmpfn, I2, header=hdr, clobber=True)
+        os.rename(tmpfn, fn)
         #print 'Wrote', fn
     return fn
 
@@ -167,6 +184,8 @@ def map_des_pr(req, zoom, x, y):
                            rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
 def brick_list(req):
+    from desi.common import Decals
+
     north = float(req.GET['north'])
     south = float(req.GET['south'])
     east  = float(req.GET['east'])
@@ -202,6 +221,11 @@ ccdtree = None
 CCDs = None
 
 def ccd_list(req):
+    from desi.common import Decals
+    from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
+    from astrometry.util.starutil_numpy import degrees_between
+    from astrometry.util.util import Tan
+    import numpy as np
     global ccdtree
     global CCDs
 
@@ -259,22 +283,27 @@ def brick_detail(req, brickname):
     return HttpResponse('Brick ' + brickname)
 
 def cat_decals(req, zoom, x, y, tag='decals'):
+    from desi.common import Decals
+    from astrometry.util.fits import fits_table, merge_tables
+    import numpy as np
+
     zoom = int(zoom)
     if zoom < 12:
         return HttpResponse(simplejson.dumps(dict(rd=[], zoom=zoom,
                                                   tilex=x, tiley=y)),
                             content_type='application/json')
-    from desi.common import *
+
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
         return HttpResponse(e.strerror)
     basedir = os.path.join(settings.WEB_DIR, 'data')
-    cachefn = os.path.join(basedir, 'cats-cache', tag, '%i/%i/%i.cat.json' % (zoom, x, y))
+    cachefn = os.path.join(basedir, 'cats-cache', tag,
+                           '%i/%i/%i.cat.json' % (zoom, x, y))
     if os.path.exists(cachefn):
         print 'Cached:', cachefn
-        f = open(cachefn)
-        return HttpResponse(f, content_type='application/json')
+        return send_file(cachefn, 'application/json',
+                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
 
     ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                [1,H/2,H,H,H,H/2,1,1])
@@ -296,7 +325,7 @@ def cat_decals(req, zoom, x, y, tag='decals'):
         # print 'brick_primary', np.unique(T.brick_primary)
         # T.cut(T.brick_primary)
         ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
-        print 'xx,yy', xx.min(), xx.max(), yy.min(), yy.max()
+        #print 'xx,yy', xx.min(), xx.max(), yy.min(), yy.max()
         T.cut((xx > 0) * (yy > 0) * (xx < W) * (yy < H))
         cat.append(T)
     if len(cat) == 0:
@@ -309,23 +338,29 @@ def cat_decals(req, zoom, x, y, tag='decals'):
 
     json = simplejson.dumps(dict(rd=rd, zoom=zoom, x=list(xx), y=list(yy),
                                  tilex=x, tiley=y))
-    try:
-        os.makedirs(os.path.dirname(cachefn))
-    except:
-        pass
+    dirnm = os.path.dirname(cachefn)
+    if not os.path.exists(dirnm):
+        try:
+            os.makedirs(dirnm)
+        except:
+            pass
 
     f = open(cachefn, 'w')
     f.write(json)
     f.close()
     
     f = open(cachefn)
-
     return HttpResponse(f, content_type='application/json')
     
-
-
 def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={}):
+    from astrometry.util.resample import resample_with_wcs, OverlapError
+    from astrometry.util.util import Tan
+    from desi.common import Decals, get_rgb
+    import numpy as np
+    import pylab as plt
+    import fitsio
+
     zoom = int(zoom)
     zoomscale = 2.**zoom
     x = int(x)
@@ -337,7 +372,9 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
     tilefn = os.path.join(basedir, 'tiles', tag, '%i/%i/%i.jpg' % (zoom, x, y))
     if os.path.exists(tilefn):
         print 'Cached:', tilefn
-        return send_file(tilefn, 'image/jpeg')
+        #if req.header
+        return send_file(tilefn, 'image/jpeg',
+                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
 
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
@@ -396,6 +433,9 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
             except:
                 print 'Failed to read WCS:', fn
                 savecache = False
+                import traceback
+                import sys
+                traceback.print_exc(None, sys.stdout)
                 continue
 
             ok,xx,yy = bwcs.radec2pixelxy(r, d)
@@ -423,6 +463,9 @@ def map_coadd_bands(req, zoom, x, y, bands, tag, imagedir,
             except:
                 print 'Failed to read image and WCS:', fn
                 savecache = False
+                import traceback
+                import sys
+                traceback.print_exc(None, sys.stdout)
                 continue
             #print 'Subimage shape', img.shape
             #print 'Sub-WCS shape', subwcs.get_height(), subwcs.get_width()
