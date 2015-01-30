@@ -549,20 +549,54 @@ map.on('moveend', onMapMoveEnd);
 
 map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
+
 var idname = '{{ layer }}';
 
 tiles = new MyTileLayer('{{ tileurl|safe }}', {
     maxZoom: 18,
     attribution: 'DECaLS',
-    id: idname,
+    id: 'decals',
     // ?
     unloadInvisibleTiles: true,
     subdomains: subdomains,
 });
 tiles.on('tileloadstart', onTileLoadStart);
 tiles.on('tileunload',    onTileUnload);
-tiles.addTo(map);
 
+tilesMod = new MyTileLayer('{{ tileurl|safe }}', {
+    maxZoom: 18,
+    attribution: 'DECaLS',
+    id: 'decals-model',
+    // ?
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+});
+tilesMod.on('tileloadstart', onTileLoadStart);
+tilesMod.on('tileunload',    onTileUnload);
+
+var baseMaps = {
+    "DECaLS images": tiles,
+    "DECaLS models": tilesMod,
+};
+
+if (idname == 'decals') {
+    tiles.addTo(map);
+} else if (idname == 'decals-model') {
+    tilesMod.addTo(map);
+} else {
+
+    xtiles = new MyTileLayer('{{ tileurl|safe }}', {
+        maxZoom: 18,
+        attribution: 'DECaLS',
+        id: idname,
+        // ?
+        unloadInvisibleTiles: true,
+        subdomains: subdomains,
+    });
+    xtiles.on('tileloadstart', onTileLoadStart);
+    xtiles.on('tileunload',    onTileUnload);
+    baseMaps[idname] = xtiles;
+}
 
 var info = L.control();
 info.onAdd = function (map) {
@@ -573,10 +607,6 @@ info.onAdd = function (map) {
 info.addTo(map);
 
 map.on('mousemove', onMouseMove);
-
-var baseMaps = {
-    "DECaLS": tiles,
-};
 
 var ccd = L.marker([7.3677, 244.6700]);
 var ccds = L.layerGroup([ccd]);
