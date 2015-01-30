@@ -18,6 +18,10 @@ tileversions = {
     'des-pr': [1,],
     }
 
+catversions = {
+    'decals': [1,],
+    }
+
 oneyear = (3600 * 24 * 365)
 
 def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
@@ -292,7 +296,7 @@ def brick_detail(req, brickname):
     #brickname = req.GET['brick']
     return HttpResponse('Brick ' + brickname)
 
-def cat_decals(req, zoom, x, y, tag='decals'):
+def cat_decals(req, ver, zoom, x, y, tag='decals'):
     import simplejson
     from desi.common import Decals
     from astrometry.util.fits import fits_table, merge_tables
@@ -308,13 +312,18 @@ def cat_decals(req, zoom, x, y, tag='decals'):
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
         return HttpResponse(e.strerror)
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
     basedir = os.path.join(settings.WEB_DIR, 'data')
     cachefn = os.path.join(basedir, 'cats-cache', tag,
-                           '%i/%i/%i.cat.json' % (zoom, x, y))
+                           '%i/%i/%i/%i.cat.json' % (ver, zoom, x, y))
     if os.path.exists(cachefn):
         print 'Cached:', cachefn
         return send_file(cachefn, 'application/json',
-                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
+                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
+                         expires=oneyear)
 
     ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                [1,H/2,H,H,H,H/2,1,1])
@@ -343,8 +352,8 @@ def cat_decals(req, zoom, x, y, tag='decals'):
         rd = []
     else:
         cat = merge_tables(cat)
-        print 'All catalogs:'
-        cat.about()
+        #print 'All catalogs:'
+        #cat.about()
         rd = zip(cat.ra, cat.dec)
 
     json = simplejson.dumps(dict(rd=rd, zoom=zoom, tilex=x, tiley=y))
@@ -358,9 +367,7 @@ def cat_decals(req, zoom, x, y, tag='decals'):
     f = open(cachefn, 'w')
     f.write(json)
     f.close()
-    
-    f = open(cachefn)
-    return HttpResponse(f, content_type='application/json')
+    return send_file(cachefn, 'application/json', expires=oneyear)
     
 def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={}):
