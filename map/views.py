@@ -211,7 +211,7 @@ def brick_list(req):
     #print 'N,S,E,W:', north, south, east, west
 
     D = _get_decals()
-    B = D.get_bricks()
+    B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, east, west, south, north)
     # HACK -- limit result size...
     if len(I) > 10000:
@@ -335,7 +335,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals'):
     catpat = os.path.join(basedir, 'cats', tag,
                           'tractor-%(brick)06i.fits')
     D = _get_decals()
-    B = D.get_bricks()
+    B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
 
     cat = []
@@ -432,7 +432,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                 pass
         
     D = _get_decals()
-    B = D.get_bricks()
+    B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
     #print len(I), 'bricks touching:', B.brickid[I]
     rimgs = []
