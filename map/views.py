@@ -1,10 +1,5 @@
 import os
-
-from django.shortcuts import render
-from django.http import HttpResponse, HttpResponseNotModified
-
-from decals import settings
-
+from django.http import HttpResponse
 
 # We add a version number to each layer, to allow long cache times
 # for the tile JPEGs.  Increment this version to invalidate
@@ -43,6 +38,7 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
         #print 'Last mod:', lastmod
         dt = (lastmod - ifmod).total_seconds()
         if dt < 1:
+            from django.http import HttpResponseNotModified
             return HttpResponseNotModified()
 
     res = HttpResponse(f, content_type=content_type)
@@ -89,7 +85,9 @@ def index(req):
     ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
 
     baseurl = req.path + '?layer=%s&' % layer
-    
+
+    from django.shortcuts import render
+
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, lat=lat, long=lng, zoom=zoom,
                        layer=layer, tileurl=tileurl,
@@ -195,9 +193,16 @@ def map_des_pr(req, ver, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'des-stripe82-pr', 'des-stripe82',
                            rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
+decals = None
+def _get_decals():
+    global decals
+    if decals is None:
+        from desi.common import Decals
+        decals = Decals()
+    return decals
+
 def brick_list(req):
     import simplejson
-    from desi.common import Decals
 
     north = float(req.GET['north'])
     south = float(req.GET['south'])
@@ -205,7 +210,7 @@ def brick_list(req):
     west  = float(req.GET['west'])
     #print 'N,S,E,W:', north, south, east, west
 
-    D = Decals()
+    D = _get_decals()
     B = D.get_bricks()
     I = D.bricks_touching_radec_box(B, east, west, south, north)
     # HACK -- limit result size...
@@ -235,7 +240,6 @@ CCDs = None
 
 def ccd_list(req):
     import simplejson
-    from desi.common import Decals
     from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
     from astrometry.util.starutil_numpy import degrees_between
     from astrometry.util.util import Tan
@@ -250,7 +254,7 @@ def ccd_list(req):
     #print 'N,S,E,W:', north, south, east, west
 
     if ccdtree is None:
-        D = Decals()
+        D = _get_decals()
         CCDs = D.get_ccds()
         ccdtree = tree_build_radec(CCDs.ra, CCDs.dec)
 
@@ -298,15 +302,16 @@ def brick_detail(req, brickname):
 
 def cat_decals(req, ver, zoom, x, y, tag='decals'):
     import simplejson
-    from desi.common import Decals
-    from astrometry.util.fits import fits_table, merge_tables
-    import numpy as np
 
     zoom = int(zoom)
     if zoom < 12:
         return HttpResponse(simplejson.dumps(dict(rd=[], zoom=zoom,
                                                   tilex=x, tiley=y)),
                             content_type='application/json')
+
+    from astrometry.util.fits import fits_table, merge_tables
+    import numpy as np
+    from decals import settings
 
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
@@ -329,7 +334,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals'):
                                [1,H/2,H,H,H,H/2,1,1])
     catpat = os.path.join(basedir, 'cats', tag,
                           'tractor-%(brick)06i.fits')
-    D = Decals()
+    D = _get_decals()
     B = D.get_bricks()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
 
@@ -371,12 +376,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals'):
     
 def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={}):
-    from astrometry.util.resample import resample_with_wcs, OverlapError
-    from astrometry.util.util import Tan
-    from desi.common import Decals, get_rgb
-    import numpy as np
-    import pylab as plt
-    import fitsio
+    from decals import settings
 
     zoom = int(zoom)
     zoomscale = 2.**zoom
@@ -396,6 +396,12 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         print 'Cached:', tilefn
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
+
+    from astrometry.util.resample import resample_with_wcs, OverlapError
+    from astrometry.util.util import Tan
+    from desi.common import get_rgb
+    import numpy as np
+    import fitsio
 
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
@@ -425,7 +431,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             except:
                 pass
         
-    D = Decals()
+    D = _get_decals()
     B = D.get_bricks()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
     #print len(I), 'bricks touching:', B.brickid[I]
@@ -519,7 +525,11 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         f,tilefn = tempfile.mkstemp(suffix='.jpg')
         os.close(f)
 
+    import matplotlib
+    matplotlib.use('Agg')
+    import pylab as plt
     plt.imsave(tilefn, rgb)
+
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
 
