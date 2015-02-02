@@ -491,7 +491,9 @@ var map = L.map('map');
 var popup = L.popup();
 
 // default to 1.
-var tileversions = {};
+var tileversions = {
+    'decals-pr':4,
+};
 var catversions  = {};
 
 function getversion(layer) {
@@ -557,6 +559,7 @@ if (idname == 'decals') {
     xtiles.on('tileloadstart', onTileLoadStart);
     xtiles.on('tileunload',    onTileUnload);
     baseMaps[idname] = xtiles;
+    xtiles.addTo(map);
 }
 
 var info = L.control();

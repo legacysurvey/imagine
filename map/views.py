@@ -8,7 +8,8 @@ from django.http import HttpResponse
 tileversions = {
     'decals': [1,],
     'decals-model': [1,],
-    'decals-pr': [1,],
+    'decals-pr': [1,4],
+    'decals-model-pr': [1,],
     'des-stripe82': [1,],
     'des-pr': [1,],
     }
@@ -182,16 +183,23 @@ def map_decals_model(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz',
                            'decals-model', 'decals-model', imagetag='model')
 
-def map_decals_pr(req, zoom, x, y):
+def map_decals_pr(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-pr', 'decals',
-                           rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
+                           #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
+                           rgbkwargs=dict(mnmx=(-1,100.), arcsinh=1.))
+
+def map_decals_model_pr(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
+                           'decals-model-pr', 'decals-model', imagetag='model',
+                           rgbkwargs=dict(mnmx=(-1,100.), arcsinh=1.))
 
 def map_des_stripe82(req, ver, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'des-stripe82', 'des-stripe82')
 
 def map_des_pr(req, ver, zoom, x, y):
     return map_coadd_bands(req, zoom, x, y, 'grz', 'des-stripe82-pr', 'des-stripe82',
-                           rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
+                           #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
+                           rgbkwargs=dict(mnmx=(-1,100.), arcsinh=1.))
 
 decals = None
 def _get_decals():
