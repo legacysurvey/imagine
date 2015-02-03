@@ -4,6 +4,8 @@
 <link rel="shortcut icon" href="/static/favicon.ico" />
 <link rel="stylesheet" href="/static/leaflet-0.7.3.css" />
 <script src="/static/leaflet-src.js"></script>
+<script src="/static/jquery-2.1.1.min.js"></script>
+<script src="/static/leaflet-pip-20150130.min.js"></script>
 
 <style type="text/css">
 #map { height: 100%; width: 100%; padding: 1;}
@@ -255,7 +257,7 @@ function inbrickccdUpdate(props) {
                 if (i) {
                     txt = txt + ', ';
                 }
-                txt = txt + bricks[i];
+                txt = txt + brick_detail(bricks[i]);
             }
             if (ccds.length) {
                 txt = txt + '<br/>';
@@ -375,14 +377,12 @@ function bricksLoaded(result) {
     }
 }
 
-function ccdMouseOver(e) {
-    e.target.setStyle({color: 'yellow'});
-    ccd = e.target;
-    highlightedCcdName = ccd.name;
-    inbrickccdUpdate(e);
-    if (ccd.name in ccdFills) {
-        return;
-    }
+function unhighlightCcd(name) {
+    map.removeLayer(ccdFills[name]);
+    delete ccdFills[name];
+}
+
+function highlightCcd(ccd) {
     cf = L.polygon(ccd.getLatLngs(),
                    {fill:true, fillOpacity:0.05, color:'yellow', weight:1});
     ccdFills[ccd.name] = cf;
@@ -390,13 +390,30 @@ function ccdMouseOver(e) {
     cf.bringToBack();
 }
 
+function ccdMouseOver(e) {
+    e.target.setStyle({color: 'yellow'});
+    ccd = e.target;
+    highlightedCcdName = ccd.name;
+    console.log('ccdMouseOver: ' + highlightedCcdName);
+    // remove other CCDs from ccdFills
+    for (var i=0; i<ccdFills.length; i++) {
+        console.log('ccdMouseOver: ccd ' + ccd.name + '; ccdFills ' + ccdFills[i]);
+        if (ccdFills[i] != ccd.name) {
+            unhighlightCcd(ccdFills[i]);
+        }
+    }
+    if (!(ccd.name in ccdFills)) {
+        highlightCcd(ccd);
+    }
+    inbrickccdUpdate(e);
+}
+
 function ccdMouseOut(e) {
     e.target.setStyle({color: 'green'}); //, fill:false, fillOpacity:0});
     ccd = e.target;
     highlightedCcdName = '';
     if (ccd.name in ccdFills) {
-        map.removeLayer(ccdFills[ccd.name]);
-        delete ccdFills[ccd.name];
+        unhighlightCcd(ccd.name);
     }
     inbrickccdUpdate(e);
 }
@@ -483,6 +500,11 @@ var currentBricks = {};
 
 var showCcds = false;
 var ccdsGroup = L.layerGroup([]);
+//ccdsGroup.onAdd = function(map) {
+//    console.log('ccdsGroup.onAdd');
+//    overlayAdded({name:'CCDs'});
+//}
+
 var currentCcds = {};
 var ccdFills = {};
 var highlightedCcdName = '';
@@ -514,9 +536,10 @@ var idname = '{{ layer }}';
 
 tiles = new MyTileLayer('{{ tileurl|safe }}', {
     maxZoom: 18,
-    attribution: 'DECaLS',
-    id: 'decals',
-    ver: getversion('decals'),
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    //id: 'decals',
+    id: 'decals-pr',
+    ver: getversion('decals-pr'),
     // ?
     unloadInvisibleTiles: true,
     subdomains: subdomains,
@@ -526,9 +549,9 @@ tiles.on('tileunload',    onTileUnload);
 
 tilesMod = new MyTileLayer('{{ tileurl|safe }}', {
     maxZoom: 18,
-    attribution: 'DECaLS',
-    id: 'decals-model',
-    ver: getversion('decals-model'),
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: 'decals-model-pr',
+    ver: getversion('decals-model-pr'),
     // ?
     unloadInvisibleTiles: true,
     subdomains: subdomains,
@@ -549,7 +572,7 @@ if (idname == 'decals') {
 
     xtiles = new MyTileLayer('{{ tileurl|safe }}', {
         maxZoom: 18,
-        attribution: 'DECaLS',
+        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
         id: idname,
         ver: getversion(idname),
         // ?
@@ -590,13 +613,14 @@ map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
 map.addLayer(bricksGroup);
 overlayAdded({name:'Bricks'});
 {% endif %}
+
 {% if showCcds %}
+console.log('addLayer(ccds)');
 map.addLayer(ccdsGroup);
+console.log('done addLayer(ccds)');
 overlayAdded({name:'CCDs'});
 {% endif %}
 
 </script>
 </body>
-<script src="/static/jquery-2.1.1.min.js"></script>
-<script src="/static/leaflet-pip-20150130.min.js"></script>
 </html>

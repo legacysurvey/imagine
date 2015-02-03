@@ -37,3 +37,4 @@ application = get_wsgi_application()
 #     #print 'got result :', t1
 #     print 'Django call took :', (t1-t0).total_seconds(), 'sec wall,', (cpu1-cpu0), 'CPU'
 #     return rtn
+#
