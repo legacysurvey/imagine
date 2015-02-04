@@ -6,7 +6,7 @@ admin.autodiscover()
 urlpatterns = patterns(
     '',
     # url(r'^image/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_image'),
-    # url(r'^cosmos-grz/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_cosmos_grz'),
+    url(r'^cosmos-grz/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_cosmos_grz'),
     # url(r'^cosmos-urz/(\d*)/(\d*)/(\d*).jpg', 'map.views.map_cosmos_urz'),
 
     # Tiles

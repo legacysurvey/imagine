@@ -6,6 +6,7 @@ from django.http import HttpResponse
 # client-side caches.
 
 tileversions = {
+    'cosmos-grz': [1,],
     'decals': [1,],
     'decals-model': [1,],
     'decals-pr': [1,4],
@@ -136,7 +137,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn)
         #print 'Source:', sourcefn
         if sourcefn is None or not os.path.exists(sourcefn):
-            print 'No source'
+            print 'Image source file', sourcefn, 'not found'
             return None
         I = fitsio.read(sourcefn)
         #print 'source image:', I.shape
@@ -169,10 +170,15 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         #print 'Wrote', fn
     return fn
 
+# "PR"
+#rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
-# def map_cosmos_grz(req, zoom, x, y):
-#     return map_coadd_bands(req, zoom, x, y, 'grz', 'cosmos-grz', 'cosmos')
-# 
+rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+
+def map_cosmos_grz(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'cosmos-grz', 'cosmos',
+                           rgbkwargs=rgbkwargs)
+
 # def map_cosmos_urz(req, zoom, x, y):
 #     return map_coadd_bands(req, zoom, x, y, 'urz', 'cosmos-urz', 'cosmos')
 
@@ -185,21 +191,19 @@ def map_decals_model(req, ver, zoom, x, y):
 
 def map_decals_pr(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-pr', 'decals',
-                           #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
-                           rgbkwargs=dict(mnmx=(-1,100.), arcsinh=1.))
+                           rgbkwargs=rgbkwargs)
 
 def map_decals_model_pr(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz',
                            'decals-model-pr', 'decals-model', imagetag='model',
-                           rgbkwargs=dict(mnmx=(-1,100.), arcsinh=1.))
+                           rgbkwargs=rgbkwargs)
 
 def map_des_stripe82(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'des-stripe82', 'des-stripe82')
 
 def map_des_pr(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'des-stripe82-pr', 'des-stripe82',
-                           #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
-                           rgbkwargs=dict(mnmx=(-1,100.), arcsinh=1.))
+                           rgbkwargs=rgbkwargs)
 
 decals = None
 def _get_decals():
