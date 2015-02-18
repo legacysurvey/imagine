@@ -559,9 +559,22 @@ tilesMod = new MyTileLayer('{{ tileurl|safe }}', {
 tilesMod.on('tileloadstart', onTileLoadStart);
 tilesMod.on('tileunload',    onTileUnload);
 
+tilesSfd = new MyTileLayer('{{ tileurl|safe }}', {
+    maxZoom: 18,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: 'sfd-tiles',
+    ver: getversion('sfd'),
+    // ?
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+});
+tilesSfd.on('tileloadstart', onTileLoadStart);
+tilesSfd.on('tileunload',    onTileUnload);
+
 var baseMaps = {
     "DECaLS images": tiles,
     "DECaLS models": tilesMod,
+    "SFD dust map": tilesSfd,
 };
 
 if (idname == 'decals') {

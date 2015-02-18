@@ -13,10 +13,12 @@ tileversions = {
     'decals-model-pr': [1,],
     'des-stripe82': [1,],
     'des-pr': [1,],
+    'sfd': [1,],
     }
 
 catversions = {
     'decals': [1,],
+    'decals-edr2': [1,],
     }
 
 oneyear = (3600 * 24 * 365)
@@ -204,12 +206,86 @@ def map_decals_model_pr(req, ver, zoom, x, y):
                            'decals-model-pr', 'decals-model', imagetag='model',
                            rgbkwargs=rgbkwargs)
 
+def map_decals_edr2(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-edr2', 'decals',
+                           rgbkwargs=rgbkwargs)
+
+def map_decals_model_edr2(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
+                           'decals-model-edr2', 'decals-model', imagetag='model',
+                           rgbkwargs=rgbkwargs)
+
 def map_des_stripe82(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'des-stripe82', 'des-stripe82')
 
 def map_des_pr(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'des-stripe82-pr', 'des-stripe82',
                            rgbkwargs=rgbkwargs)
+
+sfd = None
+
+def map_sfd(req, ver, zoom, x, y):
+    global sfd
+    
+    zoom = int(zoom)
+    zoomscale = 2.**zoom
+    x = int(x)
+    y = int(y)
+    if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
+        raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
+    ver = int(ver)
+
+    tag = 'sfd'
+
+    if not ver in tileversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from decals import settings
+
+    basedir = os.path.join(settings.WEB_DIR, 'data')
+    tilefn = os.path.join(basedir, 'tiles', tag,
+                          '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
+    if os.path.exists(tilefn):
+        print 'Cached:', tilefn
+        return send_file(tilefn, 'image/jpeg', expires=oneyear,
+                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
+
+    from desi.common import SFDMap
+    import numpy as np
+    
+    if sfd is None:
+        sfd = SFDMap(dustdir=settings.DUST_DIR)
+
+    try:
+        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
+    except RuntimeError as e:
+        return HttpResponse(e.strerror)
+
+    xx,yy = np.meshgrid(np.arange(wcs.get_width()), np.arange(wcs.get_height()))
+    ok,rr,dd = wcs.pixelxy2radec(xx.ravel(), yy.ravel())
+    ebv = sfd.ebv(rr, dd)
+    ebv = ebv.reshape(xx.shape)
+    #print 'EBV range:', ebv.min(), ebv.max()
+    savecache = True
+
+    try:
+        os.makedirs(os.path.dirname(tilefn))
+    except:
+        pass
+
+    if not savecache:
+        import tempfile
+        f,tilefn = tempfile.mkstemp(suffix='.jpg')
+        os.close(f)
+
+    import matplotlib
+    matplotlib.use('Agg')
+    import pylab as plt
+    plt.imsave(tilefn, ebv, vmin=0., vmax=0.5, cmap='hot')
+
+    return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
+
+
 
 decals = None
 def _get_decals():

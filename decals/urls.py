@@ -17,9 +17,18 @@ urlpatterns = patterns(
     url(r'^des-stripe82/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_des_stripe82'),
     url(r'^des-pr/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_des_pr'),
 
+    # "EDR2"
+    url(r'^decals-edr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_edr2'),
+    url(r'^decals-model-edr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_model_edr2'),
+
+    url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_sfd'),
+
     # Catalogs
     url(r'^decals/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals'),
     url(r'^decals-model/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals'),
+
+    url(r'^decals-model-edr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals'),
+
     # brick list of polygons
     url(r'^bricks/', 'map.views.brick_list'),
     # CCD list of polygons
