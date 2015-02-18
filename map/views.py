@@ -21,6 +21,12 @@ catversions = {
 
 oneyear = (3600 * 24 * 365)
 
+def ra2long(ra):
+    lng = 180. - ra
+    lng += 360 * (lng < 0.)
+    lng -= 360 * (lng > 360.)
+    return lng
+
 def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
     import datetime
     '''
@@ -71,7 +77,7 @@ def index(req):
     except:
         pass
 
-    lat,lng = dec, 180-ra
+    lat,lng = dec, ra2long(ra)
 
     # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
 
@@ -237,11 +243,10 @@ def brick_list(req):
         #mra = mdec / np.cos(np.deg2rad(b.dec))
         mra = mdec = 0.
         bricks.append(dict(name=b.brickname,
-                           poly=[[b.dec1-mdec, 180.-(b.ra1-mra)],
-                                 [b.dec2+mdec, 180.-(b.ra1-mra)],
-                                 [b.dec2+mdec, 180.-(b.ra2+mra)],
-                                 [b.dec1-mdec, 180.-(b.ra2+mra)],
-                                 #[b.dec1-mdec, 180.-(b.ra1-mra)]
+                           poly=[[b.dec1-mdec, ra2long(b.ra1-mra)],
+                                 [b.dec2+mdec, ra2long(b.ra1-mra)],
+                                 [b.dec2+mdec, ra2long(b.ra2+mra)],
+                                 [b.dec1-mdec, ra2long(b.ra2+mra)],
                                  ]))
 
     return HttpResponse(simplejson.dumps(dict(bricks=bricks)),
@@ -296,7 +301,7 @@ def ccd_list(req):
         y = np.array([1, c.height, c.height, 1])
         r,d = wcs.pixelxy2radec(x, y)
         ccds.append(dict(name='%i-%s-%s' % (c.expnum, c.extname, c.filter),
-                         poly=zip(d, 180.-r)))
+                         poly=zip(d, ra2long(r))))
 
     return HttpResponse(simplejson.dumps(dict(ccds=ccds)),
                         content_type='application/json')
