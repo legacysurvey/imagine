@@ -87,10 +87,10 @@ def index(req):
     caturl = '/{id}/{ver}/{z}/{x}/{y}.cat.json'
 
     # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
-    # tileurl = url.replace('://', '://{s}.')
+    tileurl = url.replace('://', '://{s}.')
 
     # Testing:
-    tileurl = '/{id}/{ver}/{z}/{x}/{y}.jpg'
+    #tileurl = '/{id}/{ver}/{z}/{x}/{y}.jpg'
 
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
@@ -104,6 +104,7 @@ def index(req):
                        layer=layer, tileurl=tileurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
                        ccdsurl=ccdsurl,
+                       showSources='sources' in req.GET,
                        showBricks='bricks' in req.GET,
                        showCcds='ccds' in req.GET,
                        ))
@@ -457,13 +458,24 @@ def cat_decals(req, ver, zoom, x, y, tag='decals'):
         cat.append(T)
     if len(cat) == 0:
         rd = []
+        types = []
+        fluxes = []
+        bricknames = []
+        objids = []
     else:
         cat = merge_tables(cat)
         #print 'All catalogs:'
         #cat.about()
         rd = zip(cat.ra, cat.dec)
+        types = list(cat.get('type'))
+        fluxes = [dict(g=float(g), r=float(r), z=float(z))
+                  for g,r,z in zip(cat.decam_flux[:,1], cat.decam_flux[:,2], cat.decam_flux[:,4])]
+        bricknames = list(cat.brickname)
+        objids = list(cat.objid.astype(int))
 
-    json = simplejson.dumps(dict(rd=rd, zoom=zoom, tilex=x, tiley=y))
+    json = simplejson.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes,
+                                 bricknames=bricknames, objids=objids,
+                                 zoom=zoom, tilex=x, tiley=y))
     dirnm = os.path.dirname(cachefn)
     if not os.path.exists(dirnm):
         try:

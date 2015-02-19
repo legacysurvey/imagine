@@ -82,11 +82,38 @@ function long2ra(lng) {
 }
 
 function ra2long(ra) {
-    return 180 - ra;
+    lng = 180 - ra;
+    if (lng < 0) {
+        lng += 360.;
+    }
+    return lng;
 }
 
 function getSubdomain(x,y) {
 	return subdomains[Math.abs(x + y) % subdomains.length];
+}
+
+function fluxToMag(f) {
+    return -2.5 * (Math.log(f)/Math.log(10.) - 9);
+}
+
+function onSourceClick(e) {
+    src = e.target;
+    fluxstr = '';
+    if ('g' in src.fluxes) {
+        fluxstr += 'g=' + fluxToMag(src.fluxes.g).toFixed(2);
+    }
+    if ('r' in src.fluxes) {
+        fluxstr += ', r=' + fluxToMag(src.fluxes.r).toFixed(2);
+    }
+    if ('z' in src.fluxes) {
+        fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
+    }
+    txt = 'Source RA,Dec = ' + src.ra.toFixed(4) + ', ' + src.dec.toFixed(4) +
+        '<br/>Source type: ' + src.type +
+        '<br/>Mags: ' + fluxstr +
+        '<br/>Brick: ' + src.brickname + ', Objid: ' + src.objid;
+    popup.setLatLng(e.latlng).setContent(txt).openOn(map);
 }
 
 function catLoaded(result) {
@@ -95,21 +122,68 @@ function catLoaded(result) {
         return;
     }
     //console.log('catloaded:' + result['rd']);
-    rdlist = result['rd']
+    rdlist = result['rd'];
     if ((result['zoom'] == undefined) || 
         (result['tilex'] == undefined) || 
         (result['tiley'] == undefined)) {
         return;
     }
+    objtype = result['sourcetype'];
+    fluxes = result['fluxes'];
     var circleList = new Array(rdlist.length);
     for (i=0, len=rdlist.length; i<len; i++) {
         r = rdlist[i][0];
         d = rdlist[i][1];
         lat = d;
         lng = ra2long(r);
-        circleList[i] = L.circle([lat, lng], 10);
+        
+        color = 'blue';
+        if (objtype == undefined) {
+            typ = 'nil';
+        } else {
+            typ = objtype[i];
+            if (objtype[i] == 'S') {
+                color = '#9AFE2E'; //#D8F781'; //'green';
+            } else if (objtype[i] == 'D') {
+                color = 'red';
+            } else if (objtype[i] == 'E') {
+                color = '#58ACFA'; // blue
+            } else if (objtype[i] == 'C') {
+                color = '#DA81F5'; // magenta
+            }
+        }
+
+        //circleList[i] = L.circle([lat, lng], 10);
+        circ = L.circleMarker([lat, lng], {'radius':10, 'color':color,
+                                           'fillOpacity':0, 'weight':5});
+        circ.ra = r;
+        circ.dec = d;
+        circ.type = typ;
+
+        if (fluxes == undefined) {
+            circ.fluxes = {};
+        } else {
+            circ.fluxes = fluxes[i];
+        }
+
+        if (result.bricknames == undefined) {
+            circ.brickname = '';
+        } else {
+            circ.brickname = result.bricknames[i];
+        }
+        if (result.objids == undefined) {
+            circ.objid = '';
+        } else {
+            circ.objid = result.objids[i];
+        }
+
+        circ.on('click', onSourceClick);
+
+        circleList[i] = circ;
     }
     circles = L.layerGroup(circleList);
+    //circles = L.featureGroup(circleList);
+    //circles.on('click', onSourceClick);
     sourcesGroup.addLayer(circles);
     // save this for later.
     key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
@@ -178,7 +252,9 @@ function onMapClick(e) {
     dec = e.latlng.lat;
     bricks = bricksUnderLatlng(e.latlng);
     ccds = ccdsUnderLatlng(e.latlng);
-    txt = 'RA,Dec = ' + ra.toFixed(4) + ', ' + dec.toFixed(4) +
+    //'lat,lng =' + e.latlng.lat.toFixed(4) + ',' + e.latlng.lng.toFixed(4) + '; ' +
+    txt = 
+        'RA,Dec = ' + ra.toFixed(4) + ', ' + dec.toFixed(4) +
         '<br/><a href="{{ baseurl }}ra=' + ra.toFixed(4) +
         '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom()
         + '">link here</a>';
@@ -580,19 +656,12 @@ if (idname == 'decals') {
     tiles.addTo(map);
 } else if (idname == 'decals-model') {
     tilesMod.addTo(map);
+} else if (idname == 'decals-edr2') {
+    tilesEdr2.addTo(map);
+} else if (idname == 'decals-model-edr2') {
+    tilesModEdr2.addTo(map);
 } else {
-
-    xtiles = new MyTileLayer('{{ tileurl|safe }}', {
-        maxZoom: 18,
-        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-        id: idname,
-        ver: getversion(idname),
-        // ?
-        unloadInvisibleTiles: true,
-        subdomains: subdomains,
-    });
-    xtiles.on('tileloadstart', onTileLoadStart);
-    xtiles.on('tileunload',    onTileUnload);
+    xtiles = createTileLayer(idname, idname);
     baseMaps[idname] = xtiles;
     xtiles.addTo(map);
 }
@@ -632,6 +701,12 @@ map.addLayer(ccdsGroup);
 console.log('done addLayer(ccds)');
 overlayAdded({name:'CCDs'});
 {% endif %}
+
+{% if showSources %}
+map.addLayer(sourcesGroup);
+overlayAdded({name:'Sources'});
+{% endif %}
+
 
 </script>
 </body>
