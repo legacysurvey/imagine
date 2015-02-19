@@ -14,6 +14,8 @@ tileversions = {
     'des-stripe82': [1,],
     'des-pr': [1,],
     'sfd': [1,],
+    'decals-edr2': [1,],
+    'decals-model-edr2': [1,],
     }
 
 catversions = {
@@ -81,15 +83,14 @@ def index(req):
 
     lat,lng = dec, ra2long(ra)
 
-    # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
-
     url = req.build_absolute_uri('/') + '{id}/{ver}/{z}/{x}/{y}.jpg'
-    tileurl = url.replace('://', '://{s}.')
     caturl = '/{id}/{ver}/{z}/{x}/{y}.cat.json'
 
-    #caturl = tileurl.replace('.jpg', '.cat.json')
-    #tileurl = '/{id}/{z}/{x}/{y}.jpg'
-    #caturl = '/{id}/{z}/{x}/{y}.cat.json'
+    # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
+    # tileurl = url.replace('://', '://{s}.')
+
+    # Testing:
+    tileurl = '/{id}/{ver}/{z}/{x}/{y}.jpg'
 
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
@@ -207,13 +208,17 @@ def map_decals_model_pr(req, ver, zoom, x, y):
                            rgbkwargs=rgbkwargs)
 
 def map_decals_edr2(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-edr2', 'decals',
-                           rgbkwargs=rgbkwargs)
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-edr2', 'decals-edr2',
+                           imagetag='image',
+                           rgbkwargs=rgbkwargs,
+                           layout=2)
 
 def map_decals_model_edr2(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz',
-                           'decals-model-edr2', 'decals-model', imagetag='model',
-                           rgbkwargs=rgbkwargs)
+                           'decals-model-edr2', 'decals-edr2',
+                           imagetag='model',
+                           rgbkwargs=rgbkwargs,
+                           layout=2)
 
 def map_des_stripe82(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'des-stripe82', 'des-stripe82')
@@ -303,6 +308,10 @@ def brick_list(req):
     east  = float(req.GET['east'])
     west  = float(req.GET['west'])
     #print 'N,S,E,W:', north, south, east, west
+
+    if east < 0:
+        east += 360.
+        west += 360.
 
     D = _get_decals()
     B = D.get_bricks_readonly()
@@ -468,7 +477,8 @@ def cat_decals(req, ver, zoom, x, y, tag='decals'):
     return send_file(cachefn, 'application/json', expires=oneyear)
     
 def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
-                    imagetag='image2', rgbkwargs={}):
+                    imagetag='image2', rgbkwargs={},
+                    layout=1):
     from decals import settings
 
     zoom = int(zoom)
@@ -508,8 +518,14 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     # print 'Dec range', d.min(), d.max()
     # print 'Zoom', zoom, 'pixel scale', wcs.pixel_scale()
 
-    basepat = os.path.join(basedir, 'coadd', imagedir,
-                           imagetag + '-%(brick)06i-%(band)s.fits')
+    if layout == 1:
+        basepat = os.path.join(basedir, 'coadd', imagedir,
+                               imagetag + '-%(brick)06i-%(band)s.fits')
+    elif layout == 2:
+        basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
+                               '%(brickname)s',
+                               'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
+        
     scaled = 0
     scalepat = None
     if zoom < 14:
@@ -537,8 +553,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     for band in bands:
         rimg = np.zeros((H,W), np.float32)
         rn   = np.zeros((H,W), np.uint8)
-        for brickid in B.brickid[I]:
-            fnargs = dict(brick=brickid, band=band)
+        for brickid,brickname in zip(B.brickid[I], B.brickname[I]):
+            fnargs = dict(brick=brickid, band=band, brickname=brickname)
             basefn = basepat % fnargs
             fn = get_scaled(scalepat, fnargs, scaled, basefn)
             #print 'Filename:', fn

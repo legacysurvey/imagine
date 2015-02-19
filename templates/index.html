@@ -73,6 +73,18 @@ MyTileLayer = L.TileLayer.extend({
 
 var subdomains = ['a','b','c','d'];
 
+function long2ra(lng) {
+    ra = 180. - lng;
+    if (ra < 0) {
+        ra += 360.;
+    }
+    return ra;
+}
+
+function ra2long(ra) {
+    return 180 - ra;
+}
+
 function getSubdomain(x,y) {
 	return subdomains[Math.abs(x + y) % subdomains.length];
 }
@@ -94,7 +106,7 @@ function catLoaded(result) {
         r = rdlist[i][0];
         d = rdlist[i][1];
         lat = d;
-        lng = 180 - r;
+        lng = ra2long(r);
         circleList[i] = L.circle([lat, lng], 10);
     }
     circles = L.layerGroup(circleList);
@@ -162,7 +174,7 @@ function ccd_detail(name, aparams) {
 }
 
 function onMapClick(e) {
-    ra = 180 - e.latlng.lng;
+    ra = long2ra(e.latlng.lng);
     dec = e.latlng.lat;
     bricks = bricksUnderLatlng(e.latlng);
     ccds = ccdsUnderLatlng(e.latlng);
@@ -184,7 +196,7 @@ function onMapClick(e) {
 }
 
 function onMouseMove(e) {
-    ra = 180 - e.latlng.lng;
+    ra = long2ra(e.latlng.lng);
     dec = e.latlng.lat;
     info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4);
     if (inbrickccdAdded) {
@@ -444,7 +456,7 @@ function ccdsLoaded(result) {
 function mapBoundsChanged() {
     latlng = map.getCenter();
     zoom = map.getZoom();
-    ra = 180 - latlng.lng;
+    ra = long2ra(latlng.lng);
     dec = latlng.lat;
     //console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
     if (showBricks) {
@@ -452,8 +464,8 @@ function mapBoundsChanged() {
         bricksurl = L.Util.template('{{ bricksurl|safe }}', L.extend({
             s: 'a',
             z: zoom,
-            west: (180 - bounds.getWest()).toFixed(4),
-            east: (180 - bounds.getEast()).toFixed(4),
+            west: long2ra(bounds.getWest()).toFixed(4),
+            east: long2ra(bounds.getEast()).toFixed(4),
             north: bounds.getNorth().toFixed(4),
             south: bounds.getSouth().toFixed(4),
             id: idname,
@@ -465,8 +477,8 @@ function mapBoundsChanged() {
         ccdsurl = L.Util.template('{{ ccdsurl|safe }}', L.extend({
             s: 'a',
             z: zoom,
-            west: (180 - bounds.getWest()).toFixed(4),
-            east: (180 - bounds.getEast()).toFixed(4),
+            west: long2ra(bounds.getWest()).toFixed(4),
+            east: long2ra(bounds.getEast()).toFixed(4),
             north: bounds.getNorth().toFixed(4),
             south: bounds.getSouth().toFixed(4),
             id: idname,
@@ -534,46 +546,33 @@ function getcatversion(layer) {
 
 var idname = '{{ layer }}';
 
-tiles = new MyTileLayer('{{ tileurl|safe }}', {
-    maxZoom: 18,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    //id: 'decals',
-    id: 'decals-pr',
-    ver: getversion('decals-pr'),
-    // ?
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-});
-tiles.on('tileloadstart', onTileLoadStart);
-tiles.on('tileunload',    onTileUnload);
+function createTileLayer(id, vertag) {
+    var tiles = new MyTileLayer('{{ tileurl|safe }}', {
+        maxZoom: 18,
+        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+        id: id,
+        ver: getversion(vertag),
+        // ?
+        unloadInvisibleTiles: true,
+        subdomains: subdomains,
+    });
+    tiles.on('tileloadstart', onTileLoadStart);
+    tiles.on('tileunload',    onTileUnload);
+    return tiles;
+}
 
-tilesMod = new MyTileLayer('{{ tileurl|safe }}', {
-    maxZoom: 18,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: 'decals-model-pr',
-    ver: getversion('decals-model-pr'),
-    // ?
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-});
-tilesMod.on('tileloadstart', onTileLoadStart);
-tilesMod.on('tileunload',    onTileUnload);
+tiles = createTileLayer('decals-pr', 'decals-pr');
+tilesMod = createTileLayer('decals-model-pr', 'decals-model-pr');
+tilesSfd = createTileLayer('sfd-tiles', 'sfd');
 
-tilesSfd = new MyTileLayer('{{ tileurl|safe }}', {
-    maxZoom: 18,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: 'sfd-tiles',
-    ver: getversion('sfd'),
-    // ?
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-});
-tilesSfd.on('tileloadstart', onTileLoadStart);
-tilesSfd.on('tileunload',    onTileUnload);
+tilesEdr2 = createTileLayer('decals-edr2', 'decals-edr2');
+tilesModEdr2 = createTileLayer('decals-model-edr2', 'decals-model-edr2');
 
 var baseMaps = {
-    "DECaLS images": tiles,
-    "DECaLS models": tilesMod,
+    "DECaLS EDR images": tiles,
+    "DECaLS EDR models": tilesMod,
+    "DECaLS EDR2 images": tilesEdr2,
+    "DECaLS EDR2 models": tilesModEdr2,
     "SFD dust map": tilesSfd,
 };
 
