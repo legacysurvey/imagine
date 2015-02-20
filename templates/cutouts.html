@@ -3,10 +3,25 @@
 {% block content %}
 <h1>DECaLS cutouts around RA,Dec = {{ ra }}, {{ dec }}</h1>
 
+<table>
+<tr>
+<th>CCD</th>
+<th>Image</th>
+<th>Model (EDR2)</th>
+<th>Resid</th>
+</tr>
 {% for ccd,x,y in ccds %}
-CCD {{ ccd.columns }} {{ ccd.expnum }} {{ ccd.extname }} x,y {{ x }}, {{ y }} <br/>
+<tr>
+<td>
+CCD {{ ccd.filter }} {{ ccd.expnum }} {{ ccd.extname }} x,y {{ x }}, {{ y }}
+</td>
+<td>
 <img src="{% url 'ccd_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
+<img src="{% url 'model_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
+<img src="{% url 'resid_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
+</td>
+</tr>
 {% endfor %}
-
+</table>
 {% endblock %}
 
