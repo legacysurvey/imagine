@@ -1,7 +1,6 @@
-<html>
-<head>
-<link rel="icon" type="image/png" href="/static/favicon.png" />
-<link rel="shortcut icon" href="/static/favicon.ico" />
+{% extends "base.html" %}
+
+{% block header %}
 <link rel="stylesheet" href="/static/leaflet-0.7.3.css" />
 <script src="/static/leaflet-src.js"></script>
 <script src="/static/jquery-2.1.1.min.js"></script>
@@ -45,8 +44,10 @@
 }
 
 </style>
-</head>
 
+{% endblock %}
+
+{% block body %}
 <body id="thebody">
 <div id="map" />
 
@@ -676,7 +677,10 @@ var popup = L.popup();
 var tileversions = {
     'decals-pr':4,
 };
-var catversions  = {};
+var catversions  = {
+    'decals': 2,
+    'decals-edr2': 2,
+};
 
 function getversion(layer) {
     if (layer in tileversions) {
@@ -828,4 +832,4 @@ overlayAdded({name:'Sources'});
 
 </script>
 </body>
-</html>
+{% endblock %}

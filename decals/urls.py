@@ -27,6 +27,11 @@ urlpatterns = patterns(
     # SFD dust map
     url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_sfd'),
 
+    ## Cutouts
+    url(r'^cutouts/', 'map.views.cutouts'),
+    url(r'^ccd_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.ccd_cutout', name='ccd_cutout'),
+    url(r'^ccd_cutout/(\d+)/([NS]\d{1,2})/', 'map.views.ccd_cutout', name='ccd_cutout'),
+
     # Catalogs
     url(r'^decals/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals'),
 

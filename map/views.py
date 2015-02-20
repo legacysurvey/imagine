@@ -20,8 +20,10 @@ tileversions = {
     }
 
 catversions = {
-    'decals': [1,],
-    'decals-edr2': [1,],
+    #'decals': [1,],
+    #'decals-edr2': [1,],
+    'decals': [2,],
+    'decals-edr2': [2,],
     }
 
 oneyear = (3600 * 24 * 365)
@@ -349,21 +351,12 @@ def brick_list(req):
 ccdtree = None
 CCDs = None
 
-def ccd_list(req):
-    import simplejson
+def _ccds_touching_box(north, south, east, west, Nmax=None):
     from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
     from astrometry.util.starutil_numpy import degrees_between
-    from astrometry.util.util import Tan
     import numpy as np
     global ccdtree
     global CCDs
-
-    north = float(req.GET['north'])
-    south = float(req.GET['south'])
-    east  = float(req.GET['east'])
-    west  = float(req.GET['west'])
-    #print 'N,S,E,W:', north, south, east, west
-
     if ccdtree is None:
         D = _get_decals()
         CCDs = D.get_ccds()
@@ -381,16 +374,30 @@ def ccd_list(req):
 
     J = tree_search_radec(ccdtree, ra, dec, radius)
 
-    # HACK -- limit result size...
-    J = J[:1000]
+    if Nmax is not None:
+        # limit result size
+        J = J[:Nmax]
+
+    return CCDs[J]
+
+def ccd_list(req):
+    import simplejson
+    from astrometry.util.util import Tan
+    import numpy as np
+
+    north = float(req.GET['north'])
+    south = float(req.GET['south'])
+    east  = float(req.GET['east'])
+    west  = float(req.GET['west'])
+    #print 'N,S,E,W:', north, south, east, west
+
+    CCDS = _ccds_touching_box(north, south, east, west, Nmax=1000)
 
     ccds = []
-    for c in CCDs[J]:
+    for c in CCDS:
         wcs = Tan(*[float(x) for x in [
             c.ra_bore, c.dec_bore, c.crpix1, c.crpix2, c.cd1_1, c.cd1_2,
             c.cd2_1, c.cd2_2, c.width, c.height]])
-        #x = np.array([1, 1, c.width, c.width, 1])
-        #y = np.array([1, c.height, c.height, 1, 1])
         x = np.array([1, 1, c.width, c.width])
         y = np.array([1, c.height, c.height, 1])
         r,d = wcs.pixelxy2radec(x, y)
@@ -741,3 +748,122 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
 #     os.close(f)
 #     plot.write(fn)
 #     return send_file(fn, 'image/jpeg', unlink=True)
+
+
+def cutouts(req):
+    from astrometry.util.util import Tan
+    import numpy as np
+
+    ra = float(req.GET['ra'])
+    dec = float(req.GET['dec'])
+
+    # half-size in DECam pixels
+    size = 25
+    W,H = size*2, size*2
+    
+    pixscale = 0.262 / 3600.
+    wcs = Tan(*[float(x) for x in [
+        ra, dec, size+0.5, size+0.5, -pixscale, 0., 0., pixscale, W, H]])
+
+    nil,north = wcs.pixelxy2radec(size+0.5, H)
+    nil,south = wcs.pixelxy2radec(size+0.5, 1)
+    west,nil  = wcs.pixelxy2radec(1, size+0.5)
+    east,nil  = wcs.pixelxy2radec(W, size+0.5)
+    
+    CCDs = _ccds_touching_box(north, south, east, west)
+
+    print len(CCDs), 'CCDs'
+
+    ccds = []
+    #for c in CCDs:
+    for i in range(len(CCDs)):
+        c = CCDs[i]
+        wcs = Tan(*[float(x) for x in [
+            c.ra_bore, c.dec_bore, c.crpix1, c.crpix2, c.cd1_1, c.cd1_2,
+            c.cd2_1, c.cd2_2, c.width, c.height]])
+        ok,x,y = wcs.radec2pixelxy(ra, dec)
+        x = int(np.round(x-1))
+        y = int(np.round(y-1))
+        if x < -size or x >= c.width+size or y < -size or y >= c.height+size:
+            continue
+
+        #print 'CCD', c
+        c = dict([(k,c.get(k)) for k in c.columns()])
+        #print 'CCD', c
+        ccds.append((c, x, y))
+
+    #print 'CCDS:', ccds
+
+    from django.shortcuts import render
+
+    return render(req, 'cutouts.html',
+                  dict(ra=ra, dec=dec,
+                       ccds=ccds,
+                       ))
+def ccd_cutout(req, expnum=None, extname=None): #expnum, extname): #expnum=None, extname=None):
+    import matplotlib
+    matplotlib.use('Agg')
+    import pylab as plt
+
+    import numpy as np
+    from decals import settings
+    
+    x = int(req.GET['x'], 10)
+    y = int(req.GET['y'], 10)
+    print 'CCD cutout:', expnum, extname, x, y
+
+    # Not ideal... look up local CP image name from expnum.
+    global CCDs
+    if CCDs is None:
+        D = _get_decals()
+        CCDs = D.get_ccds()
+
+    expnum = int(expnum, 10)
+    extname = str(extname)
+
+    I = np.flatnonzero((CCDs.expnum == expnum) * (CCDs.extname == extname))
+    assert(len(I) == 1)
+    ccd = CCDs[I[0]]
+
+    print 'CCD:', ccd
+    print 'cpname:', ccd.cpimage
+
+    basedir = os.path.join(settings.WEB_DIR, 'data')
+
+    #fn = os.path.basename(ccd.cpimage)
+    # drop 'decals/' off the front...
+    fn = ccd.cpimage
+    fn = fn.replace('decals/','')
+    fn = os.path.join(basedir, fn)
+    if not os.path.exists(fn):
+        return HttpResponse('no such image: ' + fn) #ccd.cpimage)
+
+    import fitsio
+
+    # half-size in DECam pixels -- must match cutouts():size
+    size = 25
+
+    # hard-coded DECam image size
+    # H,W = 2046,4094
+
+    img = fitsio.FITS(fn)[ccd.cpimage_hdu]
+    H,W = img.get_info()['dims']
+    slc = slice(max(y-size, 0), min(y+size, H)), slice(max(x-size, 0), min(x+size, W))
+    img = img[slc]
+    #print 'Image', img
+    #[slc]
+    print 'Image', img.shape
+
+    import tempfile
+    f,tilefn = tempfile.mkstemp(suffix='.jpg')
+    os.close(f)
+
+    mn,mx = [np.percentile(img, p) for p in [25,99]]
+
+    #plt.clf()
+    #plt.imshow(img, interpolation='nearest', origin='lower', vmin=mn, vmax=mx)
+    #plt.savefig(tilefn)
+    plt.imsave(tilefn, np.clip((img - mn) / (mx - mn), 0., 1.), cmap='gray')
+        
+    return send_file(tilefn, 'image/jpeg', unlink=True)
+

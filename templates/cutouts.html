@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>DECaLS cutouts around RA,Dec = {{ ra }}, {{ dec }}</h1>
+
+{% for ccd,x,y in ccds %}
+CCD {{ ccd.columns }} {{ ccd.expnum }} {{ ccd.extname }} x,y {{ x }}, {{ y }} <br/>
+<img src="{% url 'ccd_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
+{% endfor %}
+
+{% endblock %}
+
