@@ -68,8 +68,71 @@ MyTileLayer = L.TileLayer.extend({
             tile: tile,
             url: tile.src,
         });
-    },
+    }
 });
+
+MyLayerControl = L.Control.Layers.extend({
+    // copied from leaflet-src.js
+	_onInputClick: function () {
+		var i, input, obj,
+		    inputs = this._form.getElementsByTagName('input'),
+		    inputsLen = inputs.length;
+
+		this._handlingClick = true;
+
+        var adding;
+        var removing;
+        console.log('Click on input layer selector');
+		for (i = 0; i < inputsLen; i++) {
+			input = inputs[i];
+			obj = this._layers[input.layerId];
+			if (input.checked && !this._map.hasLayer(obj.layer)) {
+                //console.log('Layer selector: adding ' + obj.name);
+                adding = obj;
+                //console.log('Layer selector: done adding ' + obj.name);
+			} else if (!input.checked && this._map.hasLayer(obj.layer)) {
+                //console.log('Layer selector: removing ' + obj.name);
+                removing = obj;
+                //console.log('Layer selector: done removing ' + obj.name);
+			}
+		}
+        if ((adding != undefined) && (removing != undefined)) {
+            console.log('Layer selector: switching base layers from ' + removing.name + ' to ' + adding.name);
+            if (!adding.overlay) {
+                this._map.fire('prebaselayerchange', {'removing':removing.layer,
+                                                      'adding':adding.layer});
+            }
+        }
+        if (adding != undefined) {
+		    this._map.addLayer(adding.layer);
+        }
+        if (removing != undefined) {
+		    this._map.removeLayer(removing.layer);
+        }
+        if ((adding != undefined) && (removing != undefined)) {
+            console.log('Layer selector: done switching base layers from ' + removing.name + ' to ' + adding.name);
+            if (!adding.overlay) {
+                this._map.fire('postbaselayerchange', {'removing':removing.layer,
+                                                       'adding':adding.layer});
+            }
+        }
+
+		this._handlingClick = false;
+		this._refocusOnMap();
+	}
+});
+
+// Javascript newbie, right here...
+function getkeys(obj) {
+    s = '';
+    for (k in obj) {
+        if (s.length) {
+            s += ', ';
+        }
+        s += k;
+    }
+    return s;
+}
 
 var subdomains = ['a','b','c','d'];
 
@@ -572,24 +635,6 @@ function onMapMoveEnd(e) {
     mapBoundsChanged();
 }
 
-function onMapBaseLayerChange(e) {
-    console.log('Map base layer changed');
-    if (e.layer.catname != undefined) {
-        if (e.layer.catname == catname) {
-            console.log('Catalog name unchanged');
-            return;
-        }
-        console.log('Setting catalog name to ' + e.layer.catname);
-        catname = e.layer.catname;
-
-        if (showSources) {
-            console.log('Removing sources');
-            overlayRemoved({name:'Sources'});
-            overlayAdded({name:'Sources'});
-        }
-    }
-}
-
 var inbrickccd = L.control();
 inbrickccd.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'inbrickccd');
@@ -600,6 +645,7 @@ inbrickccd.update = inbrickccdUpdate;
 var inbrickccdAdded = false;
 
 var showSources = false;
+var switchingSources = false;
 var sourcesGroup = L.layerGroup([]);
 var catLayers = {};
 var visibleTiles = {};
@@ -709,10 +755,15 @@ var overlayMaps = {
     "CCDs": ccdsGroup,
 };
 
-L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+//L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+
+new MyLayerControl(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
 function onMapLayerAdd(e) {
-    console.log('Map layer add');
+    //console.log('Map layer add');
+    //console.log('Map layer add: e keys: ' + getkeys(e));
+    //console.log('Map layer add: e target: ' + getkeys(e.target));
+
     for (var k in baseMaps) { //.keys()) {
         if (e.target == baseMaps[k]) {
             console.log('adding base map layer ' + k);
@@ -728,22 +779,78 @@ function onMapLayerRemove(e) {
     //    console.log('removing base map layer');
     //}
     for (var k in baseMaps) { //.keys()) {
-        console.log('checking baseMaps ' + k);
+        //console.log('checking baseMaps ' + k);
         if (e.target == baseMaps[k]) {
             console.log('removing base map layer ' + k);
         }
     }
 }
 
+function onMapBaseLayerChange(e) {
+    console.log('Map base layer changed');
+    if (e.layer.catname != undefined) {
+        if (e.layer.catname == catname) {
+            console.log('Catalog name unchanged');
+            return;
+        }
+        console.log('Setting catalog name to ' + e.layer.catname);
+        catname = e.layer.catname;
+
+        if (showSources) {
+            console.log('Removing sources');
+            overlayRemoved({name:'Sources'});
+            overlayAdded({name:'Sources'});
+        }
+    }
+}
+
+function onMapPreBaseLayerChange(e) {
+    console.log('PRE Map base layer change');
+    console.log('removing: catalog name: ' + e.removing.catname);
+    console.log('adding: catalog name: ' + e.adding.catname);
+    if ((e.adding.catname == undefined) || (e.removing.catname == undefined)) {
+        return;
+    }
+    if (!showSources || (e.removing.catname == e.adding.catname)) {
+        return;
+    }
+
+    console.log('Removing sources');
+    switchingSources = true;
+    overlayRemoved({name:'Sources'});
+
+    catname = e.adding.catname;
+    console.log('Switched catalog name to ' + catname);
+}
+
+function onMapPostBaseLayerChange(e) {
+    console.log('POST Map base layer change');
+    console.log('removing: catalog name: ' + e.removing.catname);
+    console.log('adding: catalog name: ' + e.adding.catname);
+
+    if ((e.adding.catname == undefined) || (e.removing.catname == undefined)) {
+        return;
+    }
+    if (!switchingSources || (e.removing.catname == e.adding.catname)) {
+        return;
+    }
+    
+    console.log('Re-adding sources');
+    overlayAdded({name:'Sources'});
+}
+
+
 map.on('mousemove', onMouseMove);
 map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
 map.on('click', onMapClick);
 map.on('moveend', onMapMoveEnd);
-map.on('baselayerchange', onMapBaseLayerChange);
+map.on('prebaselayerchange', onMapPreBaseLayerChange);
+map.on('postbaselayerchange', onMapPostBaseLayerChange);
 
-map.on('layeradd', onMapLayerAdd);
-map.on('layerremove', onMapLayerRemove);
+//map.on('baselayerchange', onMapBaseLayerChange);
+//map.on('layeradd', onMapLayerAdd);
+//map.on('layerremove', onMapLayerRemove);
 
 map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
