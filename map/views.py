@@ -87,10 +87,10 @@ def index(req):
     caturl = '/{id}/{ver}/{z}/{x}/{y}.cat.json'
 
     # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
-    tileurl = url.replace('://', '://{s}.')
+    #tileurl = url.replace('://', '://{s}.')
 
     # Testing:
-    #tileurl = '/{id}/{ver}/{z}/{x}/{y}.jpg'
+    tileurl = '/{id}/{ver}/{z}/{x}/{y}.jpg'
 
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
@@ -403,7 +403,10 @@ def brick_detail(req, brickname):
     #brickname = req.GET['brick']
     return HttpResponse('Brick ' + brickname)
 
-def cat_decals(req, ver, zoom, x, y, tag='decals'):
+def cat_decals_edr2(req, ver, zoom, x, y, tag='decals-edr2'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
+
+def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1):
     import simplejson
 
     zoom = int(zoom)
@@ -435,15 +438,19 @@ def cat_decals(req, ver, zoom, x, y, tag='decals'):
 
     ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                [1,H/2,H,H,H,H/2,1,1])
-    catpat = os.path.join(basedir, 'cats', tag,
-                          'tractor-%(brick)06i.fits')
+    if layout == 1:
+        catpat = os.path.join(basedir, 'cats', tag,
+                              'tractor-%(brick)06i.fits')
+    elif layout == 2:
+        catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
+                              'tractor-%(brickname)s.fits')
     D = _get_decals()
     B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
 
     cat = []
-    for brickid in B.brickid[I]:
-        fnargs = dict(brick=brickid)
+    for brickid,brickname in zip(B.brickid[I], B.brickname[I]):
+        fnargs = dict(brick=brickid, brickname=brickname)
         catfn = catpat % fnargs
         if not os.path.exists(catfn):
             print 'Does not exist:', catfn
@@ -455,6 +462,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals'):
         ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
         #print 'xx,yy', xx.min(), xx.max(), yy.min(), yy.max()
         T.cut((xx > 0) * (yy > 0) * (xx < W) * (yy < H))
+        print 'kept', len(T), 'from', catfn
         cat.append(T)
     if len(cat) == 0:
         rd = []
@@ -566,7 +574,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         rimg = np.zeros((H,W), np.float32)
         rn   = np.zeros((H,W), np.uint8)
         for brickid,brickname in zip(B.brickid[I], B.brickname[I]):
-            fnargs = dict(brick=brickid, band=band, brickname=brickname)
+            fnargs = dict(band=band, brick=brickid, brickname=brickname)
             basefn = basepat % fnargs
             fn = get_scaled(scalepat, fnargs, scaled, basefn)
             #print 'Filename:', fn

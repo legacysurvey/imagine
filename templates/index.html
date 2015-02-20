@@ -187,10 +187,13 @@ function catLoaded(result) {
     sourcesGroup.addLayer(circles);
     // save this for later.
     key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
+    console.log('catalog loaded: key ' + key);
     catLayers[key] = circles;
 }
 
+// Reads global "catname", name of catalog sources to load.
 function doLoadTile(tile) {
+    //console.log('doLoadtile: ' + tile);
     if (tile.z < 12) {
         return;
     }
@@ -200,9 +203,10 @@ function doLoadTile(tile) {
         z: tile.z,
         x: tile.tilex,
         y: tile.tiley,
-        id: idname,
-        ver: getcatversion(idname),
+        id: catname,
+        ver: getcatversion(catname),
     }));
+    console.log('Loading catalog version ' + catname);
     $.getJSON(caturl, catLoaded);
 }
 
@@ -218,7 +222,7 @@ function onTileLoadStart(e) {
 }
 
 function doUnloadTile(key) {
-    //console.log('doUnloadTile: ' + key);
+    console.log('doUnloadTile: ' + key);
     circles = catLayers[key];
     //map.removeLayer(circles);
     sourcesGroup.removeLayer(circles);
@@ -568,6 +572,24 @@ function onMapMoveEnd(e) {
     mapBoundsChanged();
 }
 
+function onMapBaseLayerChange(e) {
+    console.log('Map base layer changed');
+    if (e.layer.catname != undefined) {
+        if (e.layer.catname == catname) {
+            console.log('Catalog name unchanged');
+            return;
+        }
+        console.log('Setting catalog name to ' + e.layer.catname);
+        catname = e.layer.catname;
+
+        if (showSources) {
+            console.log('Removing sources');
+            overlayRemoved({name:'Sources'});
+            overlayAdded({name:'Sources'});
+        }
+    }
+}
+
 var inbrickccd = L.control();
 inbrickccd.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'inbrickccd');
@@ -621,6 +643,7 @@ function getcatversion(layer) {
 }
 
 var idname = '{{ layer }}';
+var catname = 'decals';
 
 function createTileLayer(id, vertag) {
     var tiles = new MyTileLayer('{{ tileurl|safe }}', {
@@ -638,11 +661,15 @@ function createTileLayer(id, vertag) {
 }
 
 tiles = createTileLayer('decals-pr', 'decals-pr');
+tiles.catname = 'decals';
 tilesMod = createTileLayer('decals-model-pr', 'decals-model-pr');
+tilesMod.catname = 'decals';
 tilesSfd = createTileLayer('sfd-tiles', 'sfd');
 
 tilesEdr2 = createTileLayer('decals-edr2', 'decals-edr2');
+tilesEdr2.catname = 'decals-edr2';
 tilesModEdr2 = createTileLayer('decals-model-edr2', 'decals-model-edr2');
+tilesModEdr2.catname = 'decals-edr2';
 
 var baseMaps = {
     "DECaLS EDR images": tiles,
@@ -658,8 +685,10 @@ if (idname == 'decals') {
     tilesMod.addTo(map);
 } else if (idname == 'decals-edr2') {
     tilesEdr2.addTo(map);
+    catname = 'decals-edr2';
 } else if (idname == 'decals-model-edr2') {
     tilesModEdr2.addTo(map);
+    catname = 'decals-edr2';
 } else {
     xtiles = createTileLayer(idname, idname);
     baseMaps[idname] = xtiles;
@@ -682,11 +711,39 @@ var overlayMaps = {
 
 L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
+function onMapLayerAdd(e) {
+    console.log('Map layer add');
+    for (var k in baseMaps) { //.keys()) {
+        if (e.target == baseMaps[k]) {
+            console.log('adding base map layer ' + k);
+        }
+    }
+    //if (e.target in baseMaps.values()) {
+    //console.log('adding base map layer');
+    //}
+}
+function onMapLayerRemove(e) {
+    console.log('Map layer remove');
+    //if (e.target in baseMaps.values()) {
+    //    console.log('removing base map layer');
+    //}
+    for (var k in baseMaps) { //.keys()) {
+        console.log('checking baseMaps ' + k);
+        if (e.target == baseMaps[k]) {
+            console.log('removing base map layer ' + k);
+        }
+    }
+}
+
 map.on('mousemove', onMouseMove);
 map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
 map.on('click', onMapClick);
 map.on('moveend', onMapMoveEnd);
+map.on('baselayerchange', onMapBaseLayerChange);
+
+map.on('layeradd', onMapLayerAdd);
+map.on('layerremove', onMapLayerRemove);
 
 map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
 

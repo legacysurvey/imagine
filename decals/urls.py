@@ -25,9 +25,8 @@ urlpatterns = patterns(
 
     # Catalogs
     url(r'^decals/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals'),
-    url(r'^decals-model/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals'),
 
-    url(r'^decals-model-edr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals'),
+    url(r'^decals-edr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals_edr2'),
 
     # brick list of polygons
     url(r'^bricks/', 'map.views.brick_list'),
