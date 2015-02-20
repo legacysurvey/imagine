@@ -82,7 +82,7 @@ MyLayerControl = L.Control.Layers.extend({
 
         var adding;
         var removing;
-        console.log('Click on input layer selector');
+        //console.log('Click on input layer selector');
 		for (i = 0; i < inputsLen; i++) {
 			input = inputs[i];
 			obj = this._layers[input.layerId];
@@ -97,7 +97,7 @@ MyLayerControl = L.Control.Layers.extend({
 			}
 		}
         if ((adding != undefined) && (removing != undefined)) {
-            console.log('Layer selector: switching base layers from ' + removing.name + ' to ' + adding.name);
+            //console.log('Layer selector: switching base layers from ' + removing.name + ' to ' + adding.name);
             if (!adding.overlay) {
                 this._map.fire('prebaselayerchange', {'removing':removing.layer,
                                                       'adding':adding.layer});
@@ -110,7 +110,7 @@ MyLayerControl = L.Control.Layers.extend({
 		    this._map.removeLayer(removing.layer);
         }
         if ((adding != undefined) && (removing != undefined)) {
-            console.log('Layer selector: done switching base layers from ' + removing.name + ' to ' + adding.name);
+            //console.log('Layer selector: done switching base layers from ' + removing.name + ' to ' + adding.name);
             if (!adding.overlay) {
                 this._map.fire('postbaselayerchange', {'removing':removing.layer,
                                                        'adding':adding.layer});
@@ -269,7 +269,7 @@ function doLoadTile(tile) {
         id: catname,
         ver: getcatversion(catname),
     }));
-    console.log('Loading catalog version ' + catname);
+    //console.log('Loading catalog version ' + catname);
     $.getJSON(caturl, catLoaded);
 }
 
@@ -285,7 +285,7 @@ function onTileLoadStart(e) {
 }
 
 function doUnloadTile(key) {
-    console.log('doUnloadTile: ' + key);
+    //console.log('doUnloadTile: ' + key);
     circles = catLayers[key];
     //map.removeLayer(circles);
     sourcesGroup.removeLayer(circles);
@@ -645,6 +645,9 @@ inbrickccd.update = inbrickccdUpdate;
 var inbrickccdAdded = false;
 
 var showSources = false;
+// "switchingSources" is only used when changing map base layers
+// that have different catalogs; this requires some carefulness in
+// the ordering of adding and removing layers.
 var switchingSources = false;
 var sourcesGroup = L.layerGroup([]);
 var catLayers = {};
@@ -755,54 +758,7 @@ var overlayMaps = {
     "CCDs": ccdsGroup,
 };
 
-//L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
-
 new MyLayerControl(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
-
-function onMapLayerAdd(e) {
-    //console.log('Map layer add');
-    //console.log('Map layer add: e keys: ' + getkeys(e));
-    //console.log('Map layer add: e target: ' + getkeys(e.target));
-
-    for (var k in baseMaps) { //.keys()) {
-        if (e.target == baseMaps[k]) {
-            console.log('adding base map layer ' + k);
-        }
-    }
-    //if (e.target in baseMaps.values()) {
-    //console.log('adding base map layer');
-    //}
-}
-function onMapLayerRemove(e) {
-    console.log('Map layer remove');
-    //if (e.target in baseMaps.values()) {
-    //    console.log('removing base map layer');
-    //}
-    for (var k in baseMaps) { //.keys()) {
-        //console.log('checking baseMaps ' + k);
-        if (e.target == baseMaps[k]) {
-            console.log('removing base map layer ' + k);
-        }
-    }
-}
-
-function onMapBaseLayerChange(e) {
-    console.log('Map base layer changed');
-    if (e.layer.catname != undefined) {
-        if (e.layer.catname == catname) {
-            console.log('Catalog name unchanged');
-            return;
-        }
-        console.log('Setting catalog name to ' + e.layer.catname);
-        catname = e.layer.catname;
-
-        if (showSources) {
-            console.log('Removing sources');
-            overlayRemoved({name:'Sources'});
-            overlayAdded({name:'Sources'});
-        }
-    }
-}
 
 function onMapPreBaseLayerChange(e) {
     console.log('PRE Map base layer change');
@@ -814,11 +770,9 @@ function onMapPreBaseLayerChange(e) {
     if (!showSources || (e.removing.catname == e.adding.catname)) {
         return;
     }
-
     console.log('Removing sources');
     switchingSources = true;
     overlayRemoved({name:'Sources'});
-
     catname = e.adding.catname;
     console.log('Switched catalog name to ' + catname);
 }
@@ -827,18 +781,15 @@ function onMapPostBaseLayerChange(e) {
     console.log('POST Map base layer change');
     console.log('removing: catalog name: ' + e.removing.catname);
     console.log('adding: catalog name: ' + e.adding.catname);
-
     if ((e.adding.catname == undefined) || (e.removing.catname == undefined)) {
         return;
     }
     if (!switchingSources || (e.removing.catname == e.adding.catname)) {
         return;
     }
-    
     console.log('Re-adding sources');
     overlayAdded({name:'Sources'});
 }
-
 
 map.on('mousemove', onMouseMove);
 map.on('overlayadd', overlayAdded);
@@ -847,10 +798,6 @@ map.on('click', onMapClick);
 map.on('moveend', onMapMoveEnd);
 map.on('prebaselayerchange', onMapPreBaseLayerChange);
 map.on('postbaselayerchange', onMapPostBaseLayerChange);
-
-//map.on('baselayerchange', onMapBaseLayerChange);
-//map.on('layeradd', onMapLayerAdd);
-//map.on('layerremove', onMapLayerRemove);
 
 map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
 
