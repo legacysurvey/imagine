@@ -16,6 +16,7 @@ tileversions = {
     'sfd': [1,],
     'decals-edr2': [1,],
     'decals-model-edr2': [1,],
+    'decals-resid-edr2': [1,],
     }
 
 catversions = {
@@ -219,6 +220,13 @@ def map_decals_model_edr2(req, ver, zoom, x, y):
                            'decals-model-edr2', 'decals-edr2',
                            imagetag='model',
                            rgbkwargs=rgbkwargs,
+                           layout=2)
+
+def map_decals_resid_edr2(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
+                           'decals-resid-edr2', 'decals-edr2',
+                           imagetag='resid',
+                           rgbkwargs=dict(mnmx=(-5,5)),
                            layout=2)
 
 def map_des_stripe82(req, ver, zoom, x, y):
@@ -575,8 +583,27 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         rn   = np.zeros((H,W), np.uint8)
         for brickid,brickname in zip(B.brickid[I], B.brickname[I]):
             fnargs = dict(band=band, brick=brickid, brickname=brickname)
-            basefn = basepat % fnargs
-            fn = get_scaled(scalepat, fnargs, scaled, basefn)
+
+            if imagetag == 'resid':
+                basefn = basepat % fnargs
+
+                if scalepat is None:
+                    imscalepat = None
+                    modscalepat = None
+                else:
+                    imscalepat = scalepat.replace('resid', 'image')
+                    modscalepat = scalepat.replace('resid', 'model')
+                imbasefn = basefn.replace('resid', 'image')
+                imfn = get_scaled(imscalepat, fnargs, scaled, imbasefn)
+                print 'imfn', imfn
+                modbasefn = basefn.replace('resid', 'model')
+                modfn = get_scaled(modscalepat, fnargs, scaled, modbasefn)
+                print 'modfn', modfn
+                fn = imfn
+
+            else:
+                basefn = basepat % fnargs
+                fn = get_scaled(scalepat, fnargs, scaled, basefn)
             #print 'Filename:', fn
             if fn is None:
                 savecache = False
@@ -616,6 +643,14 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             try:
                 f = fitsio.FITS(fn)[0]
                 img = f[slc]
+                del f
+
+                if imagetag == 'resid':
+                    f = fitsio.FITS(modfn)[0]
+                    mod = f[slc]
+                    del f
+                    img = img - mod
+                
             except:
                 print 'Failed to read image and WCS:', fn
                 savecache = False

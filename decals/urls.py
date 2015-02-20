@@ -21,6 +21,10 @@ urlpatterns = patterns(
     url(r'^decals-edr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_edr2'),
     url(r'^decals-model-edr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_model_edr2'),
 
+    # EDR2 residuals
+    url(r'^decals-resid-edr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_resid_edr2'),
+
+    # SFD dust map
     url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_sfd'),
 
     # Catalogs

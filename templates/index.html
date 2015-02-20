@@ -216,9 +216,10 @@ function catLoaded(result) {
             }
         }
 
-        //circleList[i] = L.circle([lat, lng], 10);
-        circ = L.circleMarker([lat, lng], {'radius':10, 'color':color,
-                                           'fillOpacity':0, 'weight':5});
+        //circ = L.circleMarker([lat, lng], {'radius':10, 'color':color,
+        //                                 'fillOpacity':0, 'weight':5});
+        circ = L.circle([lat, lng], 30, {'color':color,
+                                         'fillOpacity':0, 'weight':5});
         circ.ra = r;
         circ.dec = d;
         circ.type = typ;
@@ -719,12 +720,15 @@ tilesEdr2 = createTileLayer('decals-edr2', 'decals-edr2');
 tilesEdr2.catname = 'decals-edr2';
 tilesModEdr2 = createTileLayer('decals-model-edr2', 'decals-model-edr2');
 tilesModEdr2.catname = 'decals-edr2';
+tilesResidEdr2 = createTileLayer('decals-resid-edr2', 'decals-resid-edr2');
+tilesResidEdr2.catname = 'decals-edr2';
 
 var baseMaps = {
     "DECaLS EDR images": tiles,
     "DECaLS EDR models": tilesMod,
     "DECaLS EDR2 images": tilesEdr2,
     "DECaLS EDR2 models": tilesModEdr2,
+    "DECaLS EDR2 residuals": tilesResidEdr2,
     "SFD dust map": tilesSfd,
 };
 
@@ -737,6 +741,9 @@ if (idname == 'decals') {
     catname = 'decals-edr2';
 } else if (idname == 'decals-model-edr2') {
     tilesModEdr2.addTo(map);
+    catname = 'decals-edr2';
+} else if (idname == 'decals-resid-edr2') {
+    tilesResidEdr2.addTo(map);
     catname = 'decals-edr2';
 } else {
     xtiles = createTileLayer(idname, idname);
