@@ -72,7 +72,7 @@ def index(req):
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
     # EDR2 region
-    ra, dec, zoom = 243.7, 8.2, 13
+    ra, dec, zoom = 243.7, 8.2, 14
 
     try:
         zoom = int(req.GET.get('zoom', zoom))
