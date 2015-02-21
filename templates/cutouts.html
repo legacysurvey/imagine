@@ -17,8 +17,13 @@ CCD {{ ccd.filter }} {{ ccd.expnum }} {{ ccd.extname }} x,y {{ x }}, {{ y }}
 </td>
 <td>
 <img src="{% url 'ccd_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
+</td>
+<td>
 <img src="{% url 'model_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
+</td>
+<td>
 <img src="{% url 'resid_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
+</td>
 </td>
 </tr>
 {% endfor %}

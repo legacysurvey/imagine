@@ -451,7 +451,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1):
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
                          expires=oneyear)
 
-    cat = _get_decals_cat(wcs, layout=layout, tag=tag)
+    cat,hdr = _get_decals_cat(wcs, layout=layout, tag=tag)
 
     if cat is None:
         rd = []
@@ -506,6 +506,7 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
 
     cat = []
+    hdr = None
     for brickid,brickname in zip(B.brickid[I], B.brickname[I]):
         fnargs = dict(brick=brickid, brickname=brickname)
         catfn = catpat % fnargs
@@ -521,12 +522,14 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
         T.cut((xx > 0) * (yy > 0) * (xx < W) * (yy < H))
         print 'kept', len(T), 'from', catfn
         cat.append(T)
+        if hdr is None:
+            hdr = T.get_header()
     if len(cat) == 0:
         cat = None
     else:
         cat = merge_tables(cat)
 
-    return cat
+    return cat,hdr
     
 def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={},
@@ -861,49 +864,57 @@ def _get_image_slice(fn, hdu, x, y, size=50):
 
 
 def ccd_cutout(req, expnum=None, extname=None):
-    import matplotlib
-    matplotlib.use('Agg')
-    import pylab as plt
+    return _cutout(req, expnum, extname, image=True)
 
-    import numpy as np
-    
-    x = int(req.GET['x'], 10)
-    y = int(req.GET['y'], 10)
-    #print 'CCD cutout:', expnum, extname, x, y
-
-    ccd = _get_ccd(expnum, extname)
-    #print 'CCD:', ccd
-    #print 'cpname:', ccd.cpimage
-
-    fn = _get_image_filename(ccd)
-    if not os.path.exists(fn):
-        #print 'NO IMAGE:', fn
-        print 'rsync -Rrv carver:tractor/decals/images/./' + fn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images'
-        return HttpResponse('no such image: ' + fn)
-
-    import fitsio
-
-    # half-size in DECam pixels -- must match cutouts():size
-    size = 50
-
-    img,slc,xstart,ystart = _get_image_slice(fn, ccd.cpimage_hdu, x, y, size=size)
-
-    mn,mx = [np.percentile(img, p) for p in [25,99]]
-
-    ih,iw = img.shape
-    padimg = np.zeros((2*size,2*size), img.dtype) + (mn+mx)/2.
-    padimg[ystart:ystart+ih, xstart:xstart+iw] = img
-    img = padimg
-
-    import tempfile
-    f,tilefn = tempfile.mkstemp(suffix='.jpg')
-    os.close(f)
-
-    plt.imsave(tilefn, np.clip((img - mn) / (mx - mn), 0., 1.), cmap='gray')
-        
-    return send_file(tilefn, 'image/jpeg', unlink=True)
+#     import matplotlib
+#     matplotlib.use('Agg')
+#     import pylab as plt
+# 
+#     import numpy as np
+#     
+#     x = int(req.GET['x'], 10)
+#     y = int(req.GET['y'], 10)
+#     #print 'CCD cutout:', expnum, extname, x, y
+# 
+#     ccd = _get_ccd(expnum, extname)
+#     #print 'CCD:', ccd
+#     #print 'cpname:', ccd.cpimage
+# 
+#     fn = _get_image_filename(ccd)
+#     if not os.path.exists(fn):
+#         #print 'NO IMAGE:', fn
+#         print 'rsync -Rrv carver:tractor/decals/images/./' + fn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images'
+#         return HttpResponse('no such image: ' + fn)
+# 
+#     import fitsio
+# 
+#     # half-size in DECam pixels -- must match cutouts():size
+#     size = 50
+# 
+#     img,slc,xstart,ystart = _get_image_slice(fn, ccd.cpimage_hdu, x, y, size=size)
+# 
+#     mn,mx = [np.percentile(img, p) for p in [25,99]]
+# 
+#     ih,iw = img.shape
+#     padimg = np.zeros((2*size,2*size), img.dtype) + (mn+mx)/2.
+#     padimg[ystart:ystart+ih, xstart:xstart+iw] = img
+#     img = padimg
+# 
+#     import tempfile
+#     f,tilefn = tempfile.mkstemp(suffix='.jpg')
+#     os.close(f)
+# 
+#     plt.imsave(tilefn, np.clip((img - mn) / (mx - mn), 0., 1.), cmap='gray')
+#         
+#     return send_file(tilefn, 'image/jpeg', unlink=True)
 
 def model_cutout(req, expnum=None, extname=None):
+    return _cutout(req, expnum, extname, model=True)
+
+def resid_cutout(req, expnum=None, extname=None):
+    return _cutout(req, expnum, extname, resid=True)
+
+def _cutout(req, expnum, extname, model=False, image=False, resid=False):
     import matplotlib
     matplotlib.use('Agg')
     import pylab as plt
@@ -922,8 +933,11 @@ def model_cutout(req, expnum=None, extname=None):
 
     wfn = fn.replace('ooi', 'oow')
     if not os.path.exists(wfn):
-        print '\n' + 'rsync -Rrv carver:tractor/decals/images/./' + wfn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images' + '\n'
-        return HttpResponse('no such image: ' + wfn)
+        cmd = 'rsync -Rrv carver:tractor/decals/images/./' + wfn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images'
+        print '\n' + cmd + '\n'
+        os.system(cmd)
+        if not os.path.exists(wfn):
+            return HttpResponse('no such image: ' + wfn)
 
     # half-size in DECam pixels -- must match cutouts():size
     size = 50
@@ -936,42 +950,53 @@ def model_cutout(req, expnum=None, extname=None):
     ccd.cpimage = fn
     im = DecamImage(ccd)
     D = _get_decals()
-    tim = im.get_tractor_image(decals, slc=slc,
-                               nanomaggies=False, subsky=False)
+    tim = im.get_tractor_image(decals, slc=slc)
+                               #nanomaggies=False, subsky=False)
+    # nanomaggies
+    mn,mx = -0.1, 0.25
 
-    import scipy
-    print 'scipy version:', scipy.__version__
+    if image:
+        img = tim.getImage()
+        
+    if model or resid:
+        # UGH, this is just nasty.
+        from tractor.psfex import CachingPsfEx
+        tim.psfex.radius = 20
+        tim.psfex.fitSavedData(*tim.psfex.splinedata)
+        tim.psf = CachingPsfEx.fromPsfEx(tim.psfex)
 
-    # UGH, this is just nasty.
-    from tractor.psfex import CachingPsfEx
-    tim.psfex.radius = 20
-    tim.psfex.fitSavedData(*tim.psfex.splinedata)
-    tim.psf = CachingPsfEx.fromPsfEx(tim.psfex)
+        M = 10
+        margwcs = tim.subwcs.get_subimage(-M, -M, int(tim.subwcs.get_width())+2*M, int(tim.subwcs.get_height())+2*M)
+        cat,hdr = _get_decals_cat(margwcs, layout=2, tag='decals-edr2')
+        # print len(cat), 'catalog objects'
+        if cat is None:
+            tcat = []
+        else:
+            tcat = read_fits_catalog(cat, hdr=hdr)
+        # print len(tcat), 'Tractor sources'
 
-    cat = _get_decals_cat(tim.subwcs, layout=2, tag='decals-edr2')
-    print len(cat), 'catalog objects'
-
-    tcat = read_fits_catalog(cat)
-    print len(tcat), 'Tractor sources'
-
-    tr = Tractor([tim], tcat)
-    mod = tr.getModelImage(0)
-
-    mn,mx = [np.percentile(img, p) for p in [25,99]]
+        tr = Tractor([tim], tcat)
+        if model:
+            img = tr.getModelImage(0)
+            #mn,mx = [np.percentile(img, p) for p in [25,99]]
+        else:
+            img = tr.getChiImage(0)
+            mn,mx = -5, 5
 
     ih,iw = img.shape
     padimg = np.zeros((2*size,2*size), img.dtype) + (mn+mx)/2.
-    padimg[ystart:ystart+ih, xstart:xstart+iw] = mod
+    padimg[ystart:ystart+ih, xstart:xstart+iw] = img
     img = padimg
 
     import tempfile
     f,tilefn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
 
-    plt.imsave(tilefn, np.clip((img - mn) / (mx - mn), 0., 1.), cmap='gray')
+    # the chips are turned sideways :)
+
+    plt.imsave(tilefn, np.rot90(np.clip((img - mn) / (mx - mn), 0., 1.), k=3), cmap='gray')
         
-    return send_file(tilefn, 'image/jpeg', unlink=True)
+    return send_file(tilefn, 'image/jpeg', unlink=True,
+                     expires=0)
 
 
-def resid_cutout(req, expnum=None, extname=None):
-    pass
