@@ -162,7 +162,7 @@ function fluxToMag(f) {
 }
 
 function cutout_radec_link(ra, dec) {
-    return '<a href="{% url 'cutouts' %}?ra=' + ra + '&dec=' + dec + '">' +
+    return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '">' +
         ra.toFixed(4) + ', ' + dec.toFixed(4) + '</a>';
 }
 

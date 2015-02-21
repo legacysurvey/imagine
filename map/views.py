@@ -96,7 +96,7 @@ def index(req):
     tileurl = url.replace('://', '://{s}.')
 
     # Testing:
-    #tileurl = '/{id}/{ver}/{z}/{x}/{y}.jpg'
+    tileurl = '/{id}/{ver}/{z}/{x}/{y}.jpg'
 
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
@@ -984,7 +984,10 @@ def model_cutout(req, expnum=None, extname=None):
 def resid_cutout(req, expnum=None, extname=None):
     return _cutout(req, expnum, extname, resid=True)
 
-def _cutout(req, expnum, extname, model=False, image=False, resid=False):
+def psf_cutout(req, expnum=None, extname=None):
+    return _cutout(req, expnum, extname, psf=True)
+
+def _cutout(req, expnum, extname, model=False, image=False, resid=False, psf=False):
     import matplotlib
     matplotlib.use('Agg')
     import pylab as plt
@@ -1021,30 +1024,28 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False):
     im = DecamImage(ccd)
     D = _get_decals()
     tim = im.get_tractor_image(decals, slc=slc)
-                               #nanomaggies=False, subsky=False)
-    # nanomaggies
-    #mn,mx = -0.1, 0.25
-    #mn,mx = -3, 10
-    #rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+
+    if model or resid or psf:
+        # UGH, this is just nasty... set up the PSF
+        from tractor.psfex import CachingPsfEx
+        tim.psfex.radius = 20
+        tim.psfex.fitSavedData(*tim.psfex.splinedata)
+        tim.psf = CachingPsfEx.fromPsfEx(tim.psfex)
+
     mn,mx = -1, 100
     arcsinh = 1.
+    cmap = 'gray'
 
     scales = dict(g = (2, 0.0066),
                   r = (1, 0.01),
                   z = (0, 0.025),
                   )
     nil,scale = scales[ccd.filter]
-    
+
     if image:
         img = tim.getImage()
         
     if model or resid:
-        # UGH, this is just nasty.
-        from tractor.psfex import CachingPsfEx
-        tim.psfex.radius = 20
-        tim.psfex.fitSavedData(*tim.psfex.splinedata)
-        tim.psf = CachingPsfEx.fromPsfEx(tim.psfex)
-
         M = 10
         margwcs = tim.subwcs.get_subimage(-M, -M, int(tim.subwcs.get_width())+2*M, int(tim.subwcs.get_height())+2*M)
         cat,hdr = _get_decals_cat(margwcs, layout=2, tag='decals-edr2')
@@ -1064,6 +1065,14 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False):
             mn,mx = -5, 5
             arcsinh = None
             scale = 1.
+
+    if psf:
+        th,tw = tim.shape
+        pp = tim.getPsf().getPointSourcePatch(tw/2., th/2.)
+        img = np.zeros(tim.shape, np.float32)
+        pp.addTo(img)
+        scale = 0.0001
+        cmap = 'hot'
 
     img = img / scale
 
@@ -1085,7 +1094,7 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False):
 
     # the chips are turned sideways :)
 
-    plt.imsave(tilefn, np.rot90(np.clip(img, 0., 1.), k=3), cmap='gray')
+    plt.imsave(tilefn, np.rot90(np.clip(img, 0., 1.), k=3), cmap=cmap)
         
     return send_file(tilefn, 'image/jpeg', unlink=True,
                      expires=0)
