@@ -69,7 +69,10 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
 
 def index(req):
     layer = req.GET.get('layer', 'decals')
-    ra, dec, zoom = 244.7, 7.4, 13
+    # Nice spiral galaxy
+    #ra, dec, zoom = 244.7, 7.4, 13
+    # EDR2 region
+    ra, dec, zoom = 243.7, 8.2, 13
 
     try:
         zoom = int(req.GET.get('zoom', zoom))
@@ -90,10 +93,10 @@ def index(req):
     caturl = '/{id}/{ver}/{z}/{x}/{y}.cat.json'
 
     # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
-    #tileurl = url.replace('://', '://{s}.')
+    tileurl = url.replace('://', '://{s}.')
 
     # Testing:
-    tileurl = '/{id}/{ver}/{z}/{x}/{y}.jpg'
+    #tileurl = '/{id}/{ver}/{z}/{x}/{y}.jpg'
 
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
@@ -800,9 +803,19 @@ def cutouts(req):
     #for c in CCDs:
     for i in range(len(CCDs)):
         c = CCDs[i]
-        wcs = Tan(*[float(x) for x in [
-            c.ra_bore, c.dec_bore, c.crpix1, c.crpix2, c.cd1_1, c.cd1_2,
-            c.cd2_1, c.cd2_2, c.width, c.height]])
+
+        try:
+            from desi.common import DecamImage
+            c.cpimage = _get_image_filename(c)
+            dim = DecamImage(c)
+            wcs = dim.read_wcs()
+        except:
+            import traceback
+            traceback.print_exc()
+            
+            wcs = Tan(*[float(x) for x in [
+                c.ra_bore, c.dec_bore, c.crpix1, c.crpix2, c.cd1_1, c.cd1_2,
+                c.cd2_1, c.cd2_2, c.width, c.height]])
         ok,x,y = wcs.radec2pixelxy(ra, dec)
         x = int(np.round(x-1))
         y = int(np.round(y-1))

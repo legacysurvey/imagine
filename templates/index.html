@@ -764,7 +764,7 @@ if (idname == 'decals') {
 var info = L.control();
 info.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'info');
-    this._div.innerHTML = '{{ ra|floatformat:4}}, {{ dec|floatformat:4}}';
+    this._div.innerHTML = 'RA,Dec = ' + {{ra}}.toFixed(4) + ", " + {{dec}}.toFixed(4);
     return this._div;
 };
 info.addTo(map);
