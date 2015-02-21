@@ -28,7 +28,7 @@ urlpatterns = patterns(
     url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_sfd'),
 
     ## Cutouts
-    url(r'^cutouts/', 'map.views.cutouts'),
+    url(r'^cutouts/', 'map.views.cutouts', name='cutouts'),
     url(r'^ccd_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.ccd_cutout', name='ccd_cutout'),
     #url(r'^ccd_cutout/(\d+)/([NS]\d{1,2})/', 'map.views.ccd_cutout', name='ccd_cutout')
 

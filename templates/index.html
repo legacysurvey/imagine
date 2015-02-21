@@ -161,6 +161,11 @@ function fluxToMag(f) {
     return -2.5 * (Math.log(f)/Math.log(10.) - 9);
 }
 
+function cutout_radec_link(ra, dec) {
+    return '<a href="{% url 'cutouts' %}?ra=' + ra + '&dec=' + dec + '">' +
+        ra.toFixed(4) + ', ' + dec.toFixed(4) + '</a>';
+}
+
 function onSourceClick(e) {
     src = e.target;
     fluxstr = '';
@@ -173,7 +178,7 @@ function onSourceClick(e) {
     if ('z' in src.fluxes) {
         fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
     }
-    txt = 'Source RA,Dec = ' + src.ra.toFixed(4) + ', ' + src.dec.toFixed(4) +
+    txt = 'Source RA,Dec = ' + cutout_radec_link(src.ra, src.dec) +
         '<br/>Source type: ' + src.type +
         '<br/>Mags: ' + fluxstr +
         '<br/>Brick: ' + src.brickname + ', Objid: ' + src.objid;
@@ -322,8 +327,9 @@ function onMapClick(e) {
     bricks = bricksUnderLatlng(e.latlng);
     ccds = ccdsUnderLatlng(e.latlng);
     //'lat,lng =' + e.latlng.lat.toFixed(4) + ',' + e.latlng.lng.toFixed(4) + '; ' +
+    //ra.toFixed(4) + ', ' + dec.toFixed(4) +
     txt = 
-        'RA,Dec = ' + ra.toFixed(4) + ', ' + dec.toFixed(4) +
+        'RA,Dec = ' + cutout_radec_link(ra, dec) +
         '<br/><a href="{{ baseurl }}ra=' + ra.toFixed(4) +
         '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom()
         + '">link here</a>';
