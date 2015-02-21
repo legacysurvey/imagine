@@ -945,7 +945,7 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False):
 
     from desi.common import DecamImage
     from desi.desi_common import read_fits_catalog
-    from tractor import *
+    from tractor import Tractor
 
     ccd.cpimage = fn
     im = DecamImage(ccd)
@@ -953,8 +953,18 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False):
     tim = im.get_tractor_image(decals, slc=slc)
                                #nanomaggies=False, subsky=False)
     # nanomaggies
-    mn,mx = -0.1, 0.25
+    #mn,mx = -0.1, 0.25
+    #mn,mx = -3, 10
+    #rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+    mn,mx = -1, 100
+    arcsinh = 1.
 
+    scales = dict(g = (2, 0.0066),
+                  r = (1, 0.01),
+                  z = (0, 0.025),
+                  )
+    nil,scale = scales[ccd.filter]
+    
     if image:
         img = tim.getImage()
         
@@ -982,10 +992,21 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False):
         else:
             img = tr.getChiImage(0)
             mn,mx = -5, 5
+            arcsinh = None
+            scale = 1.
+
+    img = img / scale
+
+    if arcsinh is not None:
+        def nlmap(x):
+            return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
+        img = nlmap(img)
+        mn = nlmap(mn)
+        mx = nlmap(mx)
 
     ih,iw = img.shape
-    padimg = np.zeros((2*size,2*size), img.dtype) + (mn+mx)/2.
-    padimg[ystart:ystart+ih, xstart:xstart+iw] = img
+    padimg = np.zeros((2*size,2*size), img.dtype) + 0.5
+    padimg[ystart:ystart+ih, xstart:xstart+iw] = (img - mn) / (mx - mn)
     img = padimg
 
     import tempfile
@@ -994,7 +1015,7 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False):
 
     # the chips are turned sideways :)
 
-    plt.imsave(tilefn, np.rot90(np.clip((img - mn) / (mx - mn), 0., 1.), k=3), cmap='gray')
+    plt.imsave(tilefn, np.rot90(np.clip(img, 0., 1.), k=3), cmap='gray')
         
     return send_file(tilefn, 'image/jpeg', unlink=True,
                      expires=0)
