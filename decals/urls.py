@@ -36,6 +36,7 @@ urlpatterns = patterns(
     
     url(r'^resid_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.resid_cutout', name='resid_cutout'),
 
+    url(r'^cat_plot/', 'map.views.cat_plot', name='cat_plot'),
 
     # Catalogs
     url(r'^decals/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals'),

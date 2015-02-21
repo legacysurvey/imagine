@@ -3,6 +3,8 @@
 {% block content %}
 <h1>DECaLS cutouts around RA,Dec = {{ ra }}, {{ dec }}</h1>
 
+<img src="{% url 'cat_plot' %}?ra={{ ra }}&dec={{ dec }}" />
+
 <table>
 <tr>
 <th>CCD</th>

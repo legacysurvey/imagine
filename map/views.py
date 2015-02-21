@@ -836,6 +836,63 @@ def cutouts(req):
                        ccds=ccds,
                        ))
 
+def cat_plot(req):
+    import matplotlib
+    matplotlib.use('Agg')
+    import pylab as plt
+    import numpy as np
+    from astrometry.util.util import Tan
+    from desi.common import get_sdss_sources
+    from decals import settings
+
+    ra = float(req.GET['ra'])
+    dec = float(req.GET['dec'])
+
+    # half-size in DECam pixels
+    size = 50
+    W,H = size*2, size*2
+    
+    pixscale = 0.262 / 3600.
+    wcs = Tan(*[float(x) for x in [
+        ra, dec, size+0.5, size+0.5, -pixscale, 0., 0., pixscale, W, H]])
+
+    M = 10
+    margwcs = wcs.get_subimage(-M, -M, W+2*M, H+2*M)
+    cat,hdr = _get_decals_cat(margwcs, layout=2, tag='decals-edr2')
+
+    # FIXME
+    nil,sdss = get_sdss_sources('r', margwcs,
+                                photoobjdir=os.path.join(settings.WEB_DIR, 'data',
+                                                         'sdss'),
+                                local=False)
+
+    import tempfile
+    f,tempfn = tempfile.mkstemp(suffix='.png')
+    os.close(f)
+
+    plt.figure(figsize=(2,2))
+    #plt.subplots_adjust(left=0.1, bottom=0.1, top=0.99, right=0.99)
+    plt.subplots_adjust(left=0.01, bottom=0.01, top=0.99, right=0.99)
+    plt.clf()
+    ok,x,y = wcs.radec2pixelxy(cat.ra, cat.dec)
+    # matching the plot colors in index.html
+    cc = dict(S=(0x9a, 0xfe, 0x2e),
+              D=(0xff, 0, 0),
+              E=(0x58, 0xac, 0xfa),
+              C=(0xda, 0x81, 0xf5))
+    plt.scatter(x, y, s=50, c=[[float(x)/255. for x in cc[t]] for t in cat.type])
+
+    ok,x,y = wcs.radec2pixelxy(sdss.ra, sdss.dec)
+    plt.scatter(x, y, s=30, marker='x', c='k')
+
+    plt.axis([0, W, 0, H])
+    plt.xticks([]); plt.yticks([])
+    plt.savefig(tempfn)
+
+    return send_file(tempfn, 'image/png', unlink=True,
+                     expires=0)
+
+
 def _get_ccd(expnum, extname):
     import numpy as np
     # Not ideal... look up local CP image name from expnum.
