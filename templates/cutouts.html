@@ -3,6 +3,10 @@
 {% block content %}
 <h1>DECaLS cutouts around RA,Dec = {{ ra }}, {{ dec }}</h1>
 
+<p>
+Brick {{ brick.brickname }} with RA,Dec center {{ brick.ra|floatformat:4 }}, {{ brick.dec|floatformat:4 }}.  Pixel coords: {{ brickx|floatformat:1 }}, {{ bricky|floatformat:1 }}
+</p>
+
 <img src="{% url 'cat_plot' %}?ra={{ ra }}&dec={{ dec }}" />
 
 <table>

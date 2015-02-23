@@ -775,7 +775,9 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
 
 def cutouts(req):
     from astrometry.util.util import Tan
+    from astrometry.util.starutil_numpy import degrees_between
     import numpy as np
+    from desi.common import wcs_for_brick
 
     ra = float(req.GET['ra'])
     dec = float(req.GET['dec'])
@@ -829,11 +831,24 @@ def cutouts(req):
 
     #print 'CCDS:', ccds
 
+    D = _get_decals()
+    B = D.get_bricks_readonly()
+
+    I = np.flatnonzero((B.ra1  <= ra)  * (B.ra2  >= ra) *
+                       (B.dec1 <= dec) * (B.dec2 >= dec))
+    brick = B[I[0]]
+    bwcs = wcs_for_brick(brick)
+    ok,brickx,bricky = bwcs.radec2pixelxy(ra, dec)
+    brick = brick.to_dict()
+    
     from django.shortcuts import render
 
     return render(req, 'cutouts.html',
                   dict(ra=ra, dec=dec,
                        ccds=ccds,
+                       brick=brick,
+                       brickx=brickx,
+                       bricky=bricky,
                        ))
 
 def cat_plot(req):
