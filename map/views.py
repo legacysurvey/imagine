@@ -1041,7 +1041,14 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False, psf=Fal
     ccd.cpimage = fn
     im = DecamImage(ccd)
     D = _get_decals()
-    tim = im.get_tractor_image(decals, slc=slc)
+    tim = im.get_tractor_image(decals, slc=slc, tiny=1)
+
+    if tim is None:
+        print 'slc', slc
+        print 'xstart, ystart', xstart,xstart
+        print 'x,y', x,y
+        img = np.zeros((0,0))
+        model = resid = psf = image = False
 
     if model or resid or psf:
         # UGH, this is just nasty... set up the PSF
@@ -1049,6 +1056,7 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False, psf=Fal
         tim.psfex.radius = 20
         tim.psfex.fitSavedData(*tim.psfex.splinedata)
         tim.psf = CachingPsfEx.fromPsfEx(tim.psfex)
+
 
     mn,mx = -1, 100
     arcsinh = 1.
