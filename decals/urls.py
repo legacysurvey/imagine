@@ -37,6 +37,7 @@ urlpatterns = patterns(
     url(r'^resid_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.resid_cutout', name='resid_cutout'),
 
     url(r'^psf_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.psf_cutout', name='psf_cutout'),
+    url(r'^psfex_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.psfex_cutout', name='psfex_cutout'),
 
     url(r'^cat_plot/', 'map.views.cat_plot', name='cat_plot'),
 

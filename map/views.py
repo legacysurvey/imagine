@@ -1002,7 +1002,10 @@ def resid_cutout(req, expnum=None, extname=None):
 def psf_cutout(req, expnum=None, extname=None):
     return _cutout(req, expnum, extname, psf=True)
 
-def _cutout(req, expnum, extname, model=False, image=False, resid=False, psf=False):
+def psfex_cutout(req, expnum=None, extname=None):
+    return _cutout(req, expnum, extname, psfex=True)
+
+def _cutout(req, expnum, extname, model=False, image=False, resid=False, psf=False, psfex=False):
     import matplotlib
     matplotlib.use('Agg')
     import pylab as plt
@@ -1012,7 +1015,7 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False, psf=Fal
     y = int(req.GET['y'], 10)
 
     ccd = _get_ccd(expnum, extname)
-    
+
     fn = _get_image_filename(ccd)
     if not os.path.exists(fn):
         #print 'NO IMAGE:', fn
@@ -1050,6 +1053,7 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False, psf=Fal
     mn,mx = -1, 100
     arcsinh = 1.
     cmap = 'gray'
+    pad = True
 
     scales = dict(g = (2, 0.0066),
                   r = (1, 0.01),
@@ -1089,6 +1093,16 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False, psf=Fal
         scale = 0.0001
         cmap = 'hot'
 
+    if psfex:
+        from tractor.psfex import PsfEx
+        # HACK hard-coded image sizes.
+        thepsf = PsfEx(im.psffn, 2046, 4096)
+        psfim = thepsf.instantiateAt(x, y)
+        img = psfim
+        scale = 0.0001
+        cmap = 'hot'
+        pad = False
+
     img = img / scale
 
     if arcsinh is not None:
@@ -1098,10 +1112,12 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False, psf=Fal
         mn = nlmap(mn)
         mx = nlmap(mx)
 
-    ih,iw = img.shape
-    padimg = np.zeros((2*size,2*size), img.dtype) + 0.5
-    padimg[ystart:ystart+ih, xstart:xstart+iw] = (img - mn) / (mx - mn)
-    img = padimg
+    img = (img - mn) / (mx - mn)
+    if pad:
+        ih,iw = img.shape
+        padimg = np.zeros((2*size,2*size), img.dtype) + 0.5
+        padimg[ystart:ystart+ih, xstart:xstart+iw] = img
+        img = padimg
 
     import tempfile
     f,tilefn = tempfile.mkstemp(suffix='.jpg')

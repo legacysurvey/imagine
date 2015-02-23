@@ -15,7 +15,8 @@ Brick {{ brick.brickname }} with RA,Dec center {{ brick.ra|floatformat:4 }}, {{ 
 <th>Image</th>
 <th>Model (EDR2)</th>
 <th>Resid</th>
-<th>PSF</th>
+<th>PSF fit</th>
+<th>PsfEx</th>
 </tr>
 {% for ccd,x,y in ccds %}
 <tr>
@@ -33,6 +34,9 @@ CCD {{ ccd.filter }} {{ ccd.expnum }} {{ ccd.extname }} x,y {{ x }}, {{ y }}
 </td>
 <td>
 <img src="{% url 'psf_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
+</td>
+<td>
+<img src="{% url 'psfex_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
 </td>
 </td>
 </tr>
