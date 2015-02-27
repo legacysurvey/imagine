@@ -899,8 +899,6 @@ def cutouts(req):
                        ))
 
 def cat_plot(req):
-    #import matplotlib
-    #matplotlib.use('Agg')
     import pylab as plt
     import numpy as np
     from astrometry.util.util import Tan
@@ -996,15 +994,23 @@ def _get_image_slice(fn, hdu, x, y, size=50):
     img = img[slc]
     return img,slc,xstart,ystart
 
+# def cutout_panels(req, expnum=None, extname=None):
+#     try:
+#         return _cutout_panels(req, expnum=expnum, extname=extname)
+#     except:
+#         import traceback
+#         import time
+#         import numpy as np
+#         time.sleep(np.random.uniform(5))
+#         traceback.print_exc()
+#         raise
+
 def cutout_panels(req, expnum=None, extname=None):
-    #import matplotlib
-    #matplotlib.use('Agg')
     import pylab as plt
     import numpy as np
 
     x = int(req.GET['x'], 10)
     y = int(req.GET['y'], 10)
-
     ccd = _get_ccd(expnum, extname)
 
     fn = _get_image_filename(ccd)
@@ -1054,10 +1060,11 @@ def cutout_panels(req, expnum=None, extname=None):
                   )
     nil,scale = scales[ccd.filter]
 
-    plt.figure(figsize=(7,1))
-    plt.clf()
-    plt.subplots_adjust(left=0.002, bottom=0.02, top=0.995, right=0.998,
-                        wspace=0.02, hspace=0)
+    
+    f = plt.figure(figsize=(7,1))
+    f.clf()
+    f.subplots_adjust(left=0.002, bottom=0.02, top=0.995, right=0.998,
+                      wspace=0.02, hspace=0)
     rows,cols = 1,7
 
     imgs = []
@@ -1133,20 +1140,22 @@ def cutout_panels(req, expnum=None, extname=None):
             padimg[ystart:ystart+ih, xstart:xstart+iw] = img
             img = padimg
 
-        plt.subplot(rows, cols, i+1)
+        ax = f.add_subplot(rows, cols, i+1, xticks=[], yticks=[])
         # the chips are turned sideways :)
         #plt.imshow(np.rot90(np.clip(img, 0, 1), k=3), cmap=cmap,
         #           interpolation='nearest', origin='lower')
-        plt.imshow(np.clip(img, 0, 1).T, cmap=cmap,
+        ax.imshow(np.rot90(np.clip(img, 0, 1).T, k=2), cmap=cmap,
                    interpolation='nearest', origin='lower')
-        plt.xticks([]); plt.yticks([])
+        #ax.xticks([]); ax.yticks([])
 
     import tempfile
-    f,tilefn = tempfile.mkstemp(suffix='.jpg')
-    os.close(f)
+    ff,tilefn = tempfile.mkstemp(suffix='.jpg')
+    os.close(ff)
 
-    plt.savefig(tilefn)
-        
+    f.savefig(tilefn)
+    f.clf()
+    del f
+    
     return send_file(tilefn, 'image/jpeg', unlink=True,
                      expires=3600)
 
