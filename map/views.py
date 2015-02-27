@@ -932,9 +932,10 @@ def cat_plot(req):
     f,tempfn = tempfile.mkstemp(suffix='.png')
     os.close(f)
 
-    plt.figure(figsize=(2,2))
-    plt.subplots_adjust(left=0.01, bottom=0.01, top=0.99, right=0.99)
-    plt.clf()
+    f = plt.figure(figsize=(2,2))
+    f.subplots_adjust(left=0.01, bottom=0.01, top=0.99, right=0.99)
+    f.clf()
+    ax = f.add_subplot(111, xticks=[], yticks=[])
     if cat is not None:
         ok,x,y = wcs.radec2pixelxy(cat.ra, cat.dec)
         # matching the plot colors in index.html
@@ -942,14 +943,12 @@ def cat_plot(req):
                   D=(0xff, 0, 0),
                   E=(0x58, 0xac, 0xfa),
                   C=(0xda, 0x81, 0xf5))
-        plt.scatter(x, y, s=50, c=[[float(x)/255. for x in cc[t]] for t in cat.type])
+        ax.scatter(x, y, s=50, c=[[float(x)/255. for x in cc[t]] for t in cat.type])
 
     ok,x,y = wcs.radec2pixelxy(sdss.ra, sdss.dec)
-    plt.scatter(x, y, s=30, marker='x', c='k')
-
-    plt.axis([0, W, 0, H])
-    plt.xticks([]); plt.yticks([])
-    plt.savefig(tempfn)
+    ax.scatter(x, y, s=30, marker='x', c='k')
+    ax.axis([0, W, 0, H])
+    f.savefig(tempfn)
 
     return send_file(tempfn, 'image/png', unlink=True,
                      expires=0)
