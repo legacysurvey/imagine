@@ -14,7 +14,9 @@ Brick {{ brick.brickname }} with RA,Dec center {{ brick.ra|floatformat:4 }}, {{ 
 <th>CCD</th>
 <th>Image</th>
 <th>Model (EDR2)</th>
-<th>Resid</th>
+<th>Resid (EDR2)</th>
+<th>Model (EDR3)</th>
+<th>Resid (EDR3)</th>
 <th>PSF fit</th>
 <th>PsfEx</th>
 </tr>
@@ -23,21 +25,8 @@ Brick {{ brick.brickname }} with RA,Dec center {{ brick.ra|floatformat:4 }}, {{ 
 <td>
 CCD {{ ccd.filter }} {{ ccd.expnum }} {{ ccd.extname }} x,y {{ x }}, {{ y }}
 </td>
-<td>
-<img src="{% url 'ccd_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
-</td>
-<td>
-<img src="{% url 'model_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
-</td>
-<td>
-<img src="{% url 'resid_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
-</td>
-<td>
-<img src="{% url 'psf_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
-</td>
-<td>
-<img src="{% url 'psfex_cutout' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
-</td>
+<td colspan="7">
+<img src="{% url 'cutout_panels' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
 </td>
 </tr>
 {% endfor %}

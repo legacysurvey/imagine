@@ -276,7 +276,7 @@ function doLoadTile(tile) {
         id: catname,
         ver: getcatversion(catname),
     }));
-    //console.log('Loading catalog version ' + catname);
+    console.log('Loading catalog version ' + catname);
     $.getJSON(caturl, catLoaded);
 }
 
@@ -667,10 +667,6 @@ var currentBricks = {};
 
 var showCcds = false;
 var ccdsGroup = L.layerGroup([]);
-//ccdsGroup.onAdd = function(map) {
-//    console.log('ccdsGroup.onAdd');
-//    overlayAdded({name:'CCDs'});
-//}
 
 var currentCcds = {};
 var ccdFills = {};
@@ -686,6 +682,7 @@ var tileversions = {
 var catversions  = {
     'decals': 2,
     'decals-edr2': 2,
+    'decals-edr3': 2,
 };
 
 function getversion(layer) {
@@ -733,12 +730,23 @@ tilesModEdr2.catname = 'decals-edr2';
 tilesResidEdr2 = createTileLayer('decals-resid-edr2', 'decals-resid-edr2');
 tilesResidEdr2.catname = 'decals-edr2';
 
+tilesEdr3 = createTileLayer('decals-edr3', 'decals-edr3');
+tilesEdr3.catname = 'decals-edr3';
+tilesModEdr3 = createTileLayer('decals-model-edr3', 'decals-model-edr3');
+tilesModEdr3.catname = 'decals-edr3';
+tilesResidEdr3 = createTileLayer('decals-resid-edr3', 'decals-resid-edr3');
+tilesResidEdr3.catname = 'decals-edr3';
+
+
 var baseMaps = {
     "DECaLS EDR images": tiles,
     "DECaLS EDR models": tilesMod,
     "DECaLS EDR2 images": tilesEdr2,
     "DECaLS EDR2 models": tilesModEdr2,
     "DECaLS EDR2 residuals": tilesResidEdr2,
+    "DECaLS EDR3 images": tilesEdr3,
+    "DECaLS EDR3 models": tilesModEdr3,
+    "DECaLS EDR3 residuals": tilesResidEdr3,
     "SFD dust map": tilesSfd,
 };
 
@@ -755,6 +763,15 @@ if (idname == 'decals') {
 } else if (idname == 'decals-resid-edr2') {
     tilesResidEdr2.addTo(map);
     catname = 'decals-edr2';
+} else if (idname == 'decals-edr3') {
+    tilesEdr3.addTo(map);
+    catname = 'decals-edr3';
+} else if (idname == 'decals-model-edr3') {
+    tilesModEdr3.addTo(map);
+    catname = 'decals-edr3';
+} else if (idname == 'decals-resid-edr3') {
+    tilesResidEdr3.addTo(map);
+    catname = 'decals-edr3';
 } else {
     xtiles = createTileLayer(idname, idname);
     baseMaps[idname] = xtiles;
@@ -784,7 +801,11 @@ function onMapPreBaseLayerChange(e) {
     if ((e.adding.catname == undefined) || (e.removing.catname == undefined)) {
         return;
     }
-    if (!showSources || (e.removing.catname == e.adding.catname)) {
+    if (!showSources) {
+        catname = e.adding.catname;
+        return;
+    }
+    if (e.removing.catname == e.adding.catname) {
         return;
     }
     console.log('Removing sources');

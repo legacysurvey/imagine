@@ -1,6 +1,9 @@
 import os
 from django.http import HttpResponse
 
+import matplotlib
+matplotlib.use('Agg')
+
 # We add a version number to each layer, to allow long cache times
 # for the tile JPEGs.  Increment this version to invalidate
 # client-side caches.
@@ -17,13 +20,15 @@ tileversions = {
     'decals-edr2': [1,],
     'decals-model-edr2': [1,],
     'decals-resid-edr2': [1,],
+    'decals-edr3': [1,],
+    'decals-model-edr3': [1,],
+    'decals-resid-edr3': [1,],
     }
 
 catversions = {
-    #'decals': [1,],
-    #'decals-edr2': [1,],
     'decals': [2,],
     'decals-edr2': [2,],
+    'decals-edr3': [2,],
     }
 
 oneyear = (3600 * 24 * 365)
@@ -234,6 +239,27 @@ def map_decals_resid_edr2(req, ver, zoom, x, y):
                            rgbkwargs=dict(mnmx=(-5,5)),
                            layout=2)
 
+def map_decals_edr3(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-edr3', 'decals-edr3',
+                           imagetag='image',
+                           rgbkwargs=rgbkwargs,
+                           layout=2)
+
+def map_decals_model_edr3(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
+                           'decals-model-edr3', 'decals-edr3',
+                           imagetag='model',
+                           rgbkwargs=rgbkwargs,
+                           layout=2)
+
+def map_decals_resid_edr3(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
+                           'decals-resid-edr3', 'decals-edr3',
+                           imagetag='resid',
+                           rgbkwargs=dict(mnmx=(-5,5)),
+                           layout=2)
+
+
 def map_des_stripe82(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'des-stripe82', 'des-stripe82')
 
@@ -297,8 +323,8 @@ def map_sfd(req, ver, zoom, x, y):
         f,tilefn = tempfile.mkstemp(suffix='.jpg')
         os.close(f)
 
-    import matplotlib
-    matplotlib.use('Agg')
+    #import matplotlib
+    #matplotlib.use('Agg')
     import pylab as plt
     plt.imsave(tilefn, ebv, vmin=0., vmax=0.5, cmap='hot')
 
@@ -422,6 +448,9 @@ def brick_detail(req, brickname):
     return HttpResponse('Brick ' + brickname)
 
 def cat_decals_edr2(req, ver, zoom, x, y, tag='decals-edr2'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
+
+def cat_decals_edr3(req, ver, zoom, x, y, tag='decals-edr3'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
 
 def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1):
@@ -719,8 +748,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         f,tilefn = tempfile.mkstemp(suffix='.jpg')
         os.close(f)
 
-    import matplotlib
-    matplotlib.use('Agg')
+    #import matplotlib
+    #matplotlib.use('Agg')
     import pylab as plt
     plt.imsave(tilefn, rgb)
 
@@ -852,8 +881,8 @@ def cutouts(req):
                        ))
 
 def cat_plot(req):
-    import matplotlib
-    matplotlib.use('Agg')
+    #import matplotlib
+    #matplotlib.use('Agg')
     import pylab as plt
     import numpy as np
     from astrometry.util.util import Tan
@@ -1006,8 +1035,8 @@ def psfex_cutout(req, expnum=None, extname=None):
     return _cutout(req, expnum, extname, psfex=True)
 
 def _cutout(req, expnum, extname, model=False, image=False, resid=False, psf=False, psfex=False):
-    import matplotlib
-    matplotlib.use('Agg')
+    #import matplotlib
+    #matplotlib.use('Agg')
     import pylab as plt
     import numpy as np
 
@@ -1137,5 +1166,163 @@ def _cutout(req, expnum, extname, model=False, image=False, resid=False, psf=Fal
         
     return send_file(tilefn, 'image/jpeg', unlink=True,
                      expires=0)
+
+
+
+def cutout_panels(req, expnum=None, extname=None):
+    #import matplotlib
+    #matplotlib.use('Agg')
+    import pylab as plt
+    import numpy as np
+
+    x = int(req.GET['x'], 10)
+    y = int(req.GET['y'], 10)
+
+    ccd = _get_ccd(expnum, extname)
+
+    fn = _get_image_filename(ccd)
+    if not os.path.exists(fn):
+        #print 'NO IMAGE:', fn
+        print 'rsync -Rrv carver:tractor/decals/images/./' + fn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images'
+        return HttpResponse('no such image: ' + fn)
+
+    wfn = fn.replace('ooi', 'oow')
+    if not os.path.exists(wfn):
+        cmd = 'rsync -Rrv carver:tractor/decals/images/./' + wfn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images'
+        print '\n' + cmd + '\n'
+        os.system(cmd)
+        if not os.path.exists(wfn):
+            return HttpResponse('no such image: ' + wfn)
+
+    # half-size in DECam pixels -- must match cutouts():size
+    size = 50
+    img,slc,xstart,ystart = _get_image_slice(fn, ccd.cpimage_hdu, x, y, size=size)
+
+    from desi.common import DecamImage
+    from desi.desi_common import read_fits_catalog
+    from tractor import Tractor
+
+    ccd.cpimage = fn
+    im = DecamImage(ccd)
+    D = _get_decals()
+    tim = im.get_tractor_image(decals, slc=slc, tiny=1)
+
+    if tim is None:
+        img = np.zeros((0,0))
+
+    # UGH, this is just nasty... set up the PSF
+    from tractor.psfex import CachingPsfEx
+    tim.psfex.radius = 20
+    tim.psfex.fitSavedData(*tim.psfex.splinedata)
+    tim.psf = CachingPsfEx.fromPsfEx(tim.psfex)
+
+    mn,mx = -1, 100
+    arcsinh = 1.
+    cmap = 'gray'
+    pad = True
+
+    scales = dict(g = (2, 0.0066),
+                  r = (1, 0.01),
+                  z = (0, 0.025),
+                  )
+    nil,scale = scales[ccd.filter]
+
+    plt.figure(figsize=(7,1))
+    plt.clf()
+    plt.subplots_adjust(left=0.002, bottom=0.02, top=0.995, right=0.998,
+                        wspace=0.02, hspace=0)
+    rows,cols = 1,7
+
+    imgs = []
+
+    img = tim.getImage()
+    imgs.append((img,None))
+    
+    M = 10
+    margwcs = tim.subwcs.get_subimage(-M, -M, int(tim.subwcs.get_width())+2*M, int(tim.subwcs.get_height())+2*M)
+    for dr in ['edr2','edr3']:
+        cat,hdr = _get_decals_cat(margwcs, layout=2, tag='decals-%s' % dr)
+        if cat is None:
+            tcat = []
+        else:
+            tcat = read_fits_catalog(cat, hdr=hdr)
+        tr = Tractor([tim], tcat)
+        img = tr.getModelImage(0)
+        imgs.append((img,None))
+
+        img = tr.getChiImage(0)
+        imgs.append((img, dict(mn=-5,mx=5, arcsinh = None, scale = 1.)))
+
+    th,tw = tim.shape
+    pp = tim.getPsf().getPointSourcePatch(tw/2., th/2.)
+    img = np.zeros(tim.shape, np.float32)
+    pp.addTo(img)
+    imgs.append((img, dict(scale=0.0001, cmap='hot')))
+    
+    from tractor.psfex import PsfEx
+    from tractor.patch import Patch
+    # HACK hard-coded image sizes.
+    thepsf = PsfEx(im.psffn, 2046, 4096)
+    psfim = thepsf.instantiateAt(x, y)
+    img = np.zeros(tim.shape, np.float32)
+    h,w = tim.shape
+    ph,pw = psfim.shape
+    patch = Patch((w-pw)/2., (h-ph)/2., psfim)
+    patch.addTo(img)
+    imgs.append((img, dict(scale = 0.0001, cmap = 'hot')))
+
+    for i,(img,d) in enumerate(imgs):
+
+        mn,mx = -1, 100
+        arcsinh = 1.
+        cmap = 'gray'
+        nil,scale = scales[ccd.filter]
+        pad = True
+
+        if d is not None:
+            if 'mn' in d:
+                mn = d['mn']
+            if 'mx' in d:
+                mx = d['mx']
+            if 'arcsinh' in d:
+                arcsinh = d['arcsinh']
+            if 'cmap' in d:
+                cmap = d['cmap']
+            if 'scale' in d:
+                scale = d['scale']
+
+        img = img / scale
+        if arcsinh is not None:
+            def nlmap(x):
+                return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
+            img = nlmap(img)
+            mn = nlmap(mn)
+            mx = nlmap(mx)
+
+        img = (img - mn) / (mx - mn)
+        if pad:
+            ih,iw = img.shape
+            padimg = np.zeros((2*size,2*size), img.dtype) + 0.5
+            padimg[ystart:ystart+ih, xstart:xstart+iw] = img
+            img = padimg
+
+        plt.subplot(rows, cols, i+1)
+        # the chips are turned sideways :)
+        plt.imshow(np.rot90(np.clip(img, 0, 1), k=3), cmap=cmap,
+                   interpolation='nearest', origin='lower')
+        plt.xticks([]); plt.yticks([])
+                   
+
+    import tempfile
+    f,tilefn = tempfile.mkstemp(suffix='.jpg')
+    os.close(f)
+
+    #plt.imsave(tilefn, np.rot90(np.clip(img, 0., 1.), k=3), cmap=cmap)
+    plt.savefig(tilefn)
+        
+    return send_file(tilefn, 'image/jpeg', unlink=True,
+                     expires=0)
+
+
 
 

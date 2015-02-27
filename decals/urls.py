@@ -24,6 +24,14 @@ urlpatterns = patterns(
     # EDR2 residuals
     url(r'^decals-resid-edr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_resid_edr2'),
 
+    # EDR3
+    url(r'^decals-edr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_edr3'),
+    url(r'^decals-model-edr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_model_edr3'),
+
+    # EDR3 residuals
+    url(r'^decals-resid-edr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_decals_resid_edr3'),
+
+
     # SFD dust map
     url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map.views.map_sfd'),
 
@@ -39,12 +47,17 @@ urlpatterns = patterns(
     url(r'^psf_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.psf_cutout', name='psf_cutout'),
     url(r'^psfex_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.psfex_cutout', name='psfex_cutout'),
 
+
+    url(r'^cutout_panels/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.cutout_panels', name='cutout_panels'),
+
+
     url(r'^cat_plot/', 'map.views.cat_plot', name='cat_plot'),
 
     # Catalogs
     url(r'^decals/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals'),
 
     url(r'^decals-edr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals_edr2'),
+    url(r'^decals-edr3/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'map.views.cat_decals_edr3'),
 
     # brick list of polygons
     url(r'^bricks/', 'map.views.brick_list'),
