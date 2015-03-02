@@ -927,7 +927,6 @@ def cat_plot(req):
                                 photoobjdir=os.path.join(settings.WEB_DIR, 'data',
                                                          'sdss'),
                                 local=False)
-
     import tempfile
     f,tempfn = tempfile.mkstemp(suffix='.png')
     os.close(f)
@@ -944,9 +943,9 @@ def cat_plot(req):
                   E=(0x58, 0xac, 0xfa),
                   C=(0xda, 0x81, 0xf5))
         ax.scatter(x, y, s=50, c=[[float(x)/255. for x in cc[t]] for t in cat.type])
-
-    ok,x,y = wcs.radec2pixelxy(sdss.ra, sdss.dec)
-    ax.scatter(x, y, s=30, marker='x', c='k')
+    if sdss is not None:
+        ok,x,y = wcs.radec2pixelxy(sdss.ra, sdss.dec)
+        ax.scatter(x, y, s=30, marker='x', c='k')
     ax.axis([0, W, 0, H])
     f.savefig(tempfn)
 
