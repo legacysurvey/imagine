@@ -1,0 +1,27 @@
+Start with
+http://astrometry.net/svn/trunk/projects/unwise-web/virtualenv-notes
+
+ie,
+module unload python
+module unload swig
+module unload gcc
+module load python
+cd /project/projectdirs/cosmo/webapp/viewer/
+virtualenv venv
+cd venv
+source bin/activate
+
+pip install numpy
+pip install Django==1.6.2
+pip install fitsio
+
+cd build
+wget http://download.savannah.gnu.org/releases/freetype/freetype-2.4.12.tar.gz
+tar xzf freetype-2.4.12.tar.gz
+cd freetype-2.4.12
+./configure --prefix=/project/projectdirs/cosmo/webapp/viewer/venv
+make
+make install
+cd ../..
+
+pip install matplotlib
