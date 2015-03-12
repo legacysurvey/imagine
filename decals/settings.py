@@ -40,8 +40,8 @@ INSTALLED_APPS = (
     # 'django.contrib.admin',
     # 'django.contrib.auth',
     'django.contrib.contenttypes',
-#'django.contrib.sessions',
-#    'django.contrib.messages',
+    #'django.contrib.sessions',
+    #    'django.contrib.messages',
     'django.contrib.staticfiles',
 )
 
@@ -57,7 +57,6 @@ MIDDLEWARE_CLASSES = (
 ROOT_URLCONF = 'decals.urls'
 
 WSGI_APPLICATION = 'decals.wsgi.application'
-
 
 # Database
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
@@ -82,12 +81,17 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
-STATIC_URL = '/static/'
+#STATIC_URL = '/static/'
+STATIC_URL = 'http://legacysurvey.org/static/'
 
 STATICFILES_DIRS = (
     os.path.join(WEB_DIR, 'static'),
 )
+
+STATIC_ROOT = os.path.join(WEB_DIR, 'static')
+
+#print 'STATIC_ROOT is', STATIC_ROOT
+
