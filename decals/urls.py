@@ -37,16 +37,6 @@ urlpatterns = patterns(
 
     ## Cutouts
     url(r'^cutouts/', 'map.views.cutouts', name='cutouts'),
-    url(r'^ccd_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.ccd_cutout', name='ccd_cutout'),
-    #url(r'^ccd_cutout/(\d+)/([NS]\d{1,2})/', 'map.views.ccd_cutout', name='ccd_cutout')
-
-    url(r'^model_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.model_cutout', name='model_cutout'),
-    
-    url(r'^resid_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.resid_cutout', name='resid_cutout'),
-
-    url(r'^psf_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.psf_cutout', name='psf_cutout'),
-    url(r'^psfex_cutout/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.psfex_cutout', name='psfex_cutout'),
-
 
     url(r'^cutout_panels/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'map.views.cutout_panels', name='cutout_panels'),
 

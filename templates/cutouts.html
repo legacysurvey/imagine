@@ -7,7 +7,27 @@
 Brick {{ brick.brickname }} with RA,Dec center {{ brick.ra|floatformat:4 }}, {{ brick.dec|floatformat:4 }}.  Pixel coords: {{ brickx|floatformat:1 }}, {{ bricky|floatformat:1 }}
 </p>
 
+<table>
+<tr>
+<th>EDR2 sources</th>
+<th>EDR3 sources</th>
+<td rowspan="2">
+Point sources: green<br />
+deV galaxies: red<br />
+exp galaxies: blue<br />
+composite galaxies: magenta<br />
+SDSS objects: X
+</td>
+</tr>
+<tr>
+<td>
 <img src="{% url 'cat_plot' %}?ra={{ ra }}&dec={{ dec }}" />
+</td>
+<td>
+<img src="{% url 'cat_plot' %}?ra={{ ra }}&dec={{ dec }}&ver=3" />
+</td>
+</tr>
+</table>
 
 <table>
 <tr>
@@ -20,13 +40,14 @@ Brick {{ brick.brickname }} with RA,Dec center {{ brick.ra|floatformat:4 }}, {{ 
 <th>PSF fit</th>
 <th>PsfEx</th>
 </tr>
-{% for ccd,x,y in ccds %}
+
+{% for ccdstr,ccdurl in ccds %}
 <tr>
 <td>
-CCD {{ ccd.filter }} {{ ccd.expnum }} {{ ccd.extname }} x,y {{ x }}, {{ y }}
+{{ ccdstr }}
 </td>
 <td colspan="7">
-<img src="{% url 'cutout_panels' expnum=ccd.expnum extname=ccd.extname %}?x={{x}}&y={{y}}" />
+<img src="{{ ccdurl}}" width="700" height="100" />
 </td>
 </tr>
 {% endfor %}
