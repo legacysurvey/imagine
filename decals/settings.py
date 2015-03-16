@@ -56,7 +56,7 @@ MIDDLEWARE_CLASSES = (
 
 ROOT_URLCONF = 'decals.urls'
 
-WSGI_APPLICATION = 'decals.wsgi.application'
+#WSGI_APPLICATION = 'decals.wsgi.application'
 
 
 # Database
