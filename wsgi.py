@@ -7,7 +7,14 @@ For more information on this file, see
 https://docs.djangoproject.com/en/1.6/howto/deployment/wsgi/
 """
 
+
+
 import os
+os.environ.setdefault('DECALS_DIR', '/project/projectdirs/cosmo/work/decam/versions/work')
+os.environ.setdefault('BOSS_PHOTOOBJ', '/project/projectdirs/cosmo/data/sdss/pre13/eboss/photoObj.v5b')
+os.environ.setdefault('PHOTO_RESOLVE', '/project/projectdirs/cosmo/data/sdss/pre13/eboss/resolve/2013-07-29')
+os.environ.setdefault('PHOTO_REDUX', '')
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "decals.settings")
 
 import sys
@@ -16,32 +23,36 @@ sys.path.insert(0, '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/pyt
 sys.path.insert(0, '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6/site-packages')
 sys.path.insert(0, '/global/project/projectdirs/cosmo/webapp/viewer/venv')
 sys.path.insert(0, '/global/project/projectdirs/cosmo/webapp/viewer')
+sys.path.insert(0, '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6/site-packages/matplotlib-1.4.3-py2.6-linux-x86_64.egg')
 
-class App(object):
-    def __init__(self):
-        self.app = None
-        self.err = 'err'
-        try:
-            from django.core.wsgi import get_wsgi_application
-            self.app = get_wsgi_application()
-        except:
-            import traceback
-            self.err = traceback.format_exc()
+from django.core.wsgi import get_wsgi_application
+application = get_wsgi_application()
 
-    def __call__(self, env, start):
-        if self.app is not None:
-            self.err = 'loaded app!'
-            try:
-                for x in self.app(env,start):
-                    yield x
-                return
-            except:
-                import traceback
-                self.err += traceback.format_exc()
-        start('200 OK', [('Content-Type', 'text/plain')])
-        yield self.err
-
-application = App()
+# class App(object):
+#     def __init__(self):
+#         self.app = None
+#         self.err = 'err'
+#         try:
+#             from django.core.wsgi import get_wsgi_application
+#             self.app = get_wsgi_application()
+#         except:
+#             import traceback
+#             self.err = traceback.format_exc()
+# 
+#     def __call__(self, env, start):
+#         if self.app is not None:
+#             self.err = 'loaded app!'
+#             try:
+#                 for x in self.app(env,start):
+#                     yield x
+#                 return
+#             except:
+#                 import traceback
+#                 self.err += traceback.format_exc()
+#         start('200 OK', [('Content-Type', 'text/plain')])
+#         yield self.err
+# 
+# application = App()
 
             
 
@@ -64,8 +75,6 @@ application = App()
 #         
 #     yield txt
 
-#from django.core.wsgi import get_wsgi_application
-#application = get_wsgi_application()
 
 
     

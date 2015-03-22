@@ -1,5 +1,5 @@
 import os
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 
 import matplotlib
 matplotlib.use('Agg')
@@ -23,12 +23,16 @@ tileversions = {
     'decals-edr3': [1,],
     'decals-model-edr3': [1,],
     'decals-resid-edr3': [1,],
+    'decals-dr1': [1, 2],
+    'decals-model-dr1': [1,],
+    'decals-resid-dr1': [1,],
     }
 
 catversions = {
     'decals': [2,],
     'decals-edr2': [2,],
     'decals-edr3': [2,],
+    'decals-dr1': [2,],
     }
 
 oneyear = (3600 * 24 * 365)
@@ -61,7 +65,7 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
             from django.http import HttpResponseNotModified
             return HttpResponseNotModified()
 
-    res = HttpResponse(f, content_type=content_type)
+    res = StreamingHttpResponse(f, content_type=content_type)
     # res['Cache-Control'] = 'public, max-age=31536000'
     res['Content-Length'] = st.st_size
     # expires in an hour?
@@ -73,6 +77,7 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
     return res
 
 def index(req):
+    #layer = req.GET.get('layer', 'decals-dr1')
     layer = req.GET.get('layer', 'decals')
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
@@ -94,17 +99,26 @@ def index(req):
 
     lat,lng = dec, ra2long(ra)
 
-    url = req.build_absolute_uri('/') + '{id}/{ver}/{z}/{x}/{y}.jpg'
+    from decals import settings
+    
+
+    url = req.build_absolute_uri(settings.ROOT_URL) + '{id}/{ver}/{z}/{x}/{y}.jpg'
     caturl = '/{id}/{ver}/{z}/{x}/{y}.cat.json'
 
     # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
-    tileurl = url.replace('://', '://{s}.')
+    #tileurl = url.replace('://', '://{s}.')
 
     # Testing:
-    #tileurl = '/{id}/{ver}/{z}/{x}/{y}.jpg'
+    tileurl = settings.ROOT_URL + '/{id}/{ver}/{z}/{x}/{y}.jpg'
 
     bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
+
+    # HACK
+    tileurl = 'http://broiler.cosmo.fas.nyu.edu:8896/{id}/{ver}/{z}/{x}/{y}.jpg'
+    caturl = 'http://broiler.cosmo.fas.nyu.edu:8896/{id}/{ver}/{z}/{x}/{y}.cat.json'
+    bricksurl = 'http://broiler.cosmo.fas.nyu.edu:8896/bricks/?north={north}&east={east}&south={south}&west={west}'
+    ccdsurl = 'http://broiler.cosmo.fas.nyu.edu:8896/ccds/?north={north}&east={east}&south={south}&west={west}'
 
     baseurl = req.path + '?layer=%s&' % layer
 
@@ -140,8 +154,11 @@ def get_tile_wcs(zoom, x, y):
         ry = zoomscale/2 - y
     rx = rx * W
     ry = ry * H
+
+    #print 'create_mercator_2:', 180., 0., rx, ry, zoomscale, W, H, 1
     wcs = anwcs_create_mercator_2(180., 0., rx, ry,
                                   zoomscale, W, H, 1)
+    #print 'Zoom level', zoom, 'pixel scale', wcs.pixel_scale()
     return wcs, W, H, zoomscale, zoom,x,y
 
 def get_scaled(scalepat, scalekwargs, scale, basefn):
@@ -154,9 +171,9 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
     fn = scalepat % dict(scale=scale, **scalekwargs)
     if not os.path.exists(fn):
 
-        #print 'Does not exist:', fn
+        print 'Does not exist:', fn
         sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn)
-        #print 'Source:', sourcefn
+        print 'Source:', sourcefn
         if sourcefn is None or not os.path.exists(sourcefn):
             print 'Image source file', sourcefn, 'not found'
             return None
@@ -182,13 +199,20 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         hdr = fitsio.FITSHDR()
         subwcs.add_to_header(hdr)
 
+        dirnm = os.path.dirname(fn)
+        if not os.path.exists(dirnm):
+            try:
+                os.makedirs(dirnm)
+            except:
+                pass
+
         import tempfile
-        f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=os.path.dirname(fn))
+        f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=dirnm)
         os.close(f)
         
         fitsio.write(tmpfn, I2, header=hdr, clobber=True)
         os.rename(tmpfn, fn)
-        #print 'Wrote', fn
+        print 'Wrote', fn
     return fn
 
 # "PR"
@@ -260,6 +284,27 @@ def map_decals_resid_edr3(req, ver, zoom, x, y):
                            layout=2)
 
 
+def map_decals_dr1(req, ver, zoom, x, y, savecache=False, **kwargs):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-dr1', 'decals-dr1',
+                           imagetag='image',
+                           rgbkwargs=rgbkwargs,
+                           layout=2, savecache=savecache, **kwargs)
+
+def map_decals_model_dr1(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
+                           'decals-model-dr1', 'decals-dr1',
+                           imagetag='model',
+                           rgbkwargs=rgbkwargs,
+                           layout=2, savecache=False)
+
+def map_decals_resid_dr1(req, ver, zoom, x, y):
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
+                           'decals-resid-dr1', 'decals-dr1',
+                           imagetag='resid',
+                           rgbkwargs=dict(mnmx=(-5,5)),
+                           layout=2, savecache=False)
+
+
 def map_des_stripe82(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'des-stripe82', 'des-stripe82')
 
@@ -326,7 +371,7 @@ def map_sfd(req, ver, zoom, x, y):
     #import matplotlib
     #matplotlib.use('Agg')
     import pylab as plt
-    plt.imsave(tilefn, ebv, vmin=0., vmax=0.5, cmap='hot')
+    plt.imsave(tilefn, ebv, vmin=0., vmax=0.5, cmap='hot', edgecolor='none', facecolor='none')
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
@@ -453,6 +498,9 @@ def cat_decals_edr2(req, ver, zoom, x, y, tag='decals-edr2'):
 def cat_decals_edr3(req, ver, zoom, x, y, tag='decals-edr3'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
 
+def cat_decals_dr1(req, ver, zoom, x, y, tag='decals-dr1'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
+
 def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1):
     import simplejson
 
@@ -565,7 +613,9 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
     
 def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={},
-                    layout=1):
+                    layout=1,
+                    savecache = True, forcecache = False,
+                    ):
     from decals import settings
 
     zoom = int(zoom)
@@ -620,12 +670,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         scaled = np.clip(scaled, 1, 8)
         #print 'Scaled-down:', scaled
         dirnm = os.path.join(basedir, 'scaled', imagedir)
-        scalepat = os.path.join(dirnm, imagetag + '-%(brick)06i-%(band)s-%(scale)i.fits')
-        if not os.path.exists(dirnm):
-            try:
-                os.makedirs(dirnm)
-            except:
-                pass
+        scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
         
     D = _get_decals()
     B = D.get_bricks_readonly()
@@ -633,9 +678,6 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     #print len(I), 'bricks touching:', B.brickid[I]
     rimgs = []
 
-    # If any problems are encountered during tile rendering, don't save
-    # the results... at least it'll get fixed upon reload.
-    savecache = True
 
     for band in bands:
         rimg = np.zeros((H,W), np.float32)
@@ -663,11 +705,16 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             else:
                 basefn = basepat % fnargs
                 fn = get_scaled(scalepat, fnargs, scaled, basefn)
-            #print 'Filename:', fn
+            print 'Filename:', fn
             if fn is None:
                 savecache = False
                 continue
             if not os.path.exists(fn):
+                print 'Does not exist:', fn
+                # dr = fn
+                # for x in range(10):
+                #     dr = os.path.dirname(dr)
+                #     print 'dir', dr, 'exists?', os.path.exists(dr)
                 savecache = False
                 continue
             try:
@@ -722,7 +769,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             try:
                 Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
             except OverlapError:
-                #print 'Resampling exception'
+                print 'Resampling exception'
                 #import traceback
                 #traceback.print_exc()
                 continue
@@ -735,13 +782,16 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             rn  [Yo,Xo] += 1
         rimg /= np.maximum(rn, 1)
         rimgs.append(rimg)
-        #print 'Band', band, ': total of', rn.sum(), 'pixels'
+        print 'Band', band, ': total of', rn.sum(), 'pixels, range', rimg.min(), rimg.max()
     rgb = get_rgb(rimgs, bands, **rgbkwargs)
 
     try:
         os.makedirs(os.path.dirname(tilefn))
     except:
         pass
+
+    if forcecache:
+        savecache = True
 
     if not savecache:
         import tempfile
@@ -751,7 +801,17 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     #import matplotlib
     #matplotlib.use('Agg')
     import pylab as plt
-    plt.imsave(tilefn, rgb)
+    #plt.imsave(tilefn, rgb)
+
+    # no jpeg output support in matplotlib in some installations...
+    if True:
+        import tempfile
+        f,tempfn = tempfile.mkstemp(suffix='.png')
+        plt.imsave(tempfn, rgb)
+        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
+        os.system(cmd)
+        os.unlink(tempfn)
+        print 'Wrote', tilefn
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
@@ -876,7 +936,10 @@ def cutouts(req):
     #url = req.build_absolute_uri('/') + reverse('cutout_panels',
     #                                            kwargs=dict(expnum='%i',
     #                                                      extname='%s'))
-    url = req.build_absolute_uri('/') + 'cutout_panels/%i/%s/'
+
+    from decals import settings
+
+    url = req.build_absolute_uri('/') + settings.ROOT_URL + '/cutout_panels/%i/%s/'
 
     print 'URL', url
 
@@ -885,10 +948,11 @@ def cutouts(req):
 
     domains = ['a','b','c','d']
 
+    print 'URL', url
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
         ccdsx.append(('CCD %s %i %s x,y %i,%i' % (ccd.filter, ccd.expnum, ccd.extname, x, y),
-                      url % (domains[i%len(domains)], ccd.expnum, ccd.extname) + '?x=%i&y=%i' % (x,y)))
+                      url % (domains[i%len(domains)], int(ccd.expnum), ccd.extname) + '?x=%i&y=%i' % (x,y)))
 
     return render(req, 'cutouts.html',
                   dict(ra=ra, dec=dec,
@@ -926,7 +990,7 @@ def cat_plot(req):
     nil,sdss = get_sdss_sources('r', margwcs,
                                 photoobjdir=os.path.join(settings.WEB_DIR, 'data',
                                                          'sdss'),
-                                local=False)
+                                local=True)
     import tempfile
     f,tempfn = tempfile.mkstemp(suffix='.png')
     os.close(f)
@@ -970,7 +1034,7 @@ def _get_ccd(expnum, extname):
 def _get_image_filename(ccd):
     from decals import settings
     basedir = os.path.join(settings.WEB_DIR, 'data')
-    fn = ccd.cpimage
+    fn = ccd.cpimage.strip()
     # drop 'decals/' off the front...
     fn = fn.replace('decals/','')
     fn = os.path.join(basedir, fn)

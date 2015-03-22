@@ -679,6 +679,7 @@ var popup = L.popup();
 // default to 1.
 var tileversions = {
     'decals-pr':4,
+    'decals-dr1':2,
 };
 var catversions  = {
     'decals': 2,
@@ -701,6 +702,9 @@ function getcatversion(layer) {
 }
 
 var idname = '{{ layer }}';
+//var catname = 'decals-dr1';
+
+//var idname = 'decals';
 var catname = 'decals';
 
 function createTileLayer(id, vertag) {
@@ -718,36 +722,68 @@ function createTileLayer(id, vertag) {
     return tiles;
 }
 
-tiles = createTileLayer('decals-pr', 'decals-pr');
-tiles.catname = 'decals';
-tilesMod = createTileLayer('decals-model-pr', 'decals-model-pr');
-tilesMod.catname = 'decals';
+tilesEdr = createTileLayer('decals-pr', 'decals-pr');
+tilesEdr.catname = 'decals';
+tilesModEdr = createTileLayer('decals-model-pr', 'decals-model-pr');
+tilesModEdr.catname = 'decals';
+
 tilesSfd = createTileLayer('sfd-tiles', 'sfd');
 
-tilesEdr2 = createTileLayer('decals-edr2', 'decals-edr2');
-tilesEdr2.catname = 'decals-edr2';
-tilesModEdr2 = createTileLayer('decals-model-edr2', 'decals-model-edr2');
-tilesModEdr2.catname = 'decals-edr2';
-tilesResidEdr2 = createTileLayer('decals-resid-edr2', 'decals-resid-edr2');
-tilesResidEdr2.catname = 'decals-edr2';
+tiles = tilesEdr;
 
-tilesEdr3 = createTileLayer('decals-edr3', 'decals-edr3');
-tilesEdr3.catname = 'decals-edr3';
-tilesModEdr3 = createTileLayer('decals-model-edr3', 'decals-model-edr3');
-tilesModEdr3.catname = 'decals-edr3';
-tilesResidEdr3 = createTileLayer('decals-resid-edr3', 'decals-resid-edr3');
-tilesResidEdr3.catname = 'decals-edr3';
+
+
+       
+url = 'http://{s}.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
+id = 'decals-dr1'
+vertag = id
+var tilesDr1 = new MyTileLayer(url, {
+        maxZoom: 18,
+        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+        id: id,
+        ver: getversion(vertag),
+        unloadInvisibleTiles: true,
+        subdomains: subdomains,
+    });
+tilesDr1.on('tileloadstart', onTileLoadStart);
+tilesDr1.on('tileunload',    onTileUnload);
+tilesDr1.catname = 'decals-dr1';
+
+
+// tilesEdr2 = createTileLayer('decals-edr2', 'decals-edr2');
+// tilesEdr2.catname = 'decals-edr2';
+// tilesModEdr2 = createTileLayer('decals-model-edr2', 'decals-model-edr2');
+// tilesModEdr2.catname = 'decals-edr2';
+// tilesResidEdr2 = createTileLayer('decals-resid-edr2', 'decals-resid-edr2');
+// tilesResidEdr2.catname = 'decals-edr2';
+
+// tilesEdr3 = createTileLayer('decals-edr3', 'decals-edr3');
+// tilesEdr3.catname = 'decals-edr3';
+// tilesModEdr3 = createTileLayer('decals-model-edr3', 'decals-model-edr3');
+// tilesModEdr3.catname = 'decals-edr3';
+// tilesResidEdr3 = createTileLayer('decals-resid-edr3', 'decals-resid-edr3');
+// tilesResidEdr3.catname = 'decals-edr3';
+
+// tilesDr1 = createTileLayer('decals-dr1', 'decals-dr1');
+// tilesDr1.catname = 'decals-dr1';
+// tilesModDr1 = createTileLayer('decals-model-dr1', 'decals-model-dr1');
+// tilesModDr1.catname = 'decals-dr1';
+// tilesResidDr1 = createTileLayer('decals-resid-dr1', 'decals-resid-dr1');
+// tilesResidDr1.catname = 'decals-dr1';
 
 
 var baseMaps = {
-    "DECaLS EDR images": tiles,
-    "DECaLS EDR models": tilesMod,
-    "DECaLS EDR2 images": tilesEdr2,
-    "DECaLS EDR2 models": tilesModEdr2,
-    "DECaLS EDR2 residuals": tilesResidEdr2,
-    "DECaLS EDR3 images": tilesEdr3,
-    "DECaLS EDR3 models": tilesModEdr3,
-    "DECaLS EDR3 residuals": tilesResidEdr3,
+    "DECaLS EDR images": tilesEdr,
+    "DECaLS EDR models": tilesModEdr,
+    // "DECaLS EDR2 images": tilesEdr2,
+    // "DECaLS EDR2 models": tilesModEdr2,
+    // "DECaLS EDR2 residuals": tilesResidEdr2,
+    // "DECaLS EDR3 images": tilesEdr3,
+    // "DECaLS EDR3 models": tilesModEdr3,
+    // "DECaLS EDR3 residuals": tilesResidEdr3,
+    "DECaLS DR1 images": tilesDr1,
+    // "DECaLS DR1 models": tilesModDr1,
+    // "DECaLS DR1 residuals": tilesResidDr1,
     "SFD dust map": tilesSfd,
 };
 
@@ -755,28 +791,38 @@ if (idname == 'decals') {
     tiles.addTo(map);
 } else if (idname == 'decals-model') {
     tilesMod.addTo(map);
-} else if (idname == 'decals-edr2') {
-    tilesEdr2.addTo(map);
-    catname = 'decals-edr2';
-} else if (idname == 'decals-model-edr2') {
-    tilesModEdr2.addTo(map);
-    catname = 'decals-edr2';
-} else if (idname == 'decals-resid-edr2') {
-    tilesResidEdr2.addTo(map);
-    catname = 'decals-edr2';
-} else if (idname == 'decals-edr3') {
-    tilesEdr3.addTo(map);
-    catname = 'decals-edr3';
-} else if (idname == 'decals-model-edr3') {
-    tilesModEdr3.addTo(map);
-    catname = 'decals-edr3';
-} else if (idname == 'decals-resid-edr3') {
-    tilesResidEdr3.addTo(map);
-    catname = 'decals-edr3';
-} else {
-    xtiles = createTileLayer(idname, idname);
-    baseMaps[idname] = xtiles;
-    xtiles.addTo(map);
+//} else if (idname == 'decals-edr2') {
+//     tilesEdr2.addTo(map);
+//     catname = 'decals-edr2';
+// } else if (idname == 'decals-model-edr2') {
+//     tilesModEdr2.addTo(map);
+//     catname = 'decals-edr2';
+// } else if (idname == 'decals-resid-edr2') {
+//     tilesResidEdr2.addTo(map);
+//     catname = 'decals-edr2';
+// } else if (idname == 'decals-edr3') {
+//     tilesEdr3.addTo(map);
+//     catname = 'decals-edr3';
+// } else if (idname == 'decals-model-edr3') {
+//     tilesModEdr3.addTo(map);
+//     catname = 'decals-edr3';
+// } else if (idname == 'decals-resid-edr3') {
+//     tilesResidEdr3.addTo(map);
+//     catname = 'decals-edr3';
+// } else 
+} else if (idname == 'decals-dr1') {
+//     tilesDr1.addTo(map);
+//     catname = 'decals-dr1';
+// } else if (idname == 'decals-model-dr1') {
+//     tilesModDr1.addTo(map);
+//     catname = 'decals-dr1';
+// } else if (idname == 'decals-resid-dr1') {
+//     tilesResidDr1.addTo(map);
+//     catname = 'decals-dr1';
+// } else {
+//     xtiles = createTileLayer(idname, idname);
+//     baseMaps[idname] = xtiles;
+//     xtiles.addTo(map);
 }
 
 var info = L.control();
