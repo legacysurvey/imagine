@@ -78,11 +78,14 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
 
 def index(req):
     #layer = req.GET.get('layer', 'decals-dr1')
-    layer = req.GET.get('layer', 'decals')
+    layer = req.GET.get('layer', 'decals-dr1')
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
     # EDR2 region
-    ra, dec, zoom = 243.7, 8.2, 14
+    #ra, dec, zoom = 243.7, 8.2, 14
+
+    # Top of DR1
+    ra,dec,zoom = 113.49, 29.86, 13
 
     try:
         zoom = int(req.GET.get('zoom', zoom))
@@ -171,11 +174,11 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
     fn = scalepat % dict(scale=scale, **scalekwargs)
     if not os.path.exists(fn):
 
-        print 'Does not exist:', fn
+        # print 'Does not exist:', fn
         sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn)
-        print 'Source:', sourcefn
+        # print 'Source:', sourcefn
         if sourcefn is None or not os.path.exists(sourcefn):
-            print 'Image source file', sourcefn, 'not found'
+            # print 'Image source file', sourcefn, 'not found'
             return None
         I = fitsio.read(sourcefn)
         #print 'source image:', I.shape
@@ -209,7 +212,9 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         import tempfile
         f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=dirnm)
         os.close(f)
-        
+        # To avoid overwriting the (empty) temp file (and fitsio
+        # printing "Removing existing file")
+        os.unlink(tmpfn)
         fitsio.write(tmpfn, I2, header=hdr, clobber=True)
         os.rename(tmpfn, fn)
         print 'Wrote', fn
@@ -336,7 +341,7 @@ def map_sfd(req, ver, zoom, x, y):
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
     if os.path.exists(tilefn):
-        print 'Cached:', tilefn
+        # print 'Cached:', tilefn
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
 
@@ -526,7 +531,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1):
     cachefn = os.path.join(basedir, 'cats-cache', tag,
                            '%i/%i/%i/%i.cat.json' % (ver, zoom, x, y))
     if os.path.exists(cachefn):
-        print 'Cached:', cachefn
+        # print 'Cached:', cachefn
         return send_file(cachefn, 'application/json',
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
                          expires=oneyear)
@@ -571,7 +576,7 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
 
     basedir = os.path.join(settings.WEB_DIR, 'data')
     H,W = wcs.shape
-    print 'WCS shape:', H,W
+    # print 'WCS shape:', H,W
     X = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                             [1,H/2,H,H,H,H/2,1,1])
     r,d = X[-2:]
@@ -591,7 +596,7 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
         fnargs = dict(brick=brickid, brickname=brickname)
         catfn = catpat % fnargs
         if not os.path.exists(catfn):
-            print 'Does not exist:', catfn
+            # print 'Does not exist:', catfn
             continue
         T = fits_table(catfn)
         # FIXME -- all False
@@ -600,7 +605,7 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
         ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
         #print 'xx,yy', xx.min(), xx.max(), yy.min(), yy.max()
         T.cut((xx > 0) * (yy > 0) * (xx < W) * (yy < H))
-        print 'kept', len(T), 'from', catfn
+        # print 'kept', len(T), 'from', catfn
         cat.append(T)
         if hdr is None:
             hdr = T.get_header()
@@ -633,7 +638,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
     if os.path.exists(tilefn):
-        print 'Cached:', tilefn
+        # print 'Cached:', tilefn
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
 
@@ -696,21 +701,21 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     modscalepat = scalepat.replace('resid', 'model')
                 imbasefn = basefn.replace('resid', 'image')
                 imfn = get_scaled(imscalepat, fnargs, scaled, imbasefn)
-                print 'imfn', imfn
+                # print 'imfn', imfn
                 modbasefn = basefn.replace('resid', 'model')
                 modfn = get_scaled(modscalepat, fnargs, scaled, modbasefn)
-                print 'modfn', modfn
+                # print 'modfn', modfn
                 fn = imfn
 
             else:
                 basefn = basepat % fnargs
                 fn = get_scaled(scalepat, fnargs, scaled, basefn)
-            print 'Filename:', fn
+            # print 'Filename:', fn
             if fn is None:
                 savecache = False
                 continue
             if not os.path.exists(fn):
-                print 'Does not exist:', fn
+                # print 'Does not exist:', fn
                 # dr = fn
                 # for x in range(10):
                 #     dr = os.path.dirname(dr)
@@ -782,7 +787,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             rn  [Yo,Xo] += 1
         rimg /= np.maximum(rn, 1)
         rimgs.append(rimg)
-        print 'Band', band, ': total of', rn.sum(), 'pixels, range', rimg.min(), rimg.max()
+        # print 'Band', band, ': total of', rn.sum(), 'pixels, range', rimg.min(), rimg.max()
     rgb = get_rgb(rimgs, bands, **rgbkwargs)
 
     try:
@@ -807,6 +812,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     if True:
         import tempfile
         f,tempfn = tempfile.mkstemp(suffix='.png')
+        os.close(f)
         plt.imsave(tempfn, rgb)
         cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
         os.system(cmd)
