@@ -13,10 +13,12 @@ class duck(object):
 req = duck()
 req.META = dict(HTTP_IF_MODIFIED_SINCE=None)
 
-version = 2
+version = 1
 
 def _one_tile((zoom, x, y)):
-    map_decals_dr1(req, version, zoom, x, y, savecache=True, forcecache=True)
+    map_decals_dr1d(req, version, zoom, x, y, savecache=True, 
+                    forcecache=False, return_if_not_found=True)
+                    #forcecache=True)
 
 def main():
     import optparse

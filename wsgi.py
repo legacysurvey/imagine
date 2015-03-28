@@ -18,12 +18,25 @@ os.environ.setdefault('PHOTO_REDUX', '')
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "decals.settings")
 
 import sys
-#print 'sys.path:', sys.path
-sys.path.insert(0, '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6')
-sys.path.insert(0, '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6/site-packages')
-sys.path.insert(0, '/global/project/projectdirs/cosmo/webapp/viewer/venv')
-sys.path.insert(0, '/global/project/projectdirs/cosmo/webapp/viewer')
-sys.path.insert(0, '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6/site-packages/matplotlib-1.4.3-py2.6-linux-x86_64.egg')
+
+sys.path = []
+for d in [
+    '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6',
+    '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6/site-packages',
+    '/global/project/projectdirs/cosmo/webapp/viewer/venv',
+    '/global/project/projectdirs/cosmo/webapp/viewer',
+    '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6/site-packages/matplotlib-1.4.3-py2.6-linux-x86_64.egg',
+    ]:
+    if not d in sys.path:
+        sys.path.insert(0, d)
+
+print 'meta', sys.meta_path
+print 'modules', sys.modules.keys()
+import django
+#django = reload(django)
+print django.__file__
+for p in sys.path:
+    print os.path.exists(p), os.path.exists(os.path.join(p, 'django')), p
 
 from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()

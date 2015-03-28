@@ -11,6 +11,8 @@ from map.views import *
 from decals import settings
 from desi.common import Decals
 
+from astrometry.util.fits import *
+
 def main():
     import optparse
 
@@ -26,7 +28,8 @@ def main():
     opt,args = parser.parse_args()
 
     decals = Decals()
-    B = decals.get_bricks_readonly()
+    #B = decals.get_bricks_readonly()
+    B = fits_table('decals-bricks-in-dr1.fits')
 
     brickinds = bricknames = None
     if len(args) == 0:
@@ -52,7 +55,7 @@ def main():
 
     basedir = os.path.join(settings.WEB_DIR, 'data')
 
-    tag = imagedir = 'decals-dr1'
+    tag = imagedir = 'decals-dr1d'
     imagetag = 'image'
 
     # layout == 2
@@ -73,12 +76,21 @@ def main():
             brick = decals.get_brick_by_name(bricknames[i])
 
         for band in bands:
+            # HACK -- dr1
+            if not brick.get('has_%s' % band):
+                print 'Brick', brick.brickname, 'does not have band', band
+                continue
+
             print 'Scaling brick', brick.brickname, 'band', band
             fnargs = dict(band=band, brick=brick.brickid, brickname=brick.brickname)
             basefn = basepat % fnargs
-            fn = get_scaled(scalepat, fnargs, scaled, basefn)
-            print 'Filename:', fn
-            
+            try:
+                fn = get_scaled(scalepat, fnargs, scaled, basefn)
+                print 'Filename:', fn
+            except:
+                import traceback
+                traceback.print_exc()
+                continue
 
 if __name__ == '__main__':
     sys.exit(main())

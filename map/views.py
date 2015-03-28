@@ -24,6 +24,7 @@ tileversions = {
     'decals-model-edr3': [1,],
     'decals-resid-edr3': [1,],
     'decals-dr1': [1, 2],
+    'decals-dr1d': [1],
     'decals-model-dr1': [1,],
     'decals-resid-dr1': [1,],
     }
@@ -294,6 +295,21 @@ def map_decals_dr1(req, ver, zoom, x, y, savecache=False, **kwargs):
                            imagetag='image',
                            rgbkwargs=rgbkwargs,
                            layout=2, savecache=savecache, **kwargs)
+
+B_dr1d = None
+
+def map_decals_dr1d(req, ver, zoom, x, y, savecache=False, **kwargs):
+    global B_dr1d
+    if B_dr1d is None:
+        from decals import settings
+        from astrometry.util.fits import fits_table
+        B_dr1d = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks-in-dr1.fits'))
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-dr1d', 'decals-dr1d',
+                           imagetag='image',
+                           rgbkwargs=rgbkwargs,
+                           bricks=B_dr1d,
+                           layout=2, savecache=savecache, **kwargs)
+
 
 def map_decals_model_dr1(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz',
@@ -619,7 +635,9 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
 def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={},
                     layout=1,
+                    bricks=None,
                     savecache = True, forcecache = False,
+                    return_if_not_found=False,
                     ):
     from decals import settings
 
@@ -678,16 +696,29 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
         
     D = _get_decals()
-    B = D.get_bricks_readonly()
+    if bricks is None:
+        B = D.get_bricks_readonly()
+    else:
+        B = bricks
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
-    #print len(I), 'bricks touching:', B.brickid[I]
+    print len(I), 'bricks touching zoom', zoom, 'x,y', x,y
     rimgs = []
 
+    if len(I) == 0:
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
 
+    foundany = False
     for band in bands:
         rimg = np.zeros((H,W), np.float32)
         rn   = np.zeros((H,W), np.uint8)
-        for brickid,brickname in zip(B.brickid[I], B.brickname[I]):
+        for i,brickid,brickname in zip(I,B.brickid[I], B.brickname[I]):
+            has = getattr(B, 'has_%s' % band, None)
+            if has is not None and not has[i]:
+                # No coverage for band in this brick.
+                print 'Brick', brickname, 'has no', band, 'band'
+                continue
+
             fnargs = dict(band=band, brick=brickid, brickname=brickname)
 
             if imagetag == 'resid':
@@ -710,12 +741,13 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             else:
                 basefn = basepat % fnargs
                 fn = get_scaled(scalepat, fnargs, scaled, basefn)
-            # print 'Filename:', fn
             if fn is None:
+                # print 'Filename:', fn
+                print 'not found: brick', brickname, 'band', band
                 savecache = False
                 continue
             if not os.path.exists(fn):
-                # print 'Does not exist:', fn
+                print 'Does not exist:', fn
                 # dr = fn
                 # for x in range(10):
                 #     dr = os.path.dirname(dr)
@@ -732,6 +764,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                 traceback.print_exc(None, sys.stdout)
                 continue
 
+            foundany = True
+            print 'Reading', fn
             ok,xx,yy = bwcs.radec2pixelxy(r, d)
             xx = xx.astype(np.int)
             yy = yy.astype(np.int)
@@ -788,6 +822,10 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         rimg /= np.maximum(rn, 1)
         rimgs.append(rimg)
         # print 'Band', band, ': total of', rn.sum(), 'pixels, range', rimg.min(), rimg.max()
+
+    if return_if_not_found and not foundany:
+        return
+
     rgb = get_rgb(rimgs, bands, **rgbkwargs)
 
     try:
