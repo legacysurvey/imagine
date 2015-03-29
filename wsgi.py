@@ -7,19 +7,22 @@ For more information on this file, see
 https://docs.djangoproject.com/en/1.6/howto/deployment/wsgi/
 """
 
-
-
 import os
 os.environ.setdefault('DECALS_DIR', '/project/projectdirs/cosmo/work/decam/versions/work')
 os.environ.setdefault('BOSS_PHOTOOBJ', '/project/projectdirs/cosmo/data/sdss/pre13/eboss/photoObj.v5b')
 os.environ.setdefault('PHOTO_RESOLVE', '/project/projectdirs/cosmo/data/sdss/pre13/eboss/resolve/2013-07-29')
 os.environ.setdefault('PHOTO_REDUX', '')
-
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "decals.settings")
 
 import sys
+for p in sys.path:
+    print 'sys.path', p
 
-sys.path = []
+import site
+site.addsitedir('/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6/site-packages')
+
+import sys
+#sys.path = []
 for d in [
     '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6',
     '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6/site-packages',
@@ -30,13 +33,27 @@ for d in [
     if not d in sys.path:
         sys.path.insert(0, d)
 
-print 'meta', sys.meta_path
-print 'modules', sys.modules.keys()
+#sys.path.append('/usr/lib64/python2.6')
+#sys.path.append('/usr/lib64/python2.6/site-packages')
+#sys.path.append('/usr/lib/python2.6/site-packages')
+
+sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6')
+
+sys.path.append('/usr/common/usg/python/2.6.1/lib/python26.zip')
+sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6')
+sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/plat-linux2')
+sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/lib-tk')
+sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/lib-old')
+sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/lib-dynload')
+sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/site-packages')
+sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/site-packages/PIL')
+
+
 import django
-#django = reload(django)
 print django.__file__
 for p in sys.path:
-    print os.path.exists(p), os.path.exists(os.path.join(p, 'django')), p
+    #print os.path.exists(p), os.path.exists(os.path.join(p, 'django')), os.path.exists(os.path.join(p, 'django', '__init__.py')), p
+    print os.path.exists(os.path.join(p, 'django', '__init__.py')), p
 
 from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
