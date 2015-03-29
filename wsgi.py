@@ -15,14 +15,13 @@ os.environ.setdefault('PHOTO_REDUX', '')
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "decals.settings")
 
 import sys
-for p in sys.path:
-    print 'sys.path', p
+# for p in sys.path:
+#     print 'sys.path', p
 
 import site
 site.addsitedir('/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6/site-packages')
 
 import sys
-#sys.path = []
 for d in [
     '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6',
     '/global/project/projectdirs/cosmo/webapp/viewer/venv/lib/python2.6/site-packages',
@@ -33,12 +32,6 @@ for d in [
     if not d in sys.path:
         sys.path.insert(0, d)
 
-#sys.path.append('/usr/lib64/python2.6')
-#sys.path.append('/usr/lib64/python2.6/site-packages')
-#sys.path.append('/usr/lib/python2.6/site-packages')
-
-sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6')
-
 sys.path.append('/usr/common/usg/python/2.6.1/lib/python26.zip')
 sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6')
 sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/plat-linux2')
@@ -48,12 +41,11 @@ sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/lib-dynload')
 sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/site-packages')
 sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/site-packages/PIL')
 
-
 import django
-print django.__file__
-for p in sys.path:
-    #print os.path.exists(p), os.path.exists(os.path.join(p, 'django')), os.path.exists(os.path.join(p, 'django', '__init__.py')), p
-    print os.path.exists(os.path.join(p, 'django', '__init__.py')), p
+# print django.__file__
+# for p in sys.path:
+#     #print os.path.exists(p), os.path.exists(os.path.join(p, 'django')), os.path.exists(os.path.join(p, 'django', '__init__.py')), p
+#     print os.path.exists(os.path.join(p, 'django', '__init__.py')), p
 
 from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
