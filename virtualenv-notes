@@ -24,4 +24,58 @@ make
 make install
 cd ../..
 
-pip install matplotlib
+# Apply Django patches...
+
+(cd lib/python2.6/site-packages/; patch -p3) < ../../unwise.me/venv-unwise-phot/unwise-web/django-1.6.2-on-python-2.6.1-b.patch
+patch -p3 < ../../unwise.me/venv-unwise-phot/unwise-web/django-1.6.2-on-python-2.6.1.patch
+
+
+module load swig/3.0.2
+
+cd build
+wget ftp://ftp.atnf.csiro.au/pub/software/wcslib/wcslib-4.25.1.tar.bz2
+tar xjf wcslib-4.25.1.tar.bz2
+cd wcslib-4.25.1
+./configure --prefix=/project/projectdirs/cosmo/webapp/viewer/venv
+make
+
+export PKG_CONFIG_PATH=${PKG_CONFIG_PATH}://project/projectdirs/cosmo/webapp/viewer/venv/lib/pkgconfig
+
+# dynamic linking... how do we pass LD_LIBRARY_PATH?  Try static...
+
+export WCSLIB_LIB=/project/projectdirs/cosmo/webapp/viewer/venv/lib/libwcs.a
+# need to rebuild with -fPIC
+export CFLAGS=-fPIC
+cd wcslib-4.25.1
+make clean
+./configure ...
+make
+make install
+
+
+git clone git@github.com:dstndstn/astrometry.net astrometry
+(cd astrometry && make -k)
+(cd astrometry && make -k py)
+(cd astrometry/libkd && make pyspherematch)
+
+git clone git@github.com:dstndstn/tractor.git tractor-git
+(cd tractor-git && make)
+ln -s tractor-git/tractor tractor
+
+ln -s tractor-git/projects/desi .
+
+
+#pip install matplotlib
+# (was failing to "import matplotlib.pylab" with _backend_agg.so missing symbol)
+
+cd build
+wget http://downloads.sourceforge.net/project/matplotlib/matplotlib/matplotlib-1.4.3/matplotlib-1.4.3.tar.gz
+tar xzf matplotlib-1.4.3.tar.gz
+cd matplotlib-1.4.3
+# https://github.com/matplotlib/matplotlib/issues/2577
+python setup.py build --force
+python setup.py install
+
+pip install scipy
+
+
