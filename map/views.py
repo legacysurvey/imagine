@@ -743,7 +743,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                 fn = get_scaled(scalepat, fnargs, scaled, basefn)
             if fn is None:
                 # print 'Filename:', fn
-                print 'not found: brick', brickname, 'band', band
+                print 'not found: brick', brickname, 'band', band, 'with basefn', basefn
                 savecache = False
                 continue
             if not os.path.exists(fn):
@@ -823,7 +823,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         rimgs.append(rimg)
         # print 'Band', band, ': total of', rn.sum(), 'pixels, range', rimg.min(), rimg.max()
 
-    if return_if_not_found and not foundany:
+    #if return_if_not_found and not foundany:
+    if return_if_not_found and not savecache:
         return
 
     rgb = get_rgb(rimgs, bands, **rgbkwargs)

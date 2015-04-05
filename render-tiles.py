@@ -6,6 +6,8 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
 from map.views import *
 
 from astrometry.util.multiproc import *
+from astrometry.util.fits import *
+from astrometry.libkd.spherematch import *
 
 class duck(object):
     pass
@@ -25,7 +27,7 @@ def main():
 
     parser = optparse.OptionParser()
     parser.add_option('--zoom', '-z', type=int, action='append', default=[],
-                      help='Add zoom level; default 14')
+                      help='Add zoom level; default 13')
     parser.add_option('--threads', type=int, default=1, help='Number of threads')
     parser.add_option('--y0', type=int, default=0, help='Start row')
     parser.add_option('--y1', type=int, default=None, help='End row (non-inclusive)')
@@ -39,7 +41,7 @@ def main():
     opt,args = parser.parse_args()
 
     if len(opt.zoom) == 0:
-        opt.zoom = [14]
+        opt.zoom = [13]
 
     mp = multiproc(opt.threads)
 
@@ -76,7 +78,10 @@ def main():
 
         for iy,y in enumerate(yy):
             d = dd[iy]
-            I,J,d = match_radec(d, rr, B.ra, B.dec, 0.25)
+            I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25)
+            if len(I) == 0:
+                print 'No matches to bricks'
+                continue
             keep = np.zeros(len(rr), bool)
             keep[I] = True
             print 'Keeping', sum(keep), 'tiles in row', y, 'Dec', d
@@ -85,8 +90,10 @@ def main():
             args = []
             for xi in x:
                 args.append((zoom,xi,y))
-            mp.map(_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads))
-       continue
+            print 'Rendering', len(args), 'tiles...'
+            mp.map(_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
+            print 'Rendered', len(args), 'tiles'
+        continue
 
        
         
