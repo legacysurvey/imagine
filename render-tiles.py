@@ -18,9 +18,10 @@ req.META = dict(HTTP_IF_MODIFIED_SINCE=None)
 version = 1
 
 def _one_tile((zoom, x, y)):
-    map_decals_dr1d(req, version, zoom, x, y, savecache=True, 
-                    forcecache=False, return_if_not_found=True)
-                    #forcecache=True)
+    #map_decals_dr1d(req, version, zoom, x, y, savecache=True, 
+    map_decals_dr1j(req, version, zoom, x, y, savecache=True, 
+                    forcecache=True)
+                    #forcecache=False, return_if_not_found=True)
 
 def main():
     import optparse
@@ -46,8 +47,12 @@ def main():
     mp = multiproc(opt.threads)
 
     # HACK -- DR1
-    B = fits_table('decals-bricks-in-dr1.fits')
-    
+    #B = fits_table('decals-bricks-in-dr1-done.fits')
+    B = fits_table('decals-bricks-in-edr.fits')
+    print len(B), 'bricks in DR1'
+    #B.cut(B.exists == 1)
+    #print len(B), 'finished in DR1d'
+
     for zoom in opt.zoom:
         N = 2**zoom
         if opt.y1 is None:
@@ -70,6 +75,11 @@ def main():
             rr.append(r)
         dd = np.array(dd)
         rr = np.array(rr)
+        if len(dd) > 1:
+            tilesize = max(np.abs(np.diff(dd)))
+            print 'Tile size:', tilesize
+        else:
+            tilesize = 180.
         I = np.flatnonzero((dd >= opt.mindec) * (dd <= opt.maxdec))
         print 'Keeping', len(I), 'Dec points'
         dd = dd[I]
@@ -78,7 +88,7 @@ def main():
 
         for iy,y in enumerate(yy):
             d = dd[iy]
-            I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25)
+            I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25 + tilesize)
             if len(I) == 0:
                 print 'No matches to bricks'
                 continue

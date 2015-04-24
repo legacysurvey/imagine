@@ -27,6 +27,10 @@ urlpatterns = patterns('map.views',
     # # EDR3 residuals
     # url(r'^decals-resid-edr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_resid_edr3'),
 
+    # DR1d
+    url(r'^decals-dr1d/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1d'),
+    url(r'^decals-model-dr1d/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_dr1d'),
+
     # DR1
     url(r'^decals-dr1/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1'),
     url(r'^decals-model-dr1/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_dr1'),

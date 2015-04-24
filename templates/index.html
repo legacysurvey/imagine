@@ -680,11 +680,13 @@ var popup = L.popup();
 var tileversions = {
     'decals-pr':4,
     'decals-dr1':2,
+    'decals-dr1d':1,
 };
 var catversions  = {
     'decals': 2,
     'decals-edr2': 2,
     'decals-edr3': 2,
+    'decals-dr1d': 1,
 };
 
 function getversion(layer) {
@@ -703,9 +705,8 @@ function getcatversion(layer) {
 
 var idname = '{{ layer }}';
 //var catname = 'decals-dr1';
-
 //var idname = 'decals';
-var catname = 'decals';
+var catname = 'decals-dr1j';
 
 function createTileLayer(id, vertag) {
     var tiles = new MyTileLayer('{{ tileurl|safe }}', {
@@ -722,108 +723,58 @@ function createTileLayer(id, vertag) {
     return tiles;
 }
 
-tilesEdr = createTileLayer('decals-pr', 'decals-pr');
-tilesEdr.catname = 'decals';
-tilesModEdr = createTileLayer('decals-model-pr', 'decals-model-pr');
-tilesModEdr.catname = 'decals';
-
 tilesSfd = createTileLayer('sfd-tiles', 'sfd');
 
-tiles = tilesEdr;
+allLayers = [];
+allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
+static_url = 'http://{s}.legacysurvey.org/viewer/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 
-
-       
-url = 'http://{s}.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
-id = 'decals-dr1'
-vertag = id
-var tilesDr1 = new MyTileLayer(url, {
+function createStaticTileLayer(id, vertag) {
+    var tiles = new MyTileLayer(static_url, {
         maxZoom: 18,
         attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
         id: id,
         ver: getversion(vertag),
+        // ?
         unloadInvisibleTiles: true,
         subdomains: subdomains,
     });
-tilesDr1.on('tileloadstart', onTileLoadStart);
-tilesDr1.on('tileunload',    onTileUnload);
-tilesDr1.catname = 'decals-dr1';
-
-
-// tilesEdr2 = createTileLayer('decals-edr2', 'decals-edr2');
-// tilesEdr2.catname = 'decals-edr2';
-// tilesModEdr2 = createTileLayer('decals-model-edr2', 'decals-model-edr2');
-// tilesModEdr2.catname = 'decals-edr2';
-// tilesResidEdr2 = createTileLayer('decals-resid-edr2', 'decals-resid-edr2');
-// tilesResidEdr2.catname = 'decals-edr2';
-
-// tilesEdr3 = createTileLayer('decals-edr3', 'decals-edr3');
-// tilesEdr3.catname = 'decals-edr3';
-// tilesModEdr3 = createTileLayer('decals-model-edr3', 'decals-model-edr3');
-// tilesModEdr3.catname = 'decals-edr3';
-// tilesResidEdr3 = createTileLayer('decals-resid-edr3', 'decals-resid-edr3');
-// tilesResidEdr3.catname = 'decals-edr3';
-
-// tilesDr1 = createTileLayer('decals-dr1', 'decals-dr1');
-// tilesDr1.catname = 'decals-dr1';
-// tilesModDr1 = createTileLayer('decals-model-dr1', 'decals-model-dr1');
-// tilesModDr1.catname = 'decals-dr1';
-// tilesResidDr1 = createTileLayer('decals-resid-dr1', 'decals-resid-dr1');
-// tilesResidDr1.catname = 'decals-dr1';
-
-
-var baseMaps = {
-    "DECaLS EDR images": tilesEdr,
-    "DECaLS EDR models": tilesModEdr,
-    // "DECaLS EDR2 images": tilesEdr2,
-    // "DECaLS EDR2 models": tilesModEdr2,
-    // "DECaLS EDR2 residuals": tilesResidEdr2,
-    // "DECaLS EDR3 images": tilesEdr3,
-    // "DECaLS EDR3 models": tilesModEdr3,
-    // "DECaLS EDR3 residuals": tilesResidEdr3,
-    "DECaLS DR1 images": tilesDr1,
-    // "DECaLS DR1 models": tilesModDr1,
-    // "DECaLS DR1 residuals": tilesResidDr1,
-    "SFD dust map": tilesSfd,
-};
-
-if (idname == 'decals') {
-    tiles.addTo(map);
-} else if (idname == 'decals-model') {
-    tilesMod.addTo(map);
-//} else if (idname == 'decals-edr2') {
-//     tilesEdr2.addTo(map);
-//     catname = 'decals-edr2';
-// } else if (idname == 'decals-model-edr2') {
-//     tilesModEdr2.addTo(map);
-//     catname = 'decals-edr2';
-// } else if (idname == 'decals-resid-edr2') {
-//     tilesResidEdr2.addTo(map);
-//     catname = 'decals-edr2';
-// } else if (idname == 'decals-edr3') {
-//     tilesEdr3.addTo(map);
-//     catname = 'decals-edr3';
-// } else if (idname == 'decals-model-edr3') {
-//     tilesModEdr3.addTo(map);
-//     catname = 'decals-edr3';
-// } else if (idname == 'decals-resid-edr3') {
-//     tilesResidEdr3.addTo(map);
-//     catname = 'decals-edr3';
-// } else 
-} else if (idname == 'decals-dr1') {
-     tilesDr1.addTo(map);
-     catname = 'decals-dr1';
-// } else if (idname == 'decals-model-dr1') {
-//     tilesModDr1.addTo(map);
-//     catname = 'decals-dr1';
-// } else if (idname == 'decals-resid-dr1') {
-//     tilesResidDr1.addTo(map);
-//     catname = 'decals-dr1';
-// } else {
-//     xtiles = createTileLayer(idname, idname);
-//     baseMaps[idname] = xtiles;
-//     xtiles.addTo(map);
+    tiles.on('tileloadstart', onTileLoadStart);
+    tiles.on('tileunload',    onTileUnload);
+    return tiles;
 }
+
+id = 'decals-dr1j'
+catname = 'decals-dr1j';
+tilesDr1j = createStaticTileLayer(id, id)
+tilesDr1j.catname = catname;
+allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images", catname:catname});
+
+id = 'decals-dr1j-model'
+tilesModDr1j = createStaticTileLayer(id, id)
+tilesModDr1j.catname = catname;
+allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1 models", catname:catname});
+
+id = 'decals-dr1j-resid'
+tilesResidDr1j = createStaticTileLayer(id, id)
+tilesResidDr1j.catname = catname;
+allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", catname:catname});
+
+var baseMaps = {};
+for (i in allLayers) {
+  layer = allLayers[i];
+  console.log('layer:' + layer);
+  baseMaps[layer.pretty] = layer.tiles;
+}
+console.log('baseMaps:' + getkeys(baseMaps));
+
+tilesDr1j.addTo(map);
+catname = 'decals-dr1j';
+
+//if (idname == 'decals') {
+//    tiles.addTo(map);
+////     catname = 'decals-edr2';
 
 var info = L.control();
 info.onAdd = function (map) {

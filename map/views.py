@@ -27,6 +27,8 @@ tileversions = {
     'decals-dr1d': [1],
     'decals-model-dr1': [1,],
     'decals-resid-dr1': [1,],
+
+    'decals-dr1j': [1],
     }
 
 catversions = {
@@ -79,14 +81,15 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
 
 def index(req):
     #layer = req.GET.get('layer', 'decals-dr1')
-    layer = req.GET.get('layer', 'decals-dr1')
+    #layer = req.GET.get('layer', 'decals-dr1d')
+    layer = req.GET.get('layer', 'decals-dr1j')
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
     # EDR2 region
-    #ra, dec, zoom = 243.7, 8.2, 14
+    ra, dec, zoom = 243.7, 8.2, 13
 
     # Top of DR1
-    ra,dec,zoom = 113.49, 29.86, 13
+    #ra,dec,zoom = 113.49, 29.86, 13
 
     try:
         zoom = int(req.GET.get('zoom', zoom))
@@ -181,7 +184,11 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         if sourcefn is None or not os.path.exists(sourcefn):
             # print 'Image source file', sourcefn, 'not found'
             return None
-        I = fitsio.read(sourcefn)
+        try:
+            I = fitsio.read(sourcefn)
+        except:
+            print 'Failed to read:', sourcefn
+            return None
         #print 'source image:', I.shape
         H,W = I.shape
         # make even size; smooth down
@@ -298,16 +305,37 @@ def map_decals_dr1(req, ver, zoom, x, y, savecache=False, **kwargs):
 
 B_dr1d = None
 
+def map_decals_model_dr1d(req, ver, zoom, x, y, savecache=False, **kwargs):
+    pass
+
 def map_decals_dr1d(req, ver, zoom, x, y, savecache=False, **kwargs):
     global B_dr1d
     if B_dr1d is None:
         from decals import settings
         from astrometry.util.fits import fits_table
-        B_dr1d = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks-in-dr1.fits'))
+        B_dr1d = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks-in-dr1-done.fits'))
+        B_dr1d.cut(B_dr1d.exists)
+
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-dr1d', 'decals-dr1d',
                            imagetag='image',
                            rgbkwargs=rgbkwargs,
                            bricks=B_dr1d,
+                           layout=2, savecache=savecache, **kwargs)
+
+B_dr1j = None
+
+def map_decals_dr1j(req, ver, zoom, x, y, savecache=False, **kwargs):
+    global B_dr1j
+    if B_dr1d is None:
+        from decals import settings
+        from astrometry.util.fits import fits_table
+        B_dr1j = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks-in-edr.fits'))
+        #B_dr1j.cut(B_dr1d.exists)
+
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-dr1j', 'decals-dr1j',
+                           imagetag='image',
+                           rgbkwargs=rgbkwargs,
+                           bricks=B_dr1j,
                            layout=2, savecache=savecache, **kwargs)
 
 

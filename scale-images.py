@@ -29,7 +29,7 @@ def main():
 
     decals = Decals()
     #B = decals.get_bricks_readonly()
-    B = fits_table('decals-bricks-in-dr1.fits')
+    B = fits_table('decals-bricks-in-edr.fits')
 
     brickinds = bricknames = None
     if len(args) == 0:
@@ -55,7 +55,7 @@ def main():
 
     basedir = os.path.join(settings.WEB_DIR, 'data')
 
-    tag = imagedir = 'decals-dr1d'
+    tag = imagedir = 'decals-dr1j'
     imagetag = 'image'
 
     # layout == 2
