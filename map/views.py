@@ -1,6 +1,8 @@
 import os
 from django.http import HttpResponse, StreamingHttpResponse
 
+os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-edr/'
+
 import matplotlib
 matplotlib.use('Agg')
 

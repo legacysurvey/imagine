@@ -467,6 +467,8 @@ function overlayAdded(e) {
     if (e.name == 'Bricks') {
         showBricks = true;
         mapBoundsChanged();
+        // set initial 'in brick'
+        //inbrickccdUpdate(e);
     }
     if (e.name == 'CCDs') {
         showCcds = true;
@@ -732,7 +734,6 @@ function createTileLayer(id, vertag) {
 tilesSfd = createTileLayer('sfd-tiles', 'sfd');
 
 allLayers = [];
-allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
 static_url = 'http://{s}.legacysurvey.org/viewer/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 
@@ -770,20 +771,28 @@ tilesResidDr1j = createTileLayer(id, id)
 tilesResidDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", catname:catname});
 
+allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
+
 var baseMaps = {};
 for (i in allLayers) {
   layer = allLayers[i];
-  console.log('layer:' + layer);
   baseMaps[layer.pretty] = layer.tiles;
 }
-console.log('baseMaps:' + getkeys(baseMaps));
 
-tilesDr1j.addTo(map);
-catname = 'decals-dr1j';
-
-//if (idname == 'decals') {
-//    tiles.addTo(map);
-////     catname = 'decals-edr2';
+added = false;
+for (i in allLayers) {
+  layer = allLayers[i];
+  if (idname == layer.name) {
+    layer.tiles.addTo(map);
+    added = true;
+    if (layer.catname.length > 0) {
+      catname = layer.catname;
+    }
+  }
+}
+if (!added) {
+  tilesDr1j.addTo(map);
+}
 
 var info = L.control();
 info.onAdd = function (map) {
@@ -836,6 +845,75 @@ function onMapPostBaseLayerChange(e) {
     overlayAdded({name:'Sources'});
 }
 
+//
+var bricksCcdsMinZoom = 8;
+
+function onMapZoomStart(e) {
+}
+function onMapZoomEnd(e) {
+  zoom = map.getZoom();
+  console.log('map zoom: ' + zoom);
+
+  overlays = $('.leaflet-control-layers-overlays .leaflet-control-layers-selector');
+
+  if (zoom < bricksCcdsMinZoom) {
+    if (showBricks) {
+      console.log('removing brick outlines');
+      overlayRemoved({name:'Bricks'});
+    }
+    if (showCcds) {
+      console.log('removing CCD outlines');
+      overlayRemoved({name:'CCDs'});
+    }
+
+    //for (o in overlays) {
+    //console.log('overlay: ' + o);
+    //}
+
+    // texts = overlays.next().text();
+    // console.log('Texts:', texts);
+    // console.log(typeof(texts));
+    // for (i in texts.length) {
+    // console.log('texts ' + i + '=' + texts[i]);
+    // }
+ 
+    overlays.each(function(i) {
+        o = $(this);
+        console.log('overlay: ' + o);
+        text = o.next().text();
+        text = $.trim(text);
+        console.log('text: "' + text + '"');
+        if (text == 'Bricks') {
+          console.log('got bricks!');
+        } else if (text == 'CCDs') {
+          console.log('got CCDs!');
+        } else if (text == 'Sources') {
+          console.log('got sources!');
+        }
+    });
+
+    overlays.attr('disabled', 'disabled');
+  } else {
+    overlays.removeAttr('disabled');
+  }
+                                                   
+
+                                        /*
+                                        <div class="leaflet-control-layers-overlays">
+                                          <label>
+                                            <input class="leaflet-control-layers-selector" type="checkbox">
+                                            <span> Sources</span>
+                                          </label>
+                                          <label>
+                                            <input class="leaflet-control-layers-selector" type="checkbox">
+                                            <span> Bricks</span>
+                                          </label>
+                                          <label>
+                                        </div>
+                                        */
+
+}
+
 map.on('mousemove', onMouseMove);
 map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
@@ -843,6 +921,8 @@ map.on('click', onMapClick);
 map.on('moveend', onMapMoveEnd);
 map.on('prebaselayerchange', onMapPreBaseLayerChange);
 map.on('postbaselayerchange', onMapPostBaseLayerChange);
+map.on('zoomstart', onMapZoomStart);
+map.on('zoomend', onMapZoomEnd);
 
 map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
 

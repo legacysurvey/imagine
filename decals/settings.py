@@ -10,7 +10,10 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 
 ROOT_URL = '/viewer'
 
-DUST_DIR = '/data1/SFD'
+# broiler
+#DUST_DIR = '/data1/SFD'
+#DUST_DIR = '/project/projectdirs/desi/software/edison/dust/v0_0'
+DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
