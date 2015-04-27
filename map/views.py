@@ -29,6 +29,8 @@ tileversions = {
     'decals-resid-dr1': [1,],
 
     'decals-dr1j': [1],
+    'decals-model-dr1j': [1],
+    'decals-resid-dr1j': [1],
     }
 
 catversions = {
@@ -36,9 +38,34 @@ catversions = {
     'decals-edr2': [2,],
     'decals-edr3': [2,],
     'decals-dr1': [2,],
+
+    'decals-dr1j': [1,],
     }
 
 oneyear = (3600 * 24 * 365)
+
+def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None):
+    from astrometry.util.util import Tan
+    wcs = None
+    if not sourcefn.endswith('.gz'):
+        try:
+            wcs = Tan(sourcefn, ext)
+        except:
+            pass
+    if wcs is None:
+        import fitsio
+        # maybe gzipped; try fitsio header.
+        if hdr is None:
+            hdr = fitsio.read_header(sourcefn, ext)
+        if W is None or H is None:
+            F = fitsio.FITS(sourcefn)
+            info = F[ext].get_info()
+            H,W = info['dims']
+        wcs = Tan(*[float(x) for x in [
+                    hdr['CRVAL1'], hdr['CRVAL2'], hdr['CRPIX1'], hdr['CRPIX2'],
+                    hdr['CD1_1'], hdr['CD1_2'], hdr['CD2_1'], hdr['CD2_2'],
+                    W, H]])
+    return wcs
 
 def ra2long(ra):
     lng = 180. - ra
@@ -109,23 +136,24 @@ def index(req):
     from decals import settings
     
 
-    url = req.build_absolute_uri(settings.ROOT_URL) + '{id}/{ver}/{z}/{x}/{y}.jpg'
+    url = req.build_absolute_uri(settings.ROOT_URL) + '/{id}/{ver}/{z}/{x}/{y}.jpg'
     caturl = '/{id}/{ver}/{z}/{x}/{y}.cat.json'
 
     # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
-    #tileurl = url.replace('://', '://{s}.')
+    tileurl = url.replace('www.legacysurvey', 'legacysurvey').replace('://', '://{s}.')
+    #tileurl = 'http://{s}.legacysurvey.org/viewer/
 
     # Testing:
-    tileurl = settings.ROOT_URL + '/{id}/{ver}/{z}/{x}/{y}.jpg'
+    #tileurl = settings.ROOT_URL + '/{id}/{ver}/{z}/{x}/{y}.jpg'
 
-    bricksurl = '/bricks/?north={north}&east={east}&south={south}&west={west}'
-    ccdsurl = '/ccds/?north={north}&east={east}&south={south}&west={west}'
+    bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}'
+    ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}'
 
     # HACK
-    tileurl = 'http://broiler.cosmo.fas.nyu.edu:8896/{id}/{ver}/{z}/{x}/{y}.jpg'
-    caturl = 'http://broiler.cosmo.fas.nyu.edu:8896/{id}/{ver}/{z}/{x}/{y}.cat.json'
-    bricksurl = 'http://broiler.cosmo.fas.nyu.edu:8896/bricks/?north={north}&east={east}&south={south}&west={west}'
-    ccdsurl = 'http://broiler.cosmo.fas.nyu.edu:8896/ccds/?north={north}&east={east}&south={south}&west={west}'
+    # tileurl = 'http://broiler.cosmo.fas.nyu.edu:8896/{id}/{ver}/{z}/{x}/{y}.jpg'
+    # caturl = 'http://broiler.cosmo.fas.nyu.edu:8896/{id}/{ver}/{z}/{x}/{y}.cat.json'
+    #bricksurl = 'http://broiler.cosmo.fas.nyu.edu:8896/bricks/?north={north}&east={east}&south={south}&west={west}'
+    #ccdsurl = 'http://broiler.cosmo.fas.nyu.edu:8896/ccds/?north={north}&east={east}&south={south}&west={west}'
 
     baseurl = req.path + '?layer=%s&' % layer
 
@@ -172,6 +200,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
     from scipy.ndimage.filters import gaussian_filter
     import fitsio
     from astrometry.util.util import Tan
+    import tempfile
 
     if scale <= 0:
         return basefn
@@ -185,7 +214,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
             # print 'Image source file', sourcefn, 'not found'
             return None
         try:
-            I = fitsio.read(sourcefn)
+            I,hdr = fitsio.read(sourcefn, header=True)
         except:
             print 'Failed to read:', sourcefn
             return None
@@ -202,7 +231,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         I2 = (im[::2,::2] + im[1::2,::2] + im[1::2,1::2] + im[::2,1::2])/4.
         #print 'I2:', I2.shape
         # shrink WCS too
-        wcs = Tan(sourcefn, 0)
+        wcs = _read_tan_wcs(sourcefn, 0, hdr=hdr, W=W, H=H)
         # include the even size clip; this may be a no-op
         H,W = im.shape
         wcs = wcs.get_subimage(0, 0, W, H)
@@ -217,7 +246,6 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
             except:
                 pass
 
-        import tempfile
         f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=dirnm)
         os.close(f)
         # To avoid overwriting the (empty) temp file (and fitsio
@@ -324,7 +352,9 @@ def map_decals_dr1d(req, ver, zoom, x, y, savecache=False, **kwargs):
 
 B_dr1j = None
 
-def map_decals_dr1j(req, ver, zoom, x, y, savecache=False, **kwargs):
+def map_decals_dr1j(req, ver, zoom, x, y, savecache=False,
+                    model=False, resid=False,
+                    **kwargs):
     global B_dr1j
     if B_dr1d is None:
         from decals import settings
@@ -332,11 +362,31 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=False, **kwargs):
         B_dr1j = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks-in-edr.fits'))
         #B_dr1j.cut(B_dr1d.exists)
 
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-dr1j', 'decals-dr1j',
-                           imagetag='image',
+    imagetag = 'image'
+    tag = 'decals-dr1j'
+    imagedir = 'decals-dr1j'
+    if model:
+        imagetag = 'model'
+        tag = 'decals-model-dr1j'
+        imagedir = 'decals-dr1j-model'
+        scaledir = 'decals-dr1j'
+        kwargs.update(model_gz=False, scaledir=scaledir)
+    if resid:
+        imagetag = 'resid'
+        kwargs.update(modeldir = 'decals-dr1j-model')
+        tag = 'decals-resid-dr1j'
+
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
+                           imagetag=imagetag,
                            rgbkwargs=rgbkwargs,
                            bricks=B_dr1j,
                            layout=2, savecache=savecache, **kwargs)
+
+def map_decals_model_dr1j(*args, **kwargs):
+    return map_decals_dr1j(*args, model=True, model_gz=False, **kwargs)
+
+def map_decals_resid_dr1j(*args, **kwargs):
+    return map_decals_dr1j(*args, resid=True, model_gz=False, **kwargs)
 
 
 def map_decals_model_dr1(req, ver, zoom, x, y):
@@ -435,7 +485,7 @@ def _get_decals():
     return decals
 
 def brick_list(req):
-    import simplejson
+    import json
 
     north = float(req.GET['north'])
     south = float(req.GET['south'])
@@ -452,7 +502,7 @@ def brick_list(req):
     I = D.bricks_touching_radec_box(B, east, west, south, north)
     # HACK -- limit result size...
     if len(I) > 10000:
-        return HttpResponse(simplejson.dumps(dict(bricks=[])),
+        return HttpResponse(json.dumps(dict(bricks=[])),
                             content_type='application/json')
     #I = I[:1000]
     bricks = []
@@ -468,7 +518,7 @@ def brick_list(req):
                                  [b.dec1-mdec, ra2long(b.ra2+mra)],
                                  ]))
 
-    return HttpResponse(simplejson.dumps(dict(bricks=bricks)),
+    return HttpResponse(json.dumps(dict(bricks=bricks)),
                         content_type='application/json')
 
 ccdtree = None
@@ -504,7 +554,7 @@ def _ccds_touching_box(north, south, east, west, Nmax=None):
     return CCDs[J]
 
 def ccd_list(req):
-    import simplejson
+    import json
     from astrometry.util.util import Tan
     import numpy as np
 
@@ -527,7 +577,7 @@ def ccd_list(req):
         ccds.append(dict(name='%i-%s-%s' % (c.expnum, c.extname, c.filter),
                          poly=zip(d, ra2long(r))))
 
-    return HttpResponse(simplejson.dumps(dict(ccds=ccds)),
+    return HttpResponse(json.dumps(dict(ccds=ccds)),
                         content_type='application/json')
     
 def ccd_detail(req, ccd):
@@ -551,11 +601,11 @@ def cat_decals_dr1(req, ver, zoom, x, y, tag='decals-dr1'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
 
 def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1):
-    import simplejson
+    import json
 
     zoom = int(zoom)
     if zoom < 12:
-        return HttpResponse(simplejson.dumps(dict(rd=[], zoom=zoom,
+        return HttpResponse(json.dumps(dict(rd=[], zoom=zoom,
                                                   tilex=x, tiley=y)),
                             content_type='application/json')
 
@@ -599,7 +649,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1):
         bricknames = list(cat.brickname)
         objids = list(cat.objid.astype(int))
 
-    json = simplejson.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes,
+    json = json.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes,
                                  bricknames=bricknames, objids=objids,
                                  zoom=zoom, tilex=x, tiley=y))
     dirnm = os.path.dirname(cachefn)
@@ -665,7 +715,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     layout=1,
                     bricks=None,
                     savecache = True, forcecache = False,
-                    return_if_not_found=False,
+                    return_if_not_found=False, model_gz=False,
+                    modeldir=None, scaledir=None,
                     ):
     from decals import settings
 
@@ -687,7 +738,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         # print 'Cached:', tilefn
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
-
+    else:
+        print 'Tile image does not exist:', tilefn
     from astrometry.util.resample import resample_with_wcs, OverlapError
     from astrometry.util.util import Tan
     from desi.common import get_rgb
@@ -713,14 +765,24 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
                                '%(brickname)s',
                                'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
-        
+        if modeldir is not None:
+            modbasepat = os.path.join(basedir, 'coadd', modeldir, '%(brickname).3s',
+                                      '%(brickname)s',
+                                      'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
+        else:
+            modbasepat = basepat
+    if model_gz and imagetag == 'model':
+        modbasepat += '.gz'
+
     scaled = 0
     scalepat = None
+    if scaledir is None:
+        scaledir = imagedir
     if zoom < 14:
         scaled = (14 - zoom)
         scaled = np.clip(scaled, 1, 8)
         #print 'Scaled-down:', scaled
-        dirnm = os.path.join(basedir, 'scaled', imagedir)
+        dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
         
     D = _get_decals()
@@ -752,6 +814,11 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             if imagetag == 'resid':
                 basefn = basepat % fnargs
 
+                modbasefn = modbasepat % fnargs
+                modbasefn = modbasefn.replace('resid', 'model')
+                if model_gz:
+                    modbasefn += '.gz'
+
                 if scalepat is None:
                     imscalepat = None
                     modscalepat = None
@@ -761,7 +828,6 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                 imbasefn = basefn.replace('resid', 'image')
                 imfn = get_scaled(imscalepat, fnargs, scaled, imbasefn)
                 # print 'imfn', imfn
-                modbasefn = basefn.replace('resid', 'model')
                 modfn = get_scaled(modscalepat, fnargs, scaled, modbasefn)
                 # print 'modfn', modfn
                 fn = imfn
@@ -783,7 +849,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                 savecache = False
                 continue
             try:
-                bwcs = Tan(fn, 0)
+                #bwcs = Tan(fn, 0)
+                bwcs = _read_tan_wcs(fn, 0)
             except:
                 print 'Failed to read WCS:', fn
                 savecache = False

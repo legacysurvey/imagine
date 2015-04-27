@@ -17,11 +17,17 @@ req.META = dict(HTTP_IF_MODIFIED_SINCE=None)
 
 version = 1
 
-def _one_tile((zoom, x, y)):
-    #map_decals_dr1d(req, version, zoom, x, y, savecache=True, 
-    map_decals_dr1j(req, version, zoom, x, y, savecache=True, 
-                    forcecache=True)
-                    #forcecache=False, return_if_not_found=True)
+def _one_tile((kind, zoom, x, y)):
+    # forcecache=False, return_if_not_found=True)
+    if kind == 'image':
+        map_decals_dr1d(req, version, zoom, x, y, savecache=True, 
+                        forcecache=True)
+    elif kind == 'model':
+        map_decals_model_dr1j(req, version, zoom, x, y, savecache=True, 
+                              forcecache=True)
+    elif kind == 'resid':
+        map_decals_resid_dr1j(req, version, zoom, x, y, savecache=True, 
+                              forcecache=True)
 
 def main():
     import optparse
@@ -38,6 +44,8 @@ def main():
 
     parser.add_option('--queue', action='store_true', default=False,
                       help='Print qdo commands')
+
+    parser.add_option('--kind', default='image')
 
     opt,args = parser.parse_args()
 
@@ -99,7 +107,7 @@ def main():
 
             args = []
             for xi in x:
-                args.append((zoom,xi,y))
+                args.append((opt.kind,zoom,xi,y))
             print 'Rendering', len(args), 'tiles...'
             mp.map(_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
             print 'Rendered', len(args), 'tiles'

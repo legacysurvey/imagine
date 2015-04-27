@@ -46,6 +46,10 @@
     color: red;
 }
 
+.leaflet-container {
+    background: #000;
+}
+
 </style>
 
 {% endblock %}
@@ -712,7 +716,7 @@ var catname = 'decals-dr1j';
 
 function createTileLayer(id, vertag) {
     var tiles = new MyTileLayer('{{ tileurl|safe }}', {
-        maxZoom: 18,
+        maxZoom: 16,
         attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
         id: id,
         ver: getversion(vertag),
@@ -734,7 +738,7 @@ static_url = 'http://{s}.legacysurvey.org/viewer/static/tiles/{id}/{ver}/{z}/{x}
 
 function createStaticTileLayer(id, vertag) {
     var tiles = new MyTileLayer(static_url, {
-        maxZoom: 18,
+        maxZoom: 16,
         attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
         id: id,
         ver: getversion(vertag),
@@ -749,17 +753,20 @@ function createStaticTileLayer(id, vertag) {
 
 id = 'decals-dr1j'
 catname = 'decals-dr1j';
-tilesDr1j = createStaticTileLayer(id, id)
+//tilesDr1j = createStaticTileLayer(id, id)
+tilesDr1j = createTileLayer(id, id)
 tilesDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images", catname:catname});
 
-id = 'decals-dr1j-model'
-tilesModDr1j = createStaticTileLayer(id, id)
+id = 'decals-model-dr1j'
+//tilesModDr1j = createStaticTileLayer(id, id)
+tilesModDr1j = createTileLayer(id, id)
 tilesModDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1 models", catname:catname});
 
-id = 'decals-dr1j-resid'
-tilesResidDr1j = createStaticTileLayer(id, id)
+id = 'decals-resid-dr1j'
+//tilesResidDr1j = createStaticTileLayer(id, id)
+tilesResidDr1j = createTileLayer(id, id)
 tilesResidDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", catname:catname});
 

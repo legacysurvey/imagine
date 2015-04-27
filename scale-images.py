@@ -24,6 +24,9 @@ def main():
     parser.add_option('--maxra', type=float, default=360, help='Maximum RA to run')
     parser.add_option('--queue', action='store_true', default=False,
                       help='Print qdo commands')
+    parser.add_option('--tag', default='image')
+    parser.add_option('--imagedir', default='decals-dr1j')
+    parser.add_option('--scaledir', default=None)
 
     opt,args = parser.parse_args()
 
@@ -55,8 +58,11 @@ def main():
 
     basedir = os.path.join(settings.WEB_DIR, 'data')
 
-    tag = imagedir = 'decals-dr1j'
-    imagetag = 'image'
+    imagedir = opt.imagedir
+    imagetag = opt.tag
+    scaledir = opt.scaledir
+    if scaledir is None:
+        scaledir = imagedir
 
     # layout == 2
     basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
@@ -64,7 +70,7 @@ def main():
                            'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
     scaled = 8
 
-    dirnm = os.path.join(basedir, 'scaled', imagedir)
+    dirnm = os.path.join(basedir, 'scaled', scaledir)
     scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
 
     bands = 'grz'
