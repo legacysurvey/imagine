@@ -67,10 +67,11 @@ MyTileLayer = L.TileLayer.extend({
         tile.onerror = this._tileOnError;
         this._adjustTilePoint(tilePoint);
         tile.src     = this.getTileUrl(tilePoint);
-        // this is special sauce - add zoom,x,y to tile object
+        // <special sauce> - add zoom,x,y to tile object;
         tile.tilex = tilePoint.x;
         tile.tiley = tilePoint.y;
         tile.z = tilePoint.z;
+        // </special sauce>
         // copied
         this.fire('tileloadstart', {
             tile: tile,
@@ -78,6 +79,35 @@ MyTileLayer = L.TileLayer.extend({
         });
     }
 });
+
+// A subclass that switches URL patterns depending on zoom range.
+ZoomRangeTileLayer = MyTileLayer.extend({
+    options: {
+      urlPatterns: [],
+    },
+	getTileUrl: function (tilePoint) {
+        urlpat = this._getUrlPattern(tilePoint.z);
+		return L.Util.template(urlpat, L.extend({
+			s: this._getSubdomain(tilePoint),
+			z: tilePoint.z,
+			x: tilePoint.x,
+			y: tilePoint.y
+		}, this.options));
+	},
+    _getUrlPattern: function (zoom) {
+        url = this._url;
+        for (var i=0; i<this.options.urlPatterns.length; i++) {
+            zlo  = this.options.urlPatterns[i][0];
+            zhi  = this.options.urlPatterns[i][1];
+            zurl = this.options.urlPatterns[i][2];
+            if ((zoom >= zlo) && (zoom <= zhi)) {
+                url = zurl;
+            }
+        }
+        return url;
+    },
+});
+
 
 MyLayerControl = L.Control.Layers.extend({
     // copied from leaflet-src.js
@@ -744,7 +774,20 @@ function createTileLayer(id, vertag) {
     return tiles;
 }
 
-tilesSfd = createTileLayer('sfd-tiles', 'sfd');
+//tilesSfd = createTileLayer('sfd-tiles', 'sfd');
+
+tilesSfd = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
+    maxZoom: 16,
+    maxNativeZoom: 10,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: 'sfd-tiles',
+    ver: getversion('sfd'),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [7, 10, 'http://{s}.decals.thetractor.org/{id}/{ver}/{z}/{x}/{y}.jpg'], ],
+  });
+tilesSfd.on('tileloadstart', onTileLoadStart);
+tilesSfd.on('tileunload', onTileUnload);
 
 allLayers = [];
 

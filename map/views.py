@@ -415,9 +415,9 @@ def map_des_pr(req, ver, zoom, x, y):
 
 sfd = None
 
-def map_sfd(req, ver, zoom, x, y):
+def map_sfd(req, ver, zoom, x, y, savecache = False):
     global sfd
-    
+
     zoom = int(zoom)
     zoomscale = 2.**zoom
     x = int(x)
@@ -436,6 +436,8 @@ def map_sfd(req, ver, zoom, x, y):
     basedir = os.path.join(settings.WEB_DIR, 'data')
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
+    #'%i/%i/%i/%i.png' % (ver, zoom, x, y))
+
     if os.path.exists(tilefn):
         # print 'Cached:', tilefn
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
@@ -457,7 +459,6 @@ def map_sfd(req, ver, zoom, x, y):
     ebv = sfd.ebv(rr, dd)
     ebv = ebv.reshape(xx.shape)
     #print 'EBV range:', ebv.min(), ebv.max()
-    savecache = True
 
     try:
         os.makedirs(os.path.dirname(tilefn))
@@ -466,15 +467,30 @@ def map_sfd(req, ver, zoom, x, y):
 
     if not savecache:
         import tempfile
-        f,tilefn = tempfile.mkstemp(suffix='.jpg')
+        #f,tilefn = tempfile.mkstemp(suffix='.jpg')
+        f,tilefn = tempfile.mkstemp(suffix='.png')
         os.close(f)
 
-    #import matplotlib
-    #matplotlib.use('Agg')
     import pylab as plt
-    plt.imsave(tilefn, ebv, vmin=0., vmax=0.5, cmap='hot', edgecolor='none', facecolor='none')
+    #plt.imsave(tilefn, ebv, vmin=0., vmax=0.5, cmap='hot', edgecolor='none', facecolor='none')
+    #plt.imsave(tilefn, ebv, vmin=0., vmax=0.5, cmap='hot')
+    #print 'Wrote',tilefn
+
+    # no jpeg output support in matplotlib in some installations...
+    if True:
+        import tempfile
+        f,tempfn = tempfile.mkstemp(suffix='.png')
+        os.close(f)
+
+        plt.imsave(tempfn, ebv, vmin=0., vmax=0.5, cmap='hot')
+
+        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
+        os.system(cmd)
+        os.unlink(tempfn)
+        print 'Wrote', tilefn
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
+    #return send_file(tilefn, 'image/png', unlink=(not savecache))
 
 
 

@@ -29,7 +29,7 @@ def _one_tile((kind, zoom, x, y)):
         map_decals_resid_dr1j(req, version, zoom, x, y, savecache=True, 
                               forcecache=True)
     elif kind == 'sfd':
-        map_sfd(req, version, zoom, x, y)
+        map_sfd(req, version, zoom, x, y, savecache=True)
 
 def main():
     import optparse
@@ -46,6 +46,8 @@ def main():
 
     parser.add_option('--queue', action='store_true', default=False,
                       help='Print qdo commands')
+
+    parser.add_option('--all', action='store_true', help='Render all tiles')
 
     parser.add_option('--kind', default='image')
 
@@ -75,37 +77,42 @@ def main():
         rr,dd = [],[]
         yy = np.arange(opt.y0, y1)
         xx = np.arange(N)
-        for y in yy:
-            wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, 0, y)
-            r,d = wcs.get_center()
-            dd.append(d)
-        for x in xx:
-            wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, x, 0)
-            r,d = wcs.get_center()
-            rr.append(r)
-        dd = np.array(dd)
-        rr = np.array(rr)
-        if len(dd) > 1:
-            tilesize = max(np.abs(np.diff(dd)))
-            print 'Tile size:', tilesize
-        else:
-            tilesize = 180.
-        I = np.flatnonzero((dd >= opt.mindec) * (dd <= opt.maxdec))
-        print 'Keeping', len(I), 'Dec points'
-        dd = dd[I]
-        yy = yy[I]
-        print len(rr), 'RA points,', len(dd), 'Dec points'
+
+        if not opt.all:
+            for y in yy:
+                wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, 0, y)
+                r,d = wcs.get_center()
+                dd.append(d)
+            for x in xx:
+                wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, x, 0)
+                r,d = wcs.get_center()
+                rr.append(r)
+            dd = np.array(dd)
+            rr = np.array(rr)
+            if len(dd) > 1:
+                tilesize = max(np.abs(np.diff(dd)))
+                print 'Tile size:', tilesize
+            else:
+                tilesize = 180.
+            I = np.flatnonzero((dd >= opt.mindec) * (dd <= opt.maxdec))
+            print 'Keeping', len(I), 'Dec points'
+            dd = dd[I]
+            yy = yy[I]
+            print len(rr), 'RA points,', len(dd), 'Dec points'
 
         for iy,y in enumerate(yy):
-            d = dd[iy]
-            I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25 + tilesize)
-            if len(I) == 0:
-                print 'No matches to bricks'
-                continue
-            keep = np.zeros(len(rr), bool)
-            keep[I] = True
-            print 'Keeping', sum(keep), 'tiles in row', y, 'Dec', d
-            x = xx[keep]
+            if not opt.all:
+                d = dd[iy]
+                I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25 + tilesize)
+                if len(I) == 0:
+                    print 'No matches to bricks'
+                    continue
+                keep = np.zeros(len(rr), bool)
+                keep[I] = True
+                print 'Keeping', sum(keep), 'tiles in row', y, 'Dec', d
+                x = xx[keep]
+            else:
+                x = xx
 
             args = []
             for xi in x:
