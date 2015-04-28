@@ -435,7 +435,7 @@ def map_sfd(req, ver, zoom, x, y, savecache = False):
 
     from decals import settings
 
-    basedir = os.path.join(settings.WEB_DIR, 'data')
+    basedir = settings.DATA_DIR
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
     #'%i/%i/%i/%i.png' % (ver, zoom, x, y))
@@ -641,7 +641,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1, docache=True):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    basedir = os.path.join(settings.WEB_DIR, 'data')
+    basedir = settings.DATA_DIR
     if docache:
         cachefn = os.path.join(basedir, 'cats-cache', tag,
                                '%i/%i/%i/%i.cat.json' % (ver, zoom, x, y))
@@ -689,7 +689,7 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
     from decals import settings
     from astrometry.util.fits import fits_table, merge_tables
 
-    basedir = os.path.join(settings.WEB_DIR, 'data')
+    basedir = settings.DATA_DIR
     H,W = wcs.shape
     # print 'WCS shape:', H,W
     X = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
@@ -753,7 +753,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     if not ver in tileversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    basedir = os.path.join(settings.WEB_DIR, 'data')
+    basedir = settings.DATA_DIR
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
     if os.path.exists(tilefn):
@@ -1117,7 +1117,8 @@ def cutouts(req):
     print 'URL', url
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
-        ccdsx.append(('CCD %s %i %s x,y %i,%i' % (ccd.filter, ccd.expnum, ccd.extname, x, y),
+        fn = ccd.cpimage.replace(settings.DATA_DIR + '/', '')
+        ccdsx.append(('CCD %s %i %s x,y %i,%i<br/><small>(%s [%i])</small>' % (ccd.filter, ccd.expnum, ccd.extname, x, y, fn, ccd.cpimage_hdu),
                       url % (domains[i%len(domains)], int(ccd.expnum), ccd.extname) + '?x=%i&y=%i' % (x,y)))
 
     return render(req, 'cutouts.html',
@@ -1156,8 +1157,7 @@ def cat_plot(req):
 
     # FIXME
     nil,sdss = get_sdss_sources('r', margwcs,
-                                photoobjdir=os.path.join(settings.WEB_DIR, 'data',
-                                                         'sdss'),
+                                photoobjdir=os.path.join(settings.DATA_DIR, 'sdss'),
                                 local=True)
     import tempfile
     f,tempfn = tempfile.mkstemp(suffix='.png')
@@ -1205,7 +1205,7 @@ def _get_ccd(expnum, extname):
 
 def _get_image_filename(ccd):
     from decals import settings
-    basedir = os.path.join(settings.WEB_DIR, 'data')
+    basedir = settings.DATA_DIR
     fn = ccd.cpimage.strip()
     # drop 'decals/' off the front...
     fn = fn.replace('decals/','')

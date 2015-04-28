@@ -23,6 +23,8 @@ BASE_DIR = os.path.dirname(__file__)
 #print 'BASE DIR:', BASE_DIR
 WEB_DIR = os.path.dirname(BASE_DIR)
 
+DATA_DIR = os.path.join(WEB_DIR, 'data')
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
 

@@ -38,7 +38,7 @@ SDSS objects: X
 {% for ccdstr,ccdurl in ccds %}
 <tr>
 <td>
-{{ ccdstr }}
+{{ ccdstr|safe }}
 </td>
 <td colspan="5">
 <img src="{{ ccdurl}}" width="500" height="100" />
