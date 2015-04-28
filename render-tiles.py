@@ -20,7 +20,7 @@ version = 1
 def _one_tile((kind, zoom, x, y)):
     # forcecache=False, return_if_not_found=True)
     if kind == 'image':
-        map_decals_dr1d(req, version, zoom, x, y, savecache=True, 
+        map_decals_dr1j(req, version, zoom, x, y, savecache=True, 
                         forcecache=True)
     elif kind == 'model':
         map_decals_model_dr1j(req, version, zoom, x, y, savecache=True, 
@@ -41,8 +41,13 @@ def main():
     parser.add_option('--y0', type=int, default=0, help='Start row')
     parser.add_option('--y1', type=int, default=None, help='End row (non-inclusive)')
 
-    parser.add_option('--maxdec', type=float, default=40, help='Maximum Dec to run')
     parser.add_option('--mindec', type=float, default=-20, help='Minimum Dec to run')
+    parser.add_option('--maxdec', type=float, default=40, help='Maximum Dec to run')
+
+    parser.add_option('--minra', type=float, default=0.,   help='Minimum RA to run')
+    parser.add_option('--maxra', type=float, default=360., help='Maximum RA to run')
+
+    parser.add_option('--near', action='store_true', help='Only run tiles near bricks')
 
     parser.add_option('--queue', action='store_true', default=False,
                       help='Print qdo commands')
@@ -98,10 +103,16 @@ def main():
             print 'Keeping', len(I), 'Dec points'
             dd = dd[I]
             yy = yy[I]
-            print len(rr), 'RA points,', len(dd), 'Dec points'
+            I = np.flatnonzero((rr >= opt.minra) * (rr <= opt.maxra))
+            print 'Keeping', len(I), 'RA points'
+            rr = rr[I]
+            xx = xx[I]
+            
+            print len(rr), 'RA points x', len(dd), 'Dec points'
+            print 'x tile range:', xx.min(), xx.max(), 'y tile range:', yy.min(), yy.max()
 
         for iy,y in enumerate(yy):
-            if not opt.all:
+            if opt.near:
                 d = dd[iy]
                 I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25 + tilesize)
                 if len(I) == 0:
@@ -117,7 +128,7 @@ def main():
             args = []
             for xi in x:
                 args.append((opt.kind,zoom,xi,y))
-            print 'Rendering', len(args), 'tiles...'
+            print 'Rendering', len(args), 'tiles in row y =', y
             mp.map(_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
             print 'Rendered', len(args), 'tiles'
         continue

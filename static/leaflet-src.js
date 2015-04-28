@@ -1366,8 +1366,12 @@ L.LatLngBounds.prototype = {
 		    sw2 = bounds.getSouthWest(),
 		    ne2 = bounds.getNorthEast(),
 
+
+
 		    latIntersects = (ne2.lat >= sw.lat) && (sw2.lat <= ne.lat),
 		    lngIntersects = (ne2.lng >= sw.lng) && (sw2.lng <= ne.lng);
+
+        //console.log('intersects: my sw: ' + sw + ', ne ' + ne + ', vs sw: ' + sw2 + ', ne: ' + ne2);
 
 		return latIntersects && lngIntersects;
 	},
@@ -2794,6 +2798,8 @@ L.TileLayer = L.Class.extend({
 				nw = nw.wrap();
 				se = se.wrap();
 			}
+
+            //console.log('checking if bounds ' + options.bounds.toString() + ' intersect ' + nw + ', ' + se);
 
 			if (!options.bounds.intersects([nw, se])) { return false; }
 		}

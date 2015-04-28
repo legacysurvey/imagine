@@ -9,8 +9,7 @@ Brick {{ brick.brickname }} with RA,Dec center {{ brick.ra|floatformat:4 }}, {{ 
 
 <table>
 <tr>
-<th>EDR2 sources</th>
-<th>EDR3 sources</th>
+<th>DR1 sources</th>
 <td rowspan="2">
 Point sources: green<br />
 deV galaxies: red<br />
@@ -23,9 +22,6 @@ SDSS objects: X
 <td>
 <img src="{% url 'cat_plot' %}?ra={{ ra }}&dec={{ dec }}" />
 </td>
-<td>
-<img src="{% url 'cat_plot' %}?ra={{ ra }}&dec={{ dec }}&ver=3" />
-</td>
 </tr>
 </table>
 
@@ -33,10 +29,8 @@ SDSS objects: X
 <tr>
 <th>CCD</th>
 <th>Image</th>
-<th>Model (EDR2)</th>
-<th>Resid (EDR2)</th>
-<th>Model (EDR3)</th>
-<th>Resid (EDR3)</th>
+<th>Model (DR1)</th>
+<th>Resid (DR1)</th>
 <th>PSF fit</th>
 <th>PsfEx</th>
 </tr>
@@ -46,8 +40,8 @@ SDSS objects: X
 <td>
 {{ ccdstr }}
 </td>
-<td colspan="7">
-<img src="{{ ccdurl}}" width="700" height="100" />
+<td colspan="5">
+<img src="{{ ccdurl}}" width="500" height="100" />
 </td>
 </tr>
 {% endfor %}

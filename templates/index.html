@@ -47,7 +47,8 @@
 }
 
 .leaflet-container {
-    background: #000;
+//background: #000;
+background: #242424;
 }
 
 </style>
@@ -184,10 +185,30 @@ function long2ra(lng) {
 
 function ra2long(ra) {
     lng = 180 - ra;
+    //if (lng < 0) {
+    if (lng < -180) {
+        lng += 360.;
+    }
+    if (lng > 180) {
+        lng -= 360.;
+    }
+    return lng;
+}
+
+function ra2long_B(ra) {
+    lng = 180 - ra;
     if (lng < 0) {
         lng += 360.;
     }
     return lng;
+}
+
+
+function dec2lat(dec) {
+  return dec;
+}
+function lat2dec(lat) {
+  return lat;
 }
 
 function getSubdomain(x,y) {
@@ -240,15 +261,15 @@ function catLoaded(result) {
     for (i=0, len=rdlist.length; i<len; i++) {
         r = rdlist[i][0];
         d = rdlist[i][1];
-        lat = d;
-        lng = ra2long(r);
+        lat = dec2lat(d);
+        lng = ra2long_B(r);
         
         color = 'blue';
         if (objtype == undefined) {
             typ = 'nil';
         } else {
             typ = objtype[i];
-            // used to by 'S' for star; now 'P' for ptsrc
+            // used to by 'S' for star; now 'P' for PSF
             //if (objtype[i] == 'S') {
             if (objtype[i] == 'P') {
                 color = '#9AFE2E'; //#D8F781'; //'green';
@@ -372,8 +393,8 @@ function ccd_detail(name, aparams) {
 }
 
 function onMapClick(e) {
-    ra = long2ra(e.latlng.lng);
-    dec = e.latlng.lat;
+    ra  = long2ra(e.latlng.lng);
+    dec = lat2dec(e.latlng.lat);
     bricks = bricksUnderLatlng(e.latlng);
     ccds = ccdsUnderLatlng(e.latlng);
     //'lat,lng =' + e.latlng.lat.toFixed(4) + ',' + e.latlng.lng.toFixed(4) + '; ' +
@@ -397,8 +418,8 @@ function onMapClick(e) {
 }
 
 function onMouseMove(e) {
-    ra = long2ra(e.latlng.lng);
-    dec = e.latlng.lat;
+    ra  = long2ra(e.latlng.lng);
+    dec = lat2dec(e.latlng.lat);
     info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4);
     if (inbrickccdAdded) {
         //props = { ra:ra, dec:dec };
@@ -659,18 +680,18 @@ function ccdsLoaded(result) {
 function mapBoundsChanged() {
     latlng = map.getCenter();
     zoom = map.getZoom();
-    ra = long2ra(latlng.lng);
-    dec = latlng.lat;
+    ra  = long2ra(latlng.lng);
+    dec = lat2dec(latlng.lat);
     //console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
     if (showBricks) {
         bounds = map.getBounds();
         bricksurl = L.Util.template('{{ bricksurl|safe }}', L.extend({
             s: 'a',
             z: zoom,
-            west: long2ra(bounds.getWest()).toFixed(4),
-            east: long2ra(bounds.getEast()).toFixed(4),
-            north: bounds.getNorth().toFixed(4),
-            south: bounds.getSouth().toFixed(4),
+            west:  long2ra(bounds.getWest()).toFixed(4),
+            east:  long2ra(bounds.getEast()).toFixed(4),
+            north: lat2dec(bounds.getNorth()).toFixed(4),
+            south: lat2dec(bounds.getSouth()).toFixed(4),
             id: idname,
         }));
         $.getJSON(bricksurl, bricksLoaded);
@@ -680,10 +701,10 @@ function mapBoundsChanged() {
         ccdsurl = L.Util.template('{{ ccdsurl|safe }}', L.extend({
             s: 'a',
             z: zoom,
-            west: long2ra(bounds.getWest()).toFixed(4),
-            east: long2ra(bounds.getEast()).toFixed(4),
-            north: bounds.getNorth().toFixed(4),
-            south: bounds.getSouth().toFixed(4),
+            west:  long2ra(bounds.getWest()).toFixed(4),
+            east:  long2ra(bounds.getEast()).toFixed(4),
+            north: lat2dec(bounds.getNorth()).toFixed(4),
+            south: lat2dec(bounds.getSouth()).toFixed(4),
             id: idname,
         }));
         $.getJSON(ccdsurl, ccdsLoaded);
@@ -793,6 +814,11 @@ allLayers = [];
 
 static_url = 'http://{s}.legacysurvey.org/viewer/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 
+//boundsEdr = [[dec2lat(4), ra2long(246)], [dec2lat(13), ra2long(239)]];
+boundsEdr = L.latLngBounds(L.latLng(dec2lat(4),  ra2long(246)),
+                           L.latLng(dec2lat(13), ra2long(239)));
+console.log('EDR bounds: ' + boundsEdr);
+
 function createStaticTileLayer(id, vertag) {
     var tiles = new MyTileLayer(static_url, {
         maxZoom: 16,
@@ -811,7 +837,21 @@ function createStaticTileLayer(id, vertag) {
 id = 'decals-dr1j'
 catname = 'decals-dr1j';
 //tilesDr1j = createStaticTileLayer(id, id)
-tilesDr1j = createTileLayer(id, id)
+//tilesDr1j = createTileLayer(id, id)
+
+tilesDr1j = new ZoomRangeTileLayer(static_url, {
+    maxZoom: 16,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: 'decals-dr1j',
+    ver: getversion('decals-dr1j'),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
+    bounds: boundsEdr,
+  });
+tilesDr1j.on('tileloadstart', onTileLoadStart);
+tilesDr1j.on('tileunload',    onTileUnload);
+
 tilesDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images", catname:catname});
 
@@ -870,7 +910,8 @@ function onMapPreBaseLayerChange(e) {
     console.log('PRE Map base layer change');
     console.log('removing: catalog name: ' + e.removing.catname);
     console.log('adding: catalog name: ' + e.adding.catname);
-    if ((e.adding.catname == undefined) || (e.removing.catname == undefined)) {
+    if ((typeof(e.adding.catname)   == 'undefined') ||
+        (typeof(e.removing.catname) == 'undefined')) {
         return;
     }
     if (!showSources) {
@@ -923,9 +964,7 @@ function getOverlayCheckbox(name) {
   overlays = $('.leaflet-control-layers-overlays .leaflet-control-layers-selector');
   overlays.each(function(i) {
     o = $(this);
-    //console.log('overlay: ' + o);
     text = $.trim(o.next().text());
-    //console.log('text: "' + text + '"');
     if (text == name) {
       ov = o;
     }
@@ -935,9 +974,6 @@ function getOverlayCheckbox(name) {
 function isOverlayChecked(name) {
   o = getOverlayCheckbox(name);
   return $(o).prop('checked');
-  //console.log('overlay checkbox: ' + o + 'keys: ' + getkeys(o));
-  //console.log('prop checked: ' + $(o).prop("checked"));
-  //return o.checked;
 }
 function setOverlayEnabled(name, enabled) {
   o = getOverlayCheckbox(name);
@@ -1011,8 +1047,6 @@ function onMapZoomEnd(e) {
       console.log('removing sources');
       // By the time we get here, onTileUnload() has already fired.
       showSources = false;
-      //overlayRemoved({name:'Sources'});
-      // doUnloadTile?
       setOverlayEnabled('Sources', false);
     }
   } else if ((oldZoom < sourcesMinZoom) && (zoom >= sourcesMinZoom)) {
@@ -1020,9 +1054,6 @@ function onMapZoomEnd(e) {
     setOverlayEnabled('Sources', true);
     if (isOverlayChecked('Sources')) {
       console.log('Re-adding sources');
-      // FIXME -- is it too late at this point?
-      //showSources = true;                                    
-      //doLoadTile();
       overlayAdded({name:'Sources'});
     }
   }

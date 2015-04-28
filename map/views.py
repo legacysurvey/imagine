@@ -46,6 +46,15 @@ catversions = {
 
 oneyear = (3600 * 24 * 365)
 
+def trymakedirs(fn):
+    dirnm = os.path.dirname(fn)
+    if not os.path.exists(dirnm):
+        try:
+            os.makedirs(dirnm)
+        except:
+            pass
+
+
 def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None):
     from astrometry.util.util import Tan
     wcs = None
@@ -240,14 +249,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         subwcs = wcs.scale(0.5)
         hdr = fitsio.FITSHDR()
         subwcs.add_to_header(hdr)
-
-        dirnm = os.path.dirname(fn)
-        if not os.path.exists(dirnm):
-            try:
-                os.makedirs(dirnm)
-            except:
-                pass
-
+        trymakedirs(fn)
         f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=dirnm)
         os.close(f)
         # To avoid overwriting the (empty) temp file (and fitsio
@@ -460,10 +462,7 @@ def map_sfd(req, ver, zoom, x, y, savecache = False):
     ebv = ebv.reshape(xx.shape)
     #print 'EBV range:', ebv.min(), ebv.max()
 
-    try:
-        os.makedirs(os.path.dirname(tilefn))
-    except:
-        pass
+    trymakedirs(tilefn)
 
     if not savecache:
         import tempfile
@@ -679,12 +678,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1, docache=True):
                                  bricknames=bricknames, objids=objids,
                                  zoom=zoom, tilex=x, tiley=y))
     if docache:
-        dirnm = os.path.dirname(cachefn)
-        if not os.path.exists(dirnm):
-            try:
-                os.makedirs(dirnm)
-            except:
-                pass
+        trymakedirs(cachefn)
 
     f = open(cachefn, 'w')
     f.write(json)
@@ -719,6 +713,7 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
         if not os.path.exists(catfn):
             print 'Does not exist:', catfn
             continue
+        print 'Reading catalog', catfn
         T = fits_table(catfn)
         # FIXME -- all False
         # print 'brick_primary', np.unique(T.brick_primary)
@@ -823,6 +818,12 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
 
     if len(I) == 0:
         from django.http import HttpResponseRedirect
+        if forcecache:
+            # create symlink to blank.jpg!
+            trymakedirs(tilefn)
+            src = os.path.join(settings.STATIC_ROOT, 'blank.jpg')
+            os.symlink(src, tilefn)
+            print 'Symlinked', tilefn, '->', src
         return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
 
     foundany = False
@@ -951,10 +952,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
 
     rgb = get_rgb(rimgs, bands, **rgbkwargs)
 
-    try:
-        os.makedirs(os.path.dirname(tilefn))
-    except:
-        pass
+    trymakedirs(tilefn)
 
     if forcecache:
         savecache = True
@@ -1111,6 +1109,7 @@ def cutouts(req):
     print 'URL', url
 
     # Deployment: http://{s}.DOMAIN/...
+    url = url.replace('://www.', '://')
     url = url.replace('://', '://%s.')
 
     domains = ['a','b','c','d']
@@ -1151,7 +1150,9 @@ def cat_plot(req):
 
     M = 10
     margwcs = wcs.get_subimage(-M, -M, W+2*M, H+2*M)
-    cat,hdr = _get_decals_cat(margwcs, layout=2, tag='decals-edr%i' % ver)
+
+    #cat,hdr = _get_decals_cat(margwcs, layout=2, tag='decals-edr%i' % ver)
+    cat,hdr = _get_decals_cat(margwcs, layout=2, tag='decals-dr1j')
 
     # FIXME
     nil,sdss = get_sdss_sources('r', margwcs,
@@ -1169,11 +1170,15 @@ def cat_plot(req):
     if cat is not None:
         ok,x,y = wcs.radec2pixelxy(cat.ra, cat.dec)
         # matching the plot colors in index.html
-        cc = dict(S=(0x9a, 0xfe, 0x2e),
-                  D=(0xff, 0, 0),
-                  E=(0x58, 0xac, 0xfa),
-                  C=(0xda, 0x81, 0xf5))
-        ax.scatter(x, y, s=50, c=[[float(x)/255. for x in cc[t]] for t in cat.type])
+        # cc = dict(S=(0x9a, 0xfe, 0x2e),
+        #           D=(0xff, 0, 0),
+        #           E=(0x58, 0xac, 0xfa),
+        #           C=(0xda, 0x81, 0xf5))
+        cc = dict(PSF =(0x9a, 0xfe, 0x2e),
+                  DEV =(0xff, 0, 0),
+                  EXP =(0x58, 0xac, 0xfa),
+                  COMP=(0xda, 0x81, 0xf5))
+        ax.scatter(x, y, s=50, c=[[float(x)/255. for x in cc[t.strip()]] for t in cat.type])
     if sdss is not None:
         ok,x,y = wcs.radec2pixelxy(sdss.ra, sdss.dec)
         ax.scatter(x, y, s=30, marker='x', c='k')
@@ -1220,6 +1225,7 @@ def _get_image_slice(fn, hdu, x, y, size=50):
     else:
         ystart = 0
     slc = slice(max(y-size, 0), min(y+size, H)), slice(max(x-size, 0), min(x+size, W))
+    print 'Image slice:', slc
     img = img[slc]
     return img,slc,xstart,ystart
 
@@ -1245,16 +1251,16 @@ def cutout_panels(req, expnum=None, extname=None):
     fn = _get_image_filename(ccd)
     if not os.path.exists(fn):
         #print 'NO IMAGE:', fn
-        print 'rsync -Rrv carver:tractor/decals/images/./' + fn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images'
+        #print 'rsync -Rrv carver:tractor/decals/images/./' + fn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images'
         return HttpResponse('no such image: ' + fn)
 
     wfn = fn.replace('ooi', 'oow')
     if not os.path.exists(wfn):
-        cmd = 'rsync -Rrv carver:tractor/decals/images/./' + wfn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images'
-        print '\n' + cmd + '\n'
-        os.system(cmd)
-        if not os.path.exists(wfn):
-            return HttpResponse('no such image: ' + wfn)
+        #cmd = 'rsync -Rrv carver:tractor/decals/images/./' + wfn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images'
+        #print '\n' + cmd + '\n'
+        #os.system(cmd)
+        #if not os.path.exists(wfn):
+        return HttpResponse('no such image: ' + wfn)
 
     # half-size in DECam pixels -- must match cutouts():size
     size = 50
@@ -1267,16 +1273,16 @@ def cutout_panels(req, expnum=None, extname=None):
     ccd.cpimage = fn
     im = DecamImage(ccd)
     D = _get_decals()
-    tim = im.get_tractor_image(decals, slc=slc, tiny=1)
+    tim = im.get_tractor_image(decals, slc=slc, tiny=1, const2psf=True, pvwcs=True)
 
     if tim is None:
         img = np.zeros((0,0))
 
     # UGH, this is just nasty... set up the PSF
-    from tractor.psfex import CachingPsfEx
-    tim.psfex.radius = 20
-    tim.psfex.fitSavedData(*tim.psfex.splinedata)
-    tim.psf = CachingPsfEx.fromPsfEx(tim.psfex)
+    # from tractor.psfex import CachingPsfEx
+    # tim.psfex.radius = 20
+    # tim.psfex.fitSavedData(*tim.psfex.splinedata)
+    # tim.psf = CachingPsfEx.fromPsfEx(tim.psfex)
 
     mn,mx = -1, 100
     arcsinh = 1.
@@ -1287,14 +1293,13 @@ def cutout_panels(req, expnum=None, extname=None):
                   r = (1, 0.01),
                   z = (0, 0.025),
                   )
-    nil,scale = scales[ccd.filter]
-
+    #nil,scale = scales[ccd.filter]
     
-    f = plt.figure(figsize=(7,1))
+    rows,cols = 1,5
+    f = plt.figure(figsize=(cols,rows))
     f.clf()
     f.subplots_adjust(left=0.002, bottom=0.02, top=0.995, right=0.998,
                       wspace=0.02, hspace=0)
-    rows,cols = 1,7
 
     imgs = []
 
@@ -1303,11 +1308,14 @@ def cutout_panels(req, expnum=None, extname=None):
     
     M = 10
     margwcs = tim.subwcs.get_subimage(-M, -M, int(tim.subwcs.get_width())+2*M, int(tim.subwcs.get_height())+2*M)
-    for dr in ['edr2','edr3']:
+    #for dr in ['edr2','edr3']:
+    for dr in ['dr1j']:
         cat,hdr = _get_decals_cat(margwcs, layout=2, tag='decals-%s' % dr)
         if cat is None:
             tcat = []
         else:
+            cat.shapedev = np.vstack((cat.shapedev_r, cat.shapedev_e1, cat.shapedev_e2)).T
+            cat.shapeexp = np.vstack((cat.shapeexp_r, cat.shapeexp_e1, cat.shapeexp_e2)).T
             tcat = read_fits_catalog(cat, hdr=hdr)
         tr = Tractor([tim], tcat)
         img = tr.getModelImage(0)
@@ -1336,7 +1344,7 @@ def cutout_panels(req, expnum=None, extname=None):
 
     for i,(img,d) in enumerate(imgs):
 
-        mn,mx = -1, 100
+        mn,mx = -5, 100
         arcsinh = 1.
         cmap = 'gray'
         nil,scale = scales[ccd.filter]
@@ -1366,6 +1374,7 @@ def cutout_panels(req, expnum=None, extname=None):
         if pad:
             ih,iw = img.shape
             padimg = np.zeros((2*size,2*size), img.dtype) + 0.5
+            print 'Image shape:', img.shape, 'pad shape:', padimg.shape
             padimg[ystart:ystart+ih, xstart:xstart+iw] = img
             img = padimg
 
