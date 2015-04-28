@@ -218,7 +218,9 @@ function catLoaded(result) {
             typ = 'nil';
         } else {
             typ = objtype[i];
-            if (objtype[i] == 'S') {
+            // used to by 'S' for star; now 'P' for ptsrc
+            //if (objtype[i] == 'S') {
+            if (objtype[i] == 'P') {
                 color = '#9AFE2E'; //#D8F781'; //'green';
             } else if (objtype[i] == 'D') {
                 color = 'red';
@@ -269,9 +271,10 @@ function catLoaded(result) {
 }
 
 // Reads global "catname", name of catalog sources to load.
+// and 'sourcesMinZoom'
 function doLoadTile(tile) {
     //console.log('doLoadtile: ' + tile);
-    if (tile.z < 12) {
+    if (tile.z < sourcesMinZoom) {
         return;
     }
     s = getSubdomain(tile.tilex, tile.tiley);
@@ -290,6 +293,10 @@ function doLoadTile(tile) {
 function onTileLoadStart(e) {
     tile = e.tile;
     key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
+    if (key in visibleTiles) {
+      console.log('onTileLoadStart: key ' + key + ' was already in visibleTiles');
+      return;
+    }
     visibleTiles[key] = tile;
     //console.log('onTileLoadStart: ' + key);
     if (!showSources) {
@@ -299,17 +306,23 @@ function onTileLoadStart(e) {
 }
 
 function doUnloadTile(key) {
-    //console.log('doUnloadTile: ' + key);
+    console.log('doUnloadTile: ' + key);
     circles = catLayers[key];
-    //map.removeLayer(circles);
+
+    if (typeof(circles) == 'undefined') {
+      console.log('doUnloadTile on a tile with no catalog; whatevs');
+      return;
+    }
+
     sourcesGroup.removeLayer(circles);
     delete catLayers[key];
+    console.log('remaining catalog layers: ' + getkeys(catLayers));
 }
 
 function onTileUnload(e) {
     tile = e.tile;
     key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
-    //console.log('onTileUnload: ' + key);
+    console.log('onTileUnload: ' + key);
     delete visibleTiles[key];
     if (!showSources) {
         return;
@@ -845,72 +858,134 @@ function onMapPostBaseLayerChange(e) {
     overlayAdded({name:'Sources'});
 }
 
-//
-var bricksCcdsMinZoom = 8;
 
+/*
+The overlays DOM looks like this:
+
+<div class="leaflet-control-layers-overlays">
+  <label>
+    <input class="leaflet-control-layers-selector" type="checkbox">
+    <span> Sources</span>
+  </label>
+  <label>
+    <input class="leaflet-control-layers-selector" type="checkbox">
+    <span> Bricks</span>
+  </label>
+  <label>
+</div>
+*/
+// We iterate through the <input> tags, getting the text from the next sibling.
+function getOverlayCheckbox(name) {
+  var ov = false;
+  overlays = $('.leaflet-control-layers-overlays .leaflet-control-layers-selector');
+  overlays.each(function(i) {
+    o = $(this);
+    //console.log('overlay: ' + o);
+    text = $.trim(o.next().text());
+    //console.log('text: "' + text + '"');
+    if (text == name) {
+      ov = o;
+    }
+  });
+  return ov;
+}
+function isOverlayChecked(name) {
+  o = getOverlayCheckbox(name);
+  return $(o).prop('checked');
+  //console.log('overlay checkbox: ' + o + 'keys: ' + getkeys(o));
+  //console.log('prop checked: ' + $(o).prop("checked"));
+  //return o.checked;
+}
+function setOverlayEnabled(name, enabled) {
+  o = getOverlayCheckbox(name);
+  if (enabled) {
+    o.removeAttr('disabled');
+  } else {
+    o.attr('disabled', 'disabled');
+  }
+}
+
+//
+//var bricksMinZoom = 6;
+var bricksMinZoom = 8;
+var ccdsMinZoom = 8;
+var sourcesMinZoom = 12;
+
+// variable for tracking old & new zoom via zoomstart / zoomend
+var oldZoom = {{ zoom }};
 function onMapZoomStart(e) {
+  zoom = map.getZoom();
+  console.log('map zoom start: ' + zoom + ', previous' + oldZoom);
+  oldZoom = zoom;
 }
 function onMapZoomEnd(e) {
   zoom = map.getZoom();
-  console.log('map zoom: ' + zoom);
+  console.log('map zoom: ' + zoom + ', old zoom' + oldZoom + ' vs brick zoom', bricksMinZoom);
 
-  overlays = $('.leaflet-control-layers-overlays .leaflet-control-layers-selector');
+  // Bricks
 
-  if (zoom < bricksCcdsMinZoom) {
+  if ((oldZoom >= bricksMinZoom) && (zoom < bricksMinZoom)) {
+    // zoomed out past the boundary
+    console.log('zoomed out past brick boundary');
     if (showBricks) {
       console.log('removing brick outlines');
       overlayRemoved({name:'Bricks'});
+      setOverlayEnabled('Bricks', false);
     }
+  } else if ((oldZoom < bricksMinZoom) && (zoom >= bricksMinZoom)) {
+    // zoomed in past the boundary
+    console.log('zoomed in past boundary');
+    setOverlayEnabled('Bricks', true);
+    if (isOverlayChecked('Bricks')) {
+      console.log('Re-adding bricks');
+      overlayAdded({name:'Bricks'});
+    }
+  }
+
+  // CCDs
+
+  if ((oldZoom >= ccdsMinZoom) && (zoom < ccdsMinZoom)) {
+    console.log('zoomed out past CCD boundary');
     if (showCcds) {
       console.log('removing CCD outlines');
       overlayRemoved({name:'CCDs'});
+      setOverlayEnabled('CCDs', false);
     }
-
-    //for (o in overlays) {
-    //console.log('overlay: ' + o);
-    //}
-
-    // texts = overlays.next().text();
-    // console.log('Texts:', texts);
-    // console.log(typeof(texts));
-    // for (i in texts.length) {
-    // console.log('texts ' + i + '=' + texts[i]);
-    // }
- 
-    overlays.each(function(i) {
-        o = $(this);
-        console.log('overlay: ' + o);
-        text = o.next().text();
-        text = $.trim(text);
-        console.log('text: "' + text + '"');
-        if (text == 'Bricks') {
-          console.log('got bricks!');
-        } else if (text == 'CCDs') {
-          console.log('got CCDs!');
-        } else if (text == 'Sources') {
-          console.log('got sources!');
-        }
-    });
-
-    overlays.attr('disabled', 'disabled');
-  } else {
-    overlays.removeAttr('disabled');
+  } else if ((oldZoom < ccdsMinZoom) && (zoom >= ccdsMinZoom)) {
+    console.log('zoomed in past boundary');
+    setOverlayEnabled('CCDs', true);
+    if (isOverlayChecked('CCDs')) {
+      console.log('Re-adding ccds');
+      overlayAdded({name:'CCDs'});
+    }
   }
-                                                   
 
-                                        /*
-                                        <div class="leaflet-control-layers-overlays">
-                                          <label>
-                                            <input class="leaflet-control-layers-selector" type="checkbox">
-                                            <span> Sources</span>
-                                          </label>
-                                          <label>
-                                            <input class="leaflet-control-layers-selector" type="checkbox">
-                                            <span> Bricks</span>
-                                          </label>
-                                          <label>
-                                        </div>
-                                        */
+  // Sources
+
+  if ((oldZoom >= sourcesMinZoom) && (zoom < sourcesMinZoom)) {
+    console.log('zoomed out past sources boundary');
+    if (showSources) {
+      console.log('removing sources');
+      // By the time we get here, onTileUnload() has already fired.
+      showSources = false;
+      //overlayRemoved({name:'Sources'});
+      // doUnloadTile?
+      setOverlayEnabled('Sources', false);
+    }
+  } else if ((oldZoom < sourcesMinZoom) && (zoom >= sourcesMinZoom)) {
+    console.log('zoomed in past boundary');
+    setOverlayEnabled('Sources', true);
+    if (isOverlayChecked('Sources')) {
+      console.log('Re-adding sources');
+      // FIXME -- is it too late at this point?
+      //showSources = true;                                    
+      //doLoadTile();
+      overlayAdded({name:'Sources'});
+    }
+  }
+
+
+  oldZoom = zoom;
 
 }
 
@@ -940,7 +1015,9 @@ overlayAdded({name:'CCDs'});
 
 {% if showSources %}
 map.addLayer(sourcesGroup);
-overlayAdded({name:'Sources'});
+// If you do this, you get double-adding!
+//overlayAdded({name:'Sources'});
+showSoures = true;
 {% endif %}
 
 

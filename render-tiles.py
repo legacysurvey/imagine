@@ -28,6 +28,8 @@ def _one_tile((kind, zoom, x, y)):
     elif kind == 'resid':
         map_decals_resid_dr1j(req, version, zoom, x, y, savecache=True, 
                               forcecache=True)
+    elif kind == 'sfd':
+        map_sfd(req, version, zoom, x, y)
 
 def main():
     import optparse

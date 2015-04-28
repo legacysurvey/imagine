@@ -139,7 +139,7 @@ def index(req):
     
 
     url = req.build_absolute_uri(settings.ROOT_URL) + '/{id}/{ver}/{z}/{x}/{y}.jpg'
-    caturl = '/{id}/{ver}/{z}/{x}/{y}.cat.json'
+    caturl = settings.ROOT_URL + '/{id}/{ver}/{z}/{x}/{y}.cat.json'
 
     # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
     tileurl = url.replace('www.legacysurvey', 'legacysurvey').replace('://', '://{s}.')
@@ -566,7 +566,7 @@ def ccd_list(req):
     west  = float(req.GET['west'])
     #print 'N,S,E,W:', north, south, east, west
 
-    CCDS = _ccds_touching_box(north, south, east, west, Nmax=1000)
+    CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000)
 
     ccds = []
     for c in CCDS:
@@ -593,16 +593,19 @@ def brick_detail(req, brickname):
     #brickname = req.GET['brick']
     return HttpResponse('Brick ' + brickname)
 
-def cat_decals_edr2(req, ver, zoom, x, y, tag='decals-edr2'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
+# def cat_decals_edr2(req, ver, zoom, x, y, tag='decals-edr2'):
+#     return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
+# 
+# def cat_decals_edr3(req, ver, zoom, x, y, tag='decals-edr3'):
+#     return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
+# 
+# def cat_decals_dr1(req, ver, zoom, x, y, tag='decals-dr1'):
+#     return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
 
-def cat_decals_edr3(req, ver, zoom, x, y, tag='decals-edr3'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
+def cat_decals_dr1j(req, ver, zoom, x, y, tag='decals-dr1j'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2, docache=False)
 
-def cat_decals_dr1(req, ver, zoom, x, y, tag='decals-dr1'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
-
-def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1):
+def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1, docache=True):
     import json
 
     zoom = int(zoom)
@@ -624,13 +627,18 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1):
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
     basedir = os.path.join(settings.WEB_DIR, 'data')
-    cachefn = os.path.join(basedir, 'cats-cache', tag,
-                           '%i/%i/%i/%i.cat.json' % (ver, zoom, x, y))
-    if os.path.exists(cachefn):
-        # print 'Cached:', cachefn
-        return send_file(cachefn, 'application/json',
-                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
-                         expires=oneyear)
+    if docache:
+        cachefn = os.path.join(basedir, 'cats-cache', tag,
+                               '%i/%i/%i/%i.cat.json' % (ver, zoom, x, y))
+        if os.path.exists(cachefn):
+            # print 'Cached:', cachefn
+            return send_file(cachefn, 'application/json',
+                             modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
+                             expires=oneyear)
+    else:
+        import tempfile
+        f,cachefn = tempfile.mkstemp(suffix='.jpg')
+        os.close(f)
 
     cat,hdr = _get_decals_cat(wcs, layout=layout, tag=tag)
 
@@ -644,7 +652,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1):
         #print 'All catalogs:'
         #cat.about()
         rd = zip(cat.ra, cat.dec)
-        types = list(cat.get('type'))
+        types = list([t[0] for t in cat.get('type')])
         fluxes = [dict(g=float(g), r=float(r), z=float(z))
                   for g,r,z in zip(cat.decam_flux[:,1], cat.decam_flux[:,2],
                                    cat.decam_flux[:,4])]
@@ -654,12 +662,13 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1):
     json = json.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes,
                                  bricknames=bricknames, objids=objids,
                                  zoom=zoom, tilex=x, tiley=y))
-    dirnm = os.path.dirname(cachefn)
-    if not os.path.exists(dirnm):
-        try:
-            os.makedirs(dirnm)
-        except:
-            pass
+    if docache:
+        dirnm = os.path.dirname(cachefn)
+        if not os.path.exists(dirnm):
+            try:
+                os.makedirs(dirnm)
+            except:
+                pass
 
     f = open(cachefn, 'w')
     f.write(json)
@@ -692,7 +701,7 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
         fnargs = dict(brick=brickid, brickname=brickname)
         catfn = catpat % fnargs
         if not os.path.exists(catfn):
-            # print 'Does not exist:', catfn
+            print 'Does not exist:', catfn
             continue
         T = fits_table(catfn)
         # FIXME -- all False

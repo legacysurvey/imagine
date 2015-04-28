@@ -31,6 +31,7 @@ urlpatterns = patterns('map.views',
     url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1j'),
     url(r'^decals-model-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_dr1j'),
     url(r'^decals-resid-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_resid_dr1j'),
+    url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_dr1j'),
 
     # DR1d
     #url(r'^decals-dr1d/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1d'),
@@ -59,8 +60,7 @@ urlpatterns = patterns('map.views',
     # 
     # url(r'^decals-edr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_edr2'),
     # url(r'^decals-edr3/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_edr3'),
-
-    url(r'^decals-dr1/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_dr1'),
+    # url(r'^decals-dr1/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_dr1'),
 
     # brick list of polygons
     url(r'^bricks/', 'brick_list'),
