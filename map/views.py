@@ -33,6 +33,8 @@ tileversions = {
     'decals-dr1j': [1],
     'decals-model-dr1j': [1],
     'decals-resid-dr1j': [1],
+
+    'unwise-w1w2': [1],
     }
 
 catversions = {
@@ -414,6 +416,67 @@ def map_des_stripe82(req, ver, zoom, x, y):
 def map_des_pr(req, ver, zoom, x, y):
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'des-stripe82-pr', 'des-stripe82',
                            rgbkwargs=rgbkwargs)
+
+UNW = None
+UNW_tree = None
+
+def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
+    global UNW
+    global UNW_tree
+
+    zoom = int(zoom)
+    zoomscale = 2.**zoom
+    x = int(x)
+    y = int(y)
+    if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
+        raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
+    ver = int(ver)
+
+    tag = 'unwise-w1w2'
+
+    if not ver in tileversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from decals import settings
+
+    basedir = settings.DATA_DIR
+    tilefn = os.path.join(basedir, 'tiles', tag,
+                          '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
+    #'%i/%i/%i/%i.png' % (ver, zoom, x, y))
+
+    if os.path.exists(tilefn):
+        # print 'Cached:', tilefn
+        return send_file(tilefn, 'image/jpeg', expires=oneyear,
+                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
+
+    try:
+        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
+    except RuntimeError as e:
+        return HttpResponse(e.strerror)
+
+    from astrometry.util.fits import fits_table
+    import numpy as np
+    from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
+    from astrometry.util.starutil_numpy import degrees_between
+
+    if UNW is None:
+        UNW = fits_table(os.path.join(settings.UNWISE_DIR, 'allsky-atlas.fits'))
+        UNW_tree = tree_build_radec(UNW.ra, UNW.dec)
+
+    # unWISE tile size
+    radius = 1.01 * np.sqrt(2.)/2. * 2.75 * 2048 / 3600.
+
+    ok,r0,d0 = wcs.pixelxy2radec(1, 1)
+    ok,r1,d1 = wcs.pixelxy2radec(W, H)
+
+    radius = radius + degrees_between(r0,d0, r1, d1) / 2.
+    
+    ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
+
+    J = tree_search_radec(UNW_tree, ra, dec, radius)
+    print len(J), 'unWISE tiles nearby'
+
+
 
 sfd = None
 

@@ -47,11 +47,13 @@ urlpatterns = patterns('map.views',
     # SFD dust map
     url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_sfd'),
 
+    # unWISE W1/W2
+    url(r'^unwise-w1w2-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_unwise_w1w2'),
+
     ## Cutouts
     url(r'^cutouts/', 'cutouts', name='cutouts'),
 
     url(r'^cutout_panels/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'cutout_panels', name='cutout_panels'),
-
 
     url(r'^cat_plot/', 'cat_plot', name='cat_plot'),
 

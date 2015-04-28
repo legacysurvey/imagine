@@ -15,6 +15,8 @@ ROOT_URL = '/viewer'
 #DUST_DIR = '/project/projectdirs/desi/software/edison/dust/v0_0'
 DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
 
+UNWISE_DIR = '/project/projectdirs/cosmo/data/unwise/unwise-coadds'
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
 #BASE_DIR = os.path.dirname(os.path.dirname(__file__))
