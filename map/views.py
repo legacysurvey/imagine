@@ -449,6 +449,11 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
 
+    if not savecache:
+        import tempfile
+        f,tilefn = tempfile.mkstemp(suffix='.jpg')
+        os.close(f)
+
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
@@ -458,6 +463,9 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
     import numpy as np
     from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
     from astrometry.util.starutil_numpy import degrees_between
+    from astrometry.util.resample import resample_with_wcs, OverlapError
+    from astrometry.util.util import Tan
+    import fitsio
 
     if UNW is None:
         UNW = fits_table(os.path.join(settings.UNWISE_DIR, 'allsky-atlas.fits'))
@@ -469,13 +477,102 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
     ok,r0,d0 = wcs.pixelxy2radec(1, 1)
     ok,r1,d1 = wcs.pixelxy2radec(W, H)
 
-    radius = radius + degrees_between(r0,d0, r1, d1) / 2.
+    radius = radius + degrees_between(r0,d0, r1,d1) / 2.
     
     ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
 
     J = tree_search_radec(UNW_tree, ra, dec, radius)
     print len(J), 'unWISE tiles nearby'
 
+    
+    r1img = np.zeros((H,W), np.float32)
+    r1n   = np.zeros((H,W), np.uint8)
+    r2img = np.zeros((H,W), np.float32)
+    r2n   = np.zeros((H,W), np.uint8)
+
+    ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
+                               [1,H/2,H,H,H,H/2,1,1])
+
+    for j in J:
+        tile = UNW.coadd_id[j]
+        print 'Tile', tile
+        fn1 = os.path.join(settings.UNWISE_DIR, tile[:3], tile, 'unwise-%s-w1-img-m.fits' % tile)
+        fn2 = os.path.join(settings.UNWISE_DIR, tile[:3], tile, 'unwise-%s-w2-img-m.fits' % tile)
+        print 'File', fn1
+
+        bwcs = Tan(fn1, 0)
+
+        ok,xx,yy = bwcs.radec2pixelxy(r, d)
+        xx = xx.astype(np.int)
+        yy = yy.astype(np.int)
+        imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
+        M = 10
+        xlo = np.clip(xx.min() - M, 0, imW)
+        xhi = np.clip(xx.max() + M, 0, imW)
+        ylo = np.clip(yy.min() - M, 0, imH)
+        yhi = np.clip(yy.max() + M, 0, imH)
+        if xlo >= xhi or ylo >= yhi:
+            continue
+        subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
+        slc = slice(ylo,yhi), slice(xlo,xhi)
+
+        for fn, rimg, rn in [(fn1, r1img, r1n), (fn2, r2img, r2n)]:
+
+            try:
+                Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
+            except OverlapError:
+                print 'Resampling exception'
+                continue
+
+            f = fitsio.FITS(fn)[0]
+            img = f[slc]
+
+            rimg[Yo,Xo] += img[Yi,Xi]
+            rn  [Yo,Xo] += 1
+
+    r1img /= np.maximum(r1n, 1)
+    r2img /= np.maximum(r2n, 1)
+    del r1n, r2n
+
+    rgb = np.zeros((H, W, 3), np.uint8)
+
+    scale1 = 100.
+    scale2 = 200.
+
+    mn,mx = -3.,100.
+    arcsinh = 1.
+
+    img1 = r1img / scale1
+    img2 = r2img / scale2
+
+    if arcsinh is not None:
+        def nlmap(x):
+            return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
+        img1 = nlmap(img1)
+        img2 = nlmap(img2)
+        mn = nlmap(mn)
+        mx = nlmap(mx)
+    img1 = (img1 - mn) / (mx - mn)
+    img2 = (img2 - mn) / (mx - mn)
+
+    rgb[:,:,2] = (np.clip(img1, 0., 1.) * 255).astype(np.uint8)
+    rgb[:,:,0] = (np.clip(img2, 0., 1.) * 255).astype(np.uint8)
+    rgb[:,:,1] = (rgb[:,:,0] + rgb[:,:,2]) / 2
+
+    import pylab as plt
+
+    # no jpeg output support in matplotlib in some installations...
+    if True:
+        import tempfile
+        f,tempfn = tempfile.mkstemp(suffix='.png')
+        os.close(f)
+        plt.imsave(tempfn, rgb)
+        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
+        os.system(cmd)
+        os.unlink(tempfn)
+        print 'Wrote', tilefn
+
+    return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
 
 sfd = None
