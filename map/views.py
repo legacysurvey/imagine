@@ -11,38 +11,14 @@ matplotlib.use('Agg')
 # client-side caches.
 
 tileversions = {
-    'cosmos-grz': [1,],
-    'decals': [1,],
-    'decals-model': [1,],
-    'decals-pr': [1,4],
-    'decals-model-pr': [1,],
-    'des-stripe82': [1,],
-    'des-pr': [1,],
     'sfd': [1,],
-    'decals-edr2': [1,],
-    'decals-model-edr2': [1,],
-    'decals-resid-edr2': [1,],
-    'decals-edr3': [1,],
-    'decals-model-edr3': [1,],
-    'decals-resid-edr3': [1,],
-    'decals-dr1': [1, 2],
-    'decals-dr1d': [1],
-    'decals-model-dr1': [1,],
-    'decals-resid-dr1': [1,],
-
     'decals-dr1j': [1],
     'decals-model-dr1j': [1],
     'decals-resid-dr1j': [1],
-
     'unwise-w1w2': [1],
     }
 
 catversions = {
-    'decals': [2,],
-    'decals-edr2': [2,],
-    'decals-edr3': [2,],
-    'decals-dr1': [2,],
-
     'decals-dr1j': [1,],
     }
 
@@ -120,14 +96,11 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
     return res
 
 def index(req):
-    #layer = req.GET.get('layer', 'decals-dr1')
-    #layer = req.GET.get('layer', 'decals-dr1d')
     layer = req.GET.get('layer', 'decals-dr1j')
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
     # EDR2 region
     ra, dec, zoom = 243.7, 8.2, 13
-
     # Top of DR1
     #ra,dec,zoom = 113.49, 29.86, 13
 
@@ -202,11 +175,8 @@ def get_tile_wcs(zoom, x, y):
         ry = zoomscale/2 - y
     rx = rx * W
     ry = ry * H
-
-    #print 'create_mercator_2:', 180., 0., rx, ry, zoomscale, W, H, 1
     wcs = anwcs_create_mercator_2(180., 0., rx, ry,
                                   zoomscale, W, H, 1)
-    #print 'Zoom level', zoom, 'pixel scale', wcs.pixel_scale()
     return wcs, W, H, zoomscale, zoom,x,y
 
 def get_scaled(scalepat, scalekwargs, scale, basefn):
@@ -267,95 +237,6 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
 
 rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
-def map_cosmos_grz(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'cosmos-grz', 'cosmos',
-                           rgbkwargs=rgbkwargs)
-
-# def map_cosmos_urz(req, zoom, x, y):
-#     return map_coadd_bands(req, zoom, x, y, 'urz', 'cosmos-urz', 'cosmos')
-
-def map_decals(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals', 'decals')
-
-def map_decals_model(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
-                           'decals-model', 'decals-model', imagetag='model')
-
-def map_decals_pr(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-pr', 'decals',
-                           rgbkwargs=rgbkwargs)
-
-def map_decals_model_pr(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
-                           'decals-model-pr', 'decals-model', imagetag='model',
-                           rgbkwargs=rgbkwargs)
-
-def map_decals_edr2(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-edr2', 'decals-edr2',
-                           imagetag='image',
-                           rgbkwargs=rgbkwargs,
-                           layout=2)
-
-def map_decals_model_edr2(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
-                           'decals-model-edr2', 'decals-edr2',
-                           imagetag='model',
-                           rgbkwargs=rgbkwargs,
-                           layout=2)
-
-def map_decals_resid_edr2(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
-                           'decals-resid-edr2', 'decals-edr2',
-                           imagetag='resid',
-                           rgbkwargs=dict(mnmx=(-5,5)),
-                           layout=2)
-
-def map_decals_edr3(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-edr3', 'decals-edr3',
-                           imagetag='image',
-                           rgbkwargs=rgbkwargs,
-                           layout=2)
-
-def map_decals_model_edr3(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
-                           'decals-model-edr3', 'decals-edr3',
-                           imagetag='model',
-                           rgbkwargs=rgbkwargs,
-                           layout=2)
-
-def map_decals_resid_edr3(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
-                           'decals-resid-edr3', 'decals-edr3',
-                           imagetag='resid',
-                           rgbkwargs=dict(mnmx=(-5,5)),
-                           layout=2)
-
-
-def map_decals_dr1(req, ver, zoom, x, y, savecache=False, **kwargs):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-dr1', 'decals-dr1',
-                           imagetag='image',
-                           rgbkwargs=rgbkwargs,
-                           layout=2, savecache=savecache, **kwargs)
-
-B_dr1d = None
-
-def map_decals_model_dr1d(req, ver, zoom, x, y, savecache=False, **kwargs):
-    pass
-
-def map_decals_dr1d(req, ver, zoom, x, y, savecache=False, **kwargs):
-    global B_dr1d
-    if B_dr1d is None:
-        from decals import settings
-        from astrometry.util.fits import fits_table
-        B_dr1d = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks-in-dr1-done.fits'))
-        B_dr1d.cut(B_dr1d.exists)
-
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'decals-dr1d', 'decals-dr1d',
-                           imagetag='image',
-                           rgbkwargs=rgbkwargs,
-                           bricks=B_dr1d,
-                           layout=2, savecache=savecache, **kwargs)
-
 B_dr1j = None
 
 def map_decals_dr1j(req, ver, zoom, x, y, savecache=False,
@@ -386,36 +267,13 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=False,
                            imagetag=imagetag,
                            rgbkwargs=rgbkwargs,
                            bricks=B_dr1j,
-                           layout=2, savecache=savecache, **kwargs)
+                           savecache=savecache, **kwargs)
 
 def map_decals_model_dr1j(*args, **kwargs):
     return map_decals_dr1j(*args, model=True, model_gz=False, **kwargs)
 
 def map_decals_resid_dr1j(*args, **kwargs):
     return map_decals_dr1j(*args, resid=True, model_gz=False, **kwargs)
-
-
-def map_decals_model_dr1(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
-                           'decals-model-dr1', 'decals-dr1',
-                           imagetag='model',
-                           rgbkwargs=rgbkwargs,
-                           layout=2, savecache=False)
-
-def map_decals_resid_dr1(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz',
-                           'decals-resid-dr1', 'decals-dr1',
-                           imagetag='resid',
-                           rgbkwargs=dict(mnmx=(-5,5)),
-                           layout=2, savecache=False)
-
-
-def map_des_stripe82(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'des-stripe82', 'des-stripe82')
-
-def map_des_pr(req, ver, zoom, x, y):
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', 'des-stripe82-pr', 'des-stripe82',
-                           rgbkwargs=rgbkwargs)
 
 UNW = None
 UNW_tree = None
@@ -768,19 +626,10 @@ def brick_detail(req, brickname):
     #brickname = req.GET['brick']
     return HttpResponse('Brick ' + brickname)
 
-# def cat_decals_edr2(req, ver, zoom, x, y, tag='decals-edr2'):
-#     return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
-# 
-# def cat_decals_edr3(req, ver, zoom, x, y, tag='decals-edr3'):
-#     return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
-# 
-# def cat_decals_dr1(req, ver, zoom, x, y, tag='decals-dr1'):
-#     return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2)
-
 def cat_decals_dr1j(req, ver, zoom, x, y, tag='decals-dr1j'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, layout=2, docache=False)
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
-def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1, docache=True):
+def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     import json
 
     zoom = int(zoom)
@@ -815,7 +664,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1, docache=True):
         f,cachefn = tempfile.mkstemp(suffix='.jpg')
         os.close(f)
 
-    cat,hdr = _get_decals_cat(wcs, layout=layout, tag=tag)
+    cat,hdr = _get_decals_cat(wcs, tag=tag)
 
     if cat is None:
         rd = []
@@ -845,7 +694,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', layout=1, docache=True):
     f.close()
     return send_file(cachefn, 'application/json', expires=oneyear)
 
-def _get_decals_cat(wcs, layout=1, tag='decals'):
+def _get_decals_cat(wcs, tag='decals'):
     from decals import settings
     from astrometry.util.fits import fits_table, merge_tables
 
@@ -855,12 +704,8 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
     X = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                             [1,H/2,H,H,H,H/2,1,1])
     r,d = X[-2:]
-    if layout == 1:
-        catpat = os.path.join(basedir, 'cats', tag,
-                              'tractor-%(brick)06i.fits')
-    elif layout == 2:
-        catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
-                              'tractor-%(brickname)s.fits')
+    catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
+                          'tractor-%(brickname)s.fits')
     D = _get_decals()
     B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
@@ -894,7 +739,6 @@ def _get_decals_cat(wcs, layout=1, tag='decals'):
     
 def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={},
-                    layout=1,
                     bricks=None,
                     savecache = True, forcecache = False,
                     return_if_not_found=False, model_gz=False,
@@ -940,19 +784,15 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     # print 'Dec range', d.min(), d.max()
     # print 'Zoom', zoom, 'pixel scale', wcs.pixel_scale()
 
-    if layout == 1:
-        basepat = os.path.join(basedir, 'coadd', imagedir,
-                               imagetag + '-%(brick)06i-%(band)s.fits')
-    elif layout == 2:
-        basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
-                               '%(brickname)s',
-                               'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
-        if modeldir is not None:
-            modbasepat = os.path.join(basedir, 'coadd', modeldir, '%(brickname).3s',
-                                      '%(brickname)s',
-                                      'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
-        else:
-            modbasepat = basepat
+    basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
+                           '%(brickname)s',
+                           'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
+    if modeldir is not None:
+        modbasepat = os.path.join(basedir, 'coadd', modeldir, '%(brickname).3s',
+                                  '%(brickname)s',
+                                  'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
+    else:
+        modbasepat = basepat
     if model_gz and imagetag == 'model':
         modbasepat += '.gz'
 
@@ -1141,51 +981,6 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
 
-    
-# def map_image(req, zoom, x, y):
-#     from astrometry.blind.plotstuff import Plotstuff
-# 
-#     try:
-#         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-#     except RuntimeError as e:
-#         return HttpResponse(e.strerror)
-# 
-#     plot = Plotstuff(size=(256,256), outformat='jpg')
-#     plot.wcs = wcs
-#     plot.color = 'gray'
-# 
-#     grid = 30
-#     if zoom >= 2:
-#         grid = 10
-#     if zoom >= 4:
-#         grid = 5
-#     if zoom >= 6:
-#         grid = 1
-#     if zoom >= 8:
-#         grid = 0.5
-#     if zoom >= 10:
-#         grid = 0.1
-#     plot.plot_grid(grid*2, grid, ralabelstep=grid*2, declabelstep=grid)
-# 
-#     plot.color = 'white'
-#     plot.apply_settings()
-#     ok,r,d = wcs.pixelxy2radec(W/2+0.5, H/2+0.5)
-#     plot.text_xy(W/2, H/2, 'zoom%i (%i,%i)' % (zoom,x,y))
-#     plot.stroke()
-#     plot.color = 'green'
-#     plot.lw = 2.
-#     plot.alpha = 0.3
-#     plot.apply_settings()
-#     M = 5
-#     plot.polygon([(M,M),(W-M,M),(W-M,H-M),(M,H-M)])
-#     plot.close_path()
-#     plot.stroke()
-#     
-#     f,fn = tempfile.mkstemp()
-#     os.close(f)
-#     plot.write(fn)
-#     return send_file(fn, 'image/jpeg', unlink=True)
-
 
 def cutouts(req):
     from astrometry.util.util import Tan
@@ -1312,8 +1107,7 @@ def cat_plot(req):
     M = 10
     margwcs = wcs.get_subimage(-M, -M, W+2*M, H+2*M)
 
-    #cat,hdr = _get_decals_cat(margwcs, layout=2, tag='decals-edr%i' % ver)
-    cat,hdr = _get_decals_cat(margwcs, layout=2, tag='decals-dr1j')
+    cat,hdr = _get_decals_cat(margwcs, tag='decals-dr1j')
 
     # FIXME
     nil,sdss = get_sdss_sources('r', margwcs,
@@ -1389,17 +1183,6 @@ def _get_image_slice(fn, hdu, x, y, size=50):
     img = img[slc]
     return img,slc,xstart,ystart
 
-# def cutout_panels(req, expnum=None, extname=None):
-#     try:
-#         return _cutout_panels(req, expnum=expnum, extname=extname)
-#     except:
-#         import traceback
-#         import time
-#         import numpy as np
-#         time.sleep(np.random.uniform(5))
-#         traceback.print_exc()
-#         raise
-
 def cutout_panels(req, expnum=None, extname=None):
     import pylab as plt
     import numpy as np
@@ -1438,12 +1221,6 @@ def cutout_panels(req, expnum=None, extname=None):
     if tim is None:
         img = np.zeros((0,0))
 
-    # UGH, this is just nasty... set up the PSF
-    # from tractor.psfex import CachingPsfEx
-    # tim.psfex.radius = 20
-    # tim.psfex.fitSavedData(*tim.psfex.splinedata)
-    # tim.psf = CachingPsfEx.fromPsfEx(tim.psfex)
-
     mn,mx = -1, 100
     arcsinh = 1.
     cmap = 'gray'
@@ -1453,8 +1230,6 @@ def cutout_panels(req, expnum=None, extname=None):
                   r = (1, 0.01),
                   z = (0, 0.025),
                   )
-    #nil,scale = scales[ccd.filter]
-    
     rows,cols = 1,5
     f = plt.figure(figsize=(cols,rows))
     f.clf()
@@ -1468,9 +1243,8 @@ def cutout_panels(req, expnum=None, extname=None):
     
     M = 10
     margwcs = tim.subwcs.get_subimage(-M, -M, int(tim.subwcs.get_width())+2*M, int(tim.subwcs.get_height())+2*M)
-    #for dr in ['edr2','edr3']:
     for dr in ['dr1j']:
-        cat,hdr = _get_decals_cat(margwcs, layout=2, tag='decals-%s' % dr)
+        cat,hdr = _get_decals_cat(margwcs, tag='decals-%s' % dr)
         if cat is None:
             tcat = []
         else:

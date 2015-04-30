@@ -750,15 +750,10 @@ var popup = L.popup();
 
 // default to 1.
 var tileversions = {
-    'decals-pr':4,
-    'decals-dr1':2,
-    'decals-dr1d':1,
+  //'decals-dr1d':1,
 };
 var catversions  = {
-    'decals': 2,
-    'decals-edr2': 2,
-    'decals-edr3': 2,
-    'decals-dr1d': 1,
+  //'decals': 2,
 };
 
 function getversion(layer) {
@@ -814,7 +809,6 @@ allLayers = [];
 
 static_url = 'http://{s}.legacysurvey.org/viewer/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 
-//boundsEdr = [[dec2lat(4), ra2long(246)], [dec2lat(13), ra2long(239)]];
 boundsEdr = L.latLngBounds(L.latLng(dec2lat(4),  ra2long(246)),
                            L.latLng(dec2lat(13), ra2long(239)));
 console.log('EDR bounds: ' + boundsEdr);
@@ -836,8 +830,6 @@ function createStaticTileLayer(id, vertag) {
 
 id = 'decals-dr1j'
 catname = 'decals-dr1j';
-//tilesDr1j = createStaticTileLayer(id, id)
-//tilesDr1j = createTileLayer(id, id)
 
 // Use the static URL until zoom level 14, then the dynamic URL.
 // Only request tiles within the EDR region.
@@ -1016,7 +1008,6 @@ function setOverlayEnabled(name, enabled) {
 }
 
 //
-//var bricksMinZoom = 6;
 var bricksMinZoom = 8;
 var ccdsMinZoom = 8;
 var sourcesMinZoom = 12;

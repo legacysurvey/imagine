@@ -1,48 +1,12 @@
 from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns('map.views',
-    # url(r'^image/(\d*)/(\d*)/(\d*).jpg', 'map_image'),
-    #url(r'^cosmos-grz/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_cosmos_grz'),
-    # url(r'^cosmos-urz/(\d*)/(\d*)/(\d*).jpg', 'map_cosmos_urz'),
-
-    # Tiles
-    # url(r'^decals/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals'),
-    # url(r'^decals-pr/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_pr'),
-    # url(r'^decals-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model'),
-    # url(r'^decals-model-pr/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_pr'),
-    # url(r'^des-stripe82/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_des_stripe82'),
-    # url(r'^des-pr/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_des_pr'),
-
-    # "EDR2"
-    # url(r'^decals-edr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_edr2'),
-    # url(r'^decals-model-edr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_edr2'),
-    # 
-    # # EDR2 residuals
-    # url(r'^decals-resid-edr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_resid_edr2'),
-
-    # EDR3
-    # url(r'^decals-edr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_edr3'),
-    # url(r'^decals-model-edr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_edr3'),
-    # 
-    # # EDR3 residuals
-    # url(r'^decals-resid-edr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_resid_edr3'),
-
     # DR1j
     url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1j'),
     url(r'^decals-model-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_dr1j'),
     url(r'^decals-resid-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_resid_dr1j'),
+    # catalog
     url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_dr1j'),
-
-    # DR1d
-    #url(r'^decals-dr1d/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1d'),
-    #url(r'^decals-model-dr1d/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_dr1d'),
-
-    # DR1
-    # url(r'^decals-dr1/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1'),
-    # url(r'^decals-model-dr1/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_dr1'),
-
-    # DR1 residuals
-    #url(r'^decals-resid-dr1/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_resid_dr1'),
 
     # SFD dust map
     url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_sfd'),
@@ -50,23 +14,16 @@ urlpatterns = patterns('map.views',
     # unWISE W1/W2
     url(r'^unwise-w1w2-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_unwise_w1w2'),
 
-    ## Cutouts
+    # Cutouts html
     url(r'^cutouts/', 'cutouts', name='cutouts'),
-
+    # Cutouts panel plots
     url(r'^cutout_panels/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', 'cutout_panels', name='cutout_panels'),
-
+    # Scatterplot of nearby sources for cutouts page
     url(r'^cat_plot/', 'cat_plot', name='cat_plot'),
 
-    # Catalogs
-    # url(r'^decals/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals'),
-    # 
-    # url(r'^decals-edr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_edr2'),
-    # url(r'^decals-edr3/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_edr3'),
-    # url(r'^decals-dr1/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_dr1'),
-
-    # brick list of polygons
+    # bricks: list of polygons
     url(r'^bricks/', 'brick_list'),
-    # CCD list of polygons
+    # CCDs: list of polygons
     url(r'^ccds/', 'ccd_list'),
 
     # Brick details
