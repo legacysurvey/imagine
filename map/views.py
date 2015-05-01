@@ -222,6 +222,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         hdr = fitsio.FITSHDR()
         subwcs.add_to_header(hdr)
         trymakedirs(fn)
+        dirnm = os.path.dirname(fn)
         f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=dirnm)
         os.close(f)
         # To avoid overwriting the (empty) temp file (and fitsio
@@ -332,65 +333,98 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
     # unWISE tile size
     radius = 1.01 * np.sqrt(2.)/2. * 2.75 * 2048 / 3600.
 
+    # leaflet tile size
     ok,r0,d0 = wcs.pixelxy2radec(1, 1)
     ok,r1,d1 = wcs.pixelxy2radec(W, H)
-
     radius = radius + degrees_between(r0,d0, r1,d1) / 2.
     
     ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
-
     J = tree_search_radec(UNW_tree, ra, dec, radius)
     print len(J), 'unWISE tiles nearby'
-
     
     r1img = np.zeros((H,W), np.float32)
-    r1n   = np.zeros((H,W), np.uint8)
     r2img = np.zeros((H,W), np.float32)
-    r2n   = np.zeros((H,W), np.uint8)
+    rn    = np.zeros((H,W), np.uint8)
 
     ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                [1,H/2,H,H,H,H/2,1,1])
 
+    print 'Map tile bounds'
+    print 'RA', r
+    print 'Dec', d
+
+    print 'RA,Dec bounds:', wcs.radec_bounds()
+
+    scaled = 0
+    scalepat = None
+    scaledir = 'unwise'
+
+    if zoom < 11:
+        scaled = (11 - zoom)
+        scaled = np.clip(scaled, 1, 8)
+        dirnm = os.path.join(basedir, 'scaled', scaledir)
+        scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(tilename).3s', 'unwise-%(tilename)s-%(band)s.fits')
+
+    basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-m.fits')
+
     for j in J:
         tile = UNW.coadd_id[j]
         print 'Tile', tile
-        fn1 = os.path.join(settings.UNWISE_DIR, tile[:3], tile, 'unwise-%s-w1-img-m.fits' % tile)
-        fn2 = os.path.join(settings.UNWISE_DIR, tile[:3], tile, 'unwise-%s-w2-img-m.fits' % tile)
-        print 'File', fn1
+
+        fns = []
+        for band in ['w1', 'w2']:
+            fnargs = dict(band=band, tilename=tile)
+            basefn = basepat % fnargs
+            fn = get_scaled(scalepat, fnargs, scaled, basefn)
+            fns.append(fn)
+        [fn1,fn2] = fns
+        #fn1 = os.path.join(settings.UNWISE_DIR, tile[:3], tile, 'unwise-%s-w1-img-m.fits' % tile)
+        #fn2 = os.path.join(settings.UNWISE_DIR, tile[:3], tile, 'unwise-%s-w2-img-m.fits' % tile)
+        print 'Files', fn1, fn2
 
         bwcs = Tan(fn1, 0)
+
+        print 'scaled brick WCS bounds:', bwcs.radec_bounds()
 
         ok,xx,yy = bwcs.radec2pixelxy(r, d)
         xx = xx.astype(np.int)
         yy = yy.astype(np.int)
         imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
+        print 'Scaled brick WCS: pixel coords:'
+        print 'xx', xx
+        print 'yy', yy
         M = 10
         xlo = np.clip(xx.min() - M, 0, imW)
         xhi = np.clip(xx.max() + M, 0, imW)
         ylo = np.clip(yy.min() - M, 0, imH)
         yhi = np.clip(yy.max() + M, 0, imH)
+        print 'x range', xlo, xhi
+        print 'y range', ylo, yhi
+
         if xlo >= xhi or ylo >= yhi:
             continue
         subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
         slc = slice(ylo,yhi), slice(xlo,xhi)
 
-        for fn, rimg, rn in [(fn1, r1img, r1n), (fn2, r2img, r2n)]:
+        print 'subwcs bounds:', subwcs.radec_bounds()
 
-            try:
-                Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
-            except OverlapError:
-                print 'Resampling exception'
-                continue
+        try:
+            Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
+        except OverlapError:
+            print 'Resampling exception'
+            import traceback
+            print traceback.print_exc()
+            continue
 
+        for fn, rimg in [(fn1, r1img), (fn2, r2img)]:
             f = fitsio.FITS(fn)[0]
             img = f[slc]
-
             rimg[Yo,Xo] += img[Yi,Xi]
-            rn  [Yo,Xo] += 1
+        rn  [Yo,Xo] += 1
 
-    r1img /= np.maximum(r1n, 1)
-    r2img /= np.maximum(r2n, 1)
-    del r1n, r2n
+    r1img /= np.maximum(rn, 1)
+    r2img /= np.maximum(rn, 1)
+    del rn
 
     rgb = np.zeros((H, W, 3), np.uint8)
 
@@ -419,13 +453,17 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
 
     import pylab as plt
 
+    trymakedirs(tilefn)
+
     # no jpeg output support in matplotlib in some installations...
     if True:
         import tempfile
         f,tempfn = tempfile.mkstemp(suffix='.png')
         os.close(f)
         plt.imsave(tempfn, rgb)
+        print 'Wrote to temp file', tempfn
         cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
+        print cmd
         os.system(cmd)
         os.unlink(tempfn)
         print 'Wrote', tilefn

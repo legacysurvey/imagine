@@ -31,6 +31,9 @@ def _one_tile((kind, zoom, x, y)):
     elif kind == 'sfd':
         map_sfd(req, version, zoom, x, y, savecache=True)
 
+    elif kind == 'unwise':
+        map_unwise_w1w2(req, version, zoom, x, y, savecache=True)
+
 def main():
     import optparse
 
