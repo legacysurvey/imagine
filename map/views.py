@@ -12,9 +12,9 @@ matplotlib.use('Agg')
 
 tileversions = {
     'sfd': [1,],
-    'decals-dr1j': [1],
-    'decals-model-dr1j': [1],
-    'decals-resid-dr1j': [1],
+    'decals-dr1j-edr': [1],
+    'decals-model-dr1j-edr': [1],
+    'decals-resid-dr1j-edr': [1],
     'unwise-w1w2': [1],
     }
 
@@ -29,23 +29,25 @@ class MercWCSWrapper(object):
         self.wcs = wcs
         self.wrap = float(wrap)
     def radec2pixelxy(self, ra, dec):
-        print 'radec2pixelxy:', ra, dec
+        #print 'radec2pixelxy:', ra, dec
         X = self.wcs.radec2pixelxy(ra, dec)
-        print '->', X
+        #print '->', X
         (ok,x,y) = X
-        if abs(x + self.wrap) < abs(x):
-            print ' wrap up ->', ok, x+self.wrap, y
-            return ok, x + self.wrap, y
-        if abs(x - self.wrap) < abs(x):
-            print ' wrap down ->', ok, x-self.wrap, y
-            return ok, x - self.wrap, y
-        return X
+        x += (x < -self.wrap/2) * self.wrap
+        x -= (x >  self.wrap/2) * self.wrap
+        # if abs(x + self.wrap) < abs(x):
+        #     print ' wrap up ->', ok, x+self.wrap, y
+        #     return ok, x + self.wrap, y
+        # if abs(x - self.wrap) < abs(x):
+        #     print ' wrap down ->', ok, x-self.wrap, y
+        #     return ok, x - self.wrap, y
+        return (ok,x,y)
 
-    def pixelxy2radec(self, x, y):
-        print 'pixelxy2radec', x, y
-        X = self.wcs.pixelxy2radec(x, y)
-        print '->', X
-        return X
+    # def pixelxy2radec(self, x, y):
+    #     print 'pixelxy2radec', x, y
+    #     X = self.wcs.pixelxy2radec(x, y)
+    #     print '->', X
+    #     return X
 
     def __getattr__(self, name):
         #if name in ['imagew', 'imageh', 'pixelxy2radec', 'get_center', 'pixel_scale',
@@ -135,7 +137,7 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
     return res
 
 def index(req):
-    layer = req.GET.get('layer', 'decals-dr1j')
+    layer = req.GET.get('layer', 'decals-dr1j-edr')
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
     # EDR2 region
@@ -280,43 +282,43 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
 
 rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
-B_dr1j = None
+B_dr1j_edr = None
 
-def map_decals_dr1j(req, ver, zoom, x, y, savecache=False,
+def map_decals_dr1j_edr(req, ver, zoom, x, y, savecache=False,
                     model=False, resid=False,
                     **kwargs):
-    global B_dr1j
-    if B_dr1j is None:
+    global B_dr1j_edr
+    if B_dr1j_edr is None:
         from decals import settings
         from astrometry.util.fits import fits_table
-        B_dr1j = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks-in-edr.fits'))
-        #B_dr1j.cut(B_dr1d.exists)
+        B_dr1j_edr = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks-in-edr.fits'))
+        #B_dr1j_edr.cut(B_dr1d.exists)
 
     imagetag = 'image'
-    tag = 'decals-dr1j'
+    tag = 'decals-dr1j-edr'
     imagedir = 'decals-dr1j'
     if model:
         imagetag = 'model'
-        tag = 'decals-model-dr1j'
+        tag = 'decals-model-dr1j-edr'
         imagedir = 'decals-dr1j-model'
         scaledir = 'decals-dr1j'
         kwargs.update(model_gz=False, scaledir=scaledir)
     if resid:
         imagetag = 'resid'
         kwargs.update(modeldir = 'decals-dr1j-model')
-        tag = 'decals-resid-dr1j'
+        tag = 'decals-resid-dr1j-edr'
 
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
                            imagetag=imagetag,
                            rgbkwargs=rgbkwargs,
-                           bricks=B_dr1j,
+                           bricks=B_dr1j_edr,
                            savecache=savecache, **kwargs)
 
-def map_decals_model_dr1j(*args, **kwargs):
-    return map_decals_dr1j(*args, model=True, model_gz=False, **kwargs)
+def map_decals_model_dr1j_edr(*args, **kwargs):
+    return map_decals_dr1j_edr(*args, model=True, model_gz=False, **kwargs)
 
-def map_decals_resid_dr1j(*args, **kwargs):
-    return map_decals_dr1j(*args, resid=True, model_gz=False, **kwargs)
+def map_decals_resid_dr1j_edr(*args, **kwargs):
+    return map_decals_dr1j_edr(*args, resid=True, model_gz=False, **kwargs)
 
 UNW = None
 UNW_tree = None

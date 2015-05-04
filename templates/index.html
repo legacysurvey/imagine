@@ -828,7 +828,7 @@ function createStaticTileLayer(id, vertag) {
     return tiles;
 }
 
-id = 'decals-dr1j'
+id = 'decals-dr1j-edr'
 catname = 'decals-dr1j';
 
 // Use the static URL until zoom level 14, then the dynamic URL.
@@ -837,8 +837,8 @@ catname = 'decals-dr1j';
 tilesDr1j = new ZoomRangeTileLayer(static_url, {
     maxZoom: 16,
     attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: 'decals-dr1j',
-    ver: getversion('decals-dr1j'),
+    id: 'decals-dr1j-edr',
+    ver: getversion('decals-dr1j-edr'),
     unloadInvisibleTiles: true,
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
@@ -850,7 +850,7 @@ tilesDr1j.on('tileunload',    onTileUnload);
 tilesDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images", catname:catname});
 
-id = 'decals-model-dr1j'
+id = 'decals-model-dr1j-edr'
 //tilesModDr1j = createStaticTileLayer(id, id)
 //tilesModDr1j = createTileLayer(id, id)
 
@@ -870,7 +870,7 @@ tilesModDr1j.on('tileunload',    onTileUnload);
 tilesModDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1 models", catname:catname});
 
-id = 'decals-resid-dr1j'
+id = 'decals-resid-dr1j-edr'
 //tilesResidDr1j = createStaticTileLayer(id, id)
 //tilesResidDr1j = createTileLayer(id, id)
 
