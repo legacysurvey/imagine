@@ -32,7 +32,11 @@ def main():
 
     decals = Decals()
     #B = decals.get_bricks_readonly()
-    B = fits_table('decals-bricks-in-edr.fits')
+    #
+    #B = fits_table('decals-bricks-in-edr.fits')
+    B = fits_table('decals-dr1/decals-bricks.fits')
+    B.cut(reduce(np.logical_or, [B.has_g, B.has_r, B.has_z]))
+    print 'Cut to', len(B), 'bricks'
 
     brickinds = bricknames = None
     if len(args) == 0:

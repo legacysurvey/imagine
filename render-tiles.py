@@ -21,7 +21,8 @@ def _one_tile((kind, zoom, x, y, ignore)):
     # forcecache=False, return_if_not_found=True)
     if kind == 'image':
         map_decals_dr1j(req, version, zoom, x, y, savecache=True, 
-                        forcecache=True)
+                        forcecache=False, return_if_not_found=True)
+                        #forcecache=True)
     elif kind == 'model':
         map_decals_model_dr1j(req, version, zoom, x, y, savecache=True, 
                               forcecache=True)
@@ -53,6 +54,8 @@ def main():
 
     parser.add_option('--near', action='store_true', help='Only run tiles near bricks')
 
+    parser.add_option('--near-ccds', action='store_true', help='Only run tiles near CCDs')
+
     parser.add_option('--queue', action='store_true', default=False,
                       help='Print qdo commands')
 
@@ -70,12 +73,19 @@ def main():
 
     mp = multiproc(opt.threads)
 
-    # HACK -- DR1
-    #B = fits_table('decals-bricks-in-dr1-done.fits')
-    B = fits_table('decals-bricks-in-edr.fits')
-    print len(B), 'bricks in DR1'
-    #B.cut(B.exists == 1)
-    #print len(B), 'finished in DR1d'
+    if opt.near:
+        # HACK -- DR1
+        # B = fits_table('decals-bricks-in-dr1-done.fits')
+        B = fits_table('decals-bricks-in-dr1.fits')
+        # B = fits_table('decals-bricks-in-edr.fits')
+        print len(B), 'bricks in DR1'
+        # B.cut(B.exists == 1)
+        # print len(B), 'finished in DR1d'
+
+    if opt.near_ccds:
+        #C = fits_table('decals-dr1/decals-ccds.fits', columns=['ra','dec'])
+        C = fits_table('decals-ccds-radec.fits')
+        print len(C), 'CCDs in DR1'
 
     for zoom in opt.zoom:
         N = 2**zoom
@@ -105,7 +115,17 @@ def main():
                 tilesize = max(np.abs(np.diff(dd)))
                 print 'Tile size:', tilesize
             else:
-                tilesize = 180.
+                if opt.near_ccds or opt.near:
+                    try:
+                        wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, x, opt.y0+1)
+                        r2,d2 = wcs.get_center()
+                    except:
+                        wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, x, opt.y0-1)
+                        r2,d2 = wcs.get_center()
+                    tilesize = np.abs(dd[0] - d2)
+                    print 'Tile size:', tilesize
+                else:
+                    tilesize = 180.
             I = np.flatnonzero((dd >= opt.mindec) * (dd <= opt.maxdec))
             print 'Keeping', len(I), 'Dec points'
             dd = dd[I]
@@ -119,11 +139,29 @@ def main():
             print 'x tile range:', xx.min(), xx.max(), 'y tile range:', yy.min(), yy.max()
 
         for iy,y in enumerate(yy):
+
+            if opt.queue:
+                cmd = 'python -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s' % (zoom, y, y+1, opt.kind)
+                if opt.near_ccds:
+                    cmd += ' --near-ccds'
+                print cmd
+                continue
+
             if opt.near:
                 d = dd[iy]
-                I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25 + tilesize)
+                I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25 + tilesize, nearest=True)
                 if len(I) == 0:
                     print 'No matches to bricks'
+                    continue
+                keep = np.zeros(len(rr), bool)
+                keep[I] = True
+                print 'Keeping', sum(keep), 'tiles in row', y, 'Dec', d
+                x = xx[keep]
+            elif opt.near_ccds:
+                d = dd[iy]
+                I,J,dist = match_radec(rr, d+np.zeros_like(rr), C.ra, C.dec, 0.2 + tilesize, nearest=True)
+                if len(I) == 0:
+                    print 'No matches to CCDs'
                     continue
                 keep = np.zeros(len(rr), bool)
                 keep[I] = True
@@ -138,27 +176,6 @@ def main():
             print 'Rendering', len(args), 'tiles in row y =', y
             mp.map(_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
             print 'Rendered', len(args), 'tiles'
-        continue
-
-       
-        
-        for y in range(opt.y0, y1):
-            wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, 0, y)
-            r,d = wcs.get_center()
-            print 'Zoom', zoom, 'y', y, 'center RA,Dec', r,d
-            if d > opt.maxdec or d < opt.mindec:
-                continue
-
-            if opt.queue:
-                print 'python -u load-cache.py --zoom %i --y0 %i --y1 %i' % (zoom, y, y+1)
-                continue
-
-            args = []
-            for x in range(N):
-                #wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, x, y)
-                args.append((zoom,x,y, opt.ignore))
-            mp.map(_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
-
 
 
 if __name__ == '__main__':

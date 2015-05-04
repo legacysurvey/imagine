@@ -890,6 +890,76 @@ tilesResidDr1j.on('tileunload',    onTileUnload);
 tilesResidDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1-EDR residuals", catname:catname});
 
+
+
+
+/////////////////////// DR1 Full ////////////////////////
+
+
+id = 'decals-dr1j'
+catname = 'decals-dr1j';
+
+// Use the static URL until zoom level 14, then the dynamic URL.
+// Only request tiles within the EDR region.
+
+tilesDr1j = new ZoomRangeTileLayer(static_url, {
+    maxZoom: 16,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
+    bounds: boundsEdr,
+  });
+tilesDr1j.on('tileloadstart', onTileLoadStart);
+tilesDr1j.on('tileunload',    onTileUnload);
+
+tilesDr1j.catname = catname;
+allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images", catname:catname});
+
+id = 'decals-model-dr1j'
+tilesModDr1j = new ZoomRangeTileLayer(static_url, {
+    maxZoom: 16,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
+    bounds: boundsEdr,
+  });
+tilesModDr1j.on('tileloadstart', onTileLoadStart);
+tilesModDr1j.on('tileunload',    onTileUnload);
+
+tilesModDr1j.catname = catname;
+allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1 models", catname:catname});
+
+id = 'decals-resid-dr1j'
+tilesResidDr1j = new ZoomRangeTileLayer(static_url, {
+    maxZoom: 16,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
+    bounds: boundsEdr,
+  });
+tilesResidDr1j.on('tileloadstart', onTileLoadStart);
+tilesResidDr1j.on('tileunload',    onTileUnload);
+
+tilesResidDr1j.catname = catname;
+allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", catname:catname});
+
+
+
+
+
+
+
+
+
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
 if (idname == 'unwise') {

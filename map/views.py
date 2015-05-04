@@ -1,7 +1,8 @@
 import os
 from django.http import HttpResponse, StreamingHttpResponse
 
-os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-edr/'
+#os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-edr/'
+os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-dr1/'
 
 import matplotlib
 matplotlib.use('Agg')
@@ -15,6 +16,11 @@ tileversions = {
     'decals-dr1j-edr': [1],
     'decals-model-dr1j-edr': [1],
     'decals-resid-dr1j-edr': [1],
+
+    'decals-dr1j': [1],
+    'decals-model-dr1j': [1],
+    'decals-resid-dr1j': [1],
+
     'unwise-w1w2': [1],
     }
 
@@ -319,6 +325,46 @@ def map_decals_model_dr1j_edr(*args, **kwargs):
 
 def map_decals_resid_dr1j_edr(*args, **kwargs):
     return map_decals_dr1j_edr(*args, resid=True, model_gz=False, **kwargs)
+
+
+#B_dr1j = None
+
+def map_decals_dr1j(req, ver, zoom, x, y, savecache=False,
+                    model=False, resid=False,
+                    **kwargs):
+    #global B_dr1j
+    # if B_dr1j is None:
+    #     from decals import settings
+    #     from astrometry.util.fits import fits_table
+    #     #B_dr1j = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks.fits'))
+    #     B_dr1j = fits_table(os.path.join(os.envsettings.WEB_DIR, 'decals-bricks.fits'))
+
+    imagetag = 'image'
+    tag = 'decals-dr1j'
+    imagedir = 'decals-dr1j'
+    if model:
+        imagetag = 'model'
+        tag = 'decals-model-dr1j'
+        imagedir = 'decals-dr1j-model'
+        scaledir = 'decals-dr1j'
+        kwargs.update(model_gz=False, scaledir=scaledir)
+    if resid:
+        imagetag = 'resid'
+        kwargs.update(modeldir = 'decals-dr1j-model')
+        tag = 'decals-resid-dr1j'
+
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
+                           imagetag=imagetag,
+                           rgbkwargs=rgbkwargs,
+                           #bricks=B_dr1j_edr,
+                           savecache=savecache, **kwargs)
+
+def map_decals_model_dr1j(*args, **kwargs):
+    return map_decals_dr1j(*args, model=True, model_gz=False, **kwargs)
+
+def map_decals_resid_dr1j(*args, **kwargs):
+    return map_decals_dr1j(*args, resid=True, model_gz=False, **kwargs)
+
 
 UNW = None
 UNW_tree = None
