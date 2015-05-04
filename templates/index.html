@@ -892,6 +892,11 @@ allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", ca
 
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
+if (idname == 'unwise') {
+  tilesUnwise = createTileLayer('unwise-w1w2-tiles', 'unwise');
+  allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE", catname:""});
+}
+
 var baseMaps = {};
 for (i in allLayers) {
   layer = allLayers[i];

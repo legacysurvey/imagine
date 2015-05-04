@@ -17,7 +17,7 @@ req.META = dict(HTTP_IF_MODIFIED_SINCE=None)
 
 version = 1
 
-def _one_tile((kind, zoom, x, y)):
+def _one_tile((kind, zoom, x, y, ignore)):
     # forcecache=False, return_if_not_found=True)
     if kind == 'image':
         map_decals_dr1j(req, version, zoom, x, y, savecache=True, 
@@ -32,7 +32,8 @@ def _one_tile((kind, zoom, x, y)):
         map_sfd(req, version, zoom, x, y, savecache=True)
 
     elif kind == 'unwise':
-        map_unwise_w1w2(req, version, zoom, x, y, savecache=True)
+        map_unwise_w1w2(req, version, zoom, x, y, savecache=True,
+                        ignoreCached=ignore)
 
 def main():
     import optparse
@@ -56,6 +57,9 @@ def main():
                       help='Print qdo commands')
 
     parser.add_option('--all', action='store_true', help='Render all tiles')
+
+    parser.add_option('--ignore', action='store_true', help='Ignore cached tile files',
+                      default=False)
 
     parser.add_option('--kind', default='image')
 
@@ -130,7 +134,7 @@ def main():
 
             args = []
             for xi in x:
-                args.append((opt.kind,zoom,xi,y))
+                args.append((opt.kind,zoom,xi,y, opt.ignore))
             print 'Rendering', len(args), 'tiles in row y =', y
             mp.map(_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
             print 'Rendered', len(args), 'tiles'
@@ -152,7 +156,7 @@ def main():
             args = []
             for x in range(N):
                 #wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, x, y)
-                args.append((zoom,x,y))
+                args.append((zoom,x,y, opt.ignore))
             mp.map(_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
 
 

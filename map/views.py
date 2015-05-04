@@ -24,6 +24,45 @@ catversions = {
 
 oneyear = (3600 * 24 * 365)
 
+class MercWCSWrapper(object):
+    def __init__(self, wcs, wrap):
+        self.wcs = wcs
+        self.wrap = float(wrap)
+    def radec2pixelxy(self, ra, dec):
+        print 'radec2pixelxy:', ra, dec
+        X = self.wcs.radec2pixelxy(ra, dec)
+        print '->', X
+        (ok,x,y) = X
+        if abs(x + self.wrap) < abs(x):
+            print ' wrap up ->', ok, x+self.wrap, y
+            return ok, x + self.wrap, y
+        if abs(x - self.wrap) < abs(x):
+            print ' wrap down ->', ok, x-self.wrap, y
+            return ok, x - self.wrap, y
+        return X
+
+    def pixelxy2radec(self, x, y):
+        print 'pixelxy2radec', x, y
+        X = self.wcs.pixelxy2radec(x, y)
+        print '->', X
+        return X
+
+    def __getattr__(self, name):
+        #if name in ['imagew', 'imageh', 'pixelxy2radec', 'get_center', 'pixel_scale',
+        #            ]:
+        return getattr(self.wcs, name)
+        #raise RuntimeError('no such attr: %s' % name)
+    def __setattr__(self, name, val):
+        #if name in ['imagew', 'imageh']:
+        #    return setattr(self.wcs, name, val)
+        if name in ['wcs', 'wrap']:
+            self.__dict__[name] = val
+            return
+        return setattr(self.wcs, name, val)
+        #raise RuntimeError('no such attr in setattr: %s' % name)
+
+
+
 def trymakedirs(fn):
     dirnm = os.path.dirname(fn)
     if not os.path.exists(dirnm):
@@ -177,6 +216,9 @@ def get_tile_wcs(zoom, x, y):
     ry = ry * H
     wcs = anwcs_create_mercator_2(180., 0., rx, ry,
                                   zoomscale, W, H, 1)
+
+    wcs = MercWCSWrapper(wcs, 2**zoom * W)
+
     return wcs, W, H, zoomscale, zoom,x,y
 
 def get_scaled(scalepat, scalekwargs, scale, basefn):
@@ -244,7 +286,7 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=False,
                     model=False, resid=False,
                     **kwargs):
     global B_dr1j
-    if B_dr1d is None:
+    if B_dr1j is None:
         from decals import settings
         from astrometry.util.fits import fits_table
         B_dr1j = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks-in-edr.fits'))
@@ -279,7 +321,7 @@ def map_decals_resid_dr1j(*args, **kwargs):
 UNW = None
 UNW_tree = None
 
-def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
+def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False):
     global UNW
     global UNW_tree
 
@@ -303,7 +345,7 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
     #'%i/%i/%i/%i.png' % (ver, zoom, x, y))
 
-    if os.path.exists(tilefn):
+    if os.path.exists(tilefn) and not ignoreCached:
         # print 'Cached:', tilefn
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
@@ -317,6 +359,8 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
         return HttpResponse(e.strerror)
+
+    #print 'pixel scale:', wcs.pixel_scale()
 
     from astrometry.util.fits import fits_table
     import numpy as np
@@ -340,7 +384,7 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
     
     ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
     J = tree_search_radec(UNW_tree, ra, dec, radius)
-    print len(J), 'unWISE tiles nearby'
+    #print len(J), 'unWISE tiles nearby'
     
     r1img = np.zeros((H,W), np.float32)
     r2img = np.zeros((H,W), np.float32)
@@ -349,27 +393,22 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
     ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                [1,H/2,H,H,H,H/2,1,1])
 
-    print 'Map tile bounds'
-    print 'RA', r
-    print 'Dec', d
-
-    print 'RA,Dec bounds:', wcs.radec_bounds()
-
     scaled = 0
     scalepat = None
     scaledir = 'unwise'
 
     if zoom < 11:
         scaled = (11 - zoom)
-        scaled = np.clip(scaled, 1, 8)
+        scaled = np.clip(scaled, 1, 7)
         dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(tilename).3s', 'unwise-%(tilename)s-%(band)s.fits')
 
-    basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-m.fits')
+    #basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-m.fits')
+    basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-u.fits')
 
     for j in J:
         tile = UNW.coadd_id[j]
-        print 'Tile', tile
+        #print 'Tile', tile
 
         fns = []
         for band in ['w1', 'w2']:
@@ -378,35 +417,33 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
             fn = get_scaled(scalepat, fnargs, scaled, basefn)
             fns.append(fn)
         [fn1,fn2] = fns
-        #fn1 = os.path.join(settings.UNWISE_DIR, tile[:3], tile, 'unwise-%s-w1-img-m.fits' % tile)
-        #fn2 = os.path.join(settings.UNWISE_DIR, tile[:3], tile, 'unwise-%s-w2-img-m.fits' % tile)
-        print 'Files', fn1, fn2
+        #print 'Files', fn1, fn2
 
         bwcs = Tan(fn1, 0)
 
-        print 'scaled brick WCS bounds:', bwcs.radec_bounds()
+        #print 'scaled brick WCS bounds:', bwcs.radec_bounds()
 
         ok,xx,yy = bwcs.radec2pixelxy(r, d)
         xx = xx.astype(np.int)
         yy = yy.astype(np.int)
         imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
-        print 'Scaled brick WCS: pixel coords:'
-        print 'xx', xx
-        print 'yy', yy
+        #print 'Scaled brick WCS: pixel coords:'
+        #print 'xx', xx
+        #print 'yy', yy
         M = 10
         xlo = np.clip(xx.min() - M, 0, imW)
         xhi = np.clip(xx.max() + M, 0, imW)
         ylo = np.clip(yy.min() - M, 0, imH)
         yhi = np.clip(yy.max() + M, 0, imH)
-        print 'x range', xlo, xhi
-        print 'y range', ylo, yhi
+        #print 'x range', xlo, xhi
+        #print 'y range', ylo, yhi
 
         if xlo >= xhi or ylo >= yhi:
             continue
         subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
         slc = slice(ylo,yhi), slice(xlo,xhi)
 
-        print 'subwcs bounds:', subwcs.radec_bounds()
+        #print 'subwcs bounds:', subwcs.radec_bounds()
 
         try:
             Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
@@ -428,11 +465,13 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
 
     rgb = np.zeros((H, W, 3), np.uint8)
 
-    scale1 = 100.
-    scale2 = 200.
+    scale1 = 50.
+    scale2 = 50.
 
-    mn,mx = -3.,100.
+    mn,mx = -1.,100.
     arcsinh = 1.
+    #mn,mx = -3.,30.
+    #arcsinh = None
 
     img1 = r1img / scale1
     img2 = r2img / scale2
@@ -440,8 +479,12 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
     if arcsinh is not None:
         def nlmap(x):
             return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
-        img1 = nlmap(img1)
-        img2 = nlmap(img2)
+        #img1 = nlmap(img1)
+        #img2 = nlmap(img2)
+        mean = (img1 + img2) / 2.
+        I = nlmap(mean)
+        img1 = img1 / mean * I
+        img2 = img2 / mean * I
         mn = nlmap(mn)
         mx = nlmap(mx)
     img1 = (img1 - mn) / (mx - mn)
@@ -449,7 +492,7 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False):
 
     rgb[:,:,2] = (np.clip(img1, 0., 1.) * 255).astype(np.uint8)
     rgb[:,:,0] = (np.clip(img2, 0., 1.) * 255).astype(np.uint8)
-    rgb[:,:,1] = (rgb[:,:,0] + rgb[:,:,2]) / 2
+    rgb[:,:,1] = rgb[:,:,0]/2 + rgb[:,:,2]/2
 
     import pylab as plt
 
