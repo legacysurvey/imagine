@@ -413,7 +413,7 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False)
     from astrometry.util.fits import fits_table
     import numpy as np
     from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
-    from astrometry.util.starutil_numpy import degrees_between
+    from astrometry.util.starutil_numpy import degrees_between, arcsec_between
     from astrometry.util.resample import resample_with_wcs, OverlapError
     from astrometry.util.util import Tan
     import fitsio
@@ -426,11 +426,11 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False)
     radius = 1.01 * np.sqrt(2.)/2. * 2.75 * 2048 / 3600.
 
     # leaflet tile size
+    ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
     ok,r0,d0 = wcs.pixelxy2radec(1, 1)
     ok,r1,d1 = wcs.pixelxy2radec(W, H)
-    radius = radius + degrees_between(r0,d0, r1,d1) / 2.
+    radius = radius + max(degrees_between(ra,dec, r0,d0), degrees_between(ra,dec, r1,d1))
     
-    ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
     J = tree_search_radec(UNW_tree, ra, dec, radius)
     #print len(J), 'unWISE tiles nearby'
     
@@ -446,7 +446,21 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False)
     scaledir = 'unwise'
 
     if zoom < 11:
-        scaled = (11 - zoom)
+
+        #scale = wcs.pixel_scale()
+        # Get *actual* pixel scales at the top & bottom
+        ok,r1,d1 = wcs.pixelxy2radec(W/2., H)
+        ok,r2,d2 = wcs.pixelxy2radec(W/2., H-1.)
+        ok,r3,d3 = wcs.pixelxy2radec(W/2., 1.)
+        ok,r4,d4 = wcs.pixelxy2radec(W/2., 2.)
+        # Take the min = most zoomed-in
+        scale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
+        
+        native_scale = 2.75
+        #scaled = int(np.round(np.log2(scale / native_scale)))
+        scaled = int(np.floor(np.log2(scale / native_scale)))
+        print 'Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled
+        #scaled = (11 - zoom)
         scaled = np.clip(scaled, 1, 7)
         dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(tilename).3s', 'unwise-%(tilename)s-%(band)s.fits')
@@ -496,9 +510,9 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False)
         try:
             Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
         except OverlapError:
-            print 'Resampling exception'
-            import traceback
-            print traceback.print_exc()
+            # print 'Resampling exception'
+            # import traceback
+            # print traceback.print_exc()
             continue
 
         for fn, rimg in [(fn1, r1img), (fn2, r2img)]:

@@ -117,21 +117,21 @@ def main():
             else:
                 if opt.near_ccds or opt.near:
                     try:
-                        wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, x, opt.y0+1)
+                        wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, 0, opt.y0+1)
                         r2,d2 = wcs.get_center()
                     except:
-                        wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, x, opt.y0-1)
+                        wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, 0, opt.y0-1)
                         r2,d2 = wcs.get_center()
                     tilesize = np.abs(dd[0] - d2)
                     print 'Tile size:', tilesize
                 else:
                     tilesize = 180.
             I = np.flatnonzero((dd >= opt.mindec) * (dd <= opt.maxdec))
-            print 'Keeping', len(I), 'Dec points'
+            print 'Keeping', len(I), 'Dec points between', opt.mindec, 'and', opt.maxdec
             dd = dd[I]
             yy = yy[I]
             I = np.flatnonzero((rr >= opt.minra) * (rr <= opt.maxra))
-            print 'Keeping', len(I), 'RA points'
+            print 'Keeping', len(I), 'RA points between', opt.minra, 'and', opt.maxra
             rr = rr[I]
             xx = xx[I]
             
@@ -139,13 +139,6 @@ def main():
             print 'x tile range:', xx.min(), xx.max(), 'y tile range:', yy.min(), yy.max()
 
         for iy,y in enumerate(yy):
-
-            if opt.queue:
-                cmd = 'python -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s' % (zoom, y, y+1, opt.kind)
-                if opt.near_ccds:
-                    cmd += ' --near-ccds'
-                print cmd
-                continue
 
             if opt.near:
                 d = dd[iy]
@@ -159,6 +152,8 @@ def main():
                 x = xx[keep]
             elif opt.near_ccds:
                 d = dd[iy]
+                print 'RA range of tiles:', rr.min(), rr.max()
+                print 'Dec of tile row:', d
                 I,J,dist = match_radec(rr, d+np.zeros_like(rr), C.ra, C.dec, 0.2 + tilesize, nearest=True)
                 if len(I) == 0:
                     print 'No matches to CCDs'
@@ -169,6 +164,15 @@ def main():
                 x = xx[keep]
             else:
                 x = xx
+
+            if opt.queue:
+                cmd = 'python -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s' % (zoom, y, y+1, opt.kind)
+                if opt.near_ccds:
+                    cmd += ' --near-ccds'
+                if opt.all:
+                    cmd += ' --all'
+                print cmd
+                continue
 
             args = []
             for xi in x:

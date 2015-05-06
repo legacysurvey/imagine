@@ -18,8 +18,8 @@ def main():
 
     parser = optparse.OptionParser()
 
-    parser.add_option('--mindec', type=float, default=-20, help='Minimum Dec to run')
-    parser.add_option('--maxdec', type=float, default=40, help='Maximum Dec to run')
+    parser.add_option('--mindec', type=float, default=-11, help='Minimum Dec to run')
+    parser.add_option('--maxdec', type=float, default=36, help='Maximum Dec to run')
     parser.add_option('--minra', type=float, default=0, help='Minimum RA to run')
     parser.add_option('--maxra', type=float, default=360, help='Maximum RA to run')
     parser.add_option('--queue', action='store_true', default=False,
@@ -27,6 +27,8 @@ def main():
     parser.add_option('--tag', default='image')
     parser.add_option('--imagedir', default='decals-dr1j')
     parser.add_option('--scaledir', default=None)
+
+    parser.add_option('--gzip', action='store_true', help='Input images are gzipped?')
 
     opt,args = parser.parse_args()
 
@@ -40,9 +42,10 @@ def main():
 
     brickinds = bricknames = None
     if len(args) == 0:
-        brickinds = np.flatnonzero((B.dec > opt.mindec) * (B.dec <= opt.maxdec) *
-                                   (B.ra  > opt.minra ) * (B.ra  <= opt.maxra))
+        brickinds = np.flatnonzero((B.dec >= opt.mindec) * (B.dec <= opt.maxdec) *
+                                   (B.ra  >= opt.minra ) * (B.ra  <= opt.maxra))
         N = len(brickinds)
+        print 'N bricks in RA,Dec range:', N
 
         if opt.queue:
             I = brickinds
@@ -50,9 +53,14 @@ def main():
             print >> sys.stderr, 'Unique Decs:', decs
             k = 0
             for dec in decs:
-                for rlo,rhi in [(-0.01,90),(90,180),(180,270),(270,360)]:
-                    print ('python -u scale-images.py --mindec %f --maxdec %f --minra %f --maxra %f > scale-%02i.log 2>&1' %
-                           (dec-0.01, dec+0.01, rlo, rhi, k))
+                for rlo,rhi in [(-0.01,90),(90,180),(180,270),(270,360.01)]:
+                    cmd = ('python -u scale-images.py --mindec %f --maxdec %f --minra %f --maxra %f' %
+                           (dec-0.01, dec+0.01, rlo, rhi))
+                    # > scale-%02i.log 2>&1' %
+                    cmd += ' --tag %s' % opt.tag
+                    if opt.gzip:
+                        cmd += ' --gzip'
+                    print cmd
                     k += 1
             return 0
 
@@ -72,10 +80,14 @@ def main():
     basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
                            '%(brickname)s',
                            'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
+    if opt.gzip:
+        basepat += '.gz'
     scaled = 8
+    print 'Input filename pattern:', basepat
 
     dirnm = os.path.join(basedir, 'scaled', scaledir)
     scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
+    print 'Scale pattern:', scalepat
 
     bands = 'grz'
 
@@ -94,6 +106,7 @@ def main():
             print 'Scaling brick', brick.brickname, 'band', band
             fnargs = dict(band=band, brick=brick.brickid, brickname=brick.brickname)
             basefn = basepat % fnargs
+            print 'Input:', basefn
             try:
                 fn = get_scaled(scalepat, fnargs, scaled, basefn)
                 print 'Filename:', fn

@@ -775,9 +775,13 @@ var idname = '{{ layer }}';
 //var idname = 'decals';
 var catname = 'decals-dr1j';
 
+var minZoom = 1;
+var maxZoom = 16;
+
 function createTileLayer(id, vertag) {
     var tiles = new MyTileLayer('{{ tileurl|safe }}', {
-        maxZoom: 16,
+        maxZoom: maxZoom,
+        minZoom: minZoom,
         attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
         id: id,
         ver: getversion(vertag),
@@ -793,7 +797,8 @@ function createTileLayer(id, vertag) {
 //tilesSfd = createTileLayer('sfd-tiles', 'sfd');
 
 tilesSfd = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
-    maxZoom: 16,
+    maxZoom: maxZoom,
+    minZoom: minZoom,
     maxNativeZoom: 10,
     attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
     id: 'sfd-tiles',
@@ -815,7 +820,8 @@ console.log('EDR bounds: ' + boundsEdr);
 
 function createStaticTileLayer(id, vertag) {
     var tiles = new MyTileLayer(static_url, {
-        maxZoom: 16,
+        maxZoom: maxZoom,
+        minZoom: minZoom,
         attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
         id: id,
         ver: getversion(vertag),
@@ -835,7 +841,8 @@ catname = 'decals-dr1j';
 // Only request tiles within the EDR region.
 
 tilesDr1j = new ZoomRangeTileLayer(static_url, {
-    maxZoom: 16,
+    maxZoom: maxZoom,
+    minZoom: minZoom,
     attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
     id: 'decals-dr1j-edr',
     ver: getversion('decals-dr1j-edr'),
@@ -855,7 +862,8 @@ id = 'decals-model-dr1j-edr'
 //tilesModDr1j = createTileLayer(id, id)
 
 tilesModDr1j = new ZoomRangeTileLayer(static_url, {
-    maxZoom: 16,
+    maxZoom: maxZoom,
+    minZoom: minZoom,
     attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
     id: id,
     ver: getversion(id),
@@ -875,7 +883,8 @@ id = 'decals-resid-dr1j-edr'
 //tilesResidDr1j = createTileLayer(id, id)
 
 tilesResidDr1j = new ZoomRangeTileLayer(static_url, {
-    maxZoom: 16,
+    maxZoom: maxZoom,
+    minZoom: minZoom,
     attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
     id: id,
     ver: getversion(id),
@@ -903,14 +912,14 @@ catname = 'decals-dr1j';
 // Only request tiles within the EDR region.
 
 tilesDr1j = new ZoomRangeTileLayer(static_url, {
-    maxZoom: 16,
+    maxZoom: maxZoom,
+    minZoom: minZoom,
     attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
     id: id,
     ver: getversion(id),
     unloadInvisibleTiles: true,
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-    bounds: boundsEdr,
   });
 tilesDr1j.on('tileloadstart', onTileLoadStart);
 tilesDr1j.on('tileunload',    onTileUnload);
@@ -920,14 +929,14 @@ allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images", catname:ca
 
 id = 'decals-model-dr1j'
 tilesModDr1j = new ZoomRangeTileLayer(static_url, {
-    maxZoom: 16,
+    maxZoom: maxZoom,
+    minZoom: minZoom,
     attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
     id: id,
     ver: getversion(id),
     unloadInvisibleTiles: true,
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-    bounds: boundsEdr,
   });
 tilesModDr1j.on('tileloadstart', onTileLoadStart);
 tilesModDr1j.on('tileunload',    onTileUnload);
@@ -937,14 +946,14 @@ allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1 models", catname
 
 id = 'decals-resid-dr1j'
 tilesResidDr1j = new ZoomRangeTileLayer(static_url, {
-    maxZoom: 16,
+    maxZoom: maxZoom,
+    minZoom: minZoom,
     attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
     id: id,
     ver: getversion(id),
     unloadInvisibleTiles: true,
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-    bounds: boundsEdr,
   });
 tilesResidDr1j.on('tileloadstart', onTileLoadStart);
 tilesResidDr1j.on('tileunload',    onTileUnload);
