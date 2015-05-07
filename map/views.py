@@ -365,38 +365,35 @@ def map_decals_resid_dr1j(*args, **kwargs):
     return map_decals_dr1j(*args, resid=True, model_gz=False, **kwargs)
 
 
-def _unwise_w1w2_to_rgb(w1, w2, S=None, Q=None):
+def _unwise_w1w2_to_rgb(w1, w2):#, S=None, Q=None):
     import numpy as np
     H,W = w1.shape
     assert(w1.shape == w2.shape)
 
-    if S is None:
-        S = 1000.
-    if Q is None:
-        Q = 25.
-    alpha = 1.5
-    b = w1 / S
-    g = (w1+w2)/2. / S
-    r = w2 / S
-
-    m = -2e-2
-
-    r = np.maximum(0, r - m)
-    g = np.maximum(0, g - m)
-    b = np.maximum(0, b - m)
-    I = (r+g+b)/3.
-    fI = np.arcsinh(alpha * Q * I) / np.sqrt(Q)
-    I += (I == 0.) * 1e-6
-    R = fI * r / I
-    G = fI * g / I
-    B = fI * b / I
-    #maxrgb = reduce(np.maximum, [R,G,B])
-    #J = (maxrgb > 1.)
-    # R[J] = R[J]/maxrgb[J]
-    # G[J] = G[J]/maxrgb[J]
-    # B[J] = B[J]/maxrgb[J]
-    RGB = (np.clip(np.dstack([R,G,B]), 0., 1.) * 255.).astype(np.uint8)
-    return RGB
+    if False:
+        # 
+        if S is None:
+            S = 1000.
+        if Q is None:
+            Q = 25.
+        alpha = 1.5
+        b = w1 / S
+        g = (w1+w2)/2. / S
+        r = w2 / S
+    
+        m = -2e-2
+    
+        r = np.maximum(0, r - m)
+        g = np.maximum(0, g - m)
+        b = np.maximum(0, b - m)
+        I = (r+g+b)/3.
+        fI = np.arcsinh(alpha * Q * I) / np.sqrt(Q)
+        I += (I == 0.) * 1e-6
+        R = fI * r / I
+        G = fI * g / I
+        B = fI * b / I
+        RGB = (np.clip(np.dstack([R,G,B]), 0., 1.) * 255.).astype(np.uint8)
+        return RGB
     
     rgb = np.zeros((H, W, 3), np.uint8)
 
@@ -518,8 +515,6 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
     scaledir = 'unwise'
 
     if zoom < 11:
-
-        #scale = wcs.pixel_scale()
         # Get *actual* pixel scales at the top & bottom
         ok,r1,d1 = wcs.pixelxy2radec(W/2., H)
         ok,r2,d2 = wcs.pixelxy2radec(W/2., H-1.)
@@ -542,20 +537,6 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
     #basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-m.fits')
     basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-u.fits')
 
-    # import pylab as plt
-    # plt.clf()
-    # plt.plot(r, d, 'b-')
-    # plt.plot(UNW.ra[J], UNW.dec[J], 'r.')
-    # plt.savefig('u.png')
-
-    # Cut on RA,Dec BOXES
-    #keepj = []
-    #for j in J:
-    #    tile = UNW.coadd_id[j]
-
-
-    RR,DD = [],[]
-
     for j in J:
         tile = UNW.coadd_id[j]
         #print 'Tile', tile
@@ -570,9 +551,7 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         #print 'Files', fn1, fn2
 
         bwcs = Tan(fn1, 0)
-
         #print 'scaled brick WCS bounds:', bwcs.radec_bounds()
-
         ok,xx,yy = bwcs.radec2pixelxy(r, d)
         if not np.all(ok):
             print 'Skipping tile', tile
@@ -583,27 +562,16 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         xx = xx.astype(np.int)
         yy = yy.astype(np.int)
         imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
-        #print 'Scaled brick WCS: pixel coords:'
         # Margin
         M = 20
         xlo = np.clip(xx.min() - M, 0, imW)
         xhi = np.clip(xx.max() + M, 0, imW)
         ylo = np.clip(yy.min() - M, 0, imH)
         yhi = np.clip(yy.max() + M, 0, imH)
-        #print 'x range', xlo, xhi
-        #print 'y range', ylo, yhi
-
         if xlo >= xhi or ylo >= yhi:
             continue
         subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
         slc = slice(ylo,yhi), slice(xlo,xhi)
-
-        # rr,dd = bwcs.pixelxy2radec(xx, yy)
-        # RR.append(rr)
-        # DD.append(dd)
-        # continue
-
-        #print 'subwcs bounds:', subwcs.radec_bounds()
 
         try:
             Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
@@ -619,14 +587,6 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
             rimg[Yo,Xo] += img[Yi,Xi]
             del img, f
         rn  [Yo,Xo] += 1
-
-    # plt.clf()
-    # plt.plot(r, d, 'b-')
-    # for rr,dd in zip(RR,DD):
-    #     plt.plot(rr, dd, 'r-')
-    # plt.savefig('v.png')
-    # print 'wrote v'
-
 
     r1img /= np.maximum(rn, 1)
     r2img /= np.maximum(rn, 1)
