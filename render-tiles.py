@@ -37,6 +37,9 @@ def _one_tile((kind, zoom, x, y, ignore)):
         map_unwise_w1w2(req, version, zoom, x, y, savecache=True,
                         ignoreCached=ignore)
 
+def _bounce_map_unwise_w1w2(args):
+    return map_unwise_w1w2(*args, ignoreCached=True, w1w2=True)
+
 def main():
     import optparse
 
@@ -81,6 +84,7 @@ def main():
             import pylab as plt
             from decals import settings
             from map.views import _unwise_w1w2_to_rgb
+            import fitsio
 
             pat = os.path.join(settings.DATA_DIR, 'tiles', 'unwise-w1w2', '%(ver)s',
                                '%(zoom)i', '%(x)i', '%(y)i.jpg')
@@ -94,18 +98,90 @@ def main():
             tiles = 2**basescale
             side = tiles * tilesize
 
-            w1base = np.zeros((side, side), np.float32)
-            w2base = np.zeros((side, side), np.float32)
+            w1bfn = 'w1base-%i.fits' % basescale
+            w2bfn = 'w2base-%i.fits' % basescale
 
-            for y in range(tiles):
-                for x in range(tiles):
-                    print 'Base tile', x, y
-                    w1,w2 = map_unwise_w1w2(req, ver, basescale, x, y, ignoreCached=True,
-                                            w1w2=True)
+            if not (os.path.exists(w1bfn) and os.path.exists(w2bfn)):
+                w1base = np.zeros((side, side), np.float32)
+                w2base = np.zeros((side, side), np.float32)
+    
+                args = []
+                for y in range(tiles):
+                    for x in range(tiles):
+                        #print 'Base tile', x, y
+                        args.append((req, ver, basescale, x, y))
+                tiles = mp.map(_bounce_map_unwise_w1w2, args)
+                for (w1,w2),arg in zip(tiles,args):
+                    x,y = arg[-2:]
                     w1base[y*tilesize:(y+1)*tilesize,
                            x*tilesize:(x+1)*tilesize] = w1
                     w2base[y*tilesize:(y+1)*tilesize,
                            x*tilesize:(x+1)*tilesize] = w2
+    
+                fitsio.write(w1bfn, w1base, clobber=True)
+                fitsio.write(w2bfn, w2base, clobber=True)
+            else:
+                print 'Reading', w1bfn, 'and', w2bfn
+                w1base = fitsio.read(w1bfn)
+                w2base = fitsio.read(w2bfn)
+
+                plt.figure(figsize=(8,8))
+                plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
+                #for S in [1000, 3000, 10000]:
+                #for Q in [10, 25, 50]:
+                S,Q = 3000,25
+                im = _unwise_w1w2_to_rgb(w1base, w2base, S=S, Q=Q)
+                plt.clf()
+                plt.imshow(im)
+                plt.imsave('base-S%i-Q%s.png' % (S,Q), im)
+                
+
+                # Try converting to galactic coords...
+                from astrometry.util.util import anwcs_create_mercator_2
+
+                print 'Base images:', w1base.shape
+                zoom = basescale
+                h,w = w1base.shape
+                zoomscale = 2.**zoom * (256./h)
+                print 'Zoomscale', zoomscale
+                wcs = anwcs_create_mercator_2(180., 0., w/2., h/2.,
+                                              zoomscale, w, h, 1)
+
+                wcs2 = anwcs_create_mercator_2(0., 0., w/2., h/2.,
+                                               zoomscale, w, h, 1)
+
+                print 'WCS:'
+                for x,y in [(1,1), (1,h), (w,1), (w,h), (w/2,1), (w/2,h/2)]:
+                    print 'x,y', (x,y), '-> RA,Dec', wcs.pixelxy2radec(x,y)[-2:]
+
+                ok,ras,nil  = wcs2.pixelxy2radec(np.arange(w), np.ones(w))
+                ok,nil,decs = wcs2.pixelxy2radec(np.ones(h), np.arange(h))
+                print 'RAs', ras.shape
+                print 'Decs', decs.shape
+
+                lls = ras
+                bbs = decs
+
+                ll,bb = np.meshgrid(lls, bbs)
+                print 'LL,BB', ll.shape, bb.shape
+
+                from astrometry.util.starutil_numpy import *
+
+                ra,dec = lbtoradec(ll,bb)
+                print 'RA,Dec', ra.shape, dec.shape
+
+                ok,xx,yy = wcs.radec2pixelxy(ra, dec)
+                print 'xx,yy', xx.shape, yy.shape
+
+                lb1 = w1base[np.clip(np.round(yy-1).astype(int), 0, h-1),
+                             np.clip(np.round(xx-1).astype(int), 0, w-1)]
+                lb2 = w2base[np.clip(np.round(yy-1).astype(int), 0, h-1),
+                             np.clip(np.round(xx-1).astype(int), 0, w-1)]
+
+                lbim = _unwise_w1w2_to_rgb(lb1, lb2, S=S,Q=Q)
+                plt.imsave('lb.png', lbim)
+
+                sys.exit(0)
 
             # plt.clf()
             # plt.imshow(w1base, interpolation='nearest', origin='lower')

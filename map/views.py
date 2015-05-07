@@ -365,11 +365,39 @@ def map_decals_resid_dr1j(*args, **kwargs):
     return map_decals_dr1j(*args, resid=True, model_gz=False, **kwargs)
 
 
-def _unwise_w1w2_to_rgb(w1, w2):
+def _unwise_w1w2_to_rgb(w1, w2, S=None, Q=None):
     import numpy as np
     H,W = w1.shape
     assert(w1.shape == w2.shape)
 
+    if S is None:
+        S = 1000.
+    if Q is None:
+        Q = 25.
+    alpha = 1.5
+    b = w1 / S
+    g = (w1+w2)/2. / S
+    r = w2 / S
+
+    m = -2e-2
+
+    r = np.maximum(0, r - m)
+    g = np.maximum(0, g - m)
+    b = np.maximum(0, b - m)
+    I = (r+g+b)/3.
+    fI = np.arcsinh(alpha * Q * I) / np.sqrt(Q)
+    I += (I == 0.) * 1e-6
+    R = fI * r / I
+    G = fI * g / I
+    B = fI * b / I
+    #maxrgb = reduce(np.maximum, [R,G,B])
+    #J = (maxrgb > 1.)
+    # R[J] = R[J]/maxrgb[J]
+    # G[J] = G[J]/maxrgb[J]
+    # B[J] = B[J]/maxrgb[J]
+    RGB = (np.clip(np.dstack([R,G,B]), 0., 1.) * 255.).astype(np.uint8)
+    return RGB
+    
     rgb = np.zeros((H, W, 3), np.uint8)
 
     scale1 = 50.
