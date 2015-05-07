@@ -366,6 +366,7 @@ def map_decals_resid_dr1j(*args, **kwargs):
 
 
 def _unwise_w1w2_to_rgb(w1, w2):
+    import numpy as np
     H,W = w1.shape
     assert(w1.shape == w2.shape)
 

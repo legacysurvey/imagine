@@ -80,10 +80,12 @@ def main():
         if opt.kind == 'unwise':
             import pylab as plt
             from decals import settings
+            from map.views import _unwise_w1w2_to_rgb
 
             pat = os.path.join(settings.DATA_DIR, 'tiles', 'unwise-w1w2', '%(ver)s',
                                '%(zoom)i', '%(x)i', '%(y)i.jpg')
-            patdata = dict(ver=1)
+            ver = 1
+            patdata = dict(ver=ver)
 
             #basescale = 5
             basescale = 3
@@ -91,38 +93,44 @@ def main():
             tilesize = 256
             tiles = 2**basescale
             side = tiles * tilesize
-            baseimg = np.zeros((side, side, 3), np.uint8)
+
+            w1base = np.zeros((side, side), np.float32)
+            w2base = np.zeros((side, side), np.float32)
 
             for y in range(tiles):
                 for x in range(tiles):
-                    pp = patdata.copy()
-                    pp.update(zoom=basescale, x=x, y=y)
-                    fn = pat % pp
-                    print 'Reading', fn
-                    tile = plt.imread(fn)
-                    baseimg[y*tilesize:(y+1)*tilesize,
-                            x*tilesize:(x+1)*tilesize, :] = tile
+                    print 'Base tile', x, y
+                    w1,w2 = map_unwise_w1w2(req, ver, basescale, x, y, ignoreCached=True,
+                                            w1w2=True)
+                    w1base[y*tilesize:(y+1)*tilesize,
+                           x*tilesize:(x+1)*tilesize] = w1
+                    w2base[y*tilesize:(y+1)*tilesize,
+                           x*tilesize:(x+1)*tilesize] = w2
 
-            plt.clf()
-            plt.imshow(baseimg, interpolation='nearest', origin='lower')
-            plt.savefig('baseimg.png')
+            # plt.clf()
+            # plt.imshow(w1base, interpolation='nearest', origin='lower')
+            # plt.savefig('baseimg.png')
 
             from scipy.ndimage.filters import gaussian_filter
     
             for scale in range(basescale-1, -1, -1):
-                baseimg = gaussian_filter(baseimg.astype(np.float), 1.)
-                print 'Baseimg type', baseimg.dtype
-                baseimg = (baseimg[::2,::2] + baseimg[1::2,::2] + baseimg[1::2,1::2] + baseimg[::2,1::2])/4.
-                baseimg = np.clip(np.round(baseimg), 0, 255).astype(np.uint8)
+
+                w1base = gaussian_filter(w1base, 1.)
+                w1base = (w1base[::2,::2] + w1base[1::2,::2] + w1base[1::2,1::2] + w1base[::2,1::2])/4.
+                w2base = gaussian_filter(w2base, 1.)
+                w2base = (w2base[::2,::2] + w2base[1::2,::2] + w2base[1::2,1::2] + w2base[::2,1::2])/4.
 
                 tiles = 2**scale
                 
                 for y in range(tiles):
                     for x in range(tiles):
+                        w1 = w1base[y*tilesize:(y+1)*tilesize,
+                                    x*tilesize:(x+1)*tilesize]
+                        w2 = w2base[y*tilesize:(y+1)*tilesize,
+                                    x*tilesize:(x+1)*tilesize]
+                        tile = _unwise_w1w2_to_rgb(w1, w2)
                         pp = patdata.copy()
                         pp.update(zoom=scale, x=x, y=y)
-                        tile = baseimg[y*tilesize:(y+1)*tilesize,
-                                       x*tilesize:(x+1)*tilesize, :]
                         fn = pat % pp
                         plt.imsave(fn, tile)
                         print 'Wrote', fn
