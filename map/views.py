@@ -167,7 +167,6 @@ def index(req):
     lat,lng = dec, ra2long(ra)
 
     from decals import settings
-    
 
     url = req.build_absolute_uri(settings.ROOT_URL) + '/{id}/{ver}/{z}/{x}/{y}.jpg'
     caturl = settings.ROOT_URL + '/{id}/{ver}/{z}/{x}/{y}.cat.json'
@@ -366,10 +365,48 @@ def map_decals_resid_dr1j(*args, **kwargs):
     return map_decals_dr1j(*args, resid=True, model_gz=False, **kwargs)
 
 
+def _unwise_w1w2_to_rgb(w1, w2):
+    H,W = w1.shape
+    assert(w1.shape == w2.shape)
+
+    rgb = np.zeros((H, W, 3), np.uint8)
+
+    scale1 = 50.
+    scale2 = 50.
+
+    mn,mx = -1.,100.
+    arcsinh = 1.
+    #mn,mx = -3.,30.
+    #arcsinh = None
+
+    img1 = w1 / scale1
+    img2 = w2 / scale2
+
+    if arcsinh is not None:
+        def nlmap(x):
+            return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
+        #img1 = nlmap(img1)
+        #img2 = nlmap(img2)
+        mean = (img1 + img2) / 2.
+        I = nlmap(mean)
+        img1 = img1 / mean * I
+        img2 = img2 / mean * I
+        mn = nlmap(mn)
+        mx = nlmap(mx)
+    img1 = (img1 - mn) / (mx - mn)
+    img2 = (img2 - mn) / (mx - mn)
+
+    rgb[:,:,2] = (np.clip(img1, 0., 1.) * 255).astype(np.uint8)
+    rgb[:,:,0] = (np.clip(img2, 0., 1.) * 255).astype(np.uint8)
+    rgb[:,:,1] = rgb[:,:,0]/2 + rgb[:,:,2]/2
+
+    return rgb
+
 UNW = None
 UNW_tree = None
 
-def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False):
+def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
+                    w1w2=False):
     global UNW
     global UNW_tree
 
@@ -430,7 +467,7 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False)
     ok,r0,d0 = wcs.pixelxy2radec(1, 1)
     ok,r1,d1 = wcs.pixelxy2radec(W, H)
     radius = radius + max(degrees_between(ra,dec, r0,d0), degrees_between(ra,dec, r1,d1))
-    
+
     J = tree_search_radec(UNW_tree, ra, dec, radius)
     #print len(J), 'unWISE tiles nearby'
     
@@ -438,9 +475,15 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False)
     r2img = np.zeros((H,W), np.float32)
     rn    = np.zeros((H,W), np.uint8)
 
-    ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
-                               [1,H/2,H,H,H,H/2,1,1])
+    #ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
+    #                           [1,H/2,H,H,H,H/2,1,1])
 
+    ww = [1, W*0.25, W*0.5, W*0.75, W]
+    hh = [1, H*0.25, H*0.5, H*0.75, H]
+
+    ok,r,d = wcs.pixelxy2radec(
+        [1]*len(hh) + ww          + [W]*len(hh) +        list(reversed(ww)),
+        hh          + [1]*len(ww) + list(reversed(hh)) + [H]*len(ww))
     scaled = 0
     scalepat = None
     scaledir = 'unwise'
@@ -458,6 +501,8 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False)
         
         native_scale = 2.75
         #scaled = int(np.round(np.log2(scale / native_scale)))
+        #scaled = int(np.floor(np.log2(scale / native_scale) - 1.))
+        #scaled = int(np.floor(np.log2(scale / native_scale) + 0.5))
         scaled = int(np.floor(np.log2(scale / native_scale)))
         print 'Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled
         #scaled = (11 - zoom)
@@ -467,6 +512,20 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False)
 
     #basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-m.fits')
     basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-u.fits')
+
+    # import pylab as plt
+    # plt.clf()
+    # plt.plot(r, d, 'b-')
+    # plt.plot(UNW.ra[J], UNW.dec[J], 'r.')
+    # plt.savefig('u.png')
+
+    # Cut on RA,Dec BOXES
+    #keepj = []
+    #for j in J:
+    #    tile = UNW.coadd_id[j]
+
+
+    RR,DD = [],[]
 
     for j in J:
         tile = UNW.coadd_id[j]
@@ -486,13 +545,18 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False)
         #print 'scaled brick WCS bounds:', bwcs.radec_bounds()
 
         ok,xx,yy = bwcs.radec2pixelxy(r, d)
+        if not np.all(ok):
+            print 'Skipping tile', tile
+            continue
+        assert(np.all(ok))
+        #print 'RA,Dec', r,d
+        #print 'xx,yy', xx,yy
         xx = xx.astype(np.int)
         yy = yy.astype(np.int)
         imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
         #print 'Scaled brick WCS: pixel coords:'
-        #print 'xx', xx
-        #print 'yy', yy
-        M = 10
+        # Margin
+        M = 20
         xlo = np.clip(xx.min() - M, 0, imW)
         xhi = np.clip(xx.max() + M, 0, imW)
         ylo = np.clip(yy.min() - M, 0, imH)
@@ -504,6 +568,11 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False)
             continue
         subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
         slc = slice(ylo,yhi), slice(xlo,xhi)
+
+        # rr,dd = bwcs.pixelxy2radec(xx, yy)
+        # RR.append(rr)
+        # DD.append(dd)
+        # continue
 
         #print 'subwcs bounds:', subwcs.radec_bounds()
 
@@ -519,42 +588,25 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False)
             f = fitsio.FITS(fn)[0]
             img = f[slc]
             rimg[Yo,Xo] += img[Yi,Xi]
+            del img, f
         rn  [Yo,Xo] += 1
+
+    # plt.clf()
+    # plt.plot(r, d, 'b-')
+    # for rr,dd in zip(RR,DD):
+    #     plt.plot(rr, dd, 'r-')
+    # plt.savefig('v.png')
+    # print 'wrote v'
+
 
     r1img /= np.maximum(rn, 1)
     r2img /= np.maximum(rn, 1)
     del rn
 
-    rgb = np.zeros((H, W, 3), np.uint8)
+    if w1w2:
+        return r1img,r2img
 
-    scale1 = 50.
-    scale2 = 50.
-
-    mn,mx = -1.,100.
-    arcsinh = 1.
-    #mn,mx = -3.,30.
-    #arcsinh = None
-
-    img1 = r1img / scale1
-    img2 = r2img / scale2
-
-    if arcsinh is not None:
-        def nlmap(x):
-            return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
-        #img1 = nlmap(img1)
-        #img2 = nlmap(img2)
-        mean = (img1 + img2) / 2.
-        I = nlmap(mean)
-        img1 = img1 / mean * I
-        img2 = img2 / mean * I
-        mn = nlmap(mn)
-        mx = nlmap(mx)
-    img1 = (img1 - mn) / (mx - mn)
-    img2 = (img2 - mn) / (mx - mn)
-
-    rgb[:,:,2] = (np.clip(img1, 0., 1.) * 255).astype(np.uint8)
-    rgb[:,:,0] = (np.clip(img2, 0., 1.) * 255).astype(np.uint8)
-    rgb[:,:,1] = rgb[:,:,0]/2 + rgb[:,:,2]/2
+    rgb = _unwise_w1w2_to_rgb(r1img, r2img)
 
     import pylab as plt
 
@@ -1477,3 +1529,15 @@ def cutout_panels(req, expnum=None, extname=None):
 
 
 
+if __name__ == '__main__':
+    class duck(object):
+        pass
+
+    import os
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    
+    ver = 1
+    zoom,x,y = 2, 1, 1
+    req = duck()
+    req.META = dict()
+    map_unwise_w1w2(req, ver, zoom, x, y, savecache=True, ignoreCached=True)

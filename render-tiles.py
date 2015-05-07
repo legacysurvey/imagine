@@ -2,6 +2,7 @@ import django
 #django.setup()
 import os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+import sys
 
 from map.views import *
 
@@ -64,6 +65,8 @@ def main():
     parser.add_option('--ignore', action='store_true', help='Ignore cached tile files',
                       default=False)
 
+    parser.add_option('--top', action='store_true', help='Top levels of the pyramid')
+
     parser.add_option('--kind', default='image')
 
     opt,args = parser.parse_args()
@@ -72,6 +75,59 @@ def main():
         opt.zoom = [13]
 
     mp = multiproc(opt.threads)
+
+    if opt.top:
+        if opt.kind == 'unwise':
+            import pylab as plt
+            from decals import settings
+
+            pat = os.path.join(settings.DATA_DIR, 'tiles', 'unwise-w1w2', '%(ver)s',
+                               '%(zoom)i', '%(x)i', '%(y)i.jpg')
+            patdata = dict(ver=1)
+
+            #basescale = 5
+            basescale = 3
+
+            tilesize = 256
+            tiles = 2**basescale
+            side = tiles * tilesize
+            baseimg = np.zeros((side, side, 3), np.uint8)
+
+            for y in range(tiles):
+                for x in range(tiles):
+                    pp = patdata.copy()
+                    pp.update(zoom=basescale, x=x, y=y)
+                    fn = pat % pp
+                    print 'Reading', fn
+                    tile = plt.imread(fn)
+                    baseimg[y*tilesize:(y+1)*tilesize,
+                            x*tilesize:(x+1)*tilesize, :] = tile
+
+            plt.clf()
+            plt.imshow(baseimg, interpolation='nearest', origin='lower')
+            plt.savefig('baseimg.png')
+
+            from scipy.ndimage.filters import gaussian_filter
+    
+            for scale in range(basescale-1, -1, -1):
+                baseimg = gaussian_filter(baseimg.astype(np.float), 1.)
+                print 'Baseimg type', baseimg.dtype
+                baseimg = (baseimg[::2,::2] + baseimg[1::2,::2] + baseimg[1::2,1::2] + baseimg[::2,1::2])/4.
+                baseimg = np.clip(np.round(baseimg), 0, 255).astype(np.uint8)
+
+                tiles = 2**scale
+                
+                for y in range(tiles):
+                    for x in range(tiles):
+                        pp = patdata.copy()
+                        pp.update(zoom=scale, x=x, y=y)
+                        tile = baseimg[y*tilesize:(y+1)*tilesize,
+                                       x*tilesize:(x+1)*tilesize, :]
+                        fn = pat % pp
+                        plt.imsave(fn, tile)
+                        print 'Wrote', fn
+
+        sys.exit(0)
 
     if opt.near:
         # HACK -- DR1
