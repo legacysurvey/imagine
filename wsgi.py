@@ -41,8 +41,12 @@ sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/lib-dynload')
 sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/site-packages')
 sys.path.append('/usr/common/usg/python/2.6.1/lib/python2.6/site-packages/PIL')
 
+#print 'Sys.path:'
+#for p in sys.path:
+#    print '  ', p
+
 import django
-# print django.__file__
+print django.__file__
 # for p in sys.path:
 #     #print os.path.exists(p), os.path.exists(os.path.join(p, 'django')), os.path.exists(os.path.join(p, 'django', '__init__.py')), p
 #     print os.path.exists(os.path.join(p, 'django', '__init__.py')), p

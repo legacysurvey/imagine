@@ -326,17 +326,26 @@ def map_decals_resid_dr1j_edr(*args, **kwargs):
     return map_decals_dr1j_edr(*args, resid=True, model_gz=False, **kwargs)
 
 
-#B_dr1j = None
+B_dr1j = None
 
 def map_decals_dr1j(req, ver, zoom, x, y, savecache=False,
                     model=False, resid=False,
                     **kwargs):
-    #global B_dr1j
-    # if B_dr1j is None:
-    #     from decals import settings
-    #     from astrometry.util.fits import fits_table
-    #     #B_dr1j = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks.fits'))
-    #     B_dr1j = fits_table(os.path.join(os.envsettings.WEB_DIR, 'decals-bricks.fits'))
+    global B_dr1j
+    if B_dr1j is None:
+        from decals import settings
+        from astrometry.util.fits import fits_table
+        import numpy as np
+
+        B_dr1j = fits_table(os.path.join(settings.WEB_DIR, 'decals-dr1',
+                                         'decals-bricks-exist.fits'))
+        B_dr1j.cut(reduce(np.logical_or, [B_dr1j.has_image_g,
+                                          B_dr1j.has_image_r,
+                                          B_dr1j.has_image_z]))
+        B_dr1j.has_g = B_dr1j.has_image_g
+        B_dr1j.has_r = B_dr1j.has_image_r
+        B_dr1j.has_z = B_dr1j.has_image_z
+        print len(B_dr1j), 'bricks with images'
 
     imagetag = 'image'
     tag = 'decals-dr1j'
@@ -355,7 +364,7 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=False,
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
                            imagetag=imagetag,
                            rgbkwargs=rgbkwargs,
-                           #bricks=B_dr1j_edr,
+                           bricks=B_dr1j,
                            savecache=savecache, **kwargs)
 
 def map_decals_model_dr1j(*args, **kwargs):
@@ -800,8 +809,26 @@ def ccd_list(req):
                         content_type='application/json')
     
 def ccd_detail(req, ccd):
+    import numpy as np
     #ccd = req.GET['ccd']
-    return HttpResponse('CCD ' + ccd)
+    words = ccd.split('-')
+    assert(len(words) == 3)
+    expnum = int(words[0], 10)
+    assert(words[1][0] in 'NS')
+    ns = words[1][0]
+    chipnum = int(words[1][1:], 10)
+    extname = '%s%i' % (ns,chipnum)
+
+    D = _get_decals()
+    CCDs = D.get_ccds()
+    I = np.flatnonzero((CCDs.expnum == expnum) * 
+                       np.array([n == extname for n in CCDs.extname]))
+    assert(len(I) == 1)
+
+    C = CCDs[I[0]]
+    return HttpResponse('CCD %s, image %s, hdu %i' % (ccd, C.cpimage, C.cpimage_hdu))
+
+    #return HttpResponse('CCD ' + ccd)
 
 def nil(req):
     pass
@@ -920,13 +947,14 @@ def _get_decals_cat(wcs, tag='decals'):
         cat = merge_tables(cat)
 
     return cat,hdr
-    
+
 def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     imagetag='image2', rgbkwargs={},
                     bricks=None,
                     savecache = True, forcecache = False,
                     return_if_not_found=False, model_gz=False,
-                    modeldir=None, scaledir=None,
+                    modeldir=None, scaledir=None, get_images=False,
+                    ignoreCached=False,
                     ):
     from decals import settings
 
@@ -944,7 +972,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     basedir = settings.DATA_DIR
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
-    if os.path.exists(tilefn):
+    if os.path.exists(tilefn) and not ignoreCached:
         # print 'Cached:', tilefn
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
@@ -1001,6 +1029,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     rimgs = []
 
     if len(I) == 0:
+        if get_images:
+            return None
         from django.http import HttpResponseRedirect
         if forcecache:
             # create symlink to blank.jpg!
@@ -1133,6 +1163,9 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     #if return_if_not_found and not foundany:
     if return_if_not_found and not savecache:
         return
+
+    if get_images:
+        return rimgs
 
     rgb = get_rgb(rimgs, bands, **rgbkwargs)
 

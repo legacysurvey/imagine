@@ -18,6 +18,9 @@ python -u render-tiles.py --kind unwise -z 10 --all --queue > q
 grep python q | qdo load unwise -
 
 
+qdo launch unwise 1 --batchopts "-A desi -t 1-50" --walltime 4:00:00 --batchqueue serial --verbose
+
+
 Scale image & models:
 
 python -u scale-images.py --tag=model --gzip --queue > q

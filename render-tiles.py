@@ -1,8 +1,14 @@
+import sys
+
+###
+sys.path.insert(0, 'django-1.7')
+###
+
 import django
 #django.setup()
 import os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
-import sys
+
 
 from map.views import *
 
@@ -40,6 +46,12 @@ def _one_tile((kind, zoom, x, y, ignore)):
 def _bounce_map_unwise_w1w2(args):
     return map_unwise_w1w2(*args, ignoreCached=True, w1w2=True)
 
+def _bounce_map_decals(args):
+    print 'Bounce_map_decals:', args
+    X = map_decals_dr1j(*args, ignoreCached=True, get_images=True)
+    print 'Returning: type', type(X), X
+    return X
+
 def main():
     import optparse
 
@@ -49,6 +61,12 @@ def main():
     parser.add_option('--threads', type=int, default=1, help='Number of threads')
     parser.add_option('--y0', type=int, default=0, help='Start row')
     parser.add_option('--y1', type=int, default=None, help='End row (non-inclusive)')
+
+    parser.add_option('--x0', type=int, default=None)
+    parser.add_option('--x1', type=int, default=None)
+
+    parser.add_option('-x', type=int)
+    parser.add_option('-y', type=int)
 
     parser.add_option('--mindec', type=float, default=-20, help='Minimum Dec to run')
     parser.add_option('--maxdec', type=float, default=40, help='Maximum Dec to run')
@@ -91,7 +109,6 @@ def main():
             ver = 1
             patdata = dict(ver=ver)
 
-            #basescale = 5
             basescale = 3
 
             tilesize = 256
@@ -208,6 +225,80 @@ def main():
                         plt.imsave(fn, tile)
                         print 'Wrote', fn
 
+
+
+        ### HACK... factor this out...
+        if opt.kind == 'image':
+            import pylab as plt
+            from decals import settings
+            from desi.common import get_rgb
+            import fitsio
+            from scipy.ndimage.filters import gaussian_filter
+            from map.views import trymakedirs
+
+            rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+
+            pat = os.path.join(settings.DATA_DIR, 'tiles', 'decals-dr1j', '%(ver)s',
+                               '%(zoom)i', '%(x)i', '%(y)i.jpg')
+            ver = 1
+            patdata = dict(ver=ver)
+
+            basescale = 5
+
+            tilesize = 256
+            tiles = 2**basescale
+            side = tiles * tilesize
+
+            basepat = 'base-%s-%i-%%s.fits' % (opt.kind, basescale)
+            bands = 'grz'
+
+            basefns = [basepat % band for band in bands]
+            if not all([os.path.exists(fn) for fn in basefns]):
+                bases = [np.zeros((side, side), np.float32) for band in bands]
+
+                args = []
+                for y in range(tiles):
+                    for x in range(tiles):
+                        args.append((req, ver, basescale, x, y))
+                tiles = mp.map(_bounce_map_decals, args)
+                for ims,arg in zip(tiles, args):
+                    if ims is None:
+                        continue
+                    x,y = arg[-2:]
+                    for im,base in zip(ims, bases):
+                        if im is None:
+                            continue
+                        base[y*tilesize:(y+1)*tilesize,
+                             x*tilesize:(x+1)*tilesize] = im
+    
+                for fn,base in zip(basefns, bases):
+                    fitsio.write(fn, base, clobber=True)
+            else:
+                print 'Reading', basefns
+                bases = [fitsio.read(fn) for fn in basefns]
+
+            for scale in range(basescale-1, -1, -1):
+
+                for i,base in enumerate(bases):
+                    base = gaussian_filter(base, 1.)
+                    base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
+                    bases[i] = base
+
+                tiles = 2**scale
+                for y in range(tiles):
+                    for x in range(tiles):
+                        ims = [base[y*tilesize:(y+1)*tilesize,
+                                    x*tilesize:(x+1)*tilesize] for base in bases]
+
+                        tile = get_rgb(ims, bands, **rgbkwargs)
+
+                        pp = patdata.copy()
+                        pp.update(zoom=scale, x=x, y=y)
+                        fn = pat % pp
+                        trymakedirs(fn)
+                        plt.imsave(fn, tile)
+                        print 'Wrote', fn
+
         sys.exit(0)
 
     if opt.near:
@@ -224,6 +315,13 @@ def main():
         C = fits_table('decals-ccds-radec.fits')
         print len(C), 'CCDs in DR1'
 
+    if opt.x is not None:
+        opt.x0 = opt.x
+        opt.x1 = opt.x + 1
+    if opt.y is not None:
+        opt.y0 = opt.y
+        opt.y1 = opt.y + 1
+
     for zoom in opt.zoom:
         N = 2**zoom
         if opt.y1 is None:
@@ -231,11 +329,16 @@ def main():
         else:
             y1 = opt.y1
 
+        if opt.x0 is None:
+            opt.x0 = 0
+        if opt.x1 is None:
+            opt.x1 = N
+
         # HACK -- DR1
         # Find grid of Ra,Dec tile centers and select the ones near DECaLS bricks.
         rr,dd = [],[]
         yy = np.arange(opt.y0, y1)
-        xx = np.arange(N)
+        xx = np.arange(opt.x0, opt.x1)
 
         if not opt.all:
             for y in yy:
@@ -308,6 +411,8 @@ def main():
                     cmd += ' --near-ccds'
                 if opt.all:
                     cmd += ' --all'
+                if opt.ignore:
+                    cmd += ' --ignore'
                 print cmd
                 continue
 

@@ -972,7 +972,22 @@ allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", ca
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
 if (idname == 'unwise') {
-  tilesUnwise = createTileLayer('unwise-w1w2-tiles', 'unwise');
+  //tilesUnwise = createTileLayer('unwise-w1w2-tiles', 'unwise');
+  id = 'unwise-w1w2-tiles'
+  vertag = 'unwise'
+  tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
+        maxZoom: maxZoom,
+        maxNativeZoom: 11,
+        minZoom: minZoom,
+        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+        id: id,
+        ver: getversion(vertag),
+        unloadInvisibleTiles: true,
+        subdomains: subdomains,
+  });
+  tilesUnwise.on('tileloadstart', onTileLoadStart);
+  tilesUnwise.on('tileunload',    onTileUnload);
+
   allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE", catname:""});
 }
 
