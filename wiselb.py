@@ -26,27 +26,31 @@ patdata = dict(ver=ver)
 # side = tiles * tilesize
 
 H,W = 4096,8192
+scalelevel = 5
+
+#H,W = 8192,16384
+#scalelevel = 4
 
 wcs = anwcs_create_allsky_hammer_aitoff2(0., 0., W, H)
 
 #w1bfn = 'w1lb-%i.fits' % basescale
 #w2bfn = 'w2lb-%i.fits' % basescale
 
-img = np.zeros((H,W), np.float32)
-nimg = np.zeros((H,W), np.uint8)
-
 T = fits_table('allsky-atlas.fits')
 
 imgs = []
 
-scalelevel = 5
-
 for band in [1,2]:
-    outfn = 'w%i-lb-%i.fits' % (band,scalelevel)
+    outfn = 'w%i-lb-%i-%i.fits' % (band, scalelevel, H)
     if os.path.exists(outfn):
+        outfn = outfn.replace('.fits', '-u.fits')
         img = fitsio.read(outfn)
         imgs.append(img)
         continue
+
+    img = np.zeros((H,W), np.float32)
+    uimg = np.zeros((H,W), np.float32)
+    nimg = np.zeros((H,W), np.uint8)
 
     for i,brick in enumerate(T.coadd_id):
         #fn = os.path.join('data/scaled/unwise/7w%i' % band, brick[:3],
@@ -74,6 +78,7 @@ for band in [1,2]:
         #print 'K:', K.dtype, K.shape
     
         img [oy[K], ox[K]] += I[K]
+        uimg[oy[K], ox[K]] += (I[K] * (nimg[oy[K], ox[K]] == 0))
         nimg[oy[K], ox[K]] += 1
     
         #if i >= 100:
@@ -81,6 +86,8 @@ for band in [1,2]:
             
     img /= np.maximum(nimg, 1)
     fitsio.write(outfn, img, clobber=True)
+    fitsio.write(outfn.replace('.fits', '-u.fits'), uimg, clobber=True)
+    fitsio.write(outfn.replace('.fits', '-n.fits'), nimg, clobber=True)
     imgs.append(img)
 
 #plt.clf()
@@ -89,6 +96,7 @@ for band in [1,2]:
 
 
 w1,w2 = imgs
-rgb = _unwise_w1w2_to_rgb(w1, w2)
-plt.imsave('wlb.png', rgb)
+S,Q = 3000,25
+rgb = _unwise_w1w2_to_rgb(w1, w2, S=S, Q=Q)
+plt.imsave('wlb.jpg', rgb, origin='lower')
 
