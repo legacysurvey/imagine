@@ -834,83 +834,11 @@ function createStaticTileLayer(id, vertag) {
     return tiles;
 }
 
-id = 'decals-dr1j-edr'
-catname = 'decals-dr1j';
-
-// Use the static URL until zoom level 14, then the dynamic URL.
-// Only request tiles within the EDR region.
-
-tilesDr1j = new ZoomRangeTileLayer(static_url, {
-    maxZoom: maxZoom,
-    minZoom: minZoom,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: 'decals-dr1j-edr',
-    ver: getversion('decals-dr1j-edr'),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-    bounds: boundsEdr,
-  });
-tilesDr1j.on('tileloadstart', onTileLoadStart);
-tilesDr1j.on('tileunload',    onTileUnload);
-
-tilesDr1j.catname = catname;
-allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1-EDR images", catname:catname});
-
-id = 'decals-model-dr1j-edr'
-//tilesModDr1j = createStaticTileLayer(id, id)
-//tilesModDr1j = createTileLayer(id, id)
-
-tilesModDr1j = new ZoomRangeTileLayer(static_url, {
-    maxZoom: maxZoom,
-    minZoom: minZoom,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-    bounds: boundsEdr,
-  });
-tilesModDr1j.on('tileloadstart', onTileLoadStart);
-tilesModDr1j.on('tileunload',    onTileUnload);
-
-tilesModDr1j.catname = catname;
-allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1-EDR models", catname:catname});
-
-id = 'decals-resid-dr1j-edr'
-//tilesResidDr1j = createStaticTileLayer(id, id)
-//tilesResidDr1j = createTileLayer(id, id)
-
-tilesResidDr1j = new ZoomRangeTileLayer(static_url, {
-    maxZoom: maxZoom,
-    minZoom: minZoom,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-    bounds: boundsEdr,
-  });
-tilesResidDr1j.on('tileloadstart', onTileLoadStart);
-tilesResidDr1j.on('tileunload',    onTileUnload);
-
-tilesResidDr1j.catname = catname;
-allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1-EDR residuals", catname:catname});
-
-
-
-
-/////////////////////// DR1 Full ////////////////////////
-
 
 id = 'decals-dr1j'
 catname = 'decals-dr1j';
 
 // Use the static URL until zoom level 14, then the dynamic URL.
-// Only request tiles within the EDR region.
-
 tilesDr1j = new ZoomRangeTileLayer(static_url, {
     maxZoom: maxZoom,
     minZoom: minZoom,
@@ -963,33 +891,30 @@ allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", ca
 
 
 
-
-
-
-
-
-
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
-if (idname == 'unwise') {
-  //tilesUnwise = createTileLayer('unwise-w1w2-tiles', 'unwise');
-  id = 'unwise-w1w2-tiles'
-  vertag = 'unwise'
-  tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
-        maxZoom: maxZoom,
-        maxNativeZoom: 11,
-        minZoom: minZoom,
-        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-        id: id,
-        ver: getversion(vertag),
-        unloadInvisibleTiles: true,
-        subdomains: subdomains,
-  });
-  tilesUnwise.on('tileloadstart', onTileLoadStart);
-  tilesUnwise.on('tileunload',    onTileUnload);
 
-  allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE", catname:""});
-}
+
+id = 'unwise-w1w2-tiles'
+vertag = 'unwise'
+tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
+      maxZoom: maxZoom,
+      maxNativeZoom: 11,
+      minZoom: minZoom,
+      attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+      id: id,
+      ver: getversion(vertag),
+      unloadInvisibleTiles: true,
+      subdomains: subdomains,
+});
+tilesUnwise.on('tileloadstart', onTileLoadStart);
+tilesUnwise.on('tileunload',    onTileUnload);
+
+allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE W1/W2", catname:""});
+
+
+
+{% comment %}
 
 if (idname == 'unwise') {
   id = 'unwise-w3w4-tiles'
@@ -1029,6 +954,7 @@ if (idname == 'unwise') {
   allLayers.push({name:'unwise-w3w4', tiles:tilesUnwise, pretty:"unWISE W1234", catname:""});
 }
 
+{% endcomment %}
 
 
 var baseMaps = {};
