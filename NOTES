@@ -29,7 +29,7 @@ python -u scale-images.py --queue > q
 grep python q | qdo load scale -
 
 
-Render images:
+Render images/model/resids:
 
 python -u render-tiles.py --kind image -z 13 --queue > q
 grep python q | qdo load render -

@@ -44,11 +44,14 @@ def _one_tile((kind, zoom, x, y, ignore)):
                         ignoreCached=ignore)
 
 def _bounce_map_unwise_w1w2(args):
-    return map_unwise_w1w2(*args, ignoreCached=True, w1w2=True)
+    return map_unwise_w1w2(*args, ignoreCached=True, get_images=True)
+def _bounce_map_unwise_w3w4(args):
+    return map_unwise_w3w4(*args, ignoreCached=True, get_images=True)
 
-def _bounce_map_decals(args):
+
+def _bounce_map_decals((args,kwargs)):
     print 'Bounce_map_decals:', args
-    X = map_decals_dr1j(*args, ignoreCached=True, get_images=True)
+    X = map_decals_dr1j(*args, ignoreCached=True, get_images=True, **kwargs)
     print 'Returning: type', type(X), X
     return X
 
@@ -98,49 +101,57 @@ def main():
     mp = multiproc(opt.threads)
 
     if opt.top:
-        if opt.kind == 'unwise':
+        if opt.kind in ['unwise', 'unwise-w3w4']:
             import pylab as plt
             from decals import settings
-            from map.views import _unwise_w1w2_to_rgb
+            from map.views import _unwise_to_rgb
             import fitsio
 
-            pat = os.path.join(settings.DATA_DIR, 'tiles', 'unwise-w1w2', '%(ver)s',
+            if opt.kind == 'unwise-w3w4':
+                tag = 'unwise-w3w4'
+                bands = [3,4]
+                bounce = _bounce_map_unwise_w3w4
+            else:
+                tag = 'unwise-w1w2'
+                bands = [1,2]
+                bounce = _bounce_map_unwise_w1w2
+
+            pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                                '%(zoom)i', '%(x)i', '%(y)i.jpg')
             ver = 1
             patdata = dict(ver=ver)
 
-            basescale = 3
+            basescale = 2
 
             tilesize = 256
             tiles = 2**basescale
             side = tiles * tilesize
 
-            w1bfn = 'w1base-%i.fits' % basescale
-            w2bfn = 'w2base-%i.fits' % basescale
+            basepat = 'base-%s-%i-%%s.fits' % (opt.kind, basescale)
+            basefns = [basepat % band for band in bands]
 
-            if not (os.path.exists(w1bfn) and os.path.exists(w2bfn)):
-                w1base = np.zeros((side, side), np.float32)
-                w2base = np.zeros((side, side), np.float32)
+            if not all([os.path.exists(fn) for fn in basefns]):
+                bases = [np.zeros((side, side), np.float32) for band in bands]
     
                 args = []
                 for y in range(tiles):
                     for x in range(tiles):
                         #print 'Base tile', x, y
                         args.append((req, ver, basescale, x, y))
-                tiles = mp.map(_bounce_map_unwise_w1w2, args)
-                for (w1,w2),arg in zip(tiles,args):
+                tiles = mp.map(bounce, args)
+                for ims,arg in zip(tiles,args):
                     x,y = arg[-2:]
-                    w1base[y*tilesize:(y+1)*tilesize,
-                           x*tilesize:(x+1)*tilesize] = w1
-                    w2base[y*tilesize:(y+1)*tilesize,
-                           x*tilesize:(x+1)*tilesize] = w2
+                    for im,base in zip(ims, bases):
+                        if im is None:
+                            continue
+                        base[y*tilesize:(y+1)*tilesize,
+                             x*tilesize:(x+1)*tilesize] = im
     
-                fitsio.write(w1bfn, w1base, clobber=True)
-                fitsio.write(w2bfn, w2base, clobber=True)
+                for fn,base in zip(basefns, bases):
+                    fitsio.write(fn, base, clobber=True)
             else:
-                print 'Reading', w1bfn, 'and', w2bfn
-                w1base = fitsio.read(w1bfn)
-                w2base = fitsio.read(w2bfn)
+                print 'Reading', basefns
+                bases = [fitsio.read(fn) for fn in basefns]
 
                 if False:
                     # Messin' around
@@ -149,9 +160,9 @@ def main():
                     #for S in [1000, 3000, 10000]:
                     #for Q in [10, 25, 50]:
                     S,Q = 3000,25
-                    im = _unwise_w1w2_to_rgb(w1base, w2base, S=S, Q=Q)
-                    plt.clf()
-                    plt.imshow(im)
+                    im = _unwise_to_rgb([w1base, w2base], S=S, Q=Q)
+                    #plt.clf()
+                    #plt.imshow(im)
                     plt.imsave('base-S%i-Q%s.png' % (S,Q), im)
     
                     # Try converting to galactic coords...
@@ -196,7 +207,7 @@ def main():
                     lb2 = w2base[np.clip(np.round(yy-1).astype(int), 0, h-1),
                                  np.clip(np.round(xx-1).astype(int), 0, w-1)]
     
-                    lbim = _unwise_w1w2_to_rgb(lb1, lb2, S=S,Q=Q)
+                    lbim = _unwise_to_rgb(lb1, lb2, S=S,Q=Q)
                     plt.imsave('lb.png', lbim)
     
                     sys.exit(0)
@@ -205,20 +216,18 @@ def main():
     
             for scale in range(basescale-1, -1, -1):
 
-                w1base = gaussian_filter(w1base, 1.)
-                w1base = (w1base[::2,::2] + w1base[1::2,::2] + w1base[1::2,1::2] + w1base[::2,1::2])/4.
-                w2base = gaussian_filter(w2base, 1.)
-                w2base = (w2base[::2,::2] + w2base[1::2,::2] + w2base[1::2,1::2] + w2base[::2,1::2])/4.
+                for i,base in enumerate(bases):
+                    base = gaussian_filter(base, 1.)
+                    base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
+                    bases[i] = base
 
                 tiles = 2**scale
                 
                 for y in range(tiles):
                     for x in range(tiles):
-                        w1 = w1base[y*tilesize:(y+1)*tilesize,
-                                    x*tilesize:(x+1)*tilesize]
-                        w2 = w2base[y*tilesize:(y+1)*tilesize,
-                                    x*tilesize:(x+1)*tilesize]
-                        tile = _unwise_w1w2_to_rgb(w1, w2)
+                        ims = [base[y*tilesize:(y+1)*tilesize,
+                                    x*tilesize:(x+1)*tilesize] for base in bases]
+                        tile = _unwise_to_rgb(ims, bands=bands)
                         pp = patdata.copy()
                         pp.update(zoom=scale, x=x, y=y)
                         fn = pat % pp
@@ -226,9 +235,8 @@ def main():
                         print 'Wrote', fn
 
 
-
         ### HACK... factor this out...
-        if opt.kind == 'image':
+        if opt.kind in ['image', 'model', 'resid']:
             import pylab as plt
             from decals import settings
             from desi.common import get_rgb
@@ -238,12 +246,13 @@ def main():
 
             rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
-            pat = os.path.join(settings.DATA_DIR, 'tiles', 'decals-dr1j', '%(ver)s',
-                               '%(zoom)i', '%(x)i', '%(y)i.jpg')
+            tag = dict(image='decals-dr1j', model='decals-model-dr1j', resid='decals-resid-dr1j')[opt.kind]
             ver = 1
-            patdata = dict(ver=ver)
-
             basescale = 5
+
+            pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
+                               '%(zoom)i', '%(x)i', '%(y)i.jpg')
+            patdata = dict(ver=ver)
 
             tilesize = 256
             tiles = 2**basescale
@@ -257,14 +266,21 @@ def main():
                 bases = [np.zeros((side, side), np.float32) for band in bands]
 
                 args = []
+                kwa = dict()
+                if opt.kind == 'model':
+                    kwa.update(model=True)
+                elif opt.kind == 'resid':
+                    kwa.update(resid=True)
+
+                xy = []
                 for y in range(tiles):
                     for x in range(tiles):
-                        args.append((req, ver, basescale, x, y))
+                        args.append(((req, ver, basescale, x, y),kwa))
+                        xy.append((x,y))
                 tiles = mp.map(_bounce_map_decals, args)
-                for ims,arg in zip(tiles, args):
+                for ims,(x,y) in zip(tiles, xy):
                     if ims is None:
                         continue
-                    x,y = arg[-2:]
                     for im,base in zip(ims, bases):
                         if im is None:
                             continue

@@ -22,6 +22,8 @@ tileversions = {
     'decals-resid-dr1j': [1],
 
     'unwise-w1w2': [1],
+    'unwise-w3w4': [1],
+    'unwise-w1234': [1],
     }
 
 catversions = {
@@ -374,22 +376,37 @@ def map_decals_resid_dr1j(*args, **kwargs):
     return map_decals_dr1j(*args, resid=True, model_gz=False, **kwargs)
 
 
-def _unwise_w1w2_to_rgb(w1, w2, S=None, Q=None):
+def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
     import numpy as np
-    H,W = w1.shape
-    assert(w1.shape == w2.shape)
+    img = imgs[0]
+    H,W = img.shape
+
 
     if S is not None or Q is not None:
         # 
         if S is None:
-            S = 1000.
+            S = [1000.]*len(imgs)
         if Q is None:
             Q = 25.
         alpha = 1.5
-        b = w1 / S
-        g = (w1+w2)/2. / S
-        r = w2 / S
-    
+
+        if len(imgs) == 2:
+            w1,w2 = imgs
+            S1,S2 = S
+            b = w1 / S1
+            r = w2 / S2
+            g = (r + b) / 2.
+        elif len(imgs) == 4:
+            w1,w2,w3,w4 = imgs
+            S1,S2,S3,S4 = S
+            w1 /= S1
+            w2 /= S2
+            w3 /= S3
+            w4 /= S4
+            b = w1
+            g = 0.8 * w2 + 0.2 * w3
+            r = 0.4 * w2 + 0.8 * w3 + w4
+
         m = -2e-2
     
         r = np.maximum(0, r - m)
@@ -403,6 +420,9 @@ def _unwise_w1w2_to_rgb(w1, w2, S=None, Q=None):
         B = fI * b / I
         RGB = (np.clip(np.dstack([R,G,B]), 0., 1.) * 255.).astype(np.uint8)
         return RGB
+
+    ## FIXME
+    w1,w2 = imgs
     
     rgb = np.zeros((H, W, 3), np.uint8)
 
@@ -440,8 +460,20 @@ def _unwise_w1w2_to_rgb(w1, w2, S=None, Q=None):
 UNW = None
 UNW_tree = None
 
-def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
-                    w1w2=False):
+def map_unwise_w1w2(*args, **kwargs):
+    return map_unwise(*args, **kwargs)
+
+def map_unwise_w3w4(*args, **kwargs):
+    kwargs.update(S=[1e5, 1e6])
+    return map_unwise(*args, bands=[3,4], tag='unwise-w3w4', **kwargs)
+
+def map_unwise_w1234(*args, **kwargs):
+    kwargs.update(S=[3e3, 3e3, 3e5, 1e6])
+    return map_unwise(*args, bands=[1,2,3,4], tag='unwise-w1234', **kwargs)
+
+def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
+               get_images=False,
+               bands=[1,2], tag='unwise-w1w2', **kwargs):
     global UNW
     global UNW_tree
 
@@ -453,8 +485,6 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
     ver = int(ver)
 
-    tag = 'unwise-w1w2'
-
     if not ver in tileversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
@@ -463,10 +493,7 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
     basedir = settings.DATA_DIR
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
-    #'%i/%i/%i/%i.png' % (ver, zoom, x, y))
-
     if os.path.exists(tilefn) and not ignoreCached:
-        # print 'Cached:', tilefn
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
 
@@ -479,8 +506,6 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
         return HttpResponse(e.strerror)
-
-    #print 'pixel scale:', wcs.pixel_scale()
 
     from astrometry.util.fits import fits_table
     import numpy as np
@@ -506,13 +531,6 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
     J = tree_search_radec(UNW_tree, ra, dec, radius)
     #print len(J), 'unWISE tiles nearby'
     
-    r1img = np.zeros((H,W), np.float32)
-    r2img = np.zeros((H,W), np.float32)
-    rn    = np.zeros((H,W), np.uint8)
-
-    #ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
-    #                           [1,H/2,H,H,H,H/2,1,1])
-
     ww = [1, W*0.25, W*0.5, W*0.75, W]
     hh = [1, H*0.25, H*0.5, H*0.75, H]
 
@@ -533,41 +551,34 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         scale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
         
         native_scale = 2.75
-        #scaled = int(np.round(np.log2(scale / native_scale)))
-        #scaled = int(np.floor(np.log2(scale / native_scale) - 1.))
-        #scaled = int(np.floor(np.log2(scale / native_scale) + 0.5))
         scaled = int(np.floor(np.log2(scale / native_scale)))
         print 'Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled
-        #scaled = (11 - zoom)
         scaled = np.clip(scaled, 1, 7)
         dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(tilename).3s', 'unwise-%(tilename)s-%(band)s.fits')
 
-    #basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-m.fits')
     basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-u.fits')
+
+    rimgs = [np.zeros((H,W), np.float32) for band in bands]
+    rn    = np.zeros((H,W), np.uint8)
 
     for j in J:
         tile = UNW.coadd_id[j]
-        #print 'Tile', tile
 
         fns = []
-        for band in ['w1', 'w2']:
-            fnargs = dict(band=band, tilename=tile)
+        for band in bands:
+            bandname = 'w%i' % band
+            fnargs = dict(band=bandname, tilename=tile)
             basefn = basepat % fnargs
             fn = get_scaled(scalepat, fnargs, scaled, basefn)
             fns.append(fn)
-        [fn1,fn2] = fns
-        #print 'Files', fn1, fn2
 
-        bwcs = Tan(fn1, 0)
-        #print 'scaled brick WCS bounds:', bwcs.radec_bounds()
+        bwcs = Tan(fns[0], 0)
         ok,xx,yy = bwcs.radec2pixelxy(r, d)
         if not np.all(ok):
             print 'Skipping tile', tile
             continue
         assert(np.all(ok))
-        #print 'RA,Dec', r,d
-        #print 'xx,yy', xx,yy
         xx = xx.astype(np.int)
         yy = yy.astype(np.int)
         imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
@@ -590,21 +601,21 @@ def map_unwise_w1w2(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
             # print traceback.print_exc()
             continue
 
-        for fn, rimg in [(fn1, r1img), (fn2, r2img)]:
+        for fn, rimg in zip(fns, rimgs):
             f = fitsio.FITS(fn)[0]
             img = f[slc]
             rimg[Yo,Xo] += img[Yi,Xi]
             del img, f
         rn  [Yo,Xo] += 1
 
-    r1img /= np.maximum(rn, 1)
-    r2img /= np.maximum(rn, 1)
+    for rimg in rimgs:
+        rimg /= np.maximum(rn, 1)
     del rn
 
-    if w1w2:
-        return r1img,r2img
+    if get_images:
+        return rimgs
 
-    rgb = _unwise_w1w2_to_rgb(r1img, r2img)
+    rgb = _unwise_to_rgb(rimgs, **kwargs)
 
     import pylab as plt
 
@@ -649,7 +660,6 @@ def map_sfd(req, ver, zoom, x, y, savecache = False):
     basedir = settings.DATA_DIR
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
-    #'%i/%i/%i/%i.png' % (ver, zoom, x, y))
 
     if os.path.exists(tilefn):
         # print 'Cached:', tilefn

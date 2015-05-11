@@ -9,7 +9,7 @@ import matplotlib
 matplotlib.use('Agg')
 import pylab as plt
 from decals import settings
-from map.views import _unwise_w1w2_to_rgb
+from map.views import _unwise_to_rgb
 import fitsio
 from astrometry.util.util import *
 from astrometry.util.fits import *
@@ -40,7 +40,7 @@ T = fits_table('allsky-atlas.fits')
 
 imgs = []
 
-for band in [1,2]:
+for band in [1,2,3,4]:
     outfn = 'w%i-lb-%i-%i.fits' % (band, scalelevel, H)
     if os.path.exists(outfn):
         outfn = outfn.replace('.fits', '-u.fits')
@@ -97,6 +97,6 @@ for band in [1,2]:
 
 w1,w2 = imgs
 S,Q = 3000,25
-rgb = _unwise_w1w2_to_rgb(w1, w2, S=S, Q=Q)
+rgb = _unwise_to_rgb([w1, w2], S=S, Q=Q)
 plt.imsave('wlb.jpg', rgb, origin='lower')
 

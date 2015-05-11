@@ -20,6 +20,10 @@ urlpatterns = patterns('map.views',
     # unWISE W1/W2
     url(r'^unwise-w1w2-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_unwise_w1w2'),
 
+    url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_unwise_w3w4'),
+
+    url(r'^unwise-w1234-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_unwise_w1234'),
+
     # Cutouts html
     url(r'^cutouts/', 'cutouts', name='cutouts'),
     # Cutouts panel plots
