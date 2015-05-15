@@ -180,6 +180,11 @@ def index(req):
     # Testing:
     #tileurl = settings.ROOT_URL + '/{id}/{ver}/{z}/{x}/{y}.jpg'
 
+    #subdomains = "['a','b','c','d'];"
+
+    # test.
+    subdomains = "['i'];"
+
     bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}'
 
@@ -198,6 +203,7 @@ def index(req):
                        layer=layer, tileurl=tileurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
                        ccdsurl=ccdsurl,
+                       subdomains=subdomains,
                        showSources='sources' in req.GET,
                        showBricks='bricks' in req.GET,
                        showCcds='ccds' in req.GET,

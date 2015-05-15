@@ -173,7 +173,7 @@ function getkeys(obj) {
     return s;
 }
 
-var subdomains = ['a','b','c','d'];
+var subdomains = {{ subdomains|safe }};
 
 function long2ra(lng) {
     ra = 180. - lng;
