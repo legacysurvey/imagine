@@ -144,7 +144,7 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
     return res
 
 def index(req):
-    layer = req.GET.get('layer', 'decals-dr1j-edr')
+    layer = req.GET.get('layer', 'decals-dr1j')
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
     # EDR2 region
@@ -198,7 +198,7 @@ def index(req):
     #bricksurl = 'http://broiler.cosmo.fas.nyu.edu:8896/bricks/?north={north}&east={east}&south={south}&west={west}'
     #ccdsurl = 'http://broiler.cosmo.fas.nyu.edu:8896/ccds/?north={north}&east={east}&south={south}&west={west}'
 
-    baseurl = req.path + '?layer=%s&' % layer
+    baseurl = req.path + '?'  #+ '?layer=%s&' % layer
 
     from django.shortcuts import render
 

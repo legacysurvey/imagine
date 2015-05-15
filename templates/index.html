@@ -402,7 +402,8 @@ function onMapClick(e) {
     txt = 
         'RA,Dec = ' + cutout_radec_link(ra, dec) +
         '<br/><a href="{{ baseurl }}ra=' + ra.toFixed(4) +
-        '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom()
+        '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom() +
+	'&layer=' + idname
         + '">link here</a>';
     if (bricks.length) {
         for (var i=0; i<bricks.length; i++) {
@@ -771,8 +772,6 @@ function getcatversion(layer) {
 }
 
 var idname = '{{ layer }}';
-//var catname = 'decals-dr1';
-//var idname = 'decals';
 var catname = 'decals-dr1j';
 
 var minZoom = 1;
@@ -849,8 +848,6 @@ tilesDr1j = new ZoomRangeTileLayer(static_tile_url, {
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
-tilesDr1j.on('tileloadstart', onTileLoadStart);
-tilesDr1j.on('tileunload',    onTileUnload);
 
 tilesDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images", catname:catname});
@@ -866,8 +863,6 @@ tilesModDr1j = new ZoomRangeTileLayer(static_tile_url, {
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
-tilesModDr1j.on('tileloadstart', onTileLoadStart);
-tilesModDr1j.on('tileunload',    onTileUnload);
 
 tilesModDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1 models", catname:catname});
@@ -883,8 +878,6 @@ tilesResidDr1j = new ZoomRangeTileLayer(static_tile_url, {
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
-tilesResidDr1j.on('tileloadstart', onTileLoadStart);
-tilesResidDr1j.on('tileunload',    onTileUnload);
 
 tilesResidDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", catname:catname});
@@ -908,8 +901,6 @@ tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
       unloadInvisibleTiles: true,
       subdomains: subdomains,
 });
-tilesUnwise.on('tileloadstart', onTileLoadStart);
-tilesUnwise.on('tileunload',    onTileUnload);
 
 allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE W1/W2", catname:""});
 
@@ -930,8 +921,6 @@ if (idname == 'unwise') {
         unloadInvisibleTiles: true,
         subdomains: subdomains,
   });
-  tilesUnwise.on('tileloadstart', onTileLoadStart);
-  tilesUnwise.on('tileunload',    onTileUnload);
 
   allLayers.push({name:'unwise-w3w4', tiles:tilesUnwise, pretty:"unWISE W3/W4", catname:""});
 }
@@ -949,8 +938,6 @@ if (idname == 'unwise') {
         unloadInvisibleTiles: true,
         subdomains: subdomains,
   });
-  tilesUnwise.on('tileloadstart', onTileLoadStart);
-  tilesUnwise.on('tileunload',    onTileUnload);
 
   allLayers.push({name:'unwise-w3w4', tiles:tilesUnwise, pretty:"unWISE W1234", catname:""});
 }
@@ -961,7 +948,14 @@ if (idname == 'unwise') {
 var baseMaps = {};
 for (i in allLayers) {
   layer = allLayers[i];
-  baseMaps[layer.pretty] = layer.tiles;
+
+  tiles = layer.tiles;
+  tiles.on('tileloadstart', onTileLoadStart);
+  tiles.on('tileunload', onTileUnload);
+
+  tiles.name = layer.name;
+
+  baseMaps[layer.pretty] = tiles;
 }
 
 added = false;
@@ -1021,6 +1015,12 @@ function onMapPostBaseLayerChange(e) {
     console.log('POST Map base layer change');
     console.log('removing: catalog name: ' + e.removing.catname);
     console.log('adding: catalog name: ' + e.adding.catname);
+
+    if (typeof(e.adding.name) != 'undefined') {
+      idname = e.adding.name;
+      console.log('Layer name: ' + e.adding.name);
+    }
+
     if ((e.adding.catname == undefined) || (e.removing.catname == undefined)) {
         return;
     }
