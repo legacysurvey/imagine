@@ -9,23 +9,37 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
 ROOT_URL = '/viewer'
+HOSTNAME = 'legacysurvey.org'
+SUBDOMAINS = ['a','b','c','d']
 
-# broiler
-#DUST_DIR = '/data1/SFD'
-#DUST_DIR = '/project/projectdirs/desi/software/edison/dust/v0_0'
-DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
+STATIC_URL = 'http://%s%s/static/' % (HOSTNAME, ROOT_URL)
 
-UNWISE_DIR = '/project/projectdirs/cosmo/data/unwise/unwise-coadds'
+TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+
+STATIC_TILE_URL = 'http://{s}.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+
+CAT_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
-#BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 BASE_DIR = os.path.dirname(__file__)
-
-#print 'BASE DIR:', BASE_DIR
 WEB_DIR = os.path.dirname(BASE_DIR)
-
 DATA_DIR = os.path.join(WEB_DIR, 'data')
+
+#DUST_DIR = '/data1/SFD'
+#DUST_DIR = '/project/projectdirs/desi/software/edison/dust/v0_0'
+DUST_DIR = os.path.join(DATA_DIR, 'dust')
+UNWISE_DIR = os.path.join(DATA_DIR, 'unwise-coadds')
+
+#DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
+#UNWISE_DIR = '/project/projectdirs/cosmo/data/unwise/unwise-coadds'
+
+
+#os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-edr/'
+os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-dr1/'
+
+
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
@@ -92,10 +106,6 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
-
-#STATIC_URL = '/static/'
-#STATIC_URL = 'http://legacysurvey.org/static/'
-STATIC_URL = 'http://legacysurvey.org/viewer/static/'
 
 STATICFILES_DIRS = (
     os.path.join(WEB_DIR, 'static'),

@@ -1,8 +1,7 @@
 import os
 from django.http import HttpResponse, StreamingHttpResponse
 
-#os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-edr/'
-os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-dr1/'
+from decals import settings
 
 import matplotlib
 matplotlib.use('Agg')
@@ -168,13 +167,14 @@ def index(req):
 
     lat,lng = dec, ra2long(ra)
 
-    from decals import settings
-
     url = req.build_absolute_uri(settings.ROOT_URL) + '/{id}/{ver}/{z}/{x}/{y}.jpg'
-    caturl = settings.ROOT_URL + '/{id}/{ver}/{z}/{x}/{y}.cat.json'
+    #caturl = settings.ROOT_URL + '/{id}/{ver}/{z}/{x}/{y}.cat.json'
+    caturl = settings.CAT_URL
+
+    tileurl = settings.TILE_URL
 
     # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
-    tileurl = url.replace('www.legacysurvey', 'legacysurvey').replace('://', '://{s}.')
+    #tileurl = url.replace('www.legacysurvey', 'legacysurvey').replace('://', '://{s}.')
     #tileurl = 'http://{s}.legacysurvey.org/viewer/
 
     # Testing:
@@ -183,7 +183,11 @@ def index(req):
     #subdomains = "['a','b','c','d'];"
 
     # test.
-    subdomains = "['i'];"
+    subdomains = settings.SUBDOMAINS
+    # convert to javascript
+    subdomains = '[' + ','.join(["'%s'" % s for s in subdomains]) + '];'
+
+    static_tile_url = settings.STATIC_TILE_URL
 
     bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}'
     ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}'
@@ -203,6 +207,7 @@ def index(req):
                        layer=layer, tileurl=tileurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
                        ccdsurl=ccdsurl,
+                       static_tile_url=static_tile_url,
                        subdomains=subdomains,
                        showSources='sources' in req.GET,
                        showBricks='bricks' in req.GET,
@@ -908,11 +913,11 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
                   for g,r,z in zip(cat.decam_flux[:,1], cat.decam_flux[:,2],
                                    cat.decam_flux[:,4])]
         bricknames = list(cat.brickname)
-        objids = list(cat.objid.astype(int))
+        objids = [int(x) for x in cat.objid]
 
     json = json.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes,
                                  bricknames=bricknames, objids=objids,
-                                 zoom=zoom, tilex=x, tiley=y))
+                                 zoom=int(zoom), tilex=int(x), tiley=int(y)))
     if docache:
         trymakedirs(cachefn)
 

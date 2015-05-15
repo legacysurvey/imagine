@@ -805,21 +805,21 @@ tilesSfd = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
     ver: getversion('sfd'),
     unloadInvisibleTiles: true,
     subdomains: subdomains,
-    urlPatterns: [ [7, 10, 'http://{s}.decals.thetractor.org/{id}/{ver}/{z}/{x}/{y}.jpg'], ],
+    urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
   });
 tilesSfd.on('tileloadstart', onTileLoadStart);
 tilesSfd.on('tileunload', onTileUnload);
 
 allLayers = [];
 
-static_url = 'http://{s}.legacysurvey.org/viewer/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+static_tile_url = '{{ static_tile_url|safe }}';
 
 boundsEdr = L.latLngBounds(L.latLng(dec2lat(4),  ra2long(246)),
                            L.latLng(dec2lat(13), ra2long(239)));
 console.log('EDR bounds: ' + boundsEdr);
 
 function createStaticTileLayer(id, vertag) {
-    var tiles = new MyTileLayer(static_url, {
+    var tiles = new MyTileLayer(static_tile_url, {
         maxZoom: maxZoom,
         minZoom: minZoom,
         attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
@@ -839,7 +839,7 @@ id = 'decals-dr1j'
 catname = 'decals-dr1j';
 
 // Use the static URL until zoom level 14, then the dynamic URL.
-tilesDr1j = new ZoomRangeTileLayer(static_url, {
+tilesDr1j = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
     minZoom: minZoom,
     attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
@@ -856,7 +856,7 @@ tilesDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images", catname:catname});
 
 id = 'decals-model-dr1j'
-tilesModDr1j = new ZoomRangeTileLayer(static_url, {
+tilesModDr1j = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
     minZoom: minZoom,
     attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
@@ -873,7 +873,7 @@ tilesModDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1 models", catname:catname});
 
 id = 'decals-resid-dr1j'
-tilesResidDr1j = new ZoomRangeTileLayer(static_url, {
+tilesResidDr1j = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
     minZoom: minZoom,
     attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
@@ -899,7 +899,8 @@ id = 'unwise-w1w2-tiles'
 vertag = 'unwise'
 tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
       maxZoom: maxZoom,
-      maxNativeZoom: 11,
+      //maxNativeZoom: 11,
+      maxNativeZoom: 10,
       minZoom: minZoom,
       attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
       id: id,
