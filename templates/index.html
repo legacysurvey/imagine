@@ -1097,8 +1097,8 @@ function onMapZoomEnd(e) {
     if (showBricks) {
       console.log('removing brick outlines');
       overlayRemoved({name:'Bricks'});
-      setOverlayEnabled('Bricks', false);
     }
+    setOverlayEnabled('Bricks', false);
   } else if ((oldZoom < bricksMinZoom) && (zoom >= bricksMinZoom)) {
     // zoomed in past the boundary
     console.log('zoomed in past boundary');
@@ -1116,8 +1116,8 @@ function onMapZoomEnd(e) {
     if (showCcds) {
       console.log('removing CCD outlines');
       overlayRemoved({name:'CCDs'});
-      setOverlayEnabled('CCDs', false);
     }
+    setOverlayEnabled('CCDs', false);
   } else if ((oldZoom < ccdsMinZoom) && (zoom >= ccdsMinZoom)) {
     console.log('zoomed in past boundary');
     setOverlayEnabled('CCDs', true);
@@ -1135,8 +1135,8 @@ function onMapZoomEnd(e) {
       console.log('removing sources');
       // By the time we get here, onTileUnload() has already fired.
       showSources = false;
-      setOverlayEnabled('Sources', false);
     }
+    setOverlayEnabled('Sources', false);
   } else if ((oldZoom < sourcesMinZoom) && (zoom >= sourcesMinZoom)) {
     console.log('zoomed in past boundary');
     setOverlayEnabled('Sources', true);
