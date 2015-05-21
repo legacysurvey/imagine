@@ -916,6 +916,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         fluxes = []
         bricknames = []
         objids = []
+        nobs = []
     else:
         #print 'All catalogs:'
         #cat.about()
@@ -924,10 +925,13 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         fluxes = [dict(g=float(g), r=float(r), z=float(z))
                   for g,r,z in zip(cat.decam_flux[:,1], cat.decam_flux[:,2],
                                    cat.decam_flux[:,4])]
+        nobs = [dict(g=int(g), r=int(r), z=int(z))
+                for g,r,z in zip(cat.decam_nobs[:,1], cat.decam_nobs[:,2],
+                                 cat.decam_nobs[:,4])]
         bricknames = list(cat.brickname)
         objids = [int(x) for x in cat.objid]
 
-    json = json.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes,
+    json = json.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes, nobs=nobs,
                                  bricknames=bricknames, objids=objids,
                                  zoom=int(zoom), tilex=int(x), tiley=int(y)))
     if docache:

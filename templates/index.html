@@ -243,10 +243,24 @@ function onSourceClick(e) {
     if ('z' in src.fluxes) {
         fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
     }
+    nobs_g = 0
+    if ('g' in src.nobs) {
+	nobs_g = src.nobs.g;
+    }
+    nobs_r = 0
+    if ('r' in src.nobs) {
+	nobs_r = src.nobs.r;
+    }
+    nobs_z = 0
+    if ('z' in src.nobs) {
+	nobs_z = src.nobs.z;
+    }
+
     txt = 'Source RA,Dec = ' + cutout_radec_link(src.ra, src.dec) +
         '<br/>Source type: ' + src.type +
         '<br/>Mags: ' + fluxstr +
-        '<br/>Brick: ' + src.brickname + ', Objid: ' + src.objid;
+        '<br/>Brick: ' + src.brickname + ', Objid: ' + src.objid +
+	'<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z;
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
 }
 
@@ -264,6 +278,7 @@ function catLoaded(result) {
     }
     objtype = result['sourcetype'];
     fluxes = result['fluxes'];
+    nobs = result['nobs'];
     var circleList = new Array(rdlist.length);
     for (i=0, len=rdlist.length; i<len; i++) {
         r = rdlist[i][0];
@@ -301,6 +316,12 @@ function catLoaded(result) {
             circ.fluxes = {};
         } else {
             circ.fluxes = fluxes[i];
+        }
+
+        if (nobs == undefined) {
+            circ.nobs = {};
+        } else {
+            circ.nobs = nobs[i];
         }
 
         if (result.bricknames == undefined) {
