@@ -51,6 +51,13 @@
 background: #242424;
 }
 
+#gotosubmit {
+    font-size: 100%
+}
+#gotocancel {
+    font-size: 100%
+}
+
 </style>
 
 {% endblock %}
@@ -421,7 +428,10 @@ function onMapClick(e) {
 function onMouseMove(e) {
     ra  = long2ra(e.latlng.lng);
     dec = lat2dec(e.latlng.lat);
-    info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4);
+    if (infoBoxActive) {
+	info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) + ", zoom " + map.getZoom();
+    }
+
     if (inbrickccdAdded) {
         //props = { ra:ra, dec:dec };
         e.ra = ra;
@@ -972,13 +982,89 @@ if (!added) {
   tilesDr1j.addTo(map);
 }
 
+function doGoto() {
+    ra  = $('#gotora').val();
+    dec = $('#gotodec').val();
+    zoom = $('#gotozoom').val();
+    console.log('RA ' + ra + ', Dec ' + dec + ', Zoom ' + zoom);
+    ra = parseFloat(ra);
+    dec = parseFloat(dec);
+    zoom = parseInt(zoom);
+    console.log('RA ' + ra + ', Dec ' + dec + ', Zoom ' + zoom);
+    map.setView(L.latLng(dec2lat(dec), ra2long(ra)), zoom);
+}
+
+function submitGoto(e) {
+    console.log('submit goto ' + typeof(e) + getkeys(e));
+    e.stopPropagation();
+    doGoto();
+}
+
+function cancelGoto(e) {
+    console.log('cancel goto ' + typeof(e));
+    infoBoxActive = true;
+    onMouseMove({ latlng: map.getCenter() });
+    e.stopPropagation();
+}
+
+function gotoKeypress(e) {
+    if (e.which == 13) {
+	// Enter key
+	doGoto();
+    }
+}
+
+function infoBoxClicked(e) {
+    console.log('Info box clicked');
+    if (!infoBoxActive) {
+	return;
+    }
+    infoBoxActive = false;
+    ra  = long2ra(map.getCenter().lng);
+    dec = lat2dec(map.getCenter().lat);
+    ra = ra.toFixed(4);
+    // trim trailing zeros
+    while (ra.length && ra.charAt(ra.length-1) == '0') {
+	ra = ra.substring(0, ra.length-1);
+    }
+    dec = dec.toFixed(4);
+    while (dec.length && dec.charAt(dec.length-1) == '0') {
+	dec = dec.substring(0, dec.length-1);
+    }
+
+    info._div.innerHTML = '<center><form>RA,Dec '
+	+ '<input name="ra"  id="gotora"  value="' + ra
+	+ '" size=6>, '
+	+ '<input name="dec" id="gotodec" value="' + dec
+	+ '" size=6>, '
+	+ 'zoom <input name="zoom" id="gotozoom" value="' + map.getZoom() + '" size=4>'
+	+ '<br/><br/>'
+	+ '<input type="button" value="Go" id="gotosubmit">'
+	+ '<input type="button" value="Cancel" id="gotocancel">'
+	+ '</form></center>';
+    $('#gotosubmit').click(submitGoto);
+    $('#gotocancel').click(cancelGoto);
+    $('#gotora').keypress(gotoKeypress);
+    $('#gotodec').keypress(gotoKeypress);
+    $('#gotozoom').keypress(gotoKeypress);
+}
+
+var infoBoxActive = true;
 var info = L.control();
 info.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'info');
-    this._div.innerHTML = 'RA,Dec = ' + {{ra}}.toFixed(4) + ", " + {{dec}}.toFixed(4);
+    this._div.innerHTML = 'RA,Dec = ' + {{ra}}.toFixed(4) + ", " + {{dec}}.toFixed(4) + ", zoom " + {{zoom}};
     return this._div;
 };
 info.addTo(map);
+
+container = info.getContainer();
+L.DomEvent
+  .disableClickPropagation(container)
+  .disableScrollPropagation(container);
+L.DomEvent.on(container, 'click', infoBoxClicked);
+
+//info.getContainer().on('click', infoBoxClicked);
 
 var overlayMaps = {
     "Sources": sourcesGroup,
