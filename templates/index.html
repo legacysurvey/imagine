@@ -398,6 +398,16 @@ function doUnloadTile(key) {
     console.log('remaining catalog layers: ' + getkeys(catLayers));
 }
 
+function removeAllCatalogLayers() {
+    for (key in catLayers) {
+	console.log('removeAllCatalogLayers: removing ' + key);
+	circles = catLayers[key];
+	sourcesGroup.removeLayer(circles);
+	delete catLayers[key];
+    }
+}
+
+
 function onTileUnload(e) {
     tile = e.tile;
     key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
@@ -1259,6 +1269,10 @@ function onMapZoomEnd(e) {
       console.log('removing sources');
       // By the time we get here, onTileUnload() has already fired.
       showSources = false;
+
+      // remove any extra ones that have stuck around (fast zoom-outs)
+      removeAllCatalogLayers();
+
     }
     setOverlayEnabled('Sources', false);
   } else if ((oldZoom < sourcesMinZoom) && (zoom >= sourcesMinZoom)) {
