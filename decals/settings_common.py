@@ -10,6 +10,9 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 
 MAX_NATIVE_ZOOM = 15
 
+# Tile cache is writable?
+SAVE_CACHE = False
+
 ROOT_URL = '/viewer'
 HOSTNAME = 'legacysurvey.org'
 SUBDOMAINS = ['a','b','c','d']

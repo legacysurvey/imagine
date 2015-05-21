@@ -19,6 +19,7 @@ tileversions = {
     'decals-dr1j': [1],
     'decals-model-dr1j': [1],
     'decals-resid-dr1j': [1],
+    'decals-nexp-dr1j': [1],
 
     'unwise-w1w2': [1],
     'unwise-w3w4': [1],
@@ -301,6 +302,9 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
 
 rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
+rgbkwargs_nexp = dict(mnmx=(0,25), arcsinh=1.,
+                      scales=dict(g=(2,1),r=(1,1),z=(0,1)))
+
 B_dr1j_edr = None
 
 def map_decals_dr1j_edr(req, ver, zoom, x, y, savecache=False,
@@ -342,12 +346,13 @@ def map_decals_resid_dr1j_edr(*args, **kwargs):
 
 B_dr1j = None
 
-def map_decals_dr1j(req, ver, zoom, x, y, savecache=False,
-                    model=False, resid=False,
+def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
+                    model=False, resid=False, nexp=False,
                     **kwargs):
+    if savecache is None:
+        savecache = settings.SAVE_CACHE
     global B_dr1j
     if B_dr1j is None:
-        from decals import settings
         from astrometry.util.fits import fits_table
         import numpy as np
 
@@ -374,6 +379,10 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=False,
         imagetag = 'resid'
         kwargs.update(modeldir = 'decals-dr1j-model')
         tag = 'decals-resid-dr1j'
+    if nexp:
+        imagetag = 'nexp'
+        tag = 'decals-nexp-dr1j'
+        rgbkwargs = rgbkwargs_nexp
 
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
                            imagetag=imagetag,
@@ -387,6 +396,8 @@ def map_decals_model_dr1j(*args, **kwargs):
 def map_decals_resid_dr1j(*args, **kwargs):
     return map_decals_dr1j(*args, resid=True, model_gz=False, **kwargs)
 
+def map_decals_nexp_dr1j(*args, **kwargs):
+    return map_decals_dr1j(*args, nexp=True, model_gz=False, add_gz=True, **kwargs)
 
 def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
     import numpy as np
@@ -976,7 +987,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     savecache = True, forcecache = False,
                     return_if_not_found=False, model_gz=False,
                     modeldir=None, scaledir=None, get_images=False,
-                    ignoreCached=False,
+                    ignoreCached=False, add_gz=False,
                     ):
     from decals import settings
 
@@ -1029,6 +1040,10 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         modbasepat = basepat
     if model_gz and imagetag == 'model':
         modbasepat += '.gz'
+    print 'add_gz:', add_gz
+    if add_gz:
+        basepat += '.gz'
+    print 'basepat:', basepat
 
     scaled = 0
     scalepat = None

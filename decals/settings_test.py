@@ -2,6 +2,7 @@ import os
 from settings_common import *
 
 MAX_NATIVE_ZOOM = 13
+SAVE_CACHE = True
 
 HOSTNAME = 'test.legacysurvey.org'
 ROOT_URL = ''
