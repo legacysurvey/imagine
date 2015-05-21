@@ -8,6 +8,8 @@
 <script src="{% static "leaflet-pip-20150130.min.js" %}"></script>
 <script src="{% static "leaflet-zoomslider-0.6.1.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet-zoomslider-0.6.1.css" %}" />
+<script src="{% static "leaflet.label-20150521.js" %}"></script>
+<link rel="stylesheet" href="{% static "leaflet.label-20150521.css" %}" />
 
 <style type="text/css">
 #map { height: 100%; width: 100%; padding: 1;}
@@ -362,6 +364,8 @@ function ngcLoaded(result) {
     radius = result['radiusArcsec'];
     names = result['name'];
 
+    showlabels = (map.getZoom() >= ngcLabelsMinZoom);
+
     var circleList = new Array(rdlist.length);
     for (i=0, len=rdlist.length; i<len; i++) {
         r = rdlist[i][0];
@@ -369,29 +373,47 @@ function ngcLoaded(result) {
         lat = dec2lat(d);
         lng = ra2long_B(r);
         
-        //circ = L.circleMarker([lat, lng], {'radius':10, 'color':color,
-        //                                 'fillOpacity':0, 'weight':5});
 	// arcsec to meters:
 	meters = radius[i] * 30.87;
+	if (meters == 0.) {
+	    meters = 30;
+	}
 
-	color = '#8080a0';
+	//color = '#8080a0';
+	color = '#ffffff';
 
         circ = L.circle([lat, lng], meters, {'color':color,
                                              'fillOpacity':0, 'weight':5});
         circ.ra = r;
         circ.dec = d;
-        //circ.type = typ;
 	circ.name = names[i];
 
-        //circ.on('click', onSourceClick);
+	circ._showLabelAdded = true;
+	circ.bindLabel(circ.name, { noHide: true });
+	circ.label._latlng = L.latLng(lat,lng);
+
+	if (showlabels) {
+	    circ.on('remove', function(e){
+		console.log('Removing label for ' + e.target.name);
+		map.removeLayer(e.target.label);
+	    });
+	}
 
         circleList[i] = circ;
     }
     circles = L.layerGroup(circleList);
     ngcGroup.addLayer(circles);
+    if (showlabels) {
+	// show labels
+	for (i=0; i<circleList.length; i++) {
+	    circ = circleList[i];
+	    map.showLabel(circ.label);
+	}
+    }
+
     // save this for later.
     key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
-    console.log('NGC loaded: key ' + key);
+    //console.log('NGC loaded: key ' + key);
     ngcLayers[key] = circles;
 }
 
@@ -444,7 +466,8 @@ function onTileLoadStart(e) {
 
 function doUnloadTile(key) {
     console.log('doUnloadTile: ' + key);
-    if (!showSources) {
+    //if (!showSources) {
+    if (key in catLayers) {
 	circles = catLayers[key];
 	if (typeof(circles) == 'undefined') {
 	    console.log('doUnloadTile on a tile with no catalog; whatevs');
@@ -454,7 +477,8 @@ function doUnloadTile(key) {
 	    console.log('remaining catalog layers: ' + getkeys(catLayers));
 	}
     }
-    if (!showNgc) {
+    //if (!showNgc) {
+    if (key in ngcLayers) {
 	circles = ngcLayers[key];
 	if (typeof(circles) == 'undefined') {
 	    console.log('doUnloadTile on a tile with no NGC; whatevs');
@@ -481,10 +505,6 @@ function onTileUnload(e) {
     key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
     console.log('onTileUnload: ' + key);
     delete visibleTiles[key];
-    if (!showSources) {
-        return;
-    }
-    // console.log('TileUnload: ' + tile.toString());
     doUnloadTile(key);
 }
 
@@ -527,6 +547,8 @@ function onMapClick(e) {
 function onMouseMove(e) {
     ra  = long2ra(e.latlng.lng);
     dec = lat2dec(e.latlng.lat);
+    //lastRaDec = [ra, dec];
+    lastLatLng = e.latlng;
     if (infoBoxActive) {
 	info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) + ", zoom " + map.getZoom();
     }
@@ -1304,6 +1326,7 @@ function setOverlayEnabled(name, enabled) {
 var bricksMinZoom = 8;
 var ccdsMinZoom = 8;
 var sourcesMinZoom = 12;
+var ngcLabelsMinZoom = 8;
 
 // variable for tracking old & new zoom via zoomstart / zoomend
 var oldZoom = {{ zoom }};
@@ -1311,10 +1334,11 @@ function onMapZoomStart(e) {
   zoom = map.getZoom();
   console.log('map zoom start: ' + zoom + ', previous' + oldZoom);
   oldZoom = zoom;
+
 }
 function onMapZoomEnd(e) {
   zoom = map.getZoom();
-  console.log('map zoom: ' + zoom + ', old zoom' + oldZoom + ' vs brick zoom', bricksMinZoom);
+  //console.log('map zoom: ' + zoom + ', old zoom' + oldZoom + ' vs brick zoom', bricksMinZoom);
 
   // Bricks
 
@@ -1378,6 +1402,13 @@ function onMapZoomEnd(e) {
   }
 
 
+  // update the RA,Dec,zoom info box
+  //console.log('last latlng: ' + lastLatLng);
+  if (typeof(lastLatLng) != 'undefined') {
+    onMouseMove({ latlng: lastLatLng });
+  }
+
+
   oldZoom = zoom;
 
 }
@@ -1393,6 +1424,9 @@ map.on('zoomstart', onMapZoomStart);
 map.on('zoomend', onMapZoomEnd);
 
 map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
+
+//var lastRaDec = [ long2ra({{long}}), lat2dec({{lat}}) ];
+var lastLatLng = map.getCenter();
 
 {% if showBricks %}
 map.addLayer(bricksGroup);
