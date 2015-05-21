@@ -8,6 +8,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
+MAX_NATIVE_ZOOM = 15
+
 ROOT_URL = '/viewer'
 HOSTNAME = 'legacysurvey.org'
 SUBDOMAINS = ['a','b','c','d']

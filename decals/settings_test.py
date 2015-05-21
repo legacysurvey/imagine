@@ -1,6 +1,8 @@
 import os
 from settings_common import *
 
+MAX_NATIVE_ZOOM = 13
+
 HOSTNAME = 'test.legacysurvey.org'
 ROOT_URL = ''
 SUBDOMAINS = ['i']

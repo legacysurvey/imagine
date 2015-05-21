@@ -212,6 +212,7 @@ def index(req):
                        showSources='sources' in req.GET,
                        showBricks='bricks' in req.GET,
                        showCcds='ccds' in req.GET,
+                       maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                        ))
 
 def get_tile_wcs(zoom, x, y):
