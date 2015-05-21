@@ -13,6 +13,9 @@ urlpatterns = patterns('map.views',
 
     url(r'^decals-nexp-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_nexp_dr1j'),
 
+    # NGC objects
+    url(r'^ngc/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_ngc'),
+
     # catalog
     url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_dr1j'),
 

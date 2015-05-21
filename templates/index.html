@@ -349,24 +349,85 @@ function catLoaded(result) {
     catLayers[key] = circles;
 }
 
-// Reads global "catname", name of catalog sources to load.
-// and 'sourcesMinZoom'
-function doLoadTile(tile) {
-    //console.log('doLoadtile: ' + tile);
-    if (tile.z < sourcesMinZoom) {
+function ngcLoaded(result) {
+    if (!showNgc) {
         return;
     }
+    rdlist = result['rd'];
+    if ((result['zoom'] == undefined) || 
+        (result['tilex'] == undefined) || 
+        (result['tiley'] == undefined)) {
+        return;
+    }
+    radius = result['radiusArcsec'];
+    names = result['name'];
+
+    var circleList = new Array(rdlist.length);
+    for (i=0, len=rdlist.length; i<len; i++) {
+        r = rdlist[i][0];
+        d = rdlist[i][1];
+        lat = dec2lat(d);
+        lng = ra2long_B(r);
+        
+        //circ = L.circleMarker([lat, lng], {'radius':10, 'color':color,
+        //                                 'fillOpacity':0, 'weight':5});
+	// arcsec to meters:
+	meters = radius[i] * 30.87;
+
+	color = '#8080a0';
+
+        circ = L.circle([lat, lng], meters, {'color':color,
+                                             'fillOpacity':0, 'weight':5});
+        circ.ra = r;
+        circ.dec = d;
+        //circ.type = typ;
+	circ.name = names[i];
+
+        //circ.on('click', onSourceClick);
+
+        circleList[i] = circ;
+    }
+    circles = L.layerGroup(circleList);
+    ngcGroup.addLayer(circles);
+    // save this for later.
+    key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
+    console.log('NGC loaded: key ' + key);
+    ngcLayers[key] = circles;
+}
+
+
+// Reads global "catname", name of catalog sources to load.
+// and 'sourcesMinZoom'
+function doLoadTile(tile, catalog, ngc) {
+    if (!(catalog || ngc)) {
+	return;
+    }
+    //console.log('doLoadtile: ' + tile);
+
     s = getSubdomain(tile.tilex, tile.tiley);
-    caturl = L.Util.template('{{ caturl|safe }}', L.extend({
-        s: s,
-        z: tile.z,
-        x: tile.tilex,
-        y: tile.tiley,
-        id: catname,
-        ver: getcatversion(catname),
-    }));
-    console.log('Loading catalog version ' + catname);
-    $.getJSON(caturl, catLoaded);
+    if (catalog && (tile.z >= sourcesMinZoom)) {
+	caturl = L.Util.template('{{ caturl|safe }}', L.extend({
+            s: s,
+            z: tile.z,
+            x: tile.tilex,
+            y: tile.tiley,
+            id: catname,
+            ver: getcatversion(catname),
+	}));
+	console.log('Loading catalog version ' + catname);
+	$.getJSON(caturl, catLoaded);
+    }
+    if (ngc) {
+	url = L.Util.template('{{ caturl|safe }}', L.extend({
+            s: s,
+            z: tile.z,
+            x: tile.tilex,
+            y: tile.tiley,
+            id: 'ngc',
+            ver: getcatversion('ngc'),
+	}));
+	$.getJSON(url, ngcLoaded);
+    }
 }
 
 function onTileLoadStart(e) {
@@ -378,24 +439,31 @@ function onTileLoadStart(e) {
     }
     visibleTiles[key] = tile;
     //console.log('onTileLoadStart: ' + key);
-    if (!showSources) {
-        return;
-    }
-    doLoadTile(tile);
+    doLoadTile(tile, showSources, showNgc);
 }
 
 function doUnloadTile(key) {
     console.log('doUnloadTile: ' + key);
-    circles = catLayers[key];
-
-    if (typeof(circles) == 'undefined') {
-      console.log('doUnloadTile on a tile with no catalog; whatevs');
-      return;
+    if (!showSources) {
+	circles = catLayers[key];
+	if (typeof(circles) == 'undefined') {
+	    console.log('doUnloadTile on a tile with no catalog; whatevs');
+	} else {
+	    sourcesGroup.removeLayer(circles);
+	    delete catLayers[key];
+	    console.log('remaining catalog layers: ' + getkeys(catLayers));
+	}
     }
-
-    sourcesGroup.removeLayer(circles);
-    delete catLayers[key];
-    console.log('remaining catalog layers: ' + getkeys(catLayers));
+    if (!showNgc) {
+	circles = ngcLayers[key];
+	if (typeof(circles) == 'undefined') {
+	    console.log('doUnloadTile on a tile with no NGC; whatevs');
+	} else {
+	    ngcGroup.removeLayer(circles);
+	    delete ngcLayers[key];
+	    console.log('remaining NGC layers: ' + getkeys(ngcLayers));
+	}
+    }
 }
 
 function removeAllCatalogLayers() {
@@ -562,14 +630,25 @@ function inbrickccdUpdate(props) {
 // "Sources", "Bricks", "CCDs" button checked
 function overlayAdded(e) {
     //console.log('OverlayAdded: ' + e.name);
+    cat = false;
+    ngc = false
     if (e.name == 'Sources') {
         showSources = true;
+        cat = true;
+    }
+    if (e.name == 'NGC') {
+        showNgc = true;
+        ngc = true;
+    }
+
+    if (cat || ngc) {
         // request catalogs for currently-visible tiles
         //console.log('Visible tiles: ' + visibleTiles);
         for (var i in visibleTiles) {
-            doLoadTile(visibleTiles[i]);
+            doLoadTile(visibleTiles[i], cat, ngc);
         }
     }
+
     if (e.name == 'Bricks') {
         showBricks = true;
         mapBoundsChanged();
@@ -591,13 +670,22 @@ function overlayAdded(e) {
 // "Sources", "Bricks", "CCDs" button unchecked
 function overlayRemoved(e) {
     //console.log('OverlayRemoved: ' + e.name);
+    unload = false;
     if (e.name == 'Sources') {
         showSources = false;
+	unload = true;
+    }
+    if (e.name == 'NGC') {
+        showNgc = false;
+	unload = true;
+    }
+    if (unload) {
         // remove all catalogs
         for (var i in visibleTiles) {
             doUnloadTile(i);
         }
     }
+
     if (e.name == 'Bricks') {
         showBricks = false;
         for (var i in currentBricks) {
@@ -775,6 +863,10 @@ var switchingSources = false;
 var sourcesGroup = L.layerGroup([]);
 var catLayers = {};
 var visibleTiles = {};
+
+var showNgc = false;
+var ngcGroup = L.layerGroup([]);
+var ngcLayers = {};
 
 var showBricks = false;
 var bricksGroup = L.layerGroup([]);
@@ -1119,6 +1211,7 @@ var overlayMaps = {
     "Sources": sourcesGroup,
     "Bricks": bricksGroup,
     "CCDs": ccdsGroup,
+    "NGC": ngcGroup,
 };
 
 new MyLayerControl(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
