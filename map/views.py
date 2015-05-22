@@ -245,8 +245,8 @@ def get_tile_wcs(zoom, x, y):
     ry = ry * H
     wcs = anwcs_create_mercator_2(180., 0., rx, ry,
                                   zoomscale, W, H, 1)
-
-    wcs = MercWCSWrapper(wcs, 2**zoom * W)
+    if wcs is not None:
+        wcs = MercWCSWrapper(wcs, 2**zoom * W)
 
     return wcs, W, H, zoomscale, zoom,x,y
 
@@ -1177,8 +1177,10 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
 
     rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
     rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
-    r,dlo = wcs.pixelxy2radec(W/2, 1)[-2:]
-    r,dhi = wcs.pixelxy2radec(W/2, H)[-2:]
+    r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
+    r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
+    dlo = min(d1, d2)
+    dhi = max(d1, d2)
     I = D.bricks_touching_radec_box(B, rlo, rhi, dlo, dhi)
     print len(I), 'bricks touching zoom', zoom, 'x,y', x,y, 'RA', rlo,rhi, 'Dec', dlo,dhi
     rimgs = []
