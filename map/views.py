@@ -312,7 +312,13 @@ rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 rgbkwargs_nexp = dict(mnmx=(0,25), arcsinh=1.,
                       scales=dict(g=(2,1),r=(1,1),z=(0,1)))
 
+def jpeg_cutout_decals_dr1j(req):
+    return cutout_decals_dr1j(req, jpeg=True)
+
 def fits_cutout_decals_dr1j(req):
+    return cutout_decals_dr1j(req, fits=True)
+
+def cutout_decals_dr1j(req, jpeg=False, fits=False):
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
     pixscale = float(req.GET.get('pixscale', 0.262))
@@ -341,10 +347,14 @@ def fits_cutout_decals_dr1j(req):
 
     ver = 1
 
-    ims = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts', 'decals-dr1j',
+    rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts', 'decals-dr1j',
                           wcs=wcs,
                           imagetag='image', rgbkwargs=rgbkwargs,
-                          savecache=False, get_images=True)
+                          savecache=False, get_images=fits,
+                          filename='cutout_%.4f_%.4f.fits' % (ra,dec))
+    if jpeg:
+        return rtn
+    ims = rtn
 
     hdr = fitsio.FITSHDR()
     hdr['SURVEY'] = 'DECaLS'
@@ -1092,7 +1102,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     savecache = True, forcecache = False,
                     return_if_not_found=False, model_gz=False,
                     modeldir=None, scaledir=None, get_images=False,
-                    ignoreCached=False, add_gz=False,
+                    ignoreCached=False, add_gz=False, filename=None
                     ):
     from decals import settings
 
@@ -1113,7 +1123,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     if os.path.exists(tilefn) and not ignoreCached:
         # print 'Cached:', tilefn
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
-                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
+                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
+                         filename=filename)
     else:
         print 'Tile image does not exist:', tilefn
     from astrometry.util.resample import resample_with_wcs, OverlapError
@@ -1315,12 +1326,12 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
 
     rgb = get_rgb(rimgs, bands, **rgbkwargs)
 
-    trymakedirs(tilefn)
-
     if forcecache:
         savecache = True
 
-    if not savecache:
+    if savecache:
+        trymakedirs(tilefn)
+    else:
         import tempfile
         f,tilefn = tempfile.mkstemp(suffix='.jpg')
         os.close(f)
@@ -1328,10 +1339,9 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     #import matplotlib
     #matplotlib.use('Agg')
     import pylab as plt
-    #plt.imsave(tilefn, rgb)
 
     # no jpeg output support in matplotlib in some installations...
-    if True:
+    if False:
         import tempfile
         f,tempfn = tempfile.mkstemp(suffix='.png')
         os.close(f)
@@ -1340,8 +1350,11 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         os.system(cmd)
         os.unlink(tempfn)
         print 'Wrote', tilefn
+    else:
+        plt.imsave(tilefn, rgb)
 
-    return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
+    return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
+                     filename=filename)
 
 
 
