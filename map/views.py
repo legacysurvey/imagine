@@ -350,8 +350,8 @@ def cutout_decals_dr1j(req, jpeg=False, fits=False):
     rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts', 'decals-dr1j',
                           wcs=wcs,
                           imagetag='image', rgbkwargs=rgbkwargs,
-                          savecache=False, get_images=fits,
-                          filename='cutout_%.4f_%.4f.fits' % (ra,dec))
+                          savecache=False, get_images=fits)
+    #filename='cutout_%.4f_%.4f.jpg' % (ra,dec))
     if jpeg:
         return rtn
     ims = rtn
@@ -1142,13 +1142,6 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         W = wcs.get_width()
         H = wcs.get_height()
 
-    r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
-                            [1,H/2,H,H,H,H/2,1,1])[-2:]
-    # print 'RA,Dec corners', r,d
-    # print 'RA range', r.min(), r.max()
-    # print 'Dec range', d.min(), d.max()
-    # print 'Zoom', zoom, 'pixel scale', wcs.pixel_scale()
-
     basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
                            '%(brickname)s',
                            'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
@@ -1181,8 +1174,13 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         B = D.get_bricks_readonly()
     else:
         B = bricks
-    I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
-    print len(I), 'bricks touching zoom', zoom, 'x,y', x,y
+
+    rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
+    rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
+    r,dlo = wcs.pixelxy2radec(W/2, 1)[-2:]
+    r,dhi = wcs.pixelxy2radec(W/2, H)[-2:]
+    I = D.bricks_touching_radec_box(B, rlo, rhi, dlo, dhi)
+    print len(I), 'bricks touching zoom', zoom, 'x,y', x,y, 'RA', rlo,rhi, 'Dec', dlo,dhi
     rimgs = []
 
     if len(I) == 0:
@@ -1196,6 +1194,9 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             os.symlink(src, tilefn)
             print 'Symlinked', tilefn, '->', src
         return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
+
+    r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
+                            [1,H/2,H,H,H,H/2,1,1])[-2:]
 
     foundany = False
     for band in bands:
