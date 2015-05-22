@@ -339,8 +339,12 @@ def cutout_decals_dr1j(req, jpeg=False, fits=False):
     import tempfile
 
     ps = pixscale / 3600.
+    raps = -ps
+    decps = ps
+    if jpeg:
+        decps *= -1.
     wcs = Tan(*[float(x) for x in [ra, dec, (width+1)/2., (height+1)/2.,
-                                   -ps, 0., 0., ps, width, height]])
+                                   raps, 0., 0., decps, width, height]])
 
     zoom = 14 - int(np.round(np.log2(pixscale / 0.262)))
     zoom = max(0, min(zoom, 16))
