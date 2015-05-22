@@ -432,7 +432,7 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
         from astrometry.util.fits import fits_table
         import numpy as np
 
-        B_dr1j = fits_table(os.path.join(settings.WEB_DIR, 'decals-dr1',
+        B_dr1j = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1',
                                          'decals-bricks-exist.fits'))
         B_dr1j.cut(reduce(np.logical_or, [B_dr1j.has_image_g,
                                           B_dr1j.has_image_r,
