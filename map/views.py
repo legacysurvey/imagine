@@ -24,6 +24,8 @@ tileversions = {
     'unwise-w1w2': [1],
     'unwise-w3w4': [1],
     'unwise-w1234': [1],
+
+    'cutouts': [1],
     }
 
 catversions = {
@@ -112,7 +114,8 @@ def ra2long(ra):
     lng -= 360 * (lng > 360.)
     return lng
 
-def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
+def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
+              filename=None):
     import datetime
     '''
     modsince: If-Modified-Since header string from the client.
@@ -137,6 +140,8 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600):
     res = StreamingHttpResponse(f, content_type=content_type)
     # res['Cache-Control'] = 'public, max-age=31536000'
     res['Content-Length'] = st.st_size
+    if filename is not None:
+        res['Content-Disposition'] = 'attachment; filename="%s"' % filename
     # expires in an hour?
     now = datetime.datetime.utcnow()
     then = now + datetime.timedelta(0, expires, 0)
@@ -212,6 +217,7 @@ def index(req):
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
                        showSources='sources' in req.GET,
+                       showNgc='ngc' in req.GET,
                        showBricks='bricks' in req.GET,
                        showCcds='ccds' in req.GET,
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
@@ -305,6 +311,65 @@ rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
 rgbkwargs_nexp = dict(mnmx=(0,25), arcsinh=1.,
                       scales=dict(g=(2,1),r=(1,1),z=(0,1)))
+
+def fits_cutout_decals_dr1j(req):
+    ra  = float(req.GET['ra'])
+    dec = float(req.GET['dec'])
+    pixscale = float(req.GET.get('pixscale', 0.262))
+    maxsize = 512
+    size   = min(int(req.GET.get('size',    256)), maxsize)
+    width  = min(int(req.GET.get('width',  size)), maxsize)
+    height = min(int(req.GET.get('height', size)), maxsize)
+
+    bands = req.GET.get('bands', 'grz')
+    bands = [b for b in 'grz' if b in bands]
+    #bands = [b for b in bands if b in 'grz']
+    # no repeats
+    #bands = [b for i,b in enumerate(bands) if not b in bands[:i]]
+
+    from astrometry.util.util import Tan
+    import numpy as np
+    import fitsio
+    import tempfile
+
+    ps = pixscale / 3600.
+    wcs = Tan(*[float(x) for x in [ra, dec, (width+1)/2., (height+1)/2.,
+                                   -ps, 0., 0., ps, width, height]])
+
+    zoom = 14 - int(np.round(np.log2(pixscale / 0.262)))
+    zoom = max(0, min(zoom, 16))
+
+    ver = 1
+
+    ims = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts', 'decals-dr1j',
+                          wcs=wcs,
+                          imagetag='image', rgbkwargs=rgbkwargs,
+                          savecache=False, get_images=True)
+
+    hdr = fitsio.FITSHDR()
+    hdr['SURVEY'] = 'DECaLS'
+    hdr['VERSION'] = 'DR1'
+    hdr['BANDS'] = ''.join(bands)
+    for i,b in enumerate(bands):
+        hdr['BAND%i' % i] = b
+    wcs.add_to_header(hdr)
+
+    f,tmpfn = tempfile.mkstemp(suffix='.fits')
+    os.close(f)
+    os.unlink(tmpfn)
+
+    if len(bands) > 1:
+        cube = np.empty((len(bands), height, width), np.float32)
+        for i,im in enumerate(ims):
+            cube[i,:,:] = im
+    else:
+        cube = ims[0]
+    del ims
+    fitsio.write(tmpfn, cube, clobber=True,
+                 header=hdr)
+    
+    return send_file(tmpfn, 'image/fits', unlink=True, filename='cutout_%.4f_%.4f.fits' % (ra,dec))
+
 
 B_dr1j_edr = None
 
@@ -1021,6 +1086,7 @@ def _get_decals_cat(wcs, tag='decals'):
     return cat,hdr
 
 def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
+                    wcs=None,
                     imagetag='image2', rgbkwargs={},
                     bricks=None,
                     savecache = True, forcecache = False,
@@ -1056,13 +1122,17 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     import numpy as np
     import fitsio
 
-    try:
-        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-    except RuntimeError as e:
-        return HttpResponse(e.strerror)
+    if wcs is None:
+        try:
+            wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
+        except RuntimeError as e:
+            return HttpResponse(e.strerror)
+    else:
+        W = wcs.get_width()
+        H = wcs.get_height()
 
-    ok,r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
-                               [1,H/2,H,H,H,H/2,1,1])
+    r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
+                            [1,H/2,H,H,H,H/2,1,1])[-2:]
     # print 'RA,Dec corners', r,d
     # print 'RA range', r.min(), r.max()
     # print 'Dec range', d.min(), d.max()
@@ -1079,10 +1149,10 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         modbasepat = basepat
     if model_gz and imagetag == 'model':
         modbasepat += '.gz'
-    print 'add_gz:', add_gz
+    #print 'add_gz:', add_gz
     if add_gz:
         basepat += '.gz'
-    print 'basepat:', basepat
+    #print 'basepat:', basepat
 
     scaled = 0
     scalepat = None

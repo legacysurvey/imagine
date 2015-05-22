@@ -1447,6 +1447,13 @@ map.addLayer(sourcesGroup);
 showSoures = true;
 {% endif %}
 
+{% if showNgc %}
+map.addLayer(ngcGroup);
+// If you do this, you get double-adding!
+//overlayAdded({name:'Sources'});
+showNgc = true;
+{% endif %}
+
 
 </script>
 </body>
