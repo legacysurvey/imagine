@@ -1055,6 +1055,32 @@ allLayers.push({name:id, tiles:tilesNexpDr1j, pretty:"DECaLS DR1 # exposures", c
 {% endif %}
 
 
+{% if layer == 'decals-dr1k' %}
+id = 'decals-dr1k'
+catname = 'decals-dr1k';
+
+boundsCosmos = L.latLngBounds(L.latLng(dec2lat(0.9), ra2long(152.0)),
+			      L.latLng(dec2lat(3.6), ra2long(148.0)));
+// Use the static URL until zoom level 14, then the dynamic URL.
+tilesDr1k = new ZoomRangeTileLayer(static_tile_url, {
+    maxZoom: maxZoom,
+    maxNativeZoom: {{ maxNativeZoom }},
+    minZoom: minZoom,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
+    bounds: boundsCosmos,
+  });
+
+tilesDr1k.catname = catname;
+allLayers.push({name:id, tiles:tilesDr1k, pretty:"DECALS DR1k (COSMOS) images", catname:catname});
+{% endif %}
+
+
+
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
 
