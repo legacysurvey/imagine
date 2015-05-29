@@ -195,7 +195,7 @@ def index(req):
 
     static_tile_url = settings.STATIC_TILE_URL
 
-    bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}'
+    bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}&id={id}'
     ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}'
 
     # HACK
@@ -397,7 +397,7 @@ def map_decals_dr1k(req, ver, zoom, x, y, savecache=None,
         from astrometry.util.fits import fits_table
         import numpy as np
 
-        B_dr1k = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1',
+        B_dr1k = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
                                          'decals-bricks-exist.fits'))
         B_dr1k.cut((B_dr1k.ra > 148.7) * (B_dr1k.ra < 151.5) *
                    (B_dr1k.dec > 0.9)  * (B_dr1k.dec < 3.6))
@@ -852,8 +852,19 @@ def brick_list(req):
         east += 360.
         west += 360.
 
+
+    B = None
+
+    name = req.GET.get('id', None)
+    if name == 'decals-dr1k':
+        from astrometry.util.fits import fits_table
+        B = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
+                                    'decals-bricks.fits'))
+
     D = _get_decals()
-    B = D.get_bricks_readonly()
+    if B is None:
+        B = D.get_bricks_readonly()
+
     I = D.bricks_touching_radec_box(B, east, west, south, north)
     # HACK -- limit result size...
     if len(I) > 10000:
