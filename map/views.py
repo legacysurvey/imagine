@@ -12,9 +12,6 @@ matplotlib.use('Agg')
 
 tileversions = {
     'sfd': [1,],
-    'decals-dr1j-edr': [1],
-    'decals-model-dr1j-edr': [1],
-    'decals-resid-dr1j-edr': [1],
 
     'decals-dr1j': [1],
     'decals-model-dr1j': [1],
@@ -384,46 +381,6 @@ def cutout_decals_dr1j(req, jpeg=False, fits=False):
                  header=hdr)
     
     return send_file(tmpfn, 'image/fits', unlink=True, filename='cutout_%.4f_%.4f.fits' % (ra,dec))
-
-
-B_dr1j_edr = None
-
-def map_decals_dr1j_edr(req, ver, zoom, x, y, savecache=False,
-                    model=False, resid=False,
-                    **kwargs):
-    global B_dr1j_edr
-    if B_dr1j_edr is None:
-        from decals import settings
-        from astrometry.util.fits import fits_table
-        B_dr1j_edr = fits_table(os.path.join(settings.WEB_DIR, 'decals-bricks-in-edr.fits'))
-        #B_dr1j_edr.cut(B_dr1d.exists)
-
-    imagetag = 'image'
-    tag = 'decals-dr1j-edr'
-    imagedir = 'decals-dr1j'
-    if model:
-        imagetag = 'model'
-        tag = 'decals-model-dr1j-edr'
-        imagedir = 'decals-dr1j-model'
-        scaledir = 'decals-dr1j'
-        kwargs.update(model_gz=False, scaledir=scaledir)
-    if resid:
-        imagetag = 'resid'
-        kwargs.update(modeldir = 'decals-dr1j-model')
-        tag = 'decals-resid-dr1j-edr'
-
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
-                           imagetag=imagetag,
-                           rgbkwargs=rgbkwargs,
-                           bricks=B_dr1j_edr,
-                           savecache=savecache, **kwargs)
-
-def map_decals_model_dr1j_edr(*args, **kwargs):
-    return map_decals_dr1j_edr(*args, model=True, model_gz=False, **kwargs)
-
-def map_decals_resid_dr1j_edr(*args, **kwargs):
-    return map_decals_dr1j_edr(*args, resid=True, model_gz=False, **kwargs)
-
 
 B_dr1j = None
 

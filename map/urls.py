@@ -1,11 +1,6 @@
 from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns('map.views',
-    # DR1j, EDR region
-    url(r'^decals-dr1j-edr/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1j_edr'),
-    url(r'^decals-model-dr1j-edr/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_dr1j_edr'),
-    url(r'^decals-resid-dr1j-edr/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_resid_dr1j_edr'),
-
     # DR1j full
     url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1j'),
     url(r'^decals-model-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_dr1j'),
