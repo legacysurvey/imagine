@@ -283,6 +283,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         #print 'im', im.shape
         # bin
         I2 = (im[::2,::2] + im[1::2,::2] + im[1::2,1::2] + im[::2,1::2])/4.
+        I2 = I2.astype(np.float32)
         #print 'I2:', I2.shape
         # shrink WCS too
         wcs = _read_tan_wcs(sourcefn, 0, hdr=hdr, W=W, H=H)
