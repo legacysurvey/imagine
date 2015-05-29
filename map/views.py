@@ -402,13 +402,20 @@ def map_decals_dr1k(req, ver, zoom, x, y, savecache=None,
                                          'decals-bricks-exist.fits'))
         B_dr1k.cut((B_dr1k.ra > 148.7) * (B_dr1k.ra < 151.5) *
                    (B_dr1k.dec > 0.9)  * (B_dr1k.dec < 3.6))
-        B_dr1k.cut(reduce(np.logical_or, [B_dr1k.has_image_g,
-                                          B_dr1k.has_image_r,
-                                          B_dr1k.has_image_z]))
-        B_dr1k.has_g = B_dr1k.has_image_g
-        B_dr1k.has_r = B_dr1k.has_image_r
-        B_dr1k.has_z = B_dr1k.has_image_z
-        print len(B_dr1k), 'bricks with images'
+        # B_dr1k.cut(reduce(np.logical_or, [B_dr1k.has_image_g,
+        #                                   B_dr1k.has_image_r,
+        #                                   B_dr1k.has_image_z]))
+        # B_dr1k.has_g = B_dr1k.has_image_g
+        # B_dr1k.has_r = B_dr1k.has_image_r
+        # B_dr1k.has_z = B_dr1k.has_image_z
+        print len(B_dr1k), 'bricks in COSMOS region'
+        print sum(B_dr1k.has_g), 'with g'
+        print sum(B_dr1k.has_r), 'with r'
+        print sum(B_dr1k.has_z), 'with z'
+        B_dr1k.cut(reduce(np.logical_or, [B_dr1k.has_g > 0,
+                                          B_dr1k.has_r > 0,
+                                          B_dr1k.has_z > 0]))
+        print len(B_dr1k), 'bricks with coverage'
 
     imagetag = 'image'
     tag = 'decals-dr1k'
@@ -1151,7 +1158,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
     if os.path.exists(tilefn) and not ignoreCached:
-        # print 'Cached:', tilefn
+        print 'Cached:', tilefn
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
                          filename=filename)
@@ -1223,6 +1230,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             # create symlink to blank.jpg!
             trymakedirs(tilefn)
             src = os.path.join(settings.STATIC_ROOT, 'blank.jpg')
+            if os.path.exists(tilefn):
+                os.unlink(tilefn)
             os.symlink(src, tilefn)
             print 'Symlinked', tilefn, '->', src
         return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
@@ -1385,6 +1394,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         print 'Wrote', tilefn
     else:
         plt.imsave(tilefn, rgb)
+        print 'Wrote', tilefn
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
                      filename=filename)

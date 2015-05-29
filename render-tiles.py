@@ -25,10 +25,11 @@ req.META = dict(HTTP_IF_MODIFIED_SINCE=None)
 version = 1
 
 def _one_tile((kind, zoom, x, y, ignore)):
+    kwargs = dict(ignoreCached=ignore)
     # forcecache=False, return_if_not_found=True)
     if kind == 'image-dr1k':
         map_decals_dr1k(req, version, zoom, x, y, savecache=True, 
-                        forcecache=False, return_if_not_found=True)
+                        forcecache=True, return_if_not_found=False, **kwargs)
     elif kind == 'image':
         map_decals_dr1j(req, version, zoom, x, y, savecache=True, 
                         forcecache=False, return_if_not_found=True)
@@ -55,6 +56,12 @@ def _bounce_map_unwise_w3w4(args):
 def _bounce_map_decals((args,kwargs)):
     print 'Bounce_map_decals:', args
     X = map_decals_dr1j(*args, ignoreCached=True, get_images=True, **kwargs)
+    print 'Returning: type', type(X), X
+    return X
+
+def _bounce_map_decals_dr1k((args,kwargs)):
+    print 'Bounce_map_decals_dr1k:', args
+    X = map_decals_dr1k(*args, ignoreCached=True, get_images=True, **kwargs)
     print 'Returning: type', type(X), X
     return X
 
@@ -255,6 +262,10 @@ def main():
             tag = tagdict[opt.kind]
             del tagdict
 
+            bounce = _bounce_map_decals
+            if 'dr1k' in opt.kind:
+                bounce = _bounce_map_decals_dr1k
+
             ver = 1
             basescale = 5
 
@@ -285,7 +296,7 @@ def main():
                     for x in range(tiles):
                         args.append(((req, ver, basescale, x, y),kwa))
                         xy.append((x,y))
-                tiles = mp.map(_bounce_map_decals, args)
+                tiles = mp.map(bounce, args)
                 for ims,(x,y) in zip(tiles, xy):
                     if ims is None:
                         continue
