@@ -26,7 +26,7 @@ version = 1
 
 def _one_tile((kind, zoom, x, y, ignore)):
     # forcecache=False, return_if_not_found=True)
-    if kind == 'image-cosmos':
+    if kind == 'image-dr1k':
         map_decals_dr1k(req, version, zoom, x, y, savecache=True, 
                         forcecache=False, return_if_not_found=True)
     elif kind == 'image':
@@ -239,7 +239,7 @@ def main():
 
 
         ### HACK... factor this out...
-        if opt.kind in ['image', 'model', 'resid', 'image-cosmos']:
+        if opt.kind in ['image', 'model', 'resid', 'image-dr1k']:
             import pylab as plt
             from decals import settings
             from desi.common import get_rgb
@@ -251,7 +251,7 @@ def main():
 
             tagdict = dict(image='decals-dr1j', model='decals-model-dr1j',
                            resid='decals-resid-dr1j')
-            tagdict['image-cosmos'] = 'decals-dr1k'
+            tagdict['image-dr1k'] = 'decals-dr1k'
             tag = tagdict[opt.kind]
             del tagdict
 

@@ -13,6 +13,8 @@ matplotlib.use('Agg')
 tileversions = {
     'sfd': [1,],
 
+    'decals-dr1k': [1],
+
     'decals-dr1j': [1],
     'decals-model-dr1j': [1],
     'decals-resid-dr1j': [1],
@@ -381,6 +383,58 @@ def cutout_decals_dr1j(req, jpeg=False, fits=False):
                  header=hdr)
     
     return send_file(tmpfn, 'image/fits', unlink=True, filename='cutout_%.4f_%.4f.fits' % (ra,dec))
+
+
+B_dr1k = None
+
+def map_decals_dr1k(req, ver, zoom, x, y, savecache=None,
+                    model=False, resid=False, nexp=False,
+                    **kwargs):
+    if savecache is None:
+        savecache = settings.SAVE_CACHE
+    global B_dr1k
+    if B_dr1k is None:
+        from astrometry.util.fits import fits_table
+        import numpy as np
+
+        B_dr1k = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1',
+                                         'decals-bricks-exist.fits'))
+        B_dr1k.cut((B_dr1k.ra > 148.7) * (B_dr1k.ra < 151.5) *
+                   (B_dr1k.dec > 0.9)  * (B_dr1k.dec < 3.6))
+        B_dr1k.cut(reduce(np.logical_or, [B_dr1k.has_image_g,
+                                          B_dr1k.has_image_r,
+                                          B_dr1k.has_image_z]))
+        B_dr1k.has_g = B_dr1k.has_image_g
+        B_dr1k.has_r = B_dr1k.has_image_r
+        B_dr1k.has_z = B_dr1k.has_image_z
+        print len(B_dr1k), 'bricks with images'
+
+    imagetag = 'image'
+    tag = 'decals-dr1k'
+    imagedir = 'decals-dr1k'
+    rgb = rgbkwargs
+    if model:
+        imagetag = 'model'
+        tag = 'decals-model-dr1k'
+        scaledir = 'decals-dr1k'
+        kwargs.update(model_gz=False, add_gz=True, scaledir=scaledir)
+    if resid:
+        imagetag = 'resid'
+        kwargs.update(modeldir = 'decals-dr1k-model')
+        tag = 'decals-resid-dr1k'
+    if nexp:
+        imagetag = 'nexp'
+        tag = 'decals-nexp-dr1k'
+        rgb = rgbkwargs_nexp
+
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
+                           imagetag=imagetag,
+                           rgbkwargs=rgb,
+                           bricks=B_dr1k,
+                           savecache=savecache, **kwargs)
+
+
+
 
 B_dr1j = None
 

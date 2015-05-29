@@ -1,6 +1,9 @@
 from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns('map.views',
+    # DR1k -- COSMOS
+    url(r'^decals-dr1k/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1k'),
+
     # DR1j full
     url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1j'),
     url(r'^decals-model-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_model_dr1j'),
