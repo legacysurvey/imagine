@@ -221,6 +221,7 @@ def index(req):
                        showBricks='bricks' in req.GET,
                        showCcds='ccds' in req.GET,
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
+                       enable_nexp = settings.ENABLE_NEXP,
                        ))
 
 def get_tile_wcs(zoom, x, y):
@@ -449,12 +450,14 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
     imagetag = 'image'
     tag = 'decals-dr1j'
     imagedir = 'decals-dr1j'
+    rgb = rgbkwargs
     if model:
         imagetag = 'model'
         tag = 'decals-model-dr1j'
-        imagedir = 'decals-dr1j-model'
+        #imagedir = 'decals-dr1j-model'
         scaledir = 'decals-dr1j'
-        kwargs.update(model_gz=False, scaledir=scaledir)
+        kwargs.update(model_gz=False, add_gz=True, scaledir=scaledir)
+        #kwargs.update(model_gz=True, scaledir=scaledir)
     if resid:
         imagetag = 'resid'
         kwargs.update(modeldir = 'decals-dr1j-model')
@@ -462,11 +465,11 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
     if nexp:
         imagetag = 'nexp'
         tag = 'decals-nexp-dr1j'
-        rgbkwargs = rgbkwargs_nexp
+        rgb = rgbkwargs_nexp
 
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
                            imagetag=imagetag,
-                           rgbkwargs=rgbkwargs,
+                           rgbkwargs=rgb,
                            bricks=B_dr1j,
                            savecache=savecache, **kwargs)
 

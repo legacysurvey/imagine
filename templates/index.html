@@ -1036,7 +1036,7 @@ tilesResidDr1j = new ZoomRangeTileLayer(static_tile_url, {
 tilesResidDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", catname:catname});
 
-
+{% if enable_nexp %}
 id = 'decals-nexp-dr1j'
 //tilesNexpDr1j = new ZoomRangeTileLayer(static_tile_url, {
 tilesNexpDr1j = new MyTileLayer('{{tileurl|safe}}', {
@@ -1050,10 +1050,9 @@ tilesNexpDr1j = new MyTileLayer('{{tileurl|safe}}', {
     subdomains: subdomains,
     //urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
-
 tilesNexpDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesNexpDr1j, pretty:"DECaLS DR1 # exposures", catname:catname});
-
+{% endif %}
 
 
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
