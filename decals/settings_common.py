@@ -10,6 +10,8 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 
 MAX_NATIVE_ZOOM = 15
 
+ENABLE_NEXP = True
+
 # Tile cache is writable?
 SAVE_CACHE = False
 
@@ -17,11 +19,12 @@ ROOT_URL = '/viewer'
 HOSTNAME = 'legacysurvey.org'
 SUBDOMAINS = ['a','b','c','d']
 
-STATIC_URL = 'http://%s%s/static/' % (HOSTNAME, ROOT_URL)
+STATIC_URL_PATH = '/static/'
+STATIC_URL = 'http://%s%s%s' % (HOSTNAME, ROOT_URL, STATIC_URL_PATH)
 
 TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
-STATIC_TILE_URL = 'http://{s}.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+STATIC_TILE_URL = 'http://{s}.%s%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL, STATIC_URL_PATH)
 
 CAT_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
 
