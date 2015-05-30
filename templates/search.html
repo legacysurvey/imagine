@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block header %}
+<script src="/static/jquery-2.1.1.min.js"></script>
+
+<style type="text/css">
+body{
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 16px;
+}
+#search_form{
+    width: 50%;
+    margin: 20px auto;
+}
+#where_info{
+    background-color: rgb(240,240,255);
+    border-radius: 1px;
+    box-shadow: none;
+    padding: 10px;
+}
+#fields{
+    -webkit-column-count: 3;
+    -moz-column-count: 3;
+    column-count: 3;
+}
+button#start{
+    padding: 20px 40px;
+    background-color: rgb(150,150,255);
+    color: rgb(255,255,255);
+    border: 0;
+    border-radius: 10px;
+    margin: 20px 0;
+    font-size: 16px;
+}
+</style>
+
+{% endblock %}
+
+{% block body %}
+<div id="search_form">
+    <h1>COSMO FITS File Retrieval</h1>
+    <p>Enter a search query to retrieve a single FITS file containing a table for each hit (up to 100).</p>
+<p>Search the data for any of the following fields.</p>
+<ul id="fields">
+    <li>candidate.id</li>
+    <li>decam.cand_id</li>
+    <li>wise.cand_id</li>
+    <li>brickid</li>
+    <li>objid</li>
+    <li>type</li>
+    <li>ra</li>
+    <li>dec</li>
+    <li>uflux</li>
+    <li>gflux</li>
+    <li>rflux</li>
+    <li>iflux</li>
+    <li>zflux</li>
+    <li>yflux</li>
+    <li>uflux_ivar</li>
+    <li>gflux_ivar</li>
+    <li>rflux_ivar</li>
+    <li>iflux_ivar</li>
+    <li>zflux_ivar</li>
+    <li>yflux_ivar</li>
+    <li>u_anymask</li>
+    <li>g_anymask</li>
+    <li>r_anymask</li>
+    <li>i_anymask</li>
+    <li>z_anymask</li>
+    <li>y_anymask</li>
+    <li>w1flux</li>
+    <li>w2flux</li>
+    <li>w3flux</li>
+    <li>w4flux</li>
+</ul>
+<p>You can search attributes with SQURL syntax. SQURL works like SQL with spaces turned into forward slashes (/). Enter a string like <br /><code>candidate.id/EQ/100</code></p>
+<p>You can search with q3c queries as well. Enter a string of the form <br /><code>q3c_ellipse_query(ra,dec,10,20,1,0.5,10)</code></p>
+<form id="searchform" action="api/search" method="GET">
+    <textarea id="where_info" cols="80"></textarea></br />
+    <button id="start" onclick="submit_search(); return false;"><span id="searchtext">Search</span></button>
+</form>
+</div>
+
+<script>
+    function submit_search(){
+        var where_clause = $('#where_info').val();
+        var get = "http://" + location.host + "/api/search/default/" + where_clause;
+        window.open(get);
+    }
+</script>
+</body>
+{% endblock %}

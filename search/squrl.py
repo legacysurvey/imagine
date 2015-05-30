@@ -1,8 +1,8 @@
 """
 squrl.py
 This python module enables parsing of requests in SQURL, an SQL URL. It handles the conversion of the SQURL query portion of a URL to an SQL query
-Version 0.4
-Annette Greiner, NERSC DAS, 3/30/15
+Version 0.5
+Annette Greiner, NERSC DAS, 5/22/15
 ========
 Suppose your web app receives a request for http://mydomain.com/api/uri_fragment
 This module handles a uri_fragment, of the form
@@ -14,6 +14,7 @@ OP (operation) can be DIV, TIMES, PLUS, or MINUS
 CONJ (conjunction) can be AND or OR
 PRED (predicate) can be EQ, NEQ, LT, LTE, GT, GTE, LIKE, NOTLIKE, ISNULL, or ISNOTNULL
 Parentheses can be used at the beginning or end of a value to control the order of operations.
+The mytable parameter can also be shorthand for a complex SQL FROM clause, if the clause is entered into the config_queries dict
 
 e.g.
 Candidate/DECAM_FLUX.2/GT/0.631
@@ -24,148 +25,225 @@ Candidate/DECAM_FLUX.2/DIV/DECAM_MW_TRANSMISSION.2/GT/0.631/AND/DECAM_FLUX.4/DIV
 becomes
 SELECT * FROM candidate WHERE DECAM_FLUX[2] / DECAM_MW_TRANSMISSION[2] > 0.631 AND DECAM_FLUX[4] / DECAM_MW_TRANSMISSION[4] > DECAM_FLUX[2] / DECAM_MW_TRANSMISSION[2] * 4.365
 
-To use SQURL, you'll need to configure the tables that users can query and the limit on rows returned, below
+To use SQURL, you'll need to configure the tables that users can query and the limit on rows returned, below.
 """
 
-import re
-import custom_check
+import re, sys
+import custom_check # uncomment to add your own custom statement check.
 
-# Basic configuration: in the columns dict below, enter the name of each table that you want to allow queries against as a key, 
-# then for each table, enter a list of the columns you want to be queriable as its value.
+# ---------------- Basic configuration -----------------
+# in the 'config_queries' dict below, enter the name of each table that you want to allow queries against as a key, 
+# then for each table, 
+#   enter a from_clause if you want to specify that portion of the SQL in advance (good for complex queries, such as joins).
+#   enter fields as a python list of the columns you want to be queriable. 
+#   for db tables that contain arrays, list them under the 'arrays' key. For each, enter a dict with column names as keys and max array indices as values.
 
-# problem: these need to be a list to get ordering
-config_columns = {
-    'candidate': [
-        'brickid',
-        'objid',
-        'blob',
-        'type',
-        'ra',
-        'ra_ivar',
-        'dec',
-        'dec_ivar',
-        'bx',
-        'by',
-        'bx0',
-        'by0',
-        'ebv',
-        'dchisq1',
-        'dchisq2',
-        'dchisq3',
-        'dchisq4',
-        'fracdev',
-        'fracdev_ivar',
-        'shapeexp_r',
-        'shapeexp_r_ivar',
-        'shapeexp_e1',
-        'shapeexp_e1_ivar',
-        'shapeexp_e2',
-        'shapeexp_e2_ivar',
-        'shapeexp_r',
-        'shapedev_r_ivar',
-        'shapedev_e1',
-        'shapedev_e1_ivar',
-        'shapedev_e2',
-        'shapedev_e2_ivar',
-        # 'decam_flux',
-        # 'decam_flux_ivar',
-        # 'decam_apflux',
-        # 'decam_apflux_resid',
-        # 'decam_apflux_ivar',
-        # 'decam_mw_transmission',
-        # 'decam_nobs',
-        # 'decam_rchi2',
-        # 'decam_fracflux',
-        # 'decam_fracmasked',
-        # 'decam_fracin',
-        # 'decam_saturated',
-        # 'out_of_bounds',
-        # 'decam_anymask',
-        # 'decam_allmask',
-        # 'wise_flux',
-        # 'wise_flux_ivar',
-        # 'wise_mw_transmission',
-        # 'wise_nobs',
-        # 'wise_fracflux',
-        # 'wise_rchi2',
-        # 'dchisq',
-        # 'fracdev',
-        # 'fracdev_ivar',
-        # 'shapeexp_r',
-        # 'shapeexp_r_ivar',
-        # 'shapeexp_e1',
-        # 'shapeexp_e1_ivar',
-        # 'shapeexp_e2',
-        # 'shapeexp_e2_ivar',
-        # 'shapedev_r',
-        # 'shapedev_r_ivar',
-        # 'shapedev_e1',
-        # 'shapedev_e1_ivar',
-        # 'shapedev_e2',
-        # 'shapedev_e2_ivar',
-        # 'ebv',
-        # 'sdss_run',
-        # 'sdss_camcol',
-        # 'sdss_field',
-        # 'sdss_id',
-        # 'sdss_objid',
-        # 'sdss_parent',
-        # 'sdss_nchild',
-        # 'sdss_objc_type',
-        # 'sdss_objc_flags',
-        # 'sdss_objc_flags2',
-        # 'sdss_flags',
-        # 'sdss_flags2',
-        # 'sdss_tai',
-        # 'sdss_ra',
-        # 'sdss_ra_ivar',
-        # 'sdss_dec',
-        # 'sdss_dec_ivar',
-        # 'sdss_psf_fwhm',
-        # 'sdss_mjd',
-        # 'sdss_theta_dev',
-        # 'sdss_theta_deverr',
-        # 'sdss_ab_dev',
-        # 'sdss_ab_deverr',
-        # 'sdss_theta_exp',
-        # 'sdss_theta_experr',
-        # 'sdss_ab_exp',
-        # 'sdss_ab_experr',
-        # 'sdss_fracdev',
-        # 'sdss_phi_dev_deg',
-        # 'sdss_phi_exp_deg',
-        # 'sdss_psfflux',
-        # 'sdss_psfflux_ivar',
-        # 'sdss_cmodelflux',
-        # 'sdss_cmodelflux_ivar',
-        # 'sdss_modelflux',
-        # 'sdss_modelflux_ivar',
-        # 'sdss_devflux',
-        # 'sdss_devflux_ivar',
-        # 'sdss_expflux',
-        # 'sdss_expflux_ivar',
-        # 'sdss_extinction',
-        # 'sdss_calib_status',
-        # 'sdss_resolve_status',
-        ]
-    }
-# If some of the db tables contain arrays, list them below. For each one, enter a dict with the name of the table as the key
-# and a dict containing column names and max array indices as its value.
-config_arrays = {
-    'Tractor': {
-    'decam_flux': 4,
-    'decam_mw_transmission': 4,
+  # config_queries = {
+    # 'animals': { # this can also be a shortcut name for the particular "from" clause you assign rather than a table name
+    #     'from_clause': 'select * from animals join owners on animals.id=owners.animal_id', # use '' if you just want a simple query of the table
+    #     'fields': [
+    #         'id',
+    #         'species',
+    #         'breed',
+    #         'healthparams'
+    #     ],
+    #     'arrays': {
+    #         {
+    #         'healthparams': 4
+    #         }
+    #     }
+    # }
+    # 'owners': {
+    #       ...
+
+
+config_queries = {
+    'default': {
+        'from_clause': "candidate left join decam on candidate.id = decam.cand_id left join wise on candidate.id = wise.cand_id",
+        'fields': [
+            'candidate.id',
+            'decam.cand_id',
+            'wise.cand_id',
+            'brickid',
+            'objid',
+            'type',
+            'ra',
+            'dec',
+            'uflux',
+            'gflux',
+            'rflux',
+            'iflux',
+            'zflux',
+            'yflux',
+            'uflux_ivar',
+            'gflux_ivar',
+            'rflux_ivar',
+            'iflux_ivar',
+            'zflux_ivar',
+            'yflux_ivar',
+            'u_anymask',
+            'g_anymask',
+            'r_anymask',
+            'i_anymask',
+            'z_anymask',
+            'y_anymask',
+            'w1flux',
+            'w2flux',
+            'w3flux',
+            'w4flux',
+        ],
+        'arrays': {}
+    },
+    'candidate': {
+        'from_clause': '',
+        'fields': [
+            'brickid',
+            'objid',
+            'blob',
+            'type',
+            'ra',
+            'ra_ivar',
+            'dec',
+            'dec_ivar',
+            'bx',
+            'by',
+            'bx0',
+            'by0',
+            'ebv',
+            'dchisq1',
+            'dchisq2',
+            'dchisq3',
+            'dchisq4',
+            'fracdev',
+            'fracdev_ivar',
+            'shapeexp_r',
+            'shapeexp_r_ivar',
+            'shapeexp_e1',
+            'shapeexp_e1_ivar',
+            'shapeexp_e2',
+            'shapeexp_e2_ivar',
+            'shapeexp_r',
+            'shapedev_r_ivar',
+            'shapedev_e1',
+            'shapedev_e1_ivar',
+            'shapedev_e2',
+            'shapedev_e2_ivar',
+        ],
+        'arrays': {}
+    },
+    'decam': {
+        'from_clause': '',
+        'fields': [
+            'cand_id',
+            'uflux',
+            'uflux_ivar',
+            'ufracflux',
+            'ufracmasked',
+            'ufracin',
+            'u_rchi2',
+            'unobs',
+            'u_anymask',
+            'u_allmask',
+            'u_ext',
+            'gflux',
+            'gflux_ivar',
+            'gfracflux',
+            'gfracmasked',
+            'gfracin',
+            'g_rchi2',
+            'gnobs',
+            'g_anymask',
+            'g_allmask',
+            'g_ext',
+            'rflux',
+            'rflux_ivar',
+            'rfracflux',
+            'rfracmasked',
+            'rfracin',
+            'r_rchi2',
+            'rnobs',
+            'r_anymask',
+            'r_allmask',
+            'r_ext',
+            'iflux',
+            'iflux_ivar',
+            'ifracflux',
+            'ifracmasked',
+            'ifracin',
+            'i_rchi2',
+            'inobs',
+            'i_anymask',
+            'i_allmask',
+            'i_ext',
+            'zflux',
+            'zflux_ivar',
+            'zfracflux',
+            'zfracmasked',
+            'zfracin',
+            'z_rchi2',
+            'znobs',
+            'z_anymask',
+            'z_allmask',
+            'z_ext',
+            'yflux',
+            'yflux_ivar',
+            'yfracflux',
+            'yfracmasked',
+            'yfracin',
+            'y_rchi2',
+            'ynobs',
+            'y_anymask',
+            'y_allmask',
+            'y_ext'
+        ],
+        'arrays': {}
+    },
+    'wise': {
+        'from_clause': '',
+        'fields': [
+            'cand_id',
+            'w1flux',
+            'w1flux_ivar',
+            'w1fracflux',
+            'w1_rchi2',
+            'w1nobs',
+            'w1_ext',
+            'w2flux',
+            'w2flux_ivar',
+            'w2fracflux',
+            'w2_rchi2',
+            'w2nobs',
+            'w2_ext',
+            'w3flux',
+            'w3flux_ivar',
+            'w3fracflux',
+            'w3_rchi2',
+            'w3nobs',
+            'w3_ext',
+            'w4flux',
+            'w4flux_ivar',
+            'w4fracflux',
+            'w4_rchi2',
+            'w4nobs',
+            'w4_ext',
+        ],
+        'arrays': {}
     }
 }
 
-# Set the maximum number of rows to return, '' if no limit
-limit = '10'
+# Set the maximum number of rows to return
+limit = '100' # use '' if no limit
 
-# End of basic configuration
+# -------------- End of basic configuration ----------------
 
 
 def unsqurl(instring):
-    result = {"returncode": '200', "error": "", "sql": ""}
+    """
+    accepts a string that is a fragment of an URL, like "animals/species/EQ/elephant"
+    returns a dict of the form
+    {"returncode": '200', "error": "Error string if there is an error", "sql": "SELECT ID, SPECIES, BREED, HEALTHPARAMS FROM ...", "table": "requestedtable"}
+    """
+    result = {"returncode": '200', "error": "", "sql": "", "table": "unknown"}
 
     try:
         instring = instring.upper()
@@ -175,29 +253,34 @@ def unsqurl(instring):
             result['returncode'] = "400"
             return result
 
-        # convert table and column names in config_columns to lower case, in columns var
-        columns = {}
-        for key in config_columns:
-            columns_list = config_columns[key]
-            uc_cols = []
-            for col in columns_list:
-                uc_cols.append(col.upper())
-            columns[key.upper()] = uc_cols
-        # convert table and column names in config_arrays to lower case, in arrays var
+        tables = []
+        columns = []
         arrays = {}
-        for key in config_arrays:
-            array_dict = config_arrays[key]
-            uc_dict = {}
-            for arraykey in array_dict:
-                uc_dict[arraykey.upper()] = array_dict[arraykey]
-            arrays[key.upper()] = uc_dict
+        from_clause = ''
         #determine the table name
-        table, squrlstring = instring.split('/', 1)
-        if(table in columns):
-            # make a list of columns to return from the dict of allowed columns
-            col_items = columns[table]
-            col_list = ", ".join(col_items)
-            result['sql'] = "SELECT " + col_list + " FROM " + table + " WHERE "
+        table, squrlstring = instring.upper().split('/', 1)
+        for key in config_queries.keys():
+            # capitalize table names
+            tables.append(key.upper())
+            temp = config_queries.pop(key)
+            config_queries[key.upper()] = temp
+        if table in tables:
+            result['table'] = table
+            raw_columns = config_queries[table]['fields'] # stopped here. key is not upper case yet.
+            # convert column names in config_queries to upper case, store in columns var
+            for col in raw_columns:
+                columns.append(col.upper())
+            # convert table and column names in arrays to upper case, store in arrays var
+            array_dict = config_queries[table]['arrays']
+            for arraykey in array_dict:
+                arrays[arraykey.upper()] = array_dict[arraykey].upper()
+            # make a list of columns to include in the query
+            col_list = ", ".join(columns)
+            if config_queries[table]['from_clause'] != '':
+                table_phrase = config_queries[table]['from_clause']
+            else:
+                table_phrase = table
+            result['sql'] = "SELECT " + col_list + " FROM " + table_phrase + " WHERE "
         else:
             result['error'] = "No known table was found in the query."
             result['returncode'] = "400"
@@ -213,9 +296,9 @@ def unsqurl(instring):
                 if i%2 == 0: statements.append(splits[i])
                 else: conjunctions.append(splits[i])
         for statement in statements:
+            # ------ custom checks ---------
             # Uncomment the lines below to use custom checks. To do so, create a function check_custom(statement) that returns 
             # a dictionary like that in the result variable
-            print(statement)
             custom_result = custom_check.check_custom(statement)
             if custom_result['returncode'] != '200':
                 return custom_result
@@ -224,6 +307,7 @@ def unsqurl(instring):
                 # break out of the statement processing
                 continue
             # keep checking if custom check didn't find an error but didn't return some sql
+            # ------- end custom checks ----------
             # basic checks
             columnpresent = False # check on whether a column name is given in the statement; initially assume no column is mentioned
             stringpresent = False # check on whether string is used with a compatible predicate
@@ -308,14 +392,14 @@ def unsqurl(instring):
                     else: thevalue = values[m]
                     result['sql'] += leftparen # the empty string if it doesn't start with a paren
                     isempty = re.match(r'', thevalue)
-                    isalphanum = re.match(r'([a-zA-Z_][a-zA-Z0-9_%]+)$', thevalue)
+                    isalphanum = re.match(r'([a-zA-Z_][a-zA-Z0-9_\.%]+)$', thevalue) # dot allowed to enable tables in joins
                     hasarray = re.match(r'([a-zA-Z_][a-zA-Z0-9_]+)\.(\d+)$', thevalue)
                     isnumeric = re.match(r'-?[\d\.]+$', thevalue)
                     if hasarray:
                         #a column name plus array index
                         column = hasarray.group(1)
                         index = hasarray.group(2)
-                        if column in columns[table] and int(index) <= arrays[table][column]:
+                        if column in columns and int(index) <= arrays[table][column]:
                             result['sql'] += column + "[" + index + "]"
                             columnpresent = True
                         else:
@@ -323,9 +407,9 @@ def unsqurl(instring):
                             result['returncode'] = "400"
                             return result
                     elif isalphanum:
-                        if thevalue in columns[table]:
+                        if thevalue in columns:
                             #a column name
-                            if arrays[table][thevalue] == None:
+                            if arrays.has_key(table)==False or arrays[table][thevalue] == None:
                                 result['sql'] += thevalue
                                 columnpresent = True
                             else: 
@@ -377,9 +461,9 @@ def unsqurl(instring):
                 result['returncode'] = "400"
                 return result
         if limit != '': result['sql']+=' LIMIT ' + limit + ';'
-    except:
+    except Exception as exc:
         result['returncode'] = '500'
-        result['error'] = "An error occurred. Unable to parse the URI string."
+        result['error'] = "An error occurred. Unable to parse the URI string. " + str(type(exc)) + ": " + str(exc)
         return result
 
     return result
