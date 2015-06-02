@@ -43,8 +43,6 @@ button#start{
 <p>Search the data for any of the following fields.</p>
 <ul id="fields">
     <li>candidate.id</li>
-    <li>decam.cand_id</li>
-    <li>wise.cand_id</li>
     <li>brickid</li>
     <li>objid</li>
     <li>type</li>
@@ -73,19 +71,22 @@ button#start{
     <li>w3flux</li>
     <li>w4flux</li>
 </ul>
-<p>You can search attributes with SQURL syntax. SQURL works like SQL with spaces turned into forward slashes (/). Enter a string like <br /><code>candidate.id/EQ/100</code></p>
-<p>You can search with q3c queries as well. Enter a string of the form <br /><code>q3c_ellipse_query(ra,dec,10,20,1,0.5,10)</code></p>
-<form id="searchform" action="api/search" method="GET">
-    <textarea id="where_info" cols="80"></textarea></br />
+<p>You can search attributes with SQL syntax. Some examples:</p><p><code>candidate.id = 100<br />gflux/rflux &gt; 2.5<br />
+ra &gt; 240 and ra &lt; 241<br />type like &#39;EXP&#39;</code></p>
+<p>You may also perform any of the <a href="https://code.google.com/p/q3c/">q3c spatial queries</a> as well. A radial query around the RA and Dec of (345.0,0.0) with a 1.25 degree radius would be</p>
+<p><code>q3c_radial_query(ra,dec,345.0,0.0,1.25)</code></p>
+<form id="searchform" action="/search/sql" method="POST">
+    <textarea id="where_info" name="where_info" cols="80"></textarea></br />
     <button id="start" onclick="submit_search(); return false;"><span id="searchtext">Search</span></button>
 </form>
 </div>
 
 <script>
     function submit_search(){
-        var where_clause = $('#where_info').val();
-        var get = "http://" + location.host + "/api/search/default/" + where_clause;
-        window.open(get);
+        $('#searchform').submit();
+        // var where_clause = $('#where_info').val();
+        // var get = "http://" + location.host + "/search/sql/default/" + where_clause;
+        // window.open(get, _self);
     }
 </script>
 </body>

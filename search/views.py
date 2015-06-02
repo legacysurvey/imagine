@@ -1,5 +1,5 @@
-from django.shortcuts import render
-from squrl import unsqurl
+from django.shortcuts import render, redirect
+from squrl import unsqurl, squrlup
 from django.http import HttpResponseRedirect, HttpResponse, StreamingHttpResponse
 from django.db import connections
 import numpy as np
@@ -151,6 +151,11 @@ def api_search(request, query):
 
 def search_form(request):
     return render(request, "search.html")
+
+def sql_search(request):
+    squrlquery = squrlup(request.POST['where_info'])
+    squrlquery = 'default/' + squrlquery
+    return redirect(api_search, squrlquery)
 
 def search_result(request):
     return HttpResponse("result here")

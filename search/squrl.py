@@ -371,9 +371,11 @@ def unsqurl(instring):
                         else: operations.append(esplits[k])
                 #add the expressions to the SQL query
                 for m in range(0, len(values)):
+                    usenullif = False # make true if need to prevent div by zero errors
                     if  m > 0 and len(operations) >= m:
                         #switch
                         if operations[m-1] == "/DIV/":
+                                usenullif = True
                                 result['sql'] += " / "
                         elif operations[m-1] == "/TIMES/":
                                 result['sql'] += " * "
@@ -400,7 +402,11 @@ def unsqurl(instring):
                         column = hasarray.group(1)
                         index = hasarray.group(2)
                         if column in columns and int(index) <= arrays[table][column]:
-                            result['sql'] += column + "[" + index + "]"
+                            colplusindex = column + "[" + index + "]"
+                            if usenullif == True:
+                                result['sql'] += "NULLIF(" + colplusindex + ",0)"
+                            else:
+                                result['sql'] += colplusindex
                             columnpresent = True
                         else:
                             result['error'] = "Column " + column + " with array index " + index + " not found in the specified table."
@@ -410,7 +416,10 @@ def unsqurl(instring):
                         if thevalue in columns:
                             #a column name
                             if arrays.has_key(table)==False or arrays[table][thevalue] == None:
-                                result['sql'] += thevalue
+                                if usenullif == True:
+                                    result['sql'] += "NULLIF(" + thevalue + ",0)"
+                                else:
+                                    result['sql'] += thevalue
                                 columnpresent = True
                             else: 
                                 result['error'] = "Column " + thevalue + " requires an array index."
@@ -467,3 +476,27 @@ def unsqurl(instring):
         return result
 
     return result
+
+
+def squrlup(statement):
+    # take an SQL where clause and turn it into a SQURL string
+    statement = statement.replace(', ',',')
+    statement = statement.replace("'", "")
+    statement = statement.replace(';', '')
+    statement = statement.replace('*', ' TIMES ')
+    statement = statement.replace('/', ' DIV ')
+    statement = statement.replace('+', ' PLUS ')
+    statement = statement.replace('-', ' MINUS ')
+    statement = statement.replace('NOT LIKE', 'NOTLIKE')
+    statement = statement.replace('IS NULL', 'ISNULL')
+    statement = statement.replace('IS NOT NULL', 'ISNOTNULL')
+    statement = statement.replace('>', ' GT ')
+    statement = statement.replace('<', ' LT ')
+    statement = statement.replace('>=', ' GTE ')
+    statement = statement.replace('<=', ' LTE ')
+    statement = statement.replace('=', ' EQ ')
+    statement = statement.replace('!=', ' NEQ ')
+    statement = re.sub(r'\s+', '/', statement)
+    return statement
+
+
