@@ -19,9 +19,12 @@ body{
     padding: 10px;
 }
 #fields{
-    -webkit-column-count: 3;
-    -moz-column-count: 3;
-    column-count: 3;
+    -webkit-column-count: 5;
+    -moz-column-count: 5;
+    column-count: 5;
+    font-size: .8em;
+    height: 20em;
+    overflow: scroll;
 }
 button#start{
     padding: 20px 40px;
@@ -42,37 +45,269 @@ button#start{
     <p>Enter a search query to retrieve a single FITS file containing a table for each hit (up to 100).</p>
 <p>Search the data for any of the following fields.</p>
 <ul id="fields">
-    <li>candidate.id</li>
-    <li>brickid</li>
-    <li>objid</li>
-    <li>type</li>
-    <li>ra</li>
-    <li>dec</li>
-    <li>uflux</li>
-    <li>gflux</li>
-    <li>rflux</li>
-    <li>iflux</li>
-    <li>zflux</li>
-    <li>yflux</li>
-    <li>uflux_ivar</li>
-    <li>gflux_ivar</li>
-    <li>rflux_ivar</li>
-    <li>iflux_ivar</li>
-    <li>zflux_ivar</li>
-    <li>yflux_ivar</li>
-    <li>u_anymask</li>
-    <li>g_anymask</li>
-    <li>r_anymask</li>
-    <li>i_anymask</li>
-    <li>z_anymask</li>
-    <li>y_anymask</li>
-    <li>w1flux</li>
-    <li>w2flux</li>
-    <li>w3flux</li>
-    <li>w4flux</li>
+<li>candidate.id</li>
+<li>brickid</li>
+<li>objid</li>
+<li>type</li>
+<li>ra</li>
+<li>ra_ivar</li>
+<li>dec</li>
+<li>dec_ivar</li>
+<li>bx</li>
+<li>by</li>
+<li>bx0</li>
+<li>by0</li>
+<li>ebv</li>
+<li>dchisq1</li>
+<li>dchisq2</li>
+<li>dchisq3</li>
+<li>dchisq4</li>
+<li>fracDev</li>
+<li>fracDev_ivar</li>
+<li>shapeExp_r</li>
+<li>shapeExp_r_ivar</li>
+<li>shapeExp_e1</li>
+<li>shapeExp_e1_ivar</li>
+<li>shapeExp_e2</li>
+<li>shapeExp_e2_ivar</li>
+<li>shapeDev_r</li>
+<li>shapeDev_r_ivar</li>
+<li>shapeDev_e1</li>
+<li>shapeDev_e1_ivar</li>
+<li>shapeDev_e2</li>
+<li>shapeDev_e2_ivar</li>
+<li>uflux</li>
+<li>gflux</li>
+<li>rflux</li>
+<li>iflux</li>
+<li>zflux</li>
+<li>yflux</li>
+<li>uflux_ivar</li>
+<li>gflux_ivar</li>
+<li>rflux_ivar</li>
+<li>iflux_ivar</li>
+<li>zflux_ivar</li>
+<li>yflux_ivar</li>
+<li>ufracflux</li>
+<li>gfracflux</li>
+<li>rfracflux</li>
+<li>ifracflux</li>
+<li>zfracflux</li>
+<li>yfracflux</li>
+<li>ufracmasked</li>
+<li>gfracmasked</li>
+<li>rfracmasked</li>
+<li>ifracmasked</li>
+<li>zfracmasked</li>
+<li>yfracmasked</li>
+<li>ufracin</li>
+<li>gfracin</li>
+<li>rfracin</li>
+<li>ifracin</li>
+<li>zfracin</li>
+<li>yfracin</li>
+<li>u_rchi2</li>
+<li>g_rchi2</li>
+<li>r_rchi2</li>
+<li>i_rchi2</li>
+<li>z_rchi2</li>
+<li>y_rchi2</li>
+<li>unobs</li>
+<li>gnobs</li>
+<li>rnobs</li>
+<li>inobs</li>
+<li>znobs</li>
+<li>ynobs</li>
+<li>u_anymask</li>
+<li>g_anymask</li>
+<li>r_anymask</li>
+<li>i_anymask</li>
+<li>z_anymask</li>
+<li>y_anymask</li>
+<li>u_allmask</li>
+<li>g_allmask</li>
+<li>r_allmask</li>
+<li>i_allmask</li>
+<li>z_allmask</li>
+<li>y_allmask</li>
+<li>u_ext</li>
+<li>g_ext</li>
+<li>r_ext</li>
+<li>i_ext</li>
+<li>z_ext</li>
+<li>y_ext</li>
+<li>w1flux</li>
+<li>w1flux_ivar</li>
+<li>w1fracflux</li>
+<li>w1_rchi2</li>
+<li>w1nobs</li>
+<li>w1_ext</li>
+<li>w2flux</li>
+<li>w2flux_ivar</li>
+<li>w2fracflux</li>
+<li>w2_rchi2</li>
+<li>w2nobs</li>
+<li>w2_ext</li>
+<li>w3flux</li>
+<li>w3flux_ivar</li>
+<li>w3fracflux</li>
+<li>w3_rchi2</li>
+<li>w3nobs</li>
+<li>w3_ext</li>
+<li>w4flux</li>
+<li>w4flux_ivar</li>
+<li>w4fracflux</li>
+<li>w4_rchi2</li>
+<li>w4nobs</li>
+<li>w4_ext</li>
+<li>uapflux_1</li>
+<li>uapflux_2</li>
+<li>uapflux_3</li>
+<li>uapflux_4</li>
+<li>uapflux_5</li>
+<li>uapflux_6</li>
+<li>uapflux_7</li>
+<li>uapflux_8</li>
+<li>uapflux_resid_1</li>
+<li>uapflux_resid_2</li>
+<li>uapflux_resid_3</li>
+<li>uapflux_resid_4</li>
+<li>uapflux_resid_5</li>
+<li>uapflux_resid_6</li>
+<li>uapflux_resid_7</li>
+<li>uapflux_resid_8</li>
+<li>uapflux_ivar_1</li>
+<li>uapflux_ivar_2</li>
+<li>uapflux_ivar_3</li>
+<li>uapflux_ivar_4</li>
+<li>uapflux_ivar_5</li>
+<li>uapflux_ivar_6</li>
+<li>uapflux_ivar_7</li>
+<li>uapflux_ivar_8</li>
+<li>gapflux_1</li>
+<li>gapflux_2</li>
+<li>gapflux_3</li>
+<li>gapflux_4</li>
+<li>gapflux_5</li>
+<li>gapflux_6</li>
+<li>gapflux_7</li>
+<li>gapflux_8</li>
+<li>gapflux_resid_1</li>
+<li>gapflux_resid_2</li>
+<li>gapflux_resid_3</li>
+<li>gapflux_resid_4</li>
+<li>gapflux_resid_5</li>
+<li>gapflux_resid_6</li>
+<li>gapflux_resid_7</li>
+<li>gapflux_resid_8</li>
+<li>gapflux_ivar_1</li>
+<li>gapflux_ivar_2</li>
+<li>gapflux_ivar_3</li>
+<li>gapflux_ivar_4</li>
+<li>gapflux_ivar_5</li>
+<li>gapflux_ivar_6</li>
+<li>gapflux_ivar_7</li>
+<li>gapflux_ivar_8</li>
+<li>rapflux_1</li>
+<li>rapflux_2</li>
+<li>rapflux_3</li>
+<li>rapflux_4</li>
+<li>rapflux_5</li>
+<li>rapflux_6</li>
+<li>rapflux_7</li>
+<li>rapflux_8</li>
+<li>rapflux_resid_1</li>
+<li>rapflux_resid_2</li>
+<li>rapflux_resid_3</li>
+<li>rapflux_resid_4</li>
+<li>rapflux_resid_5</li>
+<li>rapflux_resid_6</li>
+<li>rapflux_resid_7</li>
+<li>rapflux_resid_8</li>
+<li>rapflux_ivar_1</li>
+<li>rapflux_ivar_2</li>
+<li>rapflux_ivar_3</li>
+<li>rapflux_ivar_4</li>
+<li>rapflux_ivar_5</li>
+<li>rapflux_ivar_6</li>
+<li>rapflux_ivar_7</li>
+<li>rapflux_ivar_8</li>
+<li>iapflux_1</li>
+<li>iapflux_2</li>
+<li>iapflux_3</li>
+<li>iapflux_4</li>
+<li>iapflux_5</li>
+<li>iapflux_6</li>
+<li>iapflux_7</li>
+<li>iapflux_8</li>
+<li>iapflux_resid_1</li>
+<li>iapflux_resid_2</li>
+<li>iapflux_resid_3</li>
+<li>iapflux_resid_4</li>
+<li>iapflux_resid_5</li>
+<li>iapflux_resid_6</li>
+<li>iapflux_resid_7</li>
+<li>iapflux_resid_8</li>
+<li>iapflux_ivar_1</li>
+<li>iapflux_ivar_2</li>
+<li>iapflux_ivar_3</li>
+<li>iapflux_ivar_4</li>
+<li>iapflux_ivar_5</li>
+<li>iapflux_ivar_6</li>
+<li>iapflux_ivar_7</li>
+<li>iapflux_ivar_8</li>
+<li>zapflux_1</li>
+<li>zapflux_2</li>
+<li>zapflux_3</li>
+<li>zapflux_4</li>
+<li>zapflux_5</li>
+<li>zapflux_6</li>
+<li>zapflux_7</li>
+<li>zapflux_8</li>
+<li>zapflux_resid_1</li>
+<li>zapflux_resid_2</li>
+<li>zapflux_resid_3</li>
+<li>zapflux_resid_4</li>
+<li>zapflux_resid_5</li>
+<li>zapflux_resid_6</li>
+<li>zapflux_resid_7</li>
+<li>zapflux_resid_8</li>
+<li>zapflux_ivar_1</li>
+<li>zapflux_ivar_2</li>
+<li>zapflux_ivar_3</li>
+<li>zapflux_ivar_4</li>
+<li>zapflux_ivar_5</li>
+<li>zapflux_ivar_6</li>
+<li>zapflux_ivar_7</li>
+<li>zapflux_ivar_8</li>
+<li>yapflux_1</li>
+<li>yapflux_2</li>
+<li>yapflux_3</li>
+<li>yapflux_4</li>
+<li>yapflux_5</li>
+<li>yapflux_6</li>
+<li>yapflux_7</li>
+<li>yapflux_8</li>
+<li>yapflux_resid_1</li>
+<li>yapflux_resid_2</li>
+<li>yapflux_resid_3</li>
+<li>yapflux_resid_4</li>
+<li>yapflux_resid_5</li>
+<li>yapflux_resid_6</li>
+<li>yapflux_resid_7</li>
+<li>yapflux_resid_8</li>
+<li>yapflux_ivar_1</li>
+<li>yapflux_ivar_2</li>
+<li>yapflux_ivar_3</li>
+<li>yapflux_ivar_4</li>
+<li>yapflux_ivar_5</li>
+<li>yapflux_ivar_6</li>
+<li>yapflux_ivar_7</li>
+<li>yapflux_ivar_8</li>
 </ul>
-<p>You can search attributes with SQL syntax. Some examples:</p><p><code>candidate.id = 100<br />gflux/rflux &gt; 2.5<br />
+<p>You can search attributes with SQL WHERE clause syntax. Some examples:</p><p><code>candidate.id = 100<br />gflux/rflux &gt; 2.5<br />
 ra &gt; 240 and ra &lt; 241<br />type like &#39;EXP&#39;</code></p>
+<p>Allowed operators:  /, *, +, -, =, <, >, <=, >=, !=, LIKE, NOTLIKE, IS NULL, IS NOT NULL, AND, OR</p>
 <p>You may also perform any of the <a href="https://code.google.com/p/q3c/">q3c spatial queries</a> as well. A radial query around the RA and Dec of (345.0,0.0) with a 1.25 degree radius would be</p>
 <p><code>q3c_radial_query(ra,dec,345.0,0.0,1.25)</code></p>
 <form id="searchform" action="/search/sql" method="POST">
@@ -88,6 +323,13 @@ ra &gt; 240 and ra &lt; 241<br />type like &#39;EXP&#39;</code></p>
         // var get = "http://" + location.host + "/search/sql/default/" + where_clause;
         // window.open(get, _self);
     }
+//submit the form on hitting return
+$("#where_info").keypress(function(e){
+    if(e.which == 13){
+        e.preventDefault();
+        $('#searchform').submit();
+    } 
+})
 </script>
 </body>
 {% endblock %}
