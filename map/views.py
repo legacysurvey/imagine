@@ -14,6 +14,8 @@ tileversions = {
     'sfd': [1,],
 
     'decals-dr1k': [1],
+    'decals-model-dr1k': [1],
+    'decals-resid-dr1k': [1],
 
     'decals-dr1j': [1],
     'decals-model-dr1j': [1],
@@ -386,6 +388,9 @@ def cutout_decals_dr1j(req, jpeg=False, fits=False):
 
 
 B_dr1k = None
+
+def map_decals_model_dr1k(*args, **kwargs):
+    return map_decals_dr1k(*args, model=True, model_gz=False, **kwargs)
 
 def map_decals_dr1k(req, ver, zoom, x, y, savecache=None,
                     model=False, resid=False, nexp=False,
