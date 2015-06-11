@@ -6,12 +6,8 @@ from django.conf.urls.static import static
 urlpatterns = (
     patterns(
     '',
+    url(r'', include('search.urls')),
     url(r'', include('map.urls')),
     ))
 # + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-# + static('/viewer/static/', document_root=settings.STATIC_ROOT)
 # )
-
-
-#print 'urlpatterns:', urlpatterns
-

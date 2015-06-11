@@ -255,6 +255,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
     import fitsio
     from astrometry.util.util import Tan
     import tempfile
+    import numpy as np
 
     if scale <= 0:
         return basefn
