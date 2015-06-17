@@ -33,6 +33,14 @@ def _one_tile((kind, zoom, x, y, ignore)):
     elif kind == 'model-dr1k':
         map_decals_model_dr1k(req, version, zoom, x, y, savecache=True, 
                               forcecache=True, return_if_not_found=False, **kwargs)
+
+    elif kind == 'image-dr1n':
+        map_decals_dr1n(req, version, zoom, x, y, savecache=True, 
+                        forcecache=True, return_if_not_found=False, **kwargs)
+    elif kind == 'model-dr1n':
+        map_decals_model_dr1n(req, version, zoom, x, y, savecache=True, 
+                              forcecache=True, return_if_not_found=False, **kwargs)
+
     elif kind == 'image':
         map_decals_dr1j(req, version, zoom, x, y, savecache=True, 
                         forcecache=False, return_if_not_found=True)
