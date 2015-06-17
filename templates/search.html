@@ -310,7 +310,7 @@ ra &gt; 240 and ra &lt; 241<br />type like &#39;EXP&#39;</code></p>
 <p>Allowed operators:  /, *, +, -, =, <, >, <=, >=, !=, LIKE, NOTLIKE, IS NULL, IS NOT NULL, AND, OR</p>
 <p>You may also perform any of the <a href="https://code.google.com/p/q3c/">q3c spatial queries</a> as well. A radial query around the RA and Dec of (345.0,0.0) with a 1.25 degree radius would be</p>
 <p><code>q3c_radial_query(ra,dec,345.0,0.0,1.25)</code></p>
-<form id="searchform" action="/search/sql" method="POST">
+<form id="searchform" action="{% url 'search.views.sql_search' %}" method="POST">
     <textarea id="where_info" name="where_info" cols="80"></textarea></br />
     <button id="start" onclick="submit_search(); return false;"><span id="searchtext">Search</span></button>
 </form>
