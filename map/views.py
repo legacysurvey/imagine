@@ -202,7 +202,7 @@ def index(req):
     static_tile_url = settings.STATIC_TILE_URL
 
     bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}&id={id}'
-    ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}'
+    ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}&id={id}'
 
     # HACK
     # tileurl = 'http://broiler.cosmo.fas.nyu.edu:8896/{id}/{ver}/{z}/{x}/{y}.jpg'
@@ -261,6 +261,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
     import fitsio
     from astrometry.util.util import Tan
     import tempfile
+    import numpy as np
 
     if scale <= 0:
         return basefn
@@ -289,6 +290,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
         #print 'im', im.shape
         # bin
         I2 = (im[::2,::2] + im[1::2,::2] + im[1::2,1::2] + im[::2,1::2])/4.
+        I2 = I2.astype(np.float32)
         #print 'I2:', I2.shape
         # shrink WCS too
         wcs = _read_tan_wcs(sourcefn, 0, hdr=hdr, W=W, H=H)
@@ -961,16 +963,34 @@ def brick_list(req):
 ccdtree = None
 CCDs = None
 
-def _ccds_touching_box(north, south, east, west, Nmax=None):
+ccdtree_dr1k = None
+CCDs_dr1k = None
+
+def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
     from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
     from astrometry.util.starutil_numpy import degrees_between
     import numpy as np
     global ccdtree
     global CCDs
-    if ccdtree is None:
-        D = _get_decals()
-        CCDs = D.get_ccds()
-        ccdtree = tree_build_radec(CCDs.ra, CCDs.dec)
+    global ccdtree_dr1k
+    global CCDs_dr1k
+
+    if name == 'decals-dr1k':
+        if ccdtree_dr1k is None:
+            from astrometry.util.fits import fits_table
+            CCDs_dr1k = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
+                                                'decals-ccds.fits'))
+            ccdtree_dr1k = tree_build_radec(CCDs_dr1k.ra, CCDs_dr1k.dec)
+        theCCDs = CCDs_dr1k
+        theccdtree = ccdtree_dr1k
+    else:
+        if ccdtree is None:
+            D = _get_decals()
+            CCDs = D.get_ccds()
+            ccdtree = tree_build_radec(CCDs.ra, CCDs.dec)
+        theCCDs = CCDs
+        theccdtree = ccdtree
+            
 
     dec = (north + south) / 2.
     c = (np.cos(np.deg2rad(east)) + np.cos(np.deg2rad(west))) / 2.
@@ -982,13 +1002,13 @@ def _ccds_touching_box(north, south, east, west, Nmax=None):
     # RA,Dec box size
     radius = radius + degrees_between(east, north, west, south) / 2.
 
-    J = tree_search_radec(ccdtree, ra, dec, radius)
+    J = tree_search_radec(theccdtree, ra, dec, radius)
 
     if Nmax is not None:
         # limit result size
         J = J[:Nmax]
 
-    return CCDs[J]
+    return theCCDs[J]
 
 def ccd_list(req):
     import json
@@ -1001,7 +1021,9 @@ def ccd_list(req):
     west  = float(req.GET['west'])
     #print 'N,S,E,W:', north, south, east, west
 
-    CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000)
+    name = req.GET.get('id', None)
+
+    CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
 
     ccds = []
     for c in CCDS:
@@ -1011,7 +1033,7 @@ def ccd_list(req):
         x = np.array([1, 1, c.width, c.width])
         y = np.array([1, c.height, c.height, 1])
         r,d = wcs.pixelxy2radec(x, y)
-        ccds.append(dict(name='%i-%s-%s' % (c.expnum, c.extname, c.filter),
+        ccds.append(dict(name='%i-%s-%s' % (c.expnum, c.extname.strip(), c.filter),
                          poly=zip(d, ra2long(r))))
 
     return HttpResponse(json.dumps(dict(ccds=ccds)),

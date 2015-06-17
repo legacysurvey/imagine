@@ -8,8 +8,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
+import secrets.django
+import secrets.database
+
 MAX_NATIVE_ZOOM = 15
 
+# Enable DECaLS number of exposures layer?
 ENABLE_NEXP = True
 
 # Tile cache is writable?
@@ -34,26 +38,18 @@ BASE_DIR = os.path.dirname(__file__)
 WEB_DIR = os.path.dirname(BASE_DIR)
 DATA_DIR = os.path.join(WEB_DIR, 'data')
 
-#DUST_DIR = '/data1/SFD'
-#DUST_DIR = '/project/projectdirs/desi/software/edison/dust/v0_0'
 DUST_DIR = os.path.join(DATA_DIR, 'dust')
 UNWISE_DIR = os.path.join(DATA_DIR, 'unwise-coadds')
-
 #DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
 #UNWISE_DIR = '/project/projectdirs/cosmo/data/unwise/unwise-coadds'
 
-
-#os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-edr/'
 os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-dr1/'
-
-
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '=md&+t5!i#+%fd71_)cidw-&4ia%%0jr+5bh(_-8w(jm0d-v!='
+SECRET_KEY = secrets.django.SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -63,7 +59,6 @@ TEMPLATE_DEBUG = True
 TEMPLATE_DIRS = (os.path.join(WEB_DIR, 'templates'),)
 
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -87,7 +82,7 @@ MIDDLEWARE_CLASSES = (
 
 ROOT_URLCONF = 'decals.urls'
 
-WSGI_APPLICATION = 'decals.wsgi.application'
+WSGI_APPLICATION = 'wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
@@ -96,7 +91,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
+    },
+    'cosmo': secrets.database.COSMO_DB,
 }
 
 # Internationalization
@@ -120,6 +116,4 @@ STATICFILES_DIRS = (
 )
 
 STATIC_ROOT = os.path.join(WEB_DIR, 'static')
-
-#print 'STATIC_ROOT is', STATIC_ROOT
 

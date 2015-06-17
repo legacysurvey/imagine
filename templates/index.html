@@ -1077,6 +1077,24 @@ tilesDr1k = new ZoomRangeTileLayer(static_tile_url, {
 
 tilesDr1k.catname = catname;
 allLayers.push({name:id, tiles:tilesDr1k, pretty:"DECALS DR1k (COSMOS) images", catname:catname});
+
+id = 'decals-model-dr1k'
+tilesModDr1k = new ZoomRangeTileLayer(static_tile_url, {
+    maxZoom: maxZoom,
+    maxNativeZoom: {{ maxNativeZoom }},
+    minZoom: minZoom,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
+    bounds: boundsCosmos,
+  });
+
+tilesModDr1k.catname = catname;
+allLayers.push({name:id, tiles:tilesModDr1k, pretty:"DECaLS DR1k (COSMOS) models", catname:catname});
+
 {% endif %}
 
 
