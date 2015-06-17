@@ -2,14 +2,15 @@ from django.shortcuts import render, redirect
 from squrl import unsqurl, squrlup
 from django.http import HttpResponseRedirect, HttpResponse, StreamingHttpResponse
 from django.db import connections
-import numpy as np
-from astropy.io import fits
-from astropy.io.fits import Column
 
 # Create your views here.
 
 
 def api_search(request, query):
+    import numpy as np
+    from astropy.io import fits
+    from astropy.io.fits import Column
+
     result = unsqurl(query)
     if result['returncode'] == '200':
         #run the query
