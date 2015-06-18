@@ -649,26 +649,85 @@ function inbrickccdUpdate(props) {
     inbrickccd._div.innerHTML = txt;
 }
 
-function vccLoaded(result) {
+function vccLoaded(counter, result) {
+    console.log('vccLoaded: counter ' + counter);
     if (!showVcc) {
         return;
     }
-    //rdlist = result['rd'];
+    for (var k in vccLayers) {
+	if (k > counter) {
+	    console.log('vcc: counter ' + k + ' exists; bye');
+	    return;
+	}
+    }
+
+    for (var k in vccLayers) {
+	console.log('vcc: counter ' + k + 'exists');
+    }
+
+    rdlist = result['rd'];
+    names = result['name'];
+    var circleList = new Array(rdlist.length);
+    for (i=0, len=rdlist.length; i<len; i++) {
+        r = rdlist[i][0];
+        d = rdlist[i][1];
+        lat = dec2lat(d);
+        lng = ra2long_B(r);
+	meters = 300;
+	color = '#ffffff';
+
+        circ = L.circle([lat, lng], meters, {'color':color,
+                                             'fillOpacity':0, 'weight':5});
+        circ.ra = r;
+        circ.dec = d;
+	circ.name = names[i];
+	circ._showLabelAdded = true;
+	circ.bindLabel(circ.name, { noHide: true });
+	circ.label._latlng = L.latLng(lat,lng);
+
+	circ.on('remove', function(e){
+	    console.log('Removing label for ' + e.target.name);
+	    map.removeLayer(e.target.label);
+	});
+
+        circleList[i] = circ;
+    }
+    circles = L.layerGroup(circleList);
+
+    vccGroup.addLayer(circles);
+    // show labels
+    for (i=0; i<circleList.length; i++) {
+	circ = circleList[i];
+	map.showLabel(circ.label);
+    }
+
+    // remove old layers
+    for (var k in vccLayers) {
+	if (k < counter) {
+	    console.log('vcc: removing previous counter ' + k);
+	    vccGroup.removeLayer(vccLayers[k]);
+	    delete vccLayers[k];
+	}
+    }
+    vccLayers[counter] = [circles];
 }
+
+var vccCounter = 1;
 
 function loadVccCatalog() {
     b = map.getBounds();
 
     url = L.Util.template('{{ smallcaturl|safe }}', L.extend({
         s: subdomains[0],
-	ralo: long2ra(b.getWest()).toFixed(4),
-	rahi: long2ra(b.getEast()).toFixed(4),
+	ralo: long2ra(b.getEast()).toFixed(4),
+	rahi: long2ra(b.getWest()).toFixed(4),
 	declo: lat2dec(b.getSouth()).toFixed(4),
 	dechi: lat2dec(b.getNorth()).toFixed(4),
         id: 'vcc',
         ver: getcatversion('vcc'),
     }));
-    $.getJSON(url, vccLoaded);
+    $.getJSON(url, vccLoaded.bind(true, vccCounter));
+    vccCounter += 1;
 }
 
 // "Sources", "Bricks", "CCDs" button checked
@@ -729,9 +788,13 @@ function overlayRemoved(e) {
     }
     if (e.name == vccName) {
         showVcc = false;
-	for (var k in vccGroup) {
-	    vccGroup.removeLayer(vccLayers[k]);
+	//for (var k in vccGroup) {
+	//vccGroup.removeLayer(vccLayers[k]);
+	//}
+	for (var k in vccLayers) {
+	    vccGroup.removeLayer(k);
 	}
+	vccLayers = {};
     }
     if (unload) {
         // remove all catalogs
@@ -867,6 +930,9 @@ function mapBoundsChanged() {
     ra  = long2ra(latlng.lng);
     dec = lat2dec(latlng.lat);
     //console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
+
+    loadVccCatalog();
+
     if (showBricks) {
         bounds = map.getBounds();
         bricksurl = L.Util.template('{{ bricksurl|safe }}', L.extend({
@@ -1578,6 +1644,11 @@ showSoures = true;
 {% if showNgc %}
 map.addLayer(ngcGroup);
 showNgc = true;
+{% endif %}
+
+{% if showVcc %}
+map.addLayer(vccGroup);
+showVcc = true;
 {% endif %}
 
 

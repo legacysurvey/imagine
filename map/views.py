@@ -228,6 +228,7 @@ def index(req):
                        showNgc='ngc' in req.GET,
                        showBricks='bricks' in req.GET,
                        showCcds='ccds' in req.GET,
+                       showVcc='vcc' in req.GET,
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                        enable_nexp = settings.ENABLE_NEXP,
                        ))
@@ -329,7 +330,7 @@ def jpeg_cutout_decals_dr1j(req):
 def fits_cutout_decals_dr1j(req):
     return cutout_decals(req, fits=True)
 
-def cutout_decals(req, jpeg=False, fits=False): #, tag='decals-dr1j'):
+def cutout_decals(req, jpeg=False, fits=False):
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
     pixscale = float(req.GET.get('pixscale', 0.262))
@@ -344,6 +345,11 @@ def cutout_decals(req, jpeg=False, fits=False): #, tag='decals-dr1j'):
         # default
         tag = 'decals-dr1j'
     print 'Using tag:', tag
+
+    bricks = None
+    if tag == 'decals-dr1n':
+        bricks = get_dr1n_bricks()
+        
 
     bands = req.GET.get('bands', 'grz')
     bands = [b for b in 'grz' if b in bands]
@@ -371,7 +377,7 @@ def cutout_decals(req, jpeg=False, fits=False): #, tag='decals-dr1j'):
 
     rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts',
                           tag,
-                          wcs=wcs,
+                          wcs=wcs, bricks=bricks,
                           imagetag='image', rgbkwargs=rgbkwargs,
                           savecache=False, get_images=fits)
     #filename='cutout_%.4f_%.4f.jpg' % (ra,dec))
@@ -407,6 +413,27 @@ def cutout_decals(req, jpeg=False, fits=False): #, tag='decals-dr1j'):
 
 B_dr1n = None
 
+def get_dr1n_bricks():
+    global B_dr1n
+    if B_dr1n is not None:
+        return B_dr1n
+    from astrometry.util.fits import fits_table
+    import numpy as np
+    B_dr1n = fits_table(os.path.join(settings.DATA_DIR,
+                                     'decals-bricks.fits'))
+    print 'Total bricks:', len(B_dr1n)
+    B_dr1n.cut(np.logical_or(
+        # Virgo
+        (B_dr1n.ra > 185.) * (B_dr1n.ra < 190.) *
+        (B_dr1n.dec > 10.)  * (B_dr1n.dec < 15.),
+        # Arjun's LSB
+        (B_dr1n.ra > 147.2) * (B_dr1n.ra < 147.8) *
+        (B_dr1n.dec > -0.4)  * (B_dr1n.dec < 0.4)
+    ))
+    print len(B_dr1n), 'bricks in Virgo/LSB region'
+    return B_dr1n
+
+
 def map_decals_model_dr1n(*args, **kwargs):
     return map_decals_dr1n(*args, model=True, model_gz=False, **kwargs)
 
@@ -415,23 +442,7 @@ def map_decals_dr1n(req, ver, zoom, x, y, savecache=None,
                     **kwargs):
     if savecache is None:
         savecache = settings.SAVE_CACHE
-    global B_dr1n
-    if B_dr1n is None:
-        from astrometry.util.fits import fits_table
-        import numpy as np
-        #os.environ['DECALS_DIR'],
-        B_dr1n = fits_table(os.path.join('/project/projectdirs/cosmo/work/decam/versions/work',
-                                         'decals-bricks.fits'))
-        print 'Total bricks:', len(B_dr1n)
-        B_dr1n.cut(np.logical_or(
-                # Virgo
-                (B_dr1n.ra > 185.) * (B_dr1n.ra < 190.) *
-                (B_dr1n.dec > 10.)  * (B_dr1n.dec < 15.),
-                # Arjun's LSB
-                (B_dr1n.ra > 147.2) * (B_dr1n.ra < 147.8) *
-                (B_dr1n.dec > -0.4)  * (B_dr1n.dec < 0.4)
-                ))
-        print len(B_dr1n), 'bricks in Virgo/LSB region'
+    B_dr1n = get_dr1n_bricks()
 
     imagetag = 'image'
     tag = 'decals-dr1n'
@@ -1091,23 +1102,44 @@ def cat_vcc(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    from astrometry.util.fits import fits_table
-    # import numpy as np
-    # from astrometry.libkd.spherematch import match_radec
-    # from astrometry.util.starutil_numpy import degrees_between, arcsec_between
-
+    from astrometry.util.fits import fits_table, merge_tables
+    import numpy as np
     from decals import settings
+
+    TT = []
     T = fits_table(os.path.join(settings.DATA_DIR, 'virgo-cluster-cat-2.fits'))
     print len(T), 'in VCC 2; ra', ralo, rahi, 'dec', declo, dechi
     T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
     print len(T), 'in cut'
+    TT.append(T)
 
     T = fits_table(os.path.join(settings.DATA_DIR, 'virgo-cluster-cat-3.fits'))
     print len(T), 'in VCC 3; ra', ralo, rahi, 'dec', declo, dechi
     T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
     print len(T), 'in cut'
+    T.evcc_id = np.array(['-']*len(T))
+    T.rename('id', 'vcc_id')
+    TT.append(T)
+    T = merge_tables(TT)
 
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    names = []
 
+    for t in T:
+        evcc = t.evcc_id.strip()
+        vcc = t.vcc_id.strip()
+        ngc = t.ngc.strip()
+        nms = []
+        if evcc != '-':
+            nms.append('EVCC ' + evcc)
+        if vcc != '-':
+            nms.append('VCC ' + vcc)
+        if ngc != '-':
+            nms.append('NGC ' + ngc)
+        names.append(' / '.join(nms))
+
+    return HttpResponse(json.dumps(dict(rd=rd, name=names)),
+                        content_type='application/json')
 
 def cat_ngc(req, ver, zoom, x, y):
     import json
