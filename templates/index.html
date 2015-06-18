@@ -649,6 +649,28 @@ function inbrickccdUpdate(props) {
     inbrickccd._div.innerHTML = txt;
 }
 
+function vccLoaded(result) {
+    if (!showVcc) {
+        return;
+    }
+    //rdlist = result['rd'];
+}
+
+function loadVccCatalog() {
+    b = map.getBounds();
+
+    url = L.Util.template('{{ smallcaturl|safe }}', L.extend({
+        s: subdomains[0],
+	ralo: long2ra(b.getWest()).toFixed(4),
+	rahi: long2ra(b.getEast()).toFixed(4),
+	declo: lat2dec(b.getSouth()).toFixed(4),
+	dechi: lat2dec(b.getNorth()).toFixed(4),
+        id: 'vcc',
+        ver: getcatversion('vcc'),
+    }));
+    $.getJSON(url, vccLoaded);
+}
+
 // "Sources", "Bricks", "CCDs" button checked
 function overlayAdded(e) {
     //console.log('OverlayAdded: ' + e.name);
@@ -661,6 +683,10 @@ function overlayAdded(e) {
     if (e.name == 'NGC') {
         showNgc = true;
         ngc = true;
+    }
+    if (e.name == vccName) {
+        showVcc = true;
+	loadVccCatalog();
     }
 
     if (cat || ngc) {
@@ -700,6 +726,12 @@ function overlayRemoved(e) {
     if (e.name == 'NGC') {
         showNgc = false;
 	unload = true;
+    }
+    if (e.name == vccName) {
+        showVcc = false;
+	for (var k in vccGroup) {
+	    vccGroup.removeLayer(vccLayers[k]);
+	}
     }
     if (unload) {
         // remove all catalogs
@@ -889,6 +921,10 @@ var visibleTiles = {};
 var showNgc = false;
 var ngcGroup = L.layerGroup([]);
 var ngcLayers = {};
+
+var showVcc = false;
+var vccGroup = L.layerGroup([]);
+var vccLayers = {};
 
 var showBricks = false;
 var bricksGroup = L.layerGroup([]);
@@ -1098,6 +1134,51 @@ allLayers.push({name:id, tiles:tilesModDr1k, pretty:"DECaLS DR1k (COSMOS) models
 {% endif %}
 
 
+{% if layer == 'decals-dr1n' %}
+id = 'decals-dr1n'
+catname = 'decals-dr1n';
+
+//boundsCosmos = L.latLngBounds(L.latLng(dec2lat(10.0), ra2long(15.0)),
+//			      L.latLng(dec2lat(185.0), ra2long(190.0)));
+// Use the static URL until zoom level 14, then the dynamic URL.
+tilesDr1n = new ZoomRangeTileLayer(static_tile_url, {
+    maxZoom: maxZoom,
+    maxNativeZoom: {{ maxNativeZoom }},
+    minZoom: minZoom,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
+	//bounds: boundsCosmos,
+  });
+
+tilesDr1n.catname = catname;
+allLayers.push({name:id, tiles:tilesDr1n, pretty:"DECALS DR1n (Virgo) images", catname:catname});
+
+id = 'decals-model-dr1n'
+tilesModDr1n = new ZoomRangeTileLayer(static_tile_url, {
+    maxZoom: maxZoom,
+    maxNativeZoom: {{ maxNativeZoom }},
+    minZoom: minZoom,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
+//    bounds: boundsCosmos,
+  });
+
+tilesModDr1n.catname = catname;
+allLayers.push({name:id, tiles:tilesModDr1n, pretty:"DECaLS DR1n (Virgo) models", catname:catname});
+
+{% endif %}
+
+
+
+
 
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
@@ -1272,12 +1353,16 @@ L.DomEvent.on(container, 'click', infoBoxClicked);
 
 //info.getContainer().on('click', infoBoxClicked);
 
+var vccName = "Virgo clusters";
+
 var overlayMaps = {
     "Sources": sourcesGroup,
     "Bricks": bricksGroup,
     "CCDs": ccdsGroup,
     "NGC": ngcGroup,
+    //vccName: vccGroup,
 };
+overlayMaps[vccName] = vccGroup;
 
 new MyLayerControl(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
@@ -1492,8 +1577,6 @@ showSoures = true;
 
 {% if showNgc %}
 map.addLayer(ngcGroup);
-// If you do this, you get double-adding!
-//overlayAdded({name:'Sources'});
 showNgc = true;
 {% endif %}
 

@@ -177,6 +177,8 @@ def index(req):
     #caturl = settings.ROOT_URL + '/{id}/{ver}/{z}/{x}/{y}.cat.json'
     caturl = settings.CAT_URL
 
+    smallcaturl = settings.ROOT_URL + '/{id}/{ver}/cat.json?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
+
     tileurl = settings.TILE_URL
 
     # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
@@ -212,6 +214,7 @@ def index(req):
                   dict(ra=ra, dec=dec, lat=lat, long=lng, zoom=zoom,
                        layer=layer, tileurl=tileurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
+                       smallcaturl=smallcaturl,
                        ccdsurl=ccdsurl,
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
@@ -315,12 +318,12 @@ rgbkwargs_nexp = dict(mnmx=(0,25), arcsinh=1.,
                       scales=dict(g=(2,1),r=(1,1),z=(0,1)))
 
 def jpeg_cutout_decals_dr1j(req):
-    return cutout_decals_dr1j(req, jpeg=True)
+    return cutout_decals(req, jpeg=True)
 
 def fits_cutout_decals_dr1j(req):
-    return cutout_decals_dr1j(req, fits=True)
+    return cutout_decals(req, fits=True)
 
-def cutout_decals_dr1j(req, jpeg=False, fits=False):
+def cutout_decals(req, jpeg=False, fits=False): #, tag='decals-dr1j'):
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
     pixscale = float(req.GET.get('pixscale', 0.262))
@@ -328,6 +331,13 @@ def cutout_decals_dr1j(req, jpeg=False, fits=False):
     size   = min(int(req.GET.get('size',    256)), maxsize)
     width  = min(int(req.GET.get('width',  size)), maxsize)
     height = min(int(req.GET.get('height', size)), maxsize)
+
+    tag = req.GET.get('tag', None)
+    print 'Requested tag:', tag
+    if not tag in ['decals-dr1n']:
+        # default
+        tag = 'decals-dr1j'
+    print 'Using tag:', tag
 
     bands = req.GET.get('bands', 'grz')
     bands = [b for b in 'grz' if b in bands]
@@ -353,7 +363,8 @@ def cutout_decals_dr1j(req, jpeg=False, fits=False):
 
     ver = 1
 
-    rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts', 'decals-dr1j',
+    rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts',
+                          tag,
                           wcs=wcs,
                           imagetag='image', rgbkwargs=rgbkwargs,
                           savecache=False, get_images=fits)
@@ -1003,6 +1014,36 @@ def nil(req):
 def brick_detail(req, brickname):
     #brickname = req.GET['brick']
     return HttpResponse('Brick ' + brickname)
+
+def cat_vcc(req, ver):
+    import json
+    tag = 'ngc'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from astrometry.util.fits import fits_table
+    # import numpy as np
+    # from astrometry.libkd.spherematch import match_radec
+    # from astrometry.util.starutil_numpy import degrees_between, arcsec_between
+
+    from decals import settings
+    T = fits_table(os.path.join(settings.DATA_DIR, 'virgo-cluster-cat-2.fits'))
+    print len(T), 'in VCC 2; ra', ralo, rahi, 'dec', declo, dechi
+    T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
+    print len(T), 'in cut'
+
+    T = fits_table(os.path.join(settings.DATA_DIR, 'virgo-cluster-cat-3.fits'))
+    print len(T), 'in VCC 3; ra', ralo, rahi, 'dec', declo, dechi
+    T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
+    print len(T), 'in cut'
+
+
 
 def cat_ngc(req, ver, zoom, x, y):
     import json
