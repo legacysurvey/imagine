@@ -14,6 +14,12 @@ tileversions = {
     'sfd': [1,],
 
     'decals-dr1k': [1],
+    'decals-model-dr1k': [1],
+    'decals-resid-dr1k': [1],
+
+    'decals-dr1n': [1],
+    'decals-model-dr1n': [1],
+    'decals-resid-dr1n': [1],
 
     'decals-dr1j': [1],
     'decals-model-dr1j': [1],
@@ -398,7 +404,64 @@ def cutout_decals(req, jpeg=False, fits=False): #, tag='decals-dr1j'):
     return send_file(tmpfn, 'image/fits', unlink=True, filename='cutout_%.4f_%.4f.fits' % (ra,dec))
 
 
+
+B_dr1n = None
+
+def map_decals_model_dr1n(*args, **kwargs):
+    return map_decals_dr1n(*args, model=True, model_gz=False, **kwargs)
+
+def map_decals_dr1n(req, ver, zoom, x, y, savecache=None,
+                    model=False, resid=False, nexp=False,
+                    **kwargs):
+    if savecache is None:
+        savecache = settings.SAVE_CACHE
+    global B_dr1n
+    if B_dr1n is None:
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        #os.environ['DECALS_DIR'],
+        B_dr1n = fits_table(os.path.join('/project/projectdirs/cosmo/work/decam/versions/work',
+                                         'decals-bricks.fits'))
+        print 'Total bricks:', len(B_dr1n)
+        B_dr1n.cut(np.logical_or(
+                # Virgo
+                (B_dr1n.ra > 185.) * (B_dr1n.ra < 190.) *
+                (B_dr1n.dec > 10.)  * (B_dr1n.dec < 15.),
+                # Arjun's LSB
+                (B_dr1n.ra > 147.2) * (B_dr1n.ra < 147.8) *
+                (B_dr1n.dec > -0.4)  * (B_dr1n.dec < 0.4)
+                ))
+        print len(B_dr1n), 'bricks in Virgo/LSB region'
+
+    imagetag = 'image'
+    tag = 'decals-dr1n'
+    imagedir = 'decals-dr1n'
+    rgb = rgbkwargs
+    if model:
+        imagetag = 'model'
+        tag = 'decals-model-dr1n'
+        scaledir = 'decals-dr1n'
+        kwargs.update(model_gz=False, add_gz=True, scaledir=scaledir)
+    if resid:
+        imagetag = 'resid'
+        kwargs.update(modeldir = 'decals-dr1n-model')
+        tag = 'decals-resid-dr1n'
+    # if nexp:
+    #     imagetag = 'nexp'
+    #     tag = 'decals-nexp-dr1n'
+    #     rgb = rgbkwargs_nexp
+
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
+                           imagetag=imagetag,
+                           rgbkwargs=rgb,
+                           bricks=B_dr1n,
+                           savecache=savecache, **kwargs)
+
+
 B_dr1k = None
+
+def map_decals_model_dr1k(*args, **kwargs):
+    return map_decals_dr1k(*args, model=True, model_gz=False, **kwargs)
 
 def map_decals_dr1k(req, ver, zoom, x, y, savecache=None,
                     model=False, resid=False, nexp=False,
@@ -854,6 +917,7 @@ def map_sfd(req, ver, zoom, x, y, savecache = False):
 decals = None
 def _get_decals():
     global decals
+    print 'Creating Decals() object: $DECALS_DIR =', os.environ['DECALS_DIR']
     if decals is None:
         from desi.common import Decals
         decals = Decals()

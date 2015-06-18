@@ -30,6 +30,17 @@ def _one_tile((kind, zoom, x, y, ignore)):
     if kind == 'image-dr1k':
         map_decals_dr1k(req, version, zoom, x, y, savecache=True, 
                         forcecache=True, return_if_not_found=False, **kwargs)
+    elif kind == 'model-dr1k':
+        map_decals_model_dr1k(req, version, zoom, x, y, savecache=True, 
+                              forcecache=True, return_if_not_found=False, **kwargs)
+
+    elif kind == 'image-dr1n':
+        map_decals_dr1n(req, version, zoom, x, y, savecache=True, 
+                        forcecache=True, return_if_not_found=False, **kwargs)
+    elif kind == 'model-dr1n':
+        map_decals_model_dr1n(req, version, zoom, x, y, savecache=True, 
+                              forcecache=True, return_if_not_found=False, **kwargs)
+
     elif kind == 'image':
         map_decals_dr1j(req, version, zoom, x, y, savecache=True, 
                         forcecache=False, return_if_not_found=True)
@@ -339,7 +350,11 @@ def main():
     if opt.near:
         # HACK -- DR1
         # B = fits_table('decals-bricks-in-dr1-done.fits')
-        B = fits_table('decals-bricks-in-dr1.fits')
+
+        if 'dr1k' in opt.kind:
+            B = fits_table('data/decals-dr1k/decals-bricks.fits')
+        else:
+            B = fits_table('decals-bricks-in-dr1.fits')
         # B = fits_table('decals-bricks-in-edr.fits')
         print len(B), 'bricks in DR1'
         # B.cut(B.exists == 1)
