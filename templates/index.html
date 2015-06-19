@@ -1240,6 +1240,24 @@ tilesModDr1n = new ZoomRangeTileLayer(static_tile_url, {
 tilesModDr1n.catname = catname;
 allLayers.push({name:id, tiles:tilesModDr1n, pretty:"DECaLS DR1n (Virgo) models", catname:catname});
 
+id = 'decals-resid-dr1n'
+tilesResidDr1n = new ZoomRangeTileLayer(static_tile_url, {
+    maxZoom: maxZoom,
+    maxNativeZoom: {{ maxNativeZoom }},
+    minZoom: minZoom,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
+//    bounds: boundsCosmos,
+  });
+
+tilesResidDr1n.catname = catname;
+allLayers.push({name:id, tiles:tilesResidDr1n, pretty:"DECaLS DR1n (Virgo) residuals", catname:catname});
+
+
 {% endif %}
 
 
