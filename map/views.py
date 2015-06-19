@@ -955,6 +955,10 @@ def brick_list(req):
         from astrometry.util.fits import fits_table
         B = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
                                     'decals-bricks.fits'))
+    elif name == 'decals-dr1n':
+        from astrometry.util.fits import fits_table
+        B = fits_table(os.path.join(settings.DATA_DIR,
+                                    'decals-bricks.fits'))
 
     D = _get_decals()
     if B is None:
@@ -988,14 +992,21 @@ CCDs = None
 ccdtree_dr1k = None
 CCDs_dr1k = None
 
+ccdtree_dr1n = None
+CCDs_dr1n = None
+
 def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
     from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
     from astrometry.util.starutil_numpy import degrees_between
     import numpy as np
     global ccdtree
     global CCDs
+
     global ccdtree_dr1k
     global CCDs_dr1k
+
+    global ccdtree_dr1n
+    global CCDs_dr1n
 
     if name == 'decals-dr1k':
         if ccdtree_dr1k is None:
@@ -1005,6 +1016,15 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
             ccdtree_dr1k = tree_build_radec(CCDs_dr1k.ra, CCDs_dr1k.dec)
         theCCDs = CCDs_dr1k
         theccdtree = ccdtree_dr1k
+
+    elif name == 'decals-dr1n':
+        if ccdtree_dr1n is None:
+            from astrometry.util.fits import fits_table
+            CCDs_dr1n = fits_table(os.path.join(settings.DATA_DIR, 'decals-ccds-dr1n.fits'))
+            ccdtree_dr1n = tree_build_radec(CCDs_dr1n.ra, CCDs_dr1n.dec)
+        theCCDs = CCDs_dr1n
+        theccdtree = ccdtree_dr1n
+
     else:
         if ccdtree is None:
             D = _get_decals()
