@@ -4,6 +4,8 @@ from settings_common import *
 MAX_NATIVE_ZOOM = 13
 SAVE_CACHE = True
 
+ENABLE_VCC = False
+
 HOSTNAME = 'test.legacysurvey.org'
 ROOT_URL = ''
 SUBDOMAINS = ['i']

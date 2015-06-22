@@ -273,11 +273,6 @@ function catLoaded(zoom, tilex, tiley, result) {
     }
     //console.log('catloaded:' + result['rd']);
     rdlist = result['rd'];
-    if ((result['zoom'] == undefined) || 
-        (result['tilex'] == undefined) || 
-        (result['tiley'] == undefined)) {
-        return;
-    }
     objtype = result['sourcetype'];
     fluxes = result['fluxes'];
     nobs = result['nobs'];
@@ -1501,7 +1496,10 @@ var overlayMaps = {
     "Spectra": specGroup,
     //vccName: vccGroup,
 };
+
+{% if enable_vcc %}
 overlayMaps[vccName] = vccGroup;
+{% endif %}
 
 new MyLayerControl(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 

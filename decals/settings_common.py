@@ -16,6 +16,9 @@ MAX_NATIVE_ZOOM = 15
 # Enable DECaLS number of exposures layer?
 ENABLE_NEXP = True
 
+# Enable Virgo Cluster Catalog layer?
+ENABLE_VCC = False
+
 # Tile cache is writable?
 SAVE_CACHE = False
 

@@ -190,6 +190,7 @@ def index(req):
                        showVcc='vcc' in req.GET,
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                        enable_nexp = settings.ENABLE_NEXP,
+                       enable_vcc = settings.ENABLE_VCC,
                        ))
 
 def get_tile_wcs(zoom, x, y):
