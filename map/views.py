@@ -303,13 +303,14 @@ def cutout_decals(req, jpeg=False, fits=False):
 
     tag = req.GET.get('tag', None)
     print 'Requested tag:', tag
-    if not tag in ['decals-dr1n', 'decals-model-dr1j']:
+    if not tag in ['decals-dr1n', 'decals-model']:
         # default
         tag = 'decals-dr1j'
     print 'Using tag:', tag
 
     imagetag = 'image'
-    if 'model' in tag:
+    if tag == 'decals-model':
+        tag = 'decals-dr1j'
         imagetag = 'model'
         kwa.update(add_gz=True)
 
