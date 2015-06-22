@@ -266,7 +266,7 @@ function onSourceClick(e) {
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
 }
 
-function catLoaded(result) {
+function catLoaded(zoom, tilex, tiley, result) {
     //console.log('catloaded:' + result);
     if (!showSources) {
         return;
@@ -351,16 +351,11 @@ function catLoaded(result) {
     catLayers[key] = circles;
 }
 
-function ngcLoaded(result) {
+function ngcLoaded(zoom, tilex, tiley, result) {
     if (!showNgc) {
         return;
     }
     rdlist = result['rd'];
-    if ((result['zoom'] == undefined) || 
-        (result['tilex'] == undefined) || 
-        (result['tiley'] == undefined)) {
-        return;
-    }
     radius = result['radiusArcsec'];
     names = result['name'];
 
@@ -417,17 +412,70 @@ function ngcLoaded(result) {
     ngcLayers[key] = circles;
 }
 
+//$.getJSON(url, vccLoaded.bind(true, vccCounter));
+function specLoaded(zoom, tilex, tiley, result) {
+    if (!showSpec) {
+        return;
+    }
+    rdlist = result['rd'];
+    names = result['name'];
+
+    showlabels = (map.getZoom() >= specLabelsMinZoom);
+
+    var circleList = new Array(rdlist.length);
+    for (i=0, len=rdlist.length; i<len; i++) {
+        r = rdlist[i][0];
+        d = rdlist[i][1];
+        lat = dec2lat(d);
+        lng = ra2long_B(r);
+	meters = 300;
+	color = '#ffffff';
+        circ = L.circle([lat, lng], meters, {'color':color,
+                                             'fillOpacity':0, 'weight':5});
+        circ.ra = r;
+        circ.dec = d;
+	circ.name = names[i];
+
+	circ._showLabelAdded = true;
+	circ.bindLabel(circ.name, { noHide: true });
+	circ.label._latlng = L.latLng(lat,lng);
+
+	if (showlabels) {
+	    circ.on('remove', function(e){
+		console.log('Removing label for ' + e.target.name);
+		map.removeLayer(e.target.label);
+	    });
+	}
+        circleList[i] = circ;
+    }
+    circles = L.layerGroup(circleList);
+    specGroup.addLayer(circles);
+    if (showlabels) {
+	// show labels
+	for (i=0; i<circleList.length; i++) {
+	    circ = circleList[i];
+	    map.showLabel(circ.label);
+	}
+    }
+
+    // save this for later.
+    key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
+    specLayers[key] = circles;
+}
+
+
+
 
 // Reads global "catname", name of catalog sources to load.
 // and 'sourcesMinZoom'
-function doLoadTile(tile, catalog, ngc) {
-    if (!(catalog || ngc)) {
+function doLoadTile(tile) {
+    if (!(showSources || showNgc || showSpec)) {
 	return;
     }
     //console.log('doLoadtile: ' + tile);
 
     s = getSubdomain(tile.tilex, tile.tiley);
-    if (catalog && (tile.z >= sourcesMinZoom)) {
+    if (showSources && (tile.z >= sourcesMinZoom)) {
 	caturl = L.Util.template('{{ caturl|safe }}', L.extend({
             s: s,
             z: tile.z,
@@ -437,9 +485,10 @@ function doLoadTile(tile, catalog, ngc) {
             ver: getcatversion(catname),
 	}));
 	console.log('Loading catalog version ' + catname);
-	$.getJSON(caturl, catLoaded);
+	$.getJSON(caturl, catLoaded.bind(true,
+					 tile.z, tile.tilex, tile.tiley));
     }
-    if (ngc) {
+    if (showNgc) {
 	url = L.Util.template('{{ caturl|safe }}', L.extend({
             s: s,
             z: tile.z,
@@ -448,7 +497,8 @@ function doLoadTile(tile, catalog, ngc) {
             id: 'ngc',
             ver: getcatversion('ngc'),
 	}));
-	$.getJSON(url, ngcLoaded);
+	$.getJSON(url, ngcLoaded.bind(true,
+				     tile.z, tile.tilex, tile.tiley));
     }
 }
 
@@ -461,7 +511,7 @@ function onTileLoadStart(e) {
     }
     visibleTiles[key] = tile;
     //console.log('onTileLoadStart: ' + key);
-    doLoadTile(tile, showSources, showNgc);
+    doLoadTile(tile);
 }
 
 function doUnloadTile(key) {
@@ -752,7 +802,7 @@ function overlayAdded(e) {
         // request catalogs for currently-visible tiles
         //console.log('Visible tiles: ' + visibleTiles);
         for (var i in visibleTiles) {
-            doLoadTile(visibleTiles[i], cat, ngc);
+            doLoadTile(visibleTiles[i]);
         }
     }
 
@@ -987,6 +1037,10 @@ var visibleTiles = {};
 var showNgc = false;
 var ngcGroup = L.layerGroup([]);
 var ngcLayers = {};
+
+var showSpec = false;
+var specGroup = L.layerGroup([]);
+var specLayers = {};
 
 var showVcc = false;
 var vccGroup = L.layerGroup([]);
@@ -1444,6 +1498,7 @@ var overlayMaps = {
     "Bricks": bricksGroup,
     "CCDs": ccdsGroup,
     "NGC": ngcGroup,
+    "Spectra": specGroup,
     //vccName: vccGroup,
 };
 overlayMaps[vccName] = vccGroup;
@@ -1539,6 +1594,8 @@ var bricksMinZoom = 8;
 var ccdsMinZoom = 8;
 var sourcesMinZoom = 12;
 var ngcLabelsMinZoom = 8;
+
+var specLabelsMinZoom = 8;
 
 // variable for tracking old & new zoom via zoomstart / zoomend
 var oldZoom = {{ zoom }};
