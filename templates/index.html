@@ -833,9 +833,6 @@ function overlayRemoved(e) {
     }
     if (e.name == vccName) {
         showVcc = false;
-	//for (var k in vccGroup) {
-	//vccGroup.removeLayer(vccLayers[k]);
-	//}
 	for (var k in vccLayers) {
 	    vccGroup.removeLayer(k);
 	}
@@ -976,7 +973,9 @@ function mapBoundsChanged() {
     dec = lat2dec(latlng.lat);
     //console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
 
-    loadVccCatalog();
+    if (showVcc) {
+        loadVccCatalog();
+    }
 
     if (showBricks) {
         bounds = map.getBounds();
