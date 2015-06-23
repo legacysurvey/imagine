@@ -317,7 +317,7 @@ def cutout_decals(req, jpeg=False, fits=False):
     elif tag == 'decals-resid':
         tag = 'decals-dr1j'
         imagetag = 'resid'
-        kwa.update(add_gz=True)
+        kwa.update(model_gz=True)
 
     bricks = None
     if tag == 'decals-dr1n':
@@ -538,7 +538,8 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
         #kwargs.update(model_gz=True, scaledir=scaledir)
     if resid:
         imagetag = 'resid'
-        kwargs.update(modeldir = 'decals-dr1j-model')
+        kwargs.update(modeldir = 'decals-dr1j-model',
+                      model_gz=True)
         tag = 'decals-resid-dr1j'
     if nexp:
         imagetag = 'nexp'
