@@ -408,14 +408,31 @@ function ngcLoaded(zoom, tilex, tiley, result) {
 }
 
 //$.getJSON(url, vccLoaded.bind(true, vccCounter));
-function specLoaded(zoom, tilex, tiley, result) {
+//function specLoaded(zoom, tilex, tiley, result) {
+function specLoaded(specCounter, result) {
     if (!showSpec) {
         return;
     }
+    for (var k in vccLayers) {
+	if (k > counter) {
+	    console.log('vcc: counter ' + k + ' exists; bye');
+	    return;
+	}
+    }
+
+    for (var k in vccLayers) {
+	console.log('vcc: counter ' + k + 'exists');
+    }
+
     rdlist = result['rd'];
     names = result['name'];
 
-    showlabels = (map.getZoom() >= specLabelsMinZoom);
+    mjds = result['mjd'];
+    plates = result['plate'];
+    fibers = result['fiber'];
+
+    //showlabels = (map.getZoom() >= specLabelsMinZoom);
+    showlabels = true;
 
     var circleList = new Array(rdlist.length);
     for (i=0, len=rdlist.length; i<len; i++) {
@@ -429,12 +446,14 @@ function specLoaded(zoom, tilex, tiley, result) {
                                              'fillOpacity':0, 'weight':5});
         circ.ra = r;
         circ.dec = d;
-	circ.name = names[i];
+
+	circ.name = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' + mjds[i] + '&fiber=' + fibers[i] + '&plateid=' + plates[i]
+	+ '">' + names[i] + '</a>';
 
 	circ._showLabelAdded = true;
-	circ.bindLabel(circ.name, { noHide: true });
+	circ.bindLabel(circ.name, { noHide: true, clickable: true });
 	circ.label._latlng = L.latLng(lat,lng);
-
+	
 	if (showlabels) {
 	    circ.on('remove', function(e){
 		console.log('Removing label for ' + e.target.name);
@@ -446,16 +465,27 @@ function specLoaded(zoom, tilex, tiley, result) {
     circles = L.layerGroup(circleList);
     specGroup.addLayer(circles);
     if (showlabels) {
-	// show labels
-	for (i=0; i<circleList.length; i++) {
-	    circ = circleList[i];
-	    map.showLabel(circ.label);
-	}
+    	// show labels
+    	for (i=0; i<circleList.length; i++) {
+    	    circ = circleList[i];
+    	    map.showLabel(circ.label);
+    	}
     }
 
     // save this for later.
-    key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
-    specLayers[key] = circles;
+    //key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
+    //specLayers[key] = circles;
+
+    // remove old layers
+    for (var k in specLayers) {
+	if (k < counter) {
+	    console.log('spec: removing previous counter ' + k);
+	    specGroup.removeLayer(specLayers[k]);
+	    delete specLayers[k];
+	}
+    }
+    specLayers[counter] = [circles];
+
 }
 
 
@@ -495,6 +525,20 @@ function doLoadTile(tile) {
 	$.getJSON(url, ngcLoaded.bind(true,
 				     tile.z, tile.tilex, tile.tiley));
     }
+    /*
+    if (showSpec && (tile.z >= specMinZoom)) {
+	caturl = L.Util.template('{{ caturl|safe }}', L.extend({
+            s: s,
+            z: tile.z,
+            x: tile.tilex,
+            y: tile.tiley,
+            id: 'spec',
+            ver: getcatversion('spec'),
+	}));
+	$.getJSON(caturl, specLoaded.bind(true,
+					tile.z, tile.tilex, tile.tiley));
+    }
+    */
 }
 
 function onTileLoadStart(e) {
@@ -761,7 +805,6 @@ var vccCounter = 1;
 
 function loadVccCatalog() {
     b = map.getBounds();
-
     url = L.Util.template('{{ smallcaturl|safe }}', L.extend({
         s: subdomains[0],
 	ralo: long2ra(b.getEast()).toFixed(4),
@@ -773,6 +816,23 @@ function loadVccCatalog() {
     }));
     $.getJSON(url, vccLoaded.bind(true, vccCounter));
     vccCounter += 1;
+}
+
+var specCounter = 1;
+
+function loadSpecCatalog() {
+    b = map.getBounds();
+    url = L.Util.template('{{ smallcaturl|safe }}', L.extend({
+        s: subdomains[0],
+	ralo: long2ra(b.getEast()).toFixed(4),
+	rahi: long2ra(b.getWest()).toFixed(4),
+	declo: lat2dec(b.getSouth()).toFixed(4),
+	dechi: lat2dec(b.getNorth()).toFixed(4),
+        id: 'spec',
+        ver: getcatversion('spec'),
+    }));
+    $.getJSON(url, specLoaded.bind(true, specCounter));
+    specCounter += 1;
 }
 
 // "Sources", "Bricks", "CCDs" button checked
@@ -791,6 +851,12 @@ function overlayAdded(e) {
     if (e.name == vccName) {
         showVcc = true;
 	loadVccCatalog();
+    }
+    if (e.name == 'Spectra') {
+	showSpec = true;
+	if (map.getZoom() >= specMinZoom) {
+	    loadSpecCatalog();
+	}
     }
 
     if (cat || ngc) {
@@ -1483,8 +1549,6 @@ L.DomEvent
   .disableScrollPropagation(container);
 L.DomEvent.on(container, 'click', infoBoxClicked);
 
-//info.getContainer().on('click', infoBoxClicked);
-
 var vccName = "Virgo clusters";
 
 var overlayMaps = {
@@ -1493,7 +1557,6 @@ var overlayMaps = {
     "CCDs": ccdsGroup,
     "NGC": ngcGroup,
     "Spectra": specGroup,
-    //vccName: vccGroup,
 };
 
 {% if enable_vcc %}
@@ -1592,7 +1655,8 @@ var ccdsMinZoom = 8;
 var sourcesMinZoom = 12;
 var ngcLabelsMinZoom = 8;
 
-var specLabelsMinZoom = 8;
+var specMinZoom = 8;
+//var specLabelsMinZoom = 8;
 
 // variable for tracking old & new zoom via zoomstart / zoomend
 var oldZoom = {{ zoom }};

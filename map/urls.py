@@ -21,6 +21,9 @@ urlpatterns = patterns('map.views',
     # Virgo cluster catalog (VCC) objects
     url(r'^vcc/(\d+)/cat.json', 'cat_vcc'),
 
+    # Spectroscopy
+    url(r'^spec/(\d+)/cat.json', 'cat_spec'),
+
     # catalog
     url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_dr1j'),
 
