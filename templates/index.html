@@ -413,15 +413,15 @@ function specLoaded(counter, result) {
     if (!showSpec) {
         return;
     }
-    for (var k in vccLayers) {
+    for (var k in specLayers) {
 	if (k > counter) {
-	    console.log('vcc: counter ' + k + ' exists; bye');
+	    console.log('spec: counter ' + k + ' exists; bye');
 	    return;
 	}
     }
 
-    for (var k in vccLayers) {
-	console.log('vcc: counter ' + k + 'exists');
+    for (var k in specLayers) {
+	console.log('spec: counter ' + k + ' exists');
     }
 
     rdlist = result['rd'];
@@ -431,8 +431,7 @@ function specLoaded(counter, result) {
     plates = result['plate'];
     fibers = result['fiber'];
 
-    //showlabels = (map.getZoom() >= specLabelsMinZoom);
-    showlabels = true;
+    showlabels = (map.getZoom() >= specLabelsMinZoom);
 
     var circleList = new Array(rdlist.length);
     for (i=0, len=rdlist.length; i<len; i++) {
@@ -447,14 +446,14 @@ function specLoaded(counter, result) {
         circ.ra = r;
         circ.dec = d;
 
-	circ.name = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' + mjds[i] + '&fiber=' + fibers[i] + '&plateid=' + plates[i]
+	if (showlabels) {
+	    circ.name = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' + mjds[i] + '&fiber=' + fibers[i] + '&plateid=' + plates[i]
 	+ '">' + names[i] + '</a>';
 
-	circ._showLabelAdded = true;
-	circ.bindLabel(circ.name, { noHide: true, clickable: true });
-	circ.label._latlng = L.latLng(lat,lng);
+	    circ._showLabelAdded = true;
+	    circ.bindLabel(circ.name, { noHide: true, clickable: true });
+	    circ.label._latlng = L.latLng(lat,lng);
 	
-	if (showlabels) {
 	    circ.on('remove', function(e){
 		console.log('Removing label for ' + e.target.name);
 		map.removeLayer(e.target.label);
@@ -482,10 +481,12 @@ function specLoaded(counter, result) {
 	    console.log('spec: removing previous counter ' + k);
 	    specGroup.removeLayer(specLayers[k]);
 	    delete specLayers[k];
+	} else {
+	    console.log('spec: k ' + k + ' vs counter ' + counter);
 	}
     }
     specLayers[counter] = [circles];
-
+    console.log('spec: saved counter ' + counter);
 }
 
 
@@ -1041,6 +1042,9 @@ function mapBoundsChanged() {
 
     if (showVcc) {
         loadVccCatalog();
+    }
+    if (showSpec) {
+        loadSpecCatalog();
     }
 
     if (showBricks) {
@@ -1655,8 +1659,8 @@ var ccdsMinZoom = 8;
 var sourcesMinZoom = 12;
 var ngcLabelsMinZoom = 8;
 
-var specMinZoom = 8;
-//var specLabelsMinZoom = 8;
+var specMinZoom = 10;
+var specLabelsMinZoom = 11;
 
 // variable for tracking old & new zoom via zoomstart / zoomend
 var oldZoom = {{ zoom }};
@@ -1785,6 +1789,11 @@ showNgc = true;
 {% if showVcc %}
 map.addLayer(vccGroup);
 showVcc = true;
+{% endif %}
+
+{% if showSpec %}
+map.addLayer(specGroup);
+showSpec = true;
 {% endif %}
 
 
