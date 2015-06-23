@@ -905,6 +905,14 @@ function overlayRemoved(e) {
 	}
 	vccLayers = {};
     }
+    if (e.name == 'Spectra') {
+	showSpec = false;
+	for (var k in specLayers) {
+	    specGroup.removeLayer(k);
+	}
+	specLayers = {};
+    }
+
     if (unload) {
         // remove all catalogs
         for (var i in visibleTiles) {
