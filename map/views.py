@@ -45,41 +45,18 @@ class MercWCSWrapper(object):
         self.wcs = wcs
         self.wrap = float(wrap)
     def radec2pixelxy(self, ra, dec):
-        #print 'radec2pixelxy:', ra, dec
         X = self.wcs.radec2pixelxy(ra, dec)
-        #print '->', X
         (ok,x,y) = X
         x += (x < -self.wrap/2) * self.wrap
         x -= (x >  self.wrap/2) * self.wrap
-        # if abs(x + self.wrap) < abs(x):
-        #     print ' wrap up ->', ok, x+self.wrap, y
-        #     return ok, x + self.wrap, y
-        # if abs(x - self.wrap) < abs(x):
-        #     print ' wrap down ->', ok, x-self.wrap, y
-        #     return ok, x - self.wrap, y
         return (ok,x,y)
-
-    # def pixelxy2radec(self, x, y):
-    #     print 'pixelxy2radec', x, y
-    #     X = self.wcs.pixelxy2radec(x, y)
-    #     print '->', X
-    #     return X
-
     def __getattr__(self, name):
-        #if name in ['imagew', 'imageh', 'pixelxy2radec', 'get_center', 'pixel_scale',
-        #            ]:
         return getattr(self.wcs, name)
-        #raise RuntimeError('no such attr: %s' % name)
     def __setattr__(self, name, val):
-        #if name in ['imagew', 'imageh']:
-        #    return setattr(self.wcs, name, val)
         if name in ['wcs', 'wrap']:
             self.__dict__[name] = val
             return
         return setattr(self.wcs, name, val)
-        #raise RuntimeError('no such attr in setattr: %s' % name)
-
-
 
 def trymakedirs(fn):
     dirnm = os.path.dirname(fn)
@@ -88,7 +65,6 @@ def trymakedirs(fn):
             os.makedirs(dirnm)
         except:
             pass
-
 
 def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None):
     from astrometry.util.util import Tan
@@ -158,9 +134,9 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
 def index(req):
     layer = req.GET.get('layer', 'decals-dr1j')
     # Nice spiral galaxy
-    #ra, dec, zoom = 244.7, 7.4, 13
+    ra, dec, zoom = 244.7, 7.4, 13
     # EDR2 region
-    ra, dec, zoom = 243.7, 8.2, 13
+    #ra, dec, zoom = 243.7, 8.2, 13
     # Top of DR1
     #ra,dec,zoom = 113.49, 29.86, 13
 
@@ -180,21 +156,12 @@ def index(req):
     lat,lng = dec, ra2long(ra)
 
     url = req.build_absolute_uri(settings.ROOT_URL) + '/{id}/{ver}/{z}/{x}/{y}.jpg'
-    #caturl = settings.ROOT_URL + '/{id}/{ver}/{z}/{x}/{y}.cat.json'
     caturl = settings.CAT_URL
+
+    smallcaturl = settings.ROOT_URL + '/{id}/{ver}/cat.json?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
 
     tileurl = settings.TILE_URL
 
-    # Deployment: http://{s}.DOMAIN/{id}/{ver}/{z}/{x}/{y}.jpg
-    #tileurl = url.replace('www.legacysurvey', 'legacysurvey').replace('://', '://{s}.')
-    #tileurl = 'http://{s}.legacysurvey.org/viewer/
-
-    # Testing:
-    #tileurl = settings.ROOT_URL + '/{id}/{ver}/{z}/{x}/{y}.jpg'
-
-    #subdomains = "['a','b','c','d'];"
-
-    # test.
     subdomains = settings.SUBDOMAINS
     # convert to javascript
     subdomains = '[' + ','.join(["'%s'" % s for s in subdomains]) + '];'
@@ -204,13 +171,7 @@ def index(req):
     bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}&id={id}'
     ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}&id={id}'
 
-    # HACK
-    # tileurl = 'http://broiler.cosmo.fas.nyu.edu:8896/{id}/{ver}/{z}/{x}/{y}.jpg'
-    # caturl = 'http://broiler.cosmo.fas.nyu.edu:8896/{id}/{ver}/{z}/{x}/{y}.cat.json'
-    #bricksurl = 'http://broiler.cosmo.fas.nyu.edu:8896/bricks/?north={north}&east={east}&south={south}&west={west}'
-    #ccdsurl = 'http://broiler.cosmo.fas.nyu.edu:8896/ccds/?north={north}&east={east}&south={south}&west={west}'
-
-    baseurl = req.path + '?'  #+ '?layer=%s&' % layer
+    baseurl = req.path + '?'
 
     from django.shortcuts import render
 
@@ -218,6 +179,7 @@ def index(req):
                   dict(ra=ra, dec=dec, lat=lat, long=lng, zoom=zoom,
                        layer=layer, tileurl=tileurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
+                       smallcaturl=smallcaturl,
                        ccdsurl=ccdsurl,
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
@@ -225,8 +187,11 @@ def index(req):
                        showNgc='ngc' in req.GET,
                        showBricks='bricks' in req.GET,
                        showCcds='ccds' in req.GET,
+                       showVcc='vcc' in req.GET,
+                       showSpec='spec' in req.GET,
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                        enable_nexp = settings.ENABLE_NEXP,
+                       enable_vcc = settings.ENABLE_VCC,
                        ))
 
 def get_tile_wcs(zoom, x, y):
@@ -321,12 +286,12 @@ rgbkwargs_nexp = dict(mnmx=(0,25), arcsinh=1.,
                       scales=dict(g=(2,1),r=(1,1),z=(0,1)))
 
 def jpeg_cutout_decals_dr1j(req):
-    return cutout_decals_dr1j(req, jpeg=True)
+    return cutout_decals(req, jpeg=True)
 
 def fits_cutout_decals_dr1j(req):
-    return cutout_decals_dr1j(req, fits=True)
+    return cutout_decals(req, fits=True)
 
-def cutout_decals_dr1j(req, jpeg=False, fits=False):
+def cutout_decals(req, jpeg=False, fits=False):
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
     pixscale = float(req.GET.get('pixscale', 0.262))
@@ -335,11 +300,28 @@ def cutout_decals_dr1j(req, jpeg=False, fits=False):
     width  = min(int(req.GET.get('width',  size)), maxsize)
     height = min(int(req.GET.get('height', size)), maxsize)
 
+    kwa = {}
+
+    tag = req.GET.get('tag', None)
+    print 'Requested tag:', tag
+    if not tag in ['decals-dr1n', 'decals-model']:
+        # default
+        tag = 'decals-dr1j'
+    print 'Using tag:', tag
+
+    imagetag = 'image'
+    if tag == 'decals-model':
+        tag = 'decals-dr1j'
+        imagetag = 'model'
+        kwa.update(add_gz=True)
+
+    bricks = None
+    if tag == 'decals-dr1n':
+        bricks = get_dr1n_bricks()
+        
+
     bands = req.GET.get('bands', 'grz')
     bands = [b for b in 'grz' if b in bands]
-    #bands = [b for b in bands if b in 'grz']
-    # no repeats
-    #bands = [b for i,b in enumerate(bands) if not b in bands[:i]]
 
     from astrometry.util.util import Tan
     import numpy as np
@@ -359,10 +341,11 @@ def cutout_decals_dr1j(req, jpeg=False, fits=False):
 
     ver = 1
 
-    rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts', 'decals-dr1j',
-                          wcs=wcs,
-                          imagetag='image', rgbkwargs=rgbkwargs,
-                          savecache=False, get_images=fits)
+    rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts',
+                          tag,
+                          wcs=wcs, bricks=bricks,
+                          imagetag=imagetag, rgbkwargs=rgbkwargs,
+                          savecache=False, get_images=fits, **kwa)
     #filename='cutout_%.4f_%.4f.jpg' % (ra,dec))
     if jpeg:
         return rtn
@@ -396,6 +379,27 @@ def cutout_decals_dr1j(req, jpeg=False, fits=False):
 
 B_dr1n = None
 
+def get_dr1n_bricks():
+    global B_dr1n
+    if B_dr1n is not None:
+        return B_dr1n
+    from astrometry.util.fits import fits_table
+    import numpy as np
+    B_dr1n = fits_table(os.path.join(settings.DATA_DIR,
+                                     'decals-bricks.fits'))
+    print 'Total bricks:', len(B_dr1n)
+    B_dr1n.cut(np.logical_or(
+        # Virgo
+        (B_dr1n.ra > 185.) * (B_dr1n.ra < 190.) *
+        (B_dr1n.dec > 10.)  * (B_dr1n.dec < 15.),
+        # Arjun's LSB
+        (B_dr1n.ra > 147.2) * (B_dr1n.ra < 147.8) *
+        (B_dr1n.dec > -0.4)  * (B_dr1n.dec < 0.4)
+    ))
+    print len(B_dr1n), 'bricks in Virgo/LSB region'
+    return B_dr1n
+
+
 def map_decals_model_dr1n(*args, **kwargs):
     return map_decals_dr1n(*args, model=True, model_gz=False, **kwargs)
 
@@ -407,23 +411,7 @@ def map_decals_dr1n(req, ver, zoom, x, y, savecache=None,
                     **kwargs):
     if savecache is None:
         savecache = settings.SAVE_CACHE
-    global B_dr1n
-    if B_dr1n is None:
-        from astrometry.util.fits import fits_table
-        import numpy as np
-        #os.environ['DECALS_DIR'],
-        B_dr1n = fits_table(os.path.join('/project/projectdirs/cosmo/work/decam/versions/work',
-                                         'decals-bricks.fits'))
-        print 'Total bricks:', len(B_dr1n)
-        B_dr1n.cut(np.logical_or(
-                # Virgo
-                (B_dr1n.ra > 185.) * (B_dr1n.ra < 190.) *
-                (B_dr1n.dec > 10.)  * (B_dr1n.dec < 15.),
-                # Arjun's LSB
-                (B_dr1n.ra > 147.2) * (B_dr1n.ra < 147.8) *
-                (B_dr1n.dec > -0.4)  * (B_dr1n.dec < 0.4)
-                ))
-        print len(B_dr1n), 'bricks in Virgo/LSB region'
+    B_dr1n = get_dr1n_bricks()
 
     imagetag = 'image'
     tag = 'decals-dr1n'
@@ -936,6 +924,10 @@ def brick_list(req):
         from astrometry.util.fits import fits_table
         B = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
                                     'decals-bricks.fits'))
+    elif name == 'decals-dr1n':
+        from astrometry.util.fits import fits_table
+        B = fits_table(os.path.join(settings.DATA_DIR,
+                                    'decals-bricks.fits'))
 
     D = _get_decals()
     if B is None:
@@ -969,14 +961,21 @@ CCDs = None
 ccdtree_dr1k = None
 CCDs_dr1k = None
 
+ccdtree_dr1n = None
+CCDs_dr1n = None
+
 def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
     from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
     from astrometry.util.starutil_numpy import degrees_between
     import numpy as np
     global ccdtree
     global CCDs
+
     global ccdtree_dr1k
     global CCDs_dr1k
+
+    global ccdtree_dr1n
+    global CCDs_dr1n
 
     if name == 'decals-dr1k':
         if ccdtree_dr1k is None:
@@ -986,6 +985,15 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
             ccdtree_dr1k = tree_build_radec(CCDs_dr1k.ra, CCDs_dr1k.dec)
         theCCDs = CCDs_dr1k
         theccdtree = ccdtree_dr1k
+
+    elif name == 'decals-dr1n':
+        if ccdtree_dr1n is None:
+            from astrometry.util.fits import fits_table
+            CCDs_dr1n = fits_table(os.path.join(settings.DATA_DIR, 'decals-ccds-dr1n.fits'))
+            ccdtree_dr1n = tree_build_radec(CCDs_dr1n.ra, CCDs_dr1n.dec)
+        theCCDs = CCDs_dr1n
+        theccdtree = ccdtree_dr1n
+
     else:
         if ccdtree is None:
             D = _get_decals()
@@ -1071,6 +1079,89 @@ def brick_detail(req, brickname):
     #brickname = req.GET['brick']
     return HttpResponse('Brick ' + brickname)
 
+def cat_vcc(req, ver):
+    import json
+    tag = 'ngc'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from astrometry.util.fits import fits_table, merge_tables
+    import numpy as np
+    from decals import settings
+
+    TT = []
+    T = fits_table(os.path.join(settings.DATA_DIR, 'virgo-cluster-cat-2.fits'))
+    print len(T), 'in VCC 2; ra', ralo, rahi, 'dec', declo, dechi
+    T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
+    print len(T), 'in cut'
+    TT.append(T)
+
+    T = fits_table(os.path.join(settings.DATA_DIR, 'virgo-cluster-cat-3.fits'))
+    print len(T), 'in VCC 3; ra', ralo, rahi, 'dec', declo, dechi
+    T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
+    print len(T), 'in cut'
+    T.evcc_id = np.array(['-']*len(T))
+    T.rename('id', 'vcc_id')
+    TT.append(T)
+    T = merge_tables(TT)
+
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    names = []
+
+    for t in T:
+        evcc = t.evcc_id.strip()
+        vcc = t.vcc_id.strip()
+        ngc = t.ngc.strip()
+        nms = []
+        if evcc != '-':
+            nms.append('EVCC ' + evcc)
+        if vcc != '-':
+            nms.append('VCC ' + vcc)
+        if ngc != '-':
+            nms.append('NGC ' + ngc)
+        names.append(' / '.join(nms))
+
+    return HttpResponse(json.dumps(dict(rd=rd, name=names)),
+                        content_type='application/json')
+
+def cat_spec(req, ver):
+    import json
+    tag = 'ngc'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from astrometry.util.fits import fits_table, merge_tables
+    import numpy as np
+    from decals import settings
+
+    TT = []
+    T = fits_table(os.path.join(settings.DATA_DIR, 'specObj-dr12-trim-2.fits'))
+    print len(T), 'spectra'
+    T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
+    print len(T), 'in cut'
+
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    names = [t.strip() for t in T.label]
+    mjd   = [int(x) for x in T.mjd]
+    fiber = [int(x) for x in T.fiberid]
+    plate = [int(x) for x in T.plate]
+
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, mjd=mjd, fiber=fiber, plate=plate)),
+                        content_type='application/json')
+
+
 def cat_ngc(req, ver, zoom, x, y):
     import json
     tag = 'ngc'
@@ -1103,8 +1194,8 @@ def cat_ngc(req, ver, zoom, x, y):
     names = ['NGC %i' % i for i in T.ngcnum[J]]
     radius = list(float(x) for x in T.radius[J] * 3600.)
 
-    return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
-                                        zoom=zoom, tilex=x, tiley=y)),
+    return HttpResponse(json.dumps(dict(rd=rd, name=names,
+                                        radiusArcsec=radius)),
                         content_type='application/json')
 
 def cat_decals_dr1j(req, ver, zoom, x, y, tag='decals-dr1j'):
@@ -1114,8 +1205,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     import json
     zoom = int(zoom)
     if zoom < 12:
-        return HttpResponse(json.dumps(dict(rd=[], zoom=zoom,
-                                                  tilex=x, tiley=y)),
+        return HttpResponse(json.dumps(dict(rd=[])),
                             content_type='application/json')
 
     from astrometry.util.fits import fits_table, merge_tables
@@ -1167,8 +1257,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         objids = [int(x) for x in cat.objid]
 
     json = json.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes, nobs=nobs,
-                                 bricknames=bricknames, objids=objids,
-                                 zoom=int(zoom), tilex=int(x), tiley=int(y)))
+                                 bricknames=bricknames, objids=objids))
     if docache:
         trymakedirs(cachefn)
 
