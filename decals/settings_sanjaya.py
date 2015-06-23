@@ -1,8 +1,10 @@
 import os
 from settings_common import *
 
-MAX_NATIVE_ZOOM = 13
-SAVE_CACHE = True
+MAX_NATIVE_ZOOM = 15
+SAVE_CACHE = False
+
+ENABLE_NEXP = False
 
 HOSTNAME = 'imagine.legacysurvey.org'
 ROOT_URL = ''
