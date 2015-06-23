@@ -399,6 +399,9 @@ B_dr1n = None
 def map_decals_model_dr1n(*args, **kwargs):
     return map_decals_dr1n(*args, model=True, model_gz=False, **kwargs)
 
+def map_decals_resid_dr1n(*args, **kwargs):
+    return map_decals_dr1n(*args, resid=True, model_gz=False, **kwargs)
+
 def map_decals_dr1n(req, ver, zoom, x, y, savecache=None,
                     model=False, resid=False, nexp=False,
                     **kwargs):
