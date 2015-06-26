@@ -412,9 +412,8 @@ function ngcLoaded(zoom, tilex, tiley, result) {
     ngcLayers[key] = circles;
 }
 
-//$.getJSON(url, vccLoaded.bind(true, vccCounter));
-//function specLoaded(zoom, tilex, tiley, result) {
 function specLoaded(counter, result) {
+    console.log('specLoaded: counter ' + counter);
     if (!showSpec) {
         return;
     }
@@ -438,18 +437,34 @@ function specLoaded(counter, result) {
 
     showlabels = (map.getZoom() >= specLabelsMinZoom);
 
+    //console.log('Creating ' + rdlist.length + ' labels');
+
+    latlng = map.getCenter();
+    centerlng = latlng.lng;
+
     var circleList = new Array(rdlist.length);
     for (i=0, len=rdlist.length; i<len; i++) {
         r = rdlist[i][0];
         d = rdlist[i][1];
         lat = dec2lat(d);
         lng = ra2long_B(r);
+
+	if (lng > (centerlng + 180)) {
+	    lng -= 360;
+	}
+	if (lng < (centerlng - 180)) {
+	    lng += 360;
+	}
+
+	// ~ 10 arcsec
 	meters = 300;
 	color = '#ffffff';
         circ = L.circle([lat, lng], meters, {'color':color,
                                              'fillOpacity':0, 'weight':5});
         circ.ra = r;
         circ.dec = d;
+
+	//console.log('ra,dec ' + r + ',' + d + ', lat,long ' + lat + ', ' + lng + ': ' + names[i]);
 
 	if (showlabels) {
 	    circ.name = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' + mjds[i] + '&fiber=' + fibers[i] + '&plateid=' + plates[i]
@@ -476,10 +491,6 @@ function specLoaded(counter, result) {
     	}
     }
 
-    // save this for later.
-    //key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
-    //specLayers[key] = circles;
-
     // remove old layers
     for (var k in specLayers) {
 	if (k < counter) {
@@ -490,6 +501,7 @@ function specLoaded(counter, result) {
 	    console.log('spec: k ' + k + ' vs counter ' + counter);
 	}
     }
+    // save this new layer
     specLayers[counter] = [circles];
     console.log('spec: saved counter ' + counter);
 }
@@ -642,14 +654,12 @@ function onMapClick(e) {
 function onMouseMove(e) {
     ra  = long2ra(e.latlng.lng);
     dec = lat2dec(e.latlng.lat);
-    //lastRaDec = [ra, dec];
     lastLatLng = e.latlng;
     if (infoBoxActive) {
 	info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) + ", zoom " + map.getZoom();
+	//+ ', lat,long ' + e.latlng.lat.toFixed(3) + ',' + e.latlng.lng.toFixed(3);
     }
-
     if (inbrickccdAdded) {
-        //props = { ra:ra, dec:dec };
         e.ra = ra;
         e.dec = dec;
         inbrickccdUpdate(e);
@@ -837,6 +847,7 @@ function loadSpecCatalog() {
         id: 'spec',
         ver: getcatversion('spec'),
     }));
+    console.log('Loading spectra for counter ' + specCounter);
     $.getJSON(url, specLoaded.bind(true, specCounter));
     specCounter += 1;
 }

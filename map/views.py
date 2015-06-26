@@ -1154,7 +1154,11 @@ def cat_spec(req, ver):
     TT = []
     T = fits_table(os.path.join(settings.DATA_DIR, 'specObj-dr12-trim-2.fits'))
     print len(T), 'spectra'
-    T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
+    if ralo > rahi:
+        # RA wrap
+        T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
+    else:
+        T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
     print len(T), 'in cut'
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
