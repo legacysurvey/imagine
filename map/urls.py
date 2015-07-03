@@ -11,6 +11,8 @@ urlpatterns = patterns('map.views',
 
     url(r'^decals-nexp-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_nexp_dr1j'),
 
+    url(r'^decals-wl/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_wl'),
+
     # Cutouts
     url(r'^fits-cutout-decals-dr1', 'fits_cutout_decals_dr1j'),
     url(r'^jpeg-cutout-decals-dr1', 'jpeg_cutout_decals_dr1j'),
