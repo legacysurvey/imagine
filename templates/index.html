@@ -1415,6 +1415,23 @@ allLayers.push({name:id, tiles:tilesResidDr1n, pretty:"DECaLS DR1n (Virgo) resid
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
 
+tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
+    maxZoom: maxZoom,
+    minZoom: minZoom,
+    maxNativeZoom: 10,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: 'decals-wl',
+    ver: getversion('decals-wl'),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    //urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
+  });
+tilesWl.on('tileloadstart', onTileLoadStart);
+tilesWl.on('tileunload', onTileUnload);
+
+allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map", catname:""});
+
+
 
 id = 'unwise-w1w2-tiles'
 vertag = 'unwise'

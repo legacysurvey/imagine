@@ -26,6 +26,8 @@ tileversions = {
     'decals-resid-dr1j': [1],
     'decals-nexp-dr1j': [1],
 
+    'decals-wl': [1],
+
     'unwise-w1w2': [1],
     'unwise-w3w4': [1],
     'unwise-w1234': [1],
@@ -379,6 +381,156 @@ def cutout_decals(req, jpeg=False, fits=False):
     
     return send_file(tmpfn, 'image/fits', unlink=True, filename='cutout_%.4f_%.4f.fits' % (ra,dec))
 
+
+def map_decals_wl(req, ver, zoom, x, y):
+    tag = 'decals-wl'
+    ignoreCached = False
+    filename = None
+    forcecache = False
+
+    from decals import settings
+    savecache = settings.SAVE_CACHE
+
+    zoom = int(zoom)
+    zoomscale = 2.**zoom
+    x = int(x)
+    y = int(y)
+    if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
+        raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
+    ver = int(ver)
+    if not ver in tileversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    basedir = settings.DATA_DIR
+    tilefn = os.path.join(basedir, 'tiles', tag,
+                          '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
+    if os.path.exists(tilefn) and not ignoreCached:
+        print 'Cached:', tilefn
+        return send_file(tilefn, 'image/jpeg', expires=oneyear,
+                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
+                         filename=filename)
+    else:
+        print 'Tile image does not exist:', tilefn
+    from astrometry.util.resample import resample_with_wcs, OverlapError
+    from astrometry.util.util import Tan
+    from astrometry.libkd.spherematch import match_radec
+    from astrometry.util.fits import fits_table
+    from astrometry.util.starutil_numpy import degrees_between
+    from desi.common import get_rgb
+    import numpy as np
+    import fitsio
+
+    try:
+        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
+    except RuntimeError as e:
+        return HttpResponse(e.strerror)
+
+    mydir = os.path.join(basedir, 'coadd', 'weak-lensing')
+
+    rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
+    rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
+    r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
+    r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
+    #dlo = min(d1, d2)
+    #dhi = max(d1, d2)
+
+    r,d = wcs.pixelxy2radec(W/2, H/2)[-2:]
+    rad = degrees_between(r, d, rlo, d1)
+
+    T = fits_table(os.path.join(mydir, 'index.fits'))
+    I,J,d = match_radec(T.ra, T.dec, r, d, rad + 0.2)
+    T.cut(I)
+    print len(T), 'weak-lensing maps in range'
+    
+    if len(I) == 0:
+        from django.http import HttpResponseRedirect
+        if forcecache:
+            # create symlink to blank.jpg!
+            trymakedirs(tilefn)
+            src = os.path.join(settings.STATIC_ROOT, 'blank.jpg')
+            if os.path.exists(tilefn):
+                os.unlink(tilefn)
+            os.symlink(src, tilefn)
+            print 'Symlinked', tilefn, '->', src
+        return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
+
+    r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
+                            [1,H/2,H,H,H,H/2,1,1])[-2:]
+
+    foundany = False
+    rimg = np.zeros((H,W), np.float32)
+    rn   = np.zeros((H,W), np.uint8)
+    for tilei in T.i:
+        fn = os.path.join(mydir, 'map%i.fits' % tilei)
+        try:
+            bwcs = _read_tan_wcs(fn, 0)
+        except:
+            print 'Failed to read WCS:', fn
+            savecache = False
+            import traceback
+            import sys
+            traceback.print_exc(None, sys.stdout)
+            continue
+
+        foundany = True
+        print 'Reading', fn
+        ok,xx,yy = bwcs.radec2pixelxy(r, d)
+        xx = xx.astype(np.int)
+        yy = yy.astype(np.int)
+        imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
+        M = 10
+        xlo = np.clip(xx.min() - M, 0, imW)
+        xhi = np.clip(xx.max() + M, 0, imW)
+        ylo = np.clip(yy.min() - M, 0, imH)
+        yhi = np.clip(yy.max() + M, 0, imH)
+        if xlo >= xhi or ylo >= yhi:
+            continue
+
+        subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
+        slc = slice(ylo,yhi), slice(xlo,xhi)
+        try:
+            f = fitsio.FITS(fn)[0]
+            img = f[slc]
+            del f
+        except:
+            print 'Failed to read image and WCS:', fn
+            savecache = False
+            import traceback
+            import sys
+            traceback.print_exc(None, sys.stdout)
+            continue
+
+        try:
+            Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
+        except OverlapError:
+            print 'Resampling exception'
+            continue
+
+        rimg[Yo,Xo] += img[Yi,Xi]
+        rn  [Yo,Xo] += 1
+    rimg /= np.maximum(rn, 1)
+
+    if forcecache:
+        savecache = True
+
+    if savecache:
+        trymakedirs(tilefn)
+    else:
+        import tempfile
+        f,tilefn = tempfile.mkstemp(suffix='.jpg')
+        os.close(f)
+
+    import pylab as plt
+
+    # S/N
+    #lo,hi = 1.5, 5.0
+    lo,hi = 0, 5.0
+    rgb = plt.cm.hot((rimg - lo) / (hi - lo))
+    plt.imsave(tilefn, rgb)
+    print 'Wrote', tilefn
+
+    return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
+                     filename=filename)
 
 
 B_dr1n = None
@@ -1406,7 +1558,6 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     dhi = max(d1, d2)
     I = D.bricks_touching_radec_box(B, rlo, rhi, dlo, dhi)
     print len(I), 'bricks touching zoom', zoom, 'x,y', x,y, 'RA', rlo,rhi, 'Dec', dlo,dhi
-    rimgs = []
 
     if len(I) == 0:
         if get_images:
@@ -1426,6 +1577,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                             [1,H/2,H,H,H,H/2,1,1])[-2:]
 
     foundany = False
+    rimgs = []
     for band in bands:
         rimg = np.zeros((H,W), np.float32)
         rn   = np.zeros((H,W), np.uint8)
