@@ -1429,7 +1429,7 @@ tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
 tilesWl.on('tileloadstart', onTileLoadStart);
 tilesWl.on('tileunload', onTileUnload);
 
-allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map", catname:""});
+//allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map", catname:""});
 
 
 
@@ -1608,8 +1608,11 @@ var overlayMaps = {
     "CCDs": ccdsGroup,
     "NGC": ngcGroup,
     "Spectra": specGroup,
-    "Constellations": conGroup,
 };
+
+{% comment %}
+    "Constellations": conGroup,
+{% endcomment %}
 
 {% if enable_vcc %}
 overlayMaps[vccName] = vccGroup;
