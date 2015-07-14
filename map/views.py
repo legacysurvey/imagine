@@ -26,7 +26,7 @@ tileversions = {
     'decals-resid-dr1j': [1],
     'decals-nexp-dr1j': [1],
 
-    'decals-wl': [1],
+    'decals-wl': [2],
 
     'unwise-w1w2': [1],
     'unwise-w3w4': [1],
@@ -194,6 +194,7 @@ def index(req):
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                        enable_nexp = settings.ENABLE_NEXP,
                        enable_vcc = settings.ENABLE_VCC,
+                       enable_wl = settings.ENABLE_WL,
                        ))
 
 def get_tile_wcs(zoom, x, y):

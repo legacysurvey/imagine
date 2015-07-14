@@ -1157,6 +1157,7 @@ var popup = L.popup();
 // default to 1.
 var tileversions = {
   //'decals-dr1d':1,
+  'decals-wl':2,
 };
 var catversions  = {
   //'decals': 2,
@@ -1415,6 +1416,8 @@ allLayers.push({name:id, tiles:tilesResidDr1n, pretty:"DECaLS DR1n (Virgo) resid
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
 
+{% if enable_wl %}
+
 tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
     maxZoom: maxZoom,
     minZoom: minZoom,
@@ -1429,8 +1432,9 @@ tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
 tilesWl.on('tileloadstart', onTileLoadStart);
 tilesWl.on('tileunload', onTileUnload);
 
-//allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map", catname:""});
+allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map", catname:""});
 
+{% endif %}
 
 
 id = 'unwise-w1w2-tiles'

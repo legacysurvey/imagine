@@ -19,6 +19,9 @@ ENABLE_NEXP = True
 # Enable Virgo Cluster Catalog layer?
 ENABLE_VCC = False
 
+# Enable DECaLS Weak Lensing map?
+ENABLE_WL = False
+
 # Tile cache is writable?
 SAVE_CACHE = False
 
