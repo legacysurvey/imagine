@@ -28,6 +28,10 @@ tileversions = {
 
     'decals-wl': [2],
 
+    'decam-depth-g': [1],
+    'decam-depth-r': [1],
+    'decam-depth-z': [1],
+
     'unwise-w1w2': [1],
     'unwise-w3w4': [1],
     'unwise-w1234': [1],
@@ -381,6 +385,127 @@ def cutout_decals(req, jpeg=False, fits=False):
                  header=hdr)
     
     return send_file(tmpfn, 'image/fits', unlink=True, filename='cutout_%.4f_%.4f.fits' % (ra,dec))
+
+
+Tdepth = None
+Tdepthkd = None
+
+def map_decam_depth(req, ver, zoom, x, y, savecache=False, band=None,
+                    ignoreCached=False):
+    global Tdepth
+    global Tdepthkd
+
+    if band is None:
+        band = req.GET.get('band')
+    if not band in ['g','r','z']:
+        raise RuntimeError('Invalid band')
+    tag = 'decam-depth-%s' % band
+    zoom = int(zoom)
+    zoomscale = 2.**zoom
+    x = int(x)
+    y = int(y)
+    if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
+        raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
+    ver = int(ver)
+    if not ver in tileversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    basedir = settings.DATA_DIR
+    tilefn = os.path.join(basedir, 'tiles', tag,
+                          '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
+    if os.path.exists(tilefn) and not ignoreCached:
+        print 'Cached:', tilefn
+        return send_file(tilefn, 'image/jpeg', expires=oneyear,
+                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
+    from astrometry.util.util import Tan
+    from astrometry.libkd.spherematch import match_radec
+    from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
+    from astrometry.util.fits import fits_table
+    from astrometry.util.starutil_numpy import degrees_between
+    import numpy as np
+    import fitsio
+    try:
+        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
+    except RuntimeError as e:
+        return HttpResponse(e.strerror)
+    rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
+    rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
+    r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
+    r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
+
+    r,d = wcs.pixelxy2radec(W/2, H/2)[-2:]
+    rad = max(degrees_between(r, d, rlo, d1),
+              degrees_between(r, d, rhi, d2))
+
+    if Tdepth is None:
+        T = fits_table(os.path.join(basedir, 'decals-zpt-nondecals.fits'),
+                            columns=['ccdra','ccddec','arawgain', 'avsky',
+                                     'ccdzpt', 'filter', 'crpix1','crpix2',
+                                     'crval1','crval2','cd1_1','cd1_2',
+                                     'cd2_1','cd2_2', 'naxis1', 'naxis2', 'exptime', 'fwhm'])
+        T.rename('ccdra',  'ra')
+        T.rename('ccddec', 'dec')
+
+        Tdepth = {}
+        Tdepthkd = {}
+        for b in ['g','r','z']:
+            Tdepth[b] = T[T.filter == b]
+            Tdepthkd[b] = tree_build_radec(Tdepth[b].ra, Tdepth[b].dec)
+
+    T = Tdepth[band]
+    Tkd = Tdepthkd[band]
+
+    #I,J,d = match_radec(T.ra, T.dec, r, d, rad + 0.2)
+    I = tree_search_radec(Tkd, r, d, rad + 0.2)
+    print len(I), 'CCDs in range'
+    if len(I) == 0:
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
+
+    depthiv = np.zeros((H,W), np.float32)
+    for t in T[I]:
+        twcs = Tan(*[float(x) for x in [
+            t.crval1, t.crval2, t.crpix1, t.crpix2,
+            t.cd1_1, t.cd1_2, t.cd2_1, t.cd2_2, t.naxis1, t.naxis2]])
+        w,h = t.naxis1, t.naxis2
+        r,d = twcs.pixelxy2radec([1,1,w,w], [1,h,h,1])
+        ok,x,y = wcs.radec2pixelxy(r, d)
+        #print 'x,y coords of CCD:', x, y
+        x0 = int(x.min())
+        x1 = int(x.max())
+        y0 = int(y.min())
+        y1 = int(y.max())
+        if y1 < 0 or x1 < 0 or x0 >= W or y0 >= H:
+            continue
+
+        readnoise = 10. # e-; 7.0 to 15.0 according to DECam Data Handbook
+        skysig = np.sqrt(t.avsky * t.arawgain + readnoise**2) / t.arawgain
+        zpscale = 10.**((t.ccdzpt - 22.5)/2.5) * t.exptime
+        sig1 = skysig / zpscale
+        psf_sigma = t.fwhm / 2.35
+        # point-source depth
+        psfnorm = 1./(2. * np.sqrt(np.pi) * psf_sigma)
+        detsig1 = sig1 / psfnorm
+
+        #print '5-sigma point-source depth:', NanoMaggies.nanomaggiesToMag(detsig1 * 5.)
+
+        div = 1 / detsig1**2
+        depthiv[max(y0,0):min(y1,H), max(x0,0):min(x1,W)] += div
+
+    ptsrc = -2.5 * (np.log10(np.sqrt(1./depthiv) * 5) - 9)
+    ptsrc[depthiv == 0] = 0.
+
+    if savecache:
+        trymakedirs(tilefn)
+    else:
+        import tempfile
+        f,tilefn = tempfile.mkstemp(suffix='.jpg')
+        os.close(f)
+
+    import pylab as plt
+    plt.imsave(tilefn, ptsrc, vmin=22., vmax=25., cmap='hot')#nipy_spectral')
+
+    return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
 
 def map_decals_wl(req, ver, zoom, x, y):

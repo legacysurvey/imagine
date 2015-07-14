@@ -27,7 +27,11 @@ version = 1
 def _one_tile((kind, zoom, x, y, ignore)):
     kwargs = dict(ignoreCached=ignore)
     # forcecache=False, return_if_not_found=True)
-    if kind == 'image-dr1k':
+    if kind in ['depth-g','depth-r','depth-z']:
+        band = kind[-1]
+        map_decam_depth(req, version, zoom, x, y, band=band,
+                        savecache=True, **kwargs)
+    elif kind == 'image-dr1k':
         map_decals_dr1k(req, version, zoom, x, y, savecache=True, 
                         forcecache=True, return_if_not_found=False, **kwargs)
     elif kind == 'model-dr1k':
@@ -259,6 +263,60 @@ def main():
                         print 'Wrote', fn
 
 
+        if opt.kind in ['depth-g', 'depth-r', 'depth-z']:
+            import pylab as plt
+            from decals import settings
+            from scipy.ndimage.filters import gaussian_filter
+            from map.views import trymakedirs
+
+            tag = 'decam-' + opt.kind
+            band = opt.kind[-1]
+            ver = 1
+            basescale = 5
+            pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
+                               '%(zoom)i', '%(x)i', '%(y)i.jpg')
+            patdata = dict(ver=ver)
+            tilesize = 256
+            tiles = 2**basescale
+            side = tiles * tilesize
+            
+            base = np.zeros((side, side, 3), np.float32)
+            for y in range(tiles):
+                for x in range(tiles):
+                    dat = patdata.copy()
+                    dat.update(zoom=basescale, x=x, y=y)
+                    fn = pat % dat
+                    if not os.path.exists(fn):
+                        print 'Does not exist:', fn
+                        continue
+                    img = plt.imread(fn)
+                    base[y*tilesize:(y+1)*tilesize,
+                         x*tilesize:(x+1)*tilesize,:] = img
+
+            for scale in range(basescale-1, -1, -1):
+
+                newbase = []
+                for i in range(3):
+                    b = gaussian_filter(base[:,:,i], 1.)
+                    b = (b[ ::2, ::2] + b[1::2, ::2] +
+                         b[1::2,1::2] + b[ ::2,1::2])/4.
+                    newbase.append(b)
+                base = np.dstack(newbase)
+
+                tiles = 2**scale
+                for y in range(tiles):
+                    for x in range(tiles):
+                        img = base[y*tilesize:(y+1)*tilesize,
+                                   x*tilesize:(x+1)*tilesize, :]
+
+                        pp = patdata.copy()
+                        pp.update(zoom=scale, x=x, y=y)
+                        fn = pat % pp
+                        trymakedirs(fn)
+                        plt.imsave(fn, np.clip(np.round(img).astype(np.uint8), 0, 255))
+                        print 'Wrote', fn
+
+
         ### HACK... factor this out...
         if opt.kind in ['image', 'model', 'resid', 'image-dr1k']:
             import pylab as plt
@@ -272,7 +330,9 @@ def main():
 
             tagdict = dict(image='decals-dr1j', model='decals-model-dr1j',
                            resid='decals-resid-dr1j')
+                           
             tagdict['image-dr1k'] = 'decals-dr1k'
+
             tag = tagdict[opt.kind]
             del tagdict
 
@@ -329,7 +389,7 @@ def main():
             for scale in range(basescale-1, -1, -1):
 
                 for i,base in enumerate(bases):
-                    base = gaussian_filter(base, 1.)
+                    #base = gaussian_filter(base, 1.)
                     base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
                     bases[i] = base
 
