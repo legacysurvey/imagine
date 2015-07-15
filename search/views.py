@@ -218,7 +218,7 @@ def api_search(request, query):
             # ('decam_fracin','f8',(3,4)),('decam_saturated','f8',(3,4)),('out_of_bounds','f8',(3,4)),('decam_anymask','f8',(3,4)),
             # ('decam_allmask','f8',(3,4))
             
-        outfile = 'data.fits'
+        outfile = '/var/tmp/cosmo/data.fits'
 
         fits.writeto(outfile, hdu.data, hdu.header, clobber=True)
         fsock = open(outfile,"rb")
