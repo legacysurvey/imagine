@@ -26,7 +26,7 @@ tileversions = {
     'decals-resid-dr1j': [1],
     'decals-nexp-dr1j': [1],
 
-    'decals-wl': [2],
+    'decals-wl': [4],
 
     'decam-depth-g': [1],
     'decam-depth-r': [1],
@@ -563,7 +563,26 @@ def map_decals_wl(req, ver, zoom, x, y):
     r,d = wcs.pixelxy2radec(W/2, H/2)[-2:]
     rad = degrees_between(r, d, rlo, d1)
 
-    T = fits_table(os.path.join(mydir, 'index.fits'))
+    fn = os.path.join(mydir, 'index.fits')
+    if not os.path.exists(fn):
+        #
+        ii,rr,dd = [],[],[]
+        for i in range(1, 52852+1):
+            imgfn = os.path.join(mydir, 'map%i.fits' % i)
+            print imgfn
+            hdr = fitsio.read_header(imgfn)
+            r = hdr['CRVAL1']
+            d = hdr['CRVAL2']
+            ii.append(i)
+            rr.append(r)
+            dd.append(d)
+        T = fits_table()
+        T.ra  = np.array(rr)
+        T.dec = np.array(dd)
+        T.i   = np.array(ii)
+        T.writeto(fn)
+
+    T = fits_table(fn)
     I,J,d = match_radec(T.ra, T.dec, r, d, rad + 0.2)
     T.cut(I)
     print len(T), 'weak-lensing maps in range'
