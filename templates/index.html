@@ -1218,6 +1218,23 @@ tilesSfd = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
 tilesSfd.on('tileloadstart', onTileLoadStart);
 tilesSfd.on('tileunload', onTileUnload);
 
+
+//tilesHalpha = createTileLayer('halpha-tiles', 'halpha');
+
+tilesHalpha = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
+    maxZoom: maxZoom,
+    minZoom: minZoom,
+    maxNativeZoom: 10,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: 'halpha-tiles',
+    ver: getversion('halpha'),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
+  });
+tilesHalpha.on('tileloadstart', onTileLoadStart);
+tilesHalpha.on('tileunload', onTileUnload);
+
 allLayers = [];
 
 static_tile_url = '{{ static_tile_url|safe }}';
@@ -1417,6 +1434,8 @@ allLayers.push({name:id, tiles:tilesResidDr1n, pretty:"DECaLS DR1n (Virgo) resid
 
 
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
+
+allLayers.push({name:'halpha', tiles:tilesHalpha, pretty:"Halpha map", catname:""});
 
 
 {% if enable_wl %}

@@ -36,6 +36,9 @@ urlpatterns = patterns('map.views',
     # SFD dust map
     url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_sfd'),
 
+    # Halpha map
+    url(r'^halpha-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_halpha'),
+
     # unWISE W1/W2
     url(r'^unwise-w1w2-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_unwise_w1w2'),
 

@@ -12,6 +12,7 @@ matplotlib.use('Agg')
 
 tileversions = {
     'sfd': [1,],
+    'halpha': [1,],
 
     'decals-dr1k': [1],
     'decals-model-dr1k': [1],
@@ -1120,9 +1121,29 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
 
 
 sfd = None
+halpha = None
 
-def map_sfd(req, ver, zoom, x, y, savecache = False):
+def map_halpha(req, ver, zoom, x, y, savecache=False):
+    global halpha
+
+    from desi.common import SFDMap
+    if halpha is None:
+        halpha = SFDMap(ngp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_ngp.fits'), sgp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_sgp.fits'))
+
+    return map_zea(req, ver, zoom, x, y, ZEAmap=halpha, tag='halpha', savecache=savecache)
+
+
+def map_sfd(req, ver, zoom, x, y, savecache=False):
     global sfd
+
+    from desi.common import SFDMap
+    if sfd is None:
+        sfd = SFDMap(dustdir=settings.DUST_DIR)
+
+    return map_zea(req, ver, zoom, x, y, ZEAmap=sfd, tag='sfd', savecache=savecache)
+
+
+def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False):
 
     zoom = int(zoom)
     zoomscale = 2.**zoom
@@ -1132,7 +1153,6 @@ def map_sfd(req, ver, zoom, x, y, savecache = False):
         raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
     ver = int(ver)
 
-    tag = 'sfd'
 
     if not ver in tileversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
@@ -1148,12 +1168,8 @@ def map_sfd(req, ver, zoom, x, y, savecache = False):
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
 
-    from desi.common import SFDMap
     import numpy as np
     
-    if sfd is None:
-        sfd = SFDMap(dustdir=settings.DUST_DIR)
-
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
@@ -1161,9 +1177,10 @@ def map_sfd(req, ver, zoom, x, y, savecache = False):
 
     xx,yy = np.meshgrid(np.arange(wcs.get_width()), np.arange(wcs.get_height()))
     ok,rr,dd = wcs.pixelxy2radec(xx.ravel(), yy.ravel())
-    ebv = sfd.ebv(rr, dd)
-    ebv = ebv.reshape(xx.shape)
-    #print 'EBV range:', ebv.min(), ebv.max()
+
+    # Calling ebv function for historical reasons, works for any ZEA map.
+    val = ZEAmap.ebv(rr, dd) 
+    val = val.reshape(xx.shape)
 
     trymakedirs(tilefn)
 
@@ -1174,9 +1191,6 @@ def map_sfd(req, ver, zoom, x, y, savecache = False):
         os.close(f)
 
     import pylab as plt
-    #plt.imsave(tilefn, ebv, vmin=0., vmax=0.5, cmap='hot', edgecolor='none', facecolor='none')
-    #plt.imsave(tilefn, ebv, vmin=0., vmax=0.5, cmap='hot')
-    #print 'Wrote',tilefn
 
     # no jpeg output support in matplotlib in some installations...
     if True:
@@ -1184,7 +1198,7 @@ def map_sfd(req, ver, zoom, x, y, savecache = False):
         f,tempfn = tempfile.mkstemp(suffix='.png')
         os.close(f)
 
-        plt.imsave(tempfn, ebv, vmin=0., vmax=0.5, cmap='hot')
+        plt.imsave(tempfn, val, vmin=0., vmax=0.5, cmap='hot')
 
         cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
         os.system(cmd)
@@ -1192,8 +1206,6 @@ def map_sfd(req, ver, zoom, x, y, savecache = False):
         print 'Wrote', tilefn
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
-    #return send_file(tilefn, 'image/png', unlink=(not savecache))
-
 
 
 decals = None
