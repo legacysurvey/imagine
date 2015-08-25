@@ -1130,7 +1130,7 @@ def map_halpha(req, ver, zoom, x, y, savecache=False):
     if halpha is None:
         halpha = SFDMap(ngp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_ngp.fits'), sgp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_sgp.fits'))
 
-    return map_zea(req, ver, zoom, x, y, ZEAmap=halpha, tag='halpha', savecache=savecache)
+    return map_zea(req, ver, zoom, x, y, ZEAmap=halpha, tag='halpha', savecache=savecache, vmax=5.)
 
 
 def map_sfd(req, ver, zoom, x, y, savecache=False):
@@ -1143,7 +1143,7 @@ def map_sfd(req, ver, zoom, x, y, savecache=False):
     return map_zea(req, ver, zoom, x, y, ZEAmap=sfd, tag='sfd', savecache=savecache)
 
 
-def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False):
+def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0, vmax=0.5):
 
     zoom = int(zoom)
     zoomscale = 2.**zoom
@@ -1198,7 +1198,7 @@ def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False):
         f,tempfn = tempfile.mkstemp(suffix='.png')
         os.close(f)
 
-        plt.imsave(tempfn, val, vmin=0., vmax=0.5, cmap='hot')
+        plt.imsave(tempfn, val, vmin=vmin, vmax=vmax, cmap='hot')
 
         cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
         os.system(cmd)
