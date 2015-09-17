@@ -625,7 +625,7 @@ function brick_detail(name) {
 }
 
 function ccd_detail(name, aparams) {
-    return '<a href="{% url 'ccd_detail_blank' %}' + name
+    return '<a href="{% url 'ccd_detail_blank' %}' + idname + '/' + name
         + '/"' + aparams + '>' + name + '</a>';
 }
 
@@ -1254,6 +1254,28 @@ function createStaticTileLayer(id, vertag) {
     tiles.on('tileunload',    onTileUnload);
     return tiles;
 }
+
+
+id = 'decals-dr2'
+catname = 'decals-dr2';
+
+// Use the static URL until zoom level 14, then the dynamic URL.
+tiles = new MyTileLayer('{{tileurl|safe}}', {
+    maxZoom: maxZoom,
+    maxNativeZoom: {{ maxNativeZoom }},
+    minZoom: minZoom,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+  });
+tiles.catname = catname;
+allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 images", catname:catname});
+
+
+
+
 
 
 id = 'decals-dr1j'

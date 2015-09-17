@@ -14,6 +14,8 @@ tileversions = {
     'sfd': [1,],
     'halpha': [1,],
 
+    'decals-dr2': [1],
+
     'decals-dr1k': [1],
     'decals-model-dr1k': [1],
     'decals-resid-dr1k': [1],
@@ -543,7 +545,7 @@ def map_decals_wl(req, ver, zoom, x, y):
     from astrometry.libkd.spherematch import match_radec
     from astrometry.util.fits import fits_table
     from astrometry.util.starutil_numpy import degrees_between
-    from desi.common import get_rgb
+    from legacypipe.common import get_rgb
     import numpy as np
     import fitsio
 
@@ -677,6 +679,33 @@ def map_decals_wl(req, ver, zoom, x, y):
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
                      filename=filename)
+
+
+
+
+B_dr2 = None
+
+def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
+                    model=False, resid=False, nexp=False,
+                    **kwargs):
+    if savecache is None:
+        savecache = settings.SAVE_CACHE
+    global B_dr2
+    if B_dr2 is None:
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        B_dr2 = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr2',
+                                         'decals-bricks.fits'))
+
+    imagetag = 'image'
+    tag = 'decals-dr2'
+    imagedir = 'decals-dr2'
+    rgb = rgbkwargs
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
+                           imagetag=imagetag,
+                           rgbkwargs=rgb,
+                           bricks=B_dr2,
+                           savecache=savecache, **kwargs)
 
 
 B_dr1n = None
@@ -1126,24 +1155,30 @@ halpha = None
 def map_halpha(req, ver, zoom, x, y, savecache=False):
     global halpha
 
-    from desi.common import SFDMap
+    from tractor.sfd import SFDMap
     if halpha is None:
         halpha = SFDMap(ngp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_ngp.fits'), sgp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_sgp.fits'))
 
-    return map_zea(req, ver, zoom, x, y, ZEAmap=halpha, tag='halpha', savecache=savecache, vmax=5.)
+    # Doug says: np.log10(halpha + 5) stretched to 0.5 to 2.5
+
+    def stretch(x):
+        import numpy as np
+        return np.log10(x + 5)
+
+    return map_zea(req, ver, zoom, x, y, ZEAmap=halpha, tag='halpha', savecache=savecache, vmin=0.5, vmax=2.5, stretch=stretch)
 
 
 def map_sfd(req, ver, zoom, x, y, savecache=False):
     global sfd
 
-    from desi.common import SFDMap
+    from tractor.sfd import SFDMap
     if sfd is None:
         sfd = SFDMap(dustdir=settings.DUST_DIR)
 
     return map_zea(req, ver, zoom, x, y, ZEAmap=sfd, tag='sfd', savecache=savecache)
 
 
-def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0, vmax=0.5):
+def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0, vmax=0.5, stretch=None):
 
     zoom = int(zoom)
     zoomscale = 2.**zoom
@@ -1198,6 +1233,8 @@ def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0
         f,tempfn = tempfile.mkstemp(suffix='.png')
         os.close(f)
 
+        if stretch is not None:
+            val = stretch(val)
         plt.imsave(tempfn, val, vmin=vmin, vmax=vmax, cmap='hot')
 
         cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
@@ -1208,14 +1245,31 @@ def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
 
-decals = None
-def _get_decals():
+decals = {}
+def _get_decals(name=None):
     global decals
-    print 'Creating Decals() object: $DECALS_DIR =', os.environ['DECALS_DIR']
-    if decals is None:
-        from desi.common import Decals
-        decals = Decals()
-    return decals
+    if name in decals:
+        return decals[name]
+
+    print 'Creating Decals() object for "%s"' % name
+
+    from decals import settings
+    basedir = settings.DATA_DIR
+    from legacypipe.common import Decals
+
+    if name == 'decals-dr2':
+        dirnm = os.path.join(basedir, 'decals-dr2')
+        d = Decals(decals_dir=dirnm)
+        decals[name] = d
+        return d
+
+    name = 'decals-dr1'
+    if name in decals:
+        return decals[name]
+
+    d = Decals()
+    decals[name] = d
+    return d
 
 def brick_list(req):
     import json
@@ -1243,7 +1297,7 @@ def brick_list(req):
         B = fits_table(os.path.join(settings.DATA_DIR,
                                     'decals-bricks.fits'))
 
-    D = _get_decals()
+    D = _get_decals(name=name)
     if B is None:
         B = D.get_bricks_readonly()
 
@@ -1278,6 +1332,9 @@ CCDs_dr1k = None
 ccdtree_dr1n = None
 CCDs_dr1n = None
 
+ccdtree_dr2 = None
+CCDs_dr2 = None
+
 def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
     from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
     from astrometry.util.starutil_numpy import degrees_between
@@ -1290,6 +1347,9 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
 
     global ccdtree_dr1n
     global CCDs_dr1n
+
+    global ccdtree_dr2
+    global CCDs_dr2
 
     if name == 'decals-dr1k':
         if ccdtree_dr1k is None:
@@ -1308,9 +1368,17 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
         theCCDs = CCDs_dr1n
         theccdtree = ccdtree_dr1n
 
+    elif name == 'decals-dr2':
+        if ccdtree_dr2 is None:
+            from astrometry.util.fits import fits_table
+            CCDs_dr2 = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr2', 'decals-ccds.fits'))
+            ccdtree_dr2 = tree_build_radec(CCDs_dr2.ra, CCDs_dr2.dec)
+        theCCDs = CCDs_dr2
+        theccdtree = ccdtree_dr2
+
     else:
         if ccdtree is None:
-            D = _get_decals()
+            D = _get_decals(name=name)
             CCDs = D.get_ccds()
             ccdtree = tree_build_radec(CCDs.ra, CCDs.dec)
         theCCDs = CCDs
@@ -1350,6 +1418,15 @@ def ccd_list(req):
 
     CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
 
+    ccdname = lambda c: '%i-%s-%s' % (c.expnum, c.extname.strip(), c.filter)
+
+    if name == 'decals-dr2':
+        ccdname = lambda c: '%i-%s-%s' % (c.expnum, c.ccdname.strip(), c.filter)
+        decals = _get_decals(name)
+        CCDS.cut(decals.photometric_ccds(CCDS))
+
+    CCDS.cut(np.lexsort((CCDS.expnum, CCDS.filter)))
+
     ccds = []
     for c in CCDS:
         wcs = Tan(*[float(x) for x in [
@@ -1358,13 +1435,13 @@ def ccd_list(req):
         x = np.array([1, 1, c.width, c.width])
         y = np.array([1, c.height, c.height, 1])
         r,d = wcs.pixelxy2radec(x, y)
-        ccds.append(dict(name='%i-%s-%s' % (c.expnum, c.extname.strip(), c.filter),
+        ccds.append(dict(name=ccdname(c),
                          poly=zip(d, ra2long(r))))
 
     return HttpResponse(json.dumps(dict(ccds=ccds)),
                         content_type='application/json')
     
-def ccd_detail(req, ccd):
+def ccd_detail(req, name, ccd):
     import numpy as np
     #ccd = req.GET['ccd']
     words = ccd.split('-')
@@ -1375,16 +1452,21 @@ def ccd_detail(req, ccd):
     chipnum = int(words[1][1:], 10)
     extname = '%s%i' % (ns,chipnum)
 
-    D = _get_decals()
+    D = _get_decals(name=name)
     CCDs = D.get_ccds()
-    I = np.flatnonzero((CCDs.expnum == expnum) * 
-                       np.array([n == extname for n in CCDs.extname]))
+
+    if name == 'decals-dr2':
+        I = np.flatnonzero((CCDs.expnum == expnum) * 
+                           np.array([n == extname for n in CCDs.ccdname]))
+        about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec' % (ccd, c.image_filename, c.image_hdu, c.exptime)
+    else:
+        I = np.flatnonzero((CCDs.expnum == expnum) * 
+                           np.array([n == extname for n in CCDs.extname]))
+        about = lambda ccd, c: 'CCD %s, image %s, hdu %i' % (ccd, c.cpimage, c.cpimage_hdu)
     assert(len(I) == 1)
 
-    C = CCDs[I[0]]
-    return HttpResponse('CCD %s, image %s, hdu %i' % (ccd, C.cpimage, C.cpimage_hdu))
-
-    #return HttpResponse('CCD ' + ccd)
+    c = CCDs[I[0]]
+    return HttpResponse(about(ccd, c))
 
 def nil(req):
     pass
@@ -1596,6 +1678,7 @@ def _get_decals_cat(wcs, tag='decals'):
     r,d = X[-2:]
     catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
                           'tractor-%(brickname)s.fits')
+    # FIXME (name)
     D = _get_decals()
     B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
@@ -1661,7 +1744,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         print 'Tile image does not exist:', tilefn
     from astrometry.util.resample import resample_with_wcs, OverlapError
     from astrometry.util.util import Tan
-    from desi.common import get_rgb
+    from legacypipe.common import get_rgb
     import numpy as np
     import fitsio
 
@@ -1900,7 +1983,7 @@ def cutouts(req):
     from astrometry.util.util import Tan
     from astrometry.util.starutil_numpy import degrees_between
     import numpy as np
-    from desi.common import wcs_for_brick
+    from legacypipe.common import wcs_for_brick
 
     ra = float(req.GET['ra'])
     dec = float(req.GET['dec'])
@@ -1930,7 +2013,7 @@ def cutouts(req):
         c = CCDs[i]
 
         try:
-            from desi.common import DecamImage
+            from legacypipe.decam import DecamImage
             c.cpimage = _get_image_filename(c)
             dim = DecamImage(c)
             wcs = dim.read_wcs()
@@ -2002,7 +2085,7 @@ def cat_plot(req):
     import pylab as plt
     import numpy as np
     from astrometry.util.util import Tan
-    from desi.common import get_sdss_sources
+    from legacypipe.sdss import get_sdss_sources
     from decals import settings
 
     ra = float(req.GET['ra'])
@@ -2097,7 +2180,7 @@ def _get_image_slice(fn, hdu, x, y, size=50):
     img = img[slc]
     return img,slc,xstart,ystart
 
-def cutout_panels(req, expnum=None, extname=None):
+def cutout_panels(req, expnum=None, extname=None, name=None):
     import pylab as plt
     import numpy as np
 
@@ -2123,13 +2206,13 @@ def cutout_panels(req, expnum=None, extname=None):
     size = 50
     img,slc,xstart,ystart = _get_image_slice(fn, ccd.cpimage_hdu, x, y, size=size)
 
-    from desi.common import DecamImage
-    from desi.desi_common import read_fits_catalog
+    from legacypipe.decam import DecamImage
+    from legacypipe.desi_common import read_fits_catalog
     from tractor import Tractor
 
     ccd.cpimage = fn
     im = DecamImage(ccd)
-    D = _get_decals()
+    D = _get_decals(name=name)
     tim = im.get_tractor_image(decals, slc=slc, tiny=1, const2psf=True, pvwcs=True)
 
     if tim is None:

@@ -1,6 +1,8 @@
 from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns('map.views',
+    # DR2
+    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr2'),
 
     # depth maps
     url(r'^decam-depth/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decam_depth'),
@@ -63,7 +65,7 @@ urlpatterns = patterns('map.views',
     # this one is here to provide a name for the javascript to refer to.
     url(r'^brick/', 'nil', name='brick_detail_blank'),
     # CCD details
-    url(r'^ccd/([\w-]+)', 'ccd_detail', name='ccd_detail'),
+    url(r'^ccd/([\w-]+)/([\w-]+)', 'ccd_detail', name='ccd_detail'),
     # this one is here to provide a name for the javascript to refer to.
     url(r'^ccd/', 'nil', name='ccd_detail_blank'),
 
