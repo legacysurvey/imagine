@@ -297,10 +297,13 @@ function catLoaded(zoom, tilex, tiley, result) {
             typ = 'nil';
         } else {
             typ = objtype[i];
-            // used to by 'S' for star; now 'P' for PSF
-            //if (objtype[i] == 'S') {
+	    // PSF
             if (objtype[i] == 'P') {
                 color = '#9AFE2E'; //#D8F781'; //'green';
+	    } else if (objtype[i] == 'S') {
+		// Simple
+                color = 'orange';
+	    //if (objtype[i] == 'S') {
             } else if (objtype[i] == 'D') {
                 color = 'red';
             } else if (objtype[i] == 'E') {

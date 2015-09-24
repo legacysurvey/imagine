@@ -44,6 +44,7 @@ tileversions = {
 
 catversions = {
     'decals-dr1j': [1,],
+    'decals-dr2': [1,],
     'ngc': [1,],
     }
 
@@ -1457,12 +1458,12 @@ def ccd_detail(req, name, ccd):
 
     if name == 'decals-dr2':
         I = np.flatnonzero((CCDs.expnum == expnum) * 
-                           np.array([n == extname for n in CCDs.ccdname]))
-        about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec' % (ccd, c.image_filename, c.image_hdu, c.exptime)
+                           np.array([n.strip() == extname for n in CCDs.ccdname]))
+        about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' % (ccd, c.image_filename, c.image_hdu, c.exptime, c.seeing)
     else:
         I = np.flatnonzero((CCDs.expnum == expnum) * 
-                           np.array([n == extname for n in CCDs.extname]))
-        about = lambda ccd, c: 'CCD %s, image %s, hdu %i' % (ccd, c.cpimage, c.cpimage_hdu)
+                           np.array([n.strip() == extname for n in CCDs.extname]))
+        about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' % (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262)
     assert(len(I) == 1)
 
     c = CCDs[I[0]]
@@ -1599,6 +1600,9 @@ def cat_ngc(req, ver, zoom, x, y):
                         content_type='application/json')
 
 def cat_decals_dr1j(req, ver, zoom, x, y, tag='decals-dr1j'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def cat_decals_dr2(req, ver, zoom, x, y, tag='decals-dr2'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):

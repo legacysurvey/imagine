@@ -3,6 +3,8 @@ from django.conf.urls import patterns, include, url
 urlpatterns = patterns('map.views',
     # DR2
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr2'),
+    # catalog
+    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_dr2'),
 
     # depth maps
     url(r'^decam-depth/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decam_depth'),
