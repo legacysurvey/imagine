@@ -238,7 +238,7 @@ function fluxToMag(f) {
 }
 
 function cutout_radec_link(ra, dec) {
-    return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '">' +
+    return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&name=' + idname + '">' +
         ra.toFixed(4) + ', ' + dec.toFixed(4) + '</a>';
 }
 
@@ -1166,7 +1166,7 @@ var tileversions = {
   'decals-wl':4,
 };
 var catversions  = {
-  //'decals': 2,
+  'decals-dr2': 2,
 };
 
 function getversion(layer) {

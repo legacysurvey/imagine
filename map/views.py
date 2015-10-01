@@ -44,7 +44,7 @@ tileversions = {
 
 catversions = {
     'decals-dr1j': [1,],
-    'decals-dr2': [1,],
+    'decals-dr2': [2,],
     'ngc': [1,],
     }
 
@@ -1377,6 +1377,10 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
         theCCDs = CCDs_dr2
         theccdtree = ccdtree_dr2
 
+        theCCDs.extname = theCCDs.ccdname
+        theCCDs.cpimage = theCCDs.image_filename
+        theCCDs.cpimage_hdu = theCCDs.image_hdu
+
     else:
         if ccdtree is None:
             D = _get_decals(name=name)
@@ -1991,6 +1995,7 @@ def cutouts(req):
 
     ra = float(req.GET['ra'])
     dec = float(req.GET['dec'])
+    name = req.GET.get('name', None)
 
     # half-size in DECam pixels
     size = 50
@@ -2005,7 +2010,7 @@ def cutouts(req):
     west,nil  = wcs.pixelxy2radec(1, size+0.5)
     east,nil  = wcs.pixelxy2radec(W, size+0.5)
     
-    CCDs = _ccds_touching_box(north, south, east, west)
+    CCDs = _ccds_touching_box(north, south, east, west, name=name)
 
     print len(CCDs), 'CCDs'
 
@@ -2074,8 +2079,11 @@ def cutouts(req):
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
         fn = ccd.cpimage.replace(settings.DATA_DIR + '/', '')
-        ccdsx.append(('CCD %s %i %s x,y %i,%i<br/><small>(%s [%i])</small>' % (ccd.filter, ccd.expnum, ccd.extname, x, y, fn, ccd.cpimage_hdu),
-                      url % (domains[i%len(domains)], int(ccd.expnum), ccd.extname) + '?x=%i&y=%i' % (x,y)))
+        theurl = url % (domains[i%len(domains)], int(ccd.expnum), ccd.extname) + '?x=%i&y=%i' % (x,y)
+        if name is not None:
+            theurl += '&name=' + name
+        ccdsx.append(('CCD %s %i %s, %.1f sec (x,y = %i,%i)<br/><small>(%s [%i])</small>' %
+                      (ccd.filter, ccd.expnum, ccd.extname, ccd.exptime, x, y, fn, ccd.cpimage_hdu), theurl))
 
     return render(req, 'cutouts.html',
                   dict(ra=ra, dec=dec,
