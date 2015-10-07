@@ -19,6 +19,12 @@ ENABLE_NEXP = True
 # Enable Virgo Cluster Catalog layer?
 ENABLE_VCC = False
 
+# Enable DECaLS Weak Lensing map?
+ENABLE_WL = False
+
+# DR2 images?
+ENABLE_DR2 = False
+
 # Tile cache is writable?
 SAVE_CACHE = False
 
@@ -42,6 +48,7 @@ WEB_DIR = os.path.dirname(BASE_DIR)
 DATA_DIR = os.path.join(WEB_DIR, 'data')
 
 DUST_DIR = os.path.join(DATA_DIR, 'dust')
+HALPHA_DIR = os.path.join(DATA_DIR, 'halpha')
 UNWISE_DIR = os.path.join(DATA_DIR, 'unwise-coadds')
 #DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
 #UNWISE_DIR = '/project/projectdirs/cosmo/data/unwise/unwise-coadds'

@@ -238,7 +238,7 @@ function fluxToMag(f) {
 }
 
 function cutout_radec_link(ra, dec) {
-    return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '">' +
+    return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&name=' + idname + '">' +
         ra.toFixed(4) + ', ' + dec.toFixed(4) + '</a>';
 }
 
@@ -297,10 +297,13 @@ function catLoaded(zoom, tilex, tiley, result) {
             typ = 'nil';
         } else {
             typ = objtype[i];
-            // used to by 'S' for star; now 'P' for PSF
-            //if (objtype[i] == 'S') {
+	    // PSF
             if (objtype[i] == 'P') {
                 color = '#9AFE2E'; //#D8F781'; //'green';
+	    } else if (objtype[i] == 'S') {
+		// Simple
+                color = 'orange';
+	    //if (objtype[i] == 'S') {
             } else if (objtype[i] == 'D') {
                 color = 'red';
             } else if (objtype[i] == 'E') {
@@ -625,7 +628,7 @@ function brick_detail(name) {
 }
 
 function ccd_detail(name, aparams) {
-    return '<a href="{% url 'ccd_detail_blank' %}' + name
+    return '<a href="{% url 'ccd_detail_blank' %}' + idname + '/' + name
         + '/"' + aparams + '>' + name + '</a>';
 }
 
@@ -659,6 +662,9 @@ function onMouseMove(e) {
     ra  = long2ra(e.latlng.lng);
     dec = lat2dec(e.latlng.lat);
     lastLatLng = e.latlng;
+    while (ra > 360.) {
+	ra -= 360.;
+    }
     if (infoBoxActive) {
 	info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) + ", zoom " + map.getZoom();
 	//+ ', lat,long ' + e.latlng.lat.toFixed(3) + ',' + e.latlng.lng.toFixed(3);
@@ -1157,9 +1163,10 @@ var popup = L.popup();
 // default to 1.
 var tileversions = {
   //'decals-dr1d':1,
+  'decals-wl':4,
 };
 var catversions  = {
-  //'decals': 2,
+  'decals-dr2': 2,
 };
 
 function getversion(layer) {
@@ -1214,6 +1221,23 @@ tilesSfd = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
 tilesSfd.on('tileloadstart', onTileLoadStart);
 tilesSfd.on('tileunload', onTileUnload);
 
+
+//tilesHalpha = createTileLayer('halpha-tiles', 'halpha');
+
+tilesHalpha = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
+    maxZoom: maxZoom,
+    minZoom: minZoom,
+    maxNativeZoom: 10,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: 'halpha-tiles',
+    ver: getversion('halpha'),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
+  });
+tilesHalpha.on('tileloadstart', onTileLoadStart);
+tilesHalpha.on('tileunload', onTileUnload);
+
 allLayers = [];
 
 static_tile_url = '{{ static_tile_url|safe }}';
@@ -1233,6 +1257,29 @@ function createStaticTileLayer(id, vertag) {
     tiles.on('tileunload',    onTileUnload);
     return tiles;
 }
+
+
+{% if enable_dr2 %}
+id = 'decals-dr2'
+catname = 'decals-dr2';
+
+// Use the static URL until zoom level 14, then the dynamic URL.
+tiles = new MyTileLayer('{{tileurl|safe}}', {
+    maxZoom: maxZoom,
+    maxNativeZoom: {{ maxNativeZoom }},
+    minZoom: minZoom,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+  });
+tiles.catname = catname;
+allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 images", catname:catname});
+{% endif %}
+
+
+
 
 
 id = 'decals-dr1j'
@@ -1414,6 +1461,10 @@ allLayers.push({name:id, tiles:tilesResidDr1n, pretty:"DECaLS DR1n (Virgo) resid
 
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
+allLayers.push({name:'halpha', tiles:tilesHalpha, pretty:"Halpha map", catname:""});
+
+
+{% if enable_wl %}
 
 tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
     maxZoom: maxZoom,
@@ -1429,8 +1480,27 @@ tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
 tilesWl.on('tileloadstart', onTileLoadStart);
 tilesWl.on('tileunload', onTileUnload);
 
-//allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map", catname:""});
+allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map", catname:""});
 
+{% endif %}
+
+bands = ['g','r','z'];
+for (var i in bands) {
+    band = bands[i];
+    tilesDepth = new ZoomRangeTileLayer('{{ tileurl|safe }}?band=' + band, {
+	maxZoom: maxZoom,
+	minZoom: minZoom,
+	attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+	id: 'decam-depth',
+	ver: getversion('decam-depth'),
+	unloadInvisibleTiles: true,
+	subdomains: subdomains,
+	//urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
+    });
+    tilesDepth.on('tileloadstart', onTileLoadStart);
+    tilesDepth.on('tileunload', onTileUnload);
+    allLayers.push({name:'decam-depth-'+band, tiles:tilesDepth, pretty:"DECam Depth: " + band + " band", catname:""});
+}
 
 
 id = 'unwise-w1w2-tiles'

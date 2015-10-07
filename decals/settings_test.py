@@ -4,6 +4,8 @@ from settings_common import *
 MAX_NATIVE_ZOOM = 15
 SAVE_CACHE = False
 
+ENABLE_WL = True
+
 ENABLE_VCC = True
 
 HOSTNAME = 'test.legacysurvey.org'

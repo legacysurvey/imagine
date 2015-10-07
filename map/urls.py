@@ -1,6 +1,14 @@
 from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns('map.views',
+    # DR2
+    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr2'),
+    # catalog
+    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_dr2'),
+
+    # depth maps
+    url(r'^decam-depth/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decam_depth'),
+
     # DR1k -- COSMOS
     url(r'^decals-dr1k/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr1k'),
 
@@ -32,6 +40,9 @@ urlpatterns = patterns('map.views',
     # SFD dust map
     url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_sfd'),
 
+    # Halpha map
+    url(r'^halpha-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_halpha'),
+
     # unWISE W1/W2
     url(r'^unwise-w1w2-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_unwise_w1w2'),
 
@@ -56,7 +67,7 @@ urlpatterns = patterns('map.views',
     # this one is here to provide a name for the javascript to refer to.
     url(r'^brick/', 'nil', name='brick_detail_blank'),
     # CCD details
-    url(r'^ccd/([\w-]+)', 'ccd_detail', name='ccd_detail'),
+    url(r'^ccd/([\w-]+)/([\w-]+)', 'ccd_detail', name='ccd_detail'),
     # this one is here to provide a name for the javascript to refer to.
     url(r'^ccd/', 'nil', name='ccd_detail_blank'),
 
