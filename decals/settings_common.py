@@ -22,6 +22,9 @@ ENABLE_VCC = False
 # Enable DECaLS Weak Lensing map?
 ENABLE_WL = False
 
+# DR2 images?
+ENABLE_DR2 = False
+
 # Tile cache is writable?
 SAVE_CACHE = False
 

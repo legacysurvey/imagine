@@ -203,6 +203,7 @@ def index(req):
                        enable_nexp = settings.ENABLE_NEXP,
                        enable_vcc = settings.ENABLE_VCC,
                        enable_wl = settings.ENABLE_WL,
+                       enable_dr2 = settings.ENABLE_DR2,
                        ))
 
 def get_tile_wcs(zoom, x, y):
