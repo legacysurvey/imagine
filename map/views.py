@@ -204,6 +204,7 @@ def index(req):
                        enable_vcc = settings.ENABLE_VCC,
                        enable_wl = settings.ENABLE_WL,
                        enable_dr2 = settings.ENABLE_DR2,
+                       enable_depth = settings.ENABLE_DEPTH,
                        ))
 
 def get_tile_wcs(zoom, x, y):

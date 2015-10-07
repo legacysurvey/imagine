@@ -22,6 +22,8 @@ ENABLE_VCC = False
 # Enable DECaLS Weak Lensing map?
 ENABLE_WL = False
 
+ENABLE_DEPTH = False
+
 # DR2 images?
 ENABLE_DR2 = False
 

@@ -1484,6 +1484,7 @@ allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing
 
 {% endif %}
 
+{% if enable_depth %}
 bands = ['g','r','z'];
 for (var i in bands) {
     band = bands[i];
@@ -1501,7 +1502,7 @@ for (var i in bands) {
     tilesDepth.on('tileunload', onTileUnload);
     allLayers.push({name:'decam-depth-'+band, tiles:tilesDepth, pretty:"DECam Depth: " + band + " band", catname:""});
 }
-
+{% endif %}
 
 id = 'unwise-w1w2-tiles'
 vertag = 'unwise'

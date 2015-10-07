@@ -7,3 +7,4 @@ ENABLE_NEXP = False
 ENABLE_VCC  = False
 ENABLE_WL   = False
 ENABLE_DR2  = False
+ENABLE_DEPTH = False
