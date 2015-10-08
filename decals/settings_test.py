@@ -2,7 +2,7 @@ import os
 from settings_common import *
 
 MAX_NATIVE_ZOOM = 15
-SAVE_CACHE = False
+SAVE_CACHE = True
 
 ENABLE_WL = True
 

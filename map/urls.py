@@ -1,6 +1,9 @@
 from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns('map.views',
+    # SDSS
+    url(r'^sdss/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_sdss'),
+
     # DR2
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr2'),
     # catalog

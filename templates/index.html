@@ -1457,7 +1457,18 @@ allLayers.push({name:id, tiles:tilesResidDr1n, pretty:"DECaLS DR1n (Virgo) resid
 
 
 
-
+id = 'sdss'
+tiles = new MyTileLayer('{{tileurl|safe}}', {
+    maxZoom: maxZoom,
+    maxNativeZoom: {{ maxNativeZoom }},
+    minZoom: minZoom,
+    attribution: '<a href="http://sdss.org">SDSSS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+  });
+allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
 
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 

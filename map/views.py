@@ -13,6 +13,7 @@ matplotlib.use('Agg')
 tileversions = {
     'sfd': [1,],
     'halpha': [1,],
+    'sdss': [1,],
 
     'decals-dr2': [1],
 
@@ -391,6 +392,206 @@ def cutout_decals(req, jpeg=False, fits=False):
                  header=hdr)
     
     return send_file(tmpfn, 'image/fits', unlink=True, filename='cutout_%.4f_%.4f.fits' % (ra,dec))
+
+
+
+w_flist = None
+w_flist_tree = None
+
+def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
+             get_images=False, ignoreCached=False,
+             **kwargs):
+    from decals import settings
+
+    if savecache is None:
+        savecache = settings.SAVE_CACHE
+    zoom = int(zoom)
+    zoomscale = 2.**zoom
+    x = int(x)
+    y = int(y)
+    if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
+        raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
+    ver = int(ver)
+
+    if not ver in tileversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    basedir = settings.DATA_DIR
+    tilefn = os.path.join(basedir, 'tiles', tag,
+                          '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
+    if os.path.exists(tilefn) and not ignoreCached:
+        return send_file(tilefn, 'image/jpeg', expires=oneyear,
+                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
+
+    if not savecache:
+        import tempfile
+        f,tilefn = tempfile.mkstemp(suffix='.jpg')
+        os.close(f)
+
+    try:
+        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
+    except RuntimeError as e:
+        return HttpResponse(e.strerror)
+
+    from astrometry.util.fits import fits_table
+    import numpy as np
+    from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
+    from astrometry.util.starutil_numpy import degrees_between, arcsec_between
+    from astrometry.util.resample import resample_with_wcs, OverlapError
+    from astrometry.util.util import Tan
+    import fitsio
+
+    global w_flist
+    global w_flist_tree
+    if w_flist is None:
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        w_flist = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
+                                          'window_flist.fits'),
+                             columns=['run','rerun','camcol','field','ra','dec'])
+        w_flist_tree = tree_build_radec(w_flist.ra, w_flist.dec)
+
+    # SDSS field size
+    radius = 1.01 * np.hypot(10., 14.)/2. / 60.
+
+    # leaflet tile size
+    ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
+    ok,r0,d0 = wcs.pixelxy2radec(1, 1)
+    ok,r1,d1 = wcs.pixelxy2radec(W, H)
+    radius = radius + max(degrees_between(ra,dec, r0,d0), degrees_between(ra,dec, r1,d1))
+
+    J = tree_search_radec(w_flist_tree, ra, dec, radius)
+    
+    ww = [1, W*0.25, W*0.5, W*0.75, W]
+    hh = [1, H*0.25, H*0.5, H*0.75, H]
+
+    ok,r,d = wcs.pixelxy2radec(
+        [1]*len(hh) + ww          + [W]*len(hh) +        list(reversed(ww)),
+        hh          + [1]*len(ww) + list(reversed(hh)) + [H]*len(ww))
+
+    # scaled = 0
+    # scalepat = None
+    # scaledir = 'sdss'
+    # 
+    # if zoom < 11:
+    #     # Get *actual* pixel scales at the top & bottom
+    #     ok,r1,d1 = wcs.pixelxy2radec(W/2., H)
+    #     ok,r2,d2 = wcs.pixelxy2radec(W/2., H-1.)
+    #     ok,r3,d3 = wcs.pixelxy2radec(W/2., 1.)
+    #     ok,r4,d4 = wcs.pixelxy2radec(W/2., 2.)
+    #     # Take the min = most zoomed-in
+    #     scale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
+    #     
+    #     native_scale = 0.396
+    #     scaled = int(np.floor(np.log2(scale / native_scale)))
+    #     print 'Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled
+    #     scaled = np.clip(scaled, 1, 8)
+    #     dirnm = os.path.join(basedir, 'scaled', scaledir)
+    #     scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(rerun)s', '%(run)i', '%(camcol)i', 'sdss-%(run)i-%(camcol)i-%(field)i-%(band)s.fits')
+    # 
+    # basepat = os.path.join(settings.SDSS_DIR, '%(rerun)s', '%(run)i', '%(camcol)i', 'frame-%(band)s-%(run)06i-%(camcol)i-%(frame)04i.fits.bz2')
+
+    bands = 'gri'
+
+    rimgs = [np.zeros((H,W), np.float32) for band in bands]
+    rns   = [np.zeros((H,W), np.uint8)   for band in bands]
+
+    from astrometry.sdss import AsTransWrapper, DR9
+
+    sdss = DR9(basedir=settings.SDSS_DIR)
+    sdss.saveUnzippedFiles(settings.SDSS_DIR)
+    #sdss.setFitsioReadBZ2()
+
+    for j in J:
+        im = w_flist[j]
+        for band,rimg,rn in zip(bands, rimgs, rns):
+            # fnargs = dict(band=band, rerun=im.rerun, run=im.run, camcol=im.camocol,
+            #               field=im.field)
+            # basefn = basepat % fnargs
+            # fn = get_scaled(scalepat, fnargs, scaled, basefn)
+
+            fn = sdss.retrieve('frame', im.run, im.camcol, field=im.field,
+                               band=band, rerun=im.rerun)
+            print 'Field', fn
+
+            frame = sdss.readFrame(im.run, im.camcol, im.field, band,
+                                   filename=fn)
+            h,w = frame.getImageShape()
+            astrans = frame.getAsTrans()
+            fwcs = AsTransWrapper(astrans, w, h)
+
+            # ok,xx,yy = fwcs.radec2pixelxy(r, d)
+            # if not np.all(ok):
+            #     print 'Skipping field'
+            #     continue
+            # assert(np.all(ok))
+            # xx = xx.astype(np.int)
+            # yy = yy.astype(np.int)
+            # imW,imH = w,h
+            # # Margin
+            # M = 20
+            # xlo = np.clip(xx.min() - M, 0, imW)
+            # xhi = np.clip(xx.max() + M, 0, imW)
+            # ylo = np.clip(yy.min() - M, 0, imH)
+            # yhi = np.clip(yy.max() + M, 0, imH)
+            # if xlo >= xhi or ylo >= yhi:
+            #     continue
+
+            try:
+                Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, fwcs, [], 3)
+            except OverlapError:
+                continue
+
+            if len(Xi) == 0:
+                print 'No overlap'
+                continue
+            x0 = Xi.min()
+            x1 = Xi.max()
+            y0 = Yi.min()
+            y1 = Yi.max()
+            img = frame.getImageSlice((slice(y0,y1+1), slice(x0,x1+1)))
+
+            rimg[Yo,Xo] += img[Yi-y0, Xi-x0]
+            rn  [Yo,Xo] += 1
+
+    for rimg,rn in zip(rimgs, rns):
+        rimg /= np.maximum(rn, 1)
+    del rns
+
+    if get_images:
+        return rimgs
+
+    from legacypipe.common import get_rgb
+
+    #rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+
+    s = 6.
+
+    sdss_rgbkwargs = dict(scales=dict(g=(2, s*0.0066),
+                                      r=(1, s*0.008),
+                                      i=(0, s*0.01)),
+                          mnmx=(-1,100),
+                          arcsinh=1.)
+
+    rgb = get_rgb(rimgs, bands, **sdss_rgbkwargs)
+
+    import pylab as plt
+    trymakedirs(tilefn)
+
+    # no jpeg output support in matplotlib in some installations...
+    if True:
+        import tempfile
+        f,tempfn = tempfile.mkstemp(suffix='.png')
+        os.close(f)
+        plt.imsave(tempfn, rgb)
+        print 'Wrote to temp file', tempfn
+        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
+        print cmd
+        os.system(cmd)
+        os.unlink(tempfn)
+        print 'Wrote', tilefn
+
+    return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
 
 Tdepth = None
