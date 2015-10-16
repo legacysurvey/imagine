@@ -1,6 +1,8 @@
 import os
 from settings_common import *
 
+ENABLE_DR2 = True
+
 MAX_NATIVE_ZOOM = 15
 SAVE_CACHE = True
 
