@@ -2,15 +2,22 @@ from django.shortcuts import render, redirect
 from squrl import unsqurl, squrlup
 from django.http import HttpResponseRedirect, HttpResponse, StreamingHttpResponse
 from django.db import connections
+import numpy as np
+from astropy.io import fits
+from astropy.io.fits import Column
+from django.core import serializers
+
+
 
 # Create your views here.
 
 
 def api_search(request, query):
-    import numpy as np
-    from astropy.io import fits
-    from astropy.io.fits import Column
-
+Some additional examples, translating the SQL examples to SQURL:
+    # 128.55.19.123:8000/api/search/default/candidate.id/EQ/100
+    # 128.55.19.123:8000/api/search/default/gflux/DIV/rflux/GT/2.5
+    # 128.55.19.123:8000/api/search/default/ra/GT/240/AND/ra/LT/241
+    # 128.55.19.123:8000/api/search/default/type/LIKE/EXP
     result = unsqurl(query)
     if result['returncode'] == '200':
         #run the query
@@ -174,8 +181,9 @@ def api_search(request, query):
                 data[i]['shapedev_e2'] = rows[i][29]
                 data[i]['shapedev_e2_ivar'] = rows[i][30]
             hdu = fits.BinTableHDU(data, header=priheader)
+
         elif result['table'] == 'DECAM':
-            # try building from columns
+            # need to build this with columns, because the simpler way doesn't handle arrays
             data = {'cand_id':[],'decam_flux':[],'decam_flux_ivar':[],'decam_fracflux':[],'decam_fracmasked':[],'decam_fracin':[],'decam_rchi2':[],'decam_nobs':[],'decam_anymask':[],'decam_allmask':[],'decam_ext':[]}
             for i in range(0,nrows):
                 data['cand_id'].append(rows[i][0])
@@ -202,10 +210,10 @@ def api_search(request, query):
             c10 = Column(name='decam_allmask', format='6D', array=data['decam_allmask'])
             c11 = Column(name='decam_ext', format='6D', array=data['decam_ext'])
             hdu = fits.BinTableHDU.from_columns([c1,c2,c3,c4,c5,c6,c7,c8,c9,c10,c11])
-            # dtypes = [('cand_id', 'i4'),('decam_flux',np.float64(6,)),
-            #     ('decam_flux_ivar',np.float64(6,)),('decam_fracflux',np.float64(6,)),('decam_fracmasked',np.float64(6,)),('decam_fracin',np.float64(6,)),
-            #     ('decam_rchi2',np.float64(6,)),('decam_nobs',np.float64(6,)),('decam_anymask',np.float64(6,)),('decam_allmask',np.float64(6,)),('decam_ext',np.float64(6,))]
-            # data = np.zeros((nrows,6), dtype=dtypes)
+            dtypes = [('cand_id', 'i4'),('decam_flux',np.float64(6,)),
+                ('decam_flux_ivar',np.float64(6,)),('decam_fracflux',np.float64(6,)),('decam_fracmasked',np.float64(6,)),('decam_fracin',np.float64(6,)),
+                ('decam_rchi2',np.float64(6,)),('decam_nobs',np.float64(6,)),('decam_anymask',np.float64(6,)),('decam_allmask',np.float64(6,)),('decam_ext',np.float64(6,))]
+            data = np.zeros((nrows,6), dtype=dtypes)
 
         elif result['table'] == 'WISE':
             dtypes = [()]
@@ -237,6 +245,17 @@ def sql_search(request):
     squrlquery = 'default/' + squrlquery
     return redirect(api_search, squrlquery)
 
-def search_result(request):
-    return HttpResponse("result here")
+def search_result(request, query):
+    # under development, should be turned into a function that returns nice html output.
+    # test with "  http://127.0.0.1:8000/search/result/decam/rflux/LT/0.638  "
+    result = unsqurl(query)
+    if result['returncode'] == '200':
+        #run the query
+        cursor = connections['cosmo'].cursor()
+        cursor.execute(result['sql'])
+        rows = cursor.fetchall()
+        #nrows = len(rows)
+        #for i in range(0, len(rows))
+
+    return HttpResponse(rows)
 

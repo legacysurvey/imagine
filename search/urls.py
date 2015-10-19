@@ -5,4 +5,5 @@ urlpatterns = patterns('',
     url(r'^api/search/(?P<query>.+)', 'search.views.api_search'),
     url(r'^search/form', 'search.views.search_form'),
     url(r'^search/sql', 'search.views.sql_search'),
+    url(r'^search/result/(?P<query>.+)', 'search.views.search_result'), #under development
     )

@@ -1,0 +1,53 @@
+{% extends "searchbase.html" %}
+
+{% block header %}
+<script src="/static/jquery-2.1.1.min.js"></script>
+
+<style type="text/css">
+body{
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 16px;
+}
+#search_form{
+    width: 50%;
+    margin: 20px auto;
+}
+#where_info{
+    background-color: rgb(240,240,255);
+    border-radius: 1px;
+    box-shadow: none;
+    padding: 10px;
+}
+#fields{
+    -webkit-column-count: 5;
+    -moz-column-count: 5;
+    column-count: 5;
+    font-size: .8em;
+    height: 20em;
+    overflow: scroll;
+}
+button#start{
+    padding: 20px 40px;
+    background-color: rgb(150,150,255);
+    color: rgb(255,255,255);
+    border: 0;
+    border-radius: 10px;
+    margin: 20px 0;
+    font-size: 16px;
+}
+</style>
+
+{% endblock %}
+
+{% block body %}
+<h1>Candidates</h1>
+<div id="results">
+
+</div>
+
+<script>
+
+
+</script>
+</body>
+{% endblock %}
