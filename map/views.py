@@ -399,7 +399,9 @@ w_flist = None
 w_flist_tree = None
 
 def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
-             get_images=False, ignoreCached=False,
+             get_images=False,
+             #ignoreCached=False,
+             ignoreCached=True,
              **kwargs):
     from decals import settings
 
@@ -440,6 +442,8 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     from astrometry.util.resample import resample_with_wcs, OverlapError
     from astrometry.util.util import Tan
     import fitsio
+
+    #print 'Tile wcs: pixel scale', wcs.pixel_scale()
 
     global w_flist
     global w_flist_tree
@@ -565,15 +569,45 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
 
     #rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
-    s = 6.
+    # s = 6.
+    # sdss_rgbkwargs = dict(scales=dict(g=(2, s*0.0066),
+    #                                   r=(1, s*0.008),
+    #                                   i=(0, s*0.01)),
+    #                       mnmx=(-1,100),
+    #                       arcsinh=1.)
+    # rgb = get_rgb(rimgs, bands, **sdss_rgbkwargs)
 
-    sdss_rgbkwargs = dict(scales=dict(g=(2, s*0.0066),
-                                      r=(1, s*0.008),
-                                      i=(0, s*0.01)),
-                          mnmx=(-1,100),
-                          arcsinh=1.)
+    
+    rgbscales = {'u': 1.5, #1.0,
+                 'g': 2.5,
+                 'r': 1.5,
+                 'i': 1.0,
+                 'z': 0.4, #0.3
+                 }
 
-    rgb = get_rgb(rimgs, bands, **sdss_rgbkwargs)
+    b,g,r = [rimg * rgbscales[b] for rimg,b in zip(rimgs, bands)]
+    m = -0.02
+    #m = 0.
+    r = np.maximum(0, r - m)
+    g = np.maximum(0, g - m)
+    b = np.maximum(0, b - m)
+    I = (r+g+b)/3.
+    #alpha = 1.5
+    alpha = 1.0
+    Q = 20
+    m2 = 0.
+    fI = np.arcsinh(alpha * Q * (I - m2)) / np.sqrt(Q)
+    I += (I == 0.) * 1e-6
+    R = fI * r / I
+    G = fI * g / I
+    B = fI * b / I
+    # maxrgb = reduce(np.maximum, [R,G,B])
+    # J = (maxrgb > 1.)
+    # R[J] = R[J]/maxrgb[J]
+    # G[J] = G[J]/maxrgb[J]
+    # B[J] = B[J]/maxrgb[J]
+    rgb = np.dstack((R,G,B))
+    rgb = np.clip(rgb, 0, 1)
 
     import pylab as plt
     trymakedirs(tilefn)
