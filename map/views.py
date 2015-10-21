@@ -557,8 +557,8 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     for j in J:
         im = w_flist[j]
         for band,rimg,rn in zip(bands, rimgs, rns):
-            maskfn = sdss.retrieve('fpM', im.run, im.camcol, field=im.field,
-                                   band=band, rerun=im.rerun)
+            #maskfn = sdss.retrieve('fpM', im.run, im.camcol, field=im.field,
+            #                       band=band, rerun=im.rerun)
             basefn = sdss.retrieve('frame', im.run, im.camcol, field=im.field,
                                    band=band, rerun=im.rerun)
             #print 'Field', basefn
@@ -605,24 +605,28 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
 
             if sdssps is not None:
 
-                goodpix = np.ones(rimg.shape, bool)
-                fpM = sdss.readFpM(im.run, im.camcol, im.field, band)
-                for plane in [ 'INTERP', 'SATUR', 'CR', 'GHOST' ]:
-                    fpM.setMaskedPixels(plane, goodpix, False, roi=[x0,x1,y0,y1])
+                # goodpix = np.ones(img.shape, bool)
+                # fpM = sdss.readFpM(im.run, im.camcol, im.field, band)
+                # for plane in [ 'INTERP', 'SATUR', 'CR', 'GHOST' ]:
+                #     fpM.setMaskedPixels(plane, goodpix, False, roi=[x0,x1,y0,y1])
 
                 plt.clf()
-                ima = dict(vmin=-0.05, vmax=0.5)
+                #ima = dict(vmin=-0.05, vmax=0.5)
+                ima = dict(vmin=-0.5, vmax=2.)
                 plt.subplot(2,3,1)
                 dimshow(img, ticks=False, **ima)
+                plt.title('image')
                 rthis = np.zeros_like(rimg)
                 rthis[Yo,Xo] += img[Yi-y0, Xi-x0]
                 plt.subplot(2,3,2)
                 dimshow(rthis, ticks=False, **ima)
-                plt.subplot(2,3,3)
-                dimshow(goodpix, ticks=False, vmin=0, vmax=1)
-                plt.title('good pix')
+                plt.title('resampled')
+                # plt.subplot(2,3,3)
+                # dimshow(goodpix, ticks=False, vmin=0, vmax=1)
+                # plt.title('good pix')
                 plt.subplot(2,3,4)
                 dimshow(rimg / np.maximum(rn, 1), ticks=False, **ima)
+                plt.title('coadd')
                 plt.subplot(2,3,5)
                 dimshow(rn, vmin=0, ticks=False)
                 plt.title('coverage: max %i' % rn.max())
