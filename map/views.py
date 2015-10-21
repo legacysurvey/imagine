@@ -499,8 +499,6 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     global w_flist
     global w_flist_tree
     if w_flist is None:
-        from astrometry.util.fits import fits_table
-        import numpy as np
         w_flist = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
                                           'window_flist.fits'),
                              columns=['run','rerun','camcol','field','ra','dec'])
@@ -560,8 +558,9 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         for band,rimg,rn in zip(bands, rimgs, rns):
             #maskfn = sdss.retrieve('fpM', im.run, im.camcol, field=im.field,
             #                       band=band, rerun=im.rerun)
+            tmpsuff = '.tmp%08i' % np.random.randint(100000000)
             basefn = sdss.retrieve('frame', im.run, im.camcol, field=im.field,
-                                   band=band, rerun=im.rerun)
+                                   band=band, rerun=im.rerun, tempsuffix=tmpsuff)
             #print 'Field', basefn
             bunfn,keep = sdss._unzip_frame(basefn, im.run, im.camcol)
             #print 'bun', bunfn
