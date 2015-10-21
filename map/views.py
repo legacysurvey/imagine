@@ -584,24 +584,34 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                 fitsimg = fitsio.FITS(fn)[0]
                 h,w = fitsimg.get_info()['dims']
 
+
+            if frame is not None:
+                fullimg = frame.getImage()
+            else:
+                fullimg = fitsimg.read()
+
             try:
-                Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, fwcs, [], 3)
+                #Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, fwcs, [], 3)
+                Yo,Xo,Yi,Xi,[resamp] = resample_with_wcs(wcs, fwcs, [fullimg], 2)
             except OverlapError:
                 continue
             if len(Xi) == 0:
                 #print 'No overlap'
                 continue
-            x0 = Xi.min()
-            x1 = Xi.max()
-            y0 = Yi.min()
-            y1 = Yi.max()
-            slc = (slice(y0,y1+1), slice(x0,x1+1))
-            if frame is not None:
-                img = frame.getImageSlice(slc)
-            else:
-                img = fitsimg[slc]
-                
-            rimg[Yo,Xo] += img[Yi-y0, Xi-x0]
+
+            if sdssps is not None:
+                x0 = Xi.min()
+                x1 = Xi.max()
+                y0 = Yi.min()
+                y1 = Yi.max()
+                slc = (slice(y0,y1+1), slice(x0,x1+1))
+                if frame is not None:
+                    img = frame.getImageSlice(slc)
+                else:
+                    img = fitsimg[slc]
+            #rimg[Yo,Xo] += img[Yi-y0, Xi-x0]
+            rimg[Yo,Xo] += resamp
+
             rn  [Yo,Xo] += 1
 
             if sdssps is not None:
@@ -613,12 +623,14 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
 
                 plt.clf()
                 #ima = dict(vmin=-0.05, vmax=0.5)
-                ima = dict(vmin=-0.5, vmax=2.)
+                #ima = dict(vmin=-0.5, vmax=2.)
+                ima = dict(vmax=np.percentile(img, 99))
                 plt.subplot(2,3,1)
                 dimshow(img, ticks=False, **ima)
                 plt.title('image')
                 rthis = np.zeros_like(rimg)
-                rthis[Yo,Xo] += img[Yi-y0, Xi-x0]
+                #rthis[Yo,Xo] += img[Yi-y0, Xi-x0]
+                rthis[Yo,Xo] += resamp
                 plt.subplot(2,3,2)
                 dimshow(rthis, ticks=False, **ima)
                 plt.title('resampled')
@@ -631,6 +643,12 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                 plt.subplot(2,3,5)
                 dimshow(rn, vmin=0, ticks=False)
                 plt.title('coverage: max %i' % rn.max())
+
+                plt.subplot(2,3,6)
+                rgb = sdss_rgb([rimg/np.maximum(rn,1)
+                                for rimg,rn in zip(rimgs,rns)], bands)
+                dimshow(rgb)
+                
                 plt.suptitle('SDSS %s, R/C/F %i/%i/%i' % (band, im.run, im.camcol, im.field))
                 sdssps.savefig()
                 
@@ -653,14 +671,34 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     #                       arcsinh=1.)
     # rgb = get_rgb(rimgs, bands, **sdss_rgbkwargs)
 
+    rgb = sdss_rgb(rimgs, bands)
     
+    trymakedirs(tilefn)
+
+    # no jpeg output support in matplotlib in some installations...
+    if True:
+        import tempfile
+        f,tempfn = tempfile.mkstemp(suffix='.png')
+        os.close(f)
+        plt.imsave(tempfn, rgb)
+        print 'Wrote to temp file', tempfn
+        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
+        print cmd
+        os.system(cmd)
+        os.unlink(tempfn)
+        print 'Wrote', tilefn
+
+    return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
+
+
+
+def sdss_rgb(rimgs, bands):
     rgbscales = {'u': 1.5, #1.0,
                  'g': 2.5,
                  'r': 1.5,
                  'i': 1.0,
                  'z': 0.4, #0.3
                  }
-
     b,g,r = [rimg * rgbscales[b] for rimg,b in zip(rimgs, bands)]
     m = -0.02
     #m = 0.
@@ -684,23 +722,8 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     # B[J] = B[J]/maxrgb[J]
     rgb = np.dstack((R,G,B))
     rgb = np.clip(rgb, 0, 1)
+    return rgb
 
-    trymakedirs(tilefn)
-
-    # no jpeg output support in matplotlib in some installations...
-    if True:
-        import tempfile
-        f,tempfn = tempfile.mkstemp(suffix='.png')
-        os.close(f)
-        plt.imsave(tempfn, rgb)
-        print 'Wrote to temp file', tempfn
-        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
-        print cmd
-        os.system(cmd)
-        os.unlink(tempfn)
-        print 'Wrote', tilefn
-
-    return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
 
 Tdepth = None
@@ -2677,5 +2700,10 @@ if __name__ == '__main__':
     #map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
 
     zoom,x,y = 14, 5246, 7852
+    #map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
+
+    zoom,x,y = 16, 20990, 31418
     map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
-    
+
+    zoom,x,y = 18, 83958, 125671
+    map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
