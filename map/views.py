@@ -442,11 +442,12 @@ def read_astrans(fn, hdu, hdr=None, W=None, H=None):
 w_flist = None
 w_flist_tree = None
 
-from astrometry.util.plotutils import *
-import matplotlib
-matplotlib.use('Agg')
-#import pylab as plt
-sdssps = PlotSequence('sdss')
+sdssps = None
+if False:
+    from astrometry.util.plotutils import *
+    import matplotlib
+    matplotlib.use('Agg')
+    sdssps = PlotSequence('sdss')
 
 def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
              get_images=False,
