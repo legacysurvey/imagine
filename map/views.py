@@ -235,7 +235,7 @@ def get_tile_wcs(zoom, x, y):
 
     return wcs, W, H, zoomscale, zoom,x,y
 
-def get_scaled(scalepat, scalekwargs, scale, basefn):
+def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None):
     from scipy.ndimage.filters import gaussian_filter
     import fitsio
     from astrometry.util.util import Tan
@@ -245,50 +245,55 @@ def get_scaled(scalepat, scalekwargs, scale, basefn):
     if scale <= 0:
         return basefn
     fn = scalepat % dict(scale=scale, **scalekwargs)
-    if not os.path.exists(fn):
 
-        # print 'Does not exist:', fn
-        sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn)
-        # print 'Source:', sourcefn
-        if sourcefn is None or not os.path.exists(sourcefn):
-            # print 'Image source file', sourcefn, 'not found'
-            return None
-        try:
-            I,hdr = fitsio.read(sourcefn, header=True)
-        except:
-            print 'Failed to read:', sourcefn
-            return None
-        #print 'source image:', I.shape
-        H,W = I.shape
-        # make even size; smooth down
-        if H % 2 == 1:
-            I = I[:-1,:]
-        if W % 2 == 1:
-            I = I[:,:-1]
-        im = gaussian_filter(I, 1.)
-        #print 'im', im.shape
-        # bin
-        I2 = (im[::2,::2] + im[1::2,::2] + im[1::2,1::2] + im[::2,1::2])/4.
-        I2 = I2.astype(np.float32)
-        #print 'I2:', I2.shape
-        # shrink WCS too
-        wcs = _read_tan_wcs(sourcefn, 0, hdr=hdr, W=W, H=H)
-        # include the even size clip; this may be a no-op
-        H,W = im.shape
-        wcs = wcs.get_subimage(0, 0, W, H)
-        subwcs = wcs.scale(0.5)
-        hdr = fitsio.FITSHDR()
-        subwcs.add_to_header(hdr)
-        trymakedirs(fn)
-        dirnm = os.path.dirname(fn)
-        f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=dirnm)
-        os.close(f)
-        # To avoid overwriting the (empty) temp file (and fitsio
-        # printing "Removing existing file")
-        os.unlink(tmpfn)
-        fitsio.write(tmpfn, I2, header=hdr, clobber=True)
-        os.rename(tmpfn, fn)
-        print 'Wrote', fn
+    if read_wcs is None:
+        read_wcs = _read_tan_wcs
+
+    if os.path.exists(fn):
+        return fn
+
+    # print 'Does not exist:', fn
+    sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn)
+    # print 'Source:', sourcefn
+    if sourcefn is None or not os.path.exists(sourcefn):
+        # print 'Image source file', sourcefn, 'not found'
+        return None
+    try:
+        I,hdr = fitsio.read(sourcefn, header=True)
+    except:
+        print 'Failed to read:', sourcefn
+        return None
+    #print 'source image:', I.shape
+    H,W = I.shape
+    # make even size; smooth down
+    if H % 2 == 1:
+        I = I[:-1,:]
+    if W % 2 == 1:
+        I = I[:,:-1]
+    im = gaussian_filter(I, 1.)
+    #print 'im', im.shape
+    # bin
+    I2 = (im[::2,::2] + im[1::2,::2] + im[1::2,1::2] + im[::2,1::2])/4.
+    I2 = I2.astype(np.float32)
+    #print 'I2:', I2.shape
+    # shrink WCS too
+    wcs = read_wcs(sourcefn, 0, hdr=hdr, W=W, H=H)
+    # include the even size clip; this may be a no-op
+    H,W = im.shape
+    wcs = wcs.get_subimage(0, 0, W, H)
+    subwcs = wcs.scale(0.5)
+    hdr = fitsio.FITSHDR()
+    subwcs.add_to_header(hdr)
+    trymakedirs(fn)
+    dirnm = os.path.dirname(fn)
+    f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=dirnm)
+    os.close(f)
+    # To avoid overwriting the (empty) temp file (and fitsio
+    # printing "Removing existing file")
+    os.unlink(tmpfn)
+    fitsio.write(tmpfn, I2, header=hdr, clobber=True)
+    os.rename(tmpfn, fn)
+    print 'Wrote', fn
     return fn
 
 # "PR"
@@ -394,9 +399,54 @@ def cutout_decals(req, jpeg=False, fits=False):
     return send_file(tmpfn, 'image/fits', unlink=True, filename='cutout_%.4f_%.4f.fits' % (ra,dec))
 
 
+def read_astrans(fn, hdu, hdr=None, W=None, H=None):
+    from astrometry.sdss import AsTransWrapper, AsTrans
+    from astrometry.util.util import Tan, fit_sip_wcs_py
+    from astrometry.util.starutil_numpy import radectoxyz
+    import numpy as np
+    
+    #print 'read_astrans, fn', fn
+    astrans = AsTrans.read(fn)
+    #print 'AsTrans:', astrans
+
+    # Approximate as SIP.
+
+    # Frame files include a TAN header... start there.
+    tan = Tan(fn)
+    #print 'Tan:', tan
+
+    # Evaluate AsTrans on a pixel grid...
+    h,w = tan.shape
+    #print 'Image shape:', h,w
+    xx = np.linspace(1, w, 20)
+    yy = np.linspace(1, h, 20)
+    xx,yy = np.meshgrid(xx, yy)
+    xx = xx.ravel()
+    yy = yy.ravel()
+    rr,dd = astrans.pixel_to_radec(xx, yy)
+
+    xyz = radectoxyz(rr, dd)
+    fieldxy = np.vstack((xx, yy)).T
+
+    # print 'xyz', xyz.shape
+    # print 'xy', fieldxy.shape
+    
+    sip_order = 5
+    inv_order = 7
+    sip = fit_sip_wcs_py(xyz, fieldxy, None, tan, sip_order, inv_order)
+    # print 'Fit SIP:', sip
+    return sip
+
+
 
 w_flist = None
 w_flist_tree = None
+
+from astrometry.util.plotutils import *
+import matplotlib
+matplotlib.use('Agg')
+#import pylab as plt
+sdssps = PlotSequence('sdss')
 
 def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
              get_images=False,
@@ -440,10 +490,10 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
     from astrometry.util.starutil_numpy import degrees_between, arcsec_between
     from astrometry.util.resample import resample_with_wcs, OverlapError
-    from astrometry.util.util import Tan
+    from astrometry.util.util import Tan, Sip
     import fitsio
 
-    #print 'Tile wcs: pixel scale', wcs.pixel_scale()
+    # print 'Tile wcs: pixel scale', wcs.pixel_scale()
 
     global w_flist
     global w_flist_tree
@@ -473,35 +523,33 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         [1]*len(hh) + ww          + [W]*len(hh) +        list(reversed(ww)),
         hh          + [1]*len(ww) + list(reversed(hh)) + [H]*len(ww))
 
-    # scaled = 0
-    # scalepat = None
-    # scaledir = 'sdss'
-    # 
-    # if zoom < 11:
-    #     # Get *actual* pixel scales at the top & bottom
-    #     ok,r1,d1 = wcs.pixelxy2radec(W/2., H)
-    #     ok,r2,d2 = wcs.pixelxy2radec(W/2., H-1.)
-    #     ok,r3,d3 = wcs.pixelxy2radec(W/2., 1.)
-    #     ok,r4,d4 = wcs.pixelxy2radec(W/2., 2.)
-    #     # Take the min = most zoomed-in
-    #     scale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
-    #     
-    #     native_scale = 0.396
-    #     scaled = int(np.floor(np.log2(scale / native_scale)))
-    #     print 'Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled
-    #     scaled = np.clip(scaled, 1, 8)
-    #     dirnm = os.path.join(basedir, 'scaled', scaledir)
-    #     scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(rerun)s', '%(run)i', '%(camcol)i', 'sdss-%(run)i-%(camcol)i-%(field)i-%(band)s.fits')
-    # 
-    # basepat = os.path.join(settings.SDSS_DIR, '%(rerun)s', '%(run)i', '%(camcol)i', 'frame-%(band)s-%(run)06i-%(camcol)i-%(frame)04i.fits.bz2')
-
+    scaled = 0
+    scalepat = None
+    scaledir = 'sdss'
+    
+    if zoom <= 13:
+        # Get *actual* pixel scales at the top & bottom
+        ok,r1,d1 = wcs.pixelxy2radec(W/2., H)
+        ok,r2,d2 = wcs.pixelxy2radec(W/2., H-1.)
+        ok,r3,d3 = wcs.pixelxy2radec(W/2., 1.)
+        ok,r4,d4 = wcs.pixelxy2radec(W/2., 2.)
+        # Take the min = most zoomed-in
+        scale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
+        
+        native_scale = 0.396
+        scaled = int(np.floor(np.log2(scale / native_scale)))
+        print 'Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled
+        scaled = np.clip(scaled, 1, 7)
+        dirnm = os.path.join(basedir, 'scaled', scaledir)
+        scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(rerun)s', '%(run)i', '%(camcol)i', 'sdss-%(run)i-%(camcol)i-%(field)i-%(band)s.fits')
+    
     bands = 'gri'
-
     rimgs = [np.zeros((H,W), np.float32) for band in bands]
     rns   = [np.zeros((H,W), np.uint8)   for band in bands]
 
-    from astrometry.sdss import AsTransWrapper, DR9
+    import pylab as plt
 
+    from astrometry.sdss import AsTransWrapper, DR9
     sdss = DR9(basedir=settings.SDSS_DIR)
     sdss.saveUnzippedFiles(settings.SDSS_DIR)
     #sdss.setFitsioReadBZ2()
@@ -509,55 +557,78 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     for j in J:
         im = w_flist[j]
         for band,rimg,rn in zip(bands, rimgs, rns):
-            # fnargs = dict(band=band, rerun=im.rerun, run=im.run, camcol=im.camocol,
-            #               field=im.field)
-            # basefn = basepat % fnargs
-            # fn = get_scaled(scalepat, fnargs, scaled, basefn)
-
-            fn = sdss.retrieve('frame', im.run, im.camcol, field=im.field,
-                               band=band, rerun=im.rerun)
-            print 'Field', fn
-
-            frame = sdss.readFrame(im.run, im.camcol, im.field, band,
-                                   filename=fn)
-            h,w = frame.getImageShape()
-            astrans = frame.getAsTrans()
-            fwcs = AsTransWrapper(astrans, w, h)
-
-            # ok,xx,yy = fwcs.radec2pixelxy(r, d)
-            # if not np.all(ok):
-            #     print 'Skipping field'
-            #     continue
-            # assert(np.all(ok))
-            # xx = xx.astype(np.int)
-            # yy = yy.astype(np.int)
-            # imW,imH = w,h
-            # # Margin
-            # M = 20
-            # xlo = np.clip(xx.min() - M, 0, imW)
-            # xhi = np.clip(xx.max() + M, 0, imW)
-            # ylo = np.clip(yy.min() - M, 0, imH)
-            # yhi = np.clip(yy.max() + M, 0, imH)
-            # if xlo >= xhi or ylo >= yhi:
-            #     continue
+            maskfn = sdss.retrieve('fpM', im.run, im.camcol, field=im.field,
+                                   band=band, rerun=im.rerun)
+            basefn = sdss.retrieve('frame', im.run, im.camcol, field=im.field,
+                                   band=band, rerun=im.rerun)
+            #print 'Field', basefn
+            bunfn,keep = sdss._unzip_frame(basefn, im.run, im.camcol)
+            #print 'bun', bunfn
+            if bunfn is not None:
+                basefn = bunfn
+            fnargs = dict(band=band, rerun=im.rerun, run=im.run,
+                          camcol=im.camcol, field=im.field)
+            fn = get_scaled(scalepat, fnargs, scaled, basefn,
+                            read_wcs=read_astrans)
+            #print '(Perhaps-scaled) filename', fn
+            frame = None
+            if fn == basefn:
+                frame = sdss.readFrame(im.run, im.camcol, im.field, band,
+                                       filename=fn)
+                h,w = frame.getImageShape()
+                astrans = frame.getAsTrans()
+                fwcs = AsTransWrapper(astrans, w, h)
+            else:
+                fwcs = Sip(fn)
+                fitsimg = fitsio.FITS(fn)[0]
+                h,w = fitsimg.get_info()['dims']
 
             try:
                 Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, fwcs, [], 3)
             except OverlapError:
                 continue
-
             if len(Xi) == 0:
-                print 'No overlap'
+                #print 'No overlap'
                 continue
             x0 = Xi.min()
             x1 = Xi.max()
             y0 = Yi.min()
             y1 = Yi.max()
-            img = frame.getImageSlice((slice(y0,y1+1), slice(x0,x1+1)))
-
+            slc = (slice(y0,y1+1), slice(x0,x1+1))
+            if frame is not None:
+                img = frame.getImageSlice(slc)
+            else:
+                img = fitsimg[slc]
+                
             rimg[Yo,Xo] += img[Yi-y0, Xi-x0]
             rn  [Yo,Xo] += 1
 
+            if sdssps is not None:
+
+                goodpix = np.ones(rimg.shape, bool)
+                fpM = sdss.readFpM(im.run, im.camcol, im.field, band)
+                for plane in [ 'INTERP', 'SATUR', 'CR', 'GHOST' ]:
+                    fpM.setMaskedPixels(plane, goodpix, False, roi=[x0,x1,y0,y1])
+
+                plt.clf()
+                ima = dict(vmin=-0.05, vmax=0.5)
+                plt.subplot(2,3,1)
+                dimshow(img, ticks=False, **ima)
+                rthis = np.zeros_like(rimg)
+                rthis[Yo,Xo] += img[Yi-y0, Xi-x0]
+                plt.subplot(2,3,2)
+                dimshow(rthis, ticks=False, **ima)
+                plt.subplot(2,3,3)
+                dimshow(goodpix, ticks=False, vmin=0, vmax=1)
+                plt.title('good pix')
+                plt.subplot(2,3,4)
+                dimshow(rimg / np.maximum(rn, 1), ticks=False, **ima)
+                plt.subplot(2,3,5)
+                dimshow(rn, vmin=0, ticks=False)
+                plt.title('coverage: max %i' % rn.max())
+                plt.suptitle('SDSS %s, R/C/F %i/%i/%i' % (band, im.run, im.camcol, im.field))
+                sdssps.savefig()
+                
     for rimg,rn in zip(rimgs, rns):
         rimg /= np.maximum(rn, 1)
     del rns
@@ -609,7 +680,6 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     rgb = np.dstack((R,G,B))
     rgb = np.clip(rgb, 0, 1)
 
-    import pylab as plt
     trymakedirs(tilefn)
 
     # no jpeg output support in matplotlib in some installations...
@@ -2587,8 +2657,20 @@ if __name__ == '__main__':
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
     
+    # ver = 1
+    # zoom,x,y = 2, 1, 1
+    # req = duck()
+    # req.META = dict()
+    # map_unwise_w1w2(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
+
+    # http://i.legacysurvey.org/static/tiles/decals-dr1j/1/13/2623/3926.jpg
+
     ver = 1
-    zoom,x,y = 2, 1, 1
+    zoom,x,y = 13, 2623, 3926
     req = duck()
     req.META = dict()
-    map_unwise_w1w2(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
+    #map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
+
+    zoom,x,y = 14, 5246, 7852
+    map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
+    
