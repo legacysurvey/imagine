@@ -15,7 +15,7 @@ tileversions = {
     'halpha': [1,],
     'sdss': [1,],
 
-    'decals-dr2': [1],
+    'decals-dr2': [1, 2],
 
     'decals-dr1k': [1],
     'decals-model-dr1k': [1],
@@ -693,7 +693,8 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
-def sdss_rgb(rimgs, bands, scales=None):
+def sdss_rgb(rimgs, bands, scales=None,
+             m = 0.02):
     import numpy as np
     rgbscales = {'u': 1.5, #1.0,
                  'g': 2.5,
@@ -705,17 +706,15 @@ def sdss_rgb(rimgs, bands, scales=None):
         rgbscales.update(scales)
         
     b,g,r = [rimg * rgbscales[b] for rimg,b in zip(rimgs, bands)]
-    m = -0.02
-    #m = 0.
-    r = np.maximum(0, r - m)
-    g = np.maximum(0, g - m)
-    b = np.maximum(0, b - m)
+    r = np.maximum(0, r + m)
+    g = np.maximum(0, g + m)
+    b = np.maximum(0, b + m)
     I = (r+g+b)/3.
-    #alpha = 1.5
-    alpha = 1.0
     Q = 20
-    m2 = 0.
-    fI = np.arcsinh(alpha * Q * (I - m2)) / np.sqrt(Q)
+    #alpha = 1.0
+    #m2 = 0.
+    #fI = np.arcsinh(alpha * Q * (I - m2)) / np.sqrt(Q)
+    fI = np.arcsinh(Q * I) / np.sqrt(Q)
     I += (I == 0.) * 1e-6
     R = fI * r / I
     G = fI * g / I
@@ -1029,7 +1028,11 @@ def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
                     model=False, resid=False, nexp=False,
                     **kwargs):
     if savecache is None:
-        savecache = settings.SAVE_CACHE
+        #savecache = settings.SAVE_CACHE
+        #DEBUG
+        savecache = False
+
+
     global B_dr2
     if B_dr2 is None:
         from astrometry.util.fits import fits_table
@@ -1045,7 +1048,7 @@ def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
                            imagetag=imagetag,
                            rgbkwargs=rgb,
                            bricks=B_dr2,
-                           savecache=savecache, **kwargs)
+                           savecache=savecache, dr2=True, **kwargs)
 
 
 B_dr1n = None
@@ -2064,7 +2067,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     savecache = True, forcecache = False,
                     return_if_not_found=False, model_gz=False,
                     modeldir=None, scaledir=None, get_images=False,
-                    ignoreCached=False, add_gz=False, filename=None
+                    ignoreCached=False, add_gz=False, filename=None,
+                    dr2=False,
                     ):
     from decals import settings
 
@@ -2291,8 +2295,13 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     if get_images:
         return rimgs
 
-    #rgb = get_rgb(rimgs, bands, **rgbkwargs)
-    rgb = sdss_rgb(rimgs, bands, scales={z=1.0})
+    if dr2:
+        #rgb = sdss_rgb(rimgs, bands, scales=dict(g=3.5, r=1.6, z=1.0), m=0.03)
+        #rgb = sdss_rgb(rimgs, bands, scales=dict(g=3.0, r=1.7, z=1.1), m=0.02)
+        #rgb = sdss_rgb(rimgs, bands, scales=dict(g=4.5, r=2.5, z=1.7), m=0.02)
+        rgb = sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
+    else:
+        rgb = get_rgb(rimgs, bands, **rgbkwargs)
 
     if forcecache:
         savecache = True
