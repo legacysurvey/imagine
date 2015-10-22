@@ -556,6 +556,10 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     for j in J:
         im = w_flist[j]
         for band,rimg,rn in zip(bands, rimgs, rns):
+
+            if im.rerun != '301':
+                continue
+
             #maskfn = sdss.retrieve('fpM', im.run, im.camcol, field=im.field,
             #                       band=band, rerun=im.rerun)
             tmpsuff = '.tmp%08i' % np.random.randint(100000000)
@@ -692,6 +696,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
 
 
 def sdss_rgb(rimgs, bands):
+    import numpy as np
     rgbscales = {'u': 1.5, #1.0,
                  'g': 2.5,
                  'r': 1.5,
