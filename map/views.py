@@ -691,13 +691,16 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
 
 
 
-def sdss_rgb(rimgs, bands):
+def sdss_rgb(rimgs, bands, scales=None):
     rgbscales = {'u': 1.5, #1.0,
                  'g': 2.5,
                  'r': 1.5,
                  'i': 1.0,
                  'z': 0.4, #0.3
                  }
+    if scales is not None:
+        rgbscales.update(scales)
+        
     b,g,r = [rimg * rgbscales[b] for rimg,b in zip(rimgs, bands)]
     m = -0.02
     #m = 0.
@@ -880,7 +883,6 @@ def map_decals_wl(req, ver, zoom, x, y):
     from astrometry.libkd.spherematch import match_radec
     from astrometry.util.fits import fits_table
     from astrometry.util.starutil_numpy import degrees_between
-    from legacypipe.common import get_rgb
     import numpy as np
     import fitsio
 
@@ -2286,7 +2288,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     if get_images:
         return rimgs
 
-    rgb = get_rgb(rimgs, bands, **rgbkwargs)
+    #rgb = get_rgb(rimgs, bands, **rgbkwargs)
+    rgb = sdss_rgb(rimgs, bands, scales={z=1.0})
 
     if forcecache:
         savecache = True
@@ -2702,7 +2705,7 @@ if __name__ == '__main__':
     #map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
 
     zoom,x,y = 16, 20990, 31418
-    map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
+    #map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
 
     zoom,x,y = 18, 83958, 125671
     map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
