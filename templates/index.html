@@ -681,7 +681,7 @@ function onMouseMove(e) {
     }
     if (infoBoxActive) {
 	info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) + ", zoom " + map.getZoom();
-	//+ ', lat,long ' + e.latlng.lat.toFixed(3) + ',' + e.latlng.lng.toFixed(3);
+	    //+ ', lat,long ' + e.latlng.lat.toFixed(3) + ',' + e.latlng.lng.toFixed(3);
     }
     if (inbrickccdAdded) {
         e.ra = ra;
@@ -1194,6 +1194,18 @@ function expsLoaded(result) {
         }
         lat = dec2lat(exps[i].dec);
         lng = ra2long_B(exps[i].ra);
+	//console.log('long', lng);
+
+	maplatlong = map.getCenter()
+	lng0 = maplatlong.lng;
+	while (lng < (lng0 - 180)) {
+	    lng += 360;
+	}
+	while (lng > (lng0 + 180)) {
+	    lng -= 360;
+	}
+
+	//lng = ra2long(exps[i].ra);
 	meters = 30 * 3600 * exps[i].radius;
 	color = exps[i].color;
 	c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,

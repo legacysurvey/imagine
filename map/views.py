@@ -1828,7 +1828,8 @@ def exposure_list(req):
     for t in T:
         cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
         exps.append(dict(name='%i %s' % (t.expnum, t.filter),
-                         ra=t.ra, dec=t.dec, radius=radius, color=cmap[t.filter]))
+                         ra=t.ra, dec=t.dec, radius=radius,
+                         color=cmap[t.filter]))
 
     return HttpResponse(json.dumps(dict(exposures=exps)),
                         content_type='application/json')
