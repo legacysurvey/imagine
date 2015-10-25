@@ -181,6 +181,7 @@ def index(req):
 
     bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}&id={id}'
     ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}&id={id}'
+    expsurl = settings.ROOT_URL + '/exps/?north={north}&east={east}&south={south}&west={west}&id={id}'
 
     baseurl = req.path + '?'
 
@@ -192,6 +193,7 @@ def index(req):
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
                        smallcaturl=smallcaturl,
                        ccdsurl=ccdsurl,
+                       expsurl=expsurl,
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
                        showSources='sources' in req.GET,
@@ -1787,6 +1789,49 @@ def ccd_list(req):
 
     return HttpResponse(json.dumps(dict(ccds=ccds)),
                         content_type='application/json')
+
+def get_exposure_table(name):
+    from astrometry.util.fits import fits_table
+    if name == 'decals-dr2':
+        T = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr2',
+                                    'decals-exposures.fits'))
+    else:
+        T = fits_table(os.path.join(settings.DATA_DIR, 'decals-exposures.fits'))
+    return T
+
+def exposure_list(req):
+    import json
+    from astrometry.util.fits import fits_table
+    from decals import settings
+    import numpy as np
+
+    north = float(req.GET['north'])
+    south = float(req.GET['south'])
+    east  = float(req.GET['east'])
+    west  = float(req.GET['west'])
+    name = req.GET.get('id', None)
+
+    T = get_exposure_table(name)
+
+    radius = 1.0
+
+    T.cut((T.dec < north + radius) * (T.dec > south - radius))
+    rascale = 1. / np.cos(np.deg2rad(max(np.abs(south), np.abs(north))))
+    print 'West,East', west, east
+    mnra = min(east, west)
+    mxra = max(east, west)
+    T.cut((T.ra < mxra + radius*rascale) * (T.ra > mnra - radius*rascale))
+
+    T.cut(np.lexsort((T.expnum, T.filter)))
+
+    exps = []
+    for t in T:
+        cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
+        exps.append(dict(name='%i %s' % (t.expnum, t.filter),
+                         ra=t.ra, dec=t.dec, radius=radius, color=cmap[t.filter]))
+
+    return HttpResponse(json.dumps(dict(exposures=exps)),
+                        content_type='application/json')
     
 def ccd_detail(req, name, ccd):
     import numpy as np
@@ -1814,6 +1859,19 @@ def ccd_detail(req, name, ccd):
 
     c = CCDs[I[0]]
     return HttpResponse(about(ccd, c))
+
+
+def exposure_detail(req, name, exp):
+    import numpy as np
+    expnum = exp.split('-')[0]
+    expnum = int(expnum)
+    T = get_exposure_table(name)
+    T.cut(T.expnum == expnum)
+    t = T[0]
+    pixscale = 0.262
+    return HttpResponse('Exposure %i, %s band, %.1f sec exposure time, seeing %.2f arcsec, file %s' %
+                        (t.expnum, t.filter, t.exptime, t.fwhm * pixscale,
+                         t.image_filename))
 
 def nil(req):
     pass

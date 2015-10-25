@@ -51,6 +51,9 @@
 .highccd:visited {
     color: red;
 }
+.highexp:visited {
+    color: red;
+}
 
 .leaflet-container {
 //background: #000;
@@ -632,11 +635,17 @@ function ccd_detail(name, aparams) {
         + '/"' + aparams + '>' + name + '</a>';
 }
 
+function exp_detail(name, aparams) {
+    return '<a href="{% url 'exp_detail_blank' %}' + idname + '/' + name
+        + '/"' + aparams + '>' + name + '</a>';
+}
+
 function onMapClick(e) {
     ra  = long2ra(e.latlng.lng);
     dec = lat2dec(e.latlng.lat);
     bricks = bricksUnderLatlng(e.latlng);
     ccds = ccdsUnderLatlng(e.latlng);
+    exps = expsUnderLatlng(e.latlng);
     //'lat,lng =' + e.latlng.lat.toFixed(4) + ',' + e.latlng.lng.toFixed(4) + '; ' +
     //ra.toFixed(4) + ', ' + dec.toFixed(4) +
     txt = 
@@ -653,6 +662,11 @@ function onMapClick(e) {
     if (ccds.length) {
         for (var i=0; i<ccds.length; i++) {
             txt += '<br/>CCD: ' + ccd_detail(ccds[i], '');
+        }
+    }
+    if (exps.length) {
+        for (var i=0; i<exps.length; i++) {
+            txt += '<br/>Exposure: ' + exp_detail(exps[i], '');
         }
     }
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
@@ -719,9 +733,27 @@ function ccdsUnderLatlng(latlng) {
                 ccds.push(highlightedCcdName);
             }
         }
-        ccds.sort();
+        //ccds.sort();
     }
     return ccds;
+}
+
+function expsUnderLatlng(latlng) {
+    exps = [];
+    if (showExps) {
+        for (var name in currentExps) {
+            exp = currentExps[name];
+	    if (latlng.distanceTo(exp.getLatLng()) < exp.getRadius()) {
+		exps.push(exp.name);
+	    }
+        }
+        if (highlightedExpName != '') {
+            if (exps.indexOf(highlightedExpName) == -1) {
+                exps.push(highlightedExpName);
+            }
+        }
+    }
+    return exps;
 }
 
 function inbrickccdUpdate(props) {
@@ -730,8 +762,9 @@ function inbrickccdUpdate(props) {
     }
     bricks = bricksUnderLatlng(props.latlng);
     ccds = ccdsUnderLatlng(props.latlng);
+    exps = expsUnderLatlng(props.latlng);
     txt = '';
-    if (bricks.length || ccds.length) {
+    if (bricks.length || ccds.length || exps.length) {
         if (bricks.length) {
             txt = txt + 'In brick: ';
             for (var i=0; i<bricks.length; i++) {
@@ -757,6 +790,19 @@ function inbrickccdUpdate(props) {
                 //ccdtext = '<div class="highccd">' + ccdtext + '</div>';
                 //}
                 txt = txt + '<li>'+ccdtext+'</li>';
+            }
+            txt = txt + '</ul>';
+        }
+        if (exps.length) {
+            txt = txt + 'In Exposures:<ul>';
+            for (var i=0; i<exps.length; i++) {
+                expname = exps[i];
+                aparams = '';
+                if (expname == highlightedExpName) {
+                    aparams = ' class="highexp"';
+                }
+                exptext = exp_detail(expname.replace(' ','-'), aparams);
+                txt = txt + '<li>'+exptext+'</li>';
             }
             txt = txt + '</ul>';
         }
@@ -900,11 +946,15 @@ function overlayAdded(e) {
         // set initial 'in brick'
         //inbrickccdUpdate(e);
     }
+    if (e.name == 'Exposures') {
+        showExps = true;
+        mapBoundsChanged();
+    }
     if (e.name == 'CCDs') {
         showCcds = true;
         mapBoundsChanged();
     }
-    if (showBricks || showCcds) {
+    if (showBricks || showCcds || showExps) {
         if (!inbrickccdAdded) {
             inbrickccd.addTo(map);
             inbrickccdAdded = true;
@@ -962,7 +1012,18 @@ function overlayRemoved(e) {
             delete ccdFills[name];
         }
     }
-    if (!(showBricks || showCcds)) {
+    if (e.name == 'Exposures') {
+        showExps = false;
+        for (var i in currentExps) {
+            removeExp(i);
+        }
+        for (var name in expFills) {
+            map.removeLayer(expFills[name]);
+            delete expFills[name];
+        }
+    }
+
+    if (!(showBricks || showCcds || showExps)) {
         if (inbrickccdAdded) {
             map.removeControl(inbrickccd);
             inbrickccdAdded = false;
@@ -980,6 +1041,12 @@ function removeCcd(name) {
     ccd = currentCcds[name];
     ccdsGroup.removeLayer(ccd);
     delete currentCcds[name];
+}
+
+function removeExp(name) {
+    exp = currentExps[name];
+    expsGroup.removeLayer(exp);
+    delete currentExps[name];
 }
 
 function bricksLoaded(result) {
@@ -1067,6 +1134,78 @@ function ccdsLoaded(result) {
     }
 }
 
+function unhighlightExp(name) {
+    map.removeLayer(expFills[name]);
+    delete expFills[name];
+}
+
+function highlightExp(exp) {
+    cf = L.circle(exp.getLatLng(), exp.getRadius(),
+                  {fill:true, fillOpacity:0.05, color:'yellow', weight:1});
+    expFills[exp.name] = cf;
+    cf.addTo(map);
+    cf.bringToBack();
+}
+
+function expMouseOut(e) {
+    /*
+    e.target.setStyle({color: 'green'});
+    exp = e.target;
+    highlightedExpName = '';
+    if (exp.name in expFills) {
+        unhighlightExp(exp.name);
+    }
+    inbrickccdUpdate(e);
+    */
+}
+
+function expMouseOver(e) {
+    /*
+    e.target.setStyle({color: 'yellow'});
+    exp = e.target;
+    highlightedExpName = exp.name;
+    console.log('expMouseOver: ' + highlightedExpName);
+    // remove other EXPs from expFills
+    for (var i=0; i<expFills.length; i++) {
+        console.log('expMouseOver: exp ' + exp.name + '; expFills ' + expFills[i]);
+        if (expFills[i] != exp.name) {
+            unhighlightExp(expFills[i]);
+        }
+    }
+    if (!(exp.name in expFills)) {
+        highlightExp(exp);
+    }
+    inbrickccdUpdate(e);
+    */
+}
+
+function expsLoaded(result) {
+    if (!showExps) {
+        return;
+    }
+    exps = result['exposures'];
+    console.log('Exposures:', exps.length);
+    for (var i=0, len=exps.length; i<len; i++) {
+        // console.log('exp ' + i + ': ' + exps[i]);
+        name = exps[i].name;
+        if (name in currentExps) {
+            //console.log('Exp ' + name + ' already exists');
+            continue;
+        }
+        lat = dec2lat(exps[i].dec);
+        lng = ra2long_B(exps[i].ra);
+	meters = 30 * 3600 * exps[i].radius;
+	color = exps[i].color;
+	c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
+					 'weight':5, 'opacity':0.4 });
+        c.name = name;
+        c.on('mouseover', expMouseOver);
+        c.on('mouseout', expMouseOut);
+        expsGroup.addLayer(c);
+        currentExps[name] = c;
+    }
+}
+
 function mapBoundsChanged() {
     latlng = map.getCenter();
     zoom = map.getZoom();
@@ -1107,6 +1246,20 @@ function mapBoundsChanged() {
         }));
         $.getJSON(ccdsurl, ccdsLoaded);
     }
+    if (showExps) {
+        bounds = map.getBounds();
+        expsurl = L.Util.template('{{ expsurl|safe }}', L.extend({
+            s: 'a',
+            z: zoom,
+            west:  long2ra(bounds.getWest()).toFixed(4),
+            east:  long2ra(bounds.getEast()).toFixed(4),
+            north: lat2dec(bounds.getNorth()).toFixed(4),
+            south: lat2dec(bounds.getSouth()).toFixed(4),
+            id: idname,
+        }));
+        $.getJSON(expsurl, expsLoaded);
+    }
+
 }
 
 function onMapMoveEnd(e) {
@@ -1152,10 +1305,15 @@ var currentBricks = {};
 
 var showCcds = false;
 var ccdsGroup = L.layerGroup([]);
-
 var currentCcds = {};
 var ccdFills = {};
 var highlightedCcdName = '';
+
+var showExps = false;
+var expsGroup = L.layerGroup([]);
+var currentExps = {};
+var expFills = {};
+var highlightedExpName = '';
 
 var map = L.map('map');
 var popup = L.popup();
@@ -1690,6 +1848,7 @@ var overlayMaps = {
     "Sources": sourcesGroup,
     "Bricks": bricksGroup,
     "CCDs": ccdsGroup,
+    "Exposures": expsGroup,
     "NGC": ngcGroup,
     "Spectra": specGroup,
 };

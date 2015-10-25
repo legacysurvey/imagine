@@ -64,6 +64,8 @@ urlpatterns = patterns('map.views',
     url(r'^bricks/', 'brick_list'),
     # CCDs: list of polygons
     url(r'^ccds/', 'ccd_list'),
+    # Exposures: list of circles
+    url(r'^exps/', 'exposure_list'),
 
     # Brick details
     url(r'^brick/(\d{4}[pm]\d{3})', 'brick_detail', name='brick_detail'),
@@ -73,6 +75,11 @@ urlpatterns = patterns('map.views',
     url(r'^ccd/([\w-]+)/([\w-]+)', 'ccd_detail', name='ccd_detail'),
     # this one is here to provide a name for the javascript to refer to.
     url(r'^ccd/', 'nil', name='ccd_detail_blank'),
+    # Exposure details
+    url(r'^exposure/([\w-]+)/([\w-]+)', 'exposure_detail', name='exp_detail'),
+    # this one is here to provide a name for the javascript to refer to.
+    url(r'^exposure/', 'nil', name='exp_detail_blank'),
+
 
     # fall-through
     url(r'', 'index'),
