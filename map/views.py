@@ -182,6 +182,7 @@ def index(req):
     bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}&id={id}'
     ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}&id={id}'
     expsurl = settings.ROOT_URL + '/exps/?north={north}&east={east}&south={south}&west={west}&id={id}'
+    platesurl = settings.ROOT_URL + '/sdss-plates/?north={north}&east={east}&south={south}&west={west}'
 
     baseurl = req.path + '?'
 
@@ -194,6 +195,7 @@ def index(req):
                        smallcaturl=smallcaturl,
                        ccdsurl=ccdsurl,
                        expsurl=expsurl,
+                       platesurl=platesurl,
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
                        showSources='sources' in req.GET,
@@ -1816,8 +1818,8 @@ def exposure_list(req):
 
     exps = []
     for t in T:
-        if t.filter != 'z':
-            continue
+        #if t.filter != 'z':
+        #    continue
         cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
         exps.append(dict(name='%i %s' % (t.expnum, t.filter),
                          ra=t.ra, dec=t.dec, radius=radius,
@@ -1847,27 +1849,28 @@ def sdss_plate_list(req):
         from astrometry.libkd.spherematch import tree_build_radec
         T = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
                                     'plates-dr12.fits'))
+        T.rename('racen', 'ra')
+        T.rename('deccen', 'dec')
+        # Cut to the first entry for each PLATE
+        nil,I = np.unique(T.plate, return_index=True)
+        T.cut(I)
         tree = tree_build_radec(T.ra, T.dec)
         plate_cache[name] = (T,tree)
     else:
         T,tree = plate_cache[name]
 
-    radius = 1.0
+    radius = 1.5
 
     I = _objects_touching_box(tree, north, south, east, west,radius=radius)
     T = T[I]
-    T.cut(np.lexsort((T.expnum, T.filter)))
 
-    exps = []
+    plates = []
     for t in T:
-        if t.filter != 'z':
-            continue
-        cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
-        exps.append(dict(name='%i %s' % (t.expnum, t.filter),
-                         ra=t.ra, dec=t.dec, radius=radius,
-                         color=cmap[t.filter]))
+        plates.append(dict(name='plate%i' % t.plate,
+                           ra=t.ra, dec=t.dec, radius=radius,
+                           color='#ffffff'))
 
-    return HttpResponse(json.dumps(dict(plates=exps)),
+    return HttpResponse(json.dumps(dict(plates=plates)),
                         content_type='application/json')
 
     

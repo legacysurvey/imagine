@@ -950,11 +950,15 @@ function overlayAdded(e) {
         showExps = true;
         mapBoundsChanged();
     }
+    if (e.name == 'SDSS Spectro Plates') {
+        showPlates = true;
+        mapBoundsChanged();
+    }
     if (e.name == 'CCDs') {
         showCcds = true;
         mapBoundsChanged();
     }
-    if (showBricks || showCcds || showExps) {
+    if (showBricks || showCcds || showExps || showPlates) {
         if (!inbrickccdAdded) {
             inbrickccd.addTo(map);
             inbrickccdAdded = true;
@@ -1047,6 +1051,12 @@ function removeExp(name) {
     exp = currentExps[name];
     expsGroup.removeLayer(exp);
     delete currentExps[name];
+}
+
+function removePlate(name) {
+    exp = currentPlates[name];
+    expsGroup.removeLayer(exp);
+    delete currentPlates[name];
 }
 
 function bricksLoaded(result) {
@@ -1181,6 +1191,11 @@ function expMouseOver(e) {
     */
 }
 
+function plateMouseOver(e) {
+}
+function plateMouseOut(e) {
+}
+
 function expsLoaded(result) {
     if (!showExps) {
         return;
@@ -1219,6 +1234,42 @@ function expsLoaded(result) {
         currentExps[name] = c;
     }
 }
+
+function platesLoaded(result) {
+    if (!showPlates) {
+        return;
+    }
+    plates = result['plates'];
+    console.log('Plates:', plates.length);
+    for (var i=0, len=plates.length; i<len; i++) {
+        // console.log('plate ' + i + ': ' + plates[i]);
+        name = plates[i].name;
+        if (name in currentPlates) {
+            //console.log('Plate ' + name + ' already exists');
+            continue;
+        }
+        lat = dec2lat(plates[i].dec);
+        lng = ra2long_B(plates[i].ra);
+	maplatlong = map.getCenter()
+	lng0 = maplatlong.lng;
+	while (lng < (lng0 - 180)) {
+	    lng += 360;
+	}
+	while (lng > (lng0 + 180)) {
+	    lng -= 360;
+	}
+	meters = 30 * 3600 * plates[i].radius;
+	color = plates[i].color;
+	c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
+					 'weight':5, 'opacity':0.4 });
+        c.name = name;
+        c.on('mouseover', plateMouseOver);
+        c.on('mouseout', plateMouseOut);
+        platesGroup.addLayer(c);
+        currentPlates[name] = c;
+    }
+}
+
 
 function mapBoundsChanged() {
     latlng = map.getCenter();
@@ -1272,6 +1323,18 @@ function mapBoundsChanged() {
             id: idname,
         }));
         $.getJSON(expsurl, expsLoaded);
+    }
+    if (showPlates) {
+        bounds = map.getBounds();
+        platesurl = L.Util.template('{{ platesurl|safe }}', L.extend({
+            s: 'a',
+            z: zoom,
+            west:  long2ra(bounds.getWest()).toFixed(4),
+            east:  long2ra(bounds.getEast()).toFixed(4),
+            north: lat2dec(bounds.getNorth()).toFixed(4),
+            south: lat2dec(bounds.getSouth()).toFixed(4),
+        }));
+        $.getJSON(platesurl, platesLoaded);
     }
 
 }
@@ -1328,6 +1391,12 @@ var expsGroup = L.layerGroup([]);
 var currentExps = {};
 var expFills = {};
 var highlightedExpName = '';
+
+var showPlates = false;
+var platesGroup = L.layerGroup([]);
+var currentPlates = {};
+var plateFills = {};
+var highlightedPlateName = '';
 
 var map = L.map('map');
 var popup = L.popup();
@@ -1865,6 +1934,7 @@ var overlayMaps = {
     "Exposures": expsGroup,
     "NGC": ngcGroup,
     "Spectra": specGroup,
+    "SDSS Spectro Plates": platesGroup,
 };
 
 {% comment %}
