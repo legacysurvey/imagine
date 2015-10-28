@@ -1102,7 +1102,7 @@ function ccdMouseOver(e) {
 }
 
 function ccdMouseOut(e) {
-    e.target.setStyle({color: 'green'}); //, fill:false, fillOpacity:0});
+    e.target.setStyle({color: e.target.orig_color});
     ccd = e.target;
     highlightedCcdName = '';
     if (ccd.name in ccdFills) {
@@ -1124,7 +1124,9 @@ function ccdsLoaded(result) {
             continue;
         }
         poly = ccds[i].poly;
-        c = L.polygon(poly, {fill:false, color:'green', weight:4 });
+	color = ccds[i].color;
+        c = L.polygon(poly, {fill:false, color:color, weight:4 });
+	c.orig_color = color;
         c.name = name;
         c.on('mouseover', ccdMouseOver);
         c.on('mouseout', ccdMouseOut);
@@ -2078,6 +2080,13 @@ console.log('addLayer(ccds)');
 map.addLayer(ccdsGroup);
 console.log('done addLayer(ccds)');
 overlayAdded({name:'CCDs'});
+{% endif %}
+
+{% if showExps %}
+console.log('addLayer(exps)');
+map.addLayer(expsGroup);
+console.log('done addLayer(exps)');
+overlayAdded({name:'Exposures'});
 {% endif %}
 
 {% if showSources %}

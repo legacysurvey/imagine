@@ -200,6 +200,7 @@ def index(req):
                        showNgc='ngc' in req.GET,
                        showBricks='bricks' in req.GET,
                        showCcds='ccds' in req.GET,
+                       showExps='exps' in req.GET,
                        showVcc='vcc' in req.GET,
                        showSpec='spec' in req.GET,
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
@@ -1668,89 +1669,71 @@ def brick_list(req):
     return HttpResponse(json.dumps(dict(bricks=bricks)),
                         content_type='application/json')
 
-ccdtree = None
-CCDs = None
-
-ccdtree_dr1k = None
-CCDs_dr1k = None
-
-ccdtree_dr1n = None
-CCDs_dr1n = None
-
-ccdtree_dr2 = None
-CCDs_dr2 = None
-
-def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
-    from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
-    from astrometry.util.starutil_numpy import degrees_between
+def _objects_touching_box(kdtree, north, south, east, west,
+                          Nmax=None, radius=0.):
     import numpy as np
-    global ccdtree
-    global CCDs
-
-    global ccdtree_dr1k
-    global CCDs_dr1k
-
-    global ccdtree_dr1n
-    global CCDs_dr1n
-
-    global ccdtree_dr2
-    global CCDs_dr2
-
-    if name == 'decals-dr1k':
-        if ccdtree_dr1k is None:
-            from astrometry.util.fits import fits_table
-            CCDs_dr1k = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
-                                                'decals-ccds.fits'))
-            ccdtree_dr1k = tree_build_radec(CCDs_dr1k.ra, CCDs_dr1k.dec)
-        theCCDs = CCDs_dr1k
-        theccdtree = ccdtree_dr1k
-
-    elif name == 'decals-dr1n':
-        if ccdtree_dr1n is None:
-            from astrometry.util.fits import fits_table
-            CCDs_dr1n = fits_table(os.path.join(settings.DATA_DIR, 'decals-ccds-dr1n.fits'))
-            ccdtree_dr1n = tree_build_radec(CCDs_dr1n.ra, CCDs_dr1n.dec)
-        theCCDs = CCDs_dr1n
-        theccdtree = ccdtree_dr1n
-
-    elif name == 'decals-dr2':
-        if ccdtree_dr2 is None:
-            from astrometry.util.fits import fits_table
-            CCDs_dr2 = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr2', 'decals-ccds.fits'))
-            ccdtree_dr2 = tree_build_radec(CCDs_dr2.ra, CCDs_dr2.dec)
-        theCCDs = CCDs_dr2
-        theccdtree = ccdtree_dr2
-
-        theCCDs.extname = theCCDs.ccdname
-        theCCDs.cpimage = theCCDs.image_filename
-        theCCDs.cpimage_hdu = theCCDs.image_hdu
-
-    else:
-        if ccdtree is None:
-            D = _get_decals(name=name)
-            CCDs = D.get_ccds()
-            ccdtree = tree_build_radec(CCDs.ra, CCDs.dec)
-        theCCDs = CCDs
-        theccdtree = ccdtree
-            
+    from astrometry.libkd.spherematch import tree_search_radec
+    from astrometry.util.starutil_numpy import degrees_between
 
     dec = (north + south) / 2.
     c = (np.cos(np.deg2rad(east)) + np.cos(np.deg2rad(west))) / 2.
     s = (np.sin(np.deg2rad(east)) + np.sin(np.deg2rad(west))) / 2.
     ra  = np.rad2deg(np.arctan2(s, c))
 
-    # image size
-    radius = np.hypot(2048, 4096) * 0.262/3600. / 2.
     # RA,Dec box size
     radius = radius + degrees_between(east, north, west, south) / 2.
 
-    J = tree_search_radec(theccdtree, ra, dec, radius)
-
+    J = tree_search_radec(kdtree, ra, dec, radius)
     if Nmax is not None:
         # limit result size
         J = J[:Nmax]
+    return J
 
-    return theCCDs[J]
+ccd_cache = {}
+
+def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
+    from astrometry.libkd.spherematch import tree_build_radec
+    import numpy as np
+    global ccd_cache
+
+    if not name in ccd_cache:
+        fn = None
+        CCDs = None
+        if name == 'decals-dr1k':
+            fn = os.path.join(settings.DATA_DIR, 'decals-dr1k',
+                              'decals-ccds.fits')
+        elif name == 'decals-dr1n':
+            fn = os.path.join(settings.DATA_DIR, 'decals-ccds-dr1n.fits')
+        elif name == 'decals-dr2':
+            fn = os.path.join(settings.DATA_DIR, 'decals-dr2',
+                              'decals-ccds.fits')
+        else:
+            D = _get_decals(name=name)
+            if hasattr(D, 'get_ccds_readonly'):
+                CCDs = D.get_ccds_readonly()
+            else:
+                CCDs = D.get_ccds()
+
+        if CCDs is None:
+            from astrometry.util.fits import fits_table
+            CCDs = fits_table(fn)
+
+        if name == 'decals-dr2':
+            CCDs.extname = CCDs.ccdname
+            CCDs.cpimage = CCDs.image_filename
+            CCDs.cpimage_hdu = CCDs.image_hdu
+
+        tree = tree_build_radec(CCDs.ra, CCDs.dec)
+        ccd_cache[name] = (CCDs, tree)
+    else:
+        CCDs,tree = ccd_cache[name]
+
+    # image size
+    radius = np.hypot(2048, 4096) * 0.262/3600. / 2.
+
+    J = _objects_touching_box(tree, north, south, east, west, Nmax=Nmax,
+                              radius=radius)
+    return CCDs[J]
 
 def ccd_list(req):
     import json
@@ -1784,8 +1767,10 @@ def ccd_list(req):
         x = np.array([1, 1, c.width, c.width])
         y = np.array([1, c.height, c.height, 1])
         r,d = wcs.pixelxy2radec(x, y)
+        ccmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
         ccds.append(dict(name=ccdname(c),
-                         poly=zip(d, ra2long(r))))
+                         poly=zip(d, ra2long(r)),
+                         color=ccmap[c.filter]))
 
     return HttpResponse(json.dumps(dict(ccds=ccds)),
                         content_type='application/json')
@@ -1799,11 +1784,15 @@ def get_exposure_table(name):
         T = fits_table(os.path.join(settings.DATA_DIR, 'decals-exposures.fits'))
     return T
 
+exposure_cache = {}
+
 def exposure_list(req):
     import json
     from astrometry.util.fits import fits_table
     from decals import settings
     import numpy as np
+
+    global exposure_cache
 
     north = float(req.GET['north'])
     south = float(req.GET['south'])
@@ -1811,21 +1800,24 @@ def exposure_list(req):
     west  = float(req.GET['west'])
     name = req.GET.get('id', None)
 
-    T = get_exposure_table(name)
+    if not name in exposure_cache:
+        from astrometry.libkd.spherematch import tree_build_radec
+        T = get_exposure_table(name)
+        tree = tree_build_radec(T.ra, T.dec)
+        exposure_cache[name] = (T,tree)
+    else:
+        T,tree = exposure_cache[name]
 
     radius = 1.0
 
-    T.cut((T.dec < north + radius) * (T.dec > south - radius))
-    rascale = 1. / np.cos(np.deg2rad(max(np.abs(south), np.abs(north))))
-    print 'West,East', west, east
-    mnra = min(east, west)
-    mxra = max(east, west)
-    T.cut((T.ra < mxra + radius*rascale) * (T.ra > mnra - radius*rascale))
-
+    I = _objects_touching_box(tree, north, south, east, west,radius=radius)
+    T = T[I]
     T.cut(np.lexsort((T.expnum, T.filter)))
 
     exps = []
     for t in T:
+        if t.filter != 'z':
+            continue
         cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
         exps.append(dict(name='%i %s' % (t.expnum, t.filter),
                          ra=t.ra, dec=t.dec, radius=radius,
@@ -1833,6 +1825,51 @@ def exposure_list(req):
 
     return HttpResponse(json.dumps(dict(exposures=exps)),
                         content_type='application/json')
+
+plate_cache = {}
+
+def sdss_plate_list(req):
+    import json
+    from astrometry.util.fits import fits_table
+    from decals import settings
+    import numpy as np
+
+    global plate_cache
+
+    north = float(req.GET['north'])
+    south = float(req.GET['south'])
+    east  = float(req.GET['east'])
+    west  = float(req.GET['west'])
+    #name = req.GET.get('id', None)
+    name = 'sdss'
+
+    if not name in plate_cache:
+        from astrometry.libkd.spherematch import tree_build_radec
+        T = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
+                                    'plates-dr12.fits'))
+        tree = tree_build_radec(T.ra, T.dec)
+        plate_cache[name] = (T,tree)
+    else:
+        T,tree = plate_cache[name]
+
+    radius = 1.0
+
+    I = _objects_touching_box(tree, north, south, east, west,radius=radius)
+    T = T[I]
+    T.cut(np.lexsort((T.expnum, T.filter)))
+
+    exps = []
+    for t in T:
+        if t.filter != 'z':
+            continue
+        cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
+        exps.append(dict(name='%i %s' % (t.expnum, t.filter),
+                         ra=t.ra, dec=t.dec, radius=radius,
+                         color=cmap[t.filter]))
+
+    return HttpResponse(json.dumps(dict(plates=exps)),
+                        content_type='application/json')
+
     
 def ccd_detail(req, name, ccd):
     import numpy as np
@@ -1851,7 +1888,7 @@ def ccd_detail(req, name, ccd):
     if name == 'decals-dr2':
         I = np.flatnonzero((CCDs.expnum == expnum) * 
                            np.array([n.strip() == extname for n in CCDs.ccdname]))
-        about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' % (ccd, c.image_filename, c.image_hdu, c.exptime, c.seeing)
+        about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix' % (ccd, c.image_filename, c.image_hdu, c.exptime, c.seeing, c.fwhm)
     else:
         I = np.flatnonzero((CCDs.expnum == expnum) * 
                            np.array([n.strip() == extname for n in CCDs.extname]))

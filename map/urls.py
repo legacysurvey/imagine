@@ -64,8 +64,12 @@ urlpatterns = patterns('map.views',
     url(r'^bricks/', 'brick_list'),
     # CCDs: list of polygons
     url(r'^ccds/', 'ccd_list'),
+
     # Exposures: list of circles
     url(r'^exps/', 'exposure_list'),
+
+    # SDSS spectro plates: list of circles
+    url(r'^sdss-plates/', 'sdss_plate_list'),
 
     # Brick details
     url(r'^brick/(\d{4}[pm]\d{3})', 'brick_detail', name='brick_detail'),
