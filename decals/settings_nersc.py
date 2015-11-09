@@ -8,3 +8,9 @@ ENABLE_VCC  = False
 ENABLE_WL   = False
 ENABLE_DR2  = False
 ENABLE_DEPTH = False
+
+#SDSS_PHOTOOBJS = '/project/projectdirs/cosmo/data/sdss/pre13/eboss/photoObj.v5b'
+
+SDSS_PHOTOOBJS = '/project/projectdirs/cosmo/data/sdss/dr10/boss/photoObj'
+SDSS_RESOLVE = '/project/projectdirs/cosmo/data/sdss/pre13/eboss/resolve/2013-07-29'
+

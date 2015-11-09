@@ -416,8 +416,16 @@ def read_astrans(fn, hdu, hdr=None, W=None, H=None):
 
     # Approximate as SIP.
 
-    # Frame files include a TAN header... start there.
-    tan = Tan(fn)
+    if fn.endswith('.bz2'):
+        #
+        import fitsio
+        hdr = fitsio.read_header(fn, 0)
+        tan = Tan(*[float(hdr[k]) for k in [
+                    'CRVAL1', 'CRVAL2', 'CRPIX1', 'CRPIX2',
+                    'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2', 'NAXIS1','NAXIS2']])
+    else:
+        # Frame files include a TAN header... start there.
+        tan = Tan(fn)
     #print 'Tan:', tan
 
     # Evaluate AsTrans on a pixel grid...
@@ -439,7 +447,7 @@ def read_astrans(fn, hdu, hdr=None, W=None, H=None):
     sip_order = 5
     inv_order = 7
     sip = fit_sip_wcs_py(xyz, fieldxy, None, tan, sip_order, inv_order)
-    # print 'Fit SIP:', sip
+    print 'Fit SIP:', sip
     return sip
 
 
@@ -456,8 +464,8 @@ if False:
 
 def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
              get_images=False,
-             #ignoreCached=False,
-             ignoreCached=True,
+             ignoreCached=False,
+             #ignoreCached=True,
              **kwargs):
     from decals import settings
 
@@ -490,6 +498,8 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
         return HttpResponse(e.strerror)
+
+    print 'Tile wcs:', wcs
 
     from astrometry.util.fits import fits_table
     import numpy as np
@@ -556,7 +566,11 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     from astrometry.sdss import AsTransWrapper, DR9
     sdss = DR9(basedir=settings.SDSS_DIR)
     sdss.saveUnzippedFiles(settings.SDSS_DIR)
+    sdss.setFitsioReadBZ2()
     #sdss.setFitsioReadBZ2()
+    if settings.SDSS_PHOTOOBJS:
+        sdss.useLocalTree(photoObjs=settings.SDSS_PHOTOOBJS,
+                          resolve=settings.SDSS_RESOLVE)
 
     for j in J:
         im = w_flist[j]

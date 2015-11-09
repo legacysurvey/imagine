@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 import secrets.django
 import secrets.database
 
+SDSS_PHOTOOBJS = None
+SDSS_RESOLVE = None
+
 MAX_NATIVE_ZOOM = 15
 
 # Enable DECaLS number of exposures layer?
