@@ -77,14 +77,18 @@ def trymakedirs(fn):
         except:
             pass
 
-def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None):
-    from astrometry.util.util import Tan
+def _read_tansip_wcs(sourcefn, ext, hdr=None, W=None, H=None, tansip=None):
     wcs = None
     if not sourcefn.endswith('.gz'):
         try:
-            wcs = Tan(sourcefn, ext)
+            wcs = tansip(sourcefn, ext)
         except:
             pass
+    return wcs
+
+def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None):
+    from astrometry.util.util import Tan
+    wcs = _read_tansip_wcs(sourcefn, ext, hdr=hdr, W=W, H=H, tansip=Tan)
     if wcs is None:
         import fitsio
         # maybe gzipped; try fitsio header.
@@ -99,6 +103,10 @@ def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None):
                     hdr['CD1_1'], hdr['CD1_2'], hdr['CD2_1'], hdr['CD2_2'],
                     W, H]])
     return wcs
+
+def _read_sip_wcs(sourcefn, ext, hdr=None, W=None, H=None):
+    from astrometry.util.util import Sip
+    return _read_tansip_wcs(sourcefn, ext, hdr=hdr, W=W, H=H, tansip=Sip)
 
 def ra2long(ra):
     lng = 180. - ra
@@ -240,7 +248,7 @@ def get_tile_wcs(zoom, x, y):
 
     return wcs, W, H, zoomscale, zoom,x,y
 
-def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None):
+def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wcs=None):
     from scipy.ndimage.filters import gaussian_filter
     import fitsio
     from astrometry.util.util import Tan
@@ -258,7 +266,8 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None):
         return fn
 
     # print 'Does not exist:', fn
-    sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn)
+    sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn,
+                          read_base_wcs=read_base_wcs, read_wcs=read_wcs)
     # print 'Source:', sourcefn
     if sourcefn is None or not os.path.exists(sourcefn):
         # print 'Image source file', sourcefn, 'not found'
@@ -281,6 +290,11 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None):
     I2 = (im[::2,::2] + im[1::2,::2] + im[1::2,1::2] + im[::2,1::2])/4.
     I2 = I2.astype(np.float32)
     #print 'I2:', I2.shape
+
+    if scale == 1:
+        # Use the given function to read base WCS.
+        if read_base_wcs is not None:
+            read_wcs = read_base_wcs
     # shrink WCS too
     wcs = read_wcs(sourcefn, 0, hdr=hdr, W=W, H=H)
     # include the even size clip; this may be a no-op
@@ -499,8 +513,6 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     except RuntimeError as e:
         return HttpResponse(e.strerror)
 
-    print 'Tile wcs:', wcs
-
     from astrometry.util.fits import fits_table
     import numpy as np
     from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
@@ -509,7 +521,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     from astrometry.util.util import Tan, Sip
     import fitsio
 
-    # print 'Tile wcs: pixel scale', wcs.pixel_scale()
+    print 'Tile wcs: center', wcs.radec_center(), 'pixel scale', wcs.pixel_scale()
 
     global w_flist
     global w_flist_tree
@@ -517,6 +529,9 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         w_flist = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
                                           'window_flist.fits'),
                              columns=['run','rerun','camcol','field','ra','dec'])
+        print 'Read', len(w_flist), 'window_flist entries'
+        w_flist.cut(w_flist.rerun == '301')
+        print 'Cut to', len(w_flist), 'in rerun 301'
         w_flist_tree = tree_build_radec(w_flist.ra, w_flist.dec)
 
     # SDSS field size
@@ -529,6 +544,19 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     radius = radius + max(degrees_between(ra,dec, r0,d0), degrees_between(ra,dec, r1,d1))
 
     J = tree_search_radec(w_flist_tree, ra, dec, radius)
+
+    print len(J), 'overlapping SDSS fields found'
+    if len(J) == 0:
+        # if forcecache:
+        #     # create symlink to blank.jpg!
+        #     trymakedirs(tilefn)
+        #     src = os.path.join(settings.STATIC_ROOT, 'blank.jpg')
+        #     if os.path.exists(tilefn):
+        #         os.unlink(tilefn)
+        #     os.symlink(src, tilefn)
+        #     print 'Symlinked', tilefn, '->', src
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
     
     ww = [1, W*0.25, W*0.5, W*0.75, W]
     hh = [1, H*0.25, H*0.5, H*0.75, H]
@@ -575,24 +603,18 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     for j in J:
         im = w_flist[j]
         for band,rimg,rn in zip(bands, rimgs, rns):
-
             if im.rerun != '301':
                 continue
-
-            #maskfn = sdss.retrieve('fpM', im.run, im.camcol, field=im.field,
-            #                       band=band, rerun=im.rerun)
             tmpsuff = '.tmp%08i' % np.random.randint(100000000)
             basefn = sdss.retrieve('frame', im.run, im.camcol, field=im.field,
                                    band=band, rerun=im.rerun, tempsuffix=tmpsuff)
-            #print 'Field', basefn
             bunfn,keep = sdss._unzip_frame(basefn, im.run, im.camcol)
-            #print 'bun', bunfn
             if bunfn is not None:
                 basefn = bunfn
             fnargs = dict(band=band, rerun=im.rerun, run=im.run,
                           camcol=im.camcol, field=im.field)
             fn = get_scaled(scalepat, fnargs, scaled, basefn,
-                            read_wcs=read_astrans)
+                            read_base_wcs=read_astrans, read_wcs=_read_sip_wcs)
             #print '(Perhaps-scaled) filename', fn
             frame = None
             if fn == basefn:
@@ -605,7 +627,6 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                 fwcs = Sip(fn)
                 fitsimg = fitsio.FITS(fn)[0]
                 h,w = fitsimg.get_info()['dims']
-
 
             if frame is not None:
                 fullimg = frame.getImage()
@@ -637,12 +658,10 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
             rn  [Yo,Xo] += 1
 
             if sdssps is not None:
-
                 # goodpix = np.ones(img.shape, bool)
                 # fpM = sdss.readFpM(im.run, im.camcol, im.field, band)
                 # for plane in [ 'INTERP', 'SATUR', 'CR', 'GHOST' ]:
                 #     fpM.setMaskedPixels(plane, goodpix, False, roi=[x0,x1,y0,y1])
-
                 plt.clf()
                 #ima = dict(vmin=-0.05, vmax=0.5)
                 #ima = dict(vmin=-0.5, vmax=2.)
@@ -665,12 +684,10 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                 plt.subplot(2,3,5)
                 dimshow(rn, vmin=0, ticks=False)
                 plt.title('coverage: max %i' % rn.max())
-
                 plt.subplot(2,3,6)
                 rgb = sdss_rgb([rimg/np.maximum(rn,1)
                                 for rimg,rn in zip(rimgs,rns)], bands)
                 dimshow(rgb)
-                
                 plt.suptitle('SDSS %s, R/C/F %i/%i/%i' % (band, im.run, im.camcol, im.field))
                 sdssps.savefig()
                 

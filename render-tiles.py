@@ -28,6 +28,7 @@ def _one_tile((kind, zoom, x, y, ignore)):
     kwargs = dict(ignoreCached=ignore)
     # forcecache=False, return_if_not_found=True)
     if kind == 'sdss':
+        print 'Zoom', zoom, 'x,y', x,y
         map_sdss(req, version, zoom, x, y, savecache=True)
 
     elif kind == 'decals-dr2':
@@ -70,6 +71,15 @@ def _one_tile((kind, zoom, x, y, ignore)):
     elif kind == 'unwise':
         map_unwise_w1w2(req, version, zoom, x, y, savecache=True,
                         ignoreCached=ignore)
+
+def _bounce_one_tile(*args):
+    try:
+        _one_tile(*args)
+    except:
+        print 'Error in _one_tile(', args, '):'
+        import traceback
+        traceback.print_exc()
+
 
 def _bounce_map_unwise_w1w2(args):
     return map_unwise_w1w2(*args, ignoreCached=True, get_images=True)
@@ -387,8 +397,8 @@ def main():
     parser.add_option('-x', type=int)
     parser.add_option('-y', type=int)
 
-    parser.add_option('--mindec', type=float, default=-20, help='Minimum Dec to run')
-    parser.add_option('--maxdec', type=float, default=40, help='Maximum Dec to run')
+    parser.add_option('--mindec', type=float, default=None, help='Minimum Dec to run')
+    parser.add_option('--maxdec', type=float, default=None, help='Maximum Dec to run')
 
     parser.add_option('--minra', type=float, default=0.,   help='Minimum RA to run')
     parser.add_option('--maxra', type=float, default=360., help='Maximum RA to run')
@@ -416,6 +426,17 @@ def main():
 
     mp = multiproc(opt.threads)
 
+    if opt.kind == 'sdss':
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = -20
+    else:
+        if opt.maxdec is None:
+            opt.maxdec = 40
+        if opt.mindec is None:
+            opt.mindec = -20
+
     if opt.top:
         top_levels(opt)
         sys.exit(0)
@@ -434,9 +455,20 @@ def main():
         # print len(B), 'finished in DR1d'
 
     if opt.near_ccds:
-        #C = fits_table('decals-dr1/decals-ccds.fits', columns=['ra','dec'])
-        C = fits_table('decals-ccds-radec.fits')
-        print len(C), 'CCDs in DR1'
+        if opt.kind == 'sdss':
+            C = fits_table(os.path.join(settings.DATA_DIR, 'sdss', 'window_flist.fits'),
+                           columns=['rerun','ra','dec'])
+            C.cut(C.rerun == '301')
+            C.delete_column('rerun')
+            # SDSS field size
+            radius = 1.01 * np.hypot(10., 14.)/2. / 60.
+            ccdsize = radius
+            print len(C), 'SDSS fields'
+        else:
+            #C = fits_table('decals-dr1/decals-ccds.fits', columns=['ra','dec'])
+            C = fits_table('decals-ccds-radec.fits')
+            print len(C), 'CCDs in DR1'
+            ccdsize = 0.2
 
     if opt.x is not None:
         opt.x0 = opt.x
@@ -517,7 +549,7 @@ def main():
                 d = dd[iy]
                 print 'RA range of tiles:', rr.min(), rr.max()
                 print 'Dec of tile row:', d
-                I,J,dist = match_radec(rr, d+np.zeros_like(rr), C.ra, C.dec, 0.2 + tilesize, nearest=True)
+                I,J,dist = match_radec(rr, d+np.zeros_like(rr), C.ra, C.dec, ccdsize + tilesize, nearest=True)
                 if len(I) == 0:
                     print 'No matches to CCDs'
                     continue
@@ -543,7 +575,7 @@ def main():
             for xi in x:
                 args.append((opt.kind,zoom,xi,y, opt.ignore))
             print 'Rendering', len(args), 'tiles in row y =', y
-            mp.map(_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
+            mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
             print 'Rendered', len(args), 'tiles'
 
 
