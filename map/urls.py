@@ -28,6 +28,11 @@ urlpatterns = patterns('map.views',
     url(r'^fits-cutout-decals-dr1', 'fits_cutout_decals_dr1j'),
     url(r'^jpeg-cutout-decals-dr1', 'jpeg_cutout_decals_dr1j'),
 
+    url(r'^jpeg-cutout-decals-dr2', 'jpeg_cutout_decals_dr2'),
+    url(r'^fits-cutout-decals-dr2', 'fits_cutout_decals_dr2'),
+    url(r'^jpeg-cutout-sdss', 'jpeg_cutout_sdss'),
+    url(r'^fits-cutout-sdss', 'fits_cutout_sdss'),
+
     # NGC objects
     url(r'^ngc/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_ngc'),
 

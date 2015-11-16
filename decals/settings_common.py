@@ -60,7 +60,7 @@ SDSS_DIR = os.path.join(DATA_DIR, 'sdss')
 #DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
 #UNWISE_DIR = '/project/projectdirs/cosmo/data/unwise/unwise-coadds'
 
-os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-dr1/'
+#os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-dr1/'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/

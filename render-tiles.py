@@ -16,6 +16,10 @@ from astrometry.util.multiproc import *
 from astrometry.util.fits import *
 from astrometry.libkd.spherematch import *
 
+import logging
+lvl = logging.DEBUG
+logging.basicConfig(level=lvl, format='%(message)s', stream=sys.stdout)
+
 class duck(object):
     pass
 
@@ -32,7 +36,8 @@ def _one_tile((kind, zoom, x, y, ignore)):
         map_sdss(req, version, zoom, x, y, savecache=True)
 
     elif kind == 'decals-dr2':
-        map_decals_dr2(req, version, zoom, x, y, savecache=True)
+        map_decals_dr2(req, version, zoom, x, y, savecache=True, forcecache=True,
+                       hack_jpeg=True, drname='decals-dr2')
 
     elif kind in ['depth-g','depth-r','depth-z']:
         band = kind[-1]
@@ -75,6 +80,8 @@ def _one_tile((kind, zoom, x, y, ignore)):
 def _bounce_one_tile(*args):
     try:
         _one_tile(*args)
+    except KeyboardInterrupt:
+        raise
     except:
         print 'Error in _one_tile(', args, '):'
         import traceback
@@ -441,18 +448,12 @@ def main():
         top_levels(opt)
         sys.exit(0)
 
-    if opt.near:
-        # HACK -- DR1
-        # B = fits_table('decals-bricks-in-dr1-done.fits')
+    from legacypipe.common import Decals
+    decals = Decals()
 
-        if 'dr1k' in opt.kind:
-            B = fits_table('data/decals-dr1k/decals-bricks.fits')
-        else:
-            B = fits_table('decals-bricks-in-dr1.fits')
-        # B = fits_table('decals-bricks-in-edr.fits')
-        print len(B), 'bricks in DR1'
-        # B.cut(B.exists == 1)
-        # print len(B), 'finished in DR1d'
+    if opt.near:
+        B = decals.get_bricks()
+        print len(B), 'bricks'
 
     if opt.near_ccds:
         if opt.kind == 'sdss':
@@ -465,9 +466,8 @@ def main():
             ccdsize = radius
             print len(C), 'SDSS fields'
         else:
-            #C = fits_table('decals-dr1/decals-ccds.fits', columns=['ra','dec'])
-            C = fits_table('decals-ccds-radec.fits')
-            print len(C), 'CCDs in DR1'
+            C = decals.get_ccds()
+            print len(C), 'CCDs'
             ccdsize = 0.2
 
     if opt.x is not None:
@@ -534,6 +534,8 @@ def main():
             print 'x tile range:', xx.min(), xx.max(), 'y tile range:', yy.min(), yy.max()
 
         for iy,y in enumerate(yy):
+            print
+            print 'Y row', y
 
             if opt.near:
                 d = dd[iy]
