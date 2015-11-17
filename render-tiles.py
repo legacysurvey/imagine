@@ -36,6 +36,7 @@ def _one_tile((kind, zoom, x, y, ignore)):
         map_sdss(req, version, zoom, x, y, savecache=True)
 
     elif kind == 'decals-dr2':
+        version = 2
         map_decals_dr2(req, version, zoom, x, y, savecache=True, forcecache=True,
                        hack_jpeg=True, drname='decals-dr2')
 

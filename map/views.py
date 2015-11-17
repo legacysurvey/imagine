@@ -1144,10 +1144,39 @@ def map_decals_wl(req, ver, zoom, x, y):
 B_dr2 = None
 def _get_dr2_bricks():
     global B_dr2
-    if B_dr2 is None:
-        from astrometry.util.fits import fits_table
-        import numpy as np
-        B_dr2 = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr2', 'decals-bricks.fits'))
+    if B_dr2 is not None:
+        return B_dr2
+
+    from astrometry.util.fits import fits_table
+    from astrometry.libkd.spherematch import match_radec
+    import numpy as np
+
+    fn = os.path.join(settings.DATA_DIR, 'decals-dr2', 'decals-bricks-in-dr2.fits')
+    if os.path.exists(fn):
+        B_dr2 = fits_table(fn)
+        return B_dr2
+
+    decals = _get_decals('decals-dr2')
+    B = decals.get_bricks()
+    C = decals.get_ccds_readonly()
+    # CCD radius
+    radius = np.hypot(2048, 4096) / 2. * 0.262 / 3600.
+    # Brick radius
+    radius += np.hypot(0.25, 0.25)/2.
+    I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, radius * 1.05)
+    for band in 'grz':
+        has = np.zeros(len(B), bool)
+        K = (C.filter[J] == band)
+        has[I[K]] = True
+        B.set('has_%s' % band, has)
+        print sum(has), 'bricks have coverage in', band
+
+    keep = np.zeros(len(B), bool)
+    keep[I] = True
+    B.cut(keep)
+    B_dr2 = B
+    B_dr2.writeto(fn)
+    print 'Wrote', fn
     return B_dr2
 
 def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
