@@ -2,6 +2,7 @@ import os
 from django.http import HttpResponse, StreamingHttpResponse
 
 from decals import settings
+from map.utils import get_tile_wcs
 
 import matplotlib
 matplotlib.use('Agg')
@@ -50,24 +51,6 @@ catversions = {
     }
 
 oneyear = (3600 * 24 * 365)
-
-class MercWCSWrapper(object):
-    def __init__(self, wcs, wrap):
-        self.wcs = wcs
-        self.wrap = float(wrap)
-    def radec2pixelxy(self, ra, dec):
-        X = self.wcs.radec2pixelxy(ra, dec)
-        (ok,x,y) = X
-        x += (x < -self.wrap/2) * self.wrap
-        x -= (x >  self.wrap/2) * self.wrap
-        return (ok,x,y)
-    def __getattr__(self, name):
-        return getattr(self.wcs, name)
-    def __setattr__(self, name, val):
-        if name in ['wcs', 'wrap']:
-            self.__dict__[name] = val
-            return
-        return setattr(self.wcs, name, val)
 
 def trymakedirs(fn):
     dirnm = os.path.dirname(fn)
@@ -220,33 +203,6 @@ def index(req):
                        enable_dr2 = settings.ENABLE_DR2,
                        enable_depth = settings.ENABLE_DEPTH,
                        ))
-
-def get_tile_wcs(zoom, x, y):
-    from astrometry.util.util import anwcs_create_mercator_2
-
-    zoom = int(zoom)
-    zoomscale = 2.**zoom
-    x = int(x)
-    y = int(y)
-    if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
-        raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
-
-    # tile size
-    zoomscale = 2.**zoom
-    W,H = 256,256
-    if zoom == 0:
-        rx = ry = 0.5
-    else:
-        rx = zoomscale/2 - x
-        ry = zoomscale/2 - y
-    rx = rx * W
-    ry = ry * H
-    wcs = anwcs_create_mercator_2(180., 0., rx, ry,
-                                  zoomscale, W, H, 1)
-    if wcs is not None:
-        wcs = MercWCSWrapper(wcs, 2**zoom * W)
-
-    return wcs, W, H, zoomscale, zoom,x,y
 
 def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wcs=None):
     from scipy.ndimage.filters import gaussian_filter

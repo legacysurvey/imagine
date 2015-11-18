@@ -490,7 +490,6 @@ def main():
         if opt.x1 is None:
             opt.x1 = N
 
-        # HACK -- DR1
         # Find grid of Ra,Dec tile centers and select the ones near DECaLS bricks.
         rr,dd = [],[]
         yy = np.arange(opt.y0, y1)
