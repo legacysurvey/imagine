@@ -1518,6 +1518,42 @@ tiles = new MyTileLayer('{{tileurl|safe}}', {
   });
 tiles.catname = catname;
 allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 images", catname:catname});
+
+
+id = 'decals-dr2-model'
+tiles = new ZoomRangeTileLayer(static_tile_url, {
+    maxZoom: maxZoom,
+    maxNativeZoom: {{ maxNativeZoom }},
+    minZoom: minZoom,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
+  });
+tiles.catname = catname;
+allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 models", catname:catname});
+
+
+id = 'decals-dr2-resid'
+tiles = new ZoomRangeTileLayer(static_tile_url, {
+    maxZoom: maxZoom,
+    maxNativeZoom: {{ maxNativeZoom }},
+    minZoom: minZoom,
+    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
+  });
+tiles.catname = catname;
+allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 residuals", catname:catname});
+
+
+
+
 {% endif %}
 
 

@@ -17,6 +17,8 @@ tileversions = {
     'sdss': [1,],
 
     'decals-dr2': [1, 2],
+    'decals-dr2-model': [1],
+    'decals-dr2-resid': [1],
 
     'decals-dr1k': [1],
     'decals-model-dr1k': [1],
@@ -69,7 +71,7 @@ def _read_tansip_wcs(sourcefn, ext, hdr=None, W=None, H=None, tansip=None):
             pass
     return wcs
 
-def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None):
+def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
     from astrometry.util.util import Tan
     wcs = _read_tansip_wcs(sourcefn, ext, hdr=hdr, W=W, H=H, tansip=Tan)
     if wcs is None:
@@ -1138,6 +1140,14 @@ def _get_dr2_bricks():
     print 'Wrote', fn
     return B_dr2
 
+def map_decals_dr2_model(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(model=True, model_gz=True, add_gz=True)
+    return map_decals_dr2(req, ver, zoom, x, y, **kwargs)
+
+def map_decals_dr2_resid(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(resid=True, model_gz=True)
+    return map_decals_dr2(req, ver, zoom, x, y, **kwargs)
+
 def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
                     model=False, resid=False, nexp=False,
                     **kwargs):
@@ -1149,6 +1159,15 @@ def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
     imagetag = 'image'
     tag = 'decals-dr2'
     imagedir = 'decals-dr2'
+
+    if model:
+        imagetag = 'model'
+        tag = 'decals-dr2-model'
+    if resid:
+        imagetag = 'resid'
+        kwargs.update(modeldir = 'decals-dr2-model')
+        tag = 'decals-dr2-resid'
+
     rgb = rgbkwargs
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
                            imagetag=imagetag,
@@ -2318,12 +2337,21 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                                   'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
     else:
         modbasepat = basepat
+
+    print 'Modbasepat:', modbasepat
+    print 'Model_gz:', model_gz
+    print 'Imagetag:', imagetag
+    print 'add_gz:', add_gz
+
     if model_gz and imagetag == 'model':
         modbasepat += '.gz'
     #print 'add_gz:', add_gz
     if add_gz:
         basepat += '.gz'
     #print 'basepat:', basepat
+
+    print 'basepat:', basepat
+    print 'modbasepat:', modbasepat
 
     scaled = 0
     scalepat = None

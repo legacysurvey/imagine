@@ -35,10 +35,19 @@ def _one_tile((kind, zoom, x, y, ignore)):
         print 'Zoom', zoom, 'x,y', x,y
         map_sdss(req, version, zoom, x, y, savecache=True, forcecache=True)
 
-    elif kind == 'decals-dr2':
+    elif kind in ['decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
         v = 2
+        kwa = {}
+        if 'model' in kind:
+            v = 1
+            kwa.update(model=True, add_gz=True)
+        if 'resid' in kind:
+            v = 1
+            kwa.update(resid=True, model_gz=True)
+
+        print 'map_decals_dr2 kwargs:', kwa
         map_decals_dr2(req, v, zoom, x, y, savecache=True, forcecache=True,
-                       hack_jpeg=True, drname='decals-dr2')
+                       hack_jpeg=True, drname='decals-dr2', **kwa)
 
     elif kind in ['depth-g','depth-r','depth-z']:
         band = kind[-1]
@@ -107,7 +116,51 @@ def _bounce_map_decals_dr1k((args,kwargs)):
     print 'Returning: type', type(X), X
     return X
 
-def top_levels(opt):
+def _bounce_sdss((args,kwargs)):
+    (req,ver,zoom,x,y) = args
+    fn = 'top-sdss-%i-%i-%i.fits' % (zoom, x, y)
+    if os.path.exists(fn):
+        img = fitsio.read(fn)
+        print 'Read', img.shape
+        H,W,planes = img.shape
+        return [img[:,:,i] for i in range(planes)]
+
+    ims = map_sdss(*args, ignoreCached=True, get_images=True, **kwargs)
+    if ims is None or ims == (None,None,None):
+        return ims
+    d = np.dstack(ims)
+    print 'writing', d.shape, 'to', fn
+    if 1 in d.shape:
+        print 'ims:', ims
+        print 'd:', d
+    fitsio.write(fn, d, clobber=True)
+
+    return ims
+
+def _bounce_decals_dr2((args,kwargs)):
+    tag = 'image'
+    if 'model' in kwargs:
+        tag = 'model'
+    if 'resid' in kwargs:
+        tag = 'resid'
+    (req,ver,zoom,x,y) = args
+    fn = 'top-dr2-%s-%i-%i-%i.fits' % (tag, zoom, x, y)
+    if os.path.exists(fn):
+        img = fitsio.read(fn)
+        print 'Read', img.shape
+        H,W,planes = img.shape
+        return [img[:,:,i] for i in range(planes)]
+
+    ims = map_decals_dr2(*args, ignoreCached=True, get_images=True, **kwargs)
+    if ims is None:
+        return ims
+    d = np.dstack(ims)
+    print 'writing', d.shape, 'to', fn
+    fitsio.write(fn, d, clobber=True)
+
+    return ims
+
+def top_levels(mp, opt):
     if opt.kind in ['unwise', 'unwise-w3w4']:
         import pylab as plt
         from decals import settings
@@ -297,7 +350,8 @@ def top_levels(opt):
 
 
     ### HACK... factor this out...
-    if opt.kind in ['image', 'model', 'resid', 'image-dr1k']:
+    if opt.kind in ['image', 'model', 'resid', 'image-dr1k', 'sdss',
+                    'decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
         import pylab as plt
         from decals import settings
         from desi.common import get_rgb
@@ -309,15 +363,15 @@ def top_levels(opt):
 
         tagdict = dict(image='decals-dr1j', model='decals-model-dr1j',
                        resid='decals-resid-dr1j')
-                       
-        tagdict['image-dr1k'] = 'decals-dr1k'
-
-        tag = tagdict[opt.kind]
+        tag = tagdict.get(opt.kind, opt.kind)
         del tagdict
 
-        bounce = _bounce_map_decals
-        if 'dr1k' in opt.kind:
-            bounce = _bounce_map_decals_dr1k
+        bouncemap = {'sdss': _bounce_sdss,
+                     'decals-dr2': _bounce_decals_dr2,
+                     'decals-dr2-model': _bounce_decals_dr2,
+                     'decals-dr2-resid': _bounce_decals_dr2,
+                     }
+        bounce = bouncemap[opt.kind]
 
         ver = 1
         basescale = 5
@@ -447,7 +501,7 @@ def main():
             opt.mindec = -20
 
     if opt.top:
-        top_levels(opt)
+        top_levels(mp, opt)
         sys.exit(0)
 
     from legacypipe.common import Decals

@@ -6,6 +6,8 @@ urlpatterns = patterns('map.views',
 
     # DR2
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr2'),
+    url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr2_model'),
+    url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr2_resid'),
     # catalog
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_dr2'),
 
