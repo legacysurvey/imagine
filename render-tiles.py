@@ -33,11 +33,11 @@ def _one_tile((kind, zoom, x, y, ignore)):
     # forcecache=False, return_if_not_found=True)
     if kind == 'sdss':
         print 'Zoom', zoom, 'x,y', x,y
-        map_sdss(req, version, zoom, x, y, savecache=True)
+        map_sdss(req, version, zoom, x, y, savecache=True, forcecache=True)
 
     elif kind == 'decals-dr2':
-        version = 2
-        map_decals_dr2(req, version, zoom, x, y, savecache=True, forcecache=True,
+        v = 2
+        map_decals_dr2(req, v, zoom, x, y, savecache=True, forcecache=True,
                        hack_jpeg=True, drname='decals-dr2')
 
     elif kind in ['depth-g','depth-r','depth-z']:
@@ -426,6 +426,7 @@ def main():
     parser.add_option('--top', action='store_true', help='Top levels of the pyramid')
 
     parser.add_option('--kind', default='image')
+    parser.add_option('--scale', action='store_true', help='Scale images?')
 
     opt,args = parser.parse_args()
 
@@ -456,12 +457,16 @@ def main():
         B = decals.get_bricks()
         print len(B), 'bricks'
 
+    if opt.scale:
+        opt.near_ccds = True
+
     if opt.near_ccds:
         if opt.kind == 'sdss':
             C = fits_table(os.path.join(settings.DATA_DIR, 'sdss', 'window_flist.fits'),
-                           columns=['rerun','ra','dec'])
+                           columns=['rerun','ra','dec', 'run', 'camcol', 'field', 'score'])
             C.cut(C.rerun == '301')
-            C.delete_column('rerun')
+            C.cut(C.score >= 0.6)
+            #C.delete_column('rerun')
             # SDSS field size
             radius = 1.01 * np.hypot(10., 14.)/2. / 60.
             ccdsize = radius
@@ -477,6 +482,47 @@ def main():
     if opt.y is not None:
         opt.y0 = opt.y
         opt.y1 = opt.y + 1
+
+
+    if opt.scale:
+        if opt.kind == 'sdss':
+            C.cut((C.dec >= opt.mindec) * (C.dec < opt.maxdec))
+            print len(C), 'in Dec range'
+            C.cut((C.ra  >= opt.minra)  * (C.ra  < opt.maxra))
+            print len(C), 'in RA range'
+
+            from astrometry.sdss import AsTransWrapper, DR9
+            sdss = DR9(basedir=settings.SDSS_DIR)
+            sdss.saveUnzippedFiles(settings.SDSS_DIR)
+            sdss.setFitsioReadBZ2()
+            if settings.SDSS_PHOTOOBJS:
+                sdss.useLocalTree(photoObjs=settings.SDSS_PHOTOOBJS,
+                                  resolve=settings.SDSS_RESOLVE)
+            basedir = settings.DATA_DIR
+            scaledir = 'sdss'
+            dirnm = os.path.join(basedir, 'scaled', scaledir)
+            for im in C:
+                from map.views import _read_sip_wcs
+                #if im.rerun != '301':
+                #    continue
+                for band in 'gri':
+                    scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(rerun)s', '%(run)i', '%(camcol)i', 'sdss-%(run)i-%(camcol)i-%(field)i-%(band)s.fits')
+                    tmpsuff = '.tmp%08i' % np.random.randint(100000000)
+                    basefn = sdss.retrieve('frame', im.run, im.camcol, field=im.field,
+                                           band=band, rerun=im.rerun, tempsuffix=tmpsuff)
+                    fnargs = dict(band=band, rerun=im.rerun, run=im.run,
+                                  camcol=im.camcol, field=im.field)
+
+                    scaled = 1
+                    fn = get_scaled(scalepat, fnargs, scaled, basefn,
+                                    read_base_wcs=read_astrans, read_wcs=_read_sip_wcs)
+                    print 'get_scaled:', fn
+
+            return 0
+
+        else:
+            assert(False)
+
 
     for zoom in opt.zoom:
         N = 2**zoom

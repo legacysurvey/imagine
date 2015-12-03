@@ -230,7 +230,9 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
         return None
     try:
         print 'Reading:', sourcefn
-        I,hdr = fitsio.read(sourcefn, header=True)
+        F = fitsio.FITS(sourcefn)
+        I = F[0].read()
+        hdr = F[0].read_header()
     except:
         print 'Failed to read:', sourcefn
         return None
@@ -253,7 +255,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
         if read_base_wcs is not None:
             read_wcs = read_base_wcs
     # shrink WCS too
-    wcs = read_wcs(sourcefn, 0, hdr=hdr, W=W, H=H)
+    wcs = read_wcs(sourcefn, 0, hdr=hdr, W=W, H=H, fitsfile=F)
     # include the even size clip; this may be a no-op
     H,W = im.shape
     wcs = wcs.get_subimage(0, 0, W, H)
@@ -451,29 +453,29 @@ def cutout_sdss(req, jpeg=False, fits=False):
     fitsio.write(tmpfn, cube, clobber=True, header=hdr)
     return send_file(tmpfn, 'image/fits', unlink=True, filename='sdss-cutout_%.4f_%.4f.fits' % (ra,dec))
 
-def read_astrans(fn, hdu, hdr=None, W=None, H=None):
+def read_astrans(fn, hdu, hdr=None, W=None, H=None, fitsfile=None):
     from astrometry.sdss import AsTransWrapper, AsTrans
     from astrometry.util.util import Tan, fit_sip_wcs_py
     from astrometry.util.starutil_numpy import radectoxyz
     import numpy as np
     
     #print 'read_astrans, fn', fn
-    astrans = AsTrans.read(fn)
+    astrans = AsTrans.read(fn, F=fitsfile, primhdr=hdr)
     #print 'AsTrans:', astrans
 
     # Approximate as SIP.
 
-    if fn.endswith('.bz2'):
-        #
+    if hdr is None and fn.endswith('.bz2'):
         import fitsio
         hdr = fitsio.read_header(fn, 0)
+
+    if hdr is not None:
         tan = Tan(*[float(hdr[k]) for k in [
                     'CRVAL1', 'CRVAL2', 'CRPIX1', 'CRPIX2',
                     'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2', 'NAXIS1','NAXIS2']])
     else:
         # Frame files include a TAN header... start there.
         tan = Tan(fn)
-    #print 'Tan:', tan
 
     # Evaluate AsTrans on a pixel grid...
     h,w = tan.shape
@@ -513,6 +515,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
              get_images=False,
              ignoreCached=False,
              wcs=None,
+             forcecache=False,
              **kwargs):
     from decals import settings
 
@@ -587,14 +590,14 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
 
     print len(J), 'overlapping SDSS fields found'
     if len(J) == 0:
-        # if forcecache:
-        #     # create symlink to blank.jpg!
-        #     trymakedirs(tilefn)
-        #     src = os.path.join(settings.STATIC_ROOT, 'blank.jpg')
-        #     if os.path.exists(tilefn):
-        #         os.unlink(tilefn)
-        #     os.symlink(src, tilefn)
-        #     print 'Symlinked', tilefn, '->', src
+        if forcecache:
+            # create symlink to blank.jpg!
+            trymakedirs(tilefn)
+            src = os.path.join(settings.STATIC_ROOT, 'blank.jpg')
+            if os.path.exists(tilefn):
+                os.unlink(tilefn)
+            os.symlink(src, tilefn)
+            print 'Symlinked', tilefn, '->', src
         from django.http import HttpResponseRedirect
         return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
     

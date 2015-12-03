@@ -113,23 +113,23 @@ def tiles_touching_wcs(wcs, zoom):
     # Cut dd to the range that overlaps wcs.
     r1,r2,d1,d2 = wcs.radec_bounds()
     I = np.flatnonzero((d1 <= dhi) * (d2 >= dlo))
-    print len(dd), 'tiles'
+    #print len(dd), 'tiles'
     dd = dd[I]
     yy = yy[I]
-    print len(dd), 'are within Dec range'
+    #print len(dd), 'are within Dec range'
 
     # Cut rr to the range that overlaps wcs.
-    print 'RA range', r1,r2
+    #print 'RA range', r1,r2
     #print 'RAs of tiles:', rr
     # here we assume that the Mercator tiles are equally spaced in RA.
     dra = np.abs(rr[1] - rr[0])
     assert(dra < 180.)
-    print 'Delta-RA:', dra
+    #print 'Delta-RA:', dra
     rrange = RARange(r1,r2)
     I = rrange.overlaps(rr - dra/2., rr + dra/2.)
     rr = rr[I]
     xx = xx[I]
-    print len(rr), 'are within RA range'
+    #print len(rr), 'are within RA range'
 
     # Now broadcast the xx,yy grid locations and do the real WCS overlap tests.
     xkeep,ykeep = [],[]
