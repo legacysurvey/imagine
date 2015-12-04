@@ -359,8 +359,6 @@ def top_levels(mp, opt):
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
 
-        rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
-
         tagdict = dict(image='decals-dr1j', model='decals-model-dr1j',
                        resid='decals-resid-dr1j')
         tag = tagdict.get(opt.kind, opt.kind)
@@ -373,7 +371,14 @@ def top_levels(mp, opt):
                      }
         bounce = bouncemap[opt.kind]
 
-        ver = 1
+        rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+        
+        if opt.kind in ['decals-dr2', 'decals-dr2-model']:
+            get_rgb = dr2_rgb
+            rgbkwargs = {}
+
+        ver = tileversions.get(opt.kind, [1])[-1]
+        print 'Version', ver
         basescale = 5
 
         pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
@@ -420,7 +425,7 @@ def top_levels(mp, opt):
             bases = [fitsio.read(fn) for fn in basefns]
 
         for scale in range(basescale-1, -1, -1):
-
+            print 'Scale', scale
             for i,base in enumerate(bases):
                 #base = gaussian_filter(base, 1.)
                 base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
@@ -438,7 +443,8 @@ def top_levels(mp, opt):
                     pp.update(zoom=scale, x=x, y=y)
                     fn = pat % pp
                     trymakedirs(fn)
-                    plt.imsave(fn, tile)
+                    save_jpeg(fn, tile)
+                    #plt.imsave(fn, tile)
                     print 'Wrote', fn
 
 

@@ -62,6 +62,16 @@ def trymakedirs(fn):
         except:
             pass
 
+def save_jpeg(fn, rgb):
+    import pylab as plt
+    import tempfile
+    f,tempfn = tempfile.mkstemp(suffix='.png')
+    os.close(f)
+    plt.imsave(tempfn, rgb)
+    cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, fn)
+    os.system(cmd)
+    os.unlink(tempfn)
+
 def _read_tansip_wcs(sourcefn, ext, hdr=None, W=None, H=None, tansip=None):
     wcs = None
     if not sourcefn.endswith('.gz'):
@@ -89,7 +99,7 @@ def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
                     W, H]])
     return wcs
 
-def _read_sip_wcs(sourcefn, ext, hdr=None, W=None, H=None):
+def _read_sip_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
     from astrometry.util.util import Sip
     return _read_tansip_wcs(sourcefn, ext, hdr=hdr, W=W, H=H, tansip=Sip)
 
@@ -1139,6 +1149,9 @@ def _get_dr2_bricks():
     B_dr2.writeto(fn)
     print 'Wrote', fn
     return B_dr2
+
+def dr2_rgb(rimgs, bands):
+    return sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
 
 def map_decals_dr2_model(req, ver, zoom, x, y, **kwargs):
     kwargs.update(model=True, model_gz=True, add_gz=True)
@@ -2528,7 +2541,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         #rgb = sdss_rgb(rimgs, bands, scales=dict(g=3.5, r=1.6, z=1.0), m=0.03)
         #rgb = sdss_rgb(rimgs, bands, scales=dict(g=3.0, r=1.7, z=1.1), m=0.02)
         #rgb = sdss_rgb(rimgs, bands, scales=dict(g=4.5, r=2.5, z=1.7), m=0.02)
-        rgb = sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
+        rgb = dr2_rgb(rimgs, bands)
     else:
         rgb = get_rgb(rimgs, bands, **rgbkwargs)
 
@@ -2548,13 +2561,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
 
     # no jpeg output support in matplotlib in some installations...
     if hack_jpeg:
-        import tempfile
-        f,tempfn = tempfile.mkstemp(suffix='.png')
-        os.close(f)
-        plt.imsave(tempfn, rgb)
-        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
-        os.system(cmd)
-        os.unlink(tempfn)
+        save_jpeg(tilefn, rgb)
         print 'Wrote', tilefn
     else:
         plt.imsave(tilefn, rgb)
