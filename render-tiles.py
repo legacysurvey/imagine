@@ -126,13 +126,10 @@ def _bounce_sdss((args,kwargs)):
         return [img[:,:,i] for i in range(planes)]
 
     ims = map_sdss(*args, ignoreCached=True, get_images=True, **kwargs)
-    if ims is None or ims == (None,None,None):
+    if ims is None:
         return ims
     d = np.dstack(ims)
     print 'writing', d.shape, 'to', fn
-    if 1 in d.shape:
-        print 'ims:', ims
-        print 'd:', d
     fitsio.write(fn, d, clobber=True)
 
     return ims

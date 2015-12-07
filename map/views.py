@@ -548,6 +548,8 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
     if os.path.exists(tilefn) and not ignoreCached:
+        if get_images:
+            return None
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
 
@@ -560,6 +562,8 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         try:
             wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
         except RuntimeError as e:
+            if get_images:
+                return None
             return HttpResponse(e.strerror)
     else:
         W = wcs.get_width()
@@ -602,6 +606,8 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
 
     print len(J), 'overlapping SDSS fields found'
     if len(J) == 0:
+        if get_images:
+            return None
         if forcecache:
             # create symlink to blank.jpg!
             trymakedirs(tilefn)
@@ -643,8 +649,6 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     bands = 'gri'
     rimgs = [np.zeros((H,W), np.float32) for band in bands]
     rns   = [np.zeros((H,W), np.uint8)   for band in bands]
-
-    import pylab as plt
 
     from astrometry.sdss import AsTransWrapper, DR9
     sdss = DR9(basedir=settings.SDSS_DIR)
@@ -752,10 +756,10 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     if get_images:
         return rimgs
 
-    from legacypipe.common import get_rgb
+    import pylab as plt
 
+    #from legacypipe.common import get_rgb
     #rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
-
     # s = 6.
     # sdss_rgbkwargs = dict(scales=dict(g=(2, s*0.0066),
     #                                   r=(1, s*0.008),
@@ -770,15 +774,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
 
     # no jpeg output support in matplotlib in some installations...
     if True:
-        import tempfile
-        f,tempfn = tempfile.mkstemp(suffix='.png')
-        os.close(f)
-        plt.imsave(tempfn, rgb)
-        print 'Wrote to temp file', tempfn
-        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
-        print cmd
-        os.system(cmd)
-        os.unlink(tempfn)
+        save_jpeg(tilefn, rgb)
         print 'Wrote', tilefn
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
