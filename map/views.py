@@ -756,26 +756,10 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     if get_images:
         return rimgs
 
-    import pylab as plt
-
-    #from legacypipe.common import get_rgb
-    #rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
-    # s = 6.
-    # sdss_rgbkwargs = dict(scales=dict(g=(2, s*0.0066),
-    #                                   r=(1, s*0.008),
-    #                                   i=(0, s*0.01)),
-    #                       mnmx=(-1,100),
-    #                       arcsinh=1.)
-    # rgb = get_rgb(rimgs, bands, **sdss_rgbkwargs)
-
     rgb = sdss_rgb(rimgs, bands)
-    
     trymakedirs(tilefn)
-
-    # no jpeg output support in matplotlib in some installations...
-    if True:
-        save_jpeg(tilefn, rgb)
-        print 'Wrote', tilefn
+    save_jpeg(tilefn, rgb)
+    print 'Wrote', tilefn
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
@@ -2295,6 +2279,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     savecache = True, forcecache = False,
                     return_if_not_found=False, model_gz=False,
                     modeldir=None, scaledir=None, get_images=False,
+                    write_jpeg=False,
                     ignoreCached=False, add_gz=False, filename=None,
                     dr2=False, hack_jpeg=False,
                     drname=None,
@@ -2530,7 +2515,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     if return_if_not_found and not savecache:
         return
 
-    if get_images:
+    if get_images and not write_jpeg:
         return rimgs
 
     if dr2:
@@ -2562,6 +2547,9 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     else:
         plt.imsave(tilefn, rgb)
         print 'Wrote', tilefn
+
+    if get_images:
+        return rimgs
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
                      filename=filename)

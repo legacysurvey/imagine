@@ -119,38 +119,62 @@ def _bounce_map_decals_dr1k((args,kwargs)):
 def _bounce_sdss((args,kwargs)):
     (req,ver,zoom,x,y) = args
     fn = 'top-sdss-%i-%i-%i.fits' % (zoom, x, y)
+    save = False
     if os.path.exists(fn):
         img = fitsio.read(fn)
         print 'Read', img.shape
         H,W,planes = img.shape
-        return [img[:,:,i] for i in range(planes)]
+        ims = [img[:,:,i] for i in range(planes)]
+    else:
+        ims = map_sdss(*args, ignoreCached=True, get_images=True, **kwargs)
+        if ims is None:
+            return ims
+        save = True
 
-    ims = map_sdss(*args, ignoreCached=True, get_images=True, **kwargs)
-    if ims is None:
-        return ims
-    d = np.dstack(ims)
-    print 'writing', d.shape, 'to', fn
-    fitsio.write(fn, d, clobber=True)
+    # Save jpeg
+    from decals import settings
+    tag = 'sdss'
+    pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
+                       '%(zoom)i', '%(x)i', '%(y)i.jpg')
+    tilefn = pat % dict(ver=1, zoom=zoom, x=x, y=y)
+    if not os.path.exists(tilefn):
+        bands = 'gri'
+        rgb = sdss_rgb(ims, bands)
+        trymakedirs(tilefn)
+        save_jpeg(tilefn, rgb)
+        print 'Wrote', tilefn
+
+    # Save FITS
+    if save:
+        d = np.dstack(ims)
+        print 'writing', d.shape, 'to', fn
+        fitsio.write(fn, d, clobber=True)
 
     return ims
 
 def _bounce_decals_dr2((args,kwargs)):
+    print 'Bounce_decals_dr2: kwargs', kwargs
     tag = 'image'
     if 'model' in kwargs:
         tag = 'model'
     if 'resid' in kwargs:
         tag = 'resid'
     (req,ver,zoom,x,y) = args
+    print 'Tag', tag
     fn = 'top-dr2-%s-%i-%i-%i.fits' % (tag, zoom, x, y)
     if os.path.exists(fn):
         img = fitsio.read(fn)
         print 'Read', img.shape
         H,W,planes = img.shape
-        return [img[:,:,i] for i in range(planes)]
+        ims = [img[:,:,i] for i in range(planes)]
+        return ims
 
-    ims = map_decals_dr2(*args, ignoreCached=True, get_images=True, **kwargs)
+    ims = map_decals_dr2(*args, ignoreCached=True, get_images=True, write_jpeg=True,
+                          hack_jpeg=True, forcecache=True,
+                          **kwargs)
     if ims is None:
         return ims
+    # save FITS
     d = np.dstack(ims)
     print 'writing', d.shape, 'to', fn
     fitsio.write(fn, d, clobber=True)
@@ -395,14 +419,20 @@ def top_levels(mp, opt):
 
             args = []
             kwa = dict()
-            if opt.kind == 'model':
-                kwa.update(model=True)
-            elif opt.kind == 'resid':
-                kwa.update(resid=True)
+            if 'model' in opt.kind:
+                kwa.update(model=True, add_gz=True)
+            elif 'resid' in opt.kind:
+                kwa.update(resid=True, model_gz=True)
 
             xy = []
-            for y in range(tiles):
-                for x in range(tiles):
+            if opt.y1 is None:
+                opt.y1 = tiles
+            if opt.x0 is None:
+                opt.x0 = 0
+            if opt.x1 is None:
+                opt.x1 = tiles
+            for y in range(opt.y0, opt.y1):
+                for x in range(opt.x0, opt.x1):
                     args.append(((req, ver, basescale, x, y),kwa))
                     xy.append((x,y))
             tiles = mp.map(bounce, args)
