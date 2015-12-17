@@ -4,6 +4,9 @@ urlpatterns = patterns('map.views',
     # SDSS
     url(r'^sdss/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_sdss'),
 
+    # SDSS tiled coadd
+    url(r'^sdss/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_sdssco'),
+
     # DR2
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr2'),
     url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr2_model'),

@@ -224,6 +224,17 @@ function ra2long_B(ra) {
     return lng;
 }
 
+function ra2long_C(ra, clong) {
+    lng = 180 - ra;
+    while (lng < clong-180) {
+      lng += 360;
+    }
+    while (lng > clong+180) {
+      lng -= 360;
+    }
+    return lng;
+}
+
 
 function dec2lat(dec) {
   return dec;
@@ -289,11 +300,12 @@ function catLoaded(zoom, tilex, tiley, result) {
     fluxes = result['fluxes'];
     nobs = result['nobs'];
     var circleList = new Array(rdlist.length);
+    var clong = map.getCenter().lng;
     for (i=0, len=rdlist.length; i<len; i++) {
         r = rdlist[i][0];
         d = rdlist[i][1];
         lat = dec2lat(d);
-        lng = ra2long_B(r);
+        lng = ra2long_C(r, clong);
         
         color = 'blue';
         if (objtype == undefined) {
@@ -365,6 +377,11 @@ function ngcLoaded(zoom, tilex, tiley, result) {
     if (!showNgc) {
         return;
     }
+
+    c = map.getCenter();
+    clong = c.lng
+    //console.log('NGC loaded: map center ' + c.lng + ',' + c.lat);
+
     rdlist = result['rd'];
     radius = result['radiusArcsec'];
     names = result['name'];
@@ -376,7 +393,7 @@ function ngcLoaded(zoom, tilex, tiley, result) {
         r = rdlist[i][0];
         d = rdlist[i][1];
         lat = dec2lat(d);
-        lng = ra2long_B(r);
+        lng = ra2long_C(r, clong);
         
 	// arcsec to meters:
 	meters = radius[i] * 30.87;
@@ -449,22 +466,13 @@ function specLoaded(counter, result) {
 
     //console.log('Creating ' + rdlist.length + ' labels');
 
-    latlng = map.getCenter();
-    centerlng = latlng.lng;
-
     var circleList = new Array(rdlist.length);
+    var clong = map.getCenter().lng;
     for (i=0, len=rdlist.length; i<len; i++) {
         r = rdlist[i][0];
         d = rdlist[i][1];
         lat = dec2lat(d);
-        lng = ra2long_B(r);
-
-	if (lng > (centerlng + 180)) {
-	    lng -= 360;
-	}
-	if (lng < (centerlng - 180)) {
-	    lng += 360;
-	}
+        lng = ra2long_C(r, clong);
 
 	// ~ 10 arcsec
 	meters = 300;
@@ -829,11 +837,12 @@ function vccLoaded(counter, result) {
     rdlist = result['rd'];
     names = result['name'];
     var circleList = new Array(rdlist.length);
+    var clong = map.getCenter().lng;
     for (i=0, len=rdlist.length; i<len; i++) {
         r = rdlist[i][0];
         d = rdlist[i][1];
         lat = dec2lat(d);
-        lng = ra2long_B(r);
+        lng = ra2long_C(r, clong);
 	meters = 300;
 	color = '#ffffff';
 
@@ -1202,6 +1211,7 @@ function expsLoaded(result) {
     }
     exps = result['exposures'];
     console.log('Exposures:', exps.length);
+    var clong = map.getCenter().lng;
     for (var i=0, len=exps.length; i<len; i++) {
         // console.log('exp ' + i + ': ' + exps[i]);
         name = exps[i].name;
@@ -1210,19 +1220,9 @@ function expsLoaded(result) {
             continue;
         }
         lat = dec2lat(exps[i].dec);
-        lng = ra2long_B(exps[i].ra);
-	//console.log('long', lng);
+        lng = ra2long_C(exps[i].ra, clong);
 
-	maplatlong = map.getCenter()
-	lng0 = maplatlong.lng;
-	while (lng < (lng0 - 180)) {
-	    lng += 360;
-	}
-	while (lng > (lng0 + 180)) {
-	    lng -= 360;
-	}
 
-	//lng = ra2long(exps[i].ra);
 	meters = 30 * 3600 * exps[i].radius;
 	color = exps[i].color;
 	c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
@@ -1241,6 +1241,7 @@ function platesLoaded(result) {
     }
     plates = result['plates'];
     console.log('Plates:', plates.length);
+    var clong = map.getCenter().lng;
     for (var i=0, len=plates.length; i<len; i++) {
         // console.log('plate ' + i + ': ' + plates[i]);
         name = plates[i].name;
@@ -1249,15 +1250,7 @@ function platesLoaded(result) {
             continue;
         }
         lat = dec2lat(plates[i].dec);
-        lng = ra2long_B(plates[i].ra);
-	maplatlong = map.getCenter()
-	lng0 = maplatlong.lng;
-	while (lng < (lng0 - 180)) {
-	    lng += 360;
-	}
-	while (lng > (lng0 + 180)) {
-	    lng -= 360;
-	}
+        lng = ra2long_C(plates[i].ra, clong);
 	meters = 30 * 3600 * plates[i].radius;
 	color = plates[i].color;
 	c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
@@ -1535,7 +1528,7 @@ tiles = new ZoomRangeTileLayer(static_tile_url, {
 tiles.catname = catname;
 allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 models", catname:catname});
 
-
+{% comment %}
 id = 'decals-dr2-resid'
 tiles = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
@@ -1550,7 +1543,7 @@ tiles = new ZoomRangeTileLayer(static_tile_url, {
   });
 tiles.catname = catname;
 allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 residuals", catname:catname});
-
+{% endcomment %}
 
 
 

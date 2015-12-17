@@ -464,14 +464,17 @@ def top_levels(mp, opt):
                     ims = [base[y*tilesize:(y+1)*tilesize,
                                 x*tilesize:(x+1)*tilesize] for base in bases]
 
-                    tile = get_rgb(ims, bands, **rgbkwargs)
+                    if opt.kind == 'sdss':
+                        bands = 'gri'
+                        rgb = sdss_rgb(ims, bands)
+                    else:
+                        rgb = get_rgb(ims, bands, **rgbkwargs)
 
                     pp = patdata.copy()
                     pp.update(zoom=scale, x=x, y=y)
                     fn = pat % pp
                     trymakedirs(fn)
-                    save_jpeg(fn, tile)
-                    #plt.imsave(fn, tile)
+                    save_jpeg(fn, rgb)
                     print 'Wrote', fn
 
 
@@ -514,6 +517,7 @@ def main():
 
     parser.add_option('--kind', default='image')
     parser.add_option('--scale', action='store_true', help='Scale images?')
+    parser.add_option('--coadd', action='store_true', help='Create SDSS coadd images?')
 
     opt,args = parser.parse_args()
 
@@ -570,6 +574,50 @@ def main():
         opt.y0 = opt.y
         opt.y1 = opt.y + 1
 
+    if opt.coadd and opt.kind == 'sdss':
+        from legacypipe.common import wcs_for_brick
+        from map.views import trymakedirs
+
+        B = decals.get_bricks()
+        print len(B), 'bricks'
+        B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
+        print len(B), 'in Dec range'
+        B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
+        print len(B), 'in RA range'
+
+        basedir = settings.DATA_DIR
+        codir = os.path.join(basedir, 'coadd', 'sdssco')
+        for b in B:
+            print 'Brick', b.brickname
+            wcs = wcs_for_brick(b, W=2300, H=2300, pixscale=0.396)
+            bands = 'gri'
+            dirnm = os.path.join(codir, b.brickname[:3])
+            fns = [os.path.join(dirnm, 'sdssco-%s-%s.fits' % (b.brickname, band))
+                   for band in bands]
+
+            hdr = fitsio.FITSHDR()
+            hdr['SURVEY'] = 'SDSS'
+            wcs.add_to_header(hdr)
+
+            if all([os.path.exists(fn) for fn in fns]):
+                print 'Already exist'
+                # Read, then write with header.
+                # for fn in fns:
+                #     I = fitsio.read(fn)
+                #     fitsio.write(fn, I, header=hdr, clobber=True)
+                #     print 'Re-wrote', fn
+                continue
+            ims = map_sdss(req, 1, 0, 0, 0, get_images=True, wcs=wcs, ignoreCached=True,
+                           forcescale=0)
+            if ims is None:
+                print 'No overlap'
+                continue
+            trymakedirs(os.path.join(dirnm, 'xxx'))
+            for fn,band,im in zip(fns,bands, ims):
+                fitsio.write(fn, im, header=hdr, clobber=True)
+                print 'Wrote', fn
+        
+        sys.exit(0)
 
     if opt.scale:
         if opt.kind == 'sdss':

@@ -362,11 +362,14 @@ def cutout_decals(req, jpeg=False, fits=False, default_tag='decals-dr1j',
 
     ver = 1
 
+    if dr2:
+        kwa.update(rgbfunc=dr2_rgb)
+
     rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts',
                           tag,
                           wcs=wcs, bricks=bricks,
                           imagetag=imagetag, rgbkwargs=rgbkwargs,
-                          savecache=False, get_images=fits, dr2=dr2, **kwa)
+                          savecache=False, get_images=fits, **kwa)
 
     if jpeg:
         return rtn
@@ -512,6 +515,26 @@ def read_astrans(fn, hdu, hdr=None, W=None, H=None, fitsfile=None):
     return sip
 
 
+B_sdssco = None
+
+def map_sdssco(req, ver, zoom, x, y, savecache=None, tag='sdssco',
+               get_images=False,
+               ignoreCached=False,
+               wcs=None,
+               forcecache=False,
+               **kwargs):
+    from decals import settings
+    global B_sdssco
+
+    if B_sdssco is None:
+        B_sdssco = fits_table('bricks-sdssco.fits')
+
+    basedir = settings.DATA_DIR
+    basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
+                           'sdssco-%(brickname)s-%(band)s.fits')
+    return map_coadd_bands(req, ver, zoom, x, y, bands, tag,
+                           rgbfunc=sdss_rgb, basepat=basepat, bricks=B_sdssco,
+                           nativescale=13)
 
 w_flist = None
 w_flist_tree = None
@@ -528,6 +551,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
              ignoreCached=False,
              wcs=None,
              forcecache=False,
+             forcescale=None,
              **kwargs):
     from decals import settings
 
@@ -630,7 +654,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     scalepat = None
     scaledir = 'sdss'
     
-    if zoom <= 13:
+    if zoom <= 13 and forcescale is None:
         # Get *actual* pixel scales at the top & bottom
         r1,d1 = wcs.pixelxy2radec(W/2., H)[-2:]
         r2,d2 = wcs.pixelxy2radec(W/2., H-1.)[-2:]
@@ -645,7 +669,10 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         scaled = np.clip(scaled, 1, 7)
         dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(rerun)s', '%(run)i', '%(camcol)i', 'sdss-%(run)i-%(camcol)i-%(field)i-%(band)s.fits')
-    
+
+    if forcescale is not None:
+        scaled = forcescale
+
     bands = 'gri'
     rimgs = [np.zeros((H,W), np.float32) for band in bands]
     rns   = [np.zeros((H,W), np.uint8)   for band in bands]
@@ -658,7 +685,8 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         sdss.useLocalTree(photoObjs=settings.SDSS_PHOTOOBJS,
                           resolve=settings.SDSS_RESOLVE)
 
-    for j in J:
+    for jnum,j in enumerate(J):
+        print 'SDSS field', jnum, 'of', len(J), 'for zoom', zoom, 'x', x, 'y', y
         im = w_flist[j]
         for band,rimg,rn in zip(bands, rimgs, rns):
             if im.rerun != '301':
@@ -666,14 +694,14 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
             tmpsuff = '.tmp%08i' % np.random.randint(100000000)
             basefn = sdss.retrieve('frame', im.run, im.camcol, field=im.field,
                                    band=band, rerun=im.rerun, tempsuffix=tmpsuff)
-            #bunfn,keep = sdss._unzip_frame(basefn, im.run, im.camcol)
-            #if bunfn is not None:
-            #    basefn = bunfn
-            fnargs = dict(band=band, rerun=im.rerun, run=im.run,
-                          camcol=im.camcol, field=im.field)
-            fn = get_scaled(scalepat, fnargs, scaled, basefn,
-                            read_base_wcs=read_astrans, read_wcs=_read_sip_wcs)
-            print 'get_scaled:', fn
+            if scaled > 0:
+                fnargs = dict(band=band, rerun=im.rerun, run=im.run,
+                              camcol=im.camcol, field=im.field)
+                fn = get_scaled(scalepat, fnargs, scaled, basefn,
+                                read_base_wcs=read_astrans, read_wcs=_read_sip_wcs)
+                print 'get_scaled:', fn
+            else:
+                fn = basefn
             frame = None
             if fn == basefn:
                 frame = sdss.readFrame(im.run, im.camcol, im.field, band,
@@ -1166,7 +1194,7 @@ def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
                            imagetag=imagetag,
                            rgbkwargs=rgb,
                            bricks=B_dr2,
-                           savecache=savecache, dr2=True, **kwargs)
+                           savecache=savecache, rgbfunc=dr2_rgb, **kwargs)
 
 
 B_dr1n = None
@@ -2274,15 +2302,17 @@ def _get_decals_cat(wcs, tag='decals'):
 
 def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     wcs=None,
-                    imagetag='image2', rgbkwargs={},
+                    imagetag='image2', rgbfunc=None, rgbkwargs={},
                     bricks=None,
                     savecache = True, forcecache = False,
                     return_if_not_found=False, model_gz=False,
                     modeldir=None, scaledir=None, get_images=False,
                     write_jpeg=False,
                     ignoreCached=False, add_gz=False, filename=None,
-                    dr2=False, hack_jpeg=False,
+                    hack_jpeg=False,
                     drname=None,
+                    basepat=None,
+                    nativescale=14,
                     ):
     from decals import settings
 
@@ -2309,7 +2339,6 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         print 'Tile image does not exist:', tilefn
     from astrometry.util.resample import resample_with_wcs, OverlapError
     from astrometry.util.util import Tan
-    from legacypipe.common import get_rgb
     import numpy as np
     import fitsio
 
@@ -2322,9 +2351,10 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         W = wcs.get_width()
         H = wcs.get_height()
 
-    basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
-                           '%(brickname)s',
-                           'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
+    if basepat is None:
+        basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
+                               '%(brickname)s',
+                               'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
     if modeldir is not None:
         modbasepat = os.path.join(basedir, 'coadd', modeldir, '%(brickname).3s',
                                   '%(brickname)s',
@@ -2351,8 +2381,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     scalepat = None
     if scaledir is None:
         scaledir = imagedir
-    if zoom < 14:
-        scaled = (14 - zoom)
+    if zoom < nativescale:
+        scaled = (nativescale - zoom)
         scaled = np.clip(scaled, 1, 8)
         #print 'Scaled-down:', scaled
         dirnm = os.path.join(basedir, 'scaled', scaledir)
@@ -2511,20 +2541,17 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         rimgs.append(rimg)
         # print 'Band', band, ': total of', rn.sum(), 'pixels, range', rimg.min(), rimg.max()
 
-    #if return_if_not_found and not foundany:
     if return_if_not_found and not savecache:
         return
 
     if get_images and not write_jpeg:
         return rimgs
 
-    if dr2:
-        #rgb = sdss_rgb(rimgs, bands, scales=dict(g=3.5, r=1.6, z=1.0), m=0.03)
-        #rgb = sdss_rgb(rimgs, bands, scales=dict(g=3.0, r=1.7, z=1.1), m=0.02)
-        #rgb = sdss_rgb(rimgs, bands, scales=dict(g=4.5, r=2.5, z=1.7), m=0.02)
-        rgb = dr2_rgb(rimgs, bands)
-    else:
-        rgb = get_rgb(rimgs, bands, **rgbkwargs)
+    if rgbfunc is None:
+        from legacypipe.common import get_rgb
+        rgbfunc = get_rgb
+
+    rgb = rgbfunc(rimgs, bands, **rgbkwargs)
 
     if forcecache:
         savecache = True
@@ -2536,15 +2563,12 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         f,tilefn = tempfile.mkstemp(suffix='.jpg')
         os.close(f)
 
-    #import matplotlib
-    #matplotlib.use('Agg')
-    import pylab as plt
-
     # no jpeg output support in matplotlib in some installations...
     if hack_jpeg:
         save_jpeg(tilefn, rgb)
         print 'Wrote', tilefn
     else:
+        import pylab as plt
         plt.imsave(tilefn, rgb)
         print 'Wrote', tilefn
 
