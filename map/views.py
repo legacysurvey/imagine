@@ -524,9 +524,7 @@ B_sdssco = None
 
 def map_sdssco(req, ver, zoom, x, y, savecache=None, tag='sdssco',
                get_images=False,
-               ignoreCached=False,
                wcs=None,
-               forcecache=False,
                **kwargs):
     from decals import settings
     global B_sdssco
@@ -2412,6 +2410,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
     r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
     r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
+
     dlo = min(d1, d2)
     dhi = max(d1, d2)
     I = D.bricks_touching_radec_box(B, rlo, rhi, dlo, dhi)

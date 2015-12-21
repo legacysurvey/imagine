@@ -46,6 +46,12 @@ class MercWCSWrapper(object):
         x += (x < -self.wrap/2) * self.wrap
         x -= (x >  self.wrap/2) * self.wrap
         return (ok,x,y)
+
+    def pixelxy2radec(self, x, y):
+        ok,r,d = self.wcs.pixelxy2radec(x, y)
+        assert(np.all(ok))
+        return ok,r,d
+    
     def __getattr__(self, name):
         return getattr(self.wcs, name)
     def __setattr__(self, name, val):
@@ -75,7 +81,7 @@ def get_tile_wcs(zoom, x, y):
         ry = zoomscale/2 - y
     rx = rx * W
     ry = ry * H
-    wcs = anwcs_create_mercator_2(180., 0., rx, ry,
+    wcs = anwcs_create_mercator_2(180., 0., rx + 0.5, ry + 0.5,
                                   zoomscale, W, H, 1)
     if wcs is not None:
         wcs = MercWCSWrapper(wcs, 2**zoom * W)
