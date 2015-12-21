@@ -170,8 +170,7 @@ def _bounce_decals_dr2((args,kwargs)):
         return ims
 
     ims = map_decals_dr2(*args, ignoreCached=True, get_images=True, write_jpeg=True,
-                          hack_jpeg=True, forcecache=True,
-                          **kwargs)
+                          hack_jpeg=True, forcecache=True, **kwargs)
     if ims is None:
         return ims
     # save FITS
@@ -518,6 +517,7 @@ def main():
     parser.add_option('--kind', default='image')
     parser.add_option('--scale', action='store_true', help='Scale images?')
     parser.add_option('--coadd', action='store_true', help='Create SDSS coadd images?')
+    parser.add_option('--grass', action='store_true', help='progress plot')
 
     opt,args = parser.parse_args()
 
@@ -530,7 +530,7 @@ def main():
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
-            opt.mindec = -20
+            opt.mindec = -25
     else:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -584,6 +584,43 @@ def main():
         print len(B), 'in Dec range'
         B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
         print len(B), 'in RA range'
+
+        if opt.queue:
+            # # unique Dec rows
+            # dd = np.unique(B.dec)
+            # eps = 1e-3
+            # for dec in dd:
+            #     print 'python render-tiles.py --kind sdss --coadd --mindec %f --maxdec %f' % (dec-eps, dec+eps)
+            # RA slices
+            rr = np.linspace(0, 360, 361)
+            for rlo,rhi in zip(rr, rr[1:]):
+                print 'python render-tiles.py --kind sdss --coadd --minra %f --maxra %f' % (rlo, rhi)
+            # dd = np.unique(B.dec)
+            # eps = 1e-3
+            # for dec in dd:
+            #     print 'python render-tiles.py --kind sdss --coadd --mindec %f --maxdec %f' % (dec-eps, dec+eps)
+            sys.exit(0)
+
+        if opt.grass:
+            basedir = settings.DATA_DIR
+            codir = os.path.join(basedir, 'coadd', 'sdssco')
+            rr,dd = [],[]
+            for b in B:
+                print 'Brick', b.brickname,
+                fn = os.path.join(codir, b.brickname[:3], 'sdssco-%s-%s.fits' % (b.brickname, 'r'))
+                print '-->', fn,
+                if not os.path.exists(fn):
+                    print
+                    continue
+                print 'found'
+                rr.append(b.ra)
+                dd.append(b.dec)
+            import pylab as plt
+            plt.clf()
+            plt.plot(rr, dd, 'k.')
+            plt.title('SDSS coadd tiles')
+            plt.savefig('sdss.png')
+            sys.exit(0)
 
         basedir = settings.DATA_DIR
         codir = os.path.join(basedir, 'coadd', 'sdssco')

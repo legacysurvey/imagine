@@ -1528,7 +1528,6 @@ tiles = new ZoomRangeTileLayer(static_tile_url, {
 tiles.catname = catname;
 allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 models", catname:catname});
 
-{% comment %}
 id = 'decals-dr2-resid'
 tiles = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
@@ -1543,7 +1542,6 @@ tiles = new ZoomRangeTileLayer(static_tile_url, {
   });
 tiles.catname = catname;
 allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 residuals", catname:catname});
-{% endcomment %}
 
 
 
@@ -1727,7 +1725,7 @@ allLayers.push({name:id, tiles:tilesResidDr1n, pretty:"DECaLS DR1n (Virgo) resid
 {% endif %}
 
 
-
+{% comment %}
 id = 'sdss'
 tiles = new MyTileLayer('{{tileurl|safe}}', {
     maxZoom: maxZoom,
@@ -1741,6 +1739,25 @@ tiles = new MyTileLayer('{{tileurl|safe}}', {
     subdomains: subdomains,
   });
 allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
+{% endcomment %}
+
+
+id = 'sdssco'
+tiles = new MyTileLayer('{{tileurl|safe}}', {
+    maxZoom: maxZoom,
+    //maxNativeZoom: {{ maxNativeZoom }},
+    maxNativeZoom: 16,
+    minZoom: minZoom,
+    attribution: '<a href="http://sdss.org">SDSSS</a>',
+    id: id,
+    ver: getversion(id),
+    unloadInvisibleTiles: true,
+    subdomains: subdomains,
+  });
+allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
+
+
+
 
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 

@@ -1,3 +1,7 @@
+if __name__ == '__main__':
+    import sys
+    sys.path.insert(0, 'django-1.7')
+
 import os
 from django.http import HttpResponse, StreamingHttpResponse
 
@@ -15,6 +19,7 @@ tileversions = {
     'sfd': [1,],
     'halpha': [1,],
     'sdss': [1,],
+    'sdssco': [1,],
 
     'decals-dr2': [1, 2],
     'decals-dr2-model': [1],
@@ -526,15 +531,18 @@ def map_sdssco(req, ver, zoom, x, y, savecache=None, tag='sdssco',
     from decals import settings
     global B_sdssco
 
-    if B_sdssco is None:
-        B_sdssco = fits_table('bricks-sdssco.fits')
-
     basedir = settings.DATA_DIR
-    basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
+
+    if B_sdssco is None:
+        from astrometry.util.fits import fits_table
+        B_sdssco = fits_table(os.path.join(basedir, 'bricks-sdssco.fits'))
+
+    bands = 'gri'
+    basepat = os.path.join(basedir, 'coadd', tag, '%(brickname).3s',
                            'sdssco-%(brickname)s-%(band)s.fits')
-    return map_coadd_bands(req, ver, zoom, x, y, bands, tag,
+    return map_coadd_bands(req, ver, zoom, x, y, bands, tag, tag,
                            rgbfunc=sdss_rgb, basepat=basepat, bricks=B_sdssco,
-                           nativescale=13)
+                           nativescale=13, **kwargs)
 
 w_flist = None
 w_flist_tree = None
@@ -1158,7 +1166,7 @@ def _get_dr2_bricks():
     print 'Wrote', fn
     return B_dr2
 
-def dr2_rgb(rimgs, bands):
+def dr2_rgb(rimgs, bands, **ignored):
     return sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
 
 def map_decals_dr2_model(req, ver, zoom, x, y, **kwargs):
@@ -1756,7 +1764,9 @@ def _get_decals(name=None):
     if name in decals:
         return decals[name]
 
-    d = Decals()
+    dirnm = os.path.join(basedir, 'decals-dr1')
+    d = Decals(decals_dir=dirnm)
+    #d = Decals()
     decals[name] = d
     return d
 
@@ -1840,9 +1850,12 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
     global ccd_cache
 
     if not name in ccd_cache:
+        print 'Finding CCDs for name=', name
         fn = None
         CCDs = None
-        if name == 'decals-dr1k':
+        if name == 'decals-dr1j':
+            fn = os.path.join(settings.DATA_DIR, 'decals-dr1', 'decals-ccds.fits')
+        elif name == 'decals-dr1k':
             fn = os.path.join(settings.DATA_DIR, 'decals-dr1k',
                               'decals-ccds.fits')
         elif name == 'decals-dr1n':
@@ -1924,7 +1937,7 @@ def get_exposure_table(name):
         T = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr2',
                                     'decals-exposures.fits'))
     else:
-        T = fits_table(os.path.join(settings.DATA_DIR, 'decals-exposures.fits'))
+        T = fits_table(os.path.join(settings.DATA_DIR, 'decals-exposures-dr1.fits'))
     return T
 
 exposure_cache = {}
@@ -2269,7 +2282,8 @@ def _get_decals_cat(wcs, tag='decals'):
     catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
                           'tractor-%(brickname)s.fits')
     # FIXME (name)
-    D = _get_decals()
+    print '_get_decals_cat for tag=', tag
+    D = _get_decals(name=tag)
     B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
 
@@ -2362,10 +2376,10 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     else:
         modbasepat = basepat
 
-    print 'Modbasepat:', modbasepat
-    print 'Model_gz:', model_gz
-    print 'Imagetag:', imagetag
-    print 'add_gz:', add_gz
+    # print 'Modbasepat:', modbasepat
+    # print 'Model_gz:', model_gz
+    # print 'Imagetag:', imagetag
+    # print 'add_gz:', add_gz
 
     if model_gz and imagetag == 'model':
         modbasepat += '.gz'
@@ -2374,8 +2388,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         basepat += '.gz'
     #print 'basepat:', basepat
 
-    print 'basepat:', basepat
-    print 'modbasepat:', modbasepat
+    # print 'basepat:', basepat
+    # print 'modbasepat:', modbasepat
 
     scaled = 0
     scalepat = None
@@ -2420,6 +2434,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                             [1,H/2,H,H,H,H/2,1,1])[-2:]
 
+    print 'map_coadd_bands: imagetag', imagetag
+
     foundany = False
     rimgs = []
     for band in bands:
@@ -2449,10 +2465,13 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     imscalepat = scalepat.replace('resid', 'image')
                     modscalepat = scalepat.replace('resid', 'model')
                 imbasefn = basefn.replace('resid', 'image')
+                print 'resid.  imscalepat, imbasefn', imscalepat, imbasefn
+                print 'resid.  modscalepat, modbasefn', modscalepat, modbasefn
                 imfn = get_scaled(imscalepat, fnargs, scaled, imbasefn)
                 # print 'imfn', imfn
                 modfn = get_scaled(modscalepat, fnargs, scaled, modbasefn)
                 # print 'modfn', modfn
+                print 'resid.  im', imfn, 'mod', modfn
                 fn = imfn
 
             else:
@@ -2935,13 +2954,12 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
 
 
 
-
 if __name__ == '__main__':
-    class duck(object):
-        pass
-
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+
+    class duck(object):
+        pass
     
     # ver = 1
     # zoom,x,y = 2, 1, 1
@@ -2950,6 +2968,20 @@ if __name__ == '__main__':
     # map_unwise_w1w2(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
 
     # http://i.legacysurvey.org/static/tiles/decals-dr1j/1/13/2623/3926.jpg
+
+
+    #import astrometry
+    #print astrom
+
+    ver = 1
+    zoom,x,y = 14, 16383, 7875
+    req = duck()
+    req.META = dict()
+
+    r = map_sdssco(req, ver, zoom, x, y, savecache=True, ignoreCached=True,
+                   hack_jpeg=True)
+    print 'got', r
+    sys.exit(0)
 
     ver = 1
     zoom,x,y = 13, 2623, 3926

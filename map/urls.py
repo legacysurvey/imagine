@@ -2,10 +2,12 @@ from django.conf.urls import patterns, include, url
 
 urlpatterns = patterns('map.views',
     # SDSS
-    url(r'^sdss/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_sdss'),
+    #url(r'^sdss/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_sdss'),
+    #url(r'^jpeg-cutout-sdss', 'jpeg_cutout_sdss'),
+    #url(r'^fits-cutout-sdss', 'fits_cutout_sdss'),
 
     # SDSS tiled coadd
-    url(r'^sdss/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_sdssco'),
+    url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_sdssco'),
 
     # DR2
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', 'map_decals_dr2'),
@@ -35,8 +37,6 @@ urlpatterns = patterns('map.views',
 
     url(r'^jpeg-cutout-decals-dr2', 'jpeg_cutout_decals_dr2'),
     url(r'^fits-cutout-decals-dr2', 'fits_cutout_decals_dr2'),
-    url(r'^jpeg-cutout-sdss', 'jpeg_cutout_sdss'),
-    url(r'^fits-cutout-sdss', 'fits_cutout_sdss'),
 
     # NGC objects
     url(r'^ngc/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_ngc'),
