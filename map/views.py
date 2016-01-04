@@ -106,6 +106,12 @@ def ra2long(ra):
     lng -= 360 * (lng > 360.)
     return lng
 
+def ra2long_B(ra):
+    lng = 180. - ra
+    lng += 360 * (lng < -180.)
+    lng -= 360 * (lng >  180.)
+    return lng
+
 def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
               filename=None):
     import datetime
@@ -1662,10 +1668,10 @@ def brick_list(req):
         #mra = mdec / np.cos(np.deg2rad(b.dec))
         mra = mdec = 0.
         bricks.append(dict(name=b.brickname,
-                           poly=[[b.dec1-mdec, ra2long(b.ra1-mra)],
-                                 [b.dec2+mdec, ra2long(b.ra1-mra)],
-                                 [b.dec2+mdec, ra2long(b.ra2+mra)],
-                                 [b.dec1-mdec, ra2long(b.ra2+mra)],
+                           poly=[[b.dec1-mdec, ra2long_B(b.ra1-mra)],
+                                 [b.dec2+mdec, ra2long_B(b.ra1-mra)],
+                                 [b.dec2+mdec, ra2long_B(b.ra2+mra)],
+                                 [b.dec1-mdec, ra2long_B(b.ra2+mra)],
                                  ]))
 
     return HttpResponse(json.dumps(dict(bricks=bricks)),
