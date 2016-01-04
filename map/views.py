@@ -1,7 +1,12 @@
+if __name__ == '__main__':
+    import sys
+    sys.path.insert(0, 'django-1.7')
+
 import os
 from django.http import HttpResponse, StreamingHttpResponse
 
 from decals import settings
+from map.utils import get_tile_wcs
 
 import matplotlib
 matplotlib.use('Agg')
@@ -14,8 +19,11 @@ tileversions = {
     'sfd': [1,],
     'halpha': [1,],
     'sdss': [1,],
+    'sdssco': [1,],
 
     'decals-dr2': [1, 2],
+    'decals-dr2-model': [1],
+    'decals-dr2-resid': [1],
 
     'decals-dr1k': [1],
     'decals-model-dr1k': [1],
@@ -51,24 +59,6 @@ catversions = {
 
 oneyear = (3600 * 24 * 365)
 
-class MercWCSWrapper(object):
-    def __init__(self, wcs, wrap):
-        self.wcs = wcs
-        self.wrap = float(wrap)
-    def radec2pixelxy(self, ra, dec):
-        X = self.wcs.radec2pixelxy(ra, dec)
-        (ok,x,y) = X
-        x += (x < -self.wrap/2) * self.wrap
-        x -= (x >  self.wrap/2) * self.wrap
-        return (ok,x,y)
-    def __getattr__(self, name):
-        return getattr(self.wcs, name)
-    def __setattr__(self, name, val):
-        if name in ['wcs', 'wrap']:
-            self.__dict__[name] = val
-            return
-        return setattr(self.wcs, name, val)
-
 def trymakedirs(fn):
     dirnm = os.path.dirname(fn)
     if not os.path.exists(dirnm):
@@ -77,14 +67,28 @@ def trymakedirs(fn):
         except:
             pass
 
-def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None):
-    from astrometry.util.util import Tan
+def save_jpeg(fn, rgb):
+    import pylab as plt
+    import tempfile
+    f,tempfn = tempfile.mkstemp(suffix='.png')
+    os.close(f)
+    plt.imsave(tempfn, rgb)
+    cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, fn)
+    os.system(cmd)
+    os.unlink(tempfn)
+
+def _read_tansip_wcs(sourcefn, ext, hdr=None, W=None, H=None, tansip=None):
     wcs = None
     if not sourcefn.endswith('.gz'):
         try:
-            wcs = Tan(sourcefn, ext)
+            wcs = tansip(sourcefn, ext)
         except:
             pass
+    return wcs
+
+def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
+    from astrometry.util.util import Tan
+    wcs = _read_tansip_wcs(sourcefn, ext, hdr=hdr, W=W, H=H, tansip=Tan)
     if wcs is None:
         import fitsio
         # maybe gzipped; try fitsio header.
@@ -99,6 +103,10 @@ def _read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None):
                     hdr['CD1_1'], hdr['CD1_2'], hdr['CD2_1'], hdr['CD2_2'],
                     W, H]])
     return wcs
+
+def _read_sip_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
+    from astrometry.util.util import Sip
+    return _read_tansip_wcs(sourcefn, ext, hdr=hdr, W=W, H=H, tansip=Sip)
 
 def ra2long(ra):
     lng = 180. - ra
@@ -219,34 +227,7 @@ def index(req):
                        enable_depth = settings.ENABLE_DEPTH,
                        ))
 
-def get_tile_wcs(zoom, x, y):
-    from astrometry.util.util import anwcs_create_mercator_2
-
-    zoom = int(zoom)
-    zoomscale = 2.**zoom
-    x = int(x)
-    y = int(y)
-    if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
-        raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
-
-    # tile size
-    zoomscale = 2.**zoom
-    W,H = 256,256
-    if zoom == 0:
-        rx = ry = 0.5
-    else:
-        rx = zoomscale/2 - x
-        ry = zoomscale/2 - y
-    rx = rx * W
-    ry = ry * H
-    wcs = anwcs_create_mercator_2(180., 0., rx, ry,
-                                  zoomscale, W, H, 1)
-    if wcs is not None:
-        wcs = MercWCSWrapper(wcs, 2**zoom * W)
-
-    return wcs, W, H, zoomscale, zoom,x,y
-
-def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None):
+def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wcs=None):
     from scipy.ndimage.filters import gaussian_filter
     import fitsio
     from astrometry.util.util import Tan
@@ -264,13 +245,17 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None):
         return fn
 
     # print 'Does not exist:', fn
-    sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn)
+    sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn,
+                          read_base_wcs=read_base_wcs, read_wcs=read_wcs)
     # print 'Source:', sourcefn
     if sourcefn is None or not os.path.exists(sourcefn):
         # print 'Image source file', sourcefn, 'not found'
         return None
     try:
-        I,hdr = fitsio.read(sourcefn, header=True)
+        print 'Reading:', sourcefn
+        F = fitsio.FITS(sourcefn)
+        I = F[0].read()
+        hdr = F[0].read_header()
     except:
         print 'Failed to read:', sourcefn
         return None
@@ -287,8 +272,13 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None):
     I2 = (im[::2,::2] + im[1::2,::2] + im[1::2,1::2] + im[::2,1::2])/4.
     I2 = I2.astype(np.float32)
     #print 'I2:', I2.shape
+
+    if scale == 1:
+        # Use the given function to read base WCS.
+        if read_base_wcs is not None:
+            read_wcs = read_base_wcs
     # shrink WCS too
-    wcs = read_wcs(sourcefn, 0, hdr=hdr, W=W, H=H)
+    wcs = read_wcs(sourcefn, 0, hdr=hdr, W=W, H=H, fitsfile=F)
     # include the even size clip; this may be a no-op
     H,W = im.shape
     wcs = wcs.get_subimage(0, 0, W, H)
@@ -321,7 +311,14 @@ def jpeg_cutout_decals_dr1j(req):
 def fits_cutout_decals_dr1j(req):
     return cutout_decals(req, fits=True)
 
-def cutout_decals(req, jpeg=False, fits=False):
+def jpeg_cutout_decals_dr2(req):
+    return cutout_decals(req, jpeg=True, default_tag='decals-dr2', dr2=True)
+
+def fits_cutout_decals_dr2(req):
+    return cutout_decals(req, fits=True, default_tag='decals-dr2', dr2=True)
+
+def cutout_decals(req, jpeg=False, fits=False, default_tag='decals-dr1j',
+                  dr2=False):
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
     pixscale = float(req.GET.get('pixscale', 0.262))
@@ -336,23 +333,24 @@ def cutout_decals(req, jpeg=False, fits=False):
     print 'Requested tag:', tag
     if not tag in ['decals-dr1n', 'decals-model', 'decals-resid']:
         # default
-        tag = 'decals-dr1j'
+        tag = default_tag
     print 'Using tag:', tag
 
     imagetag = 'image'
     if tag == 'decals-model':
-        tag = 'decals-dr1j'
+        tag = default_tag
         imagetag = 'model'
         kwa.update(add_gz=True)
     elif tag == 'decals-resid':
-        tag = 'decals-dr1j'
+        tag = default_tag
         imagetag = 'resid'
         kwa.update(model_gz=True)
 
     bricks = None
     if tag == 'decals-dr1n':
         bricks = get_dr1n_bricks()
-        
+    if dr2:
+        bricks = _get_dr2_bricks()
 
     bands = req.GET.get('bands', 'grz')
     bands = [b for b in 'grz' if b in bands]
@@ -375,19 +373,26 @@ def cutout_decals(req, jpeg=False, fits=False):
 
     ver = 1
 
+    if dr2:
+        kwa.update(rgbfunc=dr2_rgb)
+
     rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts',
                           tag,
                           wcs=wcs, bricks=bricks,
                           imagetag=imagetag, rgbkwargs=rgbkwargs,
                           savecache=False, get_images=fits, **kwa)
-    #filename='cutout_%.4f_%.4f.jpg' % (ra,dec))
+
     if jpeg:
         return rtn
     ims = rtn
 
     hdr = fitsio.FITSHDR()
     hdr['SURVEY'] = 'DECaLS'
-    hdr['VERSION'] = 'DR1'
+    if dr2:
+        hdr['VERSION'] = 'DR2'
+    else:
+        hdr['VERSION'] = 'DR1'
+
     hdr['BANDS'] = ''.join(bands)
     for i,b in enumerate(bands):
         hdr['BAND%i' % i] = b
@@ -410,21 +415,93 @@ def cutout_decals(req, jpeg=False, fits=False):
     return send_file(tmpfn, 'image/fits', unlink=True, filename='cutout_%.4f_%.4f.fits' % (ra,dec))
 
 
-def read_astrans(fn, hdu, hdr=None, W=None, H=None):
+def jpeg_cutout_sdss(req):
+    return cutout_sdss(req, jpeg=True)
+
+def fits_cutout_sdss(req):
+    return cutout_sdss(req, fits=True)
+
+def cutout_sdss(req, jpeg=False, fits=False):
+    ra  = float(req.GET['ra'])
+    dec = float(req.GET['dec'])
+    pixscale = float(req.GET.get('pixscale', 0.262))
+    maxsize = 512
+    size   = min(int(req.GET.get('size',    256)), maxsize)
+    width  = min(int(req.GET.get('width',  size)), maxsize)
+    height = min(int(req.GET.get('height', size)), maxsize)
+
+    kwa = {}
+
+    #bands = req.GET.get('bands', 'gri')
+    #bands = [b for b in 'grz' if b in bands]
+
+    from astrometry.util.util import Tan
+    import numpy as np
+    import fitsio
+    import tempfile
+
+    ps = pixscale / 3600.
+    raps = -ps
+    decps = ps
+    if jpeg:
+        decps *= -1.
+    wcs = Tan(*[float(x) for x in [ra, dec, (width+1)/2., (height+1)/2.,
+                                   raps, 0., 0., decps, width, height]])
+
+    zoom = 14 - int(np.round(np.log2(pixscale / 0.262)))
+    zoom = max(0, min(zoom, 16))
+
+    ver = 1
+
+    rtn = map_sdss(req, ver, zoom, 0, 0, tag='cutouts', wcs=wcs,
+                   savecache=False, get_images=fits, **kwa)
+    if jpeg:
+        return rtn
+    ims = rtn
+
+    hdr = fitsio.FITSHDR()
+    hdr['SURVEY'] = 'SDSS'
+    hdr['BANDS'] = ''.join(bands)
+    for i,b in enumerate(bands):
+        hdr['BAND%i' % i] = b
+    wcs.add_to_header(hdr)
+
+    f,tmpfn = tempfile.mkstemp(suffix='.fits')
+    os.close(f)
+    os.unlink(tmpfn)
+    if len(bands) > 1:
+        cube = np.empty((len(bands), height, width), np.float32)
+        for i,im in enumerate(ims):
+            cube[i,:,:] = im
+    else:
+        cube = ims[0]
+    del ims
+    fitsio.write(tmpfn, cube, clobber=True, header=hdr)
+    return send_file(tmpfn, 'image/fits', unlink=True, filename='sdss-cutout_%.4f_%.4f.fits' % (ra,dec))
+
+def read_astrans(fn, hdu, hdr=None, W=None, H=None, fitsfile=None):
     from astrometry.sdss import AsTransWrapper, AsTrans
     from astrometry.util.util import Tan, fit_sip_wcs_py
     from astrometry.util.starutil_numpy import radectoxyz
     import numpy as np
     
     #print 'read_astrans, fn', fn
-    astrans = AsTrans.read(fn)
+    astrans = AsTrans.read(fn, F=fitsfile, primhdr=hdr)
     #print 'AsTrans:', astrans
 
     # Approximate as SIP.
 
-    # Frame files include a TAN header... start there.
-    tan = Tan(fn)
-    #print 'Tan:', tan
+    if hdr is None and fn.endswith('.bz2'):
+        import fitsio
+        hdr = fitsio.read_header(fn, 0)
+
+    if hdr is not None:
+        tan = Tan(*[float(hdr[k]) for k in [
+                    'CRVAL1', 'CRVAL2', 'CRPIX1', 'CRPIX2',
+                    'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2', 'NAXIS1','NAXIS2']])
+    else:
+        # Frame files include a TAN header... start there.
+        tan = Tan(fn)
 
     # Evaluate AsTrans on a pixel grid...
     h,w = tan.shape
@@ -445,10 +522,31 @@ def read_astrans(fn, hdu, hdr=None, W=None, H=None):
     sip_order = 5
     inv_order = 7
     sip = fit_sip_wcs_py(xyz, fieldxy, None, tan, sip_order, inv_order)
-    # print 'Fit SIP:', sip
+    print 'Fit SIP:', sip
     return sip
 
 
+B_sdssco = None
+
+def map_sdssco(req, ver, zoom, x, y, savecache=None, tag='sdssco',
+               get_images=False,
+               wcs=None,
+               **kwargs):
+    from decals import settings
+    global B_sdssco
+
+    basedir = settings.DATA_DIR
+
+    if B_sdssco is None:
+        from astrometry.util.fits import fits_table
+        B_sdssco = fits_table(os.path.join(basedir, 'bricks-sdssco.fits'))
+
+    bands = 'gri'
+    basepat = os.path.join(basedir, 'coadd', tag, '%(brickname).3s',
+                           'sdssco-%(brickname)s-%(band)s.fits')
+    return map_coadd_bands(req, ver, zoom, x, y, bands, tag, tag,
+                           rgbfunc=sdss_rgb, basepat=basepat, bricks=B_sdssco,
+                           nativescale=13, **kwargs)
 
 w_flist = None
 w_flist_tree = None
@@ -462,8 +560,10 @@ if False:
 
 def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
              get_images=False,
-             #ignoreCached=False,
-             ignoreCached=True,
+             ignoreCached=False,
+             wcs=None,
+             forcecache=False,
+             forcescale=None,
              **kwargs):
     from decals import settings
 
@@ -484,6 +584,8 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
     if os.path.exists(tilefn) and not ignoreCached:
+        if get_images:
+            return None
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
 
@@ -492,10 +594,16 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         f,tilefn = tempfile.mkstemp(suffix='.jpg')
         os.close(f)
 
-    try:
-        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-    except RuntimeError as e:
-        return HttpResponse(e.strerror)
+    if wcs is None:
+        try:
+            wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
+        except RuntimeError as e:
+            if get_images:
+                return None
+            return HttpResponse(e.strerror)
+    else:
+        W = wcs.get_width()
+        H = wcs.get_height()
 
     from astrometry.util.fits import fits_table
     import numpy as np
@@ -505,7 +613,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     from astrometry.util.util import Tan, Sip
     import fitsio
 
-    # print 'Tile wcs: pixel scale', wcs.pixel_scale()
+    print 'Tile wcs: center', wcs.radec_center(), 'pixel scale', wcs.pixel_scale()
 
     global w_flist
     global w_flist_tree
@@ -513,36 +621,57 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         w_flist = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
                                           'window_flist.fits'),
                              columns=['run','rerun','camcol','field','ra','dec'])
+        print 'Read', len(w_flist), 'window_flist entries'
+        w_flist.cut(w_flist.rerun == '301')
+        print 'Cut to', len(w_flist), 'in rerun 301'
         w_flist_tree = tree_build_radec(w_flist.ra, w_flist.dec)
 
     # SDSS field size
     radius = 1.01 * np.hypot(10., 14.)/2. / 60.
 
     # leaflet tile size
-    ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
-    ok,r0,d0 = wcs.pixelxy2radec(1, 1)
-    ok,r1,d1 = wcs.pixelxy2radec(W, H)
+    #ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
+    #ok,r0,d0 = wcs.pixelxy2radec(1, 1)
+    #ok,r1,d1 = wcs.pixelxy2radec(W, H)
+    ra,dec = wcs.pixelxy2radec(W/2., H/2.)[-2:]
+    r0,d0 = wcs.pixelxy2radec(1, 1)[-2:]
+    r1,d1 = wcs.pixelxy2radec(W, H)[-2:]
     radius = radius + max(degrees_between(ra,dec, r0,d0), degrees_between(ra,dec, r1,d1))
 
     J = tree_search_radec(w_flist_tree, ra, dec, radius)
+
+    print len(J), 'overlapping SDSS fields found'
+    if len(J) == 0:
+        if get_images:
+            return None
+        if forcecache:
+            # create symlink to blank.jpg!
+            trymakedirs(tilefn)
+            src = os.path.join(settings.STATIC_ROOT, 'blank.jpg')
+            if os.path.exists(tilefn):
+                os.unlink(tilefn)
+            os.symlink(src, tilefn)
+            print 'Symlinked', tilefn, '->', src
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
     
     ww = [1, W*0.25, W*0.5, W*0.75, W]
     hh = [1, H*0.25, H*0.5, H*0.75, H]
 
-    ok,r,d = wcs.pixelxy2radec(
+    r,d = wcs.pixelxy2radec(
         [1]*len(hh) + ww          + [W]*len(hh) +        list(reversed(ww)),
-        hh          + [1]*len(ww) + list(reversed(hh)) + [H]*len(ww))
+        hh          + [1]*len(ww) + list(reversed(hh)) + [H]*len(ww))[-2:]
 
     scaled = 0
     scalepat = None
     scaledir = 'sdss'
     
-    if zoom <= 13:
+    if zoom <= 13 and forcescale is None:
         # Get *actual* pixel scales at the top & bottom
-        ok,r1,d1 = wcs.pixelxy2radec(W/2., H)
-        ok,r2,d2 = wcs.pixelxy2radec(W/2., H-1.)
-        ok,r3,d3 = wcs.pixelxy2radec(W/2., 1.)
-        ok,r4,d4 = wcs.pixelxy2radec(W/2., 2.)
+        r1,d1 = wcs.pixelxy2radec(W/2., H)[-2:]
+        r2,d2 = wcs.pixelxy2radec(W/2., H-1.)[-2:]
+        r3,d3 = wcs.pixelxy2radec(W/2., 1.)[-2:]
+        r4,d4 = wcs.pixelxy2radec(W/2., 2.)[-2:]
         # Take the min = most zoomed-in
         scale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
         
@@ -552,40 +681,39 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         scaled = np.clip(scaled, 1, 7)
         dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(rerun)s', '%(run)i', '%(camcol)i', 'sdss-%(run)i-%(camcol)i-%(field)i-%(band)s.fits')
-    
+
+    if forcescale is not None:
+        scaled = forcescale
+
     bands = 'gri'
     rimgs = [np.zeros((H,W), np.float32) for band in bands]
     rns   = [np.zeros((H,W), np.uint8)   for band in bands]
 
-    import pylab as plt
-
     from astrometry.sdss import AsTransWrapper, DR9
     sdss = DR9(basedir=settings.SDSS_DIR)
     sdss.saveUnzippedFiles(settings.SDSS_DIR)
-    #sdss.setFitsioReadBZ2()
+    sdss.setFitsioReadBZ2()
+    if settings.SDSS_PHOTOOBJS:
+        sdss.useLocalTree(photoObjs=settings.SDSS_PHOTOOBJS,
+                          resolve=settings.SDSS_RESOLVE)
 
-    for j in J:
+    for jnum,j in enumerate(J):
+        print 'SDSS field', jnum, 'of', len(J), 'for zoom', zoom, 'x', x, 'y', y
         im = w_flist[j]
         for band,rimg,rn in zip(bands, rimgs, rns):
-
             if im.rerun != '301':
                 continue
-
-            #maskfn = sdss.retrieve('fpM', im.run, im.camcol, field=im.field,
-            #                       band=band, rerun=im.rerun)
             tmpsuff = '.tmp%08i' % np.random.randint(100000000)
             basefn = sdss.retrieve('frame', im.run, im.camcol, field=im.field,
                                    band=band, rerun=im.rerun, tempsuffix=tmpsuff)
-            #print 'Field', basefn
-            bunfn,keep = sdss._unzip_frame(basefn, im.run, im.camcol)
-            #print 'bun', bunfn
-            if bunfn is not None:
-                basefn = bunfn
-            fnargs = dict(band=band, rerun=im.rerun, run=im.run,
-                          camcol=im.camcol, field=im.field)
-            fn = get_scaled(scalepat, fnargs, scaled, basefn,
-                            read_wcs=read_astrans)
-            #print '(Perhaps-scaled) filename', fn
+            if scaled > 0:
+                fnargs = dict(band=band, rerun=im.rerun, run=im.run,
+                              camcol=im.camcol, field=im.field)
+                fn = get_scaled(scalepat, fnargs, scaled, basefn,
+                                read_base_wcs=read_astrans, read_wcs=_read_sip_wcs)
+                print 'get_scaled:', fn
+            else:
+                fn = basefn
             frame = None
             if fn == basefn:
                 frame = sdss.readFrame(im.run, im.camcol, im.field, band,
@@ -597,7 +725,6 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                 fwcs = Sip(fn)
                 fitsimg = fitsio.FITS(fn)[0]
                 h,w = fitsimg.get_info()['dims']
-
 
             if frame is not None:
                 fullimg = frame.getImage()
@@ -629,12 +756,10 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
             rn  [Yo,Xo] += 1
 
             if sdssps is not None:
-
                 # goodpix = np.ones(img.shape, bool)
                 # fpM = sdss.readFpM(im.run, im.camcol, im.field, band)
                 # for plane in [ 'INTERP', 'SATUR', 'CR', 'GHOST' ]:
                 #     fpM.setMaskedPixels(plane, goodpix, False, roi=[x0,x1,y0,y1])
-
                 plt.clf()
                 #ima = dict(vmin=-0.05, vmax=0.5)
                 #ima = dict(vmin=-0.5, vmax=2.)
@@ -657,12 +782,10 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                 plt.subplot(2,3,5)
                 dimshow(rn, vmin=0, ticks=False)
                 plt.title('coverage: max %i' % rn.max())
-
                 plt.subplot(2,3,6)
                 rgb = sdss_rgb([rimg/np.maximum(rn,1)
                                 for rimg,rn in zip(rimgs,rns)], bands)
                 dimshow(rgb)
-                
                 plt.suptitle('SDSS %s, R/C/F %i/%i/%i' % (band, im.run, im.camcol, im.field))
                 sdssps.savefig()
                 
@@ -673,34 +796,10 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     if get_images:
         return rimgs
 
-    from legacypipe.common import get_rgb
-
-    #rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
-
-    # s = 6.
-    # sdss_rgbkwargs = dict(scales=dict(g=(2, s*0.0066),
-    #                                   r=(1, s*0.008),
-    #                                   i=(0, s*0.01)),
-    #                       mnmx=(-1,100),
-    #                       arcsinh=1.)
-    # rgb = get_rgb(rimgs, bands, **sdss_rgbkwargs)
-
     rgb = sdss_rgb(rimgs, bands)
-    
     trymakedirs(tilefn)
-
-    # no jpeg output support in matplotlib in some installations...
-    if True:
-        import tempfile
-        f,tempfn = tempfile.mkstemp(suffix='.png')
-        os.close(f)
-        plt.imsave(tempfn, rgb)
-        print 'Wrote to temp file', tempfn
-        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
-        print cmd
-        os.system(cmd)
-        os.unlink(tempfn)
-        print 'Wrote', tilefn
+    save_jpeg(tilefn, rgb)
+    print 'Wrote', tilefn
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
@@ -1034,32 +1133,80 @@ def map_decals_wl(req, ver, zoom, x, y):
 
 
 B_dr2 = None
+def _get_dr2_bricks():
+    global B_dr2
+    if B_dr2 is not None:
+        return B_dr2
+
+    from astrometry.util.fits import fits_table
+    from astrometry.libkd.spherematch import match_radec
+    import numpy as np
+
+    fn = os.path.join(settings.DATA_DIR, 'decals-dr2', 'decals-bricks-in-dr2.fits')
+    if os.path.exists(fn):
+        B_dr2 = fits_table(fn)
+        return B_dr2
+
+    decals = _get_decals('decals-dr2')
+    B = decals.get_bricks()
+    C = decals.get_ccds_readonly()
+    # CCD radius
+    radius = np.hypot(2048, 4096) / 2. * 0.262 / 3600.
+    # Brick radius
+    radius += np.hypot(0.25, 0.25)/2.
+    I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, radius * 1.05)
+    for band in 'grz':
+        has = np.zeros(len(B), bool)
+        K = (C.filter[J] == band)
+        has[I[K]] = True
+        B.set('has_%s' % band, has)
+        print sum(has), 'bricks have coverage in', band
+
+    keep = np.zeros(len(B), bool)
+    keep[I] = True
+    B.cut(keep)
+    B_dr2 = B
+    B_dr2.writeto(fn)
+    print 'Wrote', fn
+    return B_dr2
+
+def dr2_rgb(rimgs, bands, **ignored):
+    return sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
+
+def map_decals_dr2_model(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(model=True, model_gz=True, add_gz=True)
+    return map_decals_dr2(req, ver, zoom, x, y, **kwargs)
+
+def map_decals_dr2_resid(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(resid=True, model_gz=True)
+    return map_decals_dr2(req, ver, zoom, x, y, **kwargs)
 
 def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
                     model=False, resid=False, nexp=False,
                     **kwargs):
     if savecache is None:
-        #savecache = settings.SAVE_CACHE
-        #DEBUG
-        savecache = False
+        savecache = settings.SAVE_CACHE
 
-
-    global B_dr2
-    if B_dr2 is None:
-        from astrometry.util.fits import fits_table
-        import numpy as np
-        B_dr2 = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr2',
-                                         'decals-bricks.fits'))
+    B_dr2 = _get_dr2_bricks()
 
     imagetag = 'image'
     tag = 'decals-dr2'
     imagedir = 'decals-dr2'
+
+    if model:
+        imagetag = 'model'
+        tag = 'decals-dr2-model'
+    if resid:
+        imagetag = 'resid'
+        kwargs.update(modeldir = 'decals-dr2-model')
+        tag = 'decals-dr2-resid'
+
     rgb = rgbkwargs
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
                            imagetag=imagetag,
                            rgbkwargs=rgb,
                            bricks=B_dr2,
-                           savecache=savecache, dr2=True, **kwargs)
+                           savecache=savecache, rgbfunc=dr2_rgb, **kwargs)
 
 
 B_dr1n = None
@@ -1621,7 +1768,9 @@ def _get_decals(name=None):
     if name in decals:
         return decals[name]
 
-    d = Decals()
+    dirnm = os.path.join(basedir, 'decals-dr1')
+    d = Decals(decals_dir=dirnm)
+    #d = Decals()
     decals[name] = d
     return d
 
@@ -1705,9 +1854,12 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
     global ccd_cache
 
     if not name in ccd_cache:
+        print 'Finding CCDs for name=', name
         fn = None
         CCDs = None
-        if name == 'decals-dr1k':
+        if name == 'decals-dr1j':
+            fn = os.path.join(settings.DATA_DIR, 'decals-dr1', 'decals-ccds.fits')
+        elif name == 'decals-dr1k':
             fn = os.path.join(settings.DATA_DIR, 'decals-dr1k',
                               'decals-ccds.fits')
         elif name == 'decals-dr1n':
@@ -1789,7 +1941,7 @@ def get_exposure_table(name):
         T = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr2',
                                     'decals-exposures.fits'))
     else:
-        T = fits_table(os.path.join(settings.DATA_DIR, 'decals-exposures.fits'))
+        T = fits_table(os.path.join(settings.DATA_DIR, 'decals-exposures-dr1.fits'))
     return T
 
 exposure_cache = {}
@@ -2134,7 +2286,8 @@ def _get_decals_cat(wcs, tag='decals'):
     catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
                           'tractor-%(brickname)s.fits')
     # FIXME (name)
-    D = _get_decals()
+    print '_get_decals_cat for tag=', tag
+    D = _get_decals(name=tag)
     B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
 
@@ -2167,13 +2320,17 @@ def _get_decals_cat(wcs, tag='decals'):
 
 def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     wcs=None,
-                    imagetag='image2', rgbkwargs={},
+                    imagetag='image2', rgbfunc=None, rgbkwargs={},
                     bricks=None,
                     savecache = True, forcecache = False,
                     return_if_not_found=False, model_gz=False,
                     modeldir=None, scaledir=None, get_images=False,
+                    write_jpeg=False,
                     ignoreCached=False, add_gz=False, filename=None,
-                    dr2=False,
+                    hack_jpeg=False,
+                    drname=None,
+                    basepat=None,
+                    nativescale=14,
                     ):
     from decals import settings
 
@@ -2200,7 +2357,6 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         print 'Tile image does not exist:', tilefn
     from astrometry.util.resample import resample_with_wcs, OverlapError
     from astrometry.util.util import Tan
-    from legacypipe.common import get_rgb
     import numpy as np
     import fitsio
 
@@ -2213,15 +2369,22 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         W = wcs.get_width()
         H = wcs.get_height()
 
-    basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
-                           '%(brickname)s',
-                           'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
+    if basepat is None:
+        basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
+                               '%(brickname)s',
+                               'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
     if modeldir is not None:
         modbasepat = os.path.join(basedir, 'coadd', modeldir, '%(brickname).3s',
                                   '%(brickname)s',
                                   'decals-%(brickname)s-' + imagetag + '-%(band)s.fits')
     else:
         modbasepat = basepat
+
+    # print 'Modbasepat:', modbasepat
+    # print 'Model_gz:', model_gz
+    # print 'Imagetag:', imagetag
+    # print 'add_gz:', add_gz
+
     if model_gz and imagetag == 'model':
         modbasepat += '.gz'
     #print 'add_gz:', add_gz
@@ -2229,18 +2392,21 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         basepat += '.gz'
     #print 'basepat:', basepat
 
+    # print 'basepat:', basepat
+    # print 'modbasepat:', modbasepat
+
     scaled = 0
     scalepat = None
     if scaledir is None:
         scaledir = imagedir
-    if zoom < 14:
-        scaled = (14 - zoom)
+    if zoom < nativescale:
+        scaled = (nativescale - zoom)
         scaled = np.clip(scaled, 1, 8)
         #print 'Scaled-down:', scaled
         dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
-        
-    D = _get_decals()
+
+    D = _get_decals(name=drname)
     if bricks is None:
         B = D.get_bricks_readonly()
     else:
@@ -2250,6 +2416,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
     r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
     r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
+
     dlo = min(d1, d2)
     dhi = max(d1, d2)
     I = D.bricks_touching_radec_box(B, rlo, rhi, dlo, dhi)
@@ -2271,6 +2438,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
 
     r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                             [1,H/2,H,H,H,H/2,1,1])[-2:]
+
+    print 'map_coadd_bands: imagetag', imagetag
 
     foundany = False
     rimgs = []
@@ -2301,10 +2470,13 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     imscalepat = scalepat.replace('resid', 'image')
                     modscalepat = scalepat.replace('resid', 'model')
                 imbasefn = basefn.replace('resid', 'image')
+                print 'resid.  imscalepat, imbasefn', imscalepat, imbasefn
+                print 'resid.  modscalepat, modbasefn', modscalepat, modbasefn
                 imfn = get_scaled(imscalepat, fnargs, scaled, imbasefn)
                 # print 'imfn', imfn
                 modfn = get_scaled(modscalepat, fnargs, scaled, modbasefn)
                 # print 'modfn', modfn
+                print 'resid.  im', imfn, 'mod', modfn
                 fn = imfn
 
             else:
@@ -2393,20 +2565,17 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         rimgs.append(rimg)
         # print 'Band', band, ': total of', rn.sum(), 'pixels, range', rimg.min(), rimg.max()
 
-    #if return_if_not_found and not foundany:
     if return_if_not_found and not savecache:
         return
 
-    if get_images:
+    if get_images and not write_jpeg:
         return rimgs
 
-    if dr2:
-        #rgb = sdss_rgb(rimgs, bands, scales=dict(g=3.5, r=1.6, z=1.0), m=0.03)
-        #rgb = sdss_rgb(rimgs, bands, scales=dict(g=3.0, r=1.7, z=1.1), m=0.02)
-        #rgb = sdss_rgb(rimgs, bands, scales=dict(g=4.5, r=2.5, z=1.7), m=0.02)
-        rgb = sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
-    else:
-        rgb = get_rgb(rimgs, bands, **rgbkwargs)
+    if rgbfunc is None:
+        from legacypipe.common import get_rgb
+        rgbfunc = get_rgb
+
+    rgb = rgbfunc(rimgs, bands, **rgbkwargs)
 
     if forcecache:
         savecache = True
@@ -2418,23 +2587,17 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         f,tilefn = tempfile.mkstemp(suffix='.jpg')
         os.close(f)
 
-    #import matplotlib
-    #matplotlib.use('Agg')
-    import pylab as plt
-
     # no jpeg output support in matplotlib in some installations...
-    if False:
-        import tempfile
-        f,tempfn = tempfile.mkstemp(suffix='.png')
-        os.close(f)
-        plt.imsave(tempfn, rgb)
-        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
-        os.system(cmd)
-        os.unlink(tempfn)
+    if hack_jpeg:
+        save_jpeg(tilefn, rgb)
         print 'Wrote', tilefn
     else:
+        import pylab as plt
         plt.imsave(tilefn, rgb)
         print 'Wrote', tilefn
+
+    if get_images:
+        return rimgs
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
                      filename=filename)
@@ -2796,13 +2959,12 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
 
 
 
-
 if __name__ == '__main__':
-    class duck(object):
-        pass
-
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+
+    class duck(object):
+        pass
     
     # ver = 1
     # zoom,x,y = 2, 1, 1
@@ -2811,6 +2973,20 @@ if __name__ == '__main__':
     # map_unwise_w1w2(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
 
     # http://i.legacysurvey.org/static/tiles/decals-dr1j/1/13/2623/3926.jpg
+
+
+    #import astrometry
+    #print astrom
+
+    ver = 1
+    zoom,x,y = 14, 16383, 7875
+    req = duck()
+    req.META = dict()
+
+    r = map_sdssco(req, ver, zoom, x, y, savecache=True, ignoreCached=True,
+                   hack_jpeg=True)
+    print 'got', r
+    sys.exit(0)
 
     ver = 1
     zoom,x,y = 13, 2623, 3926
