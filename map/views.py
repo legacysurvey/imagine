@@ -692,7 +692,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     from astrometry.sdss import AsTransWrapper, DR9
     sdss = DR9(basedir=settings.SDSS_DIR)
     sdss.saveUnzippedFiles(settings.SDSS_DIR)
-    sdss.setFitsioReadBZ2()
+    #sdss.setFitsioReadBZ2()
     if settings.SDSS_PHOTOOBJS:
         sdss.useLocalTree(photoObjs=settings.SDSS_PHOTOOBJS,
                           resolve=settings.SDSS_RESOLVE)
