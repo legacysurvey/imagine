@@ -49,7 +49,7 @@ class MercWCSWrapper(object):
 
     def pixelxy2radec(self, x, y):
         ok,r,d = self.wcs.pixelxy2radec(x, y)
-        assert(np.all(ok))
+        #assert(np.all(ok))
         return ok,r,d
     
     def __getattr__(self, name):
