@@ -1770,7 +1770,6 @@ def _get_decals(name=None):
 
     dirnm = os.path.join(basedir, 'decals-dr1')
     d = Decals(decals_dir=dirnm)
-    #d = Decals()
     decals[name] = d
     return d
 
@@ -2634,14 +2633,13 @@ def cutouts(req):
     CCDs = CCDs[np.lexsort((CCDs.extname, CCDs.expnum, CCDs.filter))]
 
     ccds = []
-    #for c in CCDs:
     for i in range(len(CCDs)):
         c = CCDs[i]
 
         try:
-            from legacypipe.decam import DecamImage
+            decals = _get_decals(name)
             c.cpimage = _get_image_filename(c)
-            dim = DecamImage(c)
+            dim = decals.get_image_object(c)
             wcs = dim.read_wcs()
         except:
             import traceback
@@ -2689,14 +2687,13 @@ def cutouts(req):
     # Deployment: http://{s}.DOMAIN/...
     url = url.replace('://www.', '://')
     url = url.replace('://', '://%s.')
-
-    domains = ['a','b','c','d']
+    domains = settings.SUBDOMAINS
 
     print 'URL', url
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
         fn = ccd.cpimage.replace(settings.DATA_DIR + '/', '')
-        theurl = url % (domains[i%len(domains)], int(ccd.expnum), ccd.extname) + '?x=%i&y=%i' % (x,y)
+        theurl = url % (domains[i%len(domains)], int(ccd.expnum), ccd.extname.strip()) + '?x=%i&y=%i' % (x,y)
         if name is not None:
             theurl += '&name=' + name
         ccdsx.append(('CCD %s %i %s, %.1f sec (x,y = %i,%i)<br/><small>(%s [%i])</small>' %
@@ -2769,24 +2766,20 @@ def cat_plot(req):
                      expires=0)
 
 
-def _get_ccd(expnum, extname):
-    import numpy as np
-    # Not ideal... look up local CP image name from expnum.
-    global CCDs
-    if CCDs is None:
-        D = _get_decals()
-        CCDs = D.get_ccds()
+def _get_ccd(expnum, ccdname, name=None):
+    decals = _get_decals(name=name)
     expnum = int(expnum, 10)
-    extname = str(extname)
-    I = np.flatnonzero((CCDs.expnum == expnum) * (CCDs.extname == extname))
-    assert(len(I) == 1)
-    ccd = CCDs[I[0]]
+    ccdname = str(ccdname).strip()
+    CCDs = decals.find_ccds(expnum=expnum, ccdname=ccdname)
+    assert(len(CCDs) == 1)
+    ccd = CCDs[0]
     return ccd
 
 def _get_image_filename(ccd):
     from decals import settings
     basedir = settings.DATA_DIR
-    fn = ccd.cpimage.strip()
+    #fn = ccd.cpimage.strip()
+    fn = ccd.image_filename.strip()
     # drop 'decals/' off the front...
     fn = fn.replace('decals/','')
     fn = os.path.join(basedir, fn)
@@ -2815,7 +2808,10 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
 
     x = int(req.GET['x'], 10)
     y = int(req.GET['y'], 10)
-    ccd = _get_ccd(expnum, extname)
+
+    if name is None:
+        name = req.GET.get('name', name)
+    ccd = _get_ccd(expnum, extname, name=name)
 
     fn = _get_image_filename(ccd)
     if not os.path.exists(fn):
@@ -2833,16 +2829,22 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
 
     # half-size in DECam pixels -- must match cutouts():size
     size = 50
-    img,slc,xstart,ystart = _get_image_slice(fn, ccd.cpimage_hdu, x, y, size=size)
+    img,slc,xstart,ystart = _get_image_slice(fn, ccd.image_hdu, x, y, size=size)
 
     from legacypipe.decam import DecamImage
     from legacypipe.desi_common import read_fits_catalog
     from tractor import Tractor
 
     ccd.cpimage = fn
-    im = DecamImage(ccd)
     D = _get_decals(name=name)
-    tim = im.get_tractor_image(decals, slc=slc, tiny=1, const2psf=True, pvwcs=True)
+    im = D.get_image_object(ccd)
+    kwargs = {}
+
+    if name == 'decals-dr2':
+        kwargs.update(pixPsf=True, splinesky=True)
+    else:
+        kwargs.update(const2psf=True)
+    tim = im.get_tractor_image(slc=slc, tiny=1, **kwargs)
 
     if tim is None:
         img = np.zeros((0,0))
