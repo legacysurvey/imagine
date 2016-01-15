@@ -2330,6 +2330,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     modeldir=None, scaledir=None, get_images=False,
                     write_jpeg=False,
                     ignoreCached=False, add_gz=False, filename=None,
+                    symlink_blank=False,
                     hack_jpeg=False,
                     drname=None,
                     basepat=None,
@@ -2429,7 +2430,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         if get_images:
             return None
         from django.http import HttpResponseRedirect
-        if forcecache:
+        if forcecache and symlink_blank:
             # create symlink to blank.jpg!
             trymakedirs(tilefn)
             src = os.path.join(settings.STATIC_ROOT, 'blank.jpg')
