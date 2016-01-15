@@ -157,7 +157,7 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
     return res
 
 def index(req):
-    layer = req.GET.get('layer', 'decals-dr1j')
+    layer = req.GET.get('layer', 'decals-dr2')
     # Nice spiral galaxy
     ra, dec, zoom = 244.7, 7.4, 13
     # EDR2 region
