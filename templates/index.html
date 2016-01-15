@@ -1073,6 +1073,7 @@ function bricksLoaded(result) {
         return;
     }
     bricks = result['bricks'];
+    var clong = map.getCenter().lng;
     for (var i=0, len=bricks.length; i<len; i++) {
         //console.log('brick ' + i + ': ' + bricks[i]);
         name = bricks[i].name;
@@ -1081,6 +1082,10 @@ function bricksLoaded(result) {
             continue;
         }
         poly = bricks[i].poly;
+        for (var j=0, npoly=poly.length; j<npoly; j++) {
+            while (poly[j][1] < clong-180) { poly[j][1] += 360; }
+            while (poly[j][1] > clong+180) { poly[j][1] -= 360; }
+        }
         b = L.polygon(poly, {fill:false, weight:4, color:'blue' });
         b.name = name;
         //console.log('Adding brick ' + name + ': polygon ' + poly);
@@ -1732,7 +1737,7 @@ tiles = new MyTileLayer('{{tileurl|safe}}', {
     //maxNativeZoom: {{ maxNativeZoom }},
     maxNativeZoom: 16,
     minZoom: minZoom,
-    attribution: '<a href="http://sdss.org">SDSSS</a>',
+    attribution: '<a href="http://sdss.org">SDSS</a>',
     id: id,
     ver: getversion(id),
     unloadInvisibleTiles: true,
@@ -1748,15 +1753,13 @@ tiles = new MyTileLayer('{{tileurl|safe}}', {
     //maxNativeZoom: {{ maxNativeZoom }},
     maxNativeZoom: 16,
     minZoom: minZoom,
-    attribution: '<a href="http://sdss.org">SDSSS</a>',
+    attribution: '<a href="http://sdss.org">SDSS</a>',
     id: id,
     ver: getversion(id),
     unloadInvisibleTiles: true,
     subdomains: subdomains,
   });
 allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
-
-
 
 
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});

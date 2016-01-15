@@ -33,7 +33,9 @@ def _one_tile((kind, zoom, x, y, ignore)):
     # forcecache=False, return_if_not_found=True)
     if kind == 'sdss':
         print 'Zoom', zoom, 'x,y', x,y
-        map_sdss(req, version, zoom, x, y, savecache=True, forcecache=True)
+        #map_sdss(req, version, zoom, x, y, savecache=True, forcecache=True)
+        map_sdssco(req, version, zoom, x, y, savecache=True, forcecache=True,
+                   return_if_not_found=True, hack_jpeg=True)
 
     elif kind in ['decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
         v = 2

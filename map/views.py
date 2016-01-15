@@ -535,6 +535,9 @@ def map_sdssco(req, ver, zoom, x, y, savecache=None, tag='sdssco',
     from decals import settings
     global B_sdssco
 
+    if savecache is None:
+        savecache = settings.SAVE_CACHE
+
     basedir = settings.DATA_DIR
 
     if B_sdssco is None:
@@ -545,6 +548,7 @@ def map_sdssco(req, ver, zoom, x, y, savecache=None, tag='sdssco',
     basepat = os.path.join(basedir, 'coadd', tag, '%(brickname).3s',
                            'sdssco-%(brickname)s-%(band)s.fits')
     return map_coadd_bands(req, ver, zoom, x, y, bands, tag, tag,
+                           savecache=savecache,
                            rgbfunc=sdss_rgb, basepat=basepat, bricks=B_sdssco,
                            nativescale=13, **kwargs)
 
