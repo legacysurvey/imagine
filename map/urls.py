@@ -47,6 +47,9 @@ urlpatterns = patterns('map.views',
     # Spectroscopy
     url(r'^spec/(\d+)/cat.json', 'cat_spec'),
 
+    # Bright stars
+    url(r'^bright/(\d+)/cat.json', 'cat_bright'),
+
     # catalog
     url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).cat.json', 'cat_decals_dr1j'),
 

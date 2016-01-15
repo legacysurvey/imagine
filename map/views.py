@@ -55,6 +55,8 @@ catversions = {
     'decals-dr1j': [1,],
     'decals-dr2': [2,],
     'ngc': [1,],
+    'spec': [1,],
+    'bright': [1,],
     }
 
 oneyear = (3600 * 24 * 365)
@@ -2135,7 +2137,7 @@ def cat_vcc(req, ver):
 
 def cat_spec(req, ver):
     import json
-    tag = 'ngc'
+    tag = 'spec'
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
     declo = float(req.GET['declo'])
@@ -2166,6 +2168,39 @@ def cat_spec(req, ver):
     plate = [int(x) for x in T.plate]
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names, mjd=mjd, fiber=fiber, plate=plate)),
+                        content_type='application/json')
+
+
+def cat_bright(req, ver):
+    import json
+    tag = 'bright'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from astrometry.util.fits import fits_table
+    import numpy as np
+    from decals import settings
+
+    TT = []
+    T = fits_table(os.path.join(settings.DATA_DIR, 'bright.fits'))
+    print len(T), 'bright stars'
+    if ralo > rahi:
+        # RA wrap
+        T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
+    else:
+        T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
+    print len(T), 'in cut'
+
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    names = [t.strip() for t in T.name]
+
+    return HttpResponse(json.dumps(dict(rd=rd, name=names)),
                         content_type='application/json')
 
 
