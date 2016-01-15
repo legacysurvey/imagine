@@ -1504,7 +1504,7 @@ id = 'decals-dr2'
 catname = 'decals-dr2';
 
 // Use the static URL until zoom level 14, then the dynamic URL.
-tiles = new MyTileLayer('{{tileurl|safe}}', {
+tiles = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
     maxNativeZoom: {{ maxNativeZoom }},
     minZoom: minZoom,
@@ -1513,6 +1513,8 @@ tiles = new MyTileLayer('{{tileurl|safe}}', {
     ver: getversion(id),
     unloadInvisibleTiles: true,
     subdomains: subdomains,
+    //// HACK -- zoom 13 until level 13 finishes rendering
+    urlPatterns: [ [13, 16, '{{ tileurl|safe }}'], ],
   });
 tiles.catname = catname;
 allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 images", catname:catname});
