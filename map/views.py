@@ -2199,8 +2199,9 @@ def cat_bright(req, ver):
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.name]
+    altnames = [t.strip() for t in T.alt_name]
 
-    return HttpResponse(json.dumps(dict(rd=rd, name=names)),
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, altname=altnames)),
                         content_type='application/json')
 
 

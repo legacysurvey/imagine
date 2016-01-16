@@ -542,6 +542,7 @@ function brightLoaded(counter, result) {
 
     rdlist = result['rd'];
     names = result['name'];
+    altnames = result['altname'];
 
     showlabels = (map.getZoom() >= brightLabelsMinZoom);
 
@@ -562,8 +563,11 @@ function brightLoaded(counter, result) {
         circ.dec = d;
 
 	if (showlabels) {
-	    circ.name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' + names[i].replace(' ','+') + '">' + names[i] + '</a>';
-
+        name = names[i];
+        if (altnames[i].length > 0) {
+            name = name + '(' + altnames[i] + ')';
+        }
+	    circ.name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' + names[i].replace(' ','+') + '">' + name + '</a>';
 	    circ._showLabelAdded = true;
 	    circ.bindLabel(circ.name, { noHide: true, clickable: true });
 	    circ.label._latlng = L.latLng(lat,lng);
