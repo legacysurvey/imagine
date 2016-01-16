@@ -565,7 +565,7 @@ function brightLoaded(counter, result) {
 	if (showlabels) {
         name = names[i];
         if (altnames[i].length > 0) {
-            name = name + '(' + altnames[i] + ')';
+            name = name + ' (' + altnames[i] + ')';
         }
 	    circ.name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' + names[i].replace(' ','+') + '">' + name + '</a>';
 	    circ._showLabelAdded = true;
