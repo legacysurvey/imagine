@@ -588,19 +588,13 @@ def main():
         print len(B), 'in RA range'
 
         if opt.queue:
-            # # unique Dec rows
-            # dd = np.unique(B.dec)
-            # eps = 1e-3
-            # for dec in dd:
-            #     print 'python render-tiles.py --kind sdss --coadd --mindec %f --maxdec %f' % (dec-eps, dec+eps)
+            # ~ square-degree tiles
             # RA slices
-            rr = np.linspace(0, 360, 361)
+            rr = np.arange(opt.minra , opt.maxra +1)
+            dd = np.arange(opt.mindec, opt.maxdec+1)
             for rlo,rhi in zip(rr, rr[1:]):
-                print 'python render-tiles.py --kind sdss --coadd --minra %f --maxra %f' % (rlo, rhi)
-            # dd = np.unique(B.dec)
-            # eps = 1e-3
-            # for dec in dd:
-            #     print 'python render-tiles.py --kind sdss --coadd --mindec %f --maxdec %f' % (dec-eps, dec+eps)
+                for dlo,dhi in zip(dd, dd[1:]):
+                    print 'time python render-tiles.py --kind sdss --coadd --minra %f --maxra %f --mindec %f --maxdec %f' % (rlo, rhi, dlo, dhi)
             sys.exit(0)
 
         if opt.grass:
