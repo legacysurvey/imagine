@@ -1889,7 +1889,7 @@ tiles = new MyTileLayer('{{tileurl|safe}}', {
 allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
 {% endcomment %}
 
-
+{% comment %}
 id = 'sdssco'
 tiles = new MyTileLayer('{{tileurl|safe}}', {
     maxZoom: maxZoom,
@@ -1903,7 +1903,7 @@ tiles = new MyTileLayer('{{tileurl|safe}}', {
     subdomains: subdomains,
   });
 allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
-
+{% endcomment %}
 
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 

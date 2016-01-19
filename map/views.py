@@ -636,7 +636,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     if w_flist is None:
         w_flist = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
                                           'window_flist.fits'),
-                             columns=['run','rerun','camcol','field','ra','dec'])
+                             columns=['run','rerun','camcol','field','ra','dec','score'])
         print 'Read', len(w_flist), 'window_flist entries'
         w_flist.cut(w_flist.rerun == '301')
         print 'Cut to', len(w_flist), 'in rerun 301'
