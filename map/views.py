@@ -700,7 +700,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
 
     bands = 'gri'
     rimgs = [np.zeros((H,W), np.float32) for band in bands]
-    rns   = [np.zeros((H,W), np.uint8)   for band in bands]
+    rns   = [np.zeros((H,W), np.float32)   for band in bands]
 
     from astrometry.sdss import AsTransWrapper, DR9
     sdss = DR9(basedir=settings.SDSS_DIR)
@@ -713,6 +713,13 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     for jnum,j in enumerate(J):
         print 'SDSS field', jnum, 'of', len(J), 'for zoom', zoom, 'x', x, 'y', y
         im = w_flist[j]
+
+        if im.score >= 0.5:
+            weight = 1.
+        else:
+            weight = 0.001
+
+
         for band,rimg,rn in zip(bands, rimgs, rns):
             if im.rerun != '301':
                 continue
@@ -766,9 +773,9 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                 else:
                     img = fitsimg[slc]
             #rimg[Yo,Xo] += img[Yi-y0, Xi-x0]
-            rimg[Yo,Xo] += resamp
+            rimg[Yo,Xo] += resamp * weight
 
-            rn  [Yo,Xo] += 1
+            rn  [Yo,Xo] += weight
 
             if sdssps is not None:
                 # goodpix = np.ones(img.shape, bool)
@@ -805,7 +812,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                 sdssps.savefig()
                 
     for rimg,rn in zip(rimgs, rns):
-        rimg /= np.maximum(rn, 1)
+        rimg /= np.maximum(rn, 1e-3)
     del rns
 
     if get_images:
