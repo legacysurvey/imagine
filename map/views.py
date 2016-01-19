@@ -229,7 +229,8 @@ def index(req):
                        enable_depth = settings.ENABLE_DEPTH,
                        ))
 
-def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wcs=None):
+def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wcs=None,
+               wcs=None, img=None, return_data=False):
     from scipy.ndimage.filters import gaussian_filter
     import fitsio
     from astrometry.util.util import Tan
@@ -244,49 +245,56 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
         read_wcs = _read_tan_wcs
 
     if os.path.exists(fn):
+        if return_data:
+            F = fitsio.FITS(sourcefn)
+            img = F[0].read()
+            hdr = F[0].read_header()
+            wcs = read_wcs(fn, 0, hdr=hdr, W=W, H=H, fitsfile=F)
+            return img,wcs,fn
         return fn
 
-    # print 'Does not exist:', fn
-    sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn,
-                          read_base_wcs=read_base_wcs, read_wcs=read_wcs)
-    # print 'Source:', sourcefn
-    if sourcefn is None or not os.path.exists(sourcefn):
-        # print 'Image source file', sourcefn, 'not found'
-        return None
-    try:
-        print 'Reading:', sourcefn
-        F = fitsio.FITS(sourcefn)
-        I = F[0].read()
-        hdr = F[0].read_header()
-    except:
-        print 'Failed to read:', sourcefn
-        return None
-    #print 'source image:', I.shape
-    H,W = I.shape
+    if img is None:
+        sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn,
+                              read_base_wcs=read_base_wcs, read_wcs=read_wcs)
+        # print 'Source:', sourcefn
+        if sourcefn is None or not os.path.exists(sourcefn):
+            # print 'Image source file', sourcefn, 'not found'
+            return None
+        try:
+            print 'Reading:', sourcefn
+            F = fitsio.FITS(sourcefn)
+            img = F[0].read()
+            hdr = F[0].read_header()
+        except:
+            print 'Failed to read:', sourcefn
+            return None
+        #print 'source image:', img.shape
+
+    H,W = img.shape
     # make even size; smooth down
     if H % 2 == 1:
-        I = I[:-1,:]
+        img = img[:-1,:]
     if W % 2 == 1:
-        I = I[:,:-1]
-    im = gaussian_filter(I, 1.)
-    #print 'im', im.shape
+        img = img[:,:-1]
+    img = gaussian_filter(img, 1.)
     # bin
-    I2 = (im[::2,::2] + im[1::2,::2] + im[1::2,1::2] + im[::2,1::2])/4.
+    I2 = (img[::2,::2] + img[1::2,::2] + img[1::2,1::2] + img[::2,1::2])/4.
     I2 = I2.astype(np.float32)
-    #print 'I2:', I2.shape
 
-    if scale == 1:
-        # Use the given function to read base WCS.
-        if read_base_wcs is not None:
-            read_wcs = read_base_wcs
     # shrink WCS too
-    wcs = read_wcs(sourcefn, 0, hdr=hdr, W=W, H=H, fitsfile=F)
+    if wcs is None:
+        if scale == 1:
+            # Use the given function to read base WCS.
+            if read_base_wcs is not None:
+                read_wcs = read_base_wcs
+        wcs = read_wcs(sourcefn, 0, hdr=hdr, W=W, H=H, fitsfile=F)
     # include the even size clip; this may be a no-op
-    H,W = im.shape
+    H,W = img.shape
     wcs = wcs.get_subimage(0, 0, W, H)
-    subwcs = wcs.scale(0.5)
+    wcs2 = wcs.scale(0.5)
+
     hdr = fitsio.FITSHDR()
-    subwcs.add_to_header(hdr)
+    wcs2.add_to_header(hdr)
     trymakedirs(fn)
     dirnm = os.path.dirname(fn)
     f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=dirnm)
@@ -297,6 +305,8 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     fitsio.write(tmpfn, I2, header=hdr, clobber=True)
     os.rename(tmpfn, fn)
     print 'Wrote', fn
+    if return_data:
+        return I2,wcs2,fn
     return fn
 
 # "PR"
@@ -636,9 +646,6 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     radius = 1.01 * np.hypot(10., 14.)/2. / 60.
 
     # leaflet tile size
-    #ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
-    #ok,r0,d0 = wcs.pixelxy2radec(1, 1)
-    #ok,r1,d1 = wcs.pixelxy2radec(W, H)
     ra,dec = wcs.pixelxy2radec(W/2., H/2.)[-2:]
     r0,d0 = wcs.pixelxy2radec(1, 1)[-2:]
     r1,d1 = wcs.pixelxy2radec(W, H)[-2:]
@@ -725,16 +732,18 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                 frame = sdss.readFrame(im.run, im.camcol, im.field, band,
                                        filename=fn)
                 h,w = frame.getImageShape()
+                # Trim off the overlapping top of the image
+                # Wimp out and instead of trimming 128 pix, trim 124!
+                trim = 124
+                subh = h - trim
                 astrans = frame.getAsTrans()
-                fwcs = AsTransWrapper(astrans, w, h)
+                fwcs = AsTransWrapper(astrans, w, subh)
+                fullimg = frame.getImage()
+                fullimg = fullimg[:-trim,:]
             else:
                 fwcs = Sip(fn)
                 fitsimg = fitsio.FITS(fn)[0]
                 h,w = fitsimg.get_info()['dims']
-
-            if frame is not None:
-                fullimg = frame.getImage()
-            else:
                 fullimg = fitsimg.read()
 
             try:
@@ -2409,6 +2418,12 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         W = wcs.get_width()
         H = wcs.get_height()
 
+    # ok,r0,d0 = wcs.pixelxy2radec(1,1)
+    # ok,r1,d1 = wcs.pixelxy2radec(2,2)
+    # from astrometry.util.starutil_numpy import arcsec_between
+    # a = arcsec_between(r0,d0,r1,d1)
+    # print 'WCS: zoom %i, x,y %i,%i -> pixel scale %f' % (zoom, x, y, a/np.sqrt(2.))
+
     if basepat is None:
         basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
                                '%(brickname)s',
@@ -2479,7 +2494,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                             [1,H/2,H,H,H,H/2,1,1])[-2:]
 
-    print 'map_coadd_bands: imagetag', imagetag
+    #print 'map_coadd_bands: imagetag', imagetag
 
     foundany = False
     rimgs = []

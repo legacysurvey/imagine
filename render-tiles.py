@@ -628,7 +628,7 @@ def main():
         codir = os.path.join(basedir, 'coadd', 'sdssco')
         for b in B:
             print 'Brick', b.brickname
-            wcs = wcs_for_brick(b, W=2300, H=2300, pixscale=0.396)
+            wcs = wcs_for_brick(b, W=2400, H=2400, pixscale=0.396)
             bands = 'gri'
             dirnm = os.path.join(codir, b.brickname[:3])
             fns = [os.path.join(dirnm, 'sdssco-%s-%s.fits' % (b.brickname, band))
@@ -640,11 +640,6 @@ def main():
 
             if all([os.path.exists(fn) for fn in fns]):
                 print 'Already exist'
-                # Read, then write with header.
-                # for fn in fns:
-                #     I = fitsio.read(fn)
-                #     fitsio.write(fn, I, header=hdr, clobber=True)
-                #     print 'Re-wrote', fn
                 continue
             ims = map_sdss(req, 1, 0, 0, 0, get_images=True, wcs=wcs, ignoreCached=True,
                            forcescale=0)
@@ -655,7 +650,17 @@ def main():
             for fn,band,im in zip(fns,bands, ims):
                 fitsio.write(fn, im, header=hdr, clobber=True)
                 print 'Wrote', fn
-        
+
+            # Also write scaled versions
+            dirnm = os.path.join(basedir, 'scaled', 'sdssco')
+            scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', 'sdssco-%(brickname)s-%(band)s.fits')
+            for im,band in zip(ims,bands):
+                scalekwargs = dict(band=band, brick=b.brickid, brickname=b.brickname)
+                imwcs = wcs
+                for scale in range(1, 7):
+                    print 'Writing scale level', scale
+                    im,imwcs,sfn = get_scaled(scalepat, scalekwargs, scale, None,
+                                              wcs=imwcs, img=im, return_data=True)
         sys.exit(0)
 
     if opt.scale:
