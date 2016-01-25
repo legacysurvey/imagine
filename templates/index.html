@@ -224,14 +224,19 @@ function ra2long_B(ra) {
     return lng;
 }
 
-function ra2long_C(ra, clong) {
-    lng = 180 - ra;
+function wrap_long(lng, clong) {
     while (lng < clong-180) {
       lng += 360;
     }
     while (lng > clong+180) {
       lng -= 360;
     }
+    return lng;
+}
+
+function ra2long_C(ra, clong) {
+    lng = 180 - ra;
+    lng = wrap_long(lng, clong);
     return lng;
 }
 
@@ -1274,6 +1279,9 @@ function ccdsLoaded(result) {
         return;
     }
     ccds = result['ccds'];
+    console.log('Received ' + ccds.length + ' CCDs');
+    var clong = map.getCenter().lng;
+    console.log('Center long', clong);
     for (var i=0, len=ccds.length; i<len; i++) {
         // console.log('ccd ' + i + ': ' + ccds[i]);
         name = ccds[i].name;
@@ -1282,9 +1290,16 @@ function ccdsLoaded(result) {
             continue;
         }
         poly = ccds[i].poly;
-	color = ccds[i].color;
+        for (var j=0, plen=poly.length; j<plen; j++) {
+            // lng = poly[j][1];
+            // wlng = wrap_long(lng, clong);
+            // poly[j][1] = wlng;
+            // console.log('ccd ' + i + ' poly ' + j + ' lng ' + lng + ' -> ' + wlng);
+            poly[j][1] = wrap_long(poly[j][1], clong);
+        }
+        color = ccds[i].color;
         c = L.polygon(poly, {fill:false, color:color, weight:4 });
-	c.orig_color = color;
+        c.orig_color = color;
         c.name = name;
         c.on('mouseover', ccdMouseOver);
         c.on('mouseout', ccdMouseOut);
