@@ -90,6 +90,13 @@ TEMPLATES = [
         #'APP_DIRS': True,
         'APP_DIRS': False,
         'DIRS': [os.path.join(WEB_DIR, 'templates')],
+        'OPTIONS': {
+            'context_processors': [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.static",
+                ],
+            #'debug': True,
+            },
     },
 ]
 
