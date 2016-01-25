@@ -560,9 +560,11 @@ def map_sdssco(req, ver, zoom, x, y, savecache=None, tag='sdssco',
     basepat = os.path.join(basedir, 'coadd', tag, '%(brickname).3s',
                            'sdssco-%(brickname)s-%(band)s.fits')
     return map_coadd_bands(req, ver, zoom, x, y, bands, tag, tag,
+                           imagetag=tag,
+                           get_images=get_images,
                            savecache=savecache,
                            rgbfunc=sdss_rgb, basepat=basepat, bricks=B_sdssco,
-                           nativescale=13, **kwargs)
+                           nativescale=13, maxscale=6, **kwargs)
 
 w_flist = None
 w_flist_tree = None
@@ -2386,7 +2388,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     hack_jpeg=False,
                     drname=None,
                     basepat=None,
-                    nativescale=14,
+                    nativescale=14, maxscale=8,
                     ):
     from decals import settings
 
@@ -2463,7 +2465,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         scaledir = imagedir
     if zoom < nativescale:
         scaled = (nativescale - zoom)
-        scaled = np.clip(scaled, 1, 8)
+        scaled = np.clip(scaled, 1, maxscale)
         #print 'Scaled-down:', scaled
         dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
@@ -2695,12 +2697,12 @@ def cutouts(req):
 
     CCDs = CCDs[np.lexsort((CCDs.extname, CCDs.expnum, CCDs.filter))]
 
+    decals = _get_decals(name)
+
     ccds = []
     for i in range(len(CCDs)):
         c = CCDs[i]
-
         try:
-            decals = _get_decals(name)
             c.cpimage = _get_image_filename(c)
             dim = decals.get_image_object(c)
             wcs = dim.read_wcs()
@@ -2716,17 +2718,13 @@ def cutouts(req):
         y = int(np.round(y-1))
         if x < -size or x >= c.width+size or y < -size or y >= c.height+size:
             continue
-
         #print 'CCD', c
         #c = dict([(k,c.get(k)) for k in c.columns()])
         #print 'CCD', c
         ccds.append((c, x, y))
-
     #print 'CCDS:', ccds
 
-    D = _get_decals()
-    B = D.get_bricks_readonly()
-
+    B = decals.get_bricks_readonly()
     I = np.flatnonzero((B.ra1  <= ra)  * (B.ra2  >= ra) *
                        (B.dec1 <= dec) * (B.dec2 >= dec))
     brick = B[I[0]]
@@ -2736,11 +2734,6 @@ def cutouts(req):
     
     from django.shortcuts import render
     from django.core.urlresolvers import reverse
-
-    #url = req.build_absolute_uri('/') + reverse('cutout_panels',
-    #                                            kwargs=dict(expnum='%i',
-    #                                                      extname='%s'))
-
     from decals import settings
 
     url = req.build_absolute_uri('/') + settings.ROOT_URL + '/cutout_panels/%i/%s/'
@@ -2761,14 +2754,9 @@ def cutouts(req):
             theurl += '&name=' + name
         ccdsx.append(('CCD %s %i %s, %.1f sec (x,y = %i,%i)<br/><small>(%s [%i])</small>' %
                       (ccd.filter, ccd.expnum, ccd.extname, ccd.exptime, x, y, fn, ccd.cpimage_hdu), theurl))
-
     return render(req, 'cutouts.html',
-                  dict(ra=ra, dec=dec,
-                       ccds=ccdsx,
-                       brick=brick,
-                       brickx=brickx,
-                       bricky=bricky,
-                       ))
+                  dict(ra=ra, dec=dec, ccds=ccdsx, name=name,
+                       brick=brick, brickx=brickx, bricky=bricky))
 
 def cat_plot(req):
     import pylab as plt
@@ -2779,6 +2767,7 @@ def cat_plot(req):
 
     ra = float(req.GET['ra'])
     dec = float(req.GET['dec'])
+    name = req.GET.get('name', None)
 
     ver = float(req.GET.get('ver',2))
 
@@ -2793,7 +2782,11 @@ def cat_plot(req):
     M = 10
     margwcs = wcs.get_subimage(-M, -M, W+2*M, H+2*M)
 
-    cat,hdr = _get_decals_cat(margwcs, tag='decals-dr1j')
+    tag = name
+    if tag is None:
+        tag = 'decals-dr1j'
+    tag = str(tag)
+    cat,hdr = _get_decals_cat(margwcs, tag=tag)
 
     # FIXME
     nil,sdss = get_sdss_sources('r', margwcs,
@@ -2815,6 +2808,7 @@ def cat_plot(req):
         #           E=(0x58, 0xac, 0xfa),
         #           C=(0xda, 0x81, 0xf5))
         cc = dict(PSF =(0x9a, 0xfe, 0x2e),
+                  SIMP=(0xff, 0xa5, 0),
                   DEV =(0xff, 0, 0),
                   EXP =(0x58, 0xac, 0xfa),
                   COMP=(0xda, 0x81, 0xf5))

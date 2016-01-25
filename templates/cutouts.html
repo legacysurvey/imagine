@@ -20,7 +20,7 @@ SDSS objects: X
 </tr>
 <tr>
 <td>
-<img src="{% url 'cat_plot' %}?ra={{ ra }}&dec={{ dec }}" />
+<img src="{% url 'cat_plot' %}?ra={{ ra }}&dec={{ dec }}{% if name %}&name={{name}}{% endif %}" />
 </td>
 </tr>
 </table>
