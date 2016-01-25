@@ -1889,7 +1889,8 @@ allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
 {% endcomment %}
 
 id = 'sdssco'
-tiles = new MyTileLayer('{{tileurl|safe}}', {
+//tiles = new MyTileLayer('{{tileurl|safe}}', {
+tiles = new MyTileLayer(static_tile_url, {
     maxZoom: maxZoom,
     //maxNativeZoom: {{ maxNativeZoom }},
     maxNativeZoom: 16,
