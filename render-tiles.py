@@ -706,13 +706,61 @@ def main():
 
         if opt.x0 is None:
             opt.x0 = 0
-        if opt.x1 is None:
-            opt.x1 = N
+        x1 = opt.x1
+        if x1 is None:
+            x1 = N
 
         # Find grid of Ra,Dec tile centers and select the ones near DECaLS bricks.
         rr,dd = [],[]
         yy = np.arange(opt.y0, y1)
-        xx = np.arange(opt.x0, opt.x1)
+        xx = np.arange(opt.x0, x1)
+
+        if opt.grass:
+            import pylab as plt
+            tileexists = np.zeros((len(yy),len(xx)), bool)
+
+            
+
+            basedir = settings.DATA_DIR
+            ver = tileversions[opt.kind][-1]
+            tiledir = os.path.join(basedir, 'tiles', opt.kind, '%i'%ver, '%i'%zoom)
+            for dirpath,dirnames,filenames in os.walk(tiledir):
+                # change walk order
+                dirnames.sort()
+                if len(filenames) == 0:
+                    continue
+                print 'Dirpath', dirpath
+                #print 'Dirnames', dirnames
+                #print 'Filenames', filenames
+
+                # check for symlinks
+                if False:
+                    fns = []
+                    for fn in filenames:
+                        fullfn = os.path.join(tiledir, dirpath, fn)
+                        if os.path.isfile(fullfn) and not os.path.islink(fullfn):
+                            fns.append(fn)
+                    print len(fns), 'of', len(filenames), 'are files (not symlinks)'
+                    filenames = fns
+
+                x = os.path.basename(dirpath)
+                x = int(x)
+                #print 'x', x
+
+                yy = [int(fn.replace('.jpg','')) for fn in filenames]
+                #print 'yy', yy
+                print len(yy), 'tiles'
+                for y in yy:
+                    tileexists[y - opt.y0, x - opt.x0] = True
+            plt.clf()
+            plt.imshow(tileexists, interpolation='nearest', origin='upper',
+                       vmin=0, vmax=1, cmap='gray')
+            fn = 'exist-%s-z%02i' % (opt.kind, zoom)
+            plt.savefig(fn+'.png')
+            fitsio.write(fn+'.fits', tileexists, clobber=True)
+            print 'Wrote', fn+'.png and', fn+'.fits'
+
+            continue
 
         if not opt.all:
             for y in yy:
@@ -792,6 +840,18 @@ def main():
                 print cmd
                 continue
 
+            # if opt.grass:
+            #     for xi in x:
+            #         basedir = settings.DATA_DIR
+            #         ver = tileversions[opt.kind][-1]
+            #         tilefn = os.path.join(basedir, 'tiles', opt.kind,
+            #                               '%i/%i/%i/%i.jpg' % (ver, zoom, xi, y))
+            #         print 'Checking for', tilefn
+            #         if os.path.exists(tilefn):
+            #             print 'EXISTS'
+            #             tileexists[yi-opt.y0, xi-opt.x0]
+            #     continue
+
             args = []
             for xi in x:
                 args.append((opt.kind,zoom,xi,y, opt.ignore))
@@ -799,6 +859,11 @@ def main():
             mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
             print 'Rendered', len(args), 'tiles'
 
+        # if opt.grass:
+        #     plt.clf()
+        #     plt.plot(tileexists, interpolation='nearest', origin='lower',
+        #              vmin=0, vmax=1, cmap='gray')
+        #     plt.savefig('%s-z%02i-exists.png' % (opt.kind, zoom))
 
 if __name__ == '__main__':
     main()
