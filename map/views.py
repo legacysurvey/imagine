@@ -554,7 +554,8 @@ def map_sdssco(req, ver, zoom, x, y, savecache=None, tag='sdssco',
 
     if B_sdssco is None:
         from astrometry.util.fits import fits_table
-        B_sdssco = fits_table(os.path.join(basedir, 'bricks-sdssco.fits'))
+        B_sdssco = fits_table(os.path.join(basedir, 'bricks-sdssco.fits'),
+                              columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2'])
 
     bands = 'gri'
     basepat = os.path.join(basedir, 'coadd', tag, '%(brickname).3s',
@@ -2510,14 +2511,14 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     for band in bands:
         rimg = np.zeros((H,W), np.float32)
         rn   = np.zeros((H,W), np.uint8)
-        for i,brickid,brickname in zip(I,B.brickid[I], B.brickname[I]):
+        for i,brickname in zip(I, B.brickname[I]):
             has = getattr(B, 'has_%s' % band, None)
             if has is not None and not has[i]:
                 # No coverage for band in this brick.
                 print 'Brick', brickname, 'has no', band, 'band'
                 continue
 
-            fnargs = dict(band=band, brick=brickid, brickname=brickname)
+            fnargs = dict(band=band, brickname=brickname)
 
             if imagetag == 'resid':
                 basefn = basepat % fnargs
