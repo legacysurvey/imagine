@@ -70,12 +70,12 @@ def trymakedirs(fn):
         except:
             pass
 
-def save_jpeg(fn, rgb):
+def save_jpeg(fn, rgb, **kwargs):
     import pylab as plt
     import tempfile
     f,tempfn = tempfile.mkstemp(suffix='.png')
     os.close(f)
-    plt.imsave(tempfn, rgb)
+    plt.imsave(tempfn, rgb, **kwargs)
     cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, fn)
     os.system(cmd)
     os.unlink(tempfn)
@@ -603,7 +603,8 @@ def _get_dr2_bricks():
     if os.path.exists(fn):
         from astrometry.util.fits import fits_table
         print('Reading', fn)
-        B_dr2 = fits_table(fn)
+        B_dr2 = fits_table(fn, columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2'
+                                        'has_g', 'has_r', 'has_z'])
         return B_dr2
 
     from astrometry.libkd.spherematch import match_radec
@@ -684,14 +685,16 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
         import numpy as np
 
         B_dr1j = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1',
-                                         'decals-bricks-exist.fits'))
+                                         'decals-bricks-exist.fits',
+                                         columns=['has_image_g', 'has_image_r', 'has_image_z',
+                                                  'brickname', 'ra1','ra2','dec1','dec2']))
         B_dr1j.cut(reduce(np.logical_or, [B_dr1j.has_image_g,
                                           B_dr1j.has_image_r,
                                           B_dr1j.has_image_z]))
-        B_dr1j.has_g = B_dr1j.has_image_g
-        B_dr1j.has_r = B_dr1j.has_image_r
-        B_dr1j.has_z = B_dr1j.has_image_z
-        print(len(B_dr1j), 'bricks with images')
+        B_dr1j.rename('has_image_g', 'has_g')
+        B_dr1j.rename('has_image_g', 'has_g')
+        B_dr1j.rename('has_image_g', 'has_g')
+        print(len(B_dr1j), 'DR1 bricks with images')
 
     imagetag = 'image'
     tag = 'decals-dr1j'
@@ -700,10 +703,8 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
     if model:
         imagetag = 'model'
         tag = 'decals-model-dr1j'
-        #imagedir = 'decals-dr1j-model'
         scaledir = 'decals-dr1j'
         kwargs.update(model_gz=False, add_gz=True, scaledir=scaledir)
-        #kwargs.update(model_gz=True, scaledir=scaledir)
     if resid:
         imagetag = 'resid'
         kwargs.update(modeldir = 'decals-dr1j-model',
@@ -858,7 +859,8 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
     import fitsio
 
     if UNW is None:
-        UNW = fits_table(os.path.join(settings.UNWISE_DIR, 'allsky-atlas.fits'))
+        UNW = fits_table(os.path.join(settings.UNWISE_DIR, 'allsky-atlas.fits'),
+                         columns=['ra','dec','coadd_id'])
         UNW_tree = tree_build_radec(UNW.ra, UNW.dec)
 
     # unWISE tile size
@@ -1048,29 +1050,19 @@ def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0
 
     if not savecache:
         import tempfile
-        #f,tilefn = tempfile.mkstemp(suffix='.jpg')
-        f,tilefn = tempfile.mkstemp(suffix='.png')
+        f,tilefn = tempfile.mkstemp(suffix='.jpg')
         os.close(f)
 
     import pylab as plt
 
     # no jpeg output support in matplotlib in some installations...
     if True:
-        import tempfile
-        f,tempfn = tempfile.mkstemp(suffix='.png')
-        os.close(f)
-
         if stretch is not None:
             val = stretch(val)
-        plt.imsave(tempfn, val, vmin=vmin, vmax=vmax, cmap='hot')
-
-        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
-        os.system(cmd)
-        os.unlink(tempfn)
+        save_jpeg(tilefn, val, vmin=vmin, vmax=vmax, cmap='hot')
         print('Wrote', tilefn)
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
-
 
 decals = {}
 def _get_decals(name=None):
@@ -1087,6 +1079,24 @@ def _get_decals(name=None):
     if name == 'decals-dr2':
         dirnm = os.path.join(basedir, 'decals-dr2')
         d = Decals(decals_dir=dirnm)
+
+        # HACK -- drop unnecessary columns.
+        B = d.get_bricks_readonly()
+        for k in ['brickid', 'brickq', 'brickrow', 'brickcol']:
+            B.delete_column(k)
+        C = d.get_ccds_readonly()
+        # HACK -- cut to photometric & not-blacklisted CCDs.
+        C.cut(d.photometric_ccds(C))
+        print('HACK -- cut to', len(C), 'photometric CCDs')
+        C.cut(d.apply_blacklist(C))
+        print('HACK -- cut to', len(C), 'not-blacklisted CCDs')
+        for k in ['date_obs', 'ut', 'airmass',
+                  'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
+                  'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
+                  'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
+                  'ccdnmatchb', 'ccdmdncol', 'expid']:
+            C.delete_column(k)
+
         decals[name] = d
         return d
 
@@ -1179,28 +1189,32 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
 
     if not name in ccd_cache:
         print('Finding CCDs for name=', name)
-        fn = None
-        CCDs = None
-        if name == 'decals-dr1j':
-            fn = os.path.join(settings.DATA_DIR, 'decals-dr1', 'decals-ccds.fits')
-        elif name == 'decals-dr1k':
-            fn = os.path.join(settings.DATA_DIR, 'decals-dr1k',
-                              'decals-ccds.fits')
-        elif name == 'decals-dr1n':
-            fn = os.path.join(settings.DATA_DIR, 'decals-ccds-dr1n.fits')
-        elif name == 'decals-dr2':
-            fn = os.path.join(settings.DATA_DIR, 'decals-dr2',
-                              'decals-ccds.fits')
-        else:
-            D = _get_decals(name=name)
-            if hasattr(D, 'get_ccds_readonly'):
-                CCDs = D.get_ccds_readonly()
-            else:
-                CCDs = D.get_ccds()
 
-        if CCDs is None:
-            from astrometry.util.fits import fits_table
-            CCDs = fits_table(fn)
+        decals = _get_decals(name=name)
+        CCDs = decals.get_ccds_readonly()
+
+        # fn = None
+        # CCDs = None
+        # if name == 'decals-dr1j':
+        #     fn = os.path.join(settings.DATA_DIR, 'decals-dr1', 'decals-ccds.fits')
+        # elif name == 'decals-dr1k':
+        #     fn = os.path.join(settings.DATA_DIR, 'decals-dr1k',
+        #                       'decals-ccds.fits')
+        # elif name == 'decals-dr1n':
+        #     fn = os.path.join(settings.DATA_DIR, 'decals-ccds-dr1n.fits')
+        # elif name == 'decals-dr2':
+        #     fn = os.path.join(settings.DATA_DIR, 'decals-dr2',
+        #                       'decals-ccds.fits')
+        # else:
+        #     D = _get_decals(name=name)
+        #     if hasattr(D, 'get_ccds_readonly'):
+        #         CCDs = D.get_ccds_readonly()
+        #     else:
+        #         CCDs = D.get_ccds()
+        # 
+        # if CCDs is None:
+        #     from astrometry.util.fits import fits_table
+        #     CCDs = fits_table(fn)
 
         if name == 'decals-dr2':
             CCDs.extname = CCDs.ccdname
@@ -1237,8 +1251,8 @@ def ccd_list(req):
 
     if name == 'decals-dr2':
         ccdname = lambda c: '%i-%s-%s' % (c.expnum, c.ccdname.strip(), c.filter)
-        decals = _get_decals(name)
-        CCDS.cut(decals.photometric_ccds(CCDS))
+        #decals = _get_decals(name)
+        #CCDS.cut(decals.photometric_ccds(CCDS))
 
     CCDS.cut(np.lexsort((CCDS.expnum, CCDS.filter)))
 
@@ -1366,20 +1380,16 @@ def ccd_detail(req, name, ccd):
     chipnum = int(words[1][1:], 10)
     extname = '%s%i' % (ns,chipnum)
 
-    D = _get_decals(name=name)
-    CCDs = D.get_ccds()
+    decals = _get_decals(name=name)
+    C = decals.find_ccds(expnum=expnum, ccdname=extname)
+    assert(len(C) == 1)
+    c = C[0]
 
     if name == 'decals-dr2':
-        I = np.flatnonzero((CCDs.expnum == expnum) * 
-                           np.array([n.strip() == extname for n in CCDs.ccdname]))
         about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix' % (ccd, c.image_filename, c.image_hdu, c.exptime, c.seeing, c.fwhm)
     else:
-        I = np.flatnonzero((CCDs.expnum == expnum) * 
-                           np.array([n.strip() == extname for n in CCDs.extname]))
         about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' % (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262)
-    assert(len(I) == 1)
 
-    c = CCDs[I[0]]
     return HttpResponse(about(ccd, c))
 
 
@@ -1596,8 +1606,8 @@ def _get_decals_cat(wcs, tag='decals'):
 
     cat = []
     hdr = None
-    for brickid,brickname in zip(B.brickid[I], B.brickname[I]):
-        fnargs = dict(brick=brickid, brickname=brickname)
+    for brickname in zip(B.brickname[I]):
+        fnargs = dict(brickname=brickname)
         catfn = catpat % fnargs
         if not os.path.exists(catfn):
             print('Does not exist:', catfn)
