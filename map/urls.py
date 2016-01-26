@@ -22,12 +22,15 @@ urlpatterns = [
     #url(r'^decam-depth/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decam_depth),
 
     # DR1k -- COSMOS
-    url(r'^decals-dr1k/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr1k),
+    #url(r'^decals-dr1k/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr1k),
 
     # DR1j full
     url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr1j),
     url(r'^decals-model-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_model_dr1j),
     url(r'^decals-resid-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_resid_dr1j),
+
+    # catalog
+    url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_decals_dr1j),
 
     url(r'^decals-nexp-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_nexp_dr1j),
 
@@ -51,9 +54,6 @@ urlpatterns = [
 
     # Bright stars
     url(r'^bright/(\d+)/cat.json', views.cat_bright),
-
-    # catalog
-    url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_decals_dr1j),
 
     # SFD dust map
     url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sfd),

@@ -671,128 +671,6 @@ def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
                            savecache=savecache, rgbfunc=dr2_rgb, **kwargs)
 
 
-B_dr1n = None
-
-def get_dr1n_bricks():
-    global B_dr1n
-    if B_dr1n is not None:
-        return B_dr1n
-    from astrometry.util.fits import fits_table
-    import numpy as np
-    B_dr1n = fits_table(os.path.join(settings.DATA_DIR,
-                                     'decals-bricks.fits'))
-    print('Total bricks:', len(B_dr1n))
-    B_dr1n.cut(np.logical_or(
-        # Virgo
-        (B_dr1n.ra > 185.) * (B_dr1n.ra < 190.) *
-        (B_dr1n.dec > 10.)  * (B_dr1n.dec < 15.),
-        # Arjun's LSB
-        (B_dr1n.ra > 147.2) * (B_dr1n.ra < 147.8) *
-        (B_dr1n.dec > -0.4)  * (B_dr1n.dec < 0.4)
-    ))
-    print(len(B_dr1n), 'bricks in Virgo/LSB region')
-    return B_dr1n
-
-
-def map_decals_model_dr1n(*args, **kwargs):
-    return map_decals_dr1n(*args, model=True, model_gz=False, **kwargs)
-
-def map_decals_resid_dr1n(*args, **kwargs):
-    return map_decals_dr1n(*args, resid=True, model_gz=False, **kwargs)
-
-def map_decals_dr1n(req, ver, zoom, x, y, savecache=None,
-                    model=False, resid=False, nexp=False,
-                    **kwargs):
-    if savecache is None:
-        savecache = settings.SAVE_CACHE
-    B_dr1n = get_dr1n_bricks()
-
-    imagetag = 'image'
-    tag = 'decals-dr1n'
-    imagedir = 'decals-dr1n'
-    rgb = rgbkwargs
-    if model:
-        imagetag = 'model'
-        tag = 'decals-model-dr1n'
-        scaledir = 'decals-dr1n'
-        kwargs.update(model_gz=False, add_gz=True, scaledir=scaledir)
-    if resid:
-        imagetag = 'resid'
-        kwargs.update(modeldir = 'decals-dr1n-model')
-        tag = 'decals-resid-dr1n'
-    # if nexp:
-    #     imagetag = 'nexp'
-    #     tag = 'decals-nexp-dr1n'
-    #     rgb = rgbkwargs_nexp
-
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
-                           imagetag=imagetag,
-                           rgbkwargs=rgb,
-                           bricks=B_dr1n,
-                           savecache=savecache, **kwargs)
-
-
-B_dr1k = None
-
-def map_decals_model_dr1k(*args, **kwargs):
-    return map_decals_dr1k(*args, model=True, model_gz=False, **kwargs)
-
-def map_decals_dr1k(req, ver, zoom, x, y, savecache=None,
-                    model=False, resid=False, nexp=False,
-                    **kwargs):
-    if savecache is None:
-        savecache = settings.SAVE_CACHE
-    global B_dr1k
-    if B_dr1k is None:
-        from astrometry.util.fits import fits_table
-        import numpy as np
-
-        B_dr1k = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
-                                         'decals-bricks-exist.fits'))
-        B_dr1k.cut((B_dr1k.ra > 148.7) * (B_dr1k.ra < 151.5) *
-                   (B_dr1k.dec > 0.9)  * (B_dr1k.dec < 3.6))
-        # B_dr1k.cut(reduce(np.logical_or, [B_dr1k.has_image_g,
-        #                                   B_dr1k.has_image_r,
-        #                                   B_dr1k.has_image_z]))
-        # B_dr1k.has_g = B_dr1k.has_image_g
-        # B_dr1k.has_r = B_dr1k.has_image_r
-        # B_dr1k.has_z = B_dr1k.has_image_z
-        print(len(B_dr1k), 'bricks in COSMOS region')
-        print(sum(B_dr1k.has_g), 'with g')
-        print(sum(B_dr1k.has_r), 'with r')
-        print(sum(B_dr1k.has_z), 'with z')
-        B_dr1k.cut(reduce(np.logical_or, [B_dr1k.has_g > 0,
-                                          B_dr1k.has_r > 0,
-                                          B_dr1k.has_z > 0]))
-        print(len(B_dr1k), 'bricks with coverage')
-
-    imagetag = 'image'
-    tag = 'decals-dr1k'
-    imagedir = 'decals-dr1k'
-    rgb = rgbkwargs
-    if model:
-        imagetag = 'model'
-        tag = 'decals-model-dr1k'
-        scaledir = 'decals-dr1k'
-        kwargs.update(model_gz=False, add_gz=True, scaledir=scaledir)
-    if resid:
-        imagetag = 'resid'
-        kwargs.update(modeldir = 'decals-dr1k-model')
-        tag = 'decals-resid-dr1k'
-    if nexp:
-        imagetag = 'nexp'
-        tag = 'decals-nexp-dr1k'
-        rgb = rgbkwargs_nexp
-
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
-                           imagetag=imagetag,
-                           rgbkwargs=rgb,
-                           bricks=B_dr1k,
-                           savecache=savecache, **kwargs)
-
-
-
-
 B_dr1j = None
 
 def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
@@ -847,9 +725,6 @@ def map_decals_model_dr1j(*args, **kwargs):
 
 def map_decals_resid_dr1j(*args, **kwargs):
     return map_decals_dr1j(*args, resid=True, model_gz=False, **kwargs)
-
-def map_decals_nexp_dr1j(*args, **kwargs):
-    return map_decals_dr1j(*args, nexp=True, model_gz=False, add_gz=True, **kwargs)
 
 def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
     import numpy as np
@@ -937,14 +812,6 @@ UNW_tree = None
 
 def map_unwise_w1w2(*args, **kwargs):
     return map_unwise(*args, **kwargs)
-
-def map_unwise_w3w4(*args, **kwargs):
-    kwargs.update(S=[1e5, 1e6])
-    return map_unwise(*args, bands=[3,4], tag='unwise-w3w4', **kwargs)
-
-def map_unwise_w1234(*args, **kwargs):
-    kwargs.update(S=[3e3, 3e3, 3e5, 1e6])
-    return map_unwise(*args, bands=[1,2,3,4], tag='unwise-w1234', **kwargs)
 
 def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
                get_images=False,
@@ -1535,56 +1402,6 @@ def brick_detail(req, brickname):
     #brickname = req.GET['brick']
     return HttpResponse('Brick ' + brickname)
 
-def cat_vcc(req, ver):
-    import json
-    tag = 'ngc'
-    ralo = float(req.GET['ralo'])
-    rahi = float(req.GET['rahi'])
-    declo = float(req.GET['declo'])
-    dechi = float(req.GET['dechi'])
-
-    ver = int(ver)
-    if not ver in catversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-
-    from astrometry.util.fits import fits_table, merge_tables
-    import numpy as np
-    from decals import settings
-
-    TT = []
-    T = fits_table(os.path.join(settings.DATA_DIR, 'virgo-cluster-cat-2.fits'))
-    print(len(T), 'in VCC 2; ra', ralo, rahi, 'dec', declo, dechi)
-    T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
-    print(len(T), 'in cut')
-    TT.append(T)
-
-    T = fits_table(os.path.join(settings.DATA_DIR, 'virgo-cluster-cat-3.fits'))
-    print(len(T), 'in VCC 3; ra', ralo, rahi, 'dec', declo, dechi)
-    T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
-    print(len(T), 'in cut')
-    T.evcc_id = np.array(['-']*len(T))
-    T.rename('id', 'vcc_id')
-    TT.append(T)
-    T = merge_tables(TT)
-
-    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
-    names = []
-
-    for t in T:
-        evcc = t.evcc_id.strip()
-        vcc = t.vcc_id.strip()
-        ngc = t.ngc.strip()
-        nms = []
-        if evcc != '-':
-            nms.append('EVCC ' + evcc)
-        if vcc != '-':
-            nms.append('VCC ' + vcc)
-        if ngc != '-':
-            nms.append('NGC ' + ngc)
-        names.append(' / '.join(nms))
-
-    return HttpResponse(json.dumps(dict(rd=rd, name=names)),
-                        content_type='application/json')
 
 def cat_spec(req, ver):
     import json
