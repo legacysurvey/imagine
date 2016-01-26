@@ -19,7 +19,7 @@ urlpatterns = [
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_decals_dr2),
 
     # depth maps
-    url(r'^decam-depth/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decam_depth),
+    #url(r'^decam-depth/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decam_depth),
 
     # DR1k -- COSMOS
     url(r'^decals-dr1k/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr1k),
@@ -31,7 +31,7 @@ urlpatterns = [
 
     url(r'^decals-nexp-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_nexp_dr1j),
 
-    url(r'^decals-wl/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_wl),
+    #url(r'^decals-wl/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_wl),
 
     # Cutouts
     url(r'^fits-cutout-decals-dr1', views.fits_cutout_decals_dr1j),

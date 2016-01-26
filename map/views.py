@@ -1,3 +1,4 @@
+from __future__ import print_function
 if __name__ == '__main__':
     import sys
     sys.path.insert(0, 'django-1.7')
@@ -136,10 +137,10 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
     lastmod = datetime.datetime.fromtimestamp(st.st_mtime)
 
     if modsince:
-        #print 'If-modified-since:', modsince #Sat, 22 Nov 2014 01:12:39 GMT
+        #print('If-modified-since:', modsince #Sat, 22 Nov 2014 01:12:39 GMT)
         ifmod = datetime.datetime.strptime(modsince, '%a, %d %b %Y %H:%M:%S %Z')
-        #print 'Parsed:', ifmod
-        #print 'Last mod:', lastmod
+        #print('Parsed:', ifmod)
+        #print('Last mod:', lastmod)
         dt = (lastmod - ifmod).total_seconds()
         if dt < 1:
             from django.http import HttpResponseNotModified
@@ -256,19 +257,18 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     if img is None:
         sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn,
                               read_base_wcs=read_base_wcs, read_wcs=read_wcs)
-        # print 'Source:', sourcefn
+        # print('Source:', sourcefn)
         if sourcefn is None or not os.path.exists(sourcefn):
-            # print 'Image source file', sourcefn, 'not found'
+            # print('Image source file', sourcefn, 'not found')
             return None
         try:
-            print 'Reading:', sourcefn
+            print('Reading:', sourcefn)
             F = fitsio.FITS(sourcefn)
             img = F[0].read()
             hdr = F[0].read_header()
         except:
-            print 'Failed to read:', sourcefn
+            print('Failed to read:', sourcefn)
             return None
-        #print 'source image:', img.shape
 
     H,W = img.shape
     # make even size; smooth down
@@ -304,7 +304,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     os.unlink(tmpfn)
     fitsio.write(tmpfn, I2, header=hdr, clobber=True)
     os.rename(tmpfn, fn)
-    print 'Wrote', fn
+    print('Wrote', fn)
     if return_data:
         return I2,wcs2,fn
     return fn
@@ -342,11 +342,11 @@ def cutout_decals(req, jpeg=False, fits=False, default_tag='decals-dr1j',
     kwa = {}
 
     tag = req.GET.get('tag', None)
-    print 'Requested tag:', tag
+    print('Requested tag:', tag)
     if not tag in ['decals-dr1n', 'decals-model', 'decals-resid']:
         # default
         tag = default_tag
-    print 'Using tag:', tag
+    print('Using tag:', tag)
 
     imagetag = 'image'
     if tag == 'decals-model':
@@ -497,12 +497,8 @@ def read_astrans(fn, hdu, hdr=None, W=None, H=None, fitsfile=None):
     from astrometry.util.starutil_numpy import radectoxyz
     import numpy as np
     
-    #print 'read_astrans, fn', fn
     astrans = AsTrans.read(fn, F=fitsfile, primhdr=hdr)
-    #print 'AsTrans:', astrans
-
     # Approximate as SIP.
-
     if hdr is None and fn.endswith('.bz2'):
         import fitsio
         hdr = fitsio.read_header(fn, 0)
@@ -517,7 +513,6 @@ def read_astrans(fn, hdu, hdr=None, W=None, H=None, fitsfile=None):
 
     # Evaluate AsTrans on a pixel grid...
     h,w = tan.shape
-    #print 'Image shape:', h,w
     xx = np.linspace(1, w, 20)
     yy = np.linspace(1, h, 20)
     xx,yy = np.meshgrid(xx, yy)
@@ -528,13 +523,9 @@ def read_astrans(fn, hdu, hdr=None, W=None, H=None, fitsfile=None):
     xyz = radectoxyz(rr, dd)
     fieldxy = np.vstack((xx, yy)).T
 
-    # print 'xyz', xyz.shape
-    # print 'xy', fieldxy.shape
-    
     sip_order = 5
     inv_order = 7
     sip = fit_sip_wcs_py(xyz, fieldxy, None, tan, sip_order, inv_order)
-    print 'Fit SIP:', sip
     return sip
 
 
@@ -602,193 +593,21 @@ def sdss_rgb(rimgs, bands, scales=None,
     rgb = np.clip(rgb, 0, 1)
     return rgb
 
-
-
-def map_decals_wl(req, ver, zoom, x, y):
-    tag = 'decals-wl'
-    ignoreCached = False
-    filename = None
-    forcecache = False
-
-    from decals import settings
-    savecache = settings.SAVE_CACHE
-
-    zoom = int(zoom)
-    zoomscale = 2.**zoom
-    x = int(x)
-    y = int(y)
-    if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
-        raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
-    ver = int(ver)
-    if not ver in tileversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-
-    basedir = settings.DATA_DIR
-    tilefn = os.path.join(basedir, 'tiles', tag,
-                          '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
-    if os.path.exists(tilefn) and not ignoreCached:
-        print 'Cached:', tilefn
-        return send_file(tilefn, 'image/jpeg', expires=oneyear,
-                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
-                         filename=filename)
-    else:
-        print 'Tile image does not exist:', tilefn
-    from astrometry.util.resample import resample_with_wcs, OverlapError
-    from astrometry.util.util import Tan
-    from astrometry.libkd.spherematch import match_radec
-    from astrometry.util.fits import fits_table
-    from astrometry.util.starutil_numpy import degrees_between
-    import numpy as np
-    import fitsio
-
-    try:
-        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-    except RuntimeError as e:
-        return HttpResponse(e.strerror)
-
-    mydir = os.path.join(basedir, 'coadd', 'weak-lensing')
-
-    rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
-    rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
-    r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
-    r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
-    #dlo = min(d1, d2)
-    #dhi = max(d1, d2)
-
-    r,d = wcs.pixelxy2radec(W/2, H/2)[-2:]
-    rad = degrees_between(r, d, rlo, d1)
-
-    fn = os.path.join(mydir, 'index.fits')
-    if not os.path.exists(fn):
-        #
-        ii,rr,dd = [],[],[]
-        for i in range(1, 52852+1):
-            imgfn = os.path.join(mydir, 'map%i.fits' % i)
-            print imgfn
-            hdr = fitsio.read_header(imgfn)
-            r = hdr['CRVAL1']
-            d = hdr['CRVAL2']
-            ii.append(i)
-            rr.append(r)
-            dd.append(d)
-        T = fits_table()
-        T.ra  = np.array(rr)
-        T.dec = np.array(dd)
-        T.i   = np.array(ii)
-        T.writeto(fn)
-
-    T = fits_table(fn)
-    I,J,d = match_radec(T.ra, T.dec, r, d, rad + 0.2)
-    T.cut(I)
-    print len(T), 'weak-lensing maps in range'
-    
-    if len(I) == 0:
-        from django.http import HttpResponseRedirect
-        if forcecache:
-            # create symlink to blank.jpg!
-            trymakedirs(tilefn)
-            src = os.path.join(settings.STATIC_ROOT, 'blank.jpg')
-            if os.path.exists(tilefn):
-                os.unlink(tilefn)
-            os.symlink(src, tilefn)
-            print 'Symlinked', tilefn, '->', src
-        return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
-
-    r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
-                            [1,H/2,H,H,H,H/2,1,1])[-2:]
-
-    foundany = False
-    rimg = np.zeros((H,W), np.float32)
-    rn   = np.zeros((H,W), np.uint8)
-    for tilei in T.i:
-        fn = os.path.join(mydir, 'map%i.fits' % tilei)
-        try:
-            bwcs = _read_tan_wcs(fn, 0)
-        except:
-            print 'Failed to read WCS:', fn
-            savecache = False
-            import traceback
-            import sys
-            traceback.print_exc(None, sys.stdout)
-            continue
-
-        foundany = True
-        print 'Reading', fn
-        ok,xx,yy = bwcs.radec2pixelxy(r, d)
-        xx = xx.astype(np.int)
-        yy = yy.astype(np.int)
-        imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
-        M = 10
-        xlo = np.clip(xx.min() - M, 0, imW)
-        xhi = np.clip(xx.max() + M, 0, imW)
-        ylo = np.clip(yy.min() - M, 0, imH)
-        yhi = np.clip(yy.max() + M, 0, imH)
-        if xlo >= xhi or ylo >= yhi:
-            continue
-
-        subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
-        slc = slice(ylo,yhi), slice(xlo,xhi)
-        try:
-            f = fitsio.FITS(fn)[0]
-            img = f[slc]
-            del f
-        except:
-            print 'Failed to read image and WCS:', fn
-            savecache = False
-            import traceback
-            import sys
-            traceback.print_exc(None, sys.stdout)
-            continue
-
-        try:
-            Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
-        except OverlapError:
-            print 'Resampling exception'
-            continue
-
-        rimg[Yo,Xo] += img[Yi,Xi]
-        rn  [Yo,Xo] += 1
-    rimg /= np.maximum(rn, 1)
-
-    if forcecache:
-        savecache = True
-
-    if savecache:
-        trymakedirs(tilefn)
-    else:
-        import tempfile
-        f,tilefn = tempfile.mkstemp(suffix='.jpg')
-        os.close(f)
-
-    import pylab as plt
-
-    # S/N
-    #lo,hi = 1.5, 5.0
-    lo,hi = 0, 5.0
-    rgb = plt.cm.hot((rimg - lo) / (hi - lo))
-    plt.imsave(tilefn, rgb)
-    print 'Wrote', tilefn
-
-    return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
-                     filename=filename)
-
-
-
-
 B_dr2 = None
 def _get_dr2_bricks():
     global B_dr2
     if B_dr2 is not None:
         return B_dr2
 
-    from astrometry.util.fits import fits_table
-    from astrometry.libkd.spherematch import match_radec
-    import numpy as np
-
     fn = os.path.join(settings.DATA_DIR, 'decals-dr2', 'decals-bricks-in-dr2.fits')
     if os.path.exists(fn):
+        from astrometry.util.fits import fits_table
+        print('Reading', fn)
         B_dr2 = fits_table(fn)
         return B_dr2
+
+    from astrometry.libkd.spherematch import match_radec
+    import numpy as np
 
     decals = _get_decals('decals-dr2')
     B = decals.get_bricks()
@@ -803,14 +622,14 @@ def _get_dr2_bricks():
         K = (C.filter[J] == band)
         has[I[K]] = True
         B.set('has_%s' % band, has)
-        print sum(has), 'bricks have coverage in', band
+        print(sum(has), 'bricks have coverage in', band)
 
     keep = np.zeros(len(B), bool)
     keep[I] = True
     B.cut(keep)
     B_dr2 = B
     B_dr2.writeto(fn)
-    print 'Wrote', fn
+    print('Wrote', fn)
     return B_dr2
 
 def dr2_rgb(rimgs, bands, **ignored):
@@ -862,7 +681,7 @@ def get_dr1n_bricks():
     import numpy as np
     B_dr1n = fits_table(os.path.join(settings.DATA_DIR,
                                      'decals-bricks.fits'))
-    print 'Total bricks:', len(B_dr1n)
+    print('Total bricks:', len(B_dr1n))
     B_dr1n.cut(np.logical_or(
         # Virgo
         (B_dr1n.ra > 185.) * (B_dr1n.ra < 190.) *
@@ -871,7 +690,7 @@ def get_dr1n_bricks():
         (B_dr1n.ra > 147.2) * (B_dr1n.ra < 147.8) *
         (B_dr1n.dec > -0.4)  * (B_dr1n.dec < 0.4)
     ))
-    print len(B_dr1n), 'bricks in Virgo/LSB region'
+    print(len(B_dr1n), 'bricks in Virgo/LSB region')
     return B_dr1n
 
 
@@ -938,14 +757,14 @@ def map_decals_dr1k(req, ver, zoom, x, y, savecache=None,
         # B_dr1k.has_g = B_dr1k.has_image_g
         # B_dr1k.has_r = B_dr1k.has_image_r
         # B_dr1k.has_z = B_dr1k.has_image_z
-        print len(B_dr1k), 'bricks in COSMOS region'
-        print sum(B_dr1k.has_g), 'with g'
-        print sum(B_dr1k.has_r), 'with r'
-        print sum(B_dr1k.has_z), 'with z'
+        print(len(B_dr1k), 'bricks in COSMOS region')
+        print(sum(B_dr1k.has_g), 'with g')
+        print(sum(B_dr1k.has_r), 'with r')
+        print(sum(B_dr1k.has_z), 'with z')
         B_dr1k.cut(reduce(np.logical_or, [B_dr1k.has_g > 0,
                                           B_dr1k.has_r > 0,
                                           B_dr1k.has_z > 0]))
-        print len(B_dr1k), 'bricks with coverage'
+        print(len(B_dr1k), 'bricks with coverage')
 
     imagetag = 'image'
     tag = 'decals-dr1k'
@@ -994,7 +813,7 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
         B_dr1j.has_g = B_dr1j.has_image_g
         B_dr1j.has_r = B_dr1j.has_image_r
         B_dr1j.has_z = B_dr1j.has_image_z
-        print len(B_dr1j), 'bricks with images'
+        print(len(B_dr1j), 'bricks with images')
 
     imagetag = 'image'
     tag = 'decals-dr1j'
@@ -1185,7 +1004,7 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
     radius = radius + max(degrees_between(ra,dec, r0,d0), degrees_between(ra,dec, r1,d1))
 
     J = tree_search_radec(UNW_tree, ra, dec, radius)
-    #print len(J), 'unWISE tiles nearby'
+    #print(len(J), 'unWISE tiles nearby')
     
     ww = [1, W*0.25, W*0.5, W*0.75, W]
     hh = [1, H*0.25, H*0.5, H*0.75, H]
@@ -1208,7 +1027,7 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         
         native_scale = 2.75
         scaled = int(np.floor(np.log2(scale / native_scale)))
-        print 'Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled
+        print('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled)
         scaled = np.clip(scaled, 1, 7)
         dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(tilename).3s', 'unwise-%(tilename)s-%(band)s.fits')
@@ -1232,7 +1051,7 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         bwcs = Tan(fns[0], 0)
         ok,xx,yy = bwcs.radec2pixelxy(r, d)
         if not np.all(ok):
-            print 'Skipping tile', tile
+            print('Skipping tile', tile)
             continue
         assert(np.all(ok))
         xx = xx.astype(np.int)
@@ -1252,9 +1071,6 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         try:
             Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
         except OverlapError:
-            # print 'Resampling exception'
-            # import traceback
-            # print traceback.print_exc()
             continue
 
         for fn, rimg in zip(fns, rimgs):
@@ -1283,12 +1099,12 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         f,tempfn = tempfile.mkstemp(suffix='.png')
         os.close(f)
         plt.imsave(tempfn, rgb)
-        print 'Wrote to temp file', tempfn
+        print('Wrote to temp file', tempfn)
         cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
-        print cmd
+        print(cmd)
         os.system(cmd)
         os.unlink(tempfn)
-        print 'Wrote', tilefn
+        print('Wrote', tilefn)
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
@@ -1343,7 +1159,7 @@ def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
 
     if os.path.exists(tilefn):
-        # print 'Cached:', tilefn
+        # print('Cached:', tilefn)
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
 
@@ -1384,7 +1200,7 @@ def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0
         cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
         os.system(cmd)
         os.unlink(tempfn)
-        print 'Wrote', tilefn
+        print('Wrote', tilefn)
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
@@ -1395,7 +1211,7 @@ def _get_decals(name=None):
     if name in decals:
         return decals[name]
 
-    print 'Creating Decals() object for "%s"' % name
+    print('Creating Decals() object for "%s"' % name)
 
     from decals import settings
     basedir = settings.DATA_DIR
@@ -1423,7 +1239,6 @@ def brick_list(req):
     south = float(req.GET['south'])
     east  = float(req.GET['east'])
     west  = float(req.GET['west'])
-    #print 'N,S,E,W:', north, south, east, west
 
     if east < 0:
         east += 360.
@@ -1496,7 +1311,7 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
     global ccd_cache
 
     if not name in ccd_cache:
-        print 'Finding CCDs for name=', name
+        print('Finding CCDs for name=', name)
         fn = None
         CCDs = None
         if name == 'decals-dr1j':
@@ -1546,7 +1361,6 @@ def ccd_list(req):
     south = float(req.GET['south'])
     east  = float(req.GET['east'])
     west  = float(req.GET['west'])
-    #print 'N,S,E,W:', north, south, east, west
 
     name = req.GET.get('id', None)
 
@@ -1739,15 +1553,15 @@ def cat_vcc(req, ver):
 
     TT = []
     T = fits_table(os.path.join(settings.DATA_DIR, 'virgo-cluster-cat-2.fits'))
-    print len(T), 'in VCC 2; ra', ralo, rahi, 'dec', declo, dechi
+    print(len(T), 'in VCC 2; ra', ralo, rahi, 'dec', declo, dechi)
     T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
-    print len(T), 'in cut'
+    print(len(T), 'in cut')
     TT.append(T)
 
     T = fits_table(os.path.join(settings.DATA_DIR, 'virgo-cluster-cat-3.fits'))
-    print len(T), 'in VCC 3; ra', ralo, rahi, 'dec', declo, dechi
+    print(len(T), 'in VCC 3; ra', ralo, rahi, 'dec', declo, dechi)
     T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
-    print len(T), 'in cut'
+    print(len(T), 'in cut')
     T.evcc_id = np.array(['-']*len(T))
     T.rename('id', 'vcc_id')
     TT.append(T)
@@ -1790,13 +1604,13 @@ def cat_spec(req, ver):
 
     TT = []
     T = fits_table(os.path.join(settings.DATA_DIR, 'specObj-dr12-trim-2.fits'))
-    print len(T), 'spectra'
+    print(len(T), 'spectra')
     if ralo > rahi:
         # RA wrap
         T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
     else:
         T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
-    print len(T), 'in cut'
+    print(len(T), 'in cut')
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.label]
@@ -1826,13 +1640,13 @@ def cat_bright(req, ver):
 
     TT = []
     T = fits_table(os.path.join(settings.DATA_DIR, 'bright.fits'))
-    print len(T), 'bright stars'
+    print(len(T), 'bright stars')
     if ralo > rahi:
         # RA wrap
         T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
     else:
         T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
-    print len(T), 'in cut'
+    print(len(T), 'in cut')
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.name]
@@ -1907,7 +1721,6 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         cachefn = os.path.join(basedir, 'cats-cache', tag,
                                '%i/%i/%i/%i.cat.json' % (ver, zoom, x, y))
         if os.path.exists(cachefn):
-            # print 'Cached:', cachefn
             return send_file(cachefn, 'application/json',
                              modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
                              expires=oneyear)
@@ -1926,8 +1739,6 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         objids = []
         nobs = []
     else:
-        #print 'All catalogs:'
-        #cat.about()
         rd = zip(cat.ra, cat.dec)
         types = list([t[0] for t in cat.get('type')])
         fluxes = [dict(g=float(g), r=float(r), z=float(z))
@@ -1955,14 +1766,13 @@ def _get_decals_cat(wcs, tag='decals'):
 
     basedir = settings.DATA_DIR
     H,W = wcs.shape
-    # print 'WCS shape:', H,W
     X = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                             [1,H/2,H,H,H,H/2,1,1])
     r,d = X[-2:]
     catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
                           'tractor-%(brickname)s.fits')
     # FIXME (name)
-    print '_get_decals_cat for tag=', tag
+    print('_get_decals_cat for tag=', tag)
     D = _get_decals(name=tag)
     B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
@@ -1973,17 +1783,17 @@ def _get_decals_cat(wcs, tag='decals'):
         fnargs = dict(brick=brickid, brickname=brickname)
         catfn = catpat % fnargs
         if not os.path.exists(catfn):
-            print 'Does not exist:', catfn
+            print('Does not exist:', catfn)
             continue
-        print 'Reading catalog', catfn
+        print('Reading catalog', catfn)
         T = fits_table(catfn)
         # FIXME -- all False
-        # print 'brick_primary', np.unique(T.brick_primary)
+        # print('brick_primary', np.unique(T.brick_primary))
         # T.cut(T.brick_primary)
         ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
-        #print 'xx,yy', xx.min(), xx.max(), yy.min(), yy.max()
+        #print('xx,yy', xx.min(), xx.max(), yy.min(), yy.max())
         T.cut((xx > 0) * (yy > 0) * (xx < W) * (yy < H))
-        # print 'kept', len(T), 'from', catfn
+        # print('kept', len(T), 'from', catfn)
         cat.append(T)
         if hdr is None:
             hdr = T.get_header()
@@ -2026,12 +1836,11 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
     if os.path.exists(tilefn) and not ignoreCached:
-        print 'Cached:', tilefn
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
                          filename=filename)
     else:
-        print 'Tile image does not exist:', tilefn
+        print('Tile image does not exist:', tilefn)
     from astrometry.util.resample import resample_with_wcs, OverlapError
     from astrometry.util.util import Tan
     import numpy as np
@@ -2046,12 +1855,6 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         W = wcs.get_width()
         H = wcs.get_height()
 
-    # ok,r0,d0 = wcs.pixelxy2radec(1,1)
-    # ok,r1,d1 = wcs.pixelxy2radec(2,2)
-    # from astrometry.util.starutil_numpy import arcsec_between
-    # a = arcsec_between(r0,d0,r1,d1)
-    # print 'WCS: zoom %i, x,y %i,%i -> pixel scale %f' % (zoom, x, y, a/np.sqrt(2.))
-
     if basepat is None:
         basepat = os.path.join(basedir, 'coadd', imagedir, '%(brickname).3s',
                                '%(brickname)s',
@@ -2063,20 +1866,10 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     else:
         modbasepat = basepat
 
-    # print 'Modbasepat:', modbasepat
-    # print 'Model_gz:', model_gz
-    # print 'Imagetag:', imagetag
-    # print 'add_gz:', add_gz
-
     if model_gz and imagetag == 'model':
         modbasepat += '.gz'
-    #print 'add_gz:', add_gz
     if add_gz:
         basepat += '.gz'
-    #print 'basepat:', basepat
-
-    # print 'basepat:', basepat
-    # print 'modbasepat:', modbasepat
 
     scaled = 0
     scalepat = None
@@ -2085,7 +1878,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     if zoom < nativescale:
         scaled = (nativescale - zoom)
         scaled = np.clip(scaled, 1, maxscale)
-        #print 'Scaled-down:', scaled
+        #print('Scaled-down:', scaled)
         dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
 
@@ -2103,7 +1896,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     dlo = min(d1, d2)
     dhi = max(d1, d2)
     I = D.bricks_touching_radec_box(B, rlo, rhi, dlo, dhi)
-    print len(I), 'bricks touching zoom', zoom, 'x,y', x,y, 'RA', rlo,rhi, 'Dec', dlo,dhi
+    print(len(I), 'bricks touching zoom', zoom, 'x,y', x,y, 'RA', rlo,rhi, 'Dec', dlo,dhi)
 
     if len(I) == 0:
         if get_images:
@@ -2116,14 +1909,11 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             if os.path.exists(tilefn):
                 os.unlink(tilefn)
             os.symlink(src, tilefn)
-            print 'Symlinked', tilefn, '->', src
+            print('Symlinked', tilefn, '->', src)
         return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
 
     r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                             [1,H/2,H,H,H,H/2,1,1])[-2:]
-
-    #print 'map_coadd_bands: imagetag', imagetag
-
     foundany = False
     rimgs = []
     for band in bands:
@@ -2133,7 +1923,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             has = getattr(B, 'has_%s' % band, None)
             if has is not None and not has[i]:
                 # No coverage for band in this brick.
-                print 'Brick', brickname, 'has no', band, 'band'
+                print('Brick', brickname, 'has no', band, 'band')
                 continue
 
             fnargs = dict(band=band, brickname=brickname)
@@ -2153,36 +1943,28 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     imscalepat = scalepat.replace('resid', 'image')
                     modscalepat = scalepat.replace('resid', 'model')
                 imbasefn = basefn.replace('resid', 'image')
-                print 'resid.  imscalepat, imbasefn', imscalepat, imbasefn
-                print 'resid.  modscalepat, modbasefn', modscalepat, modbasefn
+                print('resid.  imscalepat, imbasefn', imscalepat, imbasefn)
+                print('resid.  modscalepat, modbasefn', modscalepat, modbasefn)
                 imfn = get_scaled(imscalepat, fnargs, scaled, imbasefn)
-                # print 'imfn', imfn
                 modfn = get_scaled(modscalepat, fnargs, scaled, modbasefn)
-                # print 'modfn', modfn
-                print 'resid.  im', imfn, 'mod', modfn
+                print('resid.  im', imfn, 'mod', modfn)
                 fn = imfn
 
             else:
                 basefn = basepat % fnargs
                 fn = get_scaled(scalepat, fnargs, scaled, basefn)
             if fn is None:
-                # print 'Filename:', fn
-                print 'not found: brick', brickname, 'band', band, 'with basefn', basefn
+                print('not found: brick', brickname, 'band', band, 'with basefn', basefn)
                 savecache = False
                 continue
             if not os.path.exists(fn):
-                print 'Does not exist:', fn
-                # dr = fn
-                # for x in range(10):
-                #     dr = os.path.dirname(dr)
-                #     print 'dir', dr, 'exists?', os.path.exists(dr)
+                print('Does not exist:', fn)
                 savecache = False
                 continue
             try:
-                #bwcs = Tan(fn, 0)
                 bwcs = _read_tan_wcs(fn, 0)
             except:
-                print 'Failed to read WCS:', fn
+                print('Failed to read WCS:', fn)
                 savecache = False
                 import traceback
                 import sys
@@ -2190,22 +1972,17 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                 continue
 
             foundany = True
-            print 'Reading', fn
+            print('Reading', fn)
             ok,xx,yy = bwcs.radec2pixelxy(r, d)
             xx = xx.astype(np.int)
             yy = yy.astype(np.int)
-            #print 'x,y', x,y
             imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
             M = 10
-            #print 'brick coordinates of tile: x', xx.min(), xx.max(), 'y', yy.min(), yy.max()
             xlo = np.clip(xx.min() - M, 0, imW)
             xhi = np.clip(xx.max() + M, 0, imW)
             ylo = np.clip(yy.min() - M, 0, imH)
             yhi = np.clip(yy.max() + M, 0, imH)
-            #print 'brick size', imW, 'x', imH
-            #print 'clipped brick coordinates: x', xlo, xhi, 'y', ylo,yhi
             if xlo >= xhi or ylo >= yhi:
-                #print 'skipping'
                 continue
 
             subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
@@ -2222,31 +1999,22 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     img = img - mod
                 
             except:
-                print 'Failed to read image and WCS:', fn
+                print('Failed to read image and WCS:', fn)
                 savecache = False
                 import traceback
                 import sys
                 traceback.print_exc(None, sys.stdout)
                 continue
-            #print 'Subimage shape', img.shape
-            #print 'Sub-WCS shape', subwcs.get_height(), subwcs.get_width()
             try:
                 Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
             except OverlapError:
-                print 'Resampling exception'
-                #import traceback
-                #traceback.print_exc()
+                print('Resampling exception')
                 continue
 
-            # print 'Resampling', len(Yo), 'pixels'
-            # print 'out range x', Xo.min(), Xo.max(), 'y', Yo.min(), Yo.max()
-            # print 'in  range x', Xi.min(), Xi.max(), 'y', Yi.min(), Yi.max()
-            
             rimg[Yo,Xo] += img[Yi,Xi]
             rn  [Yo,Xo] += 1
         rimg /= np.maximum(rn, 1)
         rimgs.append(rimg)
-        # print 'Band', band, ': total of', rn.sum(), 'pixels, range', rimg.min(), rimg.max()
 
     if return_if_not_found and not savecache:
         return
@@ -2273,11 +2041,11 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
     # no jpeg output support in matplotlib in some installations...
     if hack_jpeg:
         save_jpeg(tilefn, rgb)
-        print 'Wrote', tilefn
+        print('Wrote', tilefn)
     else:
         import pylab as plt
         plt.imsave(tilefn, rgb)
-        print 'Wrote', tilefn
+        print('Wrote', tilefn)
 
     if get_images:
         return rimgs
@@ -2312,7 +2080,7 @@ def cutouts(req):
     
     CCDs = _ccds_touching_box(north, south, east, west, name=name)
 
-    print len(CCDs), 'CCDs'
+    print(len(CCDs), 'CCDs')
 
     CCDs = CCDs[np.lexsort((CCDs.extname, CCDs.expnum, CCDs.filter))]
 
@@ -2337,11 +2105,7 @@ def cutouts(req):
         y = int(np.round(y-1))
         if x < -size or x >= c.width+size or y < -size or y >= c.height+size:
             continue
-        #print 'CCD', c
-        #c = dict([(k,c.get(k)) for k in c.columns()])
-        #print 'CCD', c
         ccds.append((c, x, y))
-    #print 'CCDS:', ccds
 
     B = decals.get_bricks_readonly()
     I = np.flatnonzero((B.ra1  <= ra)  * (B.ra2  >= ra) *
@@ -2356,15 +2120,11 @@ def cutouts(req):
     from decals import settings
 
     url = req.build_absolute_uri('/') + settings.ROOT_URL + '/cutout_panels/%i/%s/'
-
-    print 'URL', url
-
     # Deployment: http://{s}.DOMAIN/...
     url = url.replace('://www.', '://')
     url = url.replace('://', '://%s.')
     domains = settings.SUBDOMAINS
 
-    print 'URL', url
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
         fn = ccd.cpimage.replace(settings.DATA_DIR + '/', '')
@@ -2474,7 +2234,6 @@ def _get_image_slice(fn, hdu, x, y, size=50):
     else:
         ystart = 0
     slc = slice(max(y-size, 0), min(y+size, H)), slice(max(x-size, 0), min(x+size, W))
-    print 'Image slice:', slc
     img = img[slc]
     return img,slc,xstart,ystart
 
@@ -2491,16 +2250,10 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
 
     fn = _get_image_filename(ccd)
     if not os.path.exists(fn):
-        #print 'NO IMAGE:', fn
-        #print 'rsync -Rrv carver:tractor/decals/images/./' + fn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images'
         return HttpResponse('no such image: ' + fn)
 
     wfn = fn.replace('ooi', 'oow')
     if not os.path.exists(wfn):
-        #cmd = 'rsync -Rrv carver:tractor/decals/images/./' + wfn.replace('/home/dstn/decals-web/data/images/', '') + ' data/images'
-        #print '\n' + cmd + '\n'
-        #os.system(cmd)
-        #if not os.path.exists(wfn):
         return HttpResponse('no such image: ' + wfn)
 
     # half-size in DECam pixels -- must match cutouts():size
@@ -2612,7 +2365,6 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
         if pad:
             ih,iw = img.shape
             padimg = np.zeros((2*size,2*size), img.dtype) + 0.5
-            print 'Image shape:', img.shape, 'pad shape:', padimg.shape
             padimg[ystart:ystart+ih, xstart:xstart+iw] = img
             img = padimg
 
@@ -2652,10 +2404,6 @@ if __name__ == '__main__':
 
     # http://i.legacysurvey.org/static/tiles/decals-dr1j/1/13/2623/3926.jpg
 
-
-    #import astrometry
-    #print astrom
-
     ver = 1
     zoom,x,y = 14, 16383, 7875
     req = duck()
@@ -2663,7 +2411,7 @@ if __name__ == '__main__':
 
     r = map_sdssco(req, ver, zoom, x, y, savecache=True, ignoreCached=True,
                    hack_jpeg=True)
-    print 'got', r
+    print('got', r)
     sys.exit(0)
 
     ver = 1
@@ -2679,4 +2427,4 @@ if __name__ == '__main__':
     #map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
 
     zoom,x,y = 18, 83958, 125671
-    map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
+    #map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
