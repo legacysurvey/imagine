@@ -610,7 +610,8 @@ def main():
             basedir = settings.DATA_DIR
             codir = os.path.join(basedir, 'coadd', 'sdssco')
             rr,dd = [],[]
-            for b in B:
+            exist = []
+            for i,b in enumerate(B):
                 print 'Brick', b.brickname,
                 fn = os.path.join(codir, b.brickname[:3], 'sdssco-%s-%s.fits' % (b.brickname, 'r'))
                 print '-->', fn,
@@ -620,6 +621,12 @@ def main():
                 print 'found'
                 rr.append(b.ra)
                 dd.append(b.dec)
+                exist.append(i)
+
+            exist = np.array(exist)
+            B.cut(exist)
+            B.writeto('bricks-sdssco-exist.fits')
+
             import pylab as plt
             plt.clf()
             plt.plot(rr, dd, 'k.')
