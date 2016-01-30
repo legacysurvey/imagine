@@ -733,3 +733,43 @@ def cat_vcc(req, ver):
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names)),
                         content_type='application/json')
+
+
+def read_astrans(fn, hdu, hdr=None, W=None, H=None, fitsfile=None):
+    from astrometry.sdss import AsTransWrapper, AsTrans
+    from astrometry.util.util import Tan, fit_sip_wcs_py
+    from astrometry.util.starutil_numpy import radectoxyz
+    import numpy as np
+    
+    astrans = AsTrans.read(fn, F=fitsfile, primhdr=hdr)
+    # Approximate as SIP.
+    if hdr is None and fn.endswith('.bz2'):
+        import fitsio
+        hdr = fitsio.read_header(fn, 0)
+
+    if hdr is not None:
+        tan = Tan(*[float(hdr[k]) for k in [
+                    'CRVAL1', 'CRVAL2', 'CRPIX1', 'CRPIX2',
+                    'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2', 'NAXIS1','NAXIS2']])
+    else:
+        # Frame files include a TAN header... start there.
+        tan = Tan(fn)
+
+    # Evaluate AsTrans on a pixel grid...
+    h,w = tan.shape
+    xx = np.linspace(1, w, 20)
+    yy = np.linspace(1, h, 20)
+    xx,yy = np.meshgrid(xx, yy)
+    xx = xx.ravel()
+    yy = yy.ravel()
+    rr,dd = astrans.pixel_to_radec(xx, yy)
+
+    xyz = radectoxyz(rr, dd)
+    fieldxy = np.vstack((xx, yy)).T
+
+    sip_order = 5
+    inv_order = 7
+    sip = fit_sip_wcs_py(xyz, fieldxy, None, tan, sip_order, inv_order)
+    return sip
+
+

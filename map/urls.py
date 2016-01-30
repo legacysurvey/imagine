@@ -10,6 +10,8 @@ urlpatterns = [
 
     # SDSS tiled coadd
     url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sdssco),
+    url(r'^jpeg-cutout-sdss', views.jpeg_cutout_sdssco),
+    url(r'^fits-cutout-sdss', views.fits_cutout_sdssco),
 
     # DR2
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2),

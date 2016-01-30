@@ -293,18 +293,26 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     wcs = wcs.get_subimage(0, 0, W, H)
     wcs2 = wcs.scale(0.5)
 
+    dirnm = os.path.dirname(fn)
+
+    from decals import settings
+    ro = settings.READ_ONLY_BASEDIR
+    if ro:
+        dirnm = None
+
     hdr = fitsio.FITSHDR()
     wcs2.add_to_header(hdr)
     trymakedirs(fn)
-    dirnm = os.path.dirname(fn)
     f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=dirnm)
     os.close(f)
+    print('Temp file', tmpfn)
     # To avoid overwriting the (empty) temp file (and fitsio
     # printing "Removing existing file")
     os.unlink(tmpfn)
     fitsio.write(tmpfn, I2, header=hdr, clobber=True)
-    os.rename(tmpfn, fn)
-    print('Wrote', fn)
+    if not ro:
+        os.rename(tmpfn, fn)
+        print('Wrote', fn)
     if return_data:
         return I2,wcs2,fn
     return fn
@@ -318,10 +326,10 @@ rgbkwargs_nexp = dict(mnmx=(0,25), arcsinh=1.,
                       scales=dict(g=(2,1),r=(1,1),z=(0,1)))
 
 def jpeg_cutout_decals_dr1j(req):
-    return cutout_decals(req, jpeg=True)
+    return cutout_decals(req, jpeg=True, default_tag='decals-dr1j')
 
 def fits_cutout_decals_dr1j(req):
-    return cutout_decals(req, fits=True)
+    return cutout_decals(req, fits=True, default_tag='decals-dr1j')
 
 def jpeg_cutout_decals_dr2(req):
     return cutout_decals(req, jpeg=True, default_tag='decals-dr2', dr2=True)
@@ -331,16 +339,8 @@ def fits_cutout_decals_dr2(req):
 
 def cutout_decals(req, jpeg=False, fits=False, default_tag='decals-dr1j',
                   dr2=False):
-    ra  = float(req.GET['ra'])
-    dec = float(req.GET['dec'])
-    pixscale = float(req.GET.get('pixscale', 0.262))
-    maxsize = 512
-    size   = min(int(req.GET.get('size',    256)), maxsize)
-    width  = min(int(req.GET.get('width',  size)), maxsize)
-    height = min(int(req.GET.get('height', size)), maxsize)
 
     kwa = {}
-
     tag = req.GET.get('tag', None)
     print('Requested tag:', tag)
     if not tag in ['decals-dr1n', 'decals-model', 'decals-resid']:
@@ -364,87 +364,58 @@ def cutout_decals(req, jpeg=False, fits=False, default_tag='decals-dr1j',
     if dr2:
         bricks = _get_dr2_bricks()
 
-    bands = req.GET.get('bands', 'grz')
-    bands = [b for b in 'grz' if b in bands]
+    hdr = None
+    if fits:
+        import fitsio
+        hdr = fitsio.FITSHDR()
+        hdr['SURVEY'] = 'DECaLS'
+        if dr2:
+            hdr['VERSION'] = 'DR2'
+        else:
+            hdr['VERSION'] = 'DR1'
 
-    from astrometry.util.util import Tan
-    import numpy as np
-    import fitsio
-    import tempfile
-
-    ps = pixscale / 3600.
-    raps = -ps
-    decps = ps
-    if jpeg:
-        decps *= -1.
-    wcs = Tan(*[float(x) for x in [ra, dec, (width+1)/2., (height+1)/2.,
-                                   raps, 0., 0., decps, width, height]])
-
-    zoom = 14 - int(np.round(np.log2(pixscale / 0.262)))
-    zoom = max(0, min(zoom, 16))
-
-    ver = 1
-
+    rgbfunc = None
     if dr2:
-        kwa.update(rgbfunc=dr2_rgb)
+        rgbfunc = dr2_rgb
 
-    rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts',
-                          tag,
-                          wcs=wcs, bricks=bricks,
-                          imagetag=imagetag, rgbkwargs=rgbkwargs,
-                          savecache=False, get_images=fits, **kwa)
-
-    if jpeg:
-        return rtn
-    ims = rtn
-
-    hdr = fitsio.FITSHDR()
-    hdr['SURVEY'] = 'DECaLS'
-    if dr2:
-        hdr['VERSION'] = 'DR2'
-    else:
-        hdr['VERSION'] = 'DR1'
-
-    hdr['BANDS'] = ''.join(bands)
-    for i,b in enumerate(bands):
-        hdr['BAND%i' % i] = b
-    wcs.add_to_header(hdr)
-
-    f,tmpfn = tempfile.mkstemp(suffix='.fits')
-    os.close(f)
-    os.unlink(tmpfn)
-
-    if len(bands) > 1:
-        cube = np.empty((len(bands), height, width), np.float32)
-        for i,im in enumerate(ims):
-            cube[i,:,:] = im
-    else:
-        cube = ims[0]
-    del ims
-    fitsio.write(tmpfn, cube, clobber=True,
-                 header=hdr)
-    
-    return send_file(tmpfn, 'image/fits', unlink=True, filename='cutout_%.4f_%.4f.fits' % (ra,dec))
+    return cutout_on_bricks(req, tag, bricks=bricks, imagetag=imagetag,
+                            jpeg=jpeg, fits=fits,
+                            rgbfunc=rgbfunc, outtag=tag, hdr=hdr)
 
 
-def jpeg_cutout_sdss(req):
-    return cutout_sdss(req, jpeg=True)
+def jpeg_cutout_sdssco(req):
+    return cutout_sdssco(req, jpeg=True)
 
-def fits_cutout_sdss(req):
-    return cutout_sdss(req, fits=True)
+def fits_cutout_sdssco(req):
+    return cutout_sdssco(req, fits=True)
 
-def cutout_sdss(req, jpeg=False, fits=False):
+def cutout_sdssco(req, jpeg=False, fits=False):
+    hdr = None
+    if fits:
+        import fitsio
+        hdr = fitsio.FITSHDR()
+        hdr['SURVEY'] = 'SDSS'
+
+    return cutout_on_bricks(req, 'sdssco', bricks=get_sdssco_bricks(), imagetag='sdssco',
+                            jpeg=jpeg, fits=fits,
+                            pixscale=0.396, bands='gri', native_zoom=13, maxscale=6,
+                            rgbfunc=sdss_rgb, outtag='sdss', hdr=hdr)
+
+def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
+                     pixscale=0.262, bands='grz', native_zoom=14, ver=1,
+                     hdr=None, outtag=None, **kwargs):
+
+    native_pixscale = pixscale
+
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
-    pixscale = float(req.GET.get('pixscale', 0.262))
+    pixscale = float(req.GET.get('pixscale', pixscale))
     maxsize = 512
     size   = min(int(req.GET.get('size',    256)), maxsize)
     width  = min(int(req.GET.get('width',  size)), maxsize)
     height = min(int(req.GET.get('height', size)), maxsize)
 
-    kwa = {}
-
-    #bands = req.GET.get('bands', 'gri')
+    bands = req.GET.get('bands', bands)
     #bands = [b for b in 'grz' if b in bands]
 
     from astrometry.util.util import Tan
@@ -460,27 +431,27 @@ def cutout_sdss(req, jpeg=False, fits=False):
     wcs = Tan(*[float(x) for x in [ra, dec, (width+1)/2., (height+1)/2.,
                                    raps, 0., 0., decps, width, height]])
 
-    zoom = 14 - int(np.round(np.log2(pixscale / 0.262)))
+    zoom = native_zoom - int(np.round(np.log2(pixscale / native_pixscale)))
     zoom = max(0, min(zoom, 16))
 
-    ver = 1
+    rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts',
+                          tag, wcs=wcs, imagetag=imagetag,
+                          savecache=False, get_images=fits, **kwargs)
 
-    rtn = map_sdss(req, ver, zoom, 0, 0, tag='cutouts', wcs=wcs,
-                   savecache=False, get_images=fits, **kwa)
     if jpeg:
         return rtn
     ims = rtn
 
-    hdr = fitsio.FITSHDR()
-    hdr['SURVEY'] = 'SDSS'
-    hdr['BANDS'] = ''.join(bands)
-    for i,b in enumerate(bands):
-        hdr['BAND%i' % i] = b
-    wcs.add_to_header(hdr)
+    if hdr is not None:
+        hdr['BANDS'] = ''.join(bands)
+        for i,b in enumerate(bands):
+            hdr['BAND%i' % i] = b
+        wcs.add_to_header(hdr)
 
     f,tmpfn = tempfile.mkstemp(suffix='.fits')
     os.close(f)
     os.unlink(tmpfn)
+
     if len(bands) > 1:
         cube = np.empty((len(bands), height, width), np.float32)
         for i,im in enumerate(ims):
@@ -489,66 +460,39 @@ def cutout_sdss(req, jpeg=False, fits=False):
         cube = ims[0]
     del ims
     fitsio.write(tmpfn, cube, clobber=True, header=hdr)
-    return send_file(tmpfn, 'image/fits', unlink=True, filename='sdss-cutout_%.4f_%.4f.fits' % (ra,dec))
-
-def read_astrans(fn, hdu, hdr=None, W=None, H=None, fitsfile=None):
-    from astrometry.sdss import AsTransWrapper, AsTrans
-    from astrometry.util.util import Tan, fit_sip_wcs_py
-    from astrometry.util.starutil_numpy import radectoxyz
-    import numpy as np
-    
-    astrans = AsTrans.read(fn, F=fitsfile, primhdr=hdr)
-    # Approximate as SIP.
-    if hdr is None and fn.endswith('.bz2'):
-        import fitsio
-        hdr = fitsio.read_header(fn, 0)
-
-    if hdr is not None:
-        tan = Tan(*[float(hdr[k]) for k in [
-                    'CRVAL1', 'CRVAL2', 'CRPIX1', 'CRPIX2',
-                    'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2', 'NAXIS1','NAXIS2']])
+    if outtag is None:
+        fn = 'cutout_%.4f_%.4f.fits' % (ra,dec)
     else:
-        # Frame files include a TAN header... start there.
-        tan = Tan(fn)
-
-    # Evaluate AsTrans on a pixel grid...
-    h,w = tan.shape
-    xx = np.linspace(1, w, 20)
-    yy = np.linspace(1, h, 20)
-    xx,yy = np.meshgrid(xx, yy)
-    xx = xx.ravel()
-    yy = yy.ravel()
-    rr,dd = astrans.pixel_to_radec(xx, yy)
-
-    xyz = radectoxyz(rr, dd)
-    fieldxy = np.vstack((xx, yy)).T
-
-    sip_order = 5
-    inv_order = 7
-    sip = fit_sip_wcs_py(xyz, fieldxy, None, tan, sip_order, inv_order)
-    return sip
+        fn = 'cutout_%s_%.4f_%.4f.fits' % (outtag, ra,dec)
+    return send_file(tmpfn, 'image/fits', unlink=True, filename=fn)
 
 
 B_sdssco = None
+
+def get_sdssco_bricks():
+    global B_sdssco
+    if B_sdssco is None:
+        from decals import settings
+        from astrometry.util.fits import fits_table
+        basedir = settings.DATA_DIR
+        B_sdssco = fits_table(os.path.join(basedir, 'bricks-sdssco.fits'),
+                              columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2'])
+    return B_sdssco
+
 
 def map_sdssco(req, ver, zoom, x, y, savecache=None, tag='sdssco',
                get_images=False,
                wcs=None,
                **kwargs):
     from decals import settings
-    global B_sdssco
 
     if savecache is None:
         savecache = settings.SAVE_CACHE
 
-    basedir = settings.DATA_DIR
-
-    if B_sdssco is None:
-        from astrometry.util.fits import fits_table
-        B_sdssco = fits_table(os.path.join(basedir, 'bricks-sdssco.fits'),
-                              columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2'])
+    B_sdssco = get_sdssco_bricks()
 
     bands = 'gri'
+    basedir = settings.DATA_DIR
     basepat = os.path.join(basedir, 'coadd', tag, '%(brickname).3s',
                            'sdssco-%(brickname)s-%(band)s.fits')
     return map_coadd_bands(req, ver, zoom, x, y, bands, tag, tag,
@@ -603,7 +547,7 @@ def _get_dr2_bricks():
     if os.path.exists(fn):
         from astrometry.util.fits import fits_table
         print('Reading', fn)
-        B_dr2 = fits_table(fn, columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2'
+        B_dr2 = fits_table(fn, columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2',
                                         'has_g', 'has_r', 'has_z'])
         return B_dr2
 
