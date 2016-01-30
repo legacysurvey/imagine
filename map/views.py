@@ -396,10 +396,16 @@ def cutout_sdssco(req, jpeg=False, fits=False):
         hdr = fitsio.FITSHDR()
         hdr['SURVEY'] = 'SDSS'
 
+    # data/coadd/sdssco/000/sdssco-0001m002-g.fits
+    from decals import settings
+    basedir = settings.DATA_DIR
+    basepat = os.path.join(basedir, 'coadd', 'sdssco', '%(brickname).3s',
+                           'sdssco-%(brickname)s-%(band)s.fits')
+
     return cutout_on_bricks(req, 'sdssco', bricks=get_sdssco_bricks(), imagetag='sdssco',
                             jpeg=jpeg, fits=fits,
                             pixscale=0.396, bands='gri', native_zoom=13, maxscale=6,
-                            rgbfunc=sdss_rgb, outtag='sdss', hdr=hdr)
+                            rgbfunc=sdss_rgb, outtag='sdss', hdr=hdr, basepat=basepat)
 
 def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
                      pixscale=0.262, bands='grz', native_zoom=14, ver=1,
