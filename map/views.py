@@ -1642,7 +1642,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     ignoreCached=False, add_gz=False, filename=None,
                     symlink_blank=False,
                     hack_jpeg=False,
-                    drname=None,
+                    drname=None, decals=None,
                     basepat=None,
                     nativescale=14, maxscale=8,
                     ):
@@ -1709,7 +1709,10 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
 
-    D = _get_decals(name=drname)
+    if decals is None:
+        D = _get_decals(name=drname)
+    else:
+        D = decals
     if bricks is None:
         B = D.get_bricks_readonly()
     else:

@@ -1904,17 +1904,16 @@ allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
 {% endcomment %}
 
 id = 'sdssco'
-//tiles = new MyTileLayer('{{tileurl|safe}}', {
-tiles = new MyTileLayer(static_tile_url, {
+tiles = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
-    //maxNativeZoom: {{ maxNativeZoom }},
-    maxNativeZoom: 16,
+    maxNativeZoom: {{ maxNativeZoom }},
     minZoom: minZoom,
     attribution: '<a href="http://sdss.org">SDSS</a>',
     id: id,
     ver: getversion(id),
     unloadInvisibleTiles: true,
     subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
 allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
 
@@ -2443,7 +2442,7 @@ map.addLayer(specGroup);
 showSpec = true;
 {% endif %}
 
-
+{% comment %}
 var constellation_shortnames =  [ "Aql","And","Scl","Ara","Lib","Cet","Ari","Sct","Pyx","Boo","Cae","Cha","Cnc","Cap","Car","Cas","Cen","Cep","Com","Cvn","Aur","Col","Cir","Crt","CrA","CrB","Crv","Cru","Cyg","Del","Dor","Dra","Nor","Eri","Sge","For","Gem","Cam","CMa","UMa","Gru","Her","Hor","Hya","Hyi","Ind","Lac","Mon","Lep","Leo","Lup","Lyn","Lyr","Ant","Mic","Mus","Oct","Aps","Oph","Ori","Pav","Peg","Pic","Per","Equ","CMi","LMi","Vul","UMi","Phe","Psc","PsA","Vol","Pup","Ret","Sgr","Sco","Ser","Sex","Men","Tau","Tel","Tuc","Tri","Tra","Aqr","Vir","Vel" ]
 
 var constellation_lines = [
@@ -2565,6 +2564,7 @@ for (var i in constellation_lines) {
     var polyline = L.polyline(latlngs, {color: 'red'});
     conGroup.addLayer(polyline);
 }
+%}
 
 // A scale bar that shows arcsec / arcmin / degrees rather than meters
 AstroControl = L.Control.Scale.extend({
@@ -2604,6 +2604,7 @@ AstroControl = L.Control.Scale.extend({
 
 new AstroControl().addTo(map);
 
+{% comment %}
 AstroPolylineMeasure = L.Polyline.Measure.extend({
 });
 
@@ -2631,8 +2632,8 @@ AstroMeasureControl = L.Control.MeasureControl.extend({
         return this._container;
     }
 });
-
 //new AstroMeasureControl().addTo(map);
+{% endcomment %}
 
 </script>
 </body>

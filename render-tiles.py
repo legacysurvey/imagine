@@ -556,7 +556,10 @@ def main():
     decals = Decals()
 
     if opt.near:
-        B = decals.get_bricks()
+        if opt.kind == 'sdss':
+            B = fits_table(os.path.join(settings.DATA_DIR, 'bricks-sdssco.fits'))
+        else:
+            B = decals.get_bricks()
         print len(B), 'bricks'
 
     if opt.scale:
@@ -573,6 +576,7 @@ def main():
             radius = 1.01 * np.hypot(10., 14.)/2. / 60.
             ccdsize = radius
             print len(C), 'SDSS fields'
+
         else:
             C = decals.get_ccds()
             print len(C), 'CCDs'
