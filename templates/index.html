@@ -224,14 +224,19 @@ function ra2long_B(ra) {
     return lng;
 }
 
-function ra2long_C(ra, clong) {
-    lng = 180 - ra;
+function wrap_long(lng, clong) {
     while (lng < clong-180) {
       lng += 360;
     }
     while (lng > clong+180) {
       lng -= 360;
     }
+    return lng;
+}
+
+function ra2long_C(ra, clong) {
+    lng = 180 - ra;
+    lng = wrap_long(lng, clong);
     return lng;
 }
 
@@ -1274,6 +1279,9 @@ function ccdsLoaded(result) {
         return;
     }
     ccds = result['ccds'];
+    console.log('Received ' + ccds.length + ' CCDs');
+    var clong = map.getCenter().lng;
+    console.log('Center long', clong);
     for (var i=0, len=ccds.length; i<len; i++) {
         // console.log('ccd ' + i + ': ' + ccds[i]);
         name = ccds[i].name;
@@ -1282,9 +1290,16 @@ function ccdsLoaded(result) {
             continue;
         }
         poly = ccds[i].poly;
-	color = ccds[i].color;
+        for (var j=0, plen=poly.length; j<plen; j++) {
+            // lng = poly[j][1];
+            // wlng = wrap_long(lng, clong);
+            // poly[j][1] = wlng;
+            // console.log('ccd ' + i + ' poly ' + j + ' lng ' + lng + ' -> ' + wlng);
+            poly[j][1] = wrap_long(poly[j][1], clong);
+        }
+        color = ccds[i].color;
         c = L.polygon(poly, {fill:false, color:color, weight:4 });
-	c.orig_color = color;
+        c.orig_color = color;
         c.name = name;
         c.on('mouseover', ccdMouseOver);
         c.on('mouseout', ccdMouseOut);
@@ -1888,21 +1903,19 @@ tiles = new MyTileLayer('{{tileurl|safe}}', {
 allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
 {% endcomment %}
 
-{% comment %}
 id = 'sdssco'
-tiles = new MyTileLayer('{{tileurl|safe}}', {
+tiles = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
-    //maxNativeZoom: {{ maxNativeZoom }},
-    maxNativeZoom: 16,
+    maxNativeZoom: {{ maxNativeZoom }},
     minZoom: minZoom,
     attribution: '<a href="http://sdss.org">SDSS</a>',
     id: id,
     ver: getversion(id),
     unloadInvisibleTiles: true,
     subdomains: subdomains,
+    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
 allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
-{% endcomment %}
 
 allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
 
@@ -2429,7 +2442,7 @@ map.addLayer(specGroup);
 showSpec = true;
 {% endif %}
 
-
+{% comment %}
 var constellation_shortnames =  [ "Aql","And","Scl","Ara","Lib","Cet","Ari","Sct","Pyx","Boo","Cae","Cha","Cnc","Cap","Car","Cas","Cen","Cep","Com","Cvn","Aur","Col","Cir","Crt","CrA","CrB","Crv","Cru","Cyg","Del","Dor","Dra","Nor","Eri","Sge","For","Gem","Cam","CMa","UMa","Gru","Her","Hor","Hya","Hyi","Ind","Lac","Mon","Lep","Leo","Lup","Lyn","Lyr","Ant","Mic","Mus","Oct","Aps","Oph","Ori","Pav","Peg","Pic","Per","Equ","CMi","LMi","Vul","UMi","Phe","Psc","PsA","Vol","Pup","Ret","Sgr","Sco","Ser","Sex","Men","Tau","Tel","Tuc","Tri","Tra","Aqr","Vir","Vel" ]
 
 var constellation_lines = [
@@ -2551,6 +2564,7 @@ for (var i in constellation_lines) {
     var polyline = L.polyline(latlngs, {color: 'red'});
     conGroup.addLayer(polyline);
 }
+%}
 
 // A scale bar that shows arcsec / arcmin / degrees rather than meters
 AstroControl = L.Control.Scale.extend({
@@ -2590,6 +2604,7 @@ AstroControl = L.Control.Scale.extend({
 
 new AstroControl().addTo(map);
 
+{% comment %}
 AstroPolylineMeasure = L.Polyline.Measure.extend({
 });
 
@@ -2617,8 +2632,8 @@ AstroMeasureControl = L.Control.MeasureControl.extend({
         return this._container;
     }
 });
-
 //new AstroMeasureControl().addTo(map);
+{% endcomment %}
 
 </script>
 </body>

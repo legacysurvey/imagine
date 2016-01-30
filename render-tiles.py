@@ -118,7 +118,8 @@ def _bounce_map_decals_dr1k((args,kwargs)):
     print 'Returning: type', type(X), X
     return X
 
-def _bounce_sdss((args,kwargs)):
+#def _bounce_sdss((args,kwargs)):
+def _bounce_sdssco((args,kwargs)):
     (req,ver,zoom,x,y) = args
     fn = 'top-sdss-%i-%i-%i.fits' % (zoom, x, y)
     save = False
@@ -128,14 +129,17 @@ def _bounce_sdss((args,kwargs)):
         H,W,planes = img.shape
         ims = [img[:,:,i] for i in range(planes)]
     else:
-        ims = map_sdss(*args, ignoreCached=True, get_images=True, **kwargs)
+        #ims = map_sdss(*args, ignoreCached=True, get_images=True, **kwargs)
+        ims = map_sdssco(*args, ignoreCached=True, get_images=True, 
+                          hack_jpeg=True, **kwargs)
         if ims is None:
             return ims
         save = True
 
     # Save jpeg
     from decals import settings
-    tag = 'sdss'
+    #tag = 'sdss'
+    tag = 'sdssco'
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                        '%(zoom)i', '%(x)i', '%(y)i.jpg')
     tilefn = pat % dict(ver=1, zoom=zoom, x=x, y=y)
@@ -376,7 +380,7 @@ def top_levels(mp, opt):
                     'decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
         import pylab as plt
         from decals import settings
-        from desi.common import get_rgb
+        from legacypipe.common import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
@@ -386,17 +390,22 @@ def top_levels(mp, opt):
         tag = tagdict.get(opt.kind, opt.kind)
         del tagdict
 
-        bouncemap = {'sdss': _bounce_sdss,
-                     'decals-dr2': _bounce_decals_dr2,
-                     'decals-dr2-model': _bounce_decals_dr2,
-                     'decals-dr2-resid': _bounce_decals_dr2,
-                     }
+        bouncemap = {
+            #'sdss': _bounce_sdss,
+            'sdss': _bounce_sdssco,
+            'decals-dr2': _bounce_decals_dr2,
+            'decals-dr2-model': _bounce_decals_dr2,
+            'decals-dr2-resid': _bounce_decals_dr2,
+            }
         bounce = bouncemap[opt.kind]
 
         rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
-        
+
         if opt.kind in ['decals-dr2', 'decals-dr2-model']:
             get_rgb = dr2_rgb
+            rgbkwargs = {}
+        elif opt.kind == 'sdssco':
+            rgbfunc=sdss_rgb
             rgbkwargs = {}
 
         ver = tileversions.get(opt.kind, [1])[-1]
@@ -547,7 +556,10 @@ def main():
     decals = Decals()
 
     if opt.near:
-        B = decals.get_bricks()
+        if opt.kind == 'sdss':
+            B = fits_table(os.path.join(settings.DATA_DIR, 'bricks-sdssco.fits'))
+        else:
+            B = decals.get_bricks()
         print len(B), 'bricks'
 
     if opt.scale:
@@ -564,6 +576,7 @@ def main():
             radius = 1.01 * np.hypot(10., 14.)/2. / 60.
             ccdsize = radius
             print len(C), 'SDSS fields'
+
         else:
             C = decals.get_ccds()
             print len(C), 'CCDs'
@@ -601,7 +614,8 @@ def main():
             basedir = settings.DATA_DIR
             codir = os.path.join(basedir, 'coadd', 'sdssco')
             rr,dd = [],[]
-            for b in B:
+            exist = []
+            for i,b in enumerate(B):
                 print 'Brick', b.brickname,
                 fn = os.path.join(codir, b.brickname[:3], 'sdssco-%s-%s.fits' % (b.brickname, 'r'))
                 print '-->', fn,
@@ -611,6 +625,12 @@ def main():
                 print 'found'
                 rr.append(b.ra)
                 dd.append(b.dec)
+                exist.append(i)
+
+            exist = np.array(exist)
+            B.cut(exist)
+            B.writeto('bricks-sdssco-exist.fits')
+
             import pylab as plt
             plt.clf()
             plt.plot(rr, dd, 'k.')

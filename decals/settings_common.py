@@ -84,6 +84,22 @@ TEMPLATE_CONTEXT_PROCESSORS = [
     #"django.contrib.messages.context_processors.messages",
     ]
 
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        #'APP_DIRS': True,
+        'APP_DIRS': False,
+        'DIRS': [os.path.join(WEB_DIR, 'templates')],
+        'OPTIONS': {
+            'context_processors': [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.static",
+                ],
+            #'debug': True,
+            },
+    },
+]
+
 ALLOWED_HOSTS = []
 
 # Application definition
