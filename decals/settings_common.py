@@ -14,6 +14,8 @@ import secrets.database
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False
 
+DEBUG_LOGGING = False
+
 SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
 
