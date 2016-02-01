@@ -635,9 +635,9 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
         import numpy as np
 
         B_dr1j = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1',
-                                         'decals-bricks-exist.fits',
-                                         columns=['has_image_g', 'has_image_r', 'has_image_z',
-                                                  'brickname', 'ra1','ra2','dec1','dec2']))
+                                         'decals-bricks-exist.fits'),
+                            columns=['has_image_g', 'has_image_r', 'has_image_z',
+                                     'brickname', 'ra1','ra2','dec1','dec2']))
         B_dr1j.cut(reduce(np.logical_or, [B_dr1j.has_image_g,
                                           B_dr1j.has_image_r,
                                           B_dr1j.has_image_z]))
