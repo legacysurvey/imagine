@@ -1665,47 +1665,6 @@ tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
 
 allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE W1/W2", catname:""});
 
-
-
-{% comment %}
-
-if (idname == 'unwise') {
-  id = 'unwise-w3w4-tiles'
-  vertag = 'unwise'
-  tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
-        maxZoom: maxZoom,
-        maxNativeZoom: 11,
-        minZoom: minZoom,
-        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-        id: id,
-        ver: getversion(vertag),
-        unloadInvisibleTiles: true,
-        subdomains: subdomains,
-  });
-
-  allLayers.push({name:'unwise-w3w4', tiles:tilesUnwise, pretty:"unWISE W3/W4", catname:""});
-}
-
-if (idname == 'unwise') {
-  id = 'unwise-w1234-tiles'
-  vertag = 'unwise'
-  tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
-        maxZoom: maxZoom,
-        maxNativeZoom: 11,
-        minZoom: minZoom,
-        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-        id: id,
-        ver: getversion(vertag),
-        unloadInvisibleTiles: true,
-        subdomains: subdomains,
-  });
-
-  allLayers.push({name:'unwise-w3w4', tiles:tilesUnwise, pretty:"unWISE W1234", catname:""});
-}
-
-{% endcomment %}
-
-
 var baseMaps = {};
 for (i in allLayers) {
   layer = allLayers[i];
