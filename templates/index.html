@@ -1225,11 +1225,6 @@ function highlightExp(exp) {
     cf.bringToBack();
 }
 
-function plateMouseOver(e) {
-}
-function plateMouseOut(e) {
-}
-
 function expsLoaded(result) {
     if (!showExps) {
         return;
@@ -1279,8 +1274,6 @@ function platesLoaded(result) {
 	c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
 					 'weight':5, 'opacity':0.4 });
         c.name = name;
-        c.on('mouseover', plateMouseOver);
-        c.on('mouseout', plateMouseOut);
         platesGroup.addLayer(c);
         currentPlates[name] = c;
     }
