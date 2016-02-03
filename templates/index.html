@@ -1649,26 +1649,6 @@ allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing
 
 {% endif %}
 
-{% if enable_depth %}
-bands = ['g','r','z'];
-for (var i in bands) {
-    band = bands[i];
-    tilesDepth = new ZoomRangeTileLayer('{{ tileurl|safe }}?band=' + band, {
-	maxZoom: maxZoom,
-	minZoom: minZoom,
-	attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-	id: 'decam-depth',
-	ver: getversion('decam-depth'),
-	unloadInvisibleTiles: true,
-	subdomains: subdomains,
-	//urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
-    });
-    tilesDepth.on('tileloadstart', onTileLoadStart);
-    tilesDepth.on('tileunload', onTileUnload);
-    allLayers.push({name:'decam-depth-'+band, tiles:tilesDepth, pretty:"DECam Depth: " + band + " band", catname:""});
-}
-{% endif %}
-
 id = 'unwise-w1w2-tiles'
 vertag = 'unwise'
 tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
