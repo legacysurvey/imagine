@@ -1,5 +1,7 @@
 from settings_common import *
 
+MAX_NATIVE_ZOOM = 13
+
 READ_ONLY_BASEDIR = True
 
 # no CORS -- so don't use subdomains, or specify hostname (www.legacysurvey.org vs legacysurvey.org)

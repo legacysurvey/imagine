@@ -1,5 +1,7 @@
 from settings_common import *
 
+MAX_NATIVE_ZOOM = 13
+
 READ_ONLY_BASEDIR = True
 
 DEBUG_LOGGING = True
