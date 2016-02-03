@@ -925,86 +925,6 @@ function inbrickccdUpdate(props) {
     inbrickccd._div.innerHTML = txt;
 }
 
-function vccLoaded(counter, result) {
-    console.log('vccLoaded: counter ' + counter);
-    if (!showVcc) {
-        return;
-    }
-    for (var k in vccLayers) {
-	if (k > counter) {
-	    console.log('vcc: counter ' + k + ' exists; bye');
-	    return;
-	}
-    }
-
-    for (var k in vccLayers) {
-	console.log('vcc: counter ' + k + 'exists');
-    }
-
-    rdlist = result['rd'];
-    names = result['name'];
-    var circleList = new Array(rdlist.length);
-    var clong = map.getCenter().lng;
-    for (i=0, len=rdlist.length; i<len; i++) {
-        r = rdlist[i][0];
-        d = rdlist[i][1];
-        lat = dec2lat(d);
-        lng = ra2long_C(r, clong);
-	meters = 300;
-	color = '#ffffff';
-
-        circ = L.circle([lat, lng], meters, {'color':color,
-                                             'fillOpacity':0, 'weight':5});
-        circ.ra = r;
-        circ.dec = d;
-	circ.name = names[i];
-	circ._showLabelAdded = true;
-	circ.bindLabel(circ.name, { noHide: true });
-	circ.label._latlng = L.latLng(lat,lng);
-
-	circ.on('remove', function(e){
-	    console.log('Removing label for ' + e.target.name);
-	    map.removeLayer(e.target.label);
-	});
-
-        circleList[i] = circ;
-    }
-    circles = L.layerGroup(circleList);
-
-    vccGroup.addLayer(circles);
-    // show labels
-    for (i=0; i<circleList.length; i++) {
-	circ = circleList[i];
-	map.showLabel(circ.label);
-    }
-
-    // remove old layers
-    for (var k in vccLayers) {
-	if (k < counter) {
-	    console.log('vcc: removing previous counter ' + k);
-	    vccGroup.removeLayer(vccLayers[k]);
-	    delete vccLayers[k];
-	}
-    }
-    vccLayers[counter] = [circles];
-}
-
-var vccCounter = 1;
-
-function loadVccCatalog() {
-    b = map.getBounds();
-    url = L.Util.template('{{ smallcaturl|safe }}', L.extend({
-        s: subdomains[0],
-	ralo: long2ra(b.getEast()).toFixed(4),
-	rahi: long2ra(b.getWest()).toFixed(4),
-	declo: lat2dec(b.getSouth()).toFixed(4),
-	dechi: lat2dec(b.getNorth()).toFixed(4),
-        id: 'vcc',
-        ver: getcatversion('vcc'),
-    }));
-    $.getJSON(url, vccLoaded.bind(true, vccCounter));
-    vccCounter += 1;
-}
 
 var specCounter = 1;
 
@@ -1055,10 +975,13 @@ function overlayAdded(e) {
         showNgc = true;
         ngc = true;
     }
+{% comment %}
+    // other code moved to vcc.html
     if (e.name == vccName) {
         showVcc = true;
 	loadVccCatalog();
     }
+{% endcomment %}
     if (e.name == specName) {
 	showSpec = true;
 	if (map.getZoom() >= specMinZoom) {
@@ -1118,6 +1041,7 @@ function overlayRemoved(e) {
         showNgc = false;
 	unload = true;
     }
+{% comment %}
     if (e.name == vccName) {
         showVcc = false;
 	for (var k in vccLayers) {
@@ -1125,6 +1049,7 @@ function overlayRemoved(e) {
 	}
 	vccLayers = {};
     }
+{% endcomment %}
     if (e.name == specName) {
 	showSpec = false;
 	for (var k in specLayers) {
@@ -1425,9 +1350,12 @@ function mapBoundsChanged() {
     dec = lat2dec(latlng.lat);
     //console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
 
+{% comment %}
     if (showVcc) {
         loadVccCatalog();
     }
+{% endcomment %}
+
     if (showSpec && zoom > specMinZoom) {
         loadSpecCatalog();
     }
@@ -1526,9 +1454,11 @@ var brightLayers = {};
 
 var conGroup = L.layerGroup([]);
 
+{% comment %}
 var showVcc = false;
 var vccGroup = L.layerGroup([]);
 var vccLayers = {};
+{% endcomment %}
 
 var showBricks = false;
 var bricksGroup = L.layerGroup([]);
@@ -2129,7 +2059,7 @@ L.DomEvent
   .disableScrollPropagation(container);
 L.DomEvent.on(container, 'click', infoBoxClicked);
 
-var vccName = "Virgo clusters";
+//var vccName = "Virgo clusters";
 var specName = "Spectra";
 var ngcName = "NGC galaxies";
 var brightName = "Bright stars";
@@ -2432,10 +2362,12 @@ map.addLayer(ngcGroup);
 showNgc = true;
 {% endif %}
 
+{% comment %}
 {% if showVcc %}
 map.addLayer(vccGroup);
 showVcc = true;
 {% endif %}
+{% endcomment %}
 
 {% if showSpec %}
 map.addLayer(specGroup);
