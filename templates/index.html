@@ -953,13 +953,6 @@ function overlayAdded(e) {
         showNgc = true;
         ngc = true;
     }
-{% comment %}
-    // other code moved to vcc.html
-    if (e.name == vccName) {
-        showVcc = true;
-	loadVccCatalog();
-    }
-{% endcomment %}
     if (e.name == specName) {
 	showSpec = true;
 	if (map.getZoom() >= specMinZoom) {
@@ -1019,15 +1012,6 @@ function overlayRemoved(e) {
         showNgc = false;
 	unload = true;
     }
-{% comment %}
-    if (e.name == vccName) {
-        showVcc = false;
-	for (var k in vccLayers) {
-	    vccGroup.removeLayer(k);
-	}
-	vccLayers = {};
-    }
-{% endcomment %}
     if (e.name == specName) {
 	showSpec = false;
 	for (var k in specLayers) {
@@ -1287,12 +1271,6 @@ function mapBoundsChanged() {
     dec = lat2dec(latlng.lat);
     //console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
 
-{% comment %}
-    if (showVcc) {
-        loadVccCatalog();
-    }
-{% endcomment %}
-
     if (showSpec && zoom > specMinZoom) {
         loadSpecCatalog();
     }
@@ -1390,12 +1368,6 @@ var brightGroup = L.layerGroup([]);
 var brightLayers = {};
 
 var conGroup = L.layerGroup([]);
-
-{% comment %}
-var showVcc = false;
-var vccGroup = L.layerGroup([]);
-var vccLayers = {};
-{% endcomment %}
 
 var showBricks = false;
 var bricksGroup = L.layerGroup([]);
@@ -1775,7 +1747,6 @@ L.DomEvent
   .disableScrollPropagation(container);
 L.DomEvent.on(container, 'click', infoBoxClicked);
 
-//var vccName = "Virgo clusters";
 var specName = "Spectra";
 var ngcName = "NGC galaxies";
 var brightName = "Bright stars";
@@ -2077,13 +2048,6 @@ showSoures = true;
 map.addLayer(ngcGroup);
 showNgc = true;
 {% endif %}
-
-{% comment %}
-{% if showVcc %}
-map.addLayer(vccGroup);
-showVcc = true;
-{% endif %}
-{% endcomment %}
 
 {% if showSpec %}
 map.addLayer(specGroup);
