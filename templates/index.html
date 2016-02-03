@@ -1424,7 +1424,6 @@ var popup = L.popup();
 
 // default to 1.
 var tileversions = {
-  //'decals-dr1d':1,
   'decals-wl':4,
   'decals-dr2':2,
 };
@@ -1452,25 +1451,12 @@ var catname = 'decals-dr1j';
 var minZoom = 1;
 var maxZoom = 16;
 
-function createTileLayer(id, vertag) {
-    var tiles = new MyTileLayer('{{ tileurl|safe }}', {
-        maxZoom: maxZoom,
-        minZoom: minZoom,
-        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-        id: id,
-        ver: getversion(vertag),
-        // ?
-        unloadInvisibleTiles: true,
-        subdomains: subdomains,
-    });
-    tiles.on('tileloadstart', onTileLoadStart);
-    tiles.on('tileunload',    onTileUnload);
-    return tiles;
-}
+allLayers = [];
 
-//tilesSfd = createTileLayer('sfd-tiles', 'sfd');
+static_tile_url = '{{ static_tile_url|safe }}';
 
-tilesSfd = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
+
+tilesSfd = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
     minZoom: minZoom,
     maxNativeZoom: 10,
@@ -1484,10 +1470,7 @@ tilesSfd = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
 tilesSfd.on('tileloadstart', onTileLoadStart);
 tilesSfd.on('tileunload', onTileUnload);
 
-
-//tilesHalpha = createTileLayer('halpha-tiles', 'halpha');
-
-tilesHalpha = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
+tilesHalpha = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
     minZoom: minZoom,
     maxNativeZoom: 10,
@@ -1500,10 +1483,6 @@ tilesHalpha = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
   });
 tilesHalpha.on('tileloadstart', onTileLoadStart);
 tilesHalpha.on('tileunload', onTileUnload);
-
-allLayers = [];
-
-static_tile_url = '{{ static_tile_url|safe }}';
 
 function createStaticTileLayer(id, vertag) {
     var tiles = new MyTileLayer(static_tile_url, {
