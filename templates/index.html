@@ -182,7 +182,6 @@ MyLayerControl = L.Control.Layers.extend({
 	}
 });
 
-// Javascript newbie, right here...
 function getkeys(obj) {
     s = '';
     for (k in obj) {
@@ -198,30 +197,13 @@ var subdomains = {{ subdomains|safe }};
 
 function long2ra(lng) {
     ra = 180. - lng;
-    if (ra < 0) {
+    while (ra < 0) {
         ra += 360.;
     }
+    while (ra > 360) {
+        ra -= 360.;
+    }
     return ra;
-}
-
-function ra2long(ra) {
-    lng = 180 - ra;
-    //if (lng < 0) {
-    if (lng < -180) {
-        lng += 360.;
-    }
-    if (lng > 180) {
-        lng -= 360.;
-    }
-    return lng;
-}
-
-function ra2long_B(ra) {
-    lng = 180 - ra;
-    if (lng < 0) {
-        lng += 360.;
-    }
-    return lng;
 }
 
 function wrap_long(lng, clong) {
@@ -239,7 +221,6 @@ function ra2long_C(ra, clong) {
     lng = wrap_long(lng, clong);
     return lng;
 }
-
 
 function dec2lat(dec) {
   return dec;
@@ -791,9 +772,6 @@ function onMouseMove(e) {
     ra  = long2ra(e.latlng.lng);
     dec = lat2dec(e.latlng.lat);
     lastLatLng = e.latlng;
-    while (ra > 360.) {
-	ra -= 360.;
-    }
     if (infoBoxActive) {
 	info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) + ", zoom " + map.getZoom();
 	    //+ ', lat,long ' + e.latlng.lat.toFixed(3) + ',' + e.latlng.lng.toFixed(3);
@@ -1986,7 +1964,7 @@ function doGoto() {
     dec = parseFloat(dec);
     zoom = parseInt(zoom);
     console.log('RA ' + ra + ', Dec ' + dec + ', Zoom ' + zoom);
-    map.setView(L.latLng(dec2lat(dec), ra2long(ra)), zoom);
+    map.setView(L.latLng(dec2lat(dec), ra2long_C(ra, 0)), zoom);
 }
 
 function submitGoto(e) {
