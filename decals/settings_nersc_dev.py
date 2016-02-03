@@ -2,6 +2,8 @@ from settings_common import *
 
 READ_ONLY_BASEDIR = True
 
+DEBUG_LOGGING = True
+
 ROOT_URL = '/viewer-dev'
 STATIC_URL_PATH = '/viewer-dev/static'
 

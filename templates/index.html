@@ -763,8 +763,11 @@ function onMapClick(e) {
     exps = expsUnderLatlng(e.latlng);
     //'lat,lng =' + e.latlng.lat.toFixed(4) + ',' + e.latlng.lng.toFixed(4) + '; ' +
     //ra.toFixed(4) + ', ' + dec.toFixed(4) +
+
+    //cutout_radec_link(ra, dec) +
     txt = 
-        'RA,Dec = ' + cutout_radec_link(ra, dec) +
+        'RA,Dec = ' + 
+                   ra.toFixed(4) + ', ' + dec.toFixed(4) +
         '<br/><a href="{{ baseurl }}ra=' + ra.toFixed(4) +
         '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom() +
 	'&layer=' + idname
@@ -1557,7 +1560,6 @@ var popup = L.popup();
 
 // default to 1.
 var tileversions = {
-  //'decals-dr1d':1,
   'decals-wl':4,
   'decals-dr2':2,
 };

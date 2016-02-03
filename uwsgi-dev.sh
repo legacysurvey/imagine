@@ -1,8 +1,8 @@
 #! /bin/bash
 
 cd /project/projectdirs/cosmo/webapp/viewer-dev
-source ./venv/bin/activate
-export PYTHONPATH=${PYTHONPATH}:$(pwd)/venv
+source ./venv2/bin/activate
+export PYTHONPATH=${PYTHONPATH}:$(pwd)/venv2
 #export PYTHONPATH=${PYTHONPATH}:$(pwd)/venv/lib/python2.7:$(pwd)/venv
 #export PATH=$(pwd)/venv/bin:${PATH}
 
