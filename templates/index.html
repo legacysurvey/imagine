@@ -1225,38 +1225,6 @@ function highlightExp(exp) {
     cf.bringToBack();
 }
 
-function expMouseOut(e) {
-    /*
-    e.target.setStyle({color: 'green'});
-    exp = e.target;
-    highlightedExpName = '';
-    if (exp.name in expFills) {
-        unhighlightExp(exp.name);
-    }
-    inbrickccdUpdate(e);
-    */
-}
-
-function expMouseOver(e) {
-    /*
-    e.target.setStyle({color: 'yellow'});
-    exp = e.target;
-    highlightedExpName = exp.name;
-    console.log('expMouseOver: ' + highlightedExpName);
-    // remove other EXPs from expFills
-    for (var i=0; i<expFills.length; i++) {
-        console.log('expMouseOver: exp ' + exp.name + '; expFills ' + expFills[i]);
-        if (expFills[i] != exp.name) {
-            unhighlightExp(expFills[i]);
-        }
-    }
-    if (!(exp.name in expFills)) {
-        highlightExp(exp);
-    }
-    inbrickccdUpdate(e);
-    */
-}
-
 function plateMouseOver(e) {
 }
 function plateMouseOut(e) {
@@ -1285,8 +1253,6 @@ function expsLoaded(result) {
 	c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
 					 'weight':5, 'opacity':0.4 });
         c.name = name;
-        c.on('mouseover', expMouseOver);
-        c.on('mouseout', expMouseOut);
         expsGroup.addLayer(c);
         currentExps[name] = c;
     }
