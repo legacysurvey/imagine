@@ -291,11 +291,10 @@ function onSourceClick(e) {
 }
 
 function catLoaded(zoom, tilex, tiley, result) {
-    //console.log('catloaded:' + result);
     if (!showSources) {
         return;
     }
-    //console.log('catloaded:' + result['rd']);
+    //console.log('catloaded: z,x,y: ' + zoom + ',' + tilex + ',' + tiley);
     rdlist = result['rd'];
     objtype = result['sourcetype'];
     fluxes = result['fluxes'];
@@ -369,8 +368,8 @@ function catLoaded(zoom, tilex, tiley, result) {
     //circles.on('click', onSourceClick);
     sourcesGroup.addLayer(circles);
     // save this for later.
-    key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
-    console.log('catalog loaded: key ' + key);
+    key = ''+zoom+':'+tilex+':'+tiley;
+    //console.log('catalog loaded: key ' + key);
     catLayers[key] = circles;
 }
 
@@ -636,6 +635,7 @@ function doLoadTile(tile) {
             ver: getcatversion(catname),
 	}));
 	console.log('Loading catalog version ' + catname);
+    //console.log('zoom, tilex, tiley: ' + tile.z + ',' + tile.tilex + ',' + tile.tiley);
 	$.getJSON(caturl, catLoaded.bind(true,
 					 tile.z, tile.tilex, tile.tiley));
     }

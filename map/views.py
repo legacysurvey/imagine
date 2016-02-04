@@ -1508,7 +1508,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
                              expires=oneyear)
     else:
         import tempfile
-        f,cachefn = tempfile.mkstemp(suffix='.jpg')
+        f,cachefn = tempfile.mkstemp(suffix='.json')
         os.close(f)
 
     cat,hdr = _get_decals_cat(wcs, tag=tag)
@@ -1553,19 +1553,21 @@ def _get_decals_cat(wcs, tag='decals'):
     r,d = X[-2:]
     catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
                           'tractor-%(brickname)s.fits')
-    # FIXME (name)
-    debug('_get_decals_cat for tag=', tag)
+
+    #debug('_get_decals_cat for tag=', tag)
     D = _get_decals(name=tag)
     B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
+    #print(len(I), 'bricks touching RA,Dec box', r.min(),r.max(), d.min(),d.max())
 
     cat = []
     hdr = None
-    for brickname in zip(B.brickname[I]):
+    for brickname in B.brickname[I]:
         fnargs = dict(brickname=brickname)
+        #print('Filename args:', fnargs)
         catfn = catpat % fnargs
         if not os.path.exists(catfn):
-            debug('Does not exist:', catfn)
+            print('Does not exist:', catfn)
             continue
         debug('Reading catalog', catfn)
         T = fits_table(catfn)
