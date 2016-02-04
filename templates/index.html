@@ -1781,10 +1781,6 @@ overlayMaps["SDSS Spectro Plates"] = platesGroup;
     "Constellations": conGroup,
 {% endcomment %}
 
-{% if enable_vcc %}
-overlayMaps[vccName] = vccGroup;
-{% endif %}
-
 new MyLayerControl(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
 function onMapPreBaseLayerChange(e) {
