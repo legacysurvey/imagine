@@ -1039,18 +1039,27 @@ def _get_decals(name=None):
         B = d.get_bricks_readonly()
         for k in ['brickid', 'brickq', 'brickrow', 'brickcol']:
             B.delete_column(k)
-        C = d.get_ccds_readonly()
-        # HACK -- cut to photometric & not-blacklisted CCDs.
-        C.cut(d.photometric_ccds(C))
-        debug('HACK -- cut to', len(C), 'photometric CCDs')
-        C.cut(d.apply_blacklist(C))
-        debug('HACK -- cut to', len(C), 'not-blacklisted CCDs')
-        for k in ['date_obs', 'ut', 'airmass',
-                  'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
-                  'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
-                  'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
-                  'ccdnmatchb', 'ccdmdncol', 'expid']:
-            C.delete_column(k)
+
+        # HACK -- plug in a cut version of the CCDs table, if it exists
+        cutfn = os.path.join(dirnm, 'decals-ccds-cut.fits')
+        if os.path.exists(cutfn):
+            from astrometry.util.fits import fits_table
+            C = fits_table(cutfn)
+            d.ccds = C
+        else:
+            C = d.get_ccds_readonly()
+            # HACK -- cut to photometric & not-blacklisted CCDs.
+            C.cut(d.photometric_ccds(C))
+            debug('HACK -- cut to', len(C), 'photometric CCDs')
+            C.cut(d.apply_blacklist(C))
+            debug('HACK -- cut to', len(C), 'not-blacklisted CCDs')
+            for k in ['date_obs', 'ut', 'airmass',
+                      'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
+                      'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
+                      'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
+                      'ccdnmatchb', 'ccdmdncol', 'expid']:
+                C.delete_column(k)
+            # C.writeto(cutfn)
 
         decals[name] = d
         return d
