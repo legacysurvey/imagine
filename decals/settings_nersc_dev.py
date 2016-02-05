@@ -1,5 +1,9 @@
 from settings_common import *
 
+DATABASES = {
+    'default': secrets.database.COSMO_DB,
+}
+
 READ_ONLY_BASEDIR = True
 
 ROOT_URL = '/viewer-dev'
