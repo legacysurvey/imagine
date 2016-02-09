@@ -84,6 +84,8 @@ def _one_tile((kind, zoom, x, y, ignore)):
                               forcecache=True)
     elif kind == 'sfd':
         map_sfd(req, version, zoom, x, y, savecache=True)
+    elif kind == 'halpha':
+        map_halpha(req, version, zoom, x, y, savecache=True)
 
     elif kind == 'unwise':
         map_unwise_w1w2(req, version, zoom, x, y, savecache=True,
@@ -542,6 +544,11 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -25
+    elif opt.kind == 'halpha':
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = -90
     else:
         if opt.maxdec is None:
             opt.maxdec = 40

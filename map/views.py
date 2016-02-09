@@ -1039,18 +1039,27 @@ def _get_decals(name=None):
         B = d.get_bricks_readonly()
         for k in ['brickid', 'brickq', 'brickrow', 'brickcol']:
             B.delete_column(k)
-        C = d.get_ccds_readonly()
-        # HACK -- cut to photometric & not-blacklisted CCDs.
-        C.cut(d.photometric_ccds(C))
-        debug('HACK -- cut to', len(C), 'photometric CCDs')
-        C.cut(d.apply_blacklist(C))
-        debug('HACK -- cut to', len(C), 'not-blacklisted CCDs')
-        for k in ['date_obs', 'ut', 'airmass',
-                  'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
-                  'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
-                  'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
-                  'ccdnmatchb', 'ccdmdncol', 'expid']:
-            C.delete_column(k)
+
+        # HACK -- plug in a cut version of the CCDs table, if it exists
+        cutfn = os.path.join(dirnm, 'decals-ccds-cut.fits')
+        if os.path.exists(cutfn):
+            from astrometry.util.fits import fits_table
+            C = fits_table(cutfn)
+            d.ccds = C
+        else:
+            C = d.get_ccds_readonly()
+            # HACK -- cut to photometric & not-blacklisted CCDs.
+            C.cut(d.photometric_ccds(C))
+            debug('HACK -- cut to', len(C), 'photometric CCDs')
+            C.cut(d.apply_blacklist(C))
+            debug('HACK -- cut to', len(C), 'not-blacklisted CCDs')
+            for k in ['date_obs', 'ut', 'airmass',
+                      'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
+                      'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
+                      'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
+                      'ccdnmatchb', 'ccdmdncol', 'expid']:
+                C.delete_column(k)
+            # C.writeto(cutfn)
 
         decals[name] = d
         return d
@@ -1508,7 +1517,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
                              expires=oneyear)
     else:
         import tempfile
-        f,cachefn = tempfile.mkstemp(suffix='.jpg')
+        f,cachefn = tempfile.mkstemp(suffix='.json')
         os.close(f)
 
     cat,hdr = _get_decals_cat(wcs, tag=tag)
@@ -1553,19 +1562,21 @@ def _get_decals_cat(wcs, tag='decals'):
     r,d = X[-2:]
     catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
                           'tractor-%(brickname)s.fits')
-    # FIXME (name)
-    debug('_get_decals_cat for tag=', tag)
+
+    #debug('_get_decals_cat for tag=', tag)
     D = _get_decals(name=tag)
     B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
+    #print(len(I), 'bricks touching RA,Dec box', r.min(),r.max(), d.min(),d.max())
 
     cat = []
     hdr = None
-    for brickname in zip(B.brickname[I]):
+    for brickname in B.brickname[I]:
         fnargs = dict(brickname=brickname)
+        #print('Filename args:', fnargs)
         catfn = catpat % fnargs
         if not os.path.exists(catfn):
-            debug('Does not exist:', catfn)
+            print('Does not exist:', catfn)
             continue
         debug('Reading catalog', catfn)
         T = fits_table(catfn)

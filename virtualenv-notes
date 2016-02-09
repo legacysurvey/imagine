@@ -1,3 +1,84 @@
+# NOTE, only work on the virtualenv on the "sgn04" machine!
+# (rsync it to /tmp and back)
+
+# ??
+# virtualenv --always-copy venv
+
+#on sgn04
+cd /tmp
+virtualenv venv
+cd venv
+source bin/activate
+pip install numpy
+pip install uwsgi
+pip install django
+
+mkdir build
+cd build
+wget http://download.savannah.gnu.org/releases/freetype/freetype-2.4.12.tar.gz
+tar xzf freetype-2.4.12.tar.gz
+cd freetype-2.4.12
+./configure --prefix=/tmp/venv
+make
+make install
+cd ..
+
+wget ftp://ftp.atnf.csiro.au/pub/software/wcslib/wcslib-5.12.tar.bz2
+tar xjf wcslib-5.12.tar.bz2
+cd wcslib-5.12
+export CFLAGS=-fPIC
+./configure --prefix=/tmp/venv
+make
+make install
+cd ../..
+
+export WCSLIB_LIB=/tmp/venv/lib/libwcs.a
+export PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:/tmp/venv/lib/pkgconfig
+
+cd build
+wget http://downloads.sourceforge.net/project/swig/swig/swig-3.0.8/swig-3.0.8.tar.gz
+tar xzf swig-3.0.8.tar.gz
+cd swig-3.0.8
+./configure --prefix=/tmp/venv --without-pcre --without-perl5
+cd ../..
+
+git clone https://github.com/dstndstn/astrometry.net.git astrometry
+cd astrometry
+make -k
+make -k py
+(cd libkd && make py)
+cd ..
+
+git clone https://github.com/dstndstn/tractor.git tractor-git
+cd tractor-git/
+make
+cd ..
+ln -s tractor-git/tractor .
+
+git clone https://github.com/legacysurvey/legacypipe.git legacypipe-git
+ln -s legacypipe-git/py/legacypipe/ .
+cd ..
+
+virtualenv --relocatable venv
+
+pip install psycopg2
+pip install matplotlib
+easy_install -U setuptools
+pip install astropy
+pip install scipy
+pip install nose # optional
+pip install pillow # for jpeg plots
+
+git clone https://github.com/esheldon/fitsio.git fitsio-git
+cd fitsio-git
+python setup.py install --home=$(pwd)/installed
+cd ..
+ln -s fitsio-git/installed/lib/python/fitsio .
+
+
+
+# ------ older attempts ---------
+
 # NOTE, only work on the virtualenv on the "sgn02" machine!
 
 
