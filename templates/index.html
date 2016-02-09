@@ -2,16 +2,31 @@
 {% load static %}
 
 {% block header %}
-<link rel="stylesheet" href="{% static "leaflet-0.7.3.css" %}" />
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+  ga('create', 'UA-5565065-29', 'auto');
+  ga('send', 'pageview');
+</script> 
+
+<link rel="stylesheet" href="{% static "leaflet-0.7.7.css" %}" />
+{% comment %}
 <script src="{% static "leaflet-src.js" %}"></script>
+{% endcomment %}
+<script src="{% static "leaflet-min-0.7.7.js" %}"></script>
 <script src="{% static "jquery-2.1.1.min.js" %}"></script>
 <script src="{% static "leaflet-pip-20150130.min.js" %}"></script>
 <script src="{% static "leaflet-zoomslider-0.6.1.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet-zoomslider-0.6.1.css" %}" />
+{% comment %}
 <script src="{% static "leaflet.draw-0.2.4.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet.draw-0.2.4.css" %}" />
 <script src="{% static "leaflet.measurecontrol-20150626.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet.measurecontrol-20150626.css" %}" />
+{% endcomment %}
 <script src="{% static "leaflet.label-20150521.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet.label-20150521.css" %}" />
 
@@ -182,7 +197,6 @@ MyLayerControl = L.Control.Layers.extend({
 	}
 });
 
-// Javascript newbie, right here...
 function getkeys(obj) {
     s = '';
     for (k in obj) {
@@ -198,30 +212,13 @@ var subdomains = {{ subdomains|safe }};
 
 function long2ra(lng) {
     ra = 180. - lng;
-    if (ra < 0) {
+    while (ra < 0) {
         ra += 360.;
     }
+    while (ra > 360) {
+        ra -= 360.;
+    }
     return ra;
-}
-
-function ra2long(ra) {
-    lng = 180 - ra;
-    //if (lng < 0) {
-    if (lng < -180) {
-        lng += 360.;
-    }
-    if (lng > 180) {
-        lng -= 360.;
-    }
-    return lng;
-}
-
-function ra2long_B(ra) {
-    lng = 180 - ra;
-    if (lng < 0) {
-        lng += 360.;
-    }
-    return lng;
 }
 
 function wrap_long(lng, clong) {
@@ -239,7 +236,6 @@ function ra2long_C(ra, clong) {
     lng = wrap_long(lng, clong);
     return lng;
 }
-
 
 function dec2lat(dec) {
   return dec;
@@ -295,11 +291,10 @@ function onSourceClick(e) {
 }
 
 function catLoaded(zoom, tilex, tiley, result) {
-    //console.log('catloaded:' + result);
     if (!showSources) {
         return;
     }
-    //console.log('catloaded:' + result['rd']);
+    //console.log('catloaded: z,x,y: ' + zoom + ',' + tilex + ',' + tiley);
     rdlist = result['rd'];
     objtype = result['sourcetype'];
     fluxes = result['fluxes'];
@@ -373,8 +368,8 @@ function catLoaded(zoom, tilex, tiley, result) {
     //circles.on('click', onSourceClick);
     sourcesGroup.addLayer(circles);
     // save this for later.
-    key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
-    console.log('catalog loaded: key ' + key);
+    key = ''+zoom+':'+tilex+':'+tiley;
+    //console.log('catalog loaded: key ' + key);
     catLayers[key] = circles;
 }
 
@@ -640,6 +635,7 @@ function doLoadTile(tile) {
             ver: getcatversion(catname),
 	}));
 	console.log('Loading catalog version ' + catname);
+    //console.log('zoom, tilex, tiley: ' + tile.z + ',' + tile.tilex + ',' + tile.tiley);
 	$.getJSON(caturl, catLoaded.bind(true,
 					 tile.z, tile.tilex, tile.tiley));
     }
@@ -791,9 +787,6 @@ function onMouseMove(e) {
     ra  = long2ra(e.latlng.lng);
     dec = lat2dec(e.latlng.lat);
     lastLatLng = e.latlng;
-    while (ra > 360.) {
-	ra -= 360.;
-    }
     if (infoBoxActive) {
 	info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) + ", zoom " + map.getZoom();
 	    //+ ', lat,long ' + e.latlng.lat.toFixed(3) + ',' + e.latlng.lng.toFixed(3);
@@ -925,86 +918,6 @@ function inbrickccdUpdate(props) {
     inbrickccd._div.innerHTML = txt;
 }
 
-function vccLoaded(counter, result) {
-    console.log('vccLoaded: counter ' + counter);
-    if (!showVcc) {
-        return;
-    }
-    for (var k in vccLayers) {
-	if (k > counter) {
-	    console.log('vcc: counter ' + k + ' exists; bye');
-	    return;
-	}
-    }
-
-    for (var k in vccLayers) {
-	console.log('vcc: counter ' + k + 'exists');
-    }
-
-    rdlist = result['rd'];
-    names = result['name'];
-    var circleList = new Array(rdlist.length);
-    var clong = map.getCenter().lng;
-    for (i=0, len=rdlist.length; i<len; i++) {
-        r = rdlist[i][0];
-        d = rdlist[i][1];
-        lat = dec2lat(d);
-        lng = ra2long_C(r, clong);
-	meters = 300;
-	color = '#ffffff';
-
-        circ = L.circle([lat, lng], meters, {'color':color,
-                                             'fillOpacity':0, 'weight':5});
-        circ.ra = r;
-        circ.dec = d;
-	circ.name = names[i];
-	circ._showLabelAdded = true;
-	circ.bindLabel(circ.name, { noHide: true });
-	circ.label._latlng = L.latLng(lat,lng);
-
-	circ.on('remove', function(e){
-	    console.log('Removing label for ' + e.target.name);
-	    map.removeLayer(e.target.label);
-	});
-
-        circleList[i] = circ;
-    }
-    circles = L.layerGroup(circleList);
-
-    vccGroup.addLayer(circles);
-    // show labels
-    for (i=0; i<circleList.length; i++) {
-	circ = circleList[i];
-	map.showLabel(circ.label);
-    }
-
-    // remove old layers
-    for (var k in vccLayers) {
-	if (k < counter) {
-	    console.log('vcc: removing previous counter ' + k);
-	    vccGroup.removeLayer(vccLayers[k]);
-	    delete vccLayers[k];
-	}
-    }
-    vccLayers[counter] = [circles];
-}
-
-var vccCounter = 1;
-
-function loadVccCatalog() {
-    b = map.getBounds();
-    url = L.Util.template('{{ smallcaturl|safe }}', L.extend({
-        s: subdomains[0],
-	ralo: long2ra(b.getEast()).toFixed(4),
-	rahi: long2ra(b.getWest()).toFixed(4),
-	declo: lat2dec(b.getSouth()).toFixed(4),
-	dechi: lat2dec(b.getNorth()).toFixed(4),
-        id: 'vcc',
-        ver: getcatversion('vcc'),
-    }));
-    $.getJSON(url, vccLoaded.bind(true, vccCounter));
-    vccCounter += 1;
-}
 
 var specCounter = 1;
 
@@ -1054,10 +967,6 @@ function overlayAdded(e) {
     if (e.name == ngcName) {
         showNgc = true;
         ngc = true;
-    }
-    if (e.name == vccName) {
-        showVcc = true;
-	loadVccCatalog();
     }
     if (e.name == specName) {
 	showSpec = true;
@@ -1117,13 +1026,6 @@ function overlayRemoved(e) {
     if (e.name == ngcName) {
         showNgc = false;
 	unload = true;
-    }
-    if (e.name == vccName) {
-        showVcc = false;
-	for (var k in vccLayers) {
-	    vccGroup.removeLayer(k);
-	}
-	vccLayers = {};
     }
     if (e.name == specName) {
 	showSpec = false;
@@ -1322,43 +1224,6 @@ function highlightExp(exp) {
     cf.bringToBack();
 }
 
-function expMouseOut(e) {
-    /*
-    e.target.setStyle({color: 'green'});
-    exp = e.target;
-    highlightedExpName = '';
-    if (exp.name in expFills) {
-        unhighlightExp(exp.name);
-    }
-    inbrickccdUpdate(e);
-    */
-}
-
-function expMouseOver(e) {
-    /*
-    e.target.setStyle({color: 'yellow'});
-    exp = e.target;
-    highlightedExpName = exp.name;
-    console.log('expMouseOver: ' + highlightedExpName);
-    // remove other EXPs from expFills
-    for (var i=0; i<expFills.length; i++) {
-        console.log('expMouseOver: exp ' + exp.name + '; expFills ' + expFills[i]);
-        if (expFills[i] != exp.name) {
-            unhighlightExp(expFills[i]);
-        }
-    }
-    if (!(exp.name in expFills)) {
-        highlightExp(exp);
-    }
-    inbrickccdUpdate(e);
-    */
-}
-
-function plateMouseOver(e) {
-}
-function plateMouseOut(e) {
-}
-
 function expsLoaded(result) {
     if (!showExps) {
         return;
@@ -1382,8 +1247,6 @@ function expsLoaded(result) {
 	c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
 					 'weight':5, 'opacity':0.4 });
         c.name = name;
-        c.on('mouseover', expMouseOver);
-        c.on('mouseout', expMouseOut);
         expsGroup.addLayer(c);
         currentExps[name] = c;
     }
@@ -1410,8 +1273,6 @@ function platesLoaded(result) {
 	c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
 					 'weight':5, 'opacity':0.4 });
         c.name = name;
-        c.on('mouseover', plateMouseOver);
-        c.on('mouseout', plateMouseOut);
         platesGroup.addLayer(c);
         currentPlates[name] = c;
     }
@@ -1425,9 +1286,6 @@ function mapBoundsChanged() {
     dec = lat2dec(latlng.lat);
     //console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
 
-    if (showVcc) {
-        loadVccCatalog();
-    }
     if (showSpec && zoom > specMinZoom) {
         loadSpecCatalog();
     }
@@ -1526,10 +1384,6 @@ var brightLayers = {};
 
 var conGroup = L.layerGroup([]);
 
-var showVcc = false;
-var vccGroup = L.layerGroup([]);
-var vccLayers = {};
-
 var showBricks = false;
 var bricksGroup = L.layerGroup([]);
 var currentBricks = {};
@@ -1557,7 +1411,6 @@ var popup = L.popup();
 
 // default to 1.
 var tileversions = {
-  //'decals-dr1d':1,
   'decals-wl':4,
   'decals-dr2':2,
 };
@@ -1585,25 +1438,12 @@ var catname = 'decals-dr1j';
 var minZoom = 1;
 var maxZoom = 16;
 
-function createTileLayer(id, vertag) {
-    var tiles = new MyTileLayer('{{ tileurl|safe }}', {
-        maxZoom: maxZoom,
-        minZoom: minZoom,
-        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-        id: id,
-        ver: getversion(vertag),
-        // ?
-        unloadInvisibleTiles: true,
-        subdomains: subdomains,
-    });
-    tiles.on('tileloadstart', onTileLoadStart);
-    tiles.on('tileunload',    onTileUnload);
-    return tiles;
-}
+allLayers = [];
 
-//tilesSfd = createTileLayer('sfd-tiles', 'sfd');
+static_tile_url = '{{ static_tile_url|safe }}';
 
-tilesSfd = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
+
+tilesSfd = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
     minZoom: minZoom,
     maxNativeZoom: 10,
@@ -1617,10 +1457,7 @@ tilesSfd = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
 tilesSfd.on('tileloadstart', onTileLoadStart);
 tilesSfd.on('tileunload', onTileUnload);
 
-
-//tilesHalpha = createTileLayer('halpha-tiles', 'halpha');
-
-tilesHalpha = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
+tilesHalpha = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
     minZoom: minZoom,
     maxNativeZoom: 10,
@@ -1633,10 +1470,6 @@ tilesHalpha = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
   });
 tilesHalpha.on('tileloadstart', onTileLoadStart);
 tilesHalpha.on('tileunload', onTileUnload);
-
-allLayers = [];
-
-static_tile_url = '{{ static_tile_url|safe }}';
 
 function createStaticTileLayer(id, vertag) {
     var tiles = new MyTileLayer(static_tile_url, {
@@ -1764,145 +1597,6 @@ tilesResidDr1j = new ZoomRangeTileLayer(static_tile_url, {
 tilesResidDr1j.catname = catname;
 allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", catname:catname});
 
-{% if enable_nexp %}
-id = 'decals-nexp-dr1j'
-//tilesNexpDr1j = new ZoomRangeTileLayer(static_tile_url, {
-tilesNexpDr1j = new MyTileLayer('{{tileurl|safe}}', {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    //urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-tilesNexpDr1j.catname = catname;
-allLayers.push({name:id, tiles:tilesNexpDr1j, pretty:"DECaLS DR1 # exposures", catname:catname});
-{% endif %}
-
-
-{% if layer == 'decals-dr1k' %}
-id = 'decals-dr1k'
-catname = 'decals-dr1k';
-
-boundsCosmos = L.latLngBounds(L.latLng(dec2lat(0.9), ra2long(152.0)),
-			      L.latLng(dec2lat(3.6), ra2long(148.0)));
-// Use the static URL until zoom level 14, then the dynamic URL.
-tilesDr1k = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-    bounds: boundsCosmos,
-  });
-
-tilesDr1k.catname = catname;
-allLayers.push({name:id, tiles:tilesDr1k, pretty:"DECALS DR1k (COSMOS) images", catname:catname});
-
-id = 'decals-model-dr1k'
-tilesModDr1k = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-    bounds: boundsCosmos,
-  });
-
-tilesModDr1k.catname = catname;
-allLayers.push({name:id, tiles:tilesModDr1k, pretty:"DECaLS DR1k (COSMOS) models", catname:catname});
-
-{% endif %}
-
-
-{% if layer == 'decals-dr1n' %}
-id = 'decals-dr1n'
-catname = 'decals-dr1n';
-
-//boundsCosmos = L.latLngBounds(L.latLng(dec2lat(10.0), ra2long(15.0)),
-//			      L.latLng(dec2lat(185.0), ra2long(190.0)));
-// Use the static URL until zoom level 14, then the dynamic URL.
-tilesDr1n = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-	//bounds: boundsCosmos,
-  });
-
-tilesDr1n.catname = catname;
-allLayers.push({name:id, tiles:tilesDr1n, pretty:"DECALS DR1n (Virgo) images", catname:catname});
-
-id = 'decals-model-dr1n'
-tilesModDr1n = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-//    bounds: boundsCosmos,
-  });
-
-tilesModDr1n.catname = catname;
-allLayers.push({name:id, tiles:tilesModDr1n, pretty:"DECaLS DR1n (Virgo) models", catname:catname});
-
-id = 'decals-resid-dr1n'
-tilesResidDr1n = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-//    bounds: boundsCosmos,
-  });
-
-tilesResidDr1n.catname = catname;
-allLayers.push({name:id, tiles:tilesResidDr1n, pretty:"DECaLS DR1n (Virgo) residuals", catname:catname});
-
-
-{% endif %}
-
-
-{% comment %}
-id = 'sdss'
-tiles = new MyTileLayer('{{tileurl|safe}}', {
-    maxZoom: maxZoom,
-    //maxNativeZoom: {{ maxNativeZoom }},
-    maxNativeZoom: 16,
-    minZoom: minZoom,
-    attribution: '<a href="http://sdss.org">SDSS</a>',
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-  });
-allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
-{% endcomment %}
-
 id = 'sdssco'
 tiles = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
@@ -1942,26 +1636,6 @@ allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing
 
 {% endif %}
 
-{% if enable_depth %}
-bands = ['g','r','z'];
-for (var i in bands) {
-    band = bands[i];
-    tilesDepth = new ZoomRangeTileLayer('{{ tileurl|safe }}?band=' + band, {
-	maxZoom: maxZoom,
-	minZoom: minZoom,
-	attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-	id: 'decam-depth',
-	ver: getversion('decam-depth'),
-	unloadInvisibleTiles: true,
-	subdomains: subdomains,
-	//urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
-    });
-    tilesDepth.on('tileloadstart', onTileLoadStart);
-    tilesDepth.on('tileunload', onTileUnload);
-    allLayers.push({name:'decam-depth-'+band, tiles:tilesDepth, pretty:"DECam Depth: " + band + " band", catname:""});
-}
-{% endif %}
-
 id = 'unwise-w1w2-tiles'
 vertag = 'unwise'
 tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
@@ -1977,47 +1651,6 @@ tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
 });
 
 allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE W1/W2", catname:""});
-
-
-
-{% comment %}
-
-if (idname == 'unwise') {
-  id = 'unwise-w3w4-tiles'
-  vertag = 'unwise'
-  tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
-        maxZoom: maxZoom,
-        maxNativeZoom: 11,
-        minZoom: minZoom,
-        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-        id: id,
-        ver: getversion(vertag),
-        unloadInvisibleTiles: true,
-        subdomains: subdomains,
-  });
-
-  allLayers.push({name:'unwise-w3w4', tiles:tilesUnwise, pretty:"unWISE W3/W4", catname:""});
-}
-
-if (idname == 'unwise') {
-  id = 'unwise-w1234-tiles'
-  vertag = 'unwise'
-  tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
-        maxZoom: maxZoom,
-        maxNativeZoom: 11,
-        minZoom: minZoom,
-        attribution: '<a href="http://legacysurvey.org">DECaLS</a>',
-        id: id,
-        ver: getversion(vertag),
-        unloadInvisibleTiles: true,
-        subdomains: subdomains,
-  });
-
-  allLayers.push({name:'unwise-w3w4', tiles:tilesUnwise, pretty:"unWISE W1234", catname:""});
-}
-
-{% endcomment %}
-
 
 var baseMaps = {};
 for (i in allLayers) {
@@ -2056,7 +1689,7 @@ function doGoto() {
     dec = parseFloat(dec);
     zoom = parseInt(zoom);
     console.log('RA ' + ra + ', Dec ' + dec + ', Zoom ' + zoom);
-    map.setView(L.latLng(dec2lat(dec), ra2long(ra)), zoom);
+    map.setView(L.latLng(dec2lat(dec), ra2long_C(ra, 0)), zoom);
 }
 
 function submitGoto(e) {
@@ -2129,7 +1762,6 @@ L.DomEvent
   .disableScrollPropagation(container);
 L.DomEvent.on(container, 'click', infoBoxClicked);
 
-var vccName = "Virgo clusters";
 var specName = "Spectra";
 var ngcName = "NGC galaxies";
 var brightName = "Bright stars";
@@ -2148,10 +1780,6 @@ overlayMaps["SDSS Spectro Plates"] = platesGroup;
 {% comment %}
     "Constellations": conGroup,
 {% endcomment %}
-
-{% if enable_vcc %}
-overlayMaps[vccName] = vccGroup;
-{% endif %}
 
 new MyLayerControl(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
@@ -2430,11 +2058,6 @@ showSoures = true;
 {% if showNgc %}
 map.addLayer(ngcGroup);
 showNgc = true;
-{% endif %}
-
-{% if showVcc %}
-map.addLayer(vccGroup);
-showVcc = true;
 {% endif %}
 
 {% if showSpec %}

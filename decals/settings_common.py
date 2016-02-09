@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 import secrets.django
 import secrets.database
 
+# Can the web service not create files under BASE_DIR?
+READ_ONLY_BASEDIR = False
+
+DEBUG_LOGGING = False
+
 SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
 
