@@ -1,8 +1,8 @@
 from settings_common import *
 
-DATABASES = {
-    'default': secrets.database.COSMO_DB,
-}
+DATABASE_ROUTERS = ['cat.models.Router']
+
+INSTALLED_APPS = INSTALLED_APPS + ('cat',)
 
 READ_ONLY_BASEDIR = True
 
