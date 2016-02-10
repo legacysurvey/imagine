@@ -283,13 +283,16 @@ def index(req):
     expsurl = settings.ROOT_URL + '/exps/?north={north}&east={east}&south={south}&west={west}&id={id}'
     platesurl = settings.ROOT_URL + '/sdss-plates/?north={north}&east={east}&south={south}&west={west}'
 
-    baseurl = req.path + '?'
+    baseurl = req.path
+
+    absurl = req.build_absolute_uri(settings.ROOT_URL)
 
     from django.shortcuts import render
 
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, lat=lat, long=lng, zoom=zoom,
                        layer=layer, tileurl=tileurl,
+                       absurl=absurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
                        smallcaturl=smallcaturl,
                        ccdsurl=ccdsurl,
@@ -503,6 +506,10 @@ def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
     width  = min(int(req.GET.get('width',  size)), maxsize)
     height = min(int(req.GET.get('height', size)), maxsize)
 
+    if not 'pixscale' in req.GET and 'zoom' in req.GET:
+        zoom = int(req.GET.get('zoom'))
+        pixscale = pixscale * 2**(native_zoom - zoom)
+
     bands = req.GET.get('bands', bands)
     #bands = [b for b in 'grz' if b in bands]
 
@@ -554,6 +561,13 @@ def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
         fn = 'cutout_%s_%.4f_%.4f.fits' % (outtag, ra,dec)
     return send_file(tmpfn, 'image/fits', unlink=True, filename=fn)
 
+def jpeg_cutout(req):
+    layer = req.GET.get('layer', 'decals-dr2')
+    if layer == 'decals-dr1j':
+        return jpeg_cutout_decals_dr1j(req)
+    if layer in ['sdss', 'sdssco']:
+        return jpeg_cutout_sdssco(req)
+    return jpeg_cutout_decals_dr2(req)
 
 B_sdssco = None
 

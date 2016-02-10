@@ -44,6 +44,8 @@ urlpatterns = [
     url(r'^jpeg-cutout-decals-dr2', views.jpeg_cutout_decals_dr2),
     url(r'^fits-cutout-decals-dr2', views.fits_cutout_decals_dr2),
 
+    url(r'^jpeg-cutout', views.jpeg_cutout, name='cutout-jpeg'),
+
     # NGC objects
     url(r'^ngc/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_ngc),
 

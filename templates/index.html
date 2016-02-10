@@ -757,17 +757,26 @@ function onMapClick(e) {
     bricks = bricksUnderLatlng(e.latlng);
     ccds = ccdsUnderLatlng(e.latlng);
     exps = expsUnderLatlng(e.latlng);
-    //'lat,lng =' + e.latlng.lat.toFixed(4) + ',' + e.latlng.lng.toFixed(4) + '; ' +
-    //ra.toFixed(4) + ', ' + dec.toFixed(4) +
+
+    qstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom() + '&layer=' + idname;
+
+    cutout = '{{ absurl }}/jpeg-cutout/?' + qstr;
+
+    linkurl = '{{ absurl }}?' + qstr;
+
+    discuss = 'http://discuss.legacysurvey.org/new-topic?title=Interesting+object&body=' +
+         '%3Cimg+src%3D%22' + encodeURIComponent(cutout) + '%22%3E' +
+         '%0A' +
+         encodeURIComponent(linkurl) +
+         '&category=Interesting+things';
+
     txt = 
         'RA,Dec = ' + cutout_radec_link(ra, dec) +
-        '<br/><a href="{{ baseurl }}ra=' + ra.toFixed(4) +
-        '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom() +
-	    '&layer=' + idname +
-        '">link here</a> <a href="http://bbq.cosmo.fas.nyu.edu:8000/new-topic?title=Interesting+object&body=' +
-        'http%3A%2F%2Flegacysurvey.org%2Fviewer%2F%3Fra%3D' + ra.toFixed(4) + '%26dec%3D' + dec.toFixed(4) +
-        '%26zoom%3D' + map.getZoom() + '%26layer%3D' + idname +
-        '&category=Interesting+things">Discuss This</a>';
+        '<br/><a href="{{ baseurl }}?' + qstr +
+        '">Link Here</a> &nbsp;|&nbsp; ' +
+        '<a href="' + cutout + '">Cutout</a> &nbsp;|&nbsp; ' +
+        '<a href="' + discuss + '">Discuss This Object</a>';
+
     if (bricks.length) {
         for (var i=0; i<bricks.length; i++) {
             txt += '<br/>Brick: ' + brick_detail(bricks[i]);
