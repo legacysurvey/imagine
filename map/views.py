@@ -164,27 +164,104 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
     res['Last-Modified'] = lastmod.strftime(timefmt)
     return res
 
+galaxycat = None
+
 def index(req):
     layer = req.GET.get('layer', 'decals-dr2')
     # Nice spiral galaxy
-    ra, dec, zoom = 244.7, 7.4, 13
-    # EDR2 region
-    #ra, dec, zoom = 243.7, 8.2, 13
-    # Top of DR1
-    #ra,dec,zoom = 113.49, 29.86, 13
+    #ra, dec, zoom = 244.7, 7.4, 13
+
+    ra = dec = None
+    zoom = 13
 
     try:
         zoom = int(req.GET.get('zoom', zoom))
     except:
         pass
     try:
-        ra = float(req.GET.get('ra',ra))
+        ra = float(req.GET.get('ra'))
     except:
         pass
     try:
-        dec = float(req.GET.get('dec', dec))
+        dec = float(req.GET.get('dec'))
     except:
         pass
+
+    if ra is None or dec is None:
+        import numpy as np
+        from astrometry.util.fits import fits_table, merge_tables
+
+        global galaxycat
+        galfn = os.path.join(settings.DATA_DIR, 'galaxy-cats-in-dr2.fits')
+        if galaxycat is None and not os.path.exists(galfn):
+            import astrometry.catalogs
+            import fitsio
+            from astrometry.util.util import Tan
+
+            fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ngc2000.fits')
+            NGC = fits_table(fn)
+            keepNGC = np.zeros(len(NGC), bool)
+            print(len(NGC), 'NGC objects')
+            NGC.name = np.array(['NGC %i' % n for n in NGC.ngcnum])
+            NGC.delete_column('ngcnum')
+
+            fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ic2000.fits')
+            IC = fits_table(fn)
+            keepIC = np.zeros(len(IC), bool)
+            print(len(IC), 'IC objects')
+            IC.name = np.array(['IC %i' % n for n in IC.icnum])
+            IC.delete_column('icnum')
+
+            fn = os.path.join(settings.DATA_DIR, 'ugc.fits')
+            UGC = fits_table(fn)
+            keepUGC = np.zeros(len(UGC), bool)
+            print(len(UGC), 'UGC objects')
+            UGC.name = np.array(['UGC %i' % n for n in UGC.ugcnum])
+            UGC.delete_column('ugcnum')
+
+            T = merge_tables([C for C,keep,name in cats])
+            keep = np.zeros(len(T), bool)
+
+            bricks = _get_dr2_bricks()
+            bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
+            print(len(bricks), 'bricks with grz')
+
+            for brick in bricks:
+                dirnm = os.path.join(settings.DATA_DIR, 'coadd', 'decals-dr2',
+                                     '%.3s' % brick.brickname, brick.brickname)
+                fn = os.path.join(dirnm,
+                                  'decals-%s-nexp-r.fits.gz' % brick.brickname)
+                if not os.path.exists(fn):
+                    print('Does not exist:', fn)
+                    continue
+
+                I = np.flatnonzero((T.ra  >= brick.ra1 ) * (T.ra  < brick.ra2 ) *
+                                   (T.dec >= brick.dec1) * (T.dec < brick.dec2))
+                if len(I) == 0:
+                    continue
+                print('Brick', brick.brickname, 'has', len(I), 'objs')
+
+                nn = fitsio.read(fn)
+                h,w = nn.shape
+                imgfn = os.path.join(dirnm,
+                                     'decals-%s-image-r.fits' % brick.brickname)
+                wcs = Tan(imgfn)
+
+                ok,x,y = wcs.radec2pixelxy(T.ra[I], T.dec[I])
+                x = np.clip((x-1).astype(int), 0, w-1)
+                y = np.clip((y-1).astype(int), 0, h-1)
+                n = nn[y,x]
+                keep[I[n > 0]] = True
+
+            T.cut(keep)
+            T.writeto(galfn)
+
+        if galaxycat is None:
+            galaxycat = fits_table(galfn)
+
+        i = np.random.randint(len(galaxycat))
+        ra = galaxycat.ra[i]
+        dec = galaxycat.dec[i]
 
     lat,lng = dec, ra2long(ra)
 
@@ -2204,11 +2281,14 @@ if __name__ == '__main__':
     zoom,x,y = 14, 16383, 7875
     req = duck()
     req.META = dict()
+    req.GET = dict()
 
-    r = map_sdssco(req, ver, zoom, x, y, savecache=True, ignoreCached=True,
-                   hack_jpeg=True)
-    print('got', r)
-    sys.exit(0)
+    r = index(req)
+
+    # r = map_sdssco(req, ver, zoom, x, y, savecache=True, ignoreCached=True,
+    #                hack_jpeg=True)
+    # print('got', r)
+    # sys.exit(0)
 
     ver = 1
     zoom,x,y = 13, 2623, 3926
