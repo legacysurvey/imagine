@@ -13,10 +13,10 @@
 </script> 
 
 <link rel="stylesheet" href="{% static "leaflet-0.7.7.css" %}" />
+<script src="{% static "leaflet-src-0.7.7.js" %}"></script>
 {% comment %}
-<script src="{% static "leaflet-src.js" %}"></script>
-{% endcomment %}
 <script src="{% static "leaflet-min-0.7.7.js" %}"></script>
+{% endcomment %}
 <script src="{% static "jquery-2.1.1.min.js" %}"></script>
 <script src="{% static "leaflet-pip-20150130.min.js" %}"></script>
 <script src="{% static "leaflet-zoomslider-0.6.1.js" %}"></script>
@@ -1784,7 +1784,7 @@ info.addTo(map);
 var query = L.control({'position':'bottomleft'});
 query.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'query');
-    this._div.innerHTML = 'SQL catalog query: <input type="text" id="sqlquery" />'
+    this._div.innerHTML = 'SQL catalog query: <input type="text" id="sqlquery" value="rflux > 100" size="50"/>'
     return this._div;
 };
 query.addTo(map);
@@ -1795,15 +1795,16 @@ function sqlLoaded(result) {
     rdlist = result['rd'];
     var circleList = new Array(rdlist.length);
     var clong = map.getCenter().lng;
-    for (i=0, len=rdlist.length; i<len; i++) {
+    for (var i=0, len=rdlist.length; i<len; i++) {
         r = rdlist[i][0];
         d = rdlist[i][1];
         lat = dec2lat(d);
         lng = ra2long_C(r, clong);
         color = 'white';
-        circ = L.circle([lat, lng], 30, {'color':color, 'fillOpacity':0, 'weight':5});
+        circ = L.circle([lat, lng], 300, {'color':color, 'fillOpacity':0, 'weight':5});
         circ.ra = r;
         circ.dec = d;
+        circleList[i] = circ;
     }
     circles = L.layerGroup(circleList);
     sqlGroup.clearLayers();
@@ -2150,6 +2151,8 @@ showNgc = true;
 map.addLayer(specGroup);
 showSpec = true;
 {% endif %}
+
+map.addLayer(sqlGroup);
 
 {% comment %}
 var constellation_shortnames =  [ "Aql","And","Scl","Ara","Lib","Cet","Ari","Sct","Pyx","Boo","Cae","Cha","Cnc","Cap","Car","Cas","Cen","Cep","Com","Cvn","Aur","Col","Cir","Crt","CrA","CrB","Crv","Cru","Cyg","Del","Dor","Dra","Nor","Eri","Sge","For","Gem","Cam","CMa","UMa","Gru","Her","Hor","Hya","Hyi","Ind","Lac","Mon","Lep","Leo","Lup","Lyn","Lyr","Ant","Mic","Mus","Oct","Aps","Oph","Ori","Pav","Peg","Pic","Per","Equ","CMi","LMi","Vul","UMi","Phe","Psc","PsA","Vol","Pup","Ret","Sgr","Sco","Ser","Sex","Men","Tau","Tel","Tuc","Tri","Tra","Aqr","Vir","Vel" ]
