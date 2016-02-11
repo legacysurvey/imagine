@@ -7,6 +7,7 @@ urlpatterns = (
     patterns(
     '',
     url(r'', include('search.urls')),
+    url(r'', include('cat.urls')),
     url(r'', include('map.urls')),
     ))
 # + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

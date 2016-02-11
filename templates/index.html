@@ -44,6 +44,15 @@
     border-radius: 5px;
 }
 
+.query {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
 .inbrickccd {
     padding: 6px 8px;
     font: 14px/16px Arial, Helvetica, sans-serif;
@@ -770,7 +779,7 @@ function onMapClick(e) {
          encodeURIComponent(linkurl) +
          '&category=Interesting+things';
 
-    txt = 
+    txt =
         'RA,Dec = ' + cutout_radec_link(ra, dec) +
         '<br/><a href="{{ baseurl }}?' + qstr +
         '">Link Here</a> &nbsp;|&nbsp; ' +
@@ -1771,6 +1780,67 @@ info.onAdd = function (map) {
     return this._div;
 };
 info.addTo(map);
+
+var query = L.control({'position':'bottomleft'});
+query.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'query');
+    this._div.innerHTML = 'SQL catalog query: <input type="text" id="sqlquery" />'
+    return this._div;
+};
+query.addTo(map);
+
+var sqlGroup = L.layerGroup([]);
+
+function sqlLoaded(result) {
+    rdlist = result['rd'];
+    var circleList = new Array(rdlist.length);
+    var clong = map.getCenter().lng;
+    for (i=0, len=rdlist.length; i<len; i++) {
+        r = rdlist[i][0];
+        d = rdlist[i][1];
+        lat = dec2lat(d);
+        lng = ra2long_C(r, clong);
+        color = 'white';
+        circ = L.circle([lat, lng], 30, {'color':color, 'fillOpacity':0, 'weight':5});
+        circ.ra = r;
+        circ.dec = d;
+    }
+    circles = L.layerGroup(circleList);
+    sqlGroup.clearLayers();
+    sqlGroup.addLayer(circles);
+}
+
+$(document).ready(function() {
+    $('#sqlquery').keydown(function(event) {
+        if (event.keyCode == 13) {
+            //event.stopPropagation();
+            //alert('Hello');
+
+            sql = $('#sqlquery').val();
+            bounds = map.getBounds();
+
+            sqlurl = L.Util.template('{{ sqlurl|safe }}', L.extend({
+                s: 'a',
+                west:  long2ra(bounds.getWest()).toFixed(4),
+                east:  long2ra(bounds.getEast()).toFixed(4),
+                north: lat2dec(bounds.getNorth()).toFixed(4),
+                south: lat2dec(bounds.getSouth()).toFixed(4),
+                q: sql,
+            }));
+
+            $.getJSON(sqlurl, sqlLoaded);
+
+            return false;
+         }
+    });
+
+    $('#sqlquery').click(function(event) {
+        //console.log('click on sqlquery');
+        //event.stopPropagation();
+        return false;
+    });
+
+});
 
 container = info.getContainer();
 L.DomEvent

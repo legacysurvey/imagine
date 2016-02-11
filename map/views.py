@@ -282,6 +282,7 @@ def index(req):
     ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}&id={id}'
     expsurl = settings.ROOT_URL + '/exps/?north={north}&east={east}&south={south}&west={west}&id={id}'
     platesurl = settings.ROOT_URL + '/sdss-plates/?north={north}&east={east}&south={south}&west={west}'
+    sqlurl = settings.ROOT_URL + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
 
     baseurl = req.path
 
@@ -293,6 +294,7 @@ def index(req):
                   dict(ra=ra, dec=dec, lat=lat, long=lng, zoom=zoom,
                        layer=layer, tileurl=tileurl,
                        absurl=absurl,
+                       sqlurl=sqlurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
                        smallcaturl=smallcaturl,
                        ccdsurl=ccdsurl,
