@@ -16,8 +16,27 @@ def sql_box(req):
         east += 360.
         west += 360.
 
-    cat = Candidate.objects.extra(where=["q3c_poly_query(ra, dec, '{%f, %f, %f, %f, %f, %f, %f, %f}')" %
-                                  (east, south, west, south, west, north, east, north)])
+    #cat = Candidate.objects.extra(where=["q3c_poly_query(ra, dec, ((%f,%f),(%f,%f),(%f,%f),(%f,%f)))" %
+    #                                     (east,south,west,south,west,north,east,north)])
+
+    cat = Candidate.objects.extra(where=["q3c_poly_query(ra, dec, ARRAY[%s,%s,%s,%s,%s,%s,%s,%s])"],
+                                         params=[east,south,west,south,west,north,east,north])
+
+    #cat = Candidate.objects.extra(where=["q3c_poly_query(ra, dec, ARRAY[%f,%f,%f,%f,%f,%f,%f,%f])" %
+    #                                     (east,south,west,south,west,north,east,north)])
+
+    #cat = Candidate.objects.extra(where=["q3c_poly_query(ra, dec, ARRAY[CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision)])"],
+    # params=[east,south,west,south,west,north,east,north])
+
+    #cat = Candidate.objects.extra(where=["public.q3c_poly_query(ra, dec, ARRAY[CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision),CAST(%s AS double precision)])"],
+    # params=[east,south,west,south,west,north,east,north])
+                                         
+
+    #cat = Candidate.objects.extra(where=["q3c_poly_query(ra, dec, %s)"],
+    #                              params=[ ((east,south),(west,south), (west, north), (east, north)) ])
+                                  #params=[[east, south, west, south, west, north, east, north]])
+                                  #params=['{%f, %f, %f, %f, %f, %f, %f, %f}' %
+                                  #(east, south, west, south, west, north, east, north)])
 
     print('Cat:', cat.count())
 
