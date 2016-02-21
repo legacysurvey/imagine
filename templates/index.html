@@ -2276,7 +2276,7 @@ for (var i in constellation_lines) {
     var polyline = L.polyline(latlngs, {color: 'red'});
     conGroup.addLayer(polyline);
 }
-%}
+{% endcomment %}
 
 // A scale bar that shows arcsec / arcmin / degrees rather than meters
 AstroControl = L.Control.Scale.extend({
