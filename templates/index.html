@@ -1305,13 +1305,17 @@ function mapBoundsChanged() {
     zoom = map.getZoom();
     ra  = long2ra(latlng.lng);
     dec = lat2dec(latlng.lat);
-    //console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
 
     if (showSpec && zoom > specMinZoom) {
         loadSpecCatalog();
     }
     if (showBright && zoom > brightMinZoom) {
         loadBrightCatalog();
+    }
+
+    // has the user actually entered an SQL query?
+    if (sqlJsonQuery !== undefined) {
+        updateSql();
     }
 
     if (showBricks) {
@@ -1790,6 +1794,8 @@ query.onAdd = function (map) {
 query.addTo(map);
 
 var sqlGroup = L.layerGroup([]);
+var sqlQueryString = '';
+var sqlJsonQuery;
 
 function sqlLoaded(result) {
     rdlist = result['rd'];
@@ -1811,33 +1817,35 @@ function sqlLoaded(result) {
     sqlGroup.addLayer(circles);
 }
 
+// Call this when the map view changes.  Uses the global variable "sqlQueryString"
+function updateSql() {
+    bounds = map.getBounds();
+    sqlurl = L.Util.template('{{ sqlurl|safe }}', L.extend({
+        s: 'a',
+        west:  long2ra(bounds.getWest()).toFixed(4),
+        east:  long2ra(bounds.getEast()).toFixed(4),
+        north: lat2dec(bounds.getNorth()).toFixed(4),
+        south: lat2dec(bounds.getSouth()).toFixed(4),
+        q: sqlQueryString,
+    }));
+    if (sqlJsonQuery !== undefined) {
+        sqlJsonQuery.abort();
+    }
+    sqlJsonQuery = $.getJSON(sqlurl, sqlLoaded);
+}
+
 $(document).ready(function() {
     $('#sqlquery').keydown(function(event) {
+        // when Enter is hit in the SQL box
         if (event.keyCode == 13) {
-            //event.stopPropagation();
-            //alert('Hello');
-
-            sql = $('#sqlquery').val();
-            bounds = map.getBounds();
-
-            sqlurl = L.Util.template('{{ sqlurl|safe }}', L.extend({
-                s: 'a',
-                west:  long2ra(bounds.getWest()).toFixed(4),
-                east:  long2ra(bounds.getEast()).toFixed(4),
-                north: lat2dec(bounds.getNorth()).toFixed(4),
-                south: lat2dec(bounds.getSouth()).toFixed(4),
-                q: sql,
-            }));
-
-            $.getJSON(sqlurl, sqlLoaded);
-
+            sqlQueryString = $('#sqlquery').val();
+            updateSql();
             return false;
          }
     });
 
+    // stop event propagation to the map layer
     $('#sqlquery').click(function(event) {
-        //console.log('click on sqlquery');
-        //event.stopPropagation();
         return false;
     });
 
