@@ -89,11 +89,16 @@ background: #242424;
     margin-bottom: 15px;
 }
 
+// hmm, can't get this to work
+//.leaflet-control-attribution {
+//    font-size: 200%;
+//}
+
 #gotosubmit {
-    font-size: 100%
+    font-size: 100%;
 }
 #gotocancel {
-    font-size: 100%
+    font-size: 100%;
 }
 
 </style>
@@ -1471,7 +1476,7 @@ allLayers = [];
 static_tile_url = '{{ static_tile_url|safe }}';
 
 decals_attrib = '<a href="http://legacysurvey.org">Legacy Survey</a>,' +
-  '<a href="https://www.noao.edu/image_gallery/copyright.html">(c)</a>' +
+  '<a href="https://www.noao.edu/image_gallery/copyright.html">&copy;</a>' +
   ' <a href="http://noao.edu">NOAO</a>/<a href="http://www.aura-astronomy.org/">AURA</a>/<a href="http://www.nsf.gov/">NSF</a>';
 
 
