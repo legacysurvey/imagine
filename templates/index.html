@@ -1434,6 +1434,9 @@ var highlightedPlateName = '';
 var map = L.map('map');
 var popup = L.popup();
 
+att = map.attributionControl;
+att.options.prefix += ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
+
 // default to 1.
 var tileversions = {
   'decals-wl':4,
