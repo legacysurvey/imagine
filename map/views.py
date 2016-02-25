@@ -406,7 +406,21 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     return fn
 
 def data_for_radec(req):
-    return "Hello"
+    import numpy as np
+    ra  = float(req.GET['ra'])
+    dec = float(req.GET['dec'])
+    bricks = _get_dr2_bricks()
+    I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
+                       (dec >= bricks.dec1) * (dec < bricks.dec2))
+    if len(I) == 0:
+        return HttpResponse('No DECaLS DR2 data overlaps RA,Dec = %.4f, %.4f' % (ra,dec))
+    I = I[0]
+    brickname = bricks.brickname[I]
+
+    return brick_detail(req, brickname)
+
+
+
 
 
 # "PR"
@@ -1471,9 +1485,24 @@ def nil(req):
     pass
 
 def brick_detail(req, brickname):
-    #brickname = req.GET['brick']
-    return HttpResponse('Brick ' + brickname)
+    #return HttpResponse('Brick ' + brickname)
+    import numpy as np
+    bricks = _get_dr2_bricks()
+    I = np.flatnonzero(brickname == bricks.brickname)
+    assert(len(I) == 1)
+    brick = bricks[I[0]]
 
+    return HttpResponse('\n'.join([
+                '<html><head><title>DECaLS DR2 data for brick %s</title></head>' % (brickname),
+                '<body>',
+                '<h1>DECaLS DR2 data for brick %s:</h1>' % (brickname),
+                '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
+                '<ul>',
+                '<li><a href="http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/coadd/%s/%s/decals-%s-image.jpg">JPEG image</a></li>' % (brickname[:3], brickname, brickname),
+                '<li><a href="http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/coadd/%s/%s/">Coadded images</a></li>' % (brickname[:3], brickname),
+                '<li><a href="http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (brickname[:3], brickname),
+                '</ul>',
+                '</body></html>']))
 
 def cat_spec(req, ver):
     import json
