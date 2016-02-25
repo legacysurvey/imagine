@@ -13,6 +13,8 @@ urlpatterns = [
     url(r'^jpeg-cutout-sdss', views.jpeg_cutout_sdssco),
     url(r'^fits-cutout-sdss', views.fits_cutout_sdssco),
 
+    url(r'^data-for-radec/', views.data_for_radec, name='data_for_radec'),
+
     # DR2
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2),
     url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2_model),

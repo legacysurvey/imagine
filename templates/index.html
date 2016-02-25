@@ -777,7 +777,8 @@ function onMapClick(e) {
     ccds = ccdsUnderLatlng(e.latlng);
     exps = expsUnderLatlng(e.latlng);
 
-    qstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom() + '&layer=' + idname;
+    radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
+    qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
 
     cutout = '{{ absurl }}/jpeg-cutout/?' + qstr;
 
@@ -789,11 +790,15 @@ function onMapClick(e) {
          encodeURIComponent(linkurl) +
          '&category=Interesting+things';
 
+    datalink = '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + idname;
+    spacer = ' &nbsp;|&nbsp; ';
+
     txt =
         'RA,Dec = ' + cutout_radec_link(ra, dec) +
         '<br/><a href="{{ baseurl }}?' + qstr +
-        '">Link Here</a> &nbsp;|&nbsp; ' +
-        '<a href="' + cutout + '">Cutout</a> &nbsp;|&nbsp; ' +
+        '">Link Here</a>' + spacer +
+        '<a href="' + datalink + '">Data</a>' + spacer +
+        '<a href="' + cutout + '">Cutout</a>' + spacer +
         '<a href="' + discuss + '">Discuss This Object</a>';
 
     if (bricks.length) {

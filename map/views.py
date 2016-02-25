@@ -404,6 +404,10 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
         return I2,wcs2,fn
     return fn
 
+def data_for_radec(req):
+    return "Hello"
+
+
 # "PR"
 #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
