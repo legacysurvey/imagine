@@ -315,6 +315,7 @@ def index(req):
                        enable_wl = settings.ENABLE_WL,
                        enable_dr2 = settings.ENABLE_DR2,
                        enable_depth = settings.ENABLE_DEPTH,
+                       enable_cutouts = settings.ENABLE_CUTOUTS,
                        ))
 
 def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wcs=None,

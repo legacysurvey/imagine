@@ -271,7 +271,7 @@ function cutout_radec_link(ra, dec) {
     return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&name=' + idname + '">' +
         ra.toFixed(4) + ', ' + dec.toFixed(4) + '</a>';
 {% else %}
-    return ra.toFixed(4) + ', ' + dec.toFixed(4)';
+    return ra.toFixed(4) + ', ' + dec.toFixed(4);
 {% endif %}
 
 }
