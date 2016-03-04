@@ -53,6 +53,15 @@
     border-radius: 5px;
 }
 
+.objquery {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
 .inbrickccd {
     padding: 6px 8px;
     font: 14px/16px Arial, Helvetica, sans-serif;
@@ -1699,6 +1708,26 @@ tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
 
 allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE W1/W2", catname:""});
 
+
+
+
+id = 'unwise-w1w2-neo1'
+vertag = 'unwise-neo1'
+tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
+      maxZoom: maxZoom,
+      maxNativeZoom: 10,
+      minZoom: minZoom,
+      attribution: decals_attrib,
+      id: id,
+      ver: getversion(vertag),
+      unloadInvisibleTiles: true,
+      subdomains: subdomains,
+});
+allLayers.push({name:'unwise-neo1', tiles:tilesUnwise, pretty:"unWISE W1/W2 NEO1", catname:""});
+
+
+
+
 var baseMaps = {};
 for (i in allLayers) {
   layer = allLayers[i];
@@ -1811,6 +1840,14 @@ query.onAdd = function (map) {
 };
 query.addTo(map);
 
+var objquery = L.control({'position':'bottomright'});
+objquery.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'objquery');
+    this._div.innerHTML = 'Jump to object: <input type="text" id="objquery" value="NGC 5614" size="25"/> <span id="objquerystatus"></span>';
+    return this._div;
+};
+objquery.addTo(map);
+
 var sqlGroup = L.layerGroup([]);
 var sqlQueryString = '';
 var sqlJsonQuery;
@@ -1852,6 +1889,22 @@ function updateSql() {
     sqlJsonQuery = $.getJSON(sqlurl, sqlLoaded);
 }
 
+function objQueryLoaded(result) {
+    console.log('Result: ' + result);
+    console.log('type: ' + typeof(result));
+    if ("error" in result) {
+        $('#objquerystatus').html(result["error"]);
+        return;
+    }
+    ra = result['ra'];
+    dec = result['dec'];
+    lat = dec2lat(dec);
+    lng = ra2long_C(ra, 0.);
+    zoom = map.getZoom();
+    map.setView(L.latLng(lat, lng), zoom);
+    $('#objquerystatus').html("");
+}
+
 $(document).ready(function() {
     $('#sqlquery').keydown(function(event) {
         // when Enter is hit in the SQL box
@@ -1864,6 +1917,26 @@ $(document).ready(function() {
 
     // stop event propagation to the map layer
     $('#sqlquery').click(function(event) {
+        return false;
+    });
+
+    $('#objquery').keydown(function(event) {
+        // when Enter is hit in the Object name search box
+        if (event.keyCode == 13) {
+            objquery = $('#objquery').val();
+
+            url = L.Util.template('{{ namequeryurl|safe }}', L.extend({
+                obj: objquery,
+            }));
+            $.getJSON(url, objQueryLoaded);
+            $('#objquerystatus').html('Searching...');
+
+            return false;
+         }
+    });
+
+    // stop event propagation to the map layer
+    $('#objquery').click(function(event) {
         return false;
     });
 

@@ -51,8 +51,9 @@ tileversions = {
     'decam-depth-z': [1],
 
     'unwise-w1w2': [1],
-    'unwise-w3w4': [1],
-    'unwise-w1234': [1],
+    'unwise-neo1': [1],
+    #'unwise-w3w4': [1],
+    #'unwise-w1234': [1],
 
     'cutouts': [1],
     }
@@ -166,6 +167,85 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
 
 galaxycat = None
 
+def get_random_galaxy():
+    import numpy as np
+
+    global galaxycat
+    galfn = os.path.join(settings.DATA_DIR, 'galaxy-cats-in-dr2.fits')
+
+    if galaxycat is None and not os.path.exists(galfn):
+        import astrometry.catalogs
+        from astrometry.util.fits import fits_table, merge_tables
+        import fitsio
+        from astrometry.util.util import Tan
+
+        fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ngc2000.fits')
+        NGC = fits_table(fn)
+        keepNGC = np.zeros(len(NGC), bool)
+        print(len(NGC), 'NGC objects')
+        NGC.name = np.array(['NGC %i' % n for n in NGC.ngcnum])
+        NGC.delete_column('ngcnum')
+
+        fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ic2000.fits')
+        IC = fits_table(fn)
+        keepIC = np.zeros(len(IC), bool)
+        print(len(IC), 'IC objects')
+        IC.name = np.array(['IC %i' % n for n in IC.icnum])
+        IC.delete_column('icnum')
+
+        fn = os.path.join(settings.DATA_DIR, 'ugc.fits')
+        UGC = fits_table(fn)
+        keepUGC = np.zeros(len(UGC), bool)
+        print(len(UGC), 'UGC objects')
+        UGC.name = np.array(['UGC %i' % n for n in UGC.ugcnum])
+        UGC.delete_column('ugcnum')
+
+        T = merge_tables([C for C,keep,name in cats])
+        keep = np.zeros(len(T), bool)
+
+        bricks = _get_dr2_bricks()
+        bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
+        print(len(bricks), 'bricks with grz')
+
+        for brick in bricks:
+            dirnm = os.path.join(settings.DATA_DIR, 'coadd', 'decals-dr2',
+                                 '%.3s' % brick.brickname, brick.brickname)
+            fn = os.path.join(dirnm,
+                              'decals-%s-nexp-r.fits.gz' % brick.brickname)
+            if not os.path.exists(fn):
+                print('Does not exist:', fn)
+                continue
+
+            I = np.flatnonzero((T.ra  >= brick.ra1 ) * (T.ra  < brick.ra2 ) *
+                               (T.dec >= brick.dec1) * (T.dec < brick.dec2))
+            if len(I) == 0:
+                continue
+            print('Brick', brick.brickname, 'has', len(I), 'objs')
+
+            nn = fitsio.read(fn)
+            h,w = nn.shape
+            imgfn = os.path.join(dirnm,
+                                 'decals-%s-image-r.fits' % brick.brickname)
+            wcs = Tan(imgfn)
+
+            ok,x,y = wcs.radec2pixelxy(T.ra[I], T.dec[I])
+            x = np.clip((x-1).astype(int), 0, w-1)
+            y = np.clip((y-1).astype(int), 0, h-1)
+            n = nn[y,x]
+            keep[I[n > 0]] = True
+
+        T.cut(keep)
+        T.writeto(galfn)
+
+    if galaxycat is None:
+        from astrometry.util.fits import fits_table
+        galaxycat = fits_table(galfn)
+
+    i = np.random.randint(len(galaxycat))
+    ra = galaxycat.ra[i]
+    dec = galaxycat.dec[i]
+    return ra,dec
+
 def index(req):
     layer = req.GET.get('layer', 'decals-dr2')
     # Nice spiral galaxy
@@ -188,80 +268,7 @@ def index(req):
         pass
 
     if ra is None or dec is None:
-        import numpy as np
-        from astrometry.util.fits import fits_table, merge_tables
-
-        global galaxycat
-        galfn = os.path.join(settings.DATA_DIR, 'galaxy-cats-in-dr2.fits')
-        if galaxycat is None and not os.path.exists(galfn):
-            import astrometry.catalogs
-            import fitsio
-            from astrometry.util.util import Tan
-
-            fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ngc2000.fits')
-            NGC = fits_table(fn)
-            keepNGC = np.zeros(len(NGC), bool)
-            print(len(NGC), 'NGC objects')
-            NGC.name = np.array(['NGC %i' % n for n in NGC.ngcnum])
-            NGC.delete_column('ngcnum')
-
-            fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ic2000.fits')
-            IC = fits_table(fn)
-            keepIC = np.zeros(len(IC), bool)
-            print(len(IC), 'IC objects')
-            IC.name = np.array(['IC %i' % n for n in IC.icnum])
-            IC.delete_column('icnum')
-
-            fn = os.path.join(settings.DATA_DIR, 'ugc.fits')
-            UGC = fits_table(fn)
-            keepUGC = np.zeros(len(UGC), bool)
-            print(len(UGC), 'UGC objects')
-            UGC.name = np.array(['UGC %i' % n for n in UGC.ugcnum])
-            UGC.delete_column('ugcnum')
-
-            T = merge_tables([C for C,keep,name in cats])
-            keep = np.zeros(len(T), bool)
-
-            bricks = _get_dr2_bricks()
-            bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
-            print(len(bricks), 'bricks with grz')
-
-            for brick in bricks:
-                dirnm = os.path.join(settings.DATA_DIR, 'coadd', 'decals-dr2',
-                                     '%.3s' % brick.brickname, brick.brickname)
-                fn = os.path.join(dirnm,
-                                  'decals-%s-nexp-r.fits.gz' % brick.brickname)
-                if not os.path.exists(fn):
-                    print('Does not exist:', fn)
-                    continue
-
-                I = np.flatnonzero((T.ra  >= brick.ra1 ) * (T.ra  < brick.ra2 ) *
-                                   (T.dec >= brick.dec1) * (T.dec < brick.dec2))
-                if len(I) == 0:
-                    continue
-                print('Brick', brick.brickname, 'has', len(I), 'objs')
-
-                nn = fitsio.read(fn)
-                h,w = nn.shape
-                imgfn = os.path.join(dirnm,
-                                     'decals-%s-image-r.fits' % brick.brickname)
-                wcs = Tan(imgfn)
-
-                ok,x,y = wcs.radec2pixelxy(T.ra[I], T.dec[I])
-                x = np.clip((x-1).astype(int), 0, w-1)
-                y = np.clip((y-1).astype(int), 0, h-1)
-                n = nn[y,x]
-                keep[I[n > 0]] = True
-
-            T.cut(keep)
-            T.writeto(galfn)
-
-        if galaxycat is None:
-            galaxycat = fits_table(galfn)
-
-        i = np.random.randint(len(galaxycat))
-        ra = galaxycat.ra[i]
-        dec = galaxycat.dec[i]
+        ra,dec = get_random_galaxy()
 
     lat,lng = dec, ra2long(ra)
 
@@ -283,6 +290,7 @@ def index(req):
     expsurl = settings.ROOT_URL + '/exps/?north={north}&east={east}&south={south}&west={west}&id={id}'
     platesurl = settings.ROOT_URL + '/sdss-plates/?north={north}&east={east}&south={south}&west={west}'
     sqlurl = settings.ROOT_URL + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
+    namequeryurl = settings.ROOT_URL + '/namequery/?obj={obj}'
 
     baseurl = req.path
 
@@ -297,6 +305,7 @@ def index(req):
                        sqlurl=sqlurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
                        smallcaturl=smallcaturl,
+                       namequeryurl=namequeryurl,
                        ccdsurl=ccdsurl,
                        expsurl=expsurl,
                        platesurl=platesurl,
@@ -345,9 +354,9 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     if img is None:
         sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn,
                               read_base_wcs=read_base_wcs, read_wcs=read_wcs)
-        # print('Source:', sourcefn)
+        debug('Source:', sourcefn)
         if sourcefn is None or not os.path.exists(sourcefn):
-            # print('Image source file', sourcefn, 'not found')
+            debug('Image source file', sourcefn, 'not found')
             return None
         try:
             debug('Reading:', sourcefn)
@@ -404,6 +413,63 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     if return_data:
         return I2,wcs2,fn
     return fn
+
+def name_query(req):
+    import json
+    import urllib
+    import urllib2
+
+    obj = req.GET.get('obj')
+
+    url = 'http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame//NSV?'
+    url += urllib.urlencode(dict(q=obj)).replace('q=','')
+
+    print('URL', url)
+
+    '''
+    # IC 1200#Q2671982
+    #=N=NED:    1     0ms (from cache)
+    %C G     
+    %J 241.1217083 +69.6657778 = 16:04:29.20 +69:39:56.8
+    %J.E [1250.00 1250.00 0] 20032MASX.C.......:
+    %V v 7449.84363 [38.07365] 2003AJ....126.2268W
+    %T E                   
+    %MAG 13.74
+    %I.0 NGC 6079 =[G]
+    #B 17
+
+    # IC 12000#Q2672097
+    #! *** Nothing found *** 
+    #====Done (2016-Mar-04,17:43:13z)====
+
+    '''
+    try:
+        f = urllib2.urlopen(url)
+        code = f.getcode()
+        print('Code', code)
+        for line in f.readlines():
+            words = line.split()
+            if len(words) == 0:
+                continue
+            if words[0] == '%J':
+                ra = float(words[1])
+                dec = float(words[2])
+                return HttpResponse(json.dumps(dict(ra=ra, dec=dec)),
+                                    content_type='application/json')
+            if words[0] == '#!':
+                return HttpResponse(json.dumps(dict(error=' '.join(words[1:]))),
+                                    content_type='application/json')
+
+    except Exception as e:
+        return HttpResponse(json.dumps(dict(error=str(e))),
+                            content_type='application/json')
+
+    #res = dict(error='what?')
+    #return HttpResponse(json.dumps(res),
+    #                    content_type='application/json')
+    ra,dec = get_random_galaxy()
+    return HttpResponse(json.dumps(dict(ra=ra, dec=dec)),
+                        content_type='application/json')
 
 def data_for_radec(req):
     import numpy as np
@@ -881,9 +947,15 @@ UNW_tree = None
 def map_unwise_w1w2(*args, **kwargs):
     return map_unwise(*args, **kwargs)
 
+def map_unwise_w1w2_neo1(*args, **kwargs):
+    kwargs.update(tag='unwise-neo1', unwise_dir=settings.UNWISE_NEO1_DIR)
+    return map_unwise(*args, **kwargs)
+
 def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
                get_images=False,
-               bands=[1,2], tag='unwise-w1w2', **kwargs):
+               bands=[1,2], tag='unwise-w1w2',
+               unwise_dir=settings.UNWISE_DIR,
+               **kwargs):
     global UNW
     global UNW_tree
 
@@ -903,6 +975,7 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
     basedir = settings.DATA_DIR
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
+    debug('Tilefn:', tilefn)
     if os.path.exists(tilefn) and not ignoreCached:
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
@@ -940,7 +1013,7 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
     radius = radius + max(degrees_between(ra,dec, r0,d0), degrees_between(ra,dec, r1,d1))
 
     J = tree_search_radec(UNW_tree, ra, dec, radius)
-    #debug(len(J), 'unWISE tiles nearby')
+    debug(len(J), 'unWISE tiles nearby')
     
     ww = [1, W*0.25, W*0.5, W*0.75, W]
     hh = [1, H*0.25, H*0.5, H*0.75, H]
@@ -950,7 +1023,7 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         hh          + [1]*len(ww) + list(reversed(hh)) + [H]*len(ww))
     scaled = 0
     scalepat = None
-    scaledir = 'unwise'
+    scaledir = tag
 
     if zoom < 11:
         # Get *actual* pixel scales at the top & bottom
@@ -965,10 +1038,11 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         scaled = int(np.floor(np.log2(scale / native_scale)))
         debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled)
         scaled = np.clip(scaled, 1, 7)
-        dirnm = os.path.join(basedir, 'scaled', scaledir)
-        scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(tilename).3s', 'unwise-%(tilename)s-%(band)s.fits')
+        
+        scalepat = os.path.join(basedir, 'scaled', scaledir,
+                                '%(scale)i%(band)s', '%(tilename).3s', 'unwise-%(tilename)s-%(band)s.fits')
 
-    basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-u.fits')
+    basepat = os.path.join(unwise_dir, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-u.fits')
 
     rimgs = [np.zeros((H,W), np.float32) for band in bands]
     rn    = np.zeros((H,W), np.uint8)
@@ -984,8 +1058,10 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
             fn = get_scaled(scalepat, fnargs, scaled, basefn)
             fns.append(fn)
 
+        debug('Tile', tile, 'fns', fns)
         bwcs = Tan(fns[0], 0)
         ok,xx,yy = bwcs.radec2pixelxy(r, d)
+        #print('ok:', np.unique(ok))
         if not np.all(ok):
             debug('Skipping tile', tile)
             continue
@@ -1025,25 +1101,11 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
 
     rgb = _unwise_to_rgb(rimgs, **kwargs)
 
-    import pylab as plt
-
     trymakedirs(tilefn)
-
-    # no jpeg output support in matplotlib in some installations...
-    if True:
-        import tempfile
-        f,tempfn = tempfile.mkstemp(suffix='.png')
-        os.close(f)
-        plt.imsave(tempfn, rgb)
-        debug('Wrote to temp file', tempfn)
-        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
-        debug(cmd)
-        os.system(cmd)
-        os.unlink(tempfn)
-        debug('Wrote', tilefn)
+    save_jpeg(tilefn, rgb)
+    debug('Wrote', tilefn)
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
-
 
 sfd = None
 halpha = None

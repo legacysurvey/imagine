@@ -61,6 +61,7 @@ DATA_DIR   = os.path.join(WEB_DIR, 'data')
 DUST_DIR   = os.path.join(DATA_DIR, 'dust')
 HALPHA_DIR = os.path.join(DATA_DIR, 'halpha')
 UNWISE_DIR = os.path.join(DATA_DIR, 'unwise-coadds')
+UNWISE_NEO1_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo1')
 SDSS_DIR   = os.path.join(DATA_DIR, 'sdss')
 
 #DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'

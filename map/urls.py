@@ -15,6 +15,8 @@ urlpatterns = [
 
     url(r'^data-for-radec/', views.data_for_radec, name='data_for_radec'),
 
+    url(r'^namequery/', views.name_query),
+
     # DR2
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2),
     url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2_model),
@@ -68,6 +70,9 @@ urlpatterns = [
 
     # unWISE W1/W2
     url(r'^unwise-w1w2-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2),
+
+    # Aaron's NEO1 unWISE W1/W2
+    url(r'^unwise-w1w2-neo1/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2_neo1),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
     #url(r'^unwise-w1234-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1234),
