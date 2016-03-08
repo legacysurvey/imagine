@@ -21,7 +21,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "decals.settings")
 import django
 from django.core.wsgi import get_wsgi_application
 
-if False:
+if True:
     application = get_wsgi_application()
 
 else:
