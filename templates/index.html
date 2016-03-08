@@ -2238,9 +2238,7 @@ map.on('postbaselayerchange', onMapPostBaseLayerChange);
 map.on('zoomstart', onMapZoomStart);
 map.on('zoomend', onMapZoomEnd);
 
-map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
-
-//var lastRaDec = [ long2ra({{long}}), lat2dec({{lat}}) ];
+map.setView([ dec2lat({{ dec }}), ra2long_C({{ ra }}, 180.) ], {{ zoom }});
 var lastLatLng = map.getCenter();
 
 {% if showBricks %}
@@ -2264,8 +2262,6 @@ overlayAdded({name:'Exposures'});
 
 {% if showSources %}
 map.addLayer(sourcesGroup);
-// If you do this, you get double-adding!
-//overlayAdded({name:'Sources'});
 showSoures = true;
 {% endif %}
 

@@ -301,7 +301,7 @@ def index(req):
     from django.shortcuts import render
 
     return render(req, 'index.html',
-                  dict(ra=ra, dec=dec, lat=lat, long=lng, zoom=zoom,
+                  dict(ra=ra, dec=dec, zoom=zoom,
                        galname=galname,
                        layer=layer, tileurl=tileurl,
                        absurl=absurl,
