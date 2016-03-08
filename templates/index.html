@@ -1903,7 +1903,13 @@ function objQueryLoaded(result) {
     zoom = map.getZoom();
     map.setView(L.latLng(lat, lng), zoom);
     $('#objquerystatus').html("");
+    location.hash = result['name'];
+    hashLocations[location.hash] = [lat, lng, zoom];
+    console.log('Saved hash location:', location.hash, '=', hashLocations[location.hash]);
 }
+
+// A list of object names mapped to [lat,lng,zoom], for history navgation
+var hashLocations = {};
 
 $(document).ready(function() {
     $('#sqlquery').keydown(function(event) {
@@ -1934,11 +1940,19 @@ $(document).ready(function() {
             return false;
          }
     });
-
     // stop event propagation to the map layer
     $('#objquery').click(function(event) {
         return false;
     });
+
+    // set initial hash location
+    loc = [map.getCenter().lat, map.getCenter().lng, map.getZoom()];
+    //console.log('Initial location:', loc);
+    {% if galname %}
+    location.hash = '{{galname}}';
+    {% endif %}
+    hashLocations[location.hash] = loc;
+    //console.log('Initial hashLocations:', hashLocations);
 
 });
 
@@ -1947,6 +1961,20 @@ L.DomEvent
   .disableClickPropagation(container)
   .disableScrollPropagation(container);
 L.DomEvent.on(container, 'click', infoBoxClicked);
+
+function onHashChange() {
+    console.log('Hash changed to', location.hash);
+    if (location.hash in hashLocations) {
+        loc = hashLocations[location.hash];
+        console.log('Known hash location:', loc);
+        lat = loc[0];
+        lng = loc[1];
+        zoom = loc[2];
+        map.setView(L.latLng(lat, lng), zoom);
+    }
+}
+
+L.DomEvent.addListener(window, 'hashchange', onHashChange);
 
 var specName = "Spectra";
 var ngcName = "NGC galaxies";

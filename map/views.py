@@ -244,7 +244,8 @@ def get_random_galaxy():
     i = np.random.randint(len(galaxycat))
     ra = galaxycat.ra[i]
     dec = galaxycat.dec[i]
-    return ra,dec
+    name = galaxycat.name[i].strip()
+    return ra,dec,name
 
 def index(req):
     layer = req.GET.get('layer', 'decals-dr2')
@@ -267,8 +268,9 @@ def index(req):
     except:
         pass
 
+    galname = None
     if ra is None or dec is None:
-        ra,dec = get_random_galaxy()
+        ra,dec,galname = get_random_galaxy()
 
     lat,lng = dec, ra2long(ra)
 
@@ -300,6 +302,7 @@ def index(req):
 
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, lat=lat, long=lng, zoom=zoom,
+                       galname=galname,
                        layer=layer, tileurl=tileurl,
                        absurl=absurl,
                        sqlurl=sqlurl,
@@ -420,6 +423,12 @@ def name_query(req):
     import urllib2
 
     obj = req.GET.get('obj')
+    #print('Name query: "%s"' % obj)
+
+    if len(obj) == 0:
+        ra,dec,name = get_random_galaxy()
+        return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=name)),
+                            content_type='application/json')
 
     url = 'http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame//NSV?'
     url += urllib.urlencode(dict(q=obj)).replace('q=','')
@@ -454,7 +463,7 @@ def name_query(req):
             if words[0] == '%J':
                 ra = float(words[1])
                 dec = float(words[2])
-                return HttpResponse(json.dumps(dict(ra=ra, dec=dec)),
+                return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=obj)),
                                     content_type='application/json')
             if words[0] == '#!':
                 return HttpResponse(json.dumps(dict(error=' '.join(words[1:]))),
@@ -463,13 +472,6 @@ def name_query(req):
     except Exception as e:
         return HttpResponse(json.dumps(dict(error=str(e))),
                             content_type='application/json')
-
-    #res = dict(error='what?')
-    #return HttpResponse(json.dumps(res),
-    #                    content_type='application/json')
-    ra,dec = get_random_galaxy()
-    return HttpResponse(json.dumps(dict(ra=ra, dec=dec)),
-                        content_type='application/json')
 
 def data_for_radec(req):
     import numpy as np
