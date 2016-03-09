@@ -230,7 +230,7 @@ CatalogOverlay = L.Class.extend({
     initialize: function(name, pretty) {
         console.log('CatalogOverlay: ' + name + ',' + pretty);
         this._counter = 1;
-        //this._checkbox = checkbox;
+        this._checkbox = null;
         //this._status = status;
         this._show = false;
         this._name = name;
@@ -239,14 +239,11 @@ CatalogOverlay = L.Class.extend({
         this._group = L.layerGroup([]);
 	    // ~ 100 arcsec
         this._radius = 3000;
-        //this._color = '#ffffff';
         this._minZoom = 3;
         this._labelsMinZoom = 6;
         this._style = {'color':'#ffffff',
                       'fillOpacity':0,
                       'weight':5,
-                       // CircleMarker
-                      //'fill': false,
                       };
 
         //this._oldZoom = map.getZoom();
@@ -259,8 +256,15 @@ CatalogOverlay = L.Class.extend({
         $(document).ready(function() {
             console.log(this._name + ' ready function called');
             this._checkbox = getOverlayCheckbox(this._pretty);
-            console.log('checkbox:', this._checkbox);
-        });
+            // _checkbox is a jQuery node
+            //console.log('checkbox:', this._checkbox);
+            // add status span after the layer name span
+            nxt = this._checkbox.next();
+            this._status = L.DomUtil.create('span', 'layer-status');
+            this._status.id = this._name + '_status';
+            nxt.after(this._status);
+            nxt.after('&nbsp;');
+        }.bind(this));
 
     },
 
@@ -278,17 +282,12 @@ CatalogOverlay = L.Class.extend({
         if (e.name == this._pretty) {
 	        this._show = false;
             this.removeAllLayers();
-            /*
-	          for (var k in brightLayers) {
-	          brightGroup.removeLayer(k);
-	          }
-	          brightLayers = {};
-            */
         }
     },
 
     mapBoundsChanged: function() {
-        if (this._show && map.getZoom() > this._minZoom) {
+        console.log('Map bounds changed: zoom: ' + map.getZoom());
+        if (this._show && map.getZoom() >= this._minZoom) {
             this.load();
         }
     },
@@ -310,13 +309,22 @@ CatalogOverlay = L.Class.extend({
                 // remove any extra ones that have stuck around (fast zoom-outs)
                 this.removeAllLayers();
             }
-            setOverlayEnabled(this._pretty, false);
+            //setOverlayEnabled(this._pretty, false);
+            //console.log('Checkbox:', this._checkbox);
+            if (this._checkbox) {
+                this._checkbox.attr('disabled', 'disabled');
+            }
+
         } else if ((this._oldZoom < this._minZoom) && (zoom >= this._minZoom)) {
             console.log(this._name + ': zoomed in past boundary');
-            setOverlayEnabled(this._pretty, true);
-            if (isOverlayChecked(this._pretty)) {
-                console.log('Re-adding ' + this._name);
-                this.overlayAdded({name:this._pretty});
+            //setOverlayEnabled(this._pretty, true);
+            if (this._checkbox) {
+                this._checkbox.removeAttr('disabled');
+
+                if (this._checkbox.prop('checked')) {
+                    console.log('Re-adding ' + this._name);
+                    this.overlayAdded({name:this._pretty});
+                }
             }
         }
         this._oldZoom = zoom;
@@ -335,21 +343,12 @@ CatalogOverlay = L.Class.extend({
         }));
         this._counter += 1;
         console.log('Loading: ' + this._name + ' for counter ' + this._counter);
+        $('#bright_status').html('loading...');
         $.getJSON(url, this.loaded.bind(this, this._counter));
     },
 
-    removeAllLayers: function() {
-        for (key in this._layers) {
-	        console.log(this._name + ' removeAllLayers: removing ' + key);
-	        circles = this._layers[key];
-	        this._group.removeLayer(circles);
-	        delete this._layers[key];
-        }
-        //
-        this._group.clearLayers();
-    },
-
     loaded: function(counter, result) {
+        $('#bright_status').html('');
         if (counter != this._counter) {
             console.log(this._name + ': loaded counter ' + counter + ' but ' +
                         this._counter + ' is current.');
@@ -388,6 +387,17 @@ CatalogOverlay = L.Class.extend({
         // save this new layer
         this._layers[counter] = [circles];
         console.log(this._name + ': saved counter ' + counter);
+    },
+
+    removeAllLayers: function() {
+        for (key in this._layers) {
+	        console.log(this._name + ' removeAllLayers: removing ' + key);
+	        circles = this._layers[key];
+	        this._group.removeLayer(circles);
+	        delete this._layers[key];
+        }
+        //
+        this._group.clearLayers();
     },
 
     getLayer: function(result) {
@@ -442,13 +452,14 @@ CatalogOverlay = L.Class.extend({
 BrightCatalog = CatalogOverlay.extend({
 
     get_label: function(json, i) {
-        name = json['name'][i];
+        oname = json['name'][i];
+        name = oname;
         altnames = json['altname'];
         if (altnames[i].length > 0) {
             name = name + ' (' + altnames[i] + ')';
         }
 	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
-            name.replace(' ','+') + '">' + name + '</a>';
+            oname.replace(' ','+') + '">' + name + '</a>';
         return name;
     },
 
@@ -2236,6 +2247,7 @@ overlayMaps[ngcName] = ngcGroup;
 //overlayMaps[brightName] = brightGroup;
 
 bright = new BrightCatalog('bright', 'Bright stars');
+// <span id="bright_status"></span>');
 bright.addToOverlay(overlayMaps);
 //bright.addTo(map);
 
@@ -2313,6 +2325,7 @@ function getOverlayCheckbox(name) {
   overlays.each(function(i) {
     o = $(this);
     text = $.trim(o.next().text());
+      console.log('Looking for overlay "' + name + '", found "' + text + '"');
     if (text == name) {
       ov = o;
     }
