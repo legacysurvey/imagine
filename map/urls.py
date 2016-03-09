@@ -53,6 +53,9 @@ urlpatterns = [
     # NGC objects
     url(r'^ngc/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_ngc),
 
+    # NGC/IC/UGC galaxies
+    url(r'^ngc/(\d+)/cat.json', views.cat_gals),
+    
     # Virgo cluster catalog (VCC) objects
     #url(r'^vcc/(\d+)/cat.json', views.cat_vcc),
 

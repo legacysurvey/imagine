@@ -227,21 +227,22 @@ L.Circle.include(L.BaseMarkerMethods);
 
 CatalogOverlay = L.Class.extend({
 
-    initialize: function(name, pretty) {
+    initialize: function(name, pretty, kwargs) {
         console.log('CatalogOverlay: ' + name + ',' + pretty);
         this._counter = 1;
-        this._url = '{{ smallcaturl|safe }}'
+        this._url = kwargs['url'] || '{{ smallcaturl|safe }}'
         this._checkbox = null;
         this._status = null;
         this._show = false;
         this._name = name;
+        this._url_name = kwargs['url_name'] || this._name;
         this._pretty = pretty;
         this._layers = {};
         this._group = L.layerGroup([]);
 	    // ~ 100 arcsec
         this._radius = 3000;
-        this._minZoom = 3;
-        this._labelsMinZoom = 6;
+        this._minZoom = kwargs['minZoom'] || 3;
+        this._labelsMinZoom = kwargs['labelsMinZoom'] || 6;
         this._style = {'color':'#ffffff',
                       'fillOpacity':0,
                       'weight':5,
@@ -338,7 +339,7 @@ CatalogOverlay = L.Class.extend({
 	        rahi: long2ra(b.getWest()).toFixed(4),
 	        declo: lat2dec(b.getSouth()).toFixed(4),
 	        dechi: lat2dec(b.getNorth()).toFixed(4),
-            id: this._name,
+            id: this._url_name,
             ver: getcatversion(this._name),
         }));
         this._counter += 1;
@@ -426,6 +427,17 @@ BrightCatalog = CatalogOverlay.extend({
         if (altnames[i].length > 0) {
             name = name + ' (' + altnames[i] + ')';
         }
+	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
+            oname.replace(' ','+') + '">' + name + '</a>';
+        return name;
+    },
+
+});
+
+GalaxyCatalog = CatalogOverlay.extend({
+    get_label: function(json, i) {
+        oname = json['name'][i];
+        name = oname;
 	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
             oname.replace(' ','+') + '">' + name + '</a>';
         return name;
@@ -2056,8 +2068,14 @@ var overlayMaps = {
 };
 overlayMaps[ngcName] = ngcGroup;
 
-bright = new BrightCatalog('bright', 'Bright stars');
+bright = new BrightCatalog('bright', 'Bright stars', {});
 bright.addToOverlay(overlayMaps);
+
+gals = new GalaxyCatalog('gals', 'Big Galaxies', {'url_name': 'ngc',
+                                                  'minZoom': 5,
+                                                  'labelsMinZoom': 7});
+gals.addToOverlay(overlayMaps);
+
 
 overlayMaps[specName] = specGroup;
 overlayMaps["SDSS Spectro Plates"] = platesGroup;

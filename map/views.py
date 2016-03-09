@@ -181,26 +181,25 @@ def get_random_galaxy():
 
         fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ngc2000.fits')
         NGC = fits_table(fn)
-        keepNGC = np.zeros(len(NGC), bool)
         print(len(NGC), 'NGC objects')
         NGC.name = np.array(['NGC %i' % n for n in NGC.ngcnum])
         NGC.delete_column('ngcnum')
-
+        
         fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ic2000.fits')
         IC = fits_table(fn)
-        keepIC = np.zeros(len(IC), bool)
         print(len(IC), 'IC objects')
         IC.name = np.array(['IC %i' % n for n in IC.icnum])
         IC.delete_column('icnum')
 
         fn = os.path.join(settings.DATA_DIR, 'ugc.fits')
         UGC = fits_table(fn)
-        keepUGC = np.zeros(len(UGC), bool)
         print(len(UGC), 'UGC objects')
         UGC.name = np.array(['UGC %i' % n for n in UGC.ugcnum])
         UGC.delete_column('ugcnum')
 
-        T = merge_tables([C for C,keep,name in cats])
+        T = merge_tables([NGC, IC, UGC])
+        T.writeto(os.path.join(settings.DATA_DIR, 'galaxy-cats.fits'))
+        
         keep = np.zeros(len(T), bool)
 
         bricks = _get_dr2_bricks()
@@ -1605,8 +1604,15 @@ def cat_spec(req, ver):
 
 
 def cat_bright(req, ver):
+    return cat(req, ver, 'bright',
+               os.path.join(settings.DATA_DIR, 'bright.fits'))
+
+def cat_gals(req, ver):
+    return cat(req, ver, 'ngc',
+               os.path.join(settings.DATA_DIR,'galaxy-cats.fits'))
+
+def cat(req, ver, tag, fn):
     import json
-    tag = 'bright'
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
     declo = float(req.GET['declo'])
@@ -1621,8 +1627,8 @@ def cat_bright(req, ver):
     from decals import settings
 
     TT = []
-    T = fits_table(os.path.join(settings.DATA_DIR, 'bright.fits'))
-    debug(len(T), 'bright stars')
+    T = fits_table(fn)
+    debug(len(T), 'catalog objects')
     if ralo > rahi:
         # RA wrap
         T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
@@ -1632,10 +1638,11 @@ def cat_bright(req, ver):
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.name]
-    altnames = [t.strip() for t in T.alt_name]
+    rtn = dict(rd=rd, name=names)
+    if 'alt_name' in T.columns():
+        rtn.update(altname = [t.strip() for t in T.alt_name])
 
-    return HttpResponse(json.dumps(dict(rd=rd, name=names, altname=altnames)),
-                        content_type='application/json')
+    return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 
 def cat_ngc(req, ver, zoom, x, y):
