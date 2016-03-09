@@ -17,8 +17,13 @@ ROOT_URL = ''
 #SUBDOMAINS = ['i']
 SUBDOMAINS = ['a']
 
+
 #STATIC_URL = 'http://%s%s/static/' % (HOSTNAME, ROOT_URL)
-STATIC_URL = 'http://legacysurvey.org/viewer-dev/static/'
+#STATIC_URL = 'http://legacysurvey.org/viewer-dev/static/'
+STATIC_URL = '/static/'
+
+#STATICFILES_DIRS = []
+STATIC_ROOT = None
 
 TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 

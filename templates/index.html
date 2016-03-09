@@ -223,11 +223,15 @@ MyLayerControl = L.Control.Layers.extend({
 	}
 });
 
+L.Circle.include(L.BaseMarkerMethods);
+
 CatalogOverlay = L.Class.extend({
 
     initialize: function(name, pretty) {
         console.log('CatalogOverlay: ' + name + ',' + pretty);
         this._counter = 1;
+        //this._checkbox = checkbox;
+        //this._status = status;
         this._show = false;
         this._name = name;
         this._pretty = pretty;
@@ -240,19 +244,28 @@ CatalogOverlay = L.Class.extend({
         this._labelsMinZoom = 6;
         this._style = {'color':'#ffffff',
                       'fillOpacity':0,
-                      'weight':5};
+                      'weight':5,
+                       // CircleMarker
+                      //'fill': false,
+                      };
 
-        map.on('zoomend', this.onMapZoomEnd);
-        this._oldZoom = map.getZoom();
+        //this._oldZoom = map.getZoom();
+        this._oldZoom = {{ zoom }};
+        map.on('overlayadd',    this.overlayAdded.bind(this));
+        map.on('overlayremove', this.overlayRemoved.bind(this));
+        map.on('moveend',       this.mapBoundsChanged.bind(this));
+        map.on('zoomend',       this.onMapZoomEnd.bind(this));
 
-        map.on('overlayadd', this.overlayAdded);
-        map.on('overlayremove', this.overlayRemoved);
-        map.on('moveend', this.mapBoundsChanged);
+        $(document).ready(function() {
+            console.log(this._name + ' ready function called');
+            this._checkbox = getOverlayCheckbox(this._pretty);
+            console.log('checkbox:', this._checkbox);
+        });
 
     },
 
     overlayAdded: function(e) {
-        console.log(this._name + ': overlayAdded' + getkeys(this));
+        console.log(this._name + ': overlayAdded');
         if (e.name == this._pretty) {
             this._show = true;
 	        if (map.getZoom() >= this._minZoom) {
@@ -285,8 +298,9 @@ CatalogOverlay = L.Class.extend({
     },
 
     onMapZoomEnd: function() {
+        console.log(this._name + ': map zoom end; oldzoom: ' + this._oldZoom +
+                    ', new zoom: ' + map.getZoom());
         zoom = map.getZoom();
-
         if ((this._oldZoom >= this._minZoom) && (zoom < this._minZoom)) {
             console.log(this._name + ': zoomed out past boundary');
             if (this._show) {
@@ -305,7 +319,7 @@ CatalogOverlay = L.Class.extend({
                 this.overlayAdded({name:this._pretty});
             }
         }
-        
+        this._oldZoom = zoom;
     },
 
     load: function() {
@@ -319,9 +333,9 @@ CatalogOverlay = L.Class.extend({
             id: this._name,
             ver: getcatversion(this._name),
         }));
-        console.log('Loading: ' + this._name + ' for counter ' + this._counter);
-        $.getJSON(url, this._loaded.bind(true));
         this._counter += 1;
+        console.log('Loading: ' + this._name + ' for counter ' + this._counter);
+        $.getJSON(url, this.loaded.bind(this, this._counter));
     },
 
     removeAllLayers: function() {
@@ -335,31 +349,24 @@ CatalogOverlay = L.Class.extend({
         this._group.clearLayers();
     },
 
-    loaded: function(result) {
-        counter = this._counter;
-        console.log('loaded: ' + this._name + ', counter ' + counter);
+    loaded: function(counter, result) {
+        if (counter != this._counter) {
+            console.log(this._name + ': loaded counter ' + counter + ' but ' +
+                        this._counter + ' is current.');
+            return;
+        }
         if (!this._show) {
             return;
         }
-        for (var k in this._layers) {
-	        if (k > counter) {
-	            console.log(this._name + ': counter ' + k + ' exists; bye');
-	            return;
-	        }
-        }
-        for (var k in this._layers) {
-	        console.log(this._name + ': counter ' + k + ' exists');
-        }
 
         circles = this.getLayer(result);
-
         // remove old layers
         for (var k in this._layers) {
 	        if (k < counter) {
 	            console.log(this._name + ': removing previous counter ' + k);
 	            this._group.removeLayer(this._layers[k]);
 	            delete this._layers[k];
-                console.log(this._name + ': now contains layers:', this._group.getLayers());
+                //console.log(this._name + ': now contains layers:', this._group.getLayers());
 
 	        } else {
 	            console.log(this._name + ': k ' + k + ' vs counter ' + counter);
@@ -394,23 +401,27 @@ CatalogOverlay = L.Class.extend({
             lat = dec2lat(d);
             lng = ra2long_C(r, clong);
             circ = L.circle([lat, lng], this._radius, this._style);
+            //circ = L.circleMarker([lat, lng], this._radius, this._style);
             circ.ra = r;
             circ.dec = d;
 
+            // Circle extends Path
+            // CircleMarker extends Circle
+
 	        if (showlabels) {
                 txt = this.get_label(result, i);
-
 	            //circ._showLabelAdded = true;
-                circ.name = txt;
-	            circ.bindLabel(circ.name, { noHide: true, clickable: true });
-
+                //circ.name = txt;
+	            //circ.bindLabel(circ.name, { noHide: true, clickable: true });
+                circ.bindLabel(txt, { noHide: true, clickable: true });
+	            //circ.label.setLatLng(L.latLng(lat,lng));
                 /*
-	            circ.label._latlng = L.latLng(lat,lng);
 	            circ.on('remove', function(e){
 		            console.log('Removing label for ' + e.target.name);
 		            map.removeLayer(e.target.label);
 	            });
                 */
+                circ.showLabel();
 	        }
             circleList[i] = circ;
         }
@@ -437,7 +448,7 @@ BrightCatalog = CatalogOverlay.extend({
             name = name + ' (' + altnames[i] + ')';
         }
 	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
-            names[i].replace(' ','+') + '">' + name + '</a>';
+            name.replace(' ','+') + '">' + name + '</a>';
         return name;
     },
 
@@ -2339,7 +2350,7 @@ var brightLabelsMinZoom = 6;
 var oldZoom = {{ zoom }};
 function onMapZoomStart(e) {
   zoom = map.getZoom();
-  console.log('map zoom start: ' + zoom + ', previous' + oldZoom);
+  console.log('map zoom start: ' + zoom + ', previous: ' + oldZoom);
   oldZoom = zoom;
 
 }
