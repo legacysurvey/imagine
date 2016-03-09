@@ -1643,7 +1643,7 @@ def cat(req, ver, tag, fn):
     if 'alt_name' in T.columns():
         rtn.update(altname = [t.strip() for t in T.alt_name])
     if 'radius' in T.columns():
-        rtn.update(radiusArcsec=T.radius * 3600.)
+        rtn.update(radiusArcsec=list(float(f) for f in T.radius * 3600.))
         
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
