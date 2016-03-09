@@ -240,7 +240,7 @@ CatalogOverlay = L.Class.extend({
         this._layers = {};
         this._group = L.layerGroup([]);
 	    // ~ 100 arcsec
-        this._radius = 3000;
+        this._radius = kwargs['radius'] || 3000;
         this._minZoom = kwargs['minZoom'] || 3;
         this._labelsMinZoom = kwargs['labelsMinZoom'] || 6;
         this._style = {'color':'#ffffff',
@@ -436,7 +436,6 @@ BrightCatalog = CatalogOverlay.extend({
             oname.replace(' ','+') + '">' + name + '</a>';
         return name;
     },
-
 });
 
 GalaxyCatalog = CatalogOverlay.extend({
@@ -447,7 +446,15 @@ GalaxyCatalog = CatalogOverlay.extend({
             oname.replace(' ','+') + '">' + name + '</a>';
         return name;
     },
+});
 
+SdssSpectraCatalog = CatalogOverlay.extend({
+    get_label: function(json, i) {
+        label = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' +
+            json['mjd'][i] + '&fiber=' + json['fiber'][i] + '&plateid=' +
+            json['plate'][i] + '">' + json.name[i] + '</a>';
+        return label;
+    },
 });
 
 function getkeys(obj) {
@@ -631,91 +638,6 @@ function catLoaded(zoom, tilex, tiley, result) {
     catLayers[key] = circles;
 }
 
-function specLoaded(counter, result) {
-    console.log('specLoaded: counter ' + counter);
-    if (!showSpec) {
-        return;
-    }
-    for (var k in specLayers) {
-	if (k > counter) {
-	    console.log('spec: counter ' + k + ' exists; bye');
-	    return;
-	}
-    }
-
-    for (var k in specLayers) {
-	console.log('spec: counter ' + k + ' exists');
-    }
-
-    rdlist = result['rd'];
-    names = result['name'];
-
-    mjds = result['mjd'];
-    plates = result['plate'];
-    fibers = result['fiber'];
-
-    showlabels = (map.getZoom() >= specLabelsMinZoom);
-
-    //console.log('Creating ' + rdlist.length + ' labels');
-
-    var circleList = new Array(rdlist.length);
-    var clong = map.getCenter().lng;
-    for (i=0, len=rdlist.length; i<len; i++) {
-        r = rdlist[i][0];
-        d = rdlist[i][1];
-        lat = dec2lat(d);
-        lng = ra2long_C(r, clong);
-
-	// ~ 10 arcsec
-	meters = 300;
-	color = '#ffffff';
-        circ = L.circle([lat, lng], meters, {'color':color,
-                                             'fillOpacity':0, 'weight':5});
-        circ.ra = r;
-        circ.dec = d;
-
-	//console.log('ra,dec ' + r + ',' + d + ', lat,long ' + lat + ', ' + lng + ': ' + names[i]);
-
-	if (showlabels) {
-	    circ.name = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' + mjds[i] + '&fiber=' + fibers[i] + '&plateid=' + plates[i]
-	+ '">' + names[i] + '</a>';
-
-	    circ._showLabelAdded = true;
-	    circ.bindLabel(circ.name, { noHide: true, clickable: true });
-	    circ.label._latlng = L.latLng(lat,lng);
-	
-	    circ.on('remove', function(e){
-		console.log('Removing label for ' + e.target.name);
-		map.removeLayer(e.target.label);
-	    });
-	}
-        circleList[i] = circ;
-    }
-    circles = L.layerGroup(circleList);
-    specGroup.addLayer(circles);
-    if (showlabels) {
-    	// show labels
-    	for (i=0; i<circleList.length; i++) {
-    	    circ = circleList[i];
-    	    map.showLabel(circ.label);
-    	}
-    }
-
-    // remove old layers
-    for (var k in specLayers) {
-	if (k < counter) {
-	    console.log('spec: removing previous counter ' + k);
-	    specGroup.removeLayer(specLayers[k]);
-	    delete specLayers[k];
-	} else {
-	    console.log('spec: k ' + k + ' vs counter ' + counter);
-	}
-    }
-    // save this new layer
-    specLayers[counter] = [circles];
-    console.log('spec: saved counter ' + counter);
-}
-
 // Reads global "catname", name of catalog sources to load.
 // and 'sourcesMinZoom'
 function doLoadTile(tile) {
@@ -776,19 +698,6 @@ function removeAllCatalogLayers() {
     }
 
     sourcesGroup.clearLayers();
-}
-
-function removeAllSpecLayers() {
-    for (key in specLayers) {
-	console.log('removeAllSpecLayers: removing ' + key);
-	circles = specLayers[key];
-	specGroup.removeLayer(circles);
-	delete specLayers[key];
-    }
-
-    //
-    specGroup.clearLayers();
-
 }
 
 function onTileUnload(e) {
@@ -999,24 +908,6 @@ function inbrickccdUpdate(props) {
 }
 
 
-var specCounter = 1;
-
-function loadSpecCatalog() {
-    b = map.getBounds();
-    url = L.Util.template('{{ smallcaturl|safe }}', L.extend({
-        s: subdomains[0],
-	ralo: long2ra(b.getEast()).toFixed(4),
-	rahi: long2ra(b.getWest()).toFixed(4),
-	declo: lat2dec(b.getSouth()).toFixed(4),
-	dechi: lat2dec(b.getNorth()).toFixed(4),
-        id: 'spec',
-        ver: getcatversion('spec'),
-    }));
-    console.log('Loading spectra for counter ' + specCounter);
-    $.getJSON(url, specLoaded.bind(true, specCounter));
-    specCounter += 1;
-}
-
 // "Sources", "Bricks", "CCDs" button checked
 function overlayAdded(e) {
     //console.log('OverlayAdded: ' + e.name);
@@ -1024,12 +915,6 @@ function overlayAdded(e) {
     if (e.name == 'Sources') {
         showSources = true;
         cat = true;
-    }
-    if (e.name == specName) {
-	showSpec = true;
-	if (map.getZoom() >= specMinZoom) {
-	    loadSpecCatalog();
-	}
     }
 
     if (cat) {
@@ -1073,13 +958,6 @@ function overlayRemoved(e) {
     if (e.name == 'Sources') {
         showSources = false;
 	unload = true;
-    }
-    if (e.name == specName) {
-	showSpec = false;
-	for (var k in specLayers) {
-	    specGroup.removeLayer(k);
-	}
-	specLayers = {};
     }
 
     if (unload) {
@@ -1324,11 +1202,7 @@ function mapBoundsChanged() {
     ra  = long2ra(latlng.lng);
     dec = lat2dec(latlng.lat);
 
-    if (showSpec && zoom > specMinZoom) {
-        loadSpecCatalog();
-    }
-
-    // has the user actually entered an SQL query?
+    // has the user entered an SQL query?  Update if so
     if (sqlJsonQuery !== undefined) {
         updateSql();
     }
@@ -1410,11 +1284,7 @@ var sourcesGroup = L.layerGroup([]);
 var catLayers = {};
 var visibleTiles = {};
 
-var showSpec = false;
-var specGroup = L.layerGroup([]);
-var specLayers = {};
-
-var conGroup = L.layerGroup([]);
+//var conGroup = L.layerGroup([]);
 
 var showBricks = false;
 var bricksGroup = L.layerGroup([]);
@@ -1959,8 +1829,6 @@ function onHashChange() {
 
 L.DomEvent.addListener(window, 'hashchange', onHashChange);
 
-var specName = "Spectra";
-
 var overlayMaps = {
     "Sources": sourcesGroup,
     "Bricks": bricksGroup,
@@ -1977,8 +1845,10 @@ gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
                           'labelsMinZoom': 7});
 gals.addToOverlay(overlayMaps);
 
+spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
+                              {'radius': 300});
+spec.addToOverlay(overlayMaps);
 
-overlayMaps[specName] = specGroup;
 overlayMaps["SDSS Spectro Plates"] = platesGroup;
 
 {% comment %}
