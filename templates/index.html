@@ -389,20 +389,25 @@ CatalogOverlay = L.Class.extend({
     },
 
     getLayer: function(result) {
-        showlabels = (map.getZoom() >= this._labelsMinZoom);
-        rdlist = result['rd'];
+        var showlabels = (map.getZoom() >= this._labelsMinZoom);
+        var rdlist = result['rd'];
         var circleList = new Array(rdlist.length);
         var clong = map.getCenter().lng;
-        for (i=0, len=rdlist.length; i<len; i++) {
-            r = rdlist[i][0];
-            d = rdlist[i][1];
-            lat = dec2lat(d);
-            lng = ra2long_C(r, clong);
-            circ = L.circle([lat, lng], this._radius, this._style);
-            //circ.ra = r;
-            //circ.dec = d;
+        var radii = result['radiusArcsec'];
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            if (radii) {
+	            // arcsec to meters:
+	            meters = (radii[i] * 30.87) || 30;
+                var circ = L.circle([lat, lng], meters, this._style);
+            } else {
+                var circ = L.circle([lat, lng], this._radius, this._style);
+            }
 	        if (showlabels) {
-                txt = this.get_label(result, i);
+                var txt = this.get_label(result, i);
                 circ.bindLabel(txt, { noHide: true, clickable: true });
                 circ.showLabel();
 	        }
@@ -626,72 +631,6 @@ function catLoaded(zoom, tilex, tiley, result) {
     catLayers[key] = circles;
 }
 
-function ngcLoaded(zoom, tilex, tiley, result) {
-    if (!showNgc) {
-        return;
-    }
-
-    c = map.getCenter();
-    clong = c.lng
-    //console.log('NGC loaded: map center ' + c.lng + ',' + c.lat);
-
-    rdlist = result['rd'];
-    radius = result['radiusArcsec'];
-    names = result['name'];
-
-    showlabels = (map.getZoom() >= ngcLabelsMinZoom);
-
-    var circleList = new Array(rdlist.length);
-    for (i=0, len=rdlist.length; i<len; i++) {
-        r = rdlist[i][0];
-        d = rdlist[i][1];
-        lat = dec2lat(d);
-        lng = ra2long_C(r, clong);
-        
-	// arcsec to meters:
-	meters = radius[i] * 30.87;
-	if (meters == 0.) {
-	    meters = 30;
-	}
-
-	//color = '#8080a0';
-	color = '#ffffff';
-
-        circ = L.circle([lat, lng], meters, {'color':color,
-                                             'fillOpacity':0, 'weight':5});
-        circ.ra = r;
-        circ.dec = d;
-	circ.name = names[i];
-
-	circ._showLabelAdded = true;
-	circ.bindLabel(circ.name, { noHide: true });
-	circ.label._latlng = L.latLng(lat,lng);
-
-	if (showlabels) {
-	    circ.on('remove', function(e){
-		console.log('Removing label for ' + e.target.name);
-		map.removeLayer(e.target.label);
-	    });
-	}
-
-        circleList[i] = circ;
-    }
-    circles = L.layerGroup(circleList);
-    ngcGroup.addLayer(circles);
-    if (showlabels) {
-	// show labels
-	for (i=0; i<circleList.length; i++) {
-	    circ = circleList[i];
-	    map.showLabel(circ.label);
-	}
-    }
-
-    // save this for later.
-    key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
-    //console.log('NGC loaded: key ' + key);
-    ngcLayers[key] = circles;
-}
-
 function specLoaded(counter, result) {
     console.log('specLoaded: counter ' + counter);
     if (!showSpec) {
@@ -780,10 +719,9 @@ function specLoaded(counter, result) {
 // Reads global "catname", name of catalog sources to load.
 // and 'sourcesMinZoom'
 function doLoadTile(tile) {
-    if (!(showSources || showNgc)) {
-	return;
+    if (!showSources) {
+	    return;
     }
-    //console.log('doLoadtile: ' + tile);
 
     s = getSubdomain(tile.tilex, tile.tiley);
     if (showSources && (tile.z >= sourcesMinZoom)) {
@@ -799,18 +737,6 @@ function doLoadTile(tile) {
     //console.log('zoom, tilex, tiley: ' + tile.z + ',' + tile.tilex + ',' + tile.tiley);
 	$.getJSON(caturl, catLoaded.bind(true,
 					 tile.z, tile.tilex, tile.tiley));
-    }
-    if (showNgc) {
-	url = L.Util.template('{{ caturl|safe }}', L.extend({
-            s: s,
-            z: tile.z,
-            x: tile.tilex,
-            y: tile.tiley,
-            id: 'ngc',
-            ver: getcatversion('ngc'),
-	}));
-	$.getJSON(url, ngcLoaded.bind(true,
-				     tile.z, tile.tilex, tile.tiley));
     }
 }
 
@@ -837,17 +763,6 @@ function doUnloadTile(key) {
 	    sourcesGroup.removeLayer(circles);
 	    delete catLayers[key];
 	    console.log('remaining catalog layers: ' + getkeys(catLayers));
-	}
-    }
-    //if (!showNgc) {
-    if (key in ngcLayers) {
-	circles = ngcLayers[key];
-	if (typeof(circles) == 'undefined') {
-	    console.log('doUnloadTile on a tile with no NGC; whatevs');
-	} else {
-	    ngcGroup.removeLayer(circles);
-	    delete ngcLayers[key];
-	    console.log('remaining NGC layers: ' + getkeys(ngcLayers));
 	}
     }
 }
@@ -1106,14 +1021,9 @@ function loadSpecCatalog() {
 function overlayAdded(e) {
     //console.log('OverlayAdded: ' + e.name);
     cat = false;
-    ngc = false
     if (e.name == 'Sources') {
         showSources = true;
         cat = true;
-    }
-    if (e.name == ngcName) {
-        showNgc = true;
-        ngc = true;
     }
     if (e.name == specName) {
 	showSpec = true;
@@ -1122,7 +1032,7 @@ function overlayAdded(e) {
 	}
     }
 
-    if (cat || ngc) {
+    if (cat) {
         // request catalogs for currently-visible tiles
         //console.log('Visible tiles: ' + visibleTiles);
         for (var i in visibleTiles) {
@@ -1162,10 +1072,6 @@ function overlayRemoved(e) {
     unload = false;
     if (e.name == 'Sources') {
         showSources = false;
-	unload = true;
-    }
-    if (e.name == ngcName) {
-        showNgc = false;
 	unload = true;
     }
     if (e.name == specName) {
@@ -1503,10 +1409,6 @@ var switchingSources = false;
 var sourcesGroup = L.layerGroup([]);
 var catLayers = {};
 var visibleTiles = {};
-
-var showNgc = false;
-var ngcGroup = L.layerGroup([]);
-var ngcLayers = {};
 
 var showSpec = false;
 var specGroup = L.layerGroup([]);
@@ -2058,7 +1960,6 @@ function onHashChange() {
 L.DomEvent.addListener(window, 'hashchange', onHashChange);
 
 var specName = "Spectra";
-var ngcName = "NGC galaxies";
 
 var overlayMaps = {
     "Sources": sourcesGroup,
@@ -2066,14 +1967,14 @@ var overlayMaps = {
     "CCDs": ccdsGroup,
     "Exposures": expsGroup,
 };
-overlayMaps[ngcName] = ngcGroup;
 
 bright = new BrightCatalog('bright', 'Bright stars', {});
 bright.addToOverlay(overlayMaps);
 
-gals = new GalaxyCatalog('gals', 'Big Galaxies', {'url_name': 'ngc',
-                                                  'minZoom': 5,
-                                                  'labelsMinZoom': 7});
+gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
+                         {'url_name': 'ngc',
+                          'minZoom': 5,
+                          'labelsMinZoom': 7});
 gals.addToOverlay(overlayMaps);
 
 
@@ -2175,7 +2076,6 @@ function setOverlayEnabled(name, enabled) {
 var bricksMinZoom = 8;
 var ccdsMinZoom = 8;
 var sourcesMinZoom = 12;
-var ngcLabelsMinZoom = 8;
 
 var specMinZoom = 10;
 var specLabelsMinZoom = 11;
@@ -2324,8 +2224,7 @@ showSoures = true;
 {% endif %}
 
 {% if showNgc %}
-map.addLayer(ngcGroup);
-showNgc = true;
+// FIXME
 {% endif %}
 
 {% if showSpec %}

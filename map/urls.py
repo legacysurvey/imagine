@@ -50,9 +50,6 @@ urlpatterns = [
 
     url(r'^jpeg-cutout', views.jpeg_cutout, name='cutout-jpeg'),
 
-    # NGC objects
-    url(r'^ngc/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_ngc),
-
     # NGC/IC/UGC galaxies
     url(r'^ngc/(\d+)/cat.json', views.cat_gals),
     

@@ -1639,47 +1639,13 @@ def cat(req, ver, tag, fn):
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.name]
     rtn = dict(rd=rd, name=names)
+    # bright stars
     if 'alt_name' in T.columns():
         rtn.update(altname = [t.strip() for t in T.alt_name])
-
+    if 'radius' in T.columns():
+        rtn.update(radiusArcsec=T.radius * 3600.)
+        
     return HttpResponse(json.dumps(rtn), content_type='application/json')
-
-
-def cat_ngc(req, ver, zoom, x, y):
-    import json
-    tag = 'ngc'
-    zoom = int(zoom)
-    try:
-        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-    except RuntimeError as e:
-        return HttpResponse(e.strerror)
-    ver = int(ver)
-    if not ver in catversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-
-    from astrometry.util.fits import fits_table
-    import numpy as np
-    from astrometry.libkd.spherematch import match_radec
-    from astrometry.util.starutil_numpy import degrees_between, arcsec_between
-    from astrometry import catalogs
-
-    ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
-    ok,r0,d0 = wcs.pixelxy2radec(1, 1)
-    ok,r1,d1 = wcs.pixelxy2radec(W, H)
-    radius = max(degrees_between(ra,dec, r0,d0),
-                 degrees_between(ra,dec, r1,d1))
-
-    T = fits_table(os.path.join(os.path.dirname(catalogs.__file__), 'ngc2000.fits'))
-
-    I,J,d = match_radec(ra, dec, T.ra, T.dec, radius * 1.1)
-    
-    rd = list((float(r),float(d)) for r,d in zip(T.ra[J], T.dec[J]))
-    names = ['NGC %i' % i for i in T.ngcnum[J]]
-    radius = list(float(x) for x in T.radius[J] * 3600.)
-
-    return HttpResponse(json.dumps(dict(rd=rd, name=names,
-                                        radiusArcsec=radius)),
-                        content_type='application/json')
 
 def cat_decals_dr1j(req, ver, zoom, x, y, tag='decals-dr1j'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
