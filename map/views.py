@@ -726,6 +726,10 @@ def sdss_rgb(rimgs, bands, scales=None,
     rgb = np.clip(rgb, 0, 1)
     return rgb
 
+def layer_name_map(name):
+    return {'decals-dr2-model': 'decals-dr2',
+            'decals-dr2-resid': 'decals-dr2'}.get(name, None)
+
 B_dr2 = None
 def _get_dr2_bricks():
     global B_dr2
@@ -1263,6 +1267,7 @@ def brick_list(req):
     B = None
 
     name = req.GET.get('id', None)
+    name = layer_name_map(name)
     if name == 'decals-dr1k':
         from astrometry.util.fits import fits_table
         B = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
@@ -1382,7 +1387,8 @@ def ccd_list(req):
     west  = float(req.GET['west'])
 
     name = req.GET.get('id', None)
-
+    name = layer_name_map(name)
+    
     CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
 
     ccdname = lambda c: '%i-%s-%s' % (c.expnum, c.extname.strip(), c.filter)
@@ -1434,6 +1440,7 @@ def exposure_list(req):
     east  = float(req.GET['east'])
     west  = float(req.GET['west'])
     name = req.GET.get('id', None)
+    name = layer_name_map(name)
 
     if not name in exposure_cache:
         from astrometry.libkd.spherematch import tree_build_radec

@@ -122,7 +122,7 @@ background: #242424;
 <div id="map" />
 
 <script>
-'use strict';
+//'use strict';
 
 var MyTileLayer = L.TileLayer.extend({
     _loadTile: function (tile, tilePoint) {
@@ -151,7 +151,7 @@ var ZoomRangeTileLayer = MyTileLayer.extend({
         urlPatterns: [],
     },
 	getTileUrl: function (tilePoint) {
-        urlpat = this._getUrlPattern(tilePoint.z);
+        var urlpat = this._getUrlPattern(tilePoint.z);
 		return L.Util.template(urlpat, L.extend({
 			s: this._getSubdomain(tilePoint),
 			z: tilePoint.z,
@@ -160,11 +160,11 @@ var ZoomRangeTileLayer = MyTileLayer.extend({
 		}, this.options));
 	},
     _getUrlPattern: function (zoom) {
-        url = this._url;
+        var url = this._url;
         for (var i=0; i<this.options.urlPatterns.length; i++) {
-            zlo  = this.options.urlPatterns[i][0];
-            zhi  = this.options.urlPatterns[i][1];
-            zurl = this.options.urlPatterns[i][2];
+            var zlo  = this.options.urlPatterns[i][0];
+            var zhi  = this.options.urlPatterns[i][1];
+            var zurl = this.options.urlPatterns[i][2];
             if ((zoom >= zlo) && (zoom <= zhi)) {
                 url = zurl;
             }
@@ -212,9 +212,9 @@ var CatalogOverlay = L.Class.extend({
             // _checkbox is a jQuery node
             //console.log('checkbox:', this._checkbox);
             // add status span after the layer name span
-            nxt = this._checkbox.next();
-            stat = L.DomUtil.create('span', 'layer-status');
-            statid = this._name + '_status';
+            var nxt = this._checkbox.next();
+            var stat = L.DomUtil.create('span', 'layer-status');
+            var statid = this._name + '_status';
             stat.id = statid
             nxt.after(stat);
             nxt.after('&nbsp;');
@@ -255,7 +255,7 @@ var CatalogOverlay = L.Class.extend({
     onMapZoomEnd: function() {
         //console.log(this._name + ': map zoom end; oldzoom: ' + this._oldZoom +
         //', new zoom: ' + map.getZoom());
-        zoom = map.getZoom();
+        var zoom = map.getZoom();
         if ((this._oldZoom >= this._minZoom) && (zoom < this._minZoom)) {
             //console.log(this._name + ': zoomed out past boundary');
             if (this._show) {
@@ -283,8 +283,8 @@ var CatalogOverlay = L.Class.extend({
     },
 
     load: function() {
-        b = map.getBounds();
-        url = L.Util.template(this._url, L.extend({
+        var b = map.getBounds();
+        var url = L.Util.template(this._url, L.extend({
             s: subdomains[0],
 	        ralo: long2ra(b.getEast()).toFixed(4),
 	        rahi: long2ra(b.getWest()).toFixed(4),
@@ -309,7 +309,7 @@ var CatalogOverlay = L.Class.extend({
         if (!this._show) {
             return;
         }
-        circles = this.getLayer(result);
+        var circles = this.getLayer(result);
         // remove old layers
         for (var k in this._layers) {
 	        if (k < counter) {
@@ -329,9 +329,9 @@ var CatalogOverlay = L.Class.extend({
     },
 
     removeAllLayers: function() {
-        for (key in this._layers) {
+        for (var key in this._layers) {
 	        //console.log(this._name + ' removeAllLayers: removing ' + key);
-	        circles = this._layers[key];
+	        var circles = this._layers[key];
 	        this._group.removeLayer(circles);
 	        delete this._layers[key];
         }
@@ -351,7 +351,7 @@ var CatalogOverlay = L.Class.extend({
             var lng = ra2long_C(r, clong);
             if (radii) {
 	            // arcsec to meters:
-	            meters = (radii[i] * 30.87) || 30;
+	            var meters = (radii[i] * 30.87) || 30;
                 var circ = L.circle([lat, lng], meters, this._style);
             } else {
                 var circ = L.circle([lat, lng], this._radius, this._style);
@@ -363,8 +363,7 @@ var CatalogOverlay = L.Class.extend({
 	        }
             circleList[i] = circ;
         }
-        circles = L.layerGroup(circleList);
-        return circles;
+        return L.layerGroup(circleList);
     },
 
     get_label: function(json, i) {
@@ -375,9 +374,9 @@ var CatalogOverlay = L.Class.extend({
 
 var BrightCatalog = CatalogOverlay.extend({
     get_label: function(json, i) {
-        oname = json['name'][i];
-        name = oname;
-        altnames = json['altname'];
+        var oname = json['name'][i];
+        var name = oname;
+        var altnames = json['altname'];
         if (altnames[i].length > 0) {
             name = name + ' (' + altnames[i] + ')';
         }
@@ -389,8 +388,8 @@ var BrightCatalog = CatalogOverlay.extend({
 
 var GalaxyCatalog = CatalogOverlay.extend({
     get_label: function(json, i) {
-        oname = json['name'][i];
-        name = oname;
+        var oname = json['name'][i];
+        var name = oname;
 	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
             oname.replace(' ','+') + '">' + name + '</a>';
         return name;
@@ -399,7 +398,7 @@ var GalaxyCatalog = CatalogOverlay.extend({
 
 var SdssSpectraCatalog = CatalogOverlay.extend({
     get_label: function(json, i) {
-        label = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' +
+        var label = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' +
             json['mjd'][i] + '&fiber=' + json['fiber'][i] + '&plateid=' +
             json['plate'][i] + '">' + json.name[i] + '</a>';
         return label;
@@ -422,8 +421,8 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 
     tileLoadStart: function(e) {
-        tile = e.tile;
-        key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
+        var tile = e.tile;
+        var key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
         //console.log('Tile load start: ' + key);
         if (key in this._visibleTiles) {
             //console.log('tile was already in visible tiles');
@@ -437,8 +436,8 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 
     tileUnload: function(e) {
-        tile = e.tile;
-        key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
+        var tile = e.tile;
+        var key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
         //console.log('Tile unload: ' + key);
         delete this._visibleTiles[key];
         e.key = key;
@@ -450,7 +449,7 @@ var TiledOverlay = CatalogOverlay.extend({
         if (!this._show) {
             return;
         }
-        tile = e.tile;
+        var tile = e.tile;
         if (tile.z < this._minZoom) {
             return;
         }
@@ -460,8 +459,8 @@ var TiledOverlay = CatalogOverlay.extend({
     load: function(zoom, x, y) {
         //console.log('Loading tiled catalog: URL pattern: ' + this._url +
         //            ' x,y,zoom: ' + x + ',' + y + ', ' + zoom);
-        s = getSubdomain(x, y);
-	    url = L.Util.template(this._url, L.extend({
+        var s = getSubdomain(x, y);
+	    var url = L.Util.template(this._url, L.extend({
             s: s,
             z: zoom,
             x: x,
@@ -484,11 +483,11 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 
     tileInvisible: function(e) {
-        key = e.key;
+        var key = e.key;
         if (!(key in this._layers)) {
             return;
         }
-        circles = this._layers[key];
+        var circles = this._layers[key];
         this._group.removeLayer(circles);
     },
 
@@ -507,10 +506,10 @@ var TiledOverlay = CatalogOverlay.extend({
         // load all visible tiles
         for (var key in this._visibleTiles) {
             // parse into zoom:x:y
-            words = key.split(':');
-            zoom = parseInt(words[0]);
-            x = parseInt(words[1]);
-            y = parseInt(words[2]);
+            var words = key.split(':');
+            var zoom = parseInt(words[0]);
+            var x = parseInt(words[1]);
+            var y = parseInt(words[2]);
             this.load(zoom, x, y);
         }
     },
@@ -524,10 +523,10 @@ var TiledOverlay = CatalogOverlay.extend({
             console.log('not shown');
             return;
         }
-        circles = this.getLayer(result);
+        var circles = this.getLayer(result);
         this._group.addLayer(circles);
         // save this new layer
-        key = ''+zoom+':'+tilex+':'+tiley;
+        var key = ''+zoom+':'+tilex+':'+tiley;
         this._layers[key] = circles;
     },
 });
@@ -535,23 +534,22 @@ var TiledOverlay = CatalogOverlay.extend({
 // DECaLS catalog
 var DecalsCatalogLayer = TiledOverlay.extend({
     getLayer: function(result) {
-        rdlist = result['rd'];
-        objtype = result['sourcetype'];
-        fluxes = result['fluxes'];
-        nobs = result['nobs'];
-        bricknames = result['bricknames'];
-        objids = result['objid'];
+        var rdlist = result['rd'];
+        var objtype = result['sourcetype'];
+        var fluxes = result['fluxes'];
+        var nobs = result['nobs'];
+        var bricknames = result['bricknames'];
+        var objids = result['objid'];
         var circleList = new Array(rdlist.length);
         var clong = map.getCenter().lng;
-        for (i=0, len=rdlist.length; i<len; i++) {
-            r = rdlist[i][0];
-            d = rdlist[i][1];
-            lat = dec2lat(d);
-            lng = ra2long_C(r, clong);
-            
-            color = 'blue';
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            var color = 'blue';
+            var typ = 'nil';
             if (objtype == undefined) {
-                typ = 'nil';
             } else {
                 typ = objtype[i];
 	            // PSF
@@ -569,7 +567,7 @@ var DecalsCatalogLayer = TiledOverlay.extend({
                     color = '#DA81F5'; // magenta
                 }
             }
-            circ = L.circle([lat, lng], 30, {'color':color,
+            var circ = L.circle([lat, lng], 30, {'color':color,
                                              'fillOpacity':0, 'weight':5});
             circ.ra = r;
             circ.dec = d;
@@ -578,9 +576,7 @@ var DecalsCatalogLayer = TiledOverlay.extend({
             circ.nobs   = (nobs   ? nobs  [i] : {});
             circ.brickname = bricknames ? bricknames[i] : '';
             circ.objid     = objids     ? objids    [i] : '';
-
             circ.on('click', onSourceClick);
-
             circleList[i] = circ;
         }
         return L.layerGroup(circleList);
@@ -589,8 +585,8 @@ var DecalsCatalogLayer = TiledOverlay.extend({
 
 
 function getkeys(obj) {
-    s = '';
-    for (k in obj) {
+    var s = '';
+    for (var k in obj) {
         if (s.length) {
             s += ', ';
         }
@@ -602,7 +598,7 @@ function getkeys(obj) {
 var subdomains = {{ subdomains|safe }};
 
 function long2ra(lng) {
-    ra = 180. - lng;
+    var ra = 180. - lng;
     while (ra < 0) {
         ra += 360.;
     }
@@ -623,7 +619,7 @@ function wrap_long(lng, clong) {
 }
 
 function ra2long_C(ra, clong) {
-    lng = 180 - ra;
+    var lng = 180 - ra;
     lng = wrap_long(lng, clong);
     return lng;
 }
@@ -702,29 +698,29 @@ function exp_detail(name, aparams) {
 }
 
 function onMapClick(e) {
-    ra  = long2ra(e.latlng.lng);
-    dec = lat2dec(e.latlng.lat);
-    bricks = bricksUnderLatlng(e.latlng);
-    ccds = ccdsUnderLatlng(e.latlng);
-    exps = expsUnderLatlng(e.latlng);
+    var ra  = long2ra(e.latlng.lng);
+    var dec = lat2dec(e.latlng.lat);
+    var bricks = bricksUnderLatlng(e.latlng);
+    var ccds = ccdsUnderLatlng(e.latlng);
+    var exps = expsUnderLatlng(e.latlng);
 
-    radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
-    qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
+    var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
+    var qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
 
-    cutout = '{{ absurl }}/jpeg-cutout/?' + qstr;
+    var cutout = '{{ absurl }}/jpeg-cutout/?' + qstr;
 
-    linkurl = '{{ absurl }}?' + qstr;
+    var linkurl = '{{ absurl }}?' + qstr;
 
-    discuss = 'http://discuss.legacysurvey.org/new-topic?title=Interesting+object&body=' +
+    var discuss = 'http://discuss.legacysurvey.org/new-topic?title=Interesting+object&body=' +
         '%3Cimg+src%3D%22' + encodeURIComponent(cutout) + '%22%3E' +
         '%0A' +
         encodeURIComponent(linkurl) +
         '&category=Interesting+things';
 
-    datalink = '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + idname;
-    spacer = ' &nbsp;|&nbsp; ';
+    var datalink = '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + idname;
+    var spacer = ' &nbsp;|&nbsp; ';
 
-    txt =
+    var txt =
         'RA,Dec = ' + cutout_radec_link(ra, dec) +
         '<br/><a href="{{ baseurl }}?' + qstr +
         '">Link Here</a>' + spacer +
@@ -751,8 +747,8 @@ function onMapClick(e) {
 }
 
 function onMouseMove(e) {
-    ra  = long2ra(e.latlng.lng);
-    dec = lat2dec(e.latlng.lat);
+    var ra  = long2ra(e.latlng.lng);
+    var dec = lat2dec(e.latlng.lat);
     lastLatLng = e.latlng;
     if (infoBoxActive) {
 	    info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) + ", zoom " + map.getZoom();
@@ -767,18 +763,18 @@ function onMouseMove(e) {
 
 function bricksUnderLatlng(latlng) {
     // Returns a list of the brick names under a given lat,long
-    bricks = [];
+    var bricks = [];
     if (showBricks) {
-        geos = [];
+        var geos = [];
         for (var name in currentBricks) {
-            brick = currentBricks[name];
-            gj = brick.toGeoJSON();
+            var brick = currentBricks[name];
+            var gj = brick.toGeoJSON();
             gj.properties['name'] = name;
             geos.push(gj);
         }
-        geo = {type:'FeatureCollection', features:geos};
-        leafgeo = L.geoJson(geo);
-        inside = leafletPip.pointInLayer(latlng, leafgeo);
+        var geo = {type:'FeatureCollection', features:geos};
+        var leafgeo = L.geoJson(geo);
+        var inside = leafletPip.pointInLayer(latlng, leafgeo);
         for (var i=0; i<inside.length; i++) {
             bricks.push(inside[i].feature.properties.name);
         }
@@ -788,18 +784,18 @@ function bricksUnderLatlng(latlng) {
 }
 
 function ccdsUnderLatlng(latlng) {
-    ccds = [];
+    var ccds = [];
     if (showCcds) {
-        geos = [];
+        var geos = [];
         for (var name in currentCcds) {
-            ccd = currentCcds[name];
-            gj = ccd.toGeoJSON();
+            var ccd = currentCcds[name];
+            var gj = ccd.toGeoJSON();
             gj.properties['name'] = name;
             geos.push(gj);
         }
-        geo = {type:'FeatureCollection', features:geos};
-        leafgeo = L.geoJson(geo);
-        inside = leafletPip.pointInLayer(latlng, leafgeo);
+        var geo = {type:'FeatureCollection', features:geos};
+        var leafgeo = L.geoJson(geo);
+        var inside = leafletPip.pointInLayer(latlng, leafgeo);
         for (var i=0; i<inside.length; i++) {
             ccds.push(inside[i].feature.properties.name);
         }
@@ -814,10 +810,10 @@ function ccdsUnderLatlng(latlng) {
 }
 
 function expsUnderLatlng(latlng) {
-    exps = [];
+    var exps = [];
     if (showExps) {
         for (var name in currentExps) {
-            exp = currentExps[name];
+            var exp = currentExps[name];
 	        if (latlng.distanceTo(exp.getLatLng()) < exp.getRadius()) {
 		        exps.push(exp.name);
 	        }
@@ -835,10 +831,10 @@ function inbrickccdUpdate(props) {
     if (props == undefined) {
         return;
     }
-    bricks = bricksUnderLatlng(props.latlng);
-    ccds = ccdsUnderLatlng(props.latlng);
-    exps = expsUnderLatlng(props.latlng);
-    txt = '';
+    var bricks = bricksUnderLatlng(props.latlng);
+    var ccds = ccdsUnderLatlng(props.latlng);
+    var exps = expsUnderLatlng(props.latlng);
+    var txt = '';
     if (bricks.length || ccds.length || exps.length) {
         if (bricks.length) {
             txt = txt + 'In brick: ';
@@ -855,13 +851,13 @@ function inbrickccdUpdate(props) {
         if (ccds.length) {
             txt = txt + 'In CCDs:<ul>';
             for (var i=0; i<ccds.length; i++) {
-                ccdname = ccds[i];
-                aparams = '';
+                var ccdname = ccds[i];
+                var aparams = '';
                 if (ccdname == highlightedCcdName) {
                     aparams = ' class="highccd"';
                 }
                 //ccdtext = ccdname;
-                ccdtext = ccd_detail(ccdname, aparams);
+                var ccdtext = ccd_detail(ccdname, aparams);
                 //ccdtext = '<div class="highccd">' + ccdtext + '</div>';
                 //}
                 txt = txt + '<li>'+ccdtext+'</li>';
@@ -871,12 +867,12 @@ function inbrickccdUpdate(props) {
         if (exps.length) {
             txt = txt + 'In Exposures:<ul>';
             for (var i=0; i<exps.length; i++) {
-                expname = exps[i];
-                aparams = '';
+                var expname = exps[i];
+                var aparams = '';
                 if (expname == highlightedExpName) {
                     aparams = ' class="highexp"';
                 }
-                exptext = exp_detail(expname.replace(' ','-'), aparams);
+                var exptext = exp_detail(expname.replace(' ','-'), aparams);
                 txt = txt + '<li>'+exptext+'</li>';
             }
             txt = txt + '</ul>';
@@ -954,25 +950,25 @@ function overlayRemoved(e) {
 }
 
 function removeBrick(name) {
-    brick = currentBricks[name];
+    var brick = currentBricks[name];
     bricksGroup.removeLayer(brick);
     delete currentBricks[name];
 }
 
 function removeCcd(name) {
-    ccd = currentCcds[name];
+    var ccd = currentCcds[name];
     ccdsGroup.removeLayer(ccd);
     delete currentCcds[name];
 }
 
 function removeExp(name) {
-    exp = currentExps[name];
+    var exp = currentExps[name];
     expsGroup.removeLayer(exp);
     delete currentExps[name];
 }
 
 function removePlate(name) {
-    exp = currentPlates[name];
+    var exp = currentPlates[name];
     expsGroup.removeLayer(exp);
     delete currentPlates[name];
 }
@@ -981,21 +977,21 @@ function bricksLoaded(result) {
     if (!showBricks) {
         return;
     }
-    bricks = result['bricks'];
+    var bricks = result['bricks'];
     var clong = map.getCenter().lng;
     for (var i=0, len=bricks.length; i<len; i++) {
         //console.log('brick ' + i + ': ' + bricks[i]);
-        name = bricks[i].name;
+        var name = bricks[i].name;
         if (name in currentBricks) {
             //console.log('Brick ' + name + ' already exists');
             continue;
         }
-        poly = bricks[i].poly;
+        var poly = bricks[i].poly;
         for (var j=0, npoly=poly.length; j<npoly; j++) {
             while (poly[j][1] < clong-180) { poly[j][1] += 360; }
             while (poly[j][1] > clong+180) { poly[j][1] -= 360; }
         }
-        b = L.polygon(poly, {fill:false, weight:4, color:'blue' });
+        var b = L.polygon(poly, {fill:false, weight:4, color:'blue' });
         b.name = name;
         //console.log('Adding brick ' + name + ': polygon ' + poly);
         bricksGroup.addLayer(b);
@@ -1009,8 +1005,8 @@ function unhighlightCcd(name) {
 }
 
 function highlightCcd(ccd) {
-    cf = L.polygon(ccd.getLatLngs(),
-                   {fill:true, fillOpacity:0.05, color:'yellow', weight:1});
+    var cf = L.polygon(ccd.getLatLngs(),
+                       {fill:true, fillOpacity:0.05, color:'yellow', weight:1});
     ccdFills[ccd.name] = cf;
     cf.addTo(map);
     cf.bringToBack();
@@ -1018,7 +1014,7 @@ function highlightCcd(ccd) {
 
 function ccdMouseOver(e) {
     e.target.setStyle({color: 'yellow'});
-    ccd = e.target;
+    var ccd = e.target;
     highlightedCcdName = ccd.name;
     console.log('ccdMouseOver: ' + highlightedCcdName);
     // remove other CCDs from ccdFills
@@ -1036,7 +1032,7 @@ function ccdMouseOver(e) {
 
 function ccdMouseOut(e) {
     e.target.setStyle({color: e.target.orig_color});
-    ccd = e.target;
+    var ccd = e.target;
     highlightedCcdName = '';
     if (ccd.name in ccdFills) {
         unhighlightCcd(ccd.name);
@@ -1048,17 +1044,17 @@ function ccdsLoaded(result) {
     if (!showCcds) {
         return;
     }
-    ccds = result['ccds'];
+    var ccds = result['ccds'];
     console.log('Received ' + ccds.length + ' CCDs');
     var clong = map.getCenter().lng;
     for (var i=0, len=ccds.length; i<len; i++) {
         // console.log('ccd ' + i + ': ' + ccds[i]);
-        name = ccds[i].name;
+        var name = ccds[i].name;
         if (name in currentCcds) {
             //console.log('Ccd ' + name + ' already exists');
             continue;
         }
-        poly = ccds[i].poly;
+        var poly = ccds[i].poly;
         for (var j=0, plen=poly.length; j<plen; j++) {
             // lng = poly[j][1];
             // wlng = wrap_long(lng, clong);
@@ -1066,8 +1062,8 @@ function ccdsLoaded(result) {
             // console.log('ccd ' + i + ' poly ' + j + ' lng ' + lng + ' -> ' + wlng);
             poly[j][1] = wrap_long(poly[j][1], clong);
         }
-        color = ccds[i].color;
-        c = L.polygon(poly, {fill:false, color:color, weight:4 });
+        var color = ccds[i].color;
+        var c = L.polygon(poly, {fill:false, color:color, weight:4 });
         c.orig_color = color;
         c.name = name;
         c.on('mouseover', ccdMouseOver);
@@ -1084,8 +1080,8 @@ function unhighlightExp(name) {
 }
 
 function highlightExp(exp) {
-    cf = L.circle(exp.getLatLng(), exp.getRadius(),
-                  {fill:true, fillOpacity:0.05, color:'yellow', weight:1});
+    var cf = L.circle(exp.getLatLng(), exp.getRadius(),
+                      {fill:true, fillOpacity:0.05, color:'yellow', weight:1});
     expFills[exp.name] = cf;
     cf.addTo(map);
     cf.bringToBack();
@@ -1095,23 +1091,21 @@ function expsLoaded(result) {
     if (!showExps) {
         return;
     }
-    exps = result['exposures'];
+    var exps = result['exposures'];
     console.log('Exposures:', exps.length);
     var clong = map.getCenter().lng;
     for (var i=0, len=exps.length; i<len; i++) {
         // console.log('exp ' + i + ': ' + exps[i]);
-        name = exps[i].name;
+        var name = exps[i].name;
         if (name in currentExps) {
             //console.log('Exp ' + name + ' already exists');
             continue;
         }
-        lat = dec2lat(exps[i].dec);
-        lng = ra2long_C(exps[i].ra, clong);
-
-
-	    meters = 30 * 3600 * exps[i].radius;
-	    color = exps[i].color;
-	    c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
+        var lat = dec2lat(exps[i].dec);
+        var lng = ra2long_C(exps[i].ra, clong);
+	    var meters = 30 * 3600 * exps[i].radius;
+	    var color = exps[i].color;
+	    var c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
 					                     'weight':5, 'opacity':0.4 });
         c.name = name;
         expsGroup.addLayer(c);
@@ -1123,21 +1117,21 @@ function platesLoaded(result) {
     if (!showPlates) {
         return;
     }
-    plates = result['plates'];
+    var plates = result['plates'];
     console.log('Plates:', plates.length);
     var clong = map.getCenter().lng;
     for (var i=0, len=plates.length; i<len; i++) {
         // console.log('plate ' + i + ': ' + plates[i]);
-        name = plates[i].name;
+        var name = plates[i].name;
         if (name in currentPlates) {
             //console.log('Plate ' + name + ' already exists');
             continue;
         }
-        lat = dec2lat(plates[i].dec);
-        lng = ra2long_C(plates[i].ra, clong);
-	    meters = 30 * 3600 * plates[i].radius;
-	    color = plates[i].color;
-	    c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
+        var lat = dec2lat(plates[i].dec);
+        var lng = ra2long_C(plates[i].ra, clong);
+	    var meters = 30 * 3600 * plates[i].radius;
+	    var color = plates[i].color;
+	    var c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
 					                     'weight':5, 'opacity':0.4 });
         c.name = name;
         platesGroup.addLayer(c);
@@ -1147,10 +1141,10 @@ function platesLoaded(result) {
 
 
 function mapBoundsChanged() {
-    latlng = map.getCenter();
-    zoom = map.getZoom();
-    ra  = long2ra(latlng.lng);
-    dec = lat2dec(latlng.lat);
+    var latlng = map.getCenter();
+    var zoom = map.getZoom();
+    var ra  = long2ra(latlng.lng);
+    var dec = lat2dec(latlng.lat);
 
     // has the user entered an SQL query?  Update if so
     if (sqlJsonQuery !== undefined) {
@@ -1158,8 +1152,8 @@ function mapBoundsChanged() {
     }
 
     if (showBricks) {
-        bounds = map.getBounds();
-        bricksurl = L.Util.template('{{ bricksurl|safe }}', L.extend({
+        var bounds = map.getBounds();
+        var bricksurl = L.Util.template('{{ bricksurl|safe }}', L.extend({
             s: 'a',
             z: zoom,
             west:  long2ra(bounds.getWest()).toFixed(4),
@@ -1171,8 +1165,8 @@ function mapBoundsChanged() {
         $.getJSON(bricksurl, bricksLoaded);
     }
     if (showCcds) {
-        bounds = map.getBounds();
-        ccdsurl = L.Util.template('{{ ccdsurl|safe }}', L.extend({
+        var bounds = map.getBounds();
+        var ccdsurl = L.Util.template('{{ ccdsurl|safe }}', L.extend({
             s: 'a',
             z: zoom,
             west:  long2ra(bounds.getWest()).toFixed(4),
@@ -1184,8 +1178,8 @@ function mapBoundsChanged() {
         $.getJSON(ccdsurl, ccdsLoaded);
     }
     if (showExps) {
-        bounds = map.getBounds();
-        expsurl = L.Util.template('{{ expsurl|safe }}', L.extend({
+        var bounds = map.getBounds();
+        var expsurl = L.Util.template('{{ expsurl|safe }}', L.extend({
             s: 'a',
             z: zoom,
             west:  long2ra(bounds.getWest()).toFixed(4),
@@ -1197,8 +1191,8 @@ function mapBoundsChanged() {
         $.getJSON(expsurl, expsLoaded);
     }
     if (showPlates) {
-        bounds = map.getBounds();
-        platesurl = L.Util.template('{{ platesurl|safe }}', L.extend({
+        var bounds = map.getBounds();
+        var platesurl = L.Util.template('{{ platesurl|safe }}', L.extend({
             s: 'a',
             z: zoom,
             west:  long2ra(bounds.getWest()).toFixed(4),
@@ -1384,7 +1378,7 @@ for (var i in allLayers) {
     baseMaps[layer.pretty] = layer;
 }
 
-added = false;
+var added = false;
 for (i in allLayers) {
     layer = allLayers[i];
     if (idname == layer.name) {
@@ -1493,29 +1487,29 @@ var sqlQueryString = '';
 var sqlJsonQuery;
 
 function sqlLoaded(result) {
-    rdlist = result['rd'];
+    var rdlist = result['rd'];
     var circleList = new Array(rdlist.length);
     var clong = map.getCenter().lng;
     for (var i=0, len=rdlist.length; i<len; i++) {
-        r = rdlist[i][0];
-        d = rdlist[i][1];
-        lat = dec2lat(d);
-        lng = ra2long_C(r, clong);
-        color = 'white';
+        var r = rdlist[i][0];
+        var d = rdlist[i][1];
+        var lat = dec2lat(d);
+        var lng = ra2long_C(r, clong);
+        var color = 'white';
         circ = L.circle([lat, lng], 300, {'color':color, 'fillOpacity':0, 'weight':5});
         circ.ra = r;
         circ.dec = d;
         circleList[i] = circ;
     }
-    circles = L.layerGroup(circleList);
+    var circles = L.layerGroup(circleList);
     sqlGroup.clearLayers();
     sqlGroup.addLayer(circles);
 }
 
 // Call this when the map view changes.  Uses the global variable "sqlQueryString"
 function updateSql() {
-    bounds = map.getBounds();
-    sqlurl = L.Util.template('{{ sqlurl|safe }}', L.extend({
+    var bounds = map.getBounds();
+    var sqlurl = L.Util.template('{{ sqlurl|safe }}', L.extend({
         s: 'a',
         west:  long2ra(bounds.getWest()).toFixed(4),
         east:  long2ra(bounds.getEast()).toFixed(4),
@@ -1535,11 +1529,11 @@ function objQueryLoaded(result) {
         $('#objquerystatus').html(result["error"]);
         return;
     }
-    ra = result['ra'];
-    dec = result['dec'];
-    lat = dec2lat(dec);
-    lng = ra2long_C(ra, 0.);
-    zoom = map.getZoom();
+    var ra = result['ra'];
+    var dec = result['dec'];
+    var lat = dec2lat(dec);
+    var lng = ra2long_C(ra, 0.);
+    var zoom = map.getZoom();
     map.setView(L.latLng(lat, lng), zoom);
     $('#objquerystatus').html("");
     location.hash = result['name'];
@@ -1568,14 +1562,12 @@ $(document).ready(function() {
     $('#objquery').keydown(function(event) {
         // when Enter is hit in the Object name search box
         if (event.keyCode == 13) {
-            objquery = $('#objquery').val();
-
-            url = L.Util.template('{{ namequeryurl|safe }}', L.extend({
-                obj: objquery,
+            var qstring = $('#objquery').val();
+            var url = L.Util.template('{{ namequeryurl|safe }}', L.extend({
+                obj: qstring,
             }));
             $.getJSON(url, objQueryLoaded);
             $('#objquerystatus').html('Searching...');
-
             return false;
         }
     });
@@ -1585,7 +1577,7 @@ $(document).ready(function() {
     });
 
     // set initial hash location
-    loc = [map.getCenter().lat, map.getCenter().lng, map.getZoom()];
+    var loc = [map.getCenter().lat, map.getCenter().lng, map.getZoom()];
     //console.log('Initial location:', loc);
     {% if galname %}
     location.hash = '{{galname}}';
@@ -1595,7 +1587,7 @@ $(document).ready(function() {
 
 });
 
-container = info.getContainer();
+var container = info.getContainer();
 L.DomEvent
     .disableClickPropagation(container)
     .disableScrollPropagation(container);
@@ -1604,11 +1596,11 @@ L.DomEvent.on(container, 'click', infoBoxClicked);
 function onHashChange() {
     console.log('Hash changed to', location.hash);
     if (location.hash in hashLocations) {
-        loc = hashLocations[location.hash];
+        var loc = hashLocations[location.hash];
         console.log('Known hash location:', loc);
-        lat = loc[0];
-        lng = loc[1];
-        zoom = loc[2];
+        var lat = loc[0];
+        var lng = loc[1];
+        var zoom = loc[2];
         map.setView(L.latLng(lat, lng), zoom);
     }
 }
@@ -1672,10 +1664,10 @@ new L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 // We iterate through the <input> tags, getting the text from the next sibling.
 function getOverlayCheckbox(name) {
     var ov = false;
-    overlays = $('.leaflet-control-layers-overlays .leaflet-control-layers-selector');
+    var overlays = $('.leaflet-control-layers-overlays .leaflet-control-layers-selector');
     overlays.each(function(i) {
-        o = $(this);
-        text = $.trim(o.next().text());
+        var o = $(this);
+        var text = $.trim(o.next().text());
         //console.log('Looking for overlay "' + name + '", found "' + text + '"');
         if (text == name) {
             ov = o;
@@ -1684,11 +1676,11 @@ function getOverlayCheckbox(name) {
     return ov;
 }
 function isOverlayChecked(name) {
-    o = getOverlayCheckbox(name);
+    var o = getOverlayCheckbox(name);
     return $(o).prop('checked');
 }
 function setOverlayEnabled(name, enabled) {
-    o = getOverlayCheckbox(name);
+    var o = getOverlayCheckbox(name);
     if (enabled) {
         o.removeAttr('disabled');
     } else {
@@ -1703,12 +1695,12 @@ var ccdsMinZoom = 8;
 // variable for tracking old & new zoom via zoomstart / zoomend
 var oldZoom = {{ zoom }};
 function onMapZoomStart(e) {
-    zoom = map.getZoom();
+    var zoom = map.getZoom();
     console.log('map zoom start: ' + zoom + ', previous: ' + oldZoom);
     oldZoom = zoom;
 }
 function onMapZoomEnd(e) {
-    zoom = map.getZoom();
+    var zoom = map.getZoom();
     //console.log('map zoom: ' + zoom + ', old zoom' + oldZoom + ' vs brick zoom', bricksMinZoom);
 
     // Bricks
@@ -1928,16 +1920,16 @@ for (var i in constellation_lines) {
 {% endcomment %}
 
 // A scale bar that shows arcsec / arcmin / degrees rather than meters
-AstroControl = L.Control.Scale.extend({
+var AstroControl = L.Control.Scale.extend({
     options: {
 	    imperial: false,
 	    maxWidth: 300,
     },
     _updateMetric: function (maxMeters) {
 	    // meters -> arcsec
-	    maxArcsec = maxMeters / 30.87;
-	    maxUnit = maxArcsec;
-	    unitName = 'arcsec';
+	    var maxArcsec = maxMeters / 30.87;
+	    var maxUnit = maxArcsec;
+	    var unitName = 'arcsec';
 
 	    if (maxArcsec > 7200) {
 	        // degrees
