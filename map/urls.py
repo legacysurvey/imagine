@@ -63,16 +63,16 @@ urlpatterns = [
     url(r'^bright/(\d+)/cat.json', views.cat_bright),
 
     # SFD dust map
-    url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sfd),
+    url(r'^sfd/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sfd),
 
     # Halpha map
-    url(r'^halpha-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_halpha),
+    url(r'^halpha/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_halpha),
 
     # unWISE W1/W2
-    url(r'^unwise-w1w2-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2),
+    url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2),
 
     # Aaron's NEO1 unWISE W1/W2
-    url(r'^unwise-w1w2-neo1/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2_neo1),
+    url(r'^unwise-neo1/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2_neo1),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
     #url(r'^unwise-w1234-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1234),

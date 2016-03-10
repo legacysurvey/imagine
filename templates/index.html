@@ -1303,8 +1303,7 @@ var highlightedPlateName = '';
 var map = L.map('map');
 var popup = L.popup();
 
-att = map.attributionControl;
-att.options.prefix += ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
+map.attributionControl.options.prefix += ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
 
 // default to 1.
 var tileversions = {
@@ -1334,180 +1333,91 @@ var idname = '{{ layer }}';
 var minZoom = 1;
 var maxZoom = 16;
 
-allLayers = [];
+var allLayers = [];
 
-static_tile_url = '{{ static_tile_url|safe }}';
+var static_tile_url = '{{ static_tile_url|safe }}';
 
-decals_attrib = '<a href="http://legacysurvey.org">Legacy Survey</a>,' +
+var decals_attrib = '<a href="http://legacysurvey.org">Legacy Survey</a>,' +
   '<a href="https://www.noao.edu/image_gallery/copyright.html">&copy;</a>' +
   ' <a href="http://noao.edu">NOAO</a>/<a href="http://www.aura-astronomy.org/">AURA</a>/<a href="http://www.nsf.gov/">NSF</a>';
+var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">(c)</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
 
-
-tilesSfd = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    minZoom: minZoom,
-    maxNativeZoom: 10,
-    attribution: decals_attrib,
-    id: 'sfd-tiles',
-    ver: getversion('sfd'),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
-  });
-
-tilesHalpha = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    minZoom: minZoom,
-    maxNativeZoom: 10,
-    attribution: decals_attrib,
-    id: 'halpha-tiles',
-    ver: getversion('halpha'),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
-  });
-
-function createStaticTileLayer(id, vertag) {
-    var tiles = new MyTileLayer(static_tile_url, {
+var mylayer = function (name, pretty, kwargs) {
+    args = {
         maxZoom: maxZoom,
         minZoom: minZoom,
+        maxNativeZoom: {{maxNativeZoom}},
         attribution: decals_attrib,
-        id: id,
-        ver: getversion(vertag),
-        // ?
+        id: name,
+        ver: getversion(name),
         unloadInvisibleTiles: true,
         subdomains: subdomains,
-    });
+    };
+    for (key in kwargs) {
+        args[key] = kwargs[key];
+    }
+    tiles = new ZoomRangeTileLayer(static_tile_url, args);
+    tiles.name = name;
+    tiles.pretty = pretty;
     return tiles;
-}
+};
 
+var tiles;
 
 {% if enable_dr2 %}
-id = 'decals-dr2'
-
-// Use the static URL until zoom level 14, then the dynamic URL.
-tiles = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 images"});
-
+tiles = mylayer('decals-dr2', 'DECaLS DR2 images',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 tilesDecalsDr2Image = tiles;
 
-
-id = 'decals-dr2-model'
-tiles = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 models"});
-
+tiles = mylayer('decals-dr2-model', 'DECaLS DR2 models',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 tilesDecalsDr2Model = tiles;
 
-id = 'decals-dr2-resid'
-tiles = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 residuals"});
-
+tiles = mylayer('decals-dr2-resid', 'DECaLS DR2 residuals',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 tilesDecalsDr2Resid = tiles;
-
-
 {% endif %}
 
 
+tiles = mylayer('decals-dr1j', 'DECaLS DR1 images',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 
+tiles = mylayer('decals-model-dr1j', 'DECaLS DR1 models',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 
+tiles = mylayer('decals-resid-dr1j', 'DECaLS DR1 residuals',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 
-id = 'decals-dr1j'
+tiles = mylayer('sdssco', 'SDSS images',
+                {'attribution': sdss_attrib,
+                 'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 
-// Use the static URL until zoom level 14, then the dynamic URL.
-tilesDr1j = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images"});
+tiles = mylayer('unwise-w1w2', 'unWISE W1/W2',
+                {'maxNativeZoom': 10});
+allLayers.push(tiles);
 
-id = 'decals-model-dr1j'
-tilesModDr1j = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
+tiles = mylayer('unwise-neo1', 'unWISE W1/W2 NEO1',
+                {'maxNativeZoom': 10});
+allLayers.push(tiles);
 
-allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1 models"});
+tiles = mylayer('sfd', 'SFD dust map',
+                    {'maxNativeZoom':10,
+                     'urlPatterns': [ [7, 10, '{{ tileurl|safe }}'],], });
+allLayers.push(tiles);
 
-id = 'decals-resid-dr1j'
-tilesResidDr1j = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-
-allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals"});
-
-id = 'sdssco'
-tiles = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: '<a href="http://sdss.org/collaboration/#image-use">(c)</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>',
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-allLayers.push({name:id, tiles:tiles, pretty:"SDSS images"});
-
-allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map"});
-
-allLayers.push({name:'halpha', tiles:tilesHalpha, pretty:"Halpha map"});
-
+tiles = mylayer('halpha', 'Halpha map',
+                    {'maxNativeZoom':10,
+                     'urlPatterns': [ [7, 10, '{{ tileurl|safe }}'],],});
+allLayers.push(tiles);
 
 {% if enable_wl %}
-
 tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
     maxZoom: maxZoom,
     minZoom: minZoom,
@@ -1519,62 +1429,20 @@ tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
     subdomains: subdomains,
     //urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
   });
-
 allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map"});
-
 {% endif %}
-
-id = 'unwise-w1w2-tiles'
-vertag = 'unwise'
-tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
-      maxZoom: maxZoom,
-      //maxNativeZoom: 11,
-      maxNativeZoom: 10,
-      minZoom: minZoom,
-      attribution: decals_attrib,
-      id: id,
-      ver: getversion(vertag),
-      unloadInvisibleTiles: true,
-      subdomains: subdomains,
-});
-
-allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE W1/W2"});
-
-
-
-
-id = 'unwise-w1w2-neo1'
-vertag = 'unwise-neo1'
-tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
-      maxZoom: maxZoom,
-      maxNativeZoom: 10,
-      minZoom: minZoom,
-      attribution: decals_attrib,
-      id: id,
-      ver: getversion(vertag),
-      unloadInvisibleTiles: true,
-      subdomains: subdomains,
-});
-allLayers.push({name:'unwise-neo1', tiles:tilesUnwise, pretty:"unWISE W1/W2 NEO1"});
-
-
-
 
 var baseMaps = {};
 for (i in allLayers) {
   layer = allLayers[i];
-
-  tiles = layer.tiles;
-  tiles.name = layer.name;
-
-  baseMaps[layer.pretty] = tiles;
+  baseMaps[layer.pretty] = layer;
 }
 
 added = false;
 for (i in allLayers) {
   layer = allLayers[i];
   if (idname == layer.name) {
-    layer.tiles.addTo(map);
+    layer.addTo(map);
     added = true;
   }
 }
@@ -1807,7 +1675,7 @@ var overlayMaps = {
     "Exposures": expsGroup,
 };
 
-decalscat = new DecalsCatalogLayer('decals-dr2', 'DECaLS DR2 Catalog',
+var decalscat = new DecalsCatalogLayer('decals-dr2', 'DECaLS DR2 Catalog',
                                    {'url': '{{caturl|safe}}', 
                                     'minZoom': 12,});
 decalscat.addToOverlay(overlayMaps);
@@ -1817,16 +1685,16 @@ decalscat.listenToLayer(tilesDecalsDr2Model);
 decalscat.listenToLayer(tilesDecalsDr2Image);
 
 
-bright = new BrightCatalog('bright', 'Bright stars', {});
+var bright = new BrightCatalog('bright', 'Bright stars', {});
 bright.addToOverlay(overlayMaps);
 
-gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
+var gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
                          {'url_name': 'ngc',
                           'minZoom': 5,
                           'labelsMinZoom': 7});
 gals.addToOverlay(overlayMaps);
 
-spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
+var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
                               {'radius': 300,
                               'labelsMinZoom': 11,
                               'minZoom': 9,});

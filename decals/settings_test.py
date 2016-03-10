@@ -6,9 +6,9 @@ ENABLE_DR2 = True
 MAX_NATIVE_ZOOM = 15
 SAVE_CACHE = True
 
-ENABLE_WL = True
+ENABLE_WL = False
 
-ENABLE_VCC = True
+ENABLE_VCC = False
 
 #HOSTNAME = 'test.legacysurvey.org'
 HOSTNAME = 'localhost'
