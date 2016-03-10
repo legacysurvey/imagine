@@ -737,76 +737,6 @@ function onSourceClick(e) {
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
 }
 
-// Reads global "catname", name of catalog sources to load.
-// and 'sourcesMinZoom'
-function doLoadTile(tile) {
-    if (!showSources) {
-	    return;
-    }
-
-    s = getSubdomain(tile.tilex, tile.tiley);
-    if (showSources && (tile.z >= sourcesMinZoom)) {
-	caturl = L.Util.template('{{ caturl|safe }}', L.extend({
-            s: s,
-            z: tile.z,
-            x: tile.tilex,
-            y: tile.tiley,
-            id: catname,
-            ver: getcatversion(catname),
-	}));
-	    //console.log('Loading catalog version ' + catname);
-    //console.log('zoom, tilex, tiley: ' + tile.z + ',' + tile.tilex + ',' + tile.tiley);
-	$.getJSON(caturl, catLoaded.bind(true,
-					 tile.z, tile.tilex, tile.tiley));
-    }
-}
-
-function onTileLoadStart(e) {
-    tile = e.tile;
-    key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
-    if (key in visibleTiles) {
-      console.log('onTileLoadStart: key ' + key + ' was already in visibleTiles');
-      return;
-    }
-    visibleTiles[key] = tile;
-    //console.log('onTileLoadStart: ' + key);
-    doLoadTile(tile);
-}
-
-function doUnloadTile(key) {
-    //console.log('doUnloadTile: ' + key);
-    //if (!showSources) {
-    if (key in catLayers) {
-	circles = catLayers[key];
-	if (typeof(circles) == 'undefined') {
-	    console.log('doUnloadTile on a tile with no catalog; whatevs');
-	} else {
-	    sourcesGroup.removeLayer(circles);
-	    delete catLayers[key];
-	    console.log('remaining catalog layers: ' + getkeys(catLayers));
-	}
-    }
-}
-
-function removeAllCatalogLayers() {
-    for (key in catLayers) {
-	    //console.log('removeAllCatalogLayers: removing ' + key);
-	circles = catLayers[key];
-	sourcesGroup.removeLayer(circles);
-	delete catLayers[key];
-    }
-
-    sourcesGroup.clearLayers();
-}
-
-function onTileUnload(e) {
-    tile = e.tile;
-    key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
-    //console.log('onTileUnload: ' + key);
-    delete visibleTiles[key];
-    doUnloadTile(key);
-}
-
 function brick_detail(name) {
     return '<a href="{% url 'brick_detail_blank' %}' + name
         + '/">' + name + '</a>';
@@ -1007,23 +937,9 @@ function inbrickccdUpdate(props) {
 }
 
 
-// "Sources", "Bricks", "CCDs" button checked
+// "Bricks", "CCDs", etc button checked
 function overlayAdded(e) {
     //console.log('OverlayAdded: ' + e.name);
-    cat = false;
-    if (e.name == 'Sources') {
-        showSources = true;
-        cat = true;
-    }
-
-    if (cat) {
-        // request catalogs for currently-visible tiles
-        //console.log('Visible tiles: ' + visibleTiles);
-        for (var i in visibleTiles) {
-            doLoadTile(visibleTiles[i]);
-        }
-    }
-
     if (e.name == 'Bricks') {
         showBricks = true;
         mapBoundsChanged();
@@ -1053,19 +969,6 @@ function overlayAdded(e) {
 // "Sources", "Bricks", "CCDs" button unchecked
 function overlayRemoved(e) {
     //console.log('OverlayRemoved: ' + e.name);
-    unload = false;
-    if (e.name == 'Sources') {
-        showSources = false;
-	unload = true;
-    }
-
-    if (unload) {
-        // remove all catalogs
-        for (var i in visibleTiles) {
-            doUnloadTile(i);
-        }
-    }
-
     if (e.name == 'Bricks') {
         showBricks = false;
         for (var i in currentBricks) {
@@ -1373,15 +1276,6 @@ inbrickccd.onAdd = function (map) {
 inbrickccd.update = inbrickccdUpdate;
 var inbrickccdAdded = false;
 
-var showSources = false;
-// "switchingSources" is only used when changing map base layers
-// that have different catalogs; this requires some carefulness in
-// the ordering of adding and removing layers.
-var switchingSources = false;
-var sourcesGroup = L.layerGroup([]);
-var catLayers = {};
-var visibleTiles = {};
-
 //var conGroup = L.layerGroup([]);
 
 var showBricks = false;
@@ -1436,7 +1330,6 @@ function getcatversion(layer) {
 }
 
 var idname = '{{ layer }}';
-var catname = 'decals-dr1j';
 
 var minZoom = 1;
 var maxZoom = 16;
@@ -1461,8 +1354,6 @@ tilesSfd = new ZoomRangeTileLayer(static_tile_url, {
     subdomains: subdomains,
     urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
   });
-tilesSfd.on('tileloadstart', onTileLoadStart);
-tilesSfd.on('tileunload', onTileUnload);
 
 tilesHalpha = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
@@ -1475,8 +1366,6 @@ tilesHalpha = new ZoomRangeTileLayer(static_tile_url, {
     subdomains: subdomains,
     urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
   });
-tilesHalpha.on('tileloadstart', onTileLoadStart);
-tilesHalpha.on('tileunload', onTileUnload);
 
 function createStaticTileLayer(id, vertag) {
     var tiles = new MyTileLayer(static_tile_url, {
@@ -1489,15 +1378,12 @@ function createStaticTileLayer(id, vertag) {
         unloadInvisibleTiles: true,
         subdomains: subdomains,
     });
-    tiles.on('tileloadstart', onTileLoadStart);
-    tiles.on('tileunload',    onTileUnload);
     return tiles;
 }
 
 
 {% if enable_dr2 %}
 id = 'decals-dr2'
-catname = 'decals-dr2';
 
 // Use the static URL until zoom level 14, then the dynamic URL.
 tiles = new ZoomRangeTileLayer(static_tile_url, {
@@ -1511,8 +1397,7 @@ tiles = new ZoomRangeTileLayer(static_tile_url, {
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
-tiles.catname = catname;
-allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 images", catname:catname});
+allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 images"});
 
 tilesDecalsDr2Image = tiles;
 
@@ -1529,8 +1414,7 @@ tiles = new ZoomRangeTileLayer(static_tile_url, {
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
-tiles.catname = catname;
-allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 models", catname:catname});
+allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 models"});
 
 tilesDecalsDr2Model = tiles;
 
@@ -1546,8 +1430,7 @@ tiles = new ZoomRangeTileLayer(static_tile_url, {
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
-tiles.catname = catname;
-allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 residuals", catname:catname});
+allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 residuals"});
 
 tilesDecalsDr2Resid = tiles;
 
@@ -1559,7 +1442,6 @@ tilesDecalsDr2Resid = tiles;
 
 
 id = 'decals-dr1j'
-catname = 'decals-dr1j';
 
 // Use the static URL until zoom level 14, then the dynamic URL.
 tilesDr1j = new ZoomRangeTileLayer(static_tile_url, {
@@ -1573,9 +1455,7 @@ tilesDr1j = new ZoomRangeTileLayer(static_tile_url, {
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
-
-tilesDr1j.catname = catname;
-allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images", catname:catname});
+allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images"});
 
 id = 'decals-model-dr1j'
 tilesModDr1j = new ZoomRangeTileLayer(static_tile_url, {
@@ -1590,8 +1470,7 @@ tilesModDr1j = new ZoomRangeTileLayer(static_tile_url, {
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
 
-tilesModDr1j.catname = catname;
-allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1 models", catname:catname});
+allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1 models"});
 
 id = 'decals-resid-dr1j'
 tilesResidDr1j = new ZoomRangeTileLayer(static_tile_url, {
@@ -1606,8 +1485,7 @@ tilesResidDr1j = new ZoomRangeTileLayer(static_tile_url, {
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
 
-tilesResidDr1j.catname = catname;
-allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", catname:catname});
+allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals"});
 
 id = 'sdssco'
 tiles = new ZoomRangeTileLayer(static_tile_url, {
@@ -1621,11 +1499,11 @@ tiles = new ZoomRangeTileLayer(static_tile_url, {
     subdomains: subdomains,
     urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
   });
-allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
+allLayers.push({name:id, tiles:tiles, pretty:"SDSS images"});
 
-allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
+allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map"});
 
-allLayers.push({name:'halpha', tiles:tilesHalpha, pretty:"Halpha map", catname:""});
+allLayers.push({name:'halpha', tiles:tilesHalpha, pretty:"Halpha map"});
 
 
 {% if enable_wl %}
@@ -1641,10 +1519,8 @@ tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
     subdomains: subdomains,
     //urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
   });
-tilesWl.on('tileloadstart', onTileLoadStart);
-tilesWl.on('tileunload', onTileUnload);
 
-allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map", catname:""});
+allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map"});
 
 {% endif %}
 
@@ -1662,7 +1538,7 @@ tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
       subdomains: subdomains,
 });
 
-allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE W1/W2", catname:""});
+allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE W1/W2"});
 
 
 
@@ -1679,7 +1555,7 @@ tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
       unloadInvisibleTiles: true,
       subdomains: subdomains,
 });
-allLayers.push({name:'unwise-neo1', tiles:tilesUnwise, pretty:"unWISE W1/W2 NEO1", catname:""});
+allLayers.push({name:'unwise-neo1', tiles:tilesUnwise, pretty:"unWISE W1/W2 NEO1"});
 
 
 
@@ -1689,8 +1565,6 @@ for (i in allLayers) {
   layer = allLayers[i];
 
   tiles = layer.tiles;
-  tiles.on('tileloadstart', onTileLoadStart);
-  tiles.on('tileunload', onTileUnload);
   tiles.name = layer.name;
 
   baseMaps[layer.pretty] = tiles;
@@ -1702,9 +1576,6 @@ for (i in allLayers) {
   if (idname == layer.name) {
     layer.tiles.addTo(map);
     added = true;
-    if (layer.catname.length > 0) {
-      catname = layer.catname;
-    }
   }
 }
 if (!added) {
@@ -1931,7 +1802,6 @@ function onHashChange() {
 L.DomEvent.addListener(window, 'hashchange', onHashChange);
 
 var overlayMaps = {
-    "Sources": sourcesGroup,
     "Bricks": bricksGroup,
     "CCDs": ccdsGroup,
     "Exposures": expsGroup,
@@ -1969,49 +1839,6 @@ overlayMaps["SDSS Spectro Plates"] = platesGroup;
 {% endcomment %}
 
 new MyLayerControl(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
-
-function onMapPreBaseLayerChange(e) {
-    console.log('PRE Map base layer change');
-    console.log('removing: catalog name: ' + e.removing.catname);
-    console.log('adding: catalog name: ' + e.adding.catname);
-    if ((typeof(e.adding.catname)   == 'undefined') ||
-        (typeof(e.removing.catname) == 'undefined')) {
-        return;
-    }
-    if (!showSources) {
-        catname = e.adding.catname;
-        return;
-    }
-    if (e.removing.catname == e.adding.catname) {
-        return;
-    }
-    console.log('Removing sources');
-    switchingSources = true;
-    overlayRemoved({name:'Sources'});
-    catname = e.adding.catname;
-    console.log('Switched catalog name to ' + catname);
-}
-
-function onMapPostBaseLayerChange(e) {
-    console.log('POST Map base layer change');
-    console.log('removing: catalog name: ' + e.removing.catname);
-    console.log('adding: catalog name: ' + e.adding.catname);
-
-    if (typeof(e.adding.name) != 'undefined') {
-      idname = e.adding.name;
-      console.log('Layer name: ' + e.adding.name);
-    }
-
-    if ((e.adding.catname == undefined) || (e.removing.catname == undefined)) {
-        return;
-    }
-    if (!switchingSources || (e.removing.catname == e.adding.catname)) {
-        return;
-    }
-    console.log('Re-adding sources');
-    overlayAdded({name:'Sources'});
-}
-
 
 /*
 The overlays DOM looks like this:
@@ -2058,10 +1885,6 @@ function setOverlayEnabled(name, enabled) {
 //
 var bricksMinZoom = 8;
 var ccdsMinZoom = 8;
-var sourcesMinZoom = 12;
-
-var specMinZoom = 10;
-var specLabelsMinZoom = 11;
 
 // variable for tracking old & new zoom via zoomstart / zoomend
 var oldZoom = {{ zoom }};
@@ -2069,7 +1892,6 @@ function onMapZoomStart(e) {
   zoom = map.getZoom();
   console.log('map zoom start: ' + zoom + ', previous: ' + oldZoom);
   oldZoom = zoom;
-
 }
 function onMapZoomEnd(e) {
   zoom = map.getZoom();
@@ -2113,30 +1935,6 @@ function onMapZoomEnd(e) {
     }
   }
 
-  // Sources
-
-  if ((oldZoom >= sourcesMinZoom) && (zoom < sourcesMinZoom)) {
-      //console.log('zoomed out past sources boundary');
-    if (showSources) {
-        //console.log('removing sources');
-      // By the time we get here, onTileUnload() has already fired.
-      showSources = false;
-
-      // remove any extra ones that have stuck around (fast zoom-outs)
-      removeAllCatalogLayers();
-
-    }
-    setOverlayEnabled('Sources', false);
-  } else if ((oldZoom < sourcesMinZoom) && (zoom >= sourcesMinZoom)) {
-      //console.log('zoomed in past boundary');
-    setOverlayEnabled('Sources', true);
-    if (isOverlayChecked('Sources')) {
-        //console.log('Re-adding sources');
-      overlayAdded({name:'Sources'});
-    }
-  }
-
-
   // update the RA,Dec,zoom info box
   if (typeof(lastLatLng) != 'undefined') {
     onMouseMove({ latlng: lastLatLng });
@@ -2151,8 +1949,6 @@ map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
 map.on('click', onMapClick);
 map.on('moveend', onMapMoveEnd);
-map.on('prebaselayerchange', onMapPreBaseLayerChange);
-map.on('postbaselayerchange', onMapPostBaseLayerChange);
 map.on('zoomstart', onMapZoomStart);
 map.on('zoomend', onMapZoomEnd);
 
@@ -2179,8 +1975,8 @@ overlayAdded({name:'Exposures'});
 {% endif %}
 
 {% if showSources %}
-map.addLayer(sourcesGroup);
-showSoures = true;
+// FIXME
+//map.addLayer(sourcesGroup);
 {% endif %}
 
 {% if showNgc %}
@@ -2188,8 +1984,7 @@ showSoures = true;
 {% endif %}
 
 {% if showSpec %}
-map.addLayer(specGroup);
-showSpec = true;
+//map.addLayer(specGroup);
 {% endif %}
 
 map.addLayer(sqlGroup);
