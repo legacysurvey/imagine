@@ -405,14 +405,12 @@ var SdssSpectraCatalog = CatalogOverlay.extend({
     },
 });
 
-var TiledOverlay = CatalogOverlay.extend({
+var TileWatcher = L.Class.extend({
+	includes: L.Mixin.Events,
 
-    initialize: function(name, pretty, kwargs) {
-        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+    initialize: function() {
         // string keys z:x:y of currently visible tiles
         this._visibleTiles = {};
-        // count of how many tile loads are outstanding
-        this._loadingTiles = 0;
     },
 
     listenToLayer: function(layer) {
@@ -431,7 +429,7 @@ var TiledOverlay = CatalogOverlay.extend({
             //console.log('firing tilevisible: ' + key);
             this._visibleTiles[key] = true;
             // A tile became visible
-            this.tileVisible(e);
+            this.fire('tilevisible', e);
         }
     },
 
@@ -442,7 +440,20 @@ var TiledOverlay = CatalogOverlay.extend({
         delete this._visibleTiles[key];
         e.key = key;
         // A tile became invisible
-        this.tileInvisible(e);
+        this.fire('tileinvisible', e);
+    },
+
+});
+
+var TiledOverlay = CatalogOverlay.extend({
+
+    initialize: function(tw, name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        // count of how many tile loads are outstanding
+        this._loadingTiles = 0;
+        this._tw = tw;
+        tw.on('tilevisible', this.tileVisible.bind(this));
+        tw.on('tileinvisible', this.tileInvisible.bind(this));
     },
 
     tileVisible: function(e) {
@@ -1613,15 +1624,18 @@ var overlayMaps = {
     "Exposures": expsGroup,
 };
 
-var decalscat = new DecalsCatalogLayer('decals-dr2', 'DECaLS DR2 Catalog',
+var tileWatcher = new TileWatcher();
+
+for (var k in baseMaps) {
+    var layer = baseMaps[k];
+    tileWatcher.listenToLayer(layer);
+}
+
+var decalscat = new DecalsCatalogLayer(tileWatcher,
+                                       'decals-dr2', 'DECaLS DR2 Catalog',
                                        {'url': '{{caturl|safe}}', 
                                         'minZoom': 12,});
 decalscat.addToOverlay(overlayMaps);
-
-decalscat.listenToLayer(tilesDecalsDr2Resid);
-decalscat.listenToLayer(tilesDecalsDr2Model);
-decalscat.listenToLayer(tilesDecalsDr2Image);
-
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 bright.addToOverlay(overlayMaps);
