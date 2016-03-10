@@ -24,21 +24,7 @@ def sql_box(req):
         east += 360.
         west += 360.
 
-    # cat = Decam.objects.select_related('cand')
-    # cat = cat.extra(select=dict(ra='candidate.ra', dec='candidate.dec'))
-    # cat = cat.extra(select=dict(g='-2.5*(log(greatest(1e-3,decam.gflux))-9)', r='-2.5*(log(greatest(1e-3,decam.rflux))-9)', z='-2.5*(log(greatest(1e-3,decam.zflux))-9)'))
-    # cat = cat.extra(where=["q3c_poly_query(ra, dec, ARRAY[%s,%s,%s,%s,%s,%s,%s,%s])"],
-    #                 params=[east,south,west,south,west,north,east,north])
-
-    # cat = Decam.objects.select_related('cand')
-    # cat = cat.extra(select=dict(ra='candidate.ra', dec='candidate.dec'))
-    # cat = cat.extra(select=dict(g='-2.5*(log(greatest(1e-3,decam.gflux))-9)', r='-2.5*(log(greatest(1e-3,decam.rflux))-9)', z='-2.5*(log(greatest(1e-3,decam.zflux))-9)'))
-    # cat = cat.extra(where=["q3c_poly_query(ra, dec, ARRAY[%s,%s,%s,%s,%s,%s,%s,%s])"],
-    #                 params=[east,south,west,south,west,north,east,north])
-    #if q is not None and len(q):
-    #    cat = cat.extra(where=[q])
-
-    sql = ('SELECT *, candidate.ra as ra, candidate.dec as dec, ' +
+    sql = ('SELECT *, ' +#candidate.ra as ra, candidate.dec as dec, ' +
            '-2.5*(log(greatest(1e-3,decam.gflux))-9) as g, ' +
            '-2.5*(log(greatest(1e-3,decam.rflux))-9) as r, ' +
            '-2.5*(log(greatest(1e-3,decam.zflux))-9) as z, ' +
@@ -55,12 +41,12 @@ def sql_box(req):
     if q is not None and len(q):
         sql += ' WHERE ' + q
 
-    cat = Decam.objects.raw(sql,
-                            params=[east,south,west,south,west,north,east,north])
-
+    print('SQL:', sql)
+        
+    #cat = Decam.objects.raw(sql,
+    cat = Candidate.objects.raw(sql,
+                                params=[east,south,west,south,west,north,east,north])
     cat = cat[:1000]
-
-    #return HttpResponse(json.dumps(dict(rd=[(c.ra, c.dec) for c in cat])),
 
     return HttpResponse(json.dumps(dict(rd=[(c.ra, c.dec) for c in cat])),
                         content_type='application/json')

@@ -1205,11 +1205,6 @@ function mapBoundsChanged() {
     var ra  = long2ra(latlng.lng);
     var dec = lat2dec(latlng.lat);
 
-    // has the user entered an SQL query?  Update if so
-    if (sqlJsonQuery !== undefined) {
-        updateSql();
-    }
-
     if (showBricks) {
         var bounds = map.getBounds();
         var bricksurl = L.Util.template('{{ bricksurl|safe }}', L.extend({
@@ -1541,47 +1536,6 @@ objquery.onAdd = function (map) {
 };
 objquery.addTo(map);
 
-var sqlGroup = L.layerGroup([]);
-var sqlQueryString = '';
-var sqlJsonQuery;
-
-function sqlLoaded(result) {
-    var rdlist = result['rd'];
-    var circleList = new Array(rdlist.length);
-    var clong = map.getCenter().lng;
-    for (var i=0, len=rdlist.length; i<len; i++) {
-        var r = rdlist[i][0];
-        var d = rdlist[i][1];
-        var lat = dec2lat(d);
-        var lng = ra2long_C(r, clong);
-        var color = 'white';
-        circ = L.circle([lat, lng], 300, {'color':color, 'fillOpacity':0, 'weight':5});
-        circ.ra = r;
-        circ.dec = d;
-        circleList[i] = circ;
-    }
-    var circles = L.layerGroup(circleList);
-    sqlGroup.clearLayers();
-    sqlGroup.addLayer(circles);
-}
-
-// Call this when the map view changes.  Uses the global variable "sqlQueryString"
-function updateSql() {
-    var bounds = map.getBounds();
-    var sqlurl = L.Util.template('{{ sqlurl|safe }}', L.extend({
-        s: 'a',
-        west:  long2ra(bounds.getWest()).toFixed(4),
-        east:  long2ra(bounds.getEast()).toFixed(4),
-        north: lat2dec(bounds.getNorth()).toFixed(4),
-        south: lat2dec(bounds.getSouth()).toFixed(4),
-        q: sqlQueryString,
-    }));
-    if (sqlJsonQuery !== undefined) {
-        sqlJsonQuery.abort();
-    }
-    sqlJsonQuery = $.getJSON(sqlurl, sqlLoaded);
-}
-
 function objQueryLoaded(result) {
     console.log('Result: ' + result);
     if ("error" in result) {
@@ -1607,8 +1561,6 @@ $(document).ready(function() {
     $('#sqlquery').keydown(function(event) {
         // when Enter is hit in the SQL box
         if (event.keyCode == 13) {
-            //sqlQueryString = $('#sqlquery').val();
-            //updateSql();
             sqlOverlay.newQuery();
             return false;
         }
@@ -1862,8 +1814,6 @@ overlayAdded({name:'Exposures'});
 {% if showSpec %}
 //map.addLayer(specGroup);
 {% endif %}
-
-//map.addLayer(sqlGroup);
 
 {% comment %}
 var constellation_shortnames =  [ "Aql","And","Scl","Ara","Lib","Cet","Ari","Sct","Pyx","Boo","Cae","Cha","Cnc","Cap","Car","Cas","Cen","Cep","Com","Cvn","Aur","Col","Cir","Crt","CrA","CrB","Crv","Cru","Cyg","Del","Dor","Dra","Nor","Eri","Sge","For","Gem","Cam","CMa","UMa","Gru","Her","Hor","Hya","Hyi","Ind","Lac","Mon","Lep","Leo","Lup","Lyn","Lyr","Ant","Mic","Mus","Oct","Aps","Oph","Ori","Pav","Peg","Pic","Per","Equ","CMi","LMi","Vul","UMi","Phe","Psc","PsA","Vol","Pup","Ret","Sgr","Sco","Ser","Sex","Men","Tau","Tel","Tuc","Tri","Tra","Aqr","Vir","Vel" ]
