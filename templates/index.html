@@ -461,7 +461,9 @@ TiledOverlay = CatalogOverlay.extend({
 
     initialize: function(name, pretty, kwargs) {
         CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        // string keys z:x:y of currently visible tiles
         this._visibleTiles = {};
+        // count of how many tile loads are outstanding
         this._loadingTiles = 0;
     },
 
@@ -473,44 +475,42 @@ TiledOverlay = CatalogOverlay.extend({
     tileLoadStart: function(e) {
         tile = e.tile;
         key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
-        console.log('TileWatcher: tile load start: ' + key);
+        //console.log('Tile load start: ' + key);
         if (key in this._visibleTiles) {
-            console.log('tile was already in visible tiles');
+            //console.log('tile was already in visible tiles');
         } else {
             e.key = key;
-            console.log('firing tilevisible: ' + key);
-            //this.fire('tilevisible', e);
-            this.tileVisible(e);
+            //console.log('firing tilevisible: ' + key);
             this._visibleTiles[key] = true;
+            // A tile became visible
+            this.tileVisible(e);
         }
     },
 
     tileUnload: function(e) {
         tile = e.tile;
         key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
-        console.log('TileWatcher: tile unload: ' + key);
+        //console.log('Tile unload: ' + key);
         delete this._visibleTiles[key];
         e.key = key;
-        console.log('firing tileinvisible: ' + key);
-        //this.fire('tileinvisible', e);
+        // A tile became invisible
         this.tileInvisible(e);
     },
 
     tileVisible: function(e) {
-        tile = e.tile;
-        x = tile.tilex;
-        y = tile.tiley;
-        zoom = tile.z;
-
-        if (!this._show || (zoom < this._minZoom)) {
+        if (!this._show) {
             return;
         }
-        this.load(zoom, x, y);
+        tile = e.tile;
+        if (tile.z < this._minZoom) {
+            return;
+        }
+        this.load(tile.z, tile.tilex, tile.tiley);
     },
 
     load: function(zoom, x, y) {
-        console.log('Loading tiled catalog: URL pattern: ' + this._url +
-                    ' x,y,zoom: ' + x + ',' + y + ', ' + zoom);
+        //console.log('Loading tiled catalog: URL pattern: ' + this._url +
+        //            ' x,y,zoom: ' + x + ',' + y + ', ' + zoom);
         s = getSubdomain(x, y);
 	    url = L.Util.template(this._url, L.extend({
             s: s,
@@ -521,8 +521,17 @@ TiledOverlay = CatalogOverlay.extend({
             ver: getcatversion(this._name),
 	    }));
         this._loadingTiles += 1;
-        this._status && this._status.html('loading ' + this._loadingTiles + '...');
+        this.setStatusText();
         $.getJSON(url, this.loaded.bind(this, zoom, x, y));
+    },
+
+    setStatusText: function() {
+        if (this._loadingTiles == 0) {
+            this._status && this._status.html('');
+        } else {
+            this._status && this._status.html('loading ' + this._loadingTiles
+                                              + '...');
+        }
     },
 
     tileInvisible: function(e) {
@@ -558,14 +567,10 @@ TiledOverlay = CatalogOverlay.extend({
     },
     
     loaded: function(zoom, tilex, tiley, result) {
-        console.log('Loaded: zoom ' + zoom + ' x,y ' + tilex + ',' + tiley);
+        //console.log('Loaded: zoom ' + zoom + ' x,y ' + tilex + ',' + tiley);
         // waiting for how many tiles now?
         this._loadingTiles -= 1;
-        if (this._loadingTiles == 0) {
-            this._status && this._status.html('');
-        } else {
-            this._status && this._status.html('loading ' + this._loadingTiles + '...');
-        }
+        this.setStatusText();
         if (!this._show) {
             console.log('not shown');
             return;
