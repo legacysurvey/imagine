@@ -1952,7 +1952,9 @@ gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
 gals.addToOverlay(overlayMaps);
 
 spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
-                              {'radius': 300});
+                              {'radius': 300,
+                              'labelsMinZoom': 11,
+                              'minZoom': 9,});
 spec.addToOverlay(overlayMaps);
 
 overlayMaps["SDSS Spectro Plates"] = platesGroup;
@@ -2129,29 +2131,6 @@ function onMapZoomEnd(e) {
     }
   }
 
-
-  // Spectra
-
-  if ((oldZoom >= specMinZoom) && (zoom < specMinZoom)) {
-    //console.log('zoomed out past spec boundary');
-    if (showSpec) {
-      //console.log('removing spec');
-      // By the time we get here, onTileUnload() has already fired.
-      showSpec = false;
-
-      // remove any extra ones that have stuck around (fast zoom-outs)
-      removeAllSpecLayers();
-
-    }
-    setOverlayEnabled(specName, false);
-  } else if ((oldZoom < specMinZoom) && (zoom >= specMinZoom)) {
-    //console.log('zoomed in past boundary');
-    setOverlayEnabled(specName, true);
-    if (isOverlayChecked(specName)) {
-      //console.log('Re-adding spec');
-      overlayAdded({name:specName});
-    }
-  }
 
   // update the RA,Dec,zoom info box
   if (typeof(lastLatLng) != 'undefined') {
