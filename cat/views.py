@@ -8,11 +8,8 @@ if __name__ == '__main__':
 from django.shortcuts import render
 from django.http import HttpResponse, StreamingHttpResponse
 
-from django.db.models import Avg
-
 from models import Candidate, Decam
 
-# Create your views here.
 def sql_box(req):
     import json
 
@@ -44,8 +41,14 @@ def sql_box(req):
     sql = ('SELECT *, candidate.ra as ra, candidate.dec as dec, ' +
            '-2.5*(log(greatest(1e-3,decam.gflux))-9) as g, ' +
            '-2.5*(log(greatest(1e-3,decam.rflux))-9) as r, ' +
-           '-2.5*(log(greatest(1e-3,decam.zflux))-9) as z ' +
-           'FROM decam LEFT OUTER JOIN candidate ON (decam.cand_id = candidate.id) ' +
+           '-2.5*(log(greatest(1e-3,decam.zflux))-9) as z, ' +
+           '-2.5*(log(greatest(1e-3,wise.w1flux))-9) as w1, ' +
+           '-2.5*(log(greatest(1e-3,wise.w2flux))-9) as w2, ' +
+           '-2.5*(log(greatest(1e-3,wise.w3flux))-9) as w3, ' +
+           '-2.5*(log(greatest(1e-3,wise.w4flux))-9) as w4 ' +
+           'FROM candidate ' +
+           'LEFT OUTER JOIN decam ON (decam.cand_id = candidate.id) ' +
+           'LEFT OUTER JOIN wise  ON (wise .cand_id = candidate.id) ' +
            'WHERE (q3c_poly_query(ra, dec, ARRAY[%s,%s,%s,%s,%s,%s,%s,%s]))')
     sql = 'SELECT * FROM (' + sql + ') AS t'
 

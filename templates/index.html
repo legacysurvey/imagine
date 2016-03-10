@@ -206,22 +206,23 @@ var CatalogOverlay = L.Class.extend({
         map.on('moveend',       this.mapBoundsChanged.bind(this));
         map.on('zoomend',       this.onMapZoomEnd.bind(this));
 
-        $(document).ready(function() {
-            //console.log(this._name + ' ready function called');
-            this._checkbox = getOverlayCheckbox(this._pretty);
-            // _checkbox is a jQuery node
-            //console.log('checkbox:', this._checkbox);
-            // add status span after the layer name span
-            var nxt = this._checkbox.next();
-            var stat = L.DomUtil.create('span', 'layer-status');
-            var statid = this._name + '_status';
-            stat.id = statid
-            nxt.after(stat);
-            nxt.after('&nbsp;');
-            // find it with jQuery
-            this._status = $('#' + statid);
-        }.bind(this));
+        $(document).ready(this.ready.bind(this));
+    },
 
+    ready: function() {
+        //console.log(this._name + ' ready function called');
+        this._checkbox = getOverlayCheckbox(this._pretty);
+        // _checkbox is a jQuery node
+        //console.log('checkbox:', this._checkbox);
+        // add status span after the layer name span
+        var nxt = this._checkbox.next();
+        var stat = L.DomUtil.create('span', 'layer-status');
+        var statid = this._name + '_status';
+        stat.id = statid
+        nxt.after(stat);
+        nxt.after('&nbsp;');
+        // find it with jQuery
+        this._status = $('#' + statid);
     },
 
     overlayAdded: function(e) {
@@ -592,6 +593,13 @@ var DecalsCatalogLayer = TiledOverlay.extend({
         }
         return L.layerGroup(circleList);
     },
+});
+
+var SqlCatalogOverlay = CatalogOverlay.extend({
+
+
+
+
 });
 
 
