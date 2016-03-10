@@ -2,7 +2,7 @@ from settings_common import *
 
 DATABASE_ROUTERS = ['cat.models.Router']
 
-INSTALLED_APPS = INSTALLED_APPS + ('cat',)
+#INSTALLED_APPS = INSTALLED_APPS + ('cat',)
 
 READ_ONLY_BASEDIR = True
 

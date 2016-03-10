@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 import secrets.django
 import secrets.database
 
+APPEND_SLASH = False
+
 ENABLE_CUTOUTS = True
 
 # Can the web service not create files under BASE_DIR?
