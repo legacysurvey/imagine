@@ -171,58 +171,6 @@ ZoomRangeTileLayer = MyTileLayer.extend({
     },
 });
 
-
-MyLayerControl = L.Control.Layers.extend({
-    // copied from leaflet-src.js
-	_onInputClick: function () {
-		var i, input, obj,
-		    inputs = this._form.getElementsByTagName('input'),
-		    inputsLen = inputs.length;
-
-		this._handlingClick = true;
-
-        var adding;
-        var removing;
-        //console.log('Click on input layer selector');
-		for (i = 0; i < inputsLen; i++) {
-			input = inputs[i];
-			obj = this._layers[input.layerId];
-			if (input.checked && !this._map.hasLayer(obj.layer)) {
-                //console.log('Layer selector: adding ' + obj.name);
-                adding = obj;
-                //console.log('Layer selector: done adding ' + obj.name);
-			} else if (!input.checked && this._map.hasLayer(obj.layer)) {
-                //console.log('Layer selector: removing ' + obj.name);
-                removing = obj;
-                //console.log('Layer selector: done removing ' + obj.name);
-			}
-		}
-        if ((adding != undefined) && (removing != undefined)) {
-            //console.log('Layer selector: switching base layers from ' + removing.name + ' to ' + adding.name);
-            if (!adding.overlay) {
-                this._map.fire('prebaselayerchange', {'removing':removing.layer,
-                                                      'adding':adding.layer});
-            }
-        }
-        if (adding != undefined) {
-		    this._map.addLayer(adding.layer);
-        }
-        if (removing != undefined) {
-		    this._map.removeLayer(removing.layer);
-        }
-        if ((adding != undefined) && (removing != undefined)) {
-            //console.log('Layer selector: done switching base layers from ' + removing.name + ' to ' + adding.name);
-            if (!adding.overlay) {
-                this._map.fire('postbaselayerchange', {'removing':removing.layer,
-                                                       'adding':adding.layer});
-            }
-        }
-
-		this._handlingClick = false;
-		this._refocusOnMap();
-	}
-});
-
 // for attaching leaflet.Labels to circles
 L.Circle.include(L.BaseMarkerMethods);
 
@@ -1703,7 +1651,7 @@ overlayMaps["SDSS Spectro Plates"] = platesGroup;
     "Constellations": conGroup,
 {% endcomment %}
 
-new MyLayerControl(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+new L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
 /*
 The overlays DOM looks like this:
