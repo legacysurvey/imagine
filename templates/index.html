@@ -223,12 +223,13 @@ MyLayerControl = L.Control.Layers.extend({
 	}
 });
 
+// for attaching leaflet.Labels to circles
 L.Circle.include(L.BaseMarkerMethods);
 
 CatalogOverlay = L.Class.extend({
 
     initialize: function(name, pretty, kwargs) {
-        console.log('CatalogOverlay: ' + name + ',' + pretty);
+        //console.log('CatalogOverlay: ' + name + ',' + pretty);
         this._counter = 1;
         this._url = kwargs['url'] || '{{ smallcaturl|safe }}'
         this._checkbox = null;
@@ -256,7 +257,7 @@ CatalogOverlay = L.Class.extend({
         map.on('zoomend',       this.onMapZoomEnd.bind(this));
 
         $(document).ready(function() {
-            console.log(this._name + ' ready function called');
+            //console.log(this._name + ' ready function called');
             this._checkbox = getOverlayCheckbox(this._pretty);
             // _checkbox is a jQuery node
             //console.log('checkbox:', this._checkbox);
@@ -274,7 +275,7 @@ CatalogOverlay = L.Class.extend({
     },
 
     overlayAdded: function(e) {
-        console.log(this._name + ': overlayAdded');
+        //console.log(this._name + ': overlayAdded');
         if (e.name == this._pretty) {
             this._show = true;
 	        if (map.getZoom() >= this._minZoom) {
@@ -291,7 +292,7 @@ CatalogOverlay = L.Class.extend({
     },
 
     mapBoundsChanged: function() {
-        console.log('Map bounds changed: zoom: ' + map.getZoom());
+        //console.log('Map bounds changed: zoom: ' + map.getZoom());
         if (this._show && map.getZoom() >= this._minZoom) {
             this.load();
         }
@@ -302,13 +303,13 @@ CatalogOverlay = L.Class.extend({
     },
 
     onMapZoomEnd: function() {
-        console.log(this._name + ': map zoom end; oldzoom: ' + this._oldZoom +
-                    ', new zoom: ' + map.getZoom());
+        //console.log(this._name + ': map zoom end; oldzoom: ' + this._oldZoom +
+        //', new zoom: ' + map.getZoom());
         zoom = map.getZoom();
         if ((this._oldZoom >= this._minZoom) && (zoom < this._minZoom)) {
-            console.log(this._name + ': zoomed out past boundary');
+            //console.log(this._name + ': zoomed out past boundary');
             if (this._show) {
-                console.log(this._name + ': removing');
+                //console.log(this._name + ': removing');
                 // By the time we get here, onTileUnload() has already fired.
                 this._show = false;
                 // remove any extra ones that have stuck around (fast zoom-outs)
@@ -319,11 +320,11 @@ CatalogOverlay = L.Class.extend({
             }
 
         } else if ((this._oldZoom < this._minZoom) && (zoom >= this._minZoom)) {
-            console.log(this._name + ': zoomed in past boundary');
+            //console.log(this._name + ': zoomed in past boundary');
             if (this._checkbox) {
                 this._checkbox.removeAttr('disabled');
                 if (this._checkbox.prop('checked')) {
-                    console.log('Re-adding ' + this._name);
+                    //console.log('Re-adding ' + this._name);
                     this.overlayAdded({name:this._pretty});
                 }
             }
@@ -343,7 +344,7 @@ CatalogOverlay = L.Class.extend({
             ver: getcatversion(this._name),
         }));
         this._counter += 1;
-        console.log('Loading: ' + this._name + ' for counter ' + this._counter);
+        //console.log('Loading: ' + this._name + ' for counter ' + this._counter);
         this._status && this._status.html('loading...');
         $.getJSON(url, this.loaded.bind(this, this._counter));
     },
@@ -358,12 +359,11 @@ CatalogOverlay = L.Class.extend({
         if (!this._show) {
             return;
         }
-
         circles = this.getLayer(result);
         // remove old layers
         for (var k in this._layers) {
 	        if (k < counter) {
-	            console.log(this._name + ': removing previous counter ' + k);
+	            //console.log(this._name + ': removing previous counter ' + k);
 	            this._group.removeLayer(this._layers[k]);
 	            delete this._layers[k];
                 //console.log(this._name + ': now contains layers:', this._group.getLayers());
@@ -375,12 +375,12 @@ CatalogOverlay = L.Class.extend({
         this._group.addLayer(circles);
         // save this new layer
         this._layers[counter] = [circles];
-        console.log(this._name + ': saved counter ' + counter);
+        //console.log(this._name + ': saved counter ' + counter);
     },
 
     removeAllLayers: function() {
         for (key in this._layers) {
-	        console.log(this._name + ' removeAllLayers: removing ' + key);
+	        //console.log(this._name + ' removeAllLayers: removing ' + key);
 	        circles = this._layers[key];
 	        this._group.removeLayer(circles);
 	        delete this._layers[key];
@@ -424,7 +424,6 @@ CatalogOverlay = L.Class.extend({
 });
 
 BrightCatalog = CatalogOverlay.extend({
-
     get_label: function(json, i) {
         oname = json['name'][i];
         name = oname;
@@ -456,6 +455,144 @@ SdssSpectraCatalog = CatalogOverlay.extend({
         return label;
     },
 });
+
+
+// I wanted this to be a layer-agnostic tracking for tiles being
+// loaded, but it doesn't really work at startup -- the tile loads
+// seem to fire before the layeradd, and the baselayerchange doesn't
+// happen on the initial layer
+
+TileWatcher = L.Class.extend({
+	includes: L.Mixin.Events,
+
+    initialize: function(map) {
+        this._lastLayer = null;
+        this._visibleTiles = {};
+        map.on('baselayerchange', this.baseLayerChange.bind(this));
+        map.on('layeradd', this.layerAdd.bind(this));
+        // none on startup
+        //map.eachLayer(function(layer) {
+        //console.log('Map: layer ' + layer.name);
+        //});
+    },
+
+    layerAdd: function(e) {
+        //console.log('Layer add: ' + getkeys(e) + 'name: ' + e.name);
+        layer = e.layer;
+        console.log('layer add: name: ' + layer.name);
+        this.baseLayerChange(e);
+        console.log('layer add done: name: ' + layer.name);
+    },
+
+    baseLayerChange: function(e) {
+        fload = this.tileLoadStart.bind(this);
+        funload = this.tileUnload.bind(this);
+        console.log('Base layer change: ' + e.name);
+        if (this._lastLayer) {
+            this._lastLayer.off('tileloadstart', fload);
+            this._lastLayer.off('tileunload', funload);
+        }
+        this._lastLayer = e.layer;
+        e.layer.on('tileloadstart', fload);
+        e.layer.on('tileunload',  funload);
+        
+    },
+
+    tileLoadStart: function(e) {
+        tile = e.tile;
+        key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
+        console.log('TileWatcher: tile load start: ' + key);
+        if (key in this._visibleTiles) {
+            console.log('tile was already in visible tiles');
+        } else {
+            e.key = key;
+            console.log('firing tilevisible: ' + key);
+            this.fire('tilevisible', e);
+            this._visibleTiles[key] = true;
+        }
+    },
+
+    tileUnload: function(e) {
+        tile = e.tile;
+        key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
+        console.log('TileWatcher: tile unload: ' + key);
+        delete this._visibleTiles[key];
+        e.key = key;
+        console.log('firing tileinvisible: ' + key);
+        this.fire('tileinvisible', e);
+    },
+
+});
+
+TiledOverlay = CatalogOverlay.extend({
+    loaded: function(zoom, tilex, tiley, result) {
+        this._status && this._status.html('');
+        if (!this._show) {
+            return;
+        }
+        circles = this.getLayer(result);
+        this._group.addLayer(circles);
+        // save this new layer
+        key = ''+zoom+':'+tilex+':'+tiley;
+        this._layers[key] = [circles];
+    },
+});
+
+// DECaLS catalog
+CatalogLayer = TiledOverlay.extend({
+    getLayer: function(result) {
+        rdlist = result['rd'];
+        objtype = result['sourcetype'];
+        fluxes = result['fluxes'];
+        nobs = result['nobs'];
+        bricknames = result['bricknames'];
+        objids = result['objid'];
+        var circleList = new Array(rdlist.length);
+        var clong = map.getCenter().lng;
+        for (i=0, len=rdlist.length; i<len; i++) {
+            r = rdlist[i][0];
+            d = rdlist[i][1];
+            lat = dec2lat(d);
+            lng = ra2long_C(r, clong);
+        
+            color = 'blue';
+            if (objtype == undefined) {
+                typ = 'nil';
+            } else {
+                typ = objtype[i];
+	            // PSF
+                if (objtype[i] == 'P') {
+                    color = '#9AFE2E'; //#D8F781'; //'green';
+	            } else if (objtype[i] == 'S') {
+		            // Simple
+                    color = 'orange';
+	                //if (objtype[i] == 'S') {
+                } else if (objtype[i] == 'D') {
+                    color = 'red';
+                } else if (objtype[i] == 'E') {
+                    color = '#58ACFA'; // blue
+                } else if (objtype[i] == 'C') {
+                    color = '#DA81F5'; // magenta
+                }
+            }
+            circ = L.circle([lat, lng], 30, {'color':color,
+                                             'fillOpacity':0, 'weight':5});
+            circ.ra = r;
+            circ.dec = d;
+            circ.type = typ;
+            circ.fluxes = (fluxes ? fluxes[i] : {});
+            circ.nobs   = (nobs   ? nobs  [i] : {});
+            circ.brickname = bricknames ? bricknames[i] : '';
+            circ.objid     = objids     ? objids    [i] : '';
+
+            circ.on('click', onSourceClick);
+
+            circleList[i] = circ;
+        }
+        return L.layerGroup(circleList);
+    },
+});
+
 
 function getkeys(obj) {
     s = '';
@@ -555,89 +692,6 @@ function onSourceClick(e) {
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
 }
 
-function catLoaded(zoom, tilex, tiley, result) {
-    if (!showSources) {
-        return;
-    }
-    //console.log('catloaded: z,x,y: ' + zoom + ',' + tilex + ',' + tiley);
-    rdlist = result['rd'];
-    objtype = result['sourcetype'];
-    fluxes = result['fluxes'];
-    nobs = result['nobs'];
-    var circleList = new Array(rdlist.length);
-    var clong = map.getCenter().lng;
-    for (i=0, len=rdlist.length; i<len; i++) {
-        r = rdlist[i][0];
-        d = rdlist[i][1];
-        lat = dec2lat(d);
-        lng = ra2long_C(r, clong);
-        
-        color = 'blue';
-        if (objtype == undefined) {
-            typ = 'nil';
-        } else {
-            typ = objtype[i];
-	    // PSF
-            if (objtype[i] == 'P') {
-                color = '#9AFE2E'; //#D8F781'; //'green';
-	    } else if (objtype[i] == 'S') {
-		// Simple
-                color = 'orange';
-	    //if (objtype[i] == 'S') {
-            } else if (objtype[i] == 'D') {
-                color = 'red';
-            } else if (objtype[i] == 'E') {
-                color = '#58ACFA'; // blue
-            } else if (objtype[i] == 'C') {
-                color = '#DA81F5'; // magenta
-            }
-        }
-
-        //circ = L.circleMarker([lat, lng], {'radius':10, 'color':color,
-        //                                 'fillOpacity':0, 'weight':5});
-        circ = L.circle([lat, lng], 30, {'color':color,
-                                         'fillOpacity':0, 'weight':5});
-        circ.ra = r;
-        circ.dec = d;
-        circ.type = typ;
-
-        if (fluxes == undefined) {
-            circ.fluxes = {};
-        } else {
-            circ.fluxes = fluxes[i];
-        }
-
-        if (nobs == undefined) {
-            circ.nobs = {};
-        } else {
-            circ.nobs = nobs[i];
-        }
-
-        if (result.bricknames == undefined) {
-            circ.brickname = '';
-        } else {
-            circ.brickname = result.bricknames[i];
-        }
-        if (result.objids == undefined) {
-            circ.objid = '';
-        } else {
-            circ.objid = result.objids[i];
-        }
-
-        circ.on('click', onSourceClick);
-
-        circleList[i] = circ;
-    }
-    circles = L.layerGroup(circleList);
-    //circles = L.featureGroup(circleList);
-    //circles.on('click', onSourceClick);
-    sourcesGroup.addLayer(circles);
-    // save this for later.
-    key = ''+zoom+':'+tilex+':'+tiley;
-    //console.log('catalog loaded: key ' + key);
-    catLayers[key] = circles;
-}
-
 // Reads global "catname", name of catalog sources to load.
 // and 'sourcesMinZoom'
 function doLoadTile(tile) {
@@ -655,7 +709,7 @@ function doLoadTile(tile) {
             id: catname,
             ver: getcatversion(catname),
 	}));
-	console.log('Loading catalog version ' + catname);
+	    //console.log('Loading catalog version ' + catname);
     //console.log('zoom, tilex, tiley: ' + tile.z + ',' + tile.tilex + ',' + tile.tiley);
 	$.getJSON(caturl, catLoaded.bind(true,
 					 tile.z, tile.tilex, tile.tiley));
@@ -691,7 +745,7 @@ function doUnloadTile(key) {
 
 function removeAllCatalogLayers() {
     for (key in catLayers) {
-	console.log('removeAllCatalogLayers: removing ' + key);
+	    //console.log('removeAllCatalogLayers: removing ' + key);
 	circles = catLayers[key];
 	sourcesGroup.removeLayer(circles);
 	delete catLayers[key];
@@ -1100,7 +1154,6 @@ function ccdsLoaded(result) {
     ccds = result['ccds'];
     console.log('Received ' + ccds.length + ' CCDs');
     var clong = map.getCenter().lng;
-    console.log('Center long', clong);
     for (var i=0, len=ccds.length; i<len; i++) {
         // console.log('ccd ' + i + ': ' + ccds[i]);
         name = ccds[i].name;
@@ -1310,6 +1363,8 @@ var highlightedPlateName = '';
 
 var map = L.map('map');
 var popup = L.popup();
+
+tw = new TileWatcher(map);
 
 att = map.attributionControl;
 att.options.prefix += ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
@@ -1588,7 +1643,6 @@ for (i in allLayers) {
   tiles = layer.tiles;
   tiles.on('tileloadstart', onTileLoadStart);
   tiles.on('tileunload', onTileUnload);
-
   tiles.name = layer.name;
 
   baseMaps[layer.pretty] = tiles;
@@ -1744,7 +1798,6 @@ function updateSql() {
 
 function objQueryLoaded(result) {
     console.log('Result: ' + result);
-    console.log('type: ' + typeof(result));
     if ("error" in result) {
         $('#objquerystatus').html(result["error"]);
         return;
@@ -1922,7 +1975,7 @@ function getOverlayCheckbox(name) {
   overlays.each(function(i) {
     o = $(this);
     text = $.trim(o.next().text());
-      console.log('Looking for overlay "' + name + '", found "' + text + '"');
+      //console.log('Looking for overlay "' + name + '", found "' + text + '"');
     if (text == name) {
       ov = o;
     }
@@ -1966,18 +2019,18 @@ function onMapZoomEnd(e) {
 
   if ((oldZoom >= bricksMinZoom) && (zoom < bricksMinZoom)) {
     // zoomed out past the boundary
-    console.log('zoomed out past brick boundary');
+      //console.log('zoomed out past brick boundary');
     if (showBricks) {
-      console.log('removing brick outlines');
+        //console.log('removing brick outlines');
       overlayRemoved({name:'Bricks'});
     }
     setOverlayEnabled('Bricks', false);
   } else if ((oldZoom < bricksMinZoom) && (zoom >= bricksMinZoom)) {
     // zoomed in past the boundary
-    console.log('zoomed in past boundary');
+      //console.log('zoomed in past boundary');
     setOverlayEnabled('Bricks', true);
     if (isOverlayChecked('Bricks')) {
-      console.log('Re-adding bricks');
+        //console.log('Re-adding bricks');
       overlayAdded({name:'Bricks'});
     }
   }
@@ -1985,17 +2038,17 @@ function onMapZoomEnd(e) {
   // CCDs
 
   if ((oldZoom >= ccdsMinZoom) && (zoom < ccdsMinZoom)) {
-    console.log('zoomed out past CCD boundary');
+      //console.log('zoomed out past CCD boundary');
     if (showCcds) {
-      console.log('removing CCD outlines');
+        //console.log('removing CCD outlines');
       overlayRemoved({name:'CCDs'});
     }
     setOverlayEnabled('CCDs', false);
   } else if ((oldZoom < ccdsMinZoom) && (zoom >= ccdsMinZoom)) {
-    console.log('zoomed in past boundary');
+      //console.log('zoomed in past boundary');
     setOverlayEnabled('CCDs', true);
     if (isOverlayChecked('CCDs')) {
-      console.log('Re-adding ccds');
+        //console.log('Re-adding ccds');
       overlayAdded({name:'CCDs'});
     }
   }
@@ -2003,9 +2056,9 @@ function onMapZoomEnd(e) {
   // Sources
 
   if ((oldZoom >= sourcesMinZoom) && (zoom < sourcesMinZoom)) {
-    console.log('zoomed out past sources boundary');
+      //console.log('zoomed out past sources boundary');
     if (showSources) {
-      console.log('removing sources');
+        //console.log('removing sources');
       // By the time we get here, onTileUnload() has already fired.
       showSources = false;
 
@@ -2015,10 +2068,10 @@ function onMapZoomEnd(e) {
     }
     setOverlayEnabled('Sources', false);
   } else if ((oldZoom < sourcesMinZoom) && (zoom >= sourcesMinZoom)) {
-    console.log('zoomed in past boundary');
+      //console.log('zoomed in past boundary');
     setOverlayEnabled('Sources', true);
     if (isOverlayChecked('Sources')) {
-      console.log('Re-adding sources');
+        //console.log('Re-adding sources');
       overlayAdded({name:'Sources'});
     }
   }
@@ -2027,9 +2080,9 @@ function onMapZoomEnd(e) {
   // Spectra
 
   if ((oldZoom >= specMinZoom) && (zoom < specMinZoom)) {
-    console.log('zoomed out past spec boundary');
+    //console.log('zoomed out past spec boundary');
     if (showSpec) {
-      console.log('removing spec');
+      //console.log('removing spec');
       // By the time we get here, onTileUnload() has already fired.
       showSpec = false;
 
@@ -2039,10 +2092,10 @@ function onMapZoomEnd(e) {
     }
     setOverlayEnabled(specName, false);
   } else if ((oldZoom < specMinZoom) && (zoom >= specMinZoom)) {
-    console.log('zoomed in past boundary');
+    //console.log('zoomed in past boundary');
     setOverlayEnabled(specName, true);
     if (isOverlayChecked(specName)) {
-      console.log('Re-adding spec');
+      //console.log('Re-adding spec');
       overlayAdded({name:specName});
     }
   }
@@ -2075,16 +2128,16 @@ overlayAdded({name:'Bricks'});
 {% endif %}
 
 {% if showCcds %}
-console.log('addLayer(ccds)');
+//console.log('addLayer(ccds)');
 map.addLayer(ccdsGroup);
-console.log('done addLayer(ccds)');
+//console.log('done addLayer(ccds)');
 overlayAdded({name:'CCDs'});
 {% endif %}
 
 {% if showExps %}
-console.log('addLayer(exps)');
+//console.log('addLayer(exps)');
 map.addLayer(expsGroup);
-console.log('done addLayer(exps)');
+//console.log('done addLayer(exps)');
 overlayAdded({name:'Exposures'});
 {% endif %}
 
