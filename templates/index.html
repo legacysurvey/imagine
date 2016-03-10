@@ -374,7 +374,7 @@ CatalogOverlay = L.Class.extend({
         this._group.clearLayers();
         this._group.addLayer(circles);
         // save this new layer
-        this._layers[counter] = [circles];
+        this._layers[counter] = circles;
         //console.log(this._name + ': saved counter ' + counter);
     },
 
@@ -457,45 +457,17 @@ SdssSpectraCatalog = CatalogOverlay.extend({
 });
 
 
-// I wanted this to be a layer-agnostic tracking for tiles being
-// loaded, but it doesn't really work at startup -- the tile loads
-// seem to fire before the layeradd, and the baselayerchange doesn't
-// happen on the initial layer
+TiledOverlay = CatalogOverlay.extend({
 
-TileWatcher = L.Class.extend({
-	includes: L.Mixin.Events,
-
-    initialize: function(map) {
-        this._lastLayer = null;
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
         this._visibleTiles = {};
-        map.on('baselayerchange', this.baseLayerChange.bind(this));
-        map.on('layeradd', this.layerAdd.bind(this));
-        // none on startup
-        //map.eachLayer(function(layer) {
-        //console.log('Map: layer ' + layer.name);
-        //});
+        this._loadingTiles = 0;
     },
 
-    layerAdd: function(e) {
-        //console.log('Layer add: ' + getkeys(e) + 'name: ' + e.name);
-        layer = e.layer;
-        console.log('layer add: name: ' + layer.name);
-        this.baseLayerChange(e);
-        console.log('layer add done: name: ' + layer.name);
-    },
-
-    baseLayerChange: function(e) {
-        fload = this.tileLoadStart.bind(this);
-        funload = this.tileUnload.bind(this);
-        console.log('Base layer change: ' + e.name);
-        if (this._lastLayer) {
-            this._lastLayer.off('tileloadstart', fload);
-            this._lastLayer.off('tileunload', funload);
-        }
-        this._lastLayer = e.layer;
-        e.layer.on('tileloadstart', fload);
-        e.layer.on('tileunload',  funload);
-        
+    listenToLayer: function(layer) {
+        layer.on('tileloadstart', this.tileLoadStart.bind(this));
+        layer.on('tileunload',    this.tileUnload.bind(this));
     },
 
     tileLoadStart: function(e) {
@@ -507,7 +479,8 @@ TileWatcher = L.Class.extend({
         } else {
             e.key = key;
             console.log('firing tilevisible: ' + key);
-            this.fire('tilevisible', e);
+            //this.fire('tilevisible', e);
+            this.tileVisible(e);
             this._visibleTiles[key] = true;
         }
     },
@@ -519,27 +492,94 @@ TileWatcher = L.Class.extend({
         delete this._visibleTiles[key];
         e.key = key;
         console.log('firing tileinvisible: ' + key);
-        this.fire('tileinvisible', e);
+        //this.fire('tileinvisible', e);
+        this.tileInvisible(e);
     },
 
-});
+    tileVisible: function(e) {
+        tile = e.tile;
+        x = tile.tilex;
+        y = tile.tiley;
+        zoom = tile.z;
 
-TiledOverlay = CatalogOverlay.extend({
+        if (!this._show || (zoom < this._minZoom)) {
+            return;
+        }
+        this.load(zoom, x, y);
+    },
+
+    load: function(zoom, x, y) {
+        console.log('Loading tiled catalog: URL pattern: ' + this._url +
+                    ' x,y,zoom: ' + x + ',' + y + ', ' + zoom);
+        s = getSubdomain(x, y);
+	    url = L.Util.template(this._url, L.extend({
+            s: s,
+            z: zoom,
+            x: x,
+            y: y,
+            id: this._url_name,
+            ver: getcatversion(this._name),
+	    }));
+        this._loadingTiles += 1;
+        this._status && this._status.html('loading ' + this._loadingTiles + '...');
+        $.getJSON(url, this.loaded.bind(this, zoom, x, y));
+    },
+
+    tileInvisible: function(e) {
+        key = e.key;
+        if (!(key in this._layers)) {
+            return;
+        }
+        circles = this._layers[key];
+        this._group.removeLayer(circles);
+    },
+
+    // override superclass
+    mapBoundsChanged: function() {
+    },
+
+    overlayAdded: function(e) {
+        if (e.name != this._pretty) {
+            return;
+        }
+        this._show = true;
+	    if (map.getZoom() < this._minZoom) {
+            return;
+        }
+        // load all visible tiles
+        for (var key in this._visibleTiles) {
+            // parse into zoom:x:y
+            words = key.split(':');
+            zoom = parseInt(words[0]);
+            x = parseInt(words[1]);
+            y = parseInt(words[2]);
+            this.load(zoom, x, y);
+        }
+    },
+    
     loaded: function(zoom, tilex, tiley, result) {
-        this._status && this._status.html('');
+        console.log('Loaded: zoom ' + zoom + ' x,y ' + tilex + ',' + tiley);
+        // waiting for how many tiles now?
+        this._loadingTiles -= 1;
+        if (this._loadingTiles == 0) {
+            this._status && this._status.html('');
+        } else {
+            this._status && this._status.html('loading ' + this._loadingTiles + '...');
+        }
         if (!this._show) {
+            console.log('not shown');
             return;
         }
         circles = this.getLayer(result);
         this._group.addLayer(circles);
         // save this new layer
         key = ''+zoom+':'+tilex+':'+tiley;
-        this._layers[key] = [circles];
+        this._layers[key] = circles;
     },
 });
 
 // DECaLS catalog
-CatalogLayer = TiledOverlay.extend({
+DecalsCatalogLayer = TiledOverlay.extend({
     getLayer: function(result) {
         rdlist = result['rd'];
         objtype = result['sourcetype'];
@@ -1364,8 +1404,6 @@ var highlightedPlateName = '';
 var map = L.map('map');
 var popup = L.popup();
 
-tw = new TileWatcher(map);
-
 att = map.attributionControl;
 att.options.prefix += ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
 
@@ -1471,6 +1509,8 @@ tiles = new ZoomRangeTileLayer(static_tile_url, {
 tiles.catname = catname;
 allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 images", catname:catname});
 
+tilesDecalsDr2Image = tiles;
+
 
 id = 'decals-dr2-model'
 tiles = new ZoomRangeTileLayer(static_tile_url, {
@@ -1487,6 +1527,8 @@ tiles = new ZoomRangeTileLayer(static_tile_url, {
 tiles.catname = catname;
 allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 models", catname:catname});
 
+tilesDecalsDr2Model = tiles;
+
 id = 'decals-dr2-resid'
 tiles = new ZoomRangeTileLayer(static_tile_url, {
     maxZoom: maxZoom,
@@ -1502,6 +1544,7 @@ tiles = new ZoomRangeTileLayer(static_tile_url, {
 tiles.catname = catname;
 allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 residuals", catname:catname});
 
+tilesDecalsDr2Resid = tiles;
 
 
 {% endif %}
@@ -1888,6 +1931,16 @@ var overlayMaps = {
     "CCDs": ccdsGroup,
     "Exposures": expsGroup,
 };
+
+decalscat = new DecalsCatalogLayer('decals-dr2', 'DECaLS DR2 Catalog',
+                                   {'url': '{{caturl|safe}}', 
+                                    'minZoom': 12,});
+decalscat.addToOverlay(overlayMaps);
+
+decalscat.listenToLayer(tilesDecalsDr2Resid);
+decalscat.listenToLayer(tilesDecalsDr2Model);
+decalscat.listenToLayer(tilesDecalsDr2Image);
+
 
 bright = new BrightCatalog('bright', 'Bright stars', {});
 bright.addToOverlay(overlayMaps);
