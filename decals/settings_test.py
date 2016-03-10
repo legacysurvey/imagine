@@ -1,6 +1,10 @@
 import os
 from settings_common import *
 
+# > ssh cori -L 5432:scidb2.nersc.gov:5432
+
+DATABASE_ROUTERS = ['cat.models.Router']
+
 MAX_NATIVE_ZOOM = 15
 SAVE_CACHE = True
 

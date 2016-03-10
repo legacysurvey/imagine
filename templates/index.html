@@ -225,6 +225,10 @@ var CatalogOverlay = L.Class.extend({
         this._status = $('#' + statid);
     },
 
+    getGroup: function() {
+        return this._group;
+    },
+
     overlayAdded: function(e) {
         //console.log(this._name + ': overlayAdded');
         if (e.name == this._pretty) {
@@ -247,10 +251,6 @@ var CatalogOverlay = L.Class.extend({
         if (this._show && map.getZoom() >= this._minZoom) {
             this.load();
         }
-    },
-
-    addToOverlay: function(overlayMaps) {
-        overlayMaps[this._pretty] = this._group;
     },
 
     onMapZoomEnd: function() {
@@ -359,8 +359,10 @@ var CatalogOverlay = L.Class.extend({
             }
 	        if (showlabels) {
                 var txt = this.get_label(result, i);
-                circ.bindLabel(txt, { noHide: true, clickable: true });
-                circ.showLabel();
+                if (txt.length > 0) {
+                    circ.bindLabel(txt, { noHide: true, clickable: true });
+                    circ.showLabel();
+                }
 	        }
             circleList[i] = circ;
         }
@@ -597,8 +599,46 @@ var DecalsCatalogLayer = TiledOverlay.extend({
 
 var SqlCatalogOverlay = CatalogOverlay.extend({
 
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this._jsonQuery = null;
+    },
 
+    newQuery: function() {
+        this._show = true;
+        this.load();
+    },
 
+    overlayAdded: function() {
+    },
+
+    ready: function() {
+        // find it with jQuery
+        this._status = $('#sqlquery_status');
+    },
+
+    load: function() {
+        if (this._jsonQuery) {
+            this._jsonQuery.abort();
+        }
+        var sqlQueryString = $('#sqlquery').val();
+        var b = map.getBounds();
+        var url = L.Util.template(this._url, L.extend({
+            s: subdomains[0],
+	        east: long2ra(b.getEast()).toFixed(4),
+	        west: long2ra(b.getWest()).toFixed(4),
+	        south: lat2dec(b.getSouth()).toFixed(4),
+	        north: lat2dec(b.getNorth()).toFixed(4),
+            q: sqlQueryString,
+        }));
+        this._counter += 1;
+        this._status && this._status.html('loading...');
+        this._jsonQuery =$.getJSON(url, this.loaded.bind(this, this._counter));
+    },
+
+    get_label: function(json, i) {
+        return '';
+    },
 
 });
 
@@ -1488,7 +1528,7 @@ info.addTo(map);
 var query = L.control({'position':'bottomleft'});
 query.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'query');
-    this._div.innerHTML = 'SQL catalog query: <input type="text" id="sqlquery" value="rflux > 100" size="50"/>'
+    this._div.innerHTML = 'SQL catalog query: <input type="text" id="sqlquery" value="rflux > 100" size="50"/> <span id="sqlquery_status"></span>'
     return this._div;
 };
 query.addTo(map);
@@ -1567,8 +1607,9 @@ $(document).ready(function() {
     $('#sqlquery').keydown(function(event) {
         // when Enter is hit in the SQL box
         if (event.keyCode == 13) {
-            sqlQueryString = $('#sqlquery').val();
-            updateSql();
+            //sqlQueryString = $('#sqlquery').val();
+            //updateSql();
+            sqlOverlay.newQuery();
             return false;
         }
     });
@@ -1643,24 +1684,29 @@ var decalscat = new DecalsCatalogLayer(tileWatcher,
                                        'decals-dr2', 'DECaLS DR2 Catalog',
                                        {'url': '{{caturl|safe}}', 
                                         'minZoom': 12,});
-decalscat.addToOverlay(overlayMaps);
+overlayMaps[decalscat._pretty] = decalscat.getGroup();
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
-bright.addToOverlay(overlayMaps);
+overlayMaps[bright._pretty] = bright.getGroup();
 
 var gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
                              {'url_name': 'ngc',
                               'minZoom': 5,
                               'labelsMinZoom': 7});
-gals.addToOverlay(overlayMaps);
+overlayMaps[gals._pretty] = gals.getGroup();
 
 var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
                                   {'radius': 300,
                                    'labelsMinZoom': 11,
                                    'minZoom': 9,});
-spec.addToOverlay(overlayMaps);
+overlayMaps[spec._pretty] = spec.getGroup();
 
 overlayMaps["SDSS Spectro Plates"] = platesGroup;
+
+var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
+                                       {'url': '{{sqlurl|safe}}',
+                                        'radius': 300,
+                                       });
 
 {% comment %}
 "Constellations": conGroup,
@@ -1783,6 +1829,8 @@ map.on('zoomend', onMapZoomEnd);
 map.setView([ dec2lat({{ dec }}), ra2long_C({{ ra }}, 180.) ], {{ zoom }});
 var lastLatLng = map.getCenter();
 
+map.addLayer(sqlOverlay.getGroup());
+
 {% if showBricks %}
 map.addLayer(bricksGroup);
 overlayAdded({name:'Bricks'});
@@ -1815,7 +1863,7 @@ overlayAdded({name:'Exposures'});
 //map.addLayer(specGroup);
 {% endif %}
 
-map.addLayer(sqlGroup);
+//map.addLayer(sqlGroup);
 
 {% comment %}
 var constellation_shortnames =  [ "Aql","And","Scl","Ara","Lib","Cet","Ari","Sct","Pyx","Boo","Cae","Cha","Cnc","Cap","Car","Cas","Cen","Cep","Com","Cvn","Aur","Col","Cir","Crt","CrA","CrB","Crv","Cru","Cyg","Del","Dor","Dra","Nor","Eri","Sge","For","Gem","Cam","CMa","UMa","Gru","Her","Hor","Hya","Hyi","Ind","Lac","Mon","Lep","Leo","Lup","Lyn","Lyr","Ant","Mic","Mus","Oct","Aps","Oph","Ori","Pav","Peg","Pic","Per","Equ","CMi","LMi","Vul","UMi","Phe","Psc","PsA","Vol","Pup","Ret","Sgr","Sco","Ser","Sex","Men","Tau","Tel","Tuc","Tri","Tra","Aqr","Vir","Vel" ]
