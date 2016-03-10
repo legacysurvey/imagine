@@ -34,9 +34,6 @@ ENABLE_WL = False
 
 ENABLE_DEPTH = False
 
-# DR2 images?
-ENABLE_DR2 = False
-
 # Tile cache is writable?
 SAVE_CACHE = False
 

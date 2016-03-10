@@ -1364,7 +1364,6 @@ var mylayer = function (name, pretty, kwargs) {
 
 var tiles;
 
-{% if enable_dr2 %}
 tiles = mylayer('decals-dr2', 'DECaLS DR2 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
@@ -1379,8 +1378,6 @@ tiles = mylayer('decals-dr2-resid', 'DECaLS DR2 residuals',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 tilesDecalsDr2Resid = tiles;
-{% endif %}
-
 
 tiles = mylayer('decals-dr1j', 'DECaLS DR1 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
@@ -1447,7 +1444,7 @@ for (i in allLayers) {
   }
 }
 if (!added) {
-  tilesDr1j.addTo(map);
+    tilesDecalsDr2Image.addTo(map);
 }
 
 function doGoto() {
