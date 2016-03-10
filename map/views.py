@@ -286,8 +286,8 @@ def index(req):
 
     static_tile_url = settings.STATIC_TILE_URL
 
+    ccdsurl = settings.ROOT_URL + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
     bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}&id={id}'
-    ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}&id={id}'
     expsurl = settings.ROOT_URL + '/exps/?north={north}&east={east}&south={south}&west={west}&id={id}'
     platesurl = settings.ROOT_URL + '/sdss-plates/?north={north}&east={east}&south={south}&west={west}'
     sqlurl = settings.ROOT_URL + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
@@ -728,7 +728,7 @@ def sdss_rgb(rimgs, bands, scales=None,
 
 def layer_name_map(name):
     return {'decals-dr2-model': 'decals-dr2',
-            'decals-dr2-resid': 'decals-dr2'}.get(name, None)
+            'decals-dr2-resid': 'decals-dr2'}.get(name, name)
 
 B_dr2 = None
 def _get_dr2_bricks():
@@ -1381,10 +1381,10 @@ def ccd_list(req):
     from astrometry.util.util import Tan
     import numpy as np
 
-    north = float(req.GET['north'])
-    south = float(req.GET['south'])
-    east  = float(req.GET['east'])
-    west  = float(req.GET['west'])
+    north = float(req.GET['dechi'])
+    south = float(req.GET['declo'])
+    east  = float(req.GET['ralo'])
+    west  = float(req.GET['rahi'])
 
     name = req.GET.get('id', None)
     name = layer_name_map(name)

@@ -891,7 +891,10 @@ function inbrickccdUpdate(props) {
         return;
     }
     var bricks = bricksUnderLatlng(props.latlng);
-    var ccds = ccdsUnderLatlng(props.latlng);
+
+    //var ccds = ccdsUnderLatlng(props.latlng);
+    var ccds = ccdOverlay.under(props.latlng);
+
     var exps = expsUnderLatlng(props.latlng);
     var txt = '';
     if (bricks.length || ccds.length || exps.length) {
@@ -968,6 +971,16 @@ function overlayAdded(e) {
             inbrickccdAdded = true;
         }
     }
+
+
+    if (ccdOverlay._show) {
+        if (!inbrickccdAdded) {
+            inbrickccd.addTo(map);
+            inbrickccdAdded = true;
+        }
+    }
+
+
 }
 
 // "Sources", "Bricks", "CCDs" button unchecked
@@ -1058,6 +1071,7 @@ function bricksLoaded(result) {
     }
 }
 
+/*
 function unhighlightCcd(name) {
     map.removeLayer(ccdFills[name]);
     delete ccdFills[name];
@@ -1132,6 +1146,7 @@ function ccdsLoaded(result) {
         currentCcds[name] = c;
     }
 }
+*/
 
 function unhighlightExp(name) {
     map.removeLayer(expFills[name]);
@@ -1218,6 +1233,7 @@ function mapBoundsChanged() {
         }));
         $.getJSON(bricksurl, bricksLoaded);
     }
+    /*
     if (showCcds) {
         var bounds = map.getBounds();
         var ccdsurl = L.Util.template('{{ ccdsurl|safe }}', L.extend({
@@ -1231,6 +1247,7 @@ function mapBoundsChanged() {
         }));
         $.getJSON(ccdsurl, ccdsLoaded);
     }
+    */
     if (showExps) {
         var bounds = map.getBounds();
         var expsurl = L.Util.template('{{ expsurl|safe }}', L.extend({
@@ -1324,8 +1341,6 @@ function getcatversion(layer) {
     }
     return 1;
 }
-
-var idname = '{{ layer }}';
 
 var minZoom = 1;
 var maxZoom = 16;
@@ -1433,6 +1448,7 @@ for (var i in allLayers) {
 }
 
 var added = false;
+var idname = '{{ layer }}';
 for (i in allLayers) {
     layer = allLayers[i];
     if (idname == layer.name) {
@@ -1520,6 +1536,7 @@ info.onAdd = function (map) {
 };
 info.addTo(map);
 
+// SQL query input field
 var query = L.control({'position':'bottomleft'});
 query.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'query');
@@ -1625,6 +1642,135 @@ var overlayMaps = {
     "Exposures": expsGroup,
 };
 
+var PolygonOverlay = CatalogOverlay.extend({
+
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        //self._currentItems = {};
+        this._highlighted = null;
+        this._filled = {};
+        this._current = {};
+    },
+
+    get_label: function(json, i) {
+        return '';
+    },
+
+});
+
+var CcdOverlay = PolygonOverlay.extend({
+
+    getLayer: function(result) {
+        var ccds = result['ccds'];
+        console.log('Received ' + ccds.length + ' CCDs');
+        //var circleList = new Array(ccds.length);
+        var circleList = [];
+        var clong = map.getCenter().lng;
+        //var ngood = 0;
+        for (var i=0, len=ccds.length; i<len; i++) {
+            var name = ccds[i].name;
+            /*
+              if (name in this._current) {
+              //console.log('Ccd ' + name + ' already exists');
+              continue;
+              }
+              */
+            var poly = ccds[i].poly;
+            for (var j=0, plen=poly.length; j<plen; j++) {
+                poly[j][1] = wrap_long(poly[j][1], clong);
+            }
+            var color = ccds[i].color;
+            var c = L.polygon(poly, {fill:false, color:color, weight:4 });
+            c.orig_color = color;
+            c.name = name;
+            c.on('mouseover', this.mouseOver.bind(this));
+            c.on('mouseout',  this.mouseOut.bind(this));
+            // console.log('Adding ccd ' + name + ': polygon ' + poly);
+            //this._items[name] = c;
+            //circleList[ngood] = c;
+            //ngood += 1
+            circleList.push(c);
+            this._current[name] = c;
+        }
+        return L.layerGroup(circleList);
+    },
+
+    mouseOver: function(e) {
+        e.target.setStyle({color: 'yellow'});
+        var ccd = e.target;
+        this._highlighted = ccd.name;
+        //console.log('ccdMouseOver: ' + highlightedCcdName);
+        // remove other CCDs from ccdFills
+        for (var i=0, len=this._filled.length; i<len; i++) {
+            if (this._filled[i] != ccd.name) {
+                unhighlightCcd(ccdFills[i]);
+            }
+        }
+        if (!(ccd.name in ccdFills)) {
+            this.highlight(ccd);
+        }
+        inbrickccdUpdate(e);
+    },
+
+    unhighlight: function(name) {
+        this._group.removeLayer(this._filled[name]);
+        delete this._filled[name];
+    },
+
+    highlight: function(ccd) {
+        var cf = L.polygon(ccd.getLatLngs(),
+                           {fill:true, fillOpacity:0.05, color:'yellow',
+                            weight:1});
+        this._filled[ccd.name] = cf;
+        cf.addTo(this._group);
+        cf.bringToBack();
+    },
+
+    mouseOut: function(e) {
+        var ccd = e.target;
+        ccd.setStyle({color: ccd.orig_color});
+        this._highlighted = ccd.name;
+        if (ccd.name in this._filled) {
+            this.unhighlight(ccd.name);
+        }
+        inbrickccdUpdate(e);
+    },
+
+    under: function(latlng) {
+        var ccds = [];
+        if (this._show) {
+            var geos = [];
+            for (var name in this._current) {
+                var ccd = this._current[name];
+                var gj = ccd.toGeoJSON();
+                gj.properties['name'] = name;
+                geos.push(gj);
+            }
+            var geo = {type:'FeatureCollection', features:geos};
+            var leafgeo = L.geoJson(geo);
+            var inside = leafletPip.pointInLayer(latlng, leafgeo);
+            for (var i=0; i<inside.length; i++) {
+                ccds.push(inside[i].feature.properties.name);
+            }
+            if (this._highlighted != '') {
+                if (ccds.indexOf(this._highlighted) == -1) {
+                    ccds.push(this._highlighted);
+                }
+            }
+            //ccds.sort();
+        }
+        return ccds;
+    },
+
+});
+
+var ccdOverlay = new CcdOverlay('decals-dr2', 'DECaLS DR2 CCDs',
+                                {'url':'{{ ccdsurl|safe }}',
+                                 'minZoom': 8,
+                                 'labelMinZoom': 100,
+                          });
+overlayMaps[ccdOverlay._pretty] = ccdOverlay.getGroup();
+
 var tileWatcher = new TileWatcher();
 
 for (var k in baseMaps) {
@@ -1710,7 +1856,7 @@ function setOverlayEnabled(name, enabled) {
 
 //
 var bricksMinZoom = 8;
-var ccdsMinZoom = 8;
+//var ccdsMinZoom = 8;
 
 // variable for tracking old & new zoom via zoomstart / zoomend
 var oldZoom = {{ zoom }};
@@ -1744,6 +1890,7 @@ function onMapZoomEnd(e) {
     }
 
     // CCDs
+    /*
 
     if ((oldZoom >= ccdsMinZoom) && (zoom < ccdsMinZoom)) {
         //console.log('zoomed out past CCD boundary');
@@ -1760,6 +1907,7 @@ function onMapZoomEnd(e) {
             overlayAdded({name:'CCDs'});
         }
     }
+    */
 
     // update the RA,Dec,zoom info box
     if (typeof(lastLatLng) != 'undefined') {
@@ -1789,10 +1937,9 @@ overlayAdded({name:'Bricks'});
 {% endif %}
 
 {% if showCcds %}
-//console.log('addLayer(ccds)');
-map.addLayer(ccdsGroup);
-//console.log('done addLayer(ccds)');
-overlayAdded({name:'CCDs'});
+// FIXME
+//map.addLayer(ccdsGroup);
+//overlayAdded({name:'CCDs'});
 {% endif %}
 
 {% if showExps %}
