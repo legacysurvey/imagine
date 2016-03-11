@@ -198,7 +198,6 @@ var CatalogOverlay = L.Class.extend({
                        'fillOpacity':0,
                        'weight':5,
                       };
-
         //this._oldZoom = map.getZoom();
         this._oldZoom = {{ zoom }};
         map.on('overlayadd',    this.overlayAdded.bind(this));
@@ -762,8 +761,6 @@ function onMapClick(e) {
 
     var bricks = brickOverlay.under(e.latlng);
     var ccds = ccdOverlay.under(e.latlng);
-
-    //var exps = expsUnderLatlng(e.latlng);
     var exps = expOverlay.under(e.latlng);
 
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
@@ -823,24 +820,6 @@ function onMouseMove(e) {
     }
 }
 
-function expsUnderLatlng(latlng) {
-    var exps = [];
-    if (showExps) {
-        for (var name in currentExps) {
-            var exp = currentExps[name];
-	        if (latlng.distanceTo(exp.getLatLng()) < exp.getRadius()) {
-		        exps.push(exp.name);
-	        }
-        }
-        if (highlightedExpName != '') {
-            if (exps.indexOf(highlightedExpName) == -1) {
-                exps.push(highlightedExpName);
-            }
-        }
-    }
-    return exps;
-}
-
 function inbrickccdUpdate(props) {
     if (props == undefined) {
         return;
@@ -897,23 +876,6 @@ function inbrickccdUpdate(props) {
 
 // "Bricks", "CCDs", etc button checked
 function overlayAdded(e) {
-    //console.log('OverlayAdded: ' + e.name);
-    /*
-    if (e.name == 'Exposures') {
-        showExps = true;
-        mapBoundsChanged();
-    }
-    if (e.name == 'SDSS Spectro Plates') {
-        showPlates = true;
-        mapBoundsChanged();
-    }
-    if (showExps || showPlates) {
-        if (!inbrickccdAdded) {
-            inbrickccd.addTo(map);
-            inbrickccdAdded = true;
-        }
-    }
-    */
     if (ccdOverlay._show || brickOverlay._show ||
         expOverlay._show) {
         if (!inbrickccdAdded) {
@@ -925,19 +887,6 @@ function overlayAdded(e) {
 
 // "Sources", "Bricks", "CCDs" button unchecked
 function overlayRemoved(e) {
-    //console.log('OverlayRemoved: ' + e.name);
-    /*
-    if (e.name == 'Exposures') {
-        showExps = false;
-        for (var i in currentExps) {
-            removeExp(i);
-        }
-        for (var name in expFills) {
-            map.removeLayer(expFills[name]);
-            delete expFills[name];
-        }
-    }
-    */
     if (!(ccdOverlay._show || brickOverlay._show ||
           expOverlay._show)) {
         if (inbrickccdAdded) {
@@ -946,126 +895,6 @@ function overlayRemoved(e) {
         }
     }
 }
-
-/*
-function removeExp(name) {
-    var exp = currentExps[name];
-    expsGroup.removeLayer(exp);
-    delete currentExps[name];
-}
-
-function removePlate(name) {
-    var exp = currentPlates[name];
-    expsGroup.removeLayer(exp);
-    delete currentPlates[name];
-}
-
-function unhighlightExp(name) {
-    map.removeLayer(expFills[name]);
-    delete expFills[name];
-}
-
-function highlightExp(exp) {
-    var cf = L.circle(exp.getLatLng(), exp.getRadius(),
-                      {fill:true, fillOpacity:0.05, color:'yellow', weight:1});
-    expFills[exp.name] = cf;
-    cf.addTo(map);
-    cf.bringToBack();
-}
-
-function expsLoaded(result) {
-    if (!showExps) {
-        return;
-    }
-    var exps = result['exposures'];
-    console.log('Exposures:', exps.length);
-    var clong = map.getCenter().lng;
-    for (var i=0, len=exps.length; i<len; i++) {
-        // console.log('exp ' + i + ': ' + exps[i]);
-        var name = exps[i].name;
-        if (name in currentExps) {
-            //console.log('Exp ' + name + ' already exists');
-            continue;
-        }
-        var lat = dec2lat(exps[i].dec);
-        var lng = ra2long_C(exps[i].ra, clong);
-	    var meters = 30 * 3600 * exps[i].radius;
-	    var color = exps[i].color;
-	    var c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
-					                     'weight':5, 'opacity':0.4 });
-        c.name = name;
-        expsGroup.addLayer(c);
-        currentExps[name] = c;
-    }
-}
-
-function platesLoaded(result) {
-    if (!showPlates) {
-        return;
-    }
-    var plates = result['plates'];
-    console.log('Plates:', plates.length);
-    var clong = map.getCenter().lng;
-    for (var i=0, len=plates.length; i<len; i++) {
-        // console.log('plate ' + i + ': ' + plates[i]);
-        var name = plates[i].name;
-        if (name in currentPlates) {
-            //console.log('Plate ' + name + ' already exists');
-            continue;
-        }
-        var lat = dec2lat(plates[i].dec);
-        var lng = ra2long_C(plates[i].ra, clong);
-	    var meters = 30 * 3600 * plates[i].radius;
-	    var color = plates[i].color;
-	    var c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
-					                     'weight':5, 'opacity':0.4 });
-        c.name = name;
-        platesGroup.addLayer(c);
-        currentPlates[name] = c;
-    }
-}
-*/
-
-/*
-function mapBoundsChanged() {
-    var latlng = map.getCenter();
-    var zoom = map.getZoom();
-    var ra  = long2ra(latlng.lng);
-    var dec = lat2dec(latlng.lat);
-
-    if (showExps) {
-        var bounds = map.getBounds();
-        var expsurl = L.Util.template('{{ expsurl|safe }}', L.extend({
-            s: 'a',
-            z: zoom,
-            west:  long2ra(bounds.getWest()).toFixed(4),
-            east:  long2ra(bounds.getEast()).toFixed(4),
-            north: lat2dec(bounds.getNorth()).toFixed(4),
-            south: lat2dec(bounds.getSouth()).toFixed(4),
-            id: idname,
-        }));
-        $.getJSON(expsurl, expsLoaded);
-    }
-    if (showPlates) {
-        var bounds = map.getBounds();
-        var platesurl = L.Util.template('{{ platesurl|safe }}', L.extend({
-            s: 'a',
-            z: zoom,
-            west:  long2ra(bounds.getWest()).toFixed(4),
-            east:  long2ra(bounds.getEast()).toFixed(4),
-            north: lat2dec(bounds.getNorth()).toFixed(4),
-            south: lat2dec(bounds.getSouth()).toFixed(4),
-        }));
-        $.getJSON(platesurl, platesLoaded);
-    }
-}
-*/
-/*
-function onMapMoveEnd(e) {
-    //console.log('Map move end.');
-    mapBoundsChanged();
-}
-*/
 
 // List of bricks / CCDs under the mouse position
 var inbrickccd = L.control();
@@ -1078,20 +907,6 @@ inbrickccd.update = inbrickccdUpdate;
 var inbrickccdAdded = false;
 
 //var conGroup = L.layerGroup([]);
-
-/*
-var showExps = false;
-var expsGroup = L.layerGroup([]);
-var currentExps = {};
-var expFills = {};
-var highlightedExpName = '';
-
-var showPlates = false;
-var platesGroup = L.layerGroup([]);
-var currentPlates = {};
-var plateFills = {};
-var highlightedPlateName = '';
-*/
 
 var map = L.map('map');
 var popup = L.popup();
@@ -1315,6 +1130,12 @@ info.onAdd = function (map) {
 };
 info.addTo(map);
 
+var container = info.getContainer();
+L.DomEvent
+    .disableClickPropagation(container)
+    .disableScrollPropagation(container);
+L.DomEvent.on(container, 'click', infoBoxClicked);
+
 // SQL query input field
 var query = L.control({'position':'bottomleft'});
 query.onAdd = function (map) {
@@ -1324,6 +1145,7 @@ query.onAdd = function (map) {
 };
 query.addTo(map);
 
+// Named object search field
 var objquery = L.control({'position':'bottomright'});
 objquery.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'objquery');
@@ -1331,6 +1153,9 @@ objquery.onAdd = function (map) {
     return this._div;
 };
 objquery.addTo(map);
+
+// A list of object names mapped to [lat,lng,zoom], for history navgation
+var hashLocations = {};
 
 function objQueryLoaded(result) {
     console.log('Result: ' + result);
@@ -1349,9 +1174,6 @@ function objQueryLoaded(result) {
     hashLocations[location.hash] = [lat, lng, zoom];
     console.log('Saved hash location:', location.hash, '=', hashLocations[location.hash]);
 }
-
-// A list of object names mapped to [lat,lng,zoom], for history navgation
-var hashLocations = {};
 
 $(document).ready(function() {
     $('#sqlquery').keydown(function(event) {
@@ -1395,12 +1217,6 @@ $(document).ready(function() {
 
 });
 
-var container = info.getContainer();
-L.DomEvent
-    .disableClickPropagation(container)
-    .disableScrollPropagation(container);
-L.DomEvent.on(container, 'click', infoBoxClicked);
-
 function onHashChange() {
     console.log('Hash changed to', location.hash);
     if (location.hash in hashLocations) {
@@ -1419,7 +1235,6 @@ var PolygonOverlay = CatalogOverlay.extend({
 
     initialize: function(name, pretty, kwargs) {
         CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
-        //self._currentItems = {};
         if ('doHighlight' in kwargs) {
             this._doHighlight = kwargs['doHighlight'];
         } else {
@@ -1442,17 +1257,17 @@ var PolygonOverlay = CatalogOverlay.extend({
     },
 
     getLayer: function(result) {
-        var ccds = result['polys'];
-        console.log('Received ' + ccds.length + ' CCDs');
+        var objs = result['polys'];
+        //console.log('Received ' + objs.length + ' Objs');
         var circleList = [];
         var clong = map.getCenter().lng;
-        for (var i=0, len=ccds.length; i<len; i++) {
-            var name = ccds[i].name;
-            var poly = ccds[i].poly;
+        for (var i=0, len=objs.length; i<len; i++) {
+            var name = objs[i].name;
+            var poly = objs[i].poly;
             for (var j=0, plen=poly.length; j<plen; j++) {
                 poly[j][1] = wrap_long(poly[j][1], clong);
             }
-            var color = ccds[i].color || this._color;
+            var color = objs[i].color || this._color;
             var c = L.polygon(poly, {fill:false, color:color, weight:4 });
             c.orig_color = color;
             c.name = name;
@@ -1468,16 +1283,16 @@ var PolygonOverlay = CatalogOverlay.extend({
 
     mouseOver: function(e) {
         e.target.setStyle({color: 'yellow'});
-        var ccd = e.target;
-        this._highlighted = ccd.name;
-        // remove other CCDs from ccdFills
+        var obj = e.target;
+        this._highlighted = obj.name;
+        // remove other objs from fills
         for (var i=0, len=this._filled.length; i<len; i++) {
-            if (this._filled[i] != ccd.name) {
+            if (this._filled[i] != obj.name) {
                 this.unhighlight(this._filled[i]);
             }
         }
-        if (!(ccd.name in this._filled)) {
-            this.highlight(ccd);
+        if (!(obj.name in this._filled)) {
+            this.highlight(obj);
         }
         inbrickccdUpdate(e);
     },
@@ -1487,21 +1302,21 @@ var PolygonOverlay = CatalogOverlay.extend({
         delete this._filled[name];
     },
 
-    highlight: function(ccd) {
-        var cf = L.polygon(ccd.getLatLngs(),
+    highlight: function(obj) {
+        var cf = L.polygon(obj.getLatLngs(),
                            {fill:true, fillOpacity:0.05, color:'yellow',
                             weight:1});
-        this._filled[ccd.name] = cf;
+        this._filled[obj.name] = cf;
         cf.addTo(this._group);
         cf.bringToBack();
     },
 
     mouseOut: function(e) {
-        var ccd = e.target;
-        ccd.setStyle({color: ccd.orig_color});
+        var obj = e.target;
+        obj.setStyle({color: obj.orig_color});
         this._highlighted = null;
-        if (ccd.name in this._filled) {
-            this.unhighlight(ccd.name);
+        if (obj.name in this._filled) {
+            this.unhighlight(obj.name);
         }
         inbrickccdUpdate(e);
     },
@@ -1540,7 +1355,7 @@ var PolygonOverlay = CatalogOverlay.extend({
 var CircleOverlay = PolygonOverlay.extend({
     getLayer: function(result) {
         var objs = result['objs'];
-        console.log('Received ' + objs.length + ' objs');
+        //console.log('Received ' + objs.length + ' objs');
         var objList = [];
         var clong = map.getCenter().lng;
         for (var i=0, len=objs.length; i<len; i++) {
@@ -1596,39 +1411,6 @@ var CircleOverlay = PolygonOverlay.extend({
 
 });
 
-var overlayMaps = {};
-//"Exposures": expsGroup,
-//};
-
-
-var ccdOverlay = new PolygonOverlay('decals-dr2-ccds', 'DECaLS DR2 CCDs',
-                                    {'url':'{{ ccdsurl|safe }}',
-                                     'minZoom': 8,
-                                     'labelMinZoom': 100,
-                                    });
-overlayMaps[ccdOverlay._pretty] = ccdOverlay.getGroup();
-
-var expOverlay = new CircleOverlay('decals-dr2-exps', 'DECaLS DR2 Exposures',
-                                    {'url':'{{ expsurl|safe }}',
-                                     'labelMinZoom': 100,
-                                    });
-overlayMaps[expOverlay._pretty] = expOverlay.getGroup();
-
-
-var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
-                                      {'url':'{{ bricksurl|safe }}',
-                                       'minZoom': 8,
-                                       'labelMinZoom': 100,
-                                       'doHighlight': false,
-                                      });
-overlayMaps[brickOverlay._pretty] = brickOverlay.getGroup();
-
-var plateOverlay = new CircleOverlay('sdss-plates', 'SDSS Spectro Plates',
-                                    {'url':'{{ platesurl|safe }}',
-                                     'labelMinZoom': 100,
-                                    });
-overlayMaps[plateOverlay._pretty] = plateOverlay.getGroup();
-
 var tileWatcher = new TileWatcher();
 
 for (var k in baseMaps) {
@@ -1636,28 +1418,45 @@ for (var k in baseMaps) {
     tileWatcher.listenToLayer(layer);
 }
 
+var ccdOverlay = new PolygonOverlay('decals-dr2-ccds', 'DECaLS DR2 CCDs',
+                                    {'url':'{{ ccdsurl|safe }}',
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                    });
+
+var expOverlay = new CircleOverlay('decals-dr2-exps', 'DECaLS DR2 Exposures',
+                                    {'url':'{{ expsurl|safe }}',
+                                     'labelMinZoom': 100,
+                                    });
+
+var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
+                                      {'url':'{{ bricksurl|safe }}',
+                                       'minZoom': 8,
+                                       'labelMinZoom': 100,
+                                       'doHighlight': false,
+                                      });
+
+var plateOverlay = new CircleOverlay('sdss-plates', 'SDSS Spectro Plates',
+                                    {'url':'{{ platesurl|safe }}',
+                                     'labelMinZoom': 100,
+                                    });
+
 var decalscat = new DecalsCatalogLayer(tileWatcher,
                                        'decals-dr2', 'DECaLS DR2 Catalog',
                                        {'url': '{{caturl|safe}}', 
                                         'minZoom': 12,});
-overlayMaps[decalscat._pretty] = decalscat.getGroup();
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
-overlayMaps[bright._pretty] = bright.getGroup();
 
 var gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
                              {'url_name': 'ngc',
                               'minZoom': 5,
                               'labelsMinZoom': 7});
-overlayMaps[gals._pretty] = gals.getGroup();
 
 var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
                                   {'radius': 300,
                                    'labelsMinZoom': 11,
                                    'minZoom': 9,});
-overlayMaps[spec._pretty] = spec.getGroup();
-
-//overlayMaps["SDSS Spectro Plates"] = platesGroup;
 
 var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
                                        {'url': '{{sqlurl|safe}}',
@@ -1668,7 +1467,13 @@ var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
 "Constellations": conGroup,
 {% endcomment %}
 
-new L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+var overlays = [decalscat, ccdOverlay, expOverlay, brickOverlay,
+                gals, bright, spec, plateOverlay];
+var layerControl = new L.control.layers(baseMaps, {}, { collapsed: false })
+for (var i=0,len=overlays.length; i<len; i++) {
+    layerControl._addLayer(overlays[i].getGroup(), overlays[i]._pretty, true);
+}
+layerControl.addTo(map);
 
 /*
   The overlays DOM looks like this:
@@ -1699,41 +1504,18 @@ function getOverlayCheckbox(name) {
     });
     return ov;
 }
-function isOverlayChecked(name) {
-    var o = getOverlayCheckbox(name);
-    return $(o).prop('checked');
-}
-function setOverlayEnabled(name, enabled) {
-    var o = getOverlayCheckbox(name);
-    if (enabled) {
-        o.removeAttr('disabled');
-    } else {
-        o.attr('disabled', 'disabled');
-    }
-}
 
-// variable for tracking old & new zoom via zoomstart / zoomend
-var oldZoom = {{ zoom }};
-function onMapZoomStart(e) {
-    var zoom = map.getZoom();
-    console.log('map zoom start: ' + zoom + ', previous: ' + oldZoom);
-    oldZoom = zoom;
-}
 function onMapZoomEnd(e) {
-    var zoom = map.getZoom();
     // update the RA,Dec,zoom info box
     if (typeof(lastLatLng) != 'undefined') {
         onMouseMove({ latlng: lastLatLng });
     }
-    oldZoom = zoom;
 }
 
 map.on('mousemove', onMouseMove);
 map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
 map.on('click', onMapClick);
-//map.on('moveend', onMapMoveEnd);
-map.on('zoomstart', onMapZoomStart);
 map.on('zoomend', onMapZoomEnd);
 
 map.setView([ dec2lat({{ dec }}), ra2long_C({{ ra }}, 180.) ], {{ zoom }});
