@@ -182,6 +182,7 @@ var CatalogOverlay = L.Class.extend({
         //console.log('CatalogOverlay: ' + name + ',' + pretty);
         this._counter = 1;
         this._url = kwargs['url'] || '{{ smallcaturl|safe }}'
+        this._url_term = kwargs['urlTerm'] || name;
         this._checkbox = null;
         this._status = null;
         this._show = false;
@@ -770,6 +771,14 @@ function onMapClick(e) {
 
     var linkurl = '{{ absurl }}?' + qstr;
 
+    for (var i=0,len=overlays.length; i<len; i++) {
+        console.log('Overlay ' + overlays[i]._name + ' shown? ' + overlays[i]._show + ', url term ' + overlays[i]._url_term);
+        if (overlays[i]._show) {
+            linkurl += '&' + overlays[i]._url_term;
+        }
+    }
+
+
     var discuss = 'http://discuss.legacysurvey.org/new-topic?title=Interesting+object&body=' +
         '%3Cimg+src%3D%22' + encodeURIComponent(cutout) + '%22%3E' +
         '%0A' +
@@ -781,7 +790,7 @@ function onMapClick(e) {
 
     var txt =
         'RA,Dec = ' + cutout_radec_link(ra, dec) +
-        '<br/><a href="{{ baseurl }}?' + qstr +
+        '<br/><a href="' + linkurl +
         '">Link Here</a>' + spacer +
         '<a href="' + datalink + '">Data</a>' + spacer +
         '<a href="' + cutout + '">Cutout</a>' + spacer +
@@ -1422,11 +1431,13 @@ var ccdOverlay = new PolygonOverlay('decals-dr2-ccds', 'DECaLS DR2 CCDs',
                                     {'url':'{{ ccdsurl|safe }}',
                                      'minZoom': 8,
                                      'labelMinZoom': 100,
+                                     'urlTerm': 'ccds',
                                     });
 
 var expOverlay = new CircleOverlay('decals-dr2-exps', 'DECaLS DR2 Exposures',
                                     {'url':'{{ expsurl|safe }}',
                                      'labelMinZoom': 100,
+                                     'urlTerm': 'exps',
                                     });
 
 var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
@@ -1434,6 +1445,7 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
                                        'minZoom': 8,
                                        'labelMinZoom': 100,
                                        'doHighlight': false,
+                                       'urlTerm': 'bricks',
                                       });
 
 var plateOverlay = new CircleOverlay('sdss-plates', 'SDSS Spectro Plates',
@@ -1444,19 +1456,22 @@ var plateOverlay = new CircleOverlay('sdss-plates', 'SDSS Spectro Plates',
 var decalscat = new DecalsCatalogLayer(tileWatcher,
                                        'decals-dr2', 'DECaLS DR2 Catalog',
                                        {'url': '{{caturl|safe}}', 
-                                        'minZoom': 12,});
+                                        'minZoom': 12,
+                                        'urlTerm': 'sources'});
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
 var gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
                              {'url_name': 'ngc',
                               'minZoom': 5,
-                              'labelsMinZoom': 7});
+                              'labelsMinZoom': 7,
+                             'urlTerm': 'ngc',});
 
 var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
                                   {'radius': 300,
                                    'labelsMinZoom': 11,
-                                   'minZoom': 9,});
+                                   'minZoom': 9,
+                                   'urlTerm': 'spectra'});
 
 var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
                                        {'url': '{{sqlurl|safe}}',
@@ -1493,8 +1508,8 @@ layerControl.addTo(map);
 // We iterate through the <input> tags, getting the text from the next sibling.
 function getOverlayCheckbox(name) {
     var ov = false;
-    var overlays = $('.leaflet-control-layers-overlays .leaflet-control-layers-selector');
-    overlays.each(function(i) {
+    var ovs = $('.leaflet-control-layers-overlays .leaflet-control-layers-selector');
+    ovs.each(function(i) {
         var o = $(this);
         var text = $.trim(o.next().text());
         //console.log('Looking for overlay "' + name + '", found "' + text + '"');
@@ -1523,36 +1538,28 @@ var lastLatLng = map.getCenter();
 
 map.addLayer(sqlOverlay.getGroup());
 
-{% if showBricks %}
-//map.addLayer(bricksGroup);
-//overlayAdded({name:'Bricks'});
-{% endif %}
+// Function to search the current page URL's GET query portion URL?x=y
+var QueryItems = function() {
+    var terms = window.location.search.substr(1).split('&');
+    var items = {};
+    for (var i = 0; i < terms.length; ++i) {
+        var words = terms[i].split('=');
+        if (words.length == 1) {
+            items[words[0]] = true;
+        } else if (words.length == 2) {
+            items[words[0]] = decodeURIComponent(words[1].replace(/\+/g, ' '));
+        }
+    }
+    return items;
+};
 
-{% if showCcds %}
-// FIXME
-//map.addLayer(ccdsGroup);
-//overlayAdded({name:'CCDs'});
-{% endif %}
+var qstr = QueryItems();
 
-{% if showExps %}
-//console.log('addLayer(exps)');
-//map.addLayer(expsGroup);
-//console.log('done addLayer(exps)');
-//overlayAdded({name:'Exposures'});
-{% endif %}
-
-{% if showSources %}
-// FIXME
-//map.addLayer(sourcesGroup);
-{% endif %}
-
-{% if showNgc %}
-// FIXME
-{% endif %}
-
-{% if showSpec %}
-//map.addLayer(specGroup);
-{% endif %}
+for (var i=0,len=overlays.length; i<len; i++) {
+    if (overlays[i]._url_term in qstr) {
+        map.addLayer(overlays[i].getGroup());
+    }
+}
 
 {% comment %}
 var constellation_shortnames =  [ "Aql","And","Scl","Ara","Lib","Cet","Ari","Sct","Pyx","Boo","Cae","Cha","Cnc","Cap","Car","Cas","Cen","Cep","Com","Cvn","Aur","Col","Cir","Crt","CrA","CrB","Crv","Cru","Cyg","Del","Dor","Dra","Nor","Eri","Sge","For","Gem","Cam","CMa","UMa","Gru","Her","Hor","Hya","Hyi","Ind","Lac","Mon","Lep","Leo","Lup","Lyn","Lyr","Ant","Mic","Mus","Oct","Aps","Oph","Ori","Pav","Peg","Pic","Per","Equ","CMi","LMi","Vul","UMi","Phe","Psc","PsA","Vol","Pup","Ret","Sgr","Sco","Ser","Sex","Men","Tau","Tel","Tuc","Tri","Tra","Aqr","Vir","Vel" ]
