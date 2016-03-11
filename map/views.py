@@ -288,8 +288,8 @@ def index(req):
 
     ccdsurl = settings.ROOT_URL + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
     bricksurl = settings.ROOT_URL + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
-    expsurl = settings.ROOT_URL + '/exps/?north={north}&east={east}&south={south}&west={west}&id={id}'
-    platesurl = settings.ROOT_URL + '/sdss-plates/?north={north}&east={east}&south={south}&west={west}'
+    expsurl = settings.ROOT_URL + '/exps/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    platesurl = settings.ROOT_URL + '/sdss-plates/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
     sqlurl = settings.ROOT_URL + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
     namequeryurl = settings.ROOT_URL + '/namequery/?obj={obj}'
 
@@ -730,7 +730,9 @@ def layer_name_map(name):
     return {'decals-dr2-model': 'decals-dr2',
             'decals-dr2-resid': 'decals-dr2',
             'decals-dr2-ccds': 'decals-dr2',
-            'decals-bricks': 'decals-dr2'}.get(name, name)
+            'decals-dr2-exps': 'decals-dr2',
+            'decals-bricks': 'decals-dr2',
+            }.get(name, name)
 
 B_dr2 = None
 def _get_dr2_bricks():
@@ -1438,10 +1440,10 @@ def exposure_list(req):
 
     global exposure_cache
 
-    north = float(req.GET['north'])
-    south = float(req.GET['south'])
-    east  = float(req.GET['east'])
-    west  = float(req.GET['west'])
+    north = float(req.GET['dechi'])
+    south = float(req.GET['declo'])
+    east  = float(req.GET['ralo'])
+    west  = float(req.GET['rahi'])
     name = req.GET.get('id', None)
     name = layer_name_map(name)
 
@@ -1461,14 +1463,12 @@ def exposure_list(req):
 
     exps = []
     for t in T:
-        #if t.filter != 'z':
-        #    continue
         cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
         exps.append(dict(name='%i %s' % (t.expnum, t.filter),
                          ra=t.ra, dec=t.dec, radius=radius,
                          color=cmap[t.filter]))
 
-    return HttpResponse(json.dumps(dict(exposures=exps)),
+    return HttpResponse(json.dumps(dict(objs=exps)),
                         content_type='application/json')
 
 plate_cache = {}
@@ -1481,11 +1481,10 @@ def sdss_plate_list(req):
 
     global plate_cache
 
-    north = float(req.GET['north'])
-    south = float(req.GET['south'])
-    east  = float(req.GET['east'])
-    west  = float(req.GET['west'])
-    #name = req.GET.get('id', None)
+    north = float(req.GET['dechi'])
+    south = float(req.GET['declo'])
+    east  = float(req.GET['ralo'])
+    west  = float(req.GET['rahi'])
     name = 'sdss'
 
     if not name in plate_cache:
@@ -1513,7 +1512,7 @@ def sdss_plate_list(req):
                            ra=t.ra, dec=t.dec, radius=radius,
                            color='#ffffff'))
 
-    return HttpResponse(json.dumps(dict(plates=plates)),
+    return HttpResponse(json.dumps(dict(objs=plates)),
                         content_type='application/json')
 
     

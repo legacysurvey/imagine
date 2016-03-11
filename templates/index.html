@@ -763,7 +763,8 @@ function onMapClick(e) {
     var bricks = brickOverlay.under(e.latlng);
     var ccds = ccdOverlay.under(e.latlng);
 
-    var exps = expsUnderLatlng(e.latlng);
+    //var exps = expsUnderLatlng(e.latlng);
+    var exps = expOverlay.under(e.latlng);
 
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
     var qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
@@ -847,8 +848,8 @@ function inbrickccdUpdate(props) {
 
     var bricks = brickOverlay.under(props.latlng);
     var ccds = ccdOverlay.under(props.latlng);
+    var exps = expOverlay.under(props.latlng);
 
-    var exps = expsUnderLatlng(props.latlng);
     var txt = '';
     if (bricks.length || ccds.length || exps.length) {
         if (bricks.length) {
@@ -881,7 +882,7 @@ function inbrickccdUpdate(props) {
             for (var i=0; i<exps.length; i++) {
                 var expname = exps[i];
                 var aparams = '';
-                if (expname == highlightedExpName) {
+                if (expname == expOverlay._highlighted) {
                     aparams = ' class="highexp"';
                 }
                 var exptext = exp_detail(expname.replace(' ','-'), aparams);
@@ -897,6 +898,7 @@ function inbrickccdUpdate(props) {
 // "Bricks", "CCDs", etc button checked
 function overlayAdded(e) {
     //console.log('OverlayAdded: ' + e.name);
+    /*
     if (e.name == 'Exposures') {
         showExps = true;
         mapBoundsChanged();
@@ -911,7 +913,9 @@ function overlayAdded(e) {
             inbrickccdAdded = true;
         }
     }
-    if (ccdOverlay._show || brickOverlay._show) {
+    */
+    if (ccdOverlay._show || brickOverlay._show ||
+        expOverlay._show) {
         if (!inbrickccdAdded) {
             inbrickccd.addTo(map);
             inbrickccdAdded = true;
@@ -922,6 +926,7 @@ function overlayAdded(e) {
 // "Sources", "Bricks", "CCDs" button unchecked
 function overlayRemoved(e) {
     //console.log('OverlayRemoved: ' + e.name);
+    /*
     if (e.name == 'Exposures') {
         showExps = false;
         for (var i in currentExps) {
@@ -932,9 +937,9 @@ function overlayRemoved(e) {
             delete expFills[name];
         }
     }
-
+    */
     if (!(ccdOverlay._show || brickOverlay._show ||
-          showExps || showPlates)) {
+          expOverlay._show)) {
         if (inbrickccdAdded) {
             map.removeControl(inbrickccd);
             inbrickccdAdded = false;
@@ -942,6 +947,7 @@ function overlayRemoved(e) {
     }
 }
 
+/*
 function removeExp(name) {
     var exp = currentExps[name];
     expsGroup.removeLayer(exp);
@@ -1018,7 +1024,9 @@ function platesLoaded(result) {
         currentPlates[name] = c;
     }
 }
+*/
 
+/*
 function mapBoundsChanged() {
     var latlng = map.getCenter();
     var zoom = map.getZoom();
@@ -1051,11 +1059,13 @@ function mapBoundsChanged() {
         $.getJSON(platesurl, platesLoaded);
     }
 }
-
+*/
+/*
 function onMapMoveEnd(e) {
     //console.log('Map move end.');
     mapBoundsChanged();
 }
+*/
 
 // List of bricks / CCDs under the mouse position
 var inbrickccd = L.control();
@@ -1069,6 +1079,7 @@ var inbrickccdAdded = false;
 
 //var conGroup = L.layerGroup([]);
 
+/*
 var showExps = false;
 var expsGroup = L.layerGroup([]);
 var currentExps = {};
@@ -1080,6 +1091,7 @@ var platesGroup = L.layerGroup([]);
 var currentPlates = {};
 var plateFills = {};
 var highlightedPlateName = '';
+*/
 
 var map = L.map('map');
 var popup = L.popup();
@@ -1403,10 +1415,6 @@ function onHashChange() {
 
 L.DomEvent.addListener(window, 'hashchange', onHashChange);
 
-var overlayMaps = {
-    "Exposures": expsGroup,
-};
-
 var PolygonOverlay = CatalogOverlay.extend({
 
     initialize: function(name, pretty, kwargs) {
@@ -1491,7 +1499,7 @@ var PolygonOverlay = CatalogOverlay.extend({
     mouseOut: function(e) {
         var ccd = e.target;
         ccd.setStyle({color: ccd.orig_color});
-        this._highlighted = ''; //ccd.name;
+        this._highlighted = null;
         if (ccd.name in this._filled) {
             this.unhighlight(ccd.name);
         }
@@ -1499,34 +1507,99 @@ var PolygonOverlay = CatalogOverlay.extend({
     },
 
     under: function(latlng) {
-        var ccds = [];
-        if (this._show) {
-            var geos = [];
-            for (var name in this._current) {
-                var ccd = this._current[name];
-                var gj = ccd.toGeoJSON();
-                gj.properties['name'] = name;
-                geos.push(gj);
-            }
-            var geo = {type:'FeatureCollection', features:geos};
-            var leafgeo = L.geoJson(geo);
-            var inside = leafletPip.pointInLayer(latlng, leafgeo);
-            for (var i=0; i<inside.length; i++) {
-                ccds.push(inside[i].feature.properties.name);
-            }
-            if (this._doHighlight) {
-                if (this._highlighted != '') {
-                    if (ccds.indexOf(this._highlighted) == -1) {
-                        ccds.push(this._highlighted);
-                    }
+        var objs = [];
+        if (!this._show) {
+            return [];
+        }
+        var geos = [];
+        for (var name in this._current) {
+            var obj = this._current[name];
+            var gj = obj.toGeoJSON();
+            gj.properties['name'] = name;
+            geos.push(gj);
+        }
+        var geo = {type:'FeatureCollection', features:geos};
+        var leafgeo = L.geoJson(geo);
+        var inside = leafletPip.pointInLayer(latlng, leafgeo);
+        for (var i=0; i<inside.length; i++) {
+            objs.push(inside[i].feature.properties.name);
+        }
+        if (this._doHighlight) {
+            if (this._highlighted != null) {
+                if (objs.indexOf(this._highlighted) == -1) {
+                    objs.push(this._highlighted);
                 }
             }
-            //ccds.sort();
         }
-        return ccds;
+        //objs.sort();
+        return objs;
     },
 
 });
+
+var CircleOverlay = PolygonOverlay.extend({
+    getLayer: function(result) {
+        var objs = result['objs'];
+        console.log('Received ' + objs.length + ' objs');
+        var objList = [];
+        var clong = map.getCenter().lng;
+        for (var i=0, len=objs.length; i<len; i++) {
+            var name = objs[i].name;
+	        var meters = 30 * 3600 * objs[i].radius;
+            var ra = objs[i].ra;
+            var dec = objs[i].dec;
+            var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
+            var color = objs[i].color || this._color;
+            var c = L.circle(latlng, meters, {fill:false, color:color, weight:5 });
+            c.orig_color = color;
+            c.name = name;
+            if (this._doHighlight) {
+                c.on('mouseover', this.mouseOver.bind(this));
+                c.on('mouseout',  this.mouseOut.bind(this));
+            }
+            objList.push(c);
+            this._current[name] = c;
+        }
+        return L.layerGroup(objList);
+    },
+
+    highlight: function(obj) {
+        var cf = L.circle(obj.getLatLng(), obj.getRadius(),
+                           {fill:true, fillOpacity:0.05, color:'yellow',
+                            weight:1});
+        this._filled[obj.name] = cf;
+        cf.addTo(this._group);
+        cf.bringToBack();
+    },
+
+    under: function(latlng) {
+        if (!this._show) {
+            return [];
+        }
+        var objs = [];
+        var geos = [];
+        for (var name in this._current) {
+            var obj = this._current[name];
+	        if (latlng.distanceTo(obj.getLatLng()) < obj.getRadius()) {
+		        objs.push(obj.name);
+	        }
+        }
+        if (this._doHighlight) {
+            if (this._highlighted != null) {
+                if (objs.indexOf(this._highlighted) == -1) {
+                    objs.push(this._highlighted);
+                }
+            }
+        }
+        return objs;
+    },
+
+});
+
+var overlayMaps = {};
+//"Exposures": expsGroup,
+//};
+
 
 var ccdOverlay = new PolygonOverlay('decals-dr2-ccds', 'DECaLS DR2 CCDs',
                                     {'url':'{{ ccdsurl|safe }}',
@@ -1535,6 +1608,13 @@ var ccdOverlay = new PolygonOverlay('decals-dr2-ccds', 'DECaLS DR2 CCDs',
                                     });
 overlayMaps[ccdOverlay._pretty] = ccdOverlay.getGroup();
 
+var expOverlay = new CircleOverlay('decals-dr2-exps', 'DECaLS DR2 Exposures',
+                                    {'url':'{{ expsurl|safe }}',
+                                     'labelMinZoom': 100,
+                                    });
+overlayMaps[expOverlay._pretty] = expOverlay.getGroup();
+
+
 var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
                                       {'url':'{{ bricksurl|safe }}',
                                        'minZoom': 8,
@@ -1542,6 +1622,12 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
                                        'doHighlight': false,
                                       });
 overlayMaps[brickOverlay._pretty] = brickOverlay.getGroup();
+
+var plateOverlay = new CircleOverlay('sdss-plates', 'SDSS Spectro Plates',
+                                    {'url':'{{ platesurl|safe }}',
+                                     'labelMinZoom': 100,
+                                    });
+overlayMaps[plateOverlay._pretty] = plateOverlay.getGroup();
 
 var tileWatcher = new TileWatcher();
 
@@ -1571,7 +1657,7 @@ var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
                                    'minZoom': 9,});
 overlayMaps[spec._pretty] = spec.getGroup();
 
-overlayMaps["SDSS Spectro Plates"] = platesGroup;
+//overlayMaps["SDSS Spectro Plates"] = platesGroup;
 
 var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
                                        {'url': '{{sqlurl|safe}}',
@@ -1646,7 +1732,7 @@ map.on('mousemove', onMouseMove);
 map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
 map.on('click', onMapClick);
-map.on('moveend', onMapMoveEnd);
+//map.on('moveend', onMapMoveEnd);
 map.on('zoomstart', onMapZoomStart);
 map.on('zoomend', onMapZoomEnd);
 
@@ -1668,9 +1754,9 @@ map.addLayer(sqlOverlay.getGroup());
 
 {% if showExps %}
 //console.log('addLayer(exps)');
-map.addLayer(expsGroup);
+//map.addLayer(expsGroup);
 //console.log('done addLayer(exps)');
-overlayAdded({name:'Exposures'});
+//overlayAdded({name:'Exposures'});
 {% endif %}
 
 {% if showSources %}
