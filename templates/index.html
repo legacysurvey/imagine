@@ -230,7 +230,7 @@ var CatalogOverlay = L.Class.extend({
     },
 
     overlayAdded: function(e) {
-        //console.log(this._name + ': overlayAdded');
+        //console.log(this._name + ': overlayAdded, zoom ' + map.getZoom() + ', my min ' + this._minZoom);
         if (e.name == this._pretty) {
             this._show = true;
 	        if (map.getZoom() >= this._minZoom) {
@@ -518,7 +518,7 @@ var TiledOverlay = CatalogOverlay.extend({
             return;
         }
         // load all visible tiles
-        for (var key in this._visibleTiles) {
+        for (var key in this._tw._visibleTiles) {
             // parse into zoom:x:y
             var words = key.split(':');
             var zoom = parseInt(words[0]);
