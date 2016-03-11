@@ -759,8 +759,10 @@ function exp_detail(name, aparams) {
 function onMapClick(e) {
     var ra  = long2ra(e.latlng.lng);
     var dec = lat2dec(e.latlng.lat);
-    var bricks = bricksUnderLatlng(e.latlng);
-    var ccds = ccdsUnderLatlng(e.latlng);
+
+    var bricks = brickOverlay.under(e.latlng);
+    var ccds = ccdOverlay.under(e.latlng);
+
     var exps = expsUnderLatlng(e.latlng);
 
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
@@ -820,54 +822,6 @@ function onMouseMove(e) {
     }
 }
 
-function bricksUnderLatlng(latlng) {
-    // Returns a list of the brick names under a given lat,long
-    var bricks = [];
-    if (showBricks) {
-        var geos = [];
-        for (var name in currentBricks) {
-            var brick = currentBricks[name];
-            var gj = brick.toGeoJSON();
-            gj.properties['name'] = name;
-            geos.push(gj);
-        }
-        var geo = {type:'FeatureCollection', features:geos};
-        var leafgeo = L.geoJson(geo);
-        var inside = leafletPip.pointInLayer(latlng, leafgeo);
-        for (var i=0; i<inside.length; i++) {
-            bricks.push(inside[i].feature.properties.name);
-        }
-        bricks.sort();
-    }
-    return bricks;
-}
-
-function ccdsUnderLatlng(latlng) {
-    var ccds = [];
-    if (showCcds) {
-        var geos = [];
-        for (var name in currentCcds) {
-            var ccd = currentCcds[name];
-            var gj = ccd.toGeoJSON();
-            gj.properties['name'] = name;
-            geos.push(gj);
-        }
-        var geo = {type:'FeatureCollection', features:geos};
-        var leafgeo = L.geoJson(geo);
-        var inside = leafletPip.pointInLayer(latlng, leafgeo);
-        for (var i=0; i<inside.length; i++) {
-            ccds.push(inside[i].feature.properties.name);
-        }
-        if (highlightedCcdName != '') {
-            if (ccds.indexOf(highlightedCcdName) == -1) {
-                ccds.push(highlightedCcdName);
-            }
-        }
-        //ccds.sort();
-    }
-    return ccds;
-}
-
 function expsUnderLatlng(latlng) {
     var exps = [];
     if (showExps) {
@@ -890,9 +844,8 @@ function inbrickccdUpdate(props) {
     if (props == undefined) {
         return;
     }
-    var bricks = bricksUnderLatlng(props.latlng);
 
-    //var ccds = ccdsUnderLatlng(props.latlng);
+    var bricks = brickOverlay.under(props.latlng);
     var ccds = ccdOverlay.under(props.latlng);
 
     var exps = expsUnderLatlng(props.latlng);
@@ -915,13 +868,10 @@ function inbrickccdUpdate(props) {
             for (var i=0; i<ccds.length; i++) {
                 var ccdname = ccds[i];
                 var aparams = '';
-                if (ccdname == highlightedCcdName) {
+                if (ccdname == ccdOverlay._highlighted) {
                     aparams = ' class="highccd"';
                 }
-                //ccdtext = ccdname;
                 var ccdtext = ccd_detail(ccdname, aparams);
-                //ccdtext = '<div class="highccd">' + ccdtext + '</div>';
-                //}
                 txt = txt + '<li>'+ccdtext+'</li>';
             }
             txt = txt + '</ul>';
@@ -947,12 +897,6 @@ function inbrickccdUpdate(props) {
 // "Bricks", "CCDs", etc button checked
 function overlayAdded(e) {
     //console.log('OverlayAdded: ' + e.name);
-    if (e.name == 'Bricks') {
-        showBricks = true;
-        mapBoundsChanged();
-        // set initial 'in brick'
-        //inbrickccdUpdate(e);
-    }
     if (e.name == 'Exposures') {
         showExps = true;
         mapBoundsChanged();
@@ -961,47 +905,23 @@ function overlayAdded(e) {
         showPlates = true;
         mapBoundsChanged();
     }
-    if (e.name == 'CCDs') {
-        showCcds = true;
-        mapBoundsChanged();
-    }
-    if (showBricks || showCcds || showExps || showPlates) {
+    if (showExps || showPlates) {
         if (!inbrickccdAdded) {
             inbrickccd.addTo(map);
             inbrickccdAdded = true;
         }
     }
-
-
-    if (ccdOverlay._show) {
+    if (ccdOverlay._show || brickOverlay._show) {
         if (!inbrickccdAdded) {
             inbrickccd.addTo(map);
             inbrickccdAdded = true;
         }
     }
-
-
 }
 
 // "Sources", "Bricks", "CCDs" button unchecked
 function overlayRemoved(e) {
     //console.log('OverlayRemoved: ' + e.name);
-    if (e.name == 'Bricks') {
-        showBricks = false;
-        for (var i in currentBricks) {
-            removeBrick(i);
-        }
-    }
-    if (e.name == 'CCDs') {
-        showCcds = false;
-        for (var i in currentCcds) {
-            removeCcd(i);
-        }
-        for (var name in ccdFills) {
-            map.removeLayer(ccdFills[name]);
-            delete ccdFills[name];
-        }
-    }
     if (e.name == 'Exposures') {
         showExps = false;
         for (var i in currentExps) {
@@ -1013,24 +933,13 @@ function overlayRemoved(e) {
         }
     }
 
-    if (!(showBricks || showCcds || showExps)) {
+    if (!(ccdOverlay._show || brickOverlay._show ||
+          showExps || showPlates)) {
         if (inbrickccdAdded) {
             map.removeControl(inbrickccd);
             inbrickccdAdded = false;
         }
     }
-}
-
-function removeBrick(name) {
-    var brick = currentBricks[name];
-    bricksGroup.removeLayer(brick);
-    delete currentBricks[name];
-}
-
-function removeCcd(name) {
-    var ccd = currentCcds[name];
-    ccdsGroup.removeLayer(ccd);
-    delete currentCcds[name];
 }
 
 function removeExp(name) {
@@ -1044,109 +953,6 @@ function removePlate(name) {
     expsGroup.removeLayer(exp);
     delete currentPlates[name];
 }
-
-function bricksLoaded(result) {
-    if (!showBricks) {
-        return;
-    }
-    var bricks = result['bricks'];
-    var clong = map.getCenter().lng;
-    for (var i=0, len=bricks.length; i<len; i++) {
-        //console.log('brick ' + i + ': ' + bricks[i]);
-        var name = bricks[i].name;
-        if (name in currentBricks) {
-            //console.log('Brick ' + name + ' already exists');
-            continue;
-        }
-        var poly = bricks[i].poly;
-        for (var j=0, npoly=poly.length; j<npoly; j++) {
-            while (poly[j][1] < clong-180) { poly[j][1] += 360; }
-            while (poly[j][1] > clong+180) { poly[j][1] -= 360; }
-        }
-        var b = L.polygon(poly, {fill:false, weight:4, color:'blue' });
-        b.name = name;
-        //console.log('Adding brick ' + name + ': polygon ' + poly);
-        bricksGroup.addLayer(b);
-        currentBricks[name] = b;
-    }
-}
-
-/*
-function unhighlightCcd(name) {
-    map.removeLayer(ccdFills[name]);
-    delete ccdFills[name];
-}
-
-function highlightCcd(ccd) {
-    var cf = L.polygon(ccd.getLatLngs(),
-                       {fill:true, fillOpacity:0.05, color:'yellow', weight:1});
-    ccdFills[ccd.name] = cf;
-    cf.addTo(map);
-    cf.bringToBack();
-}
-
-function ccdMouseOver(e) {
-    e.target.setStyle({color: 'yellow'});
-    var ccd = e.target;
-    highlightedCcdName = ccd.name;
-    console.log('ccdMouseOver: ' + highlightedCcdName);
-    // remove other CCDs from ccdFills
-    for (var i=0; i<ccdFills.length; i++) {
-        console.log('ccdMouseOver: ccd ' + ccd.name + '; ccdFills ' + ccdFills[i]);
-        if (ccdFills[i] != ccd.name) {
-            unhighlightCcd(ccdFills[i]);
-        }
-    }
-    if (!(ccd.name in ccdFills)) {
-        highlightCcd(ccd);
-    }
-    inbrickccdUpdate(e);
-}
-
-function ccdMouseOut(e) {
-    e.target.setStyle({color: e.target.orig_color});
-    var ccd = e.target;
-    highlightedCcdName = '';
-    if (ccd.name in ccdFills) {
-        unhighlightCcd(ccd.name);
-    }
-    inbrickccdUpdate(e);
-}
-
-function ccdsLoaded(result) {
-    if (!showCcds) {
-        return;
-    }
-    var ccds = result['ccds'];
-    console.log('Received ' + ccds.length + ' CCDs');
-    var clong = map.getCenter().lng;
-    for (var i=0, len=ccds.length; i<len; i++) {
-        // console.log('ccd ' + i + ': ' + ccds[i]);
-        var name = ccds[i].name;
-        if (name in currentCcds) {
-            //console.log('Ccd ' + name + ' already exists');
-            continue;
-        }
-        var poly = ccds[i].poly;
-        for (var j=0, plen=poly.length; j<plen; j++) {
-            // lng = poly[j][1];
-            // wlng = wrap_long(lng, clong);
-            // poly[j][1] = wlng;
-            // console.log('ccd ' + i + ' poly ' + j + ' lng ' + lng + ' -> ' + wlng);
-            poly[j][1] = wrap_long(poly[j][1], clong);
-        }
-        var color = ccds[i].color;
-        var c = L.polygon(poly, {fill:false, color:color, weight:4 });
-        c.orig_color = color;
-        c.name = name;
-        c.on('mouseover', ccdMouseOver);
-        c.on('mouseout', ccdMouseOut);
-        // console.log('Adding ccd ' + name + ': polygon ' + poly);
-        ccdsGroup.addLayer(c);
-        currentCcds[name] = c;
-    }
-}
-*/
 
 function unhighlightExp(name) {
     map.removeLayer(expFills[name]);
@@ -1213,41 +1019,12 @@ function platesLoaded(result) {
     }
 }
 
-
 function mapBoundsChanged() {
     var latlng = map.getCenter();
     var zoom = map.getZoom();
     var ra  = long2ra(latlng.lng);
     var dec = lat2dec(latlng.lat);
 
-    if (showBricks) {
-        var bounds = map.getBounds();
-        var bricksurl = L.Util.template('{{ bricksurl|safe }}', L.extend({
-            s: 'a',
-            z: zoom,
-            west:  long2ra(bounds.getWest()).toFixed(4),
-            east:  long2ra(bounds.getEast()).toFixed(4),
-            north: lat2dec(bounds.getNorth()).toFixed(4),
-            south: lat2dec(bounds.getSouth()).toFixed(4),
-            id: idname,
-        }));
-        $.getJSON(bricksurl, bricksLoaded);
-    }
-    /*
-    if (showCcds) {
-        var bounds = map.getBounds();
-        var ccdsurl = L.Util.template('{{ ccdsurl|safe }}', L.extend({
-            s: 'a',
-            z: zoom,
-            west:  long2ra(bounds.getWest()).toFixed(4),
-            east:  long2ra(bounds.getEast()).toFixed(4),
-            north: lat2dec(bounds.getNorth()).toFixed(4),
-            south: lat2dec(bounds.getSouth()).toFixed(4),
-            id: idname,
-        }));
-        $.getJSON(ccdsurl, ccdsLoaded);
-    }
-    */
     if (showExps) {
         var bounds = map.getBounds();
         var expsurl = L.Util.template('{{ expsurl|safe }}', L.extend({
@@ -1273,7 +1050,6 @@ function mapBoundsChanged() {
         }));
         $.getJSON(platesurl, platesLoaded);
     }
-
 }
 
 function onMapMoveEnd(e) {
@@ -1281,6 +1057,7 @@ function onMapMoveEnd(e) {
     mapBoundsChanged();
 }
 
+// List of bricks / CCDs under the mouse position
 var inbrickccd = L.control();
 inbrickccd.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'inbrickccd');
@@ -1291,16 +1068,6 @@ inbrickccd.update = inbrickccdUpdate;
 var inbrickccdAdded = false;
 
 //var conGroup = L.layerGroup([]);
-
-var showBricks = false;
-var bricksGroup = L.layerGroup([]);
-var currentBricks = {};
-
-var showCcds = false;
-var ccdsGroup = L.layerGroup([]);
-var currentCcds = {};
-var ccdFills = {};
-var highlightedCcdName = '';
 
 var showExps = false;
 var expsGroup = L.layerGroup([]);
@@ -1637,8 +1404,6 @@ function onHashChange() {
 L.DomEvent.addListener(window, 'hashchange', onHashChange);
 
 var overlayMaps = {
-    "Bricks": bricksGroup,
-    "CCDs": ccdsGroup,
     "Exposures": expsGroup,
 };
 
@@ -1647,48 +1412,46 @@ var PolygonOverlay = CatalogOverlay.extend({
     initialize: function(name, pretty, kwargs) {
         CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
         //self._currentItems = {};
+        if ('doHighlight' in kwargs) {
+            this._doHighlight = kwargs['doHighlight'];
+        } else {
+            this._doHighlight = true;
+        }
         this._highlighted = null;
         this._filled = {};
         this._current = {};
+        this._color = 'blue';
+    },
+
+    loaded: function(counter, result) {
+        // reset current polygon list.
+        this._current = {};
+        CatalogOverlay.prototype.loaded.call(this, counter, result);
     },
 
     get_label: function(json, i) {
         return '';
     },
 
-});
-
-var CcdOverlay = PolygonOverlay.extend({
-
     getLayer: function(result) {
-        var ccds = result['ccds'];
+        var ccds = result['polys'];
         console.log('Received ' + ccds.length + ' CCDs');
-        //var circleList = new Array(ccds.length);
         var circleList = [];
         var clong = map.getCenter().lng;
-        //var ngood = 0;
         for (var i=0, len=ccds.length; i<len; i++) {
             var name = ccds[i].name;
-            /*
-              if (name in this._current) {
-              //console.log('Ccd ' + name + ' already exists');
-              continue;
-              }
-              */
             var poly = ccds[i].poly;
             for (var j=0, plen=poly.length; j<plen; j++) {
                 poly[j][1] = wrap_long(poly[j][1], clong);
             }
-            var color = ccds[i].color;
+            var color = ccds[i].color || this._color;
             var c = L.polygon(poly, {fill:false, color:color, weight:4 });
             c.orig_color = color;
             c.name = name;
-            c.on('mouseover', this.mouseOver.bind(this));
-            c.on('mouseout',  this.mouseOut.bind(this));
-            // console.log('Adding ccd ' + name + ': polygon ' + poly);
-            //this._items[name] = c;
-            //circleList[ngood] = c;
-            //ngood += 1
+            if (this._doHighlight) {
+                c.on('mouseover', this.mouseOver.bind(this));
+                c.on('mouseout',  this.mouseOut.bind(this));
+            }
             circleList.push(c);
             this._current[name] = c;
         }
@@ -1699,14 +1462,13 @@ var CcdOverlay = PolygonOverlay.extend({
         e.target.setStyle({color: 'yellow'});
         var ccd = e.target;
         this._highlighted = ccd.name;
-        //console.log('ccdMouseOver: ' + highlightedCcdName);
         // remove other CCDs from ccdFills
         for (var i=0, len=this._filled.length; i<len; i++) {
             if (this._filled[i] != ccd.name) {
-                unhighlightCcd(ccdFills[i]);
+                this.unhighlight(this._filled[i]);
             }
         }
-        if (!(ccd.name in ccdFills)) {
+        if (!(ccd.name in this._filled)) {
             this.highlight(ccd);
         }
         inbrickccdUpdate(e);
@@ -1729,7 +1491,7 @@ var CcdOverlay = PolygonOverlay.extend({
     mouseOut: function(e) {
         var ccd = e.target;
         ccd.setStyle({color: ccd.orig_color});
-        this._highlighted = ccd.name;
+        this._highlighted = ''; //ccd.name;
         if (ccd.name in this._filled) {
             this.unhighlight(ccd.name);
         }
@@ -1752,9 +1514,11 @@ var CcdOverlay = PolygonOverlay.extend({
             for (var i=0; i<inside.length; i++) {
                 ccds.push(inside[i].feature.properties.name);
             }
-            if (this._highlighted != '') {
-                if (ccds.indexOf(this._highlighted) == -1) {
-                    ccds.push(this._highlighted);
+            if (this._doHighlight) {
+                if (this._highlighted != '') {
+                    if (ccds.indexOf(this._highlighted) == -1) {
+                        ccds.push(this._highlighted);
+                    }
                 }
             }
             //ccds.sort();
@@ -1764,12 +1528,20 @@ var CcdOverlay = PolygonOverlay.extend({
 
 });
 
-var ccdOverlay = new CcdOverlay('decals-dr2', 'DECaLS DR2 CCDs',
-                                {'url':'{{ ccdsurl|safe }}',
-                                 'minZoom': 8,
-                                 'labelMinZoom': 100,
-                          });
+var ccdOverlay = new PolygonOverlay('decals-dr2-ccds', 'DECaLS DR2 CCDs',
+                                    {'url':'{{ ccdsurl|safe }}',
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                    });
 overlayMaps[ccdOverlay._pretty] = ccdOverlay.getGroup();
+
+var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
+                                      {'url':'{{ bricksurl|safe }}',
+                                       'minZoom': 8,
+                                       'labelMinZoom': 100,
+                                       'doHighlight': false,
+                                      });
+overlayMaps[brickOverlay._pretty] = brickOverlay.getGroup();
 
 var tileWatcher = new TileWatcher();
 
@@ -1854,10 +1626,6 @@ function setOverlayEnabled(name, enabled) {
     }
 }
 
-//
-var bricksMinZoom = 8;
-//var ccdsMinZoom = 8;
-
 // variable for tracking old & new zoom via zoomstart / zoomend
 var oldZoom = {{ zoom }};
 function onMapZoomStart(e) {
@@ -1867,55 +1635,11 @@ function onMapZoomStart(e) {
 }
 function onMapZoomEnd(e) {
     var zoom = map.getZoom();
-    //console.log('map zoom: ' + zoom + ', old zoom' + oldZoom + ' vs brick zoom', bricksMinZoom);
-
-    // Bricks
-
-    if ((oldZoom >= bricksMinZoom) && (zoom < bricksMinZoom)) {
-        // zoomed out past the boundary
-        //console.log('zoomed out past brick boundary');
-        if (showBricks) {
-            //console.log('removing brick outlines');
-            overlayRemoved({name:'Bricks'});
-        }
-        setOverlayEnabled('Bricks', false);
-    } else if ((oldZoom < bricksMinZoom) && (zoom >= bricksMinZoom)) {
-        // zoomed in past the boundary
-        //console.log('zoomed in past boundary');
-        setOverlayEnabled('Bricks', true);
-        if (isOverlayChecked('Bricks')) {
-            //console.log('Re-adding bricks');
-            overlayAdded({name:'Bricks'});
-        }
-    }
-
-    // CCDs
-    /*
-
-    if ((oldZoom >= ccdsMinZoom) && (zoom < ccdsMinZoom)) {
-        //console.log('zoomed out past CCD boundary');
-        if (showCcds) {
-            //console.log('removing CCD outlines');
-            overlayRemoved({name:'CCDs'});
-        }
-        setOverlayEnabled('CCDs', false);
-    } else if ((oldZoom < ccdsMinZoom) && (zoom >= ccdsMinZoom)) {
-        //console.log('zoomed in past boundary');
-        setOverlayEnabled('CCDs', true);
-        if (isOverlayChecked('CCDs')) {
-            //console.log('Re-adding ccds');
-            overlayAdded({name:'CCDs'});
-        }
-    }
-    */
-
     // update the RA,Dec,zoom info box
     if (typeof(lastLatLng) != 'undefined') {
         onMouseMove({ latlng: lastLatLng });
     }
-
     oldZoom = zoom;
-
 }
 
 map.on('mousemove', onMouseMove);
@@ -1932,8 +1656,8 @@ var lastLatLng = map.getCenter();
 map.addLayer(sqlOverlay.getGroup());
 
 {% if showBricks %}
-map.addLayer(bricksGroup);
-overlayAdded({name:'Bricks'});
+//map.addLayer(bricksGroup);
+//overlayAdded({name:'Bricks'});
 {% endif %}
 
 {% if showCcds %}

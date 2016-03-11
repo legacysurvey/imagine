@@ -287,7 +287,7 @@ def index(req):
     static_tile_url = settings.STATIC_TILE_URL
 
     ccdsurl = settings.ROOT_URL + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
-    bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}&id={id}'
+    bricksurl = settings.ROOT_URL + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
     expsurl = settings.ROOT_URL + '/exps/?north={north}&east={east}&south={south}&west={west}&id={id}'
     platesurl = settings.ROOT_URL + '/sdss-plates/?north={north}&east={east}&south={south}&west={west}'
     sqlurl = settings.ROOT_URL + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
@@ -728,7 +728,9 @@ def sdss_rgb(rimgs, bands, scales=None,
 
 def layer_name_map(name):
     return {'decals-dr2-model': 'decals-dr2',
-            'decals-dr2-resid': 'decals-dr2'}.get(name, name)
+            'decals-dr2-resid': 'decals-dr2',
+            'decals-dr2-ccds': 'decals-dr2',
+            'decals-bricks': 'decals-dr2'}.get(name, name)
 
 B_dr2 = None
 def _get_dr2_bricks():
@@ -1254,15 +1256,14 @@ def _get_decals(name=None):
 def brick_list(req):
     import json
 
-    north = float(req.GET['north'])
-    south = float(req.GET['south'])
-    east  = float(req.GET['east'])
-    west  = float(req.GET['west'])
+    north = float(req.GET['dechi'])
+    south = float(req.GET['declo'])
+    east  = float(req.GET['ralo'])
+    west  = float(req.GET['rahi'])
 
     if east < 0:
         east += 360.
         west += 360.
-
 
     B = None
 
@@ -1300,7 +1301,7 @@ def brick_list(req):
                                  [b.dec1-mdec, ra2long_B(b.ra2+mra)],
                                  ]))
 
-    return HttpResponse(json.dumps(dict(bricks=bricks)),
+    return HttpResponse(json.dumps(dict(polys=bricks)),
                         content_type='application/json')
 
 def _objects_touching_box(kdtree, north, south, east, west,
@@ -1387,7 +1388,9 @@ def ccd_list(req):
     west  = float(req.GET['rahi'])
 
     name = req.GET.get('id', None)
+    print('Name:', name)
     name = layer_name_map(name)
+    print('Mapped name:', name)
     
     CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
 
@@ -1413,7 +1416,7 @@ def ccd_list(req):
                          poly=zip(d, ra2long(r)),
                          color=ccmap[c.filter]))
 
-    return HttpResponse(json.dumps(dict(ccds=ccds)),
+    return HttpResponse(json.dumps(dict(polys=ccds)),
                         content_type='application/json')
 
 def get_exposure_table(name):
