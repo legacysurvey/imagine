@@ -177,6 +177,7 @@ var ZoomRangeTileLayer = MyTileLayer.extend({
 L.Circle.include(L.BaseMarkerMethods);
 
 var CatalogOverlay = L.Class.extend({
+	includes: L.Mixin.Events,
 
     initialize: function(name, pretty, kwargs) {
         //console.log('CatalogOverlay: ' + name + ',' + pretty);
@@ -327,6 +328,7 @@ var CatalogOverlay = L.Class.extend({
         // save this new layer
         this._layers[counter] = circles;
         //console.log(this._name + ': saved counter ' + counter);
+        this.fire('loaded', {'counter':counter, 'result':result});
     },
 
     removeAllLayers: function() {
@@ -542,6 +544,7 @@ var TiledOverlay = CatalogOverlay.extend({
         // save this new layer
         var key = ''+zoom+':'+tilex+':'+tiley;
         this._layers[key] = circles;
+        this.fire('loaded', {'zoom':zoom, 'x':tilex, 'y':tiley, 'result':result});
     },
 });
 
@@ -823,61 +826,59 @@ function onMouseMove(e) {
 	    //+ ', lat,long ' + e.latlng.lat.toFixed(3) + ',' + e.latlng.lng.toFixed(3);
     }
     if (inbrickccdAdded) {
-        e.ra = ra;
-        e.dec = dec;
         inbrickccdUpdate(e);
     }
 }
 
 function inbrickccdUpdate(props) {
     if (props == undefined) {
-        return;
+        props = { 'latlng': lastLatLng };
     }
-
     var bricks = brickOverlay.under(props.latlng);
     var ccds = ccdOverlay.under(props.latlng);
     var exps = expOverlay.under(props.latlng);
 
     var txt = '';
-    if (bricks.length || ccds.length || exps.length) {
-        if (bricks.length) {
-            txt = txt + 'In brick: ';
-            for (var i=0; i<bricks.length; i++) {
-                if (i) {
-                    txt = txt + ', ';
-                }
-                txt = txt + brick_detail(bricks[i]);
+    if (bricks.length) {
+        txt = txt + 'In brick: ';
+        for (var i=0; i<bricks.length; i++) {
+            if (i) {
+                txt = txt + ', ';
             }
-            if (ccds.length) {
-                txt = txt + '<br/>';
-            }
+            txt = txt + brick_detail(bricks[i]);
         }
-        if (ccds.length) {
-            txt = txt + 'In CCDs:<ul>';
-            for (var i=0; i<ccds.length; i++) {
-                var ccdname = ccds[i];
-                var aparams = '';
-                if (ccdname == ccdOverlay._highlighted) {
-                    aparams = ' class="highccd"';
-                }
-                var ccdtext = ccd_detail(ccdname, aparams);
-                txt = txt + '<li>'+ccdtext+'</li>';
-            }
-            txt = txt + '</ul>';
+    }
+    if (ccds.length) {
+        if (txt.length) {
+            txt += '<br/>';
         }
-        if (exps.length) {
-            txt = txt + 'In Exposures:<ul>';
-            for (var i=0; i<exps.length; i++) {
-                var expname = exps[i];
-                var aparams = '';
-                if (expname == expOverlay._highlighted) {
-                    aparams = ' class="highexp"';
-                }
-                var exptext = exp_detail(expname.replace(' ','-'), aparams);
-                txt = txt + '<li>'+exptext+'</li>';
+        txt = txt + 'In CCDs:<ul>';
+        for (var i=0; i<ccds.length; i++) {
+            var ccdname = ccds[i];
+            var aparams = '';
+            if (ccdname == ccdOverlay._highlighted) {
+                aparams = ' class="highccd"';
             }
-            txt = txt + '</ul>';
+            var ccdtext = ccd_detail(ccdname, aparams);
+            txt = txt + '<li>'+ccdtext+'</li>';
         }
+        txt = txt + '</ul>';
+    }
+    if (exps.length) {
+        if (txt.length) {
+            txt += '<br/>';
+        }
+        txt = txt + 'In Exposures:<ul>';
+        for (var i=0; i<exps.length; i++) {
+            var expname = exps[i];
+            var aparams = '';
+            if (expname == expOverlay._highlighted) {
+                aparams = ' class="highexp"';
+            }
+            var exptext = exp_detail(expname.replace(' ','-'), aparams);
+            txt = txt + '<li>'+exptext+'</li>';
+        }
+        txt = txt + '</ul>';
     }
     inbrickccd._div.innerHTML = txt;
 }
@@ -885,19 +886,17 @@ function inbrickccdUpdate(props) {
 
 // "Bricks", "CCDs", etc button checked
 function overlayAdded(e) {
-    if (ccdOverlay._show || brickOverlay._show ||
-        expOverlay._show) {
+    if (ccdOverlay._show || brickOverlay._show || expOverlay._show) {
         if (!inbrickccdAdded) {
-            inbrickccd.addTo(map);
             inbrickccdAdded = true;
+            inbrickccd.addTo(map);
         }
     }
 }
 
 // "Sources", "Bricks", "CCDs" button unchecked
 function overlayRemoved(e) {
-    if (!(ccdOverlay._show || brickOverlay._show ||
-          expOverlay._show)) {
+    if (!(ccdOverlay._show || brickOverlay._show || expOverlay._show)) {
         if (inbrickccdAdded) {
             map.removeControl(inbrickccd);
             inbrickccdAdded = false;
@@ -906,13 +905,11 @@ function overlayRemoved(e) {
 }
 
 // List of bricks / CCDs under the mouse position
-var inbrickccd = L.control();
+var inbrickccd = L.control({'position': 'bottomleft'});
 inbrickccd.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'inbrickccd');
-    this.update();
     return this._div;
 };
-inbrickccd.update = inbrickccdUpdate;
 var inbrickccdAdded = false;
 
 //var conGroup = L.layerGroup([]);
@@ -1448,6 +1445,10 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
                                        'urlTerm': 'bricks',
                                       });
 
+ccdOverlay.on('loaded', function() { inbrickccdUpdate(); });
+expOverlay.on('loaded', function() { inbrickccdUpdate(); });
+brickOverlay.on('loaded', function() { inbrickccdUpdate(); });
+
 var plateOverlay = new CircleOverlay('sdss-plates', 'SDSS Spectro Plates',
                                     {'url':'{{ platesurl|safe }}',
                                      'labelMinZoom': 100,
@@ -1527,12 +1528,6 @@ function onMapZoomEnd(e) {
     }
 }
 
-map.on('mousemove', onMouseMove);
-map.on('overlayadd', overlayAdded);
-map.on('overlayremove', overlayRemoved);
-map.on('click', onMapClick);
-map.on('zoomend', onMapZoomEnd);
-
 map.setView([ dec2lat({{ dec }}), ra2long_C({{ ra }}, 180.) ], {{ zoom }});
 var lastLatLng = map.getCenter();
 
@@ -1560,6 +1555,12 @@ for (var i=0,len=overlays.length; i<len; i++) {
         map.addLayer(overlays[i].getGroup());
     }
 }
+
+map.on('mousemove', onMouseMove);
+map.on('overlayadd', overlayAdded);
+map.on('overlayremove', overlayRemoved);
+map.on('click', onMapClick);
+map.on('zoomend', onMapZoomEnd);
 
 {% comment %}
 var constellation_shortnames =  [ "Aql","And","Scl","Ara","Lib","Cet","Ari","Sct","Pyx","Boo","Cae","Cha","Cnc","Cap","Car","Cas","Cen","Cep","Com","Cvn","Aur","Col","Cir","Crt","CrA","CrB","Crv","Cru","Cyg","Del","Dor","Dra","Nor","Eri","Sge","For","Gem","Cam","CMa","UMa","Gru","Her","Hor","Hya","Hyi","Ind","Lac","Mon","Lep","Leo","Lup","Lyn","Lyr","Ant","Mic","Mus","Oct","Aps","Oph","Ori","Pav","Peg","Pic","Per","Equ","CMi","LMi","Vul","UMi","Phe","Psc","PsA","Vol","Pup","Ret","Sgr","Sco","Ser","Sex","Men","Tau","Tel","Tuc","Tri","Tra","Aqr","Vir","Vel" ]
