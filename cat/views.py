@@ -1,3 +1,4 @@
+from __future__ import print_function
 if __name__ == '__main__':
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
@@ -54,9 +55,58 @@ def sql_box(req):
 
 
 
+
+def sql_where(req):
+    import json
+
+    q = req.GET.get('q', None)
+
+    sql = ('SELECT *, ' +
+           '-2.5*(log(greatest(1e-3,decam.gflux))-9) as g, ' +
+           '-2.5*(log(greatest(1e-3,decam.rflux))-9) as r, ' +
+           '-2.5*(log(greatest(1e-3,decam.zflux))-9) as z, ' +
+           '-2.5*(log(greatest(1e-3,wise.w1flux))-9) as w1, ' +
+           '-2.5*(log(greatest(1e-3,wise.w2flux))-9) as w2, ' +
+           '-2.5*(log(greatest(1e-3,wise.w3flux))-9) as w3, ' +
+           '-2.5*(log(greatest(1e-3,wise.w4flux))-9) as w4 ' +
+           'FROM candidate ' +
+           'LEFT OUTER JOIN decam ON (decam.cand_id = candidate.id) ' +
+           'LEFT OUTER JOIN wise  ON (wise .cand_id = candidate.id)')
+    #sql = 'SELECT * FROM (' + sql + ') AS t'
+
+    if q is not None and len(q):
+        sql += ' WHERE ' + q
+
+    print('SQL:', sql)
+        
+    cat = Candidate.objects.raw(sql)
+    cat = cat[:1000]
+    cat = cat.values()
+
+    print('Catalog:', cat)
+
+    #fields = Candidate._meta.get_fields()
+    #print('Candidate fields:', fields)
+
+    return HttpResponse(json.dumps(cat),
+                        content_type='application/json')
+
 if __name__ == '__main__':
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    django.setup()
+
+    class duck(object):
+        pass
+
+    req = duck()
+    req.META = dict()
+    req.GET = dict()
+
+    req.GET['q'] = 'ra between 0 and 0.03 and dec between 0 and 0.03'
+    r = sql_where(req)
+
+    sys.exit(0)
 
     north  = 19.0543
     west   = 139.3825
