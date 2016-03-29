@@ -142,6 +142,8 @@ DATABASES = {
     'cosmo': secrets.database.COSMO_DB,
 }
 
+DATABASE_ROUTERS = ['cat.models.Router']
+
 # Internationalization
 # https://docs.djangoproject.com/en/1.6/topics/i18n/
 
