@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 import secrets.django
 import secrets.database
 
+APPEND_SLASH = False
+
+ENABLE_CUTOUTS = True
+
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False
 
@@ -31,9 +35,6 @@ ENABLE_VCC = False
 ENABLE_WL = False
 
 ENABLE_DEPTH = False
-
-# DR2 images?
-ENABLE_DR2 = False
 
 # Tile cache is writable?
 SAVE_CACHE = False
@@ -59,6 +60,7 @@ DATA_DIR   = os.path.join(WEB_DIR, 'data')
 DUST_DIR   = os.path.join(DATA_DIR, 'dust')
 HALPHA_DIR = os.path.join(DATA_DIR, 'halpha')
 UNWISE_DIR = os.path.join(DATA_DIR, 'unwise-coadds')
+UNWISE_NEO1_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo1')
 SDSS_DIR   = os.path.join(DATA_DIR, 'sdss')
 
 #DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
@@ -116,6 +118,7 @@ INSTALLED_APPS = (
     #'django.contrib.sessions',
     #    'django.contrib.messages',
     'django.contrib.staticfiles',
+    'cat',
 )
 
 MIDDLEWARE_CLASSES = (

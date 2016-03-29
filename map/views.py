@@ -51,8 +51,9 @@ tileversions = {
     'decam-depth-z': [1],
 
     'unwise-w1w2': [1],
-    'unwise-w3w4': [1],
-    'unwise-w1234': [1],
+    'unwise-neo1': [1],
+    #'unwise-w3w4': [1],
+    #'unwise-w1234': [1],
 
     'cutouts': [1],
     }
@@ -164,27 +165,111 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
     res['Last-Modified'] = lastmod.strftime(timefmt)
     return res
 
+galaxycat = None
+
+def get_random_galaxy():
+    import numpy as np
+
+    global galaxycat
+    galfn = os.path.join(settings.DATA_DIR, 'galaxy-cats-in-dr2.fits')
+
+    if galaxycat is None and not os.path.exists(galfn):
+        import astrometry.catalogs
+        from astrometry.util.fits import fits_table, merge_tables
+        import fitsio
+        from astrometry.util.util import Tan
+
+        fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ngc2000.fits')
+        NGC = fits_table(fn)
+        print(len(NGC), 'NGC objects')
+        NGC.name = np.array(['NGC %i' % n for n in NGC.ngcnum])
+        NGC.delete_column('ngcnum')
+        
+        fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ic2000.fits')
+        IC = fits_table(fn)
+        print(len(IC), 'IC objects')
+        IC.name = np.array(['IC %i' % n for n in IC.icnum])
+        IC.delete_column('icnum')
+
+        fn = os.path.join(settings.DATA_DIR, 'ugc.fits')
+        UGC = fits_table(fn)
+        print(len(UGC), 'UGC objects')
+        UGC.name = np.array(['UGC %i' % n for n in UGC.ugcnum])
+        UGC.delete_column('ugcnum')
+
+        T = merge_tables([NGC, IC, UGC])
+        T.writeto(os.path.join(settings.DATA_DIR, 'galaxy-cats.fits'))
+        
+        keep = np.zeros(len(T), bool)
+
+        bricks = _get_dr2_bricks()
+        bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
+        print(len(bricks), 'bricks with grz')
+
+        for brick in bricks:
+            dirnm = os.path.join(settings.DATA_DIR, 'coadd', 'decals-dr2',
+                                 '%.3s' % brick.brickname, brick.brickname)
+            fn = os.path.join(dirnm,
+                              'decals-%s-nexp-r.fits.gz' % brick.brickname)
+            if not os.path.exists(fn):
+                print('Does not exist:', fn)
+                continue
+
+            I = np.flatnonzero((T.ra  >= brick.ra1 ) * (T.ra  < brick.ra2 ) *
+                               (T.dec >= brick.dec1) * (T.dec < brick.dec2))
+            if len(I) == 0:
+                continue
+            print('Brick', brick.brickname, 'has', len(I), 'objs')
+
+            nn = fitsio.read(fn)
+            h,w = nn.shape
+            imgfn = os.path.join(dirnm,
+                                 'decals-%s-image-r.fits' % brick.brickname)
+            wcs = Tan(imgfn)
+
+            ok,x,y = wcs.radec2pixelxy(T.ra[I], T.dec[I])
+            x = np.clip((x-1).astype(int), 0, w-1)
+            y = np.clip((y-1).astype(int), 0, h-1)
+            n = nn[y,x]
+            keep[I[n > 0]] = True
+
+        T.cut(keep)
+        T.writeto(galfn)
+
+    if galaxycat is None:
+        from astrometry.util.fits import fits_table
+        galaxycat = fits_table(galfn)
+
+    i = np.random.randint(len(galaxycat))
+    ra = galaxycat.ra[i]
+    dec = galaxycat.dec[i]
+    name = galaxycat.name[i].strip()
+    return ra,dec,name
+
 def index(req):
     layer = req.GET.get('layer', 'decals-dr2')
     # Nice spiral galaxy
-    ra, dec, zoom = 244.7, 7.4, 13
-    # EDR2 region
-    #ra, dec, zoom = 243.7, 8.2, 13
-    # Top of DR1
-    #ra,dec,zoom = 113.49, 29.86, 13
+    #ra, dec, zoom = 244.7, 7.4, 13
+
+    ra = dec = None
+    zoom = 13
 
     try:
         zoom = int(req.GET.get('zoom', zoom))
     except:
         pass
     try:
-        ra = float(req.GET.get('ra',ra))
+        ra = float(req.GET.get('ra'))
     except:
         pass
     try:
-        dec = float(req.GET.get('dec', dec))
+        dec = float(req.GET.get('dec'))
     except:
         pass
+
+    galname = None
+    if ra is None or dec is None:
+        ra,dec,galname = get_random_galaxy()
 
     lat,lng = dec, ra2long(ra)
 
@@ -201,38 +286,39 @@ def index(req):
 
     static_tile_url = settings.STATIC_TILE_URL
 
-    bricksurl = settings.ROOT_URL + '/bricks/?north={north}&east={east}&south={south}&west={west}&id={id}'
-    ccdsurl = settings.ROOT_URL + '/ccds/?north={north}&east={east}&south={south}&west={west}&id={id}'
-    expsurl = settings.ROOT_URL + '/exps/?north={north}&east={east}&south={south}&west={west}&id={id}'
-    platesurl = settings.ROOT_URL + '/sdss-plates/?north={north}&east={east}&south={south}&west={west}'
+    ccdsurl = settings.ROOT_URL + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    bricksurl = settings.ROOT_URL + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    expsurl = settings.ROOT_URL + '/exps/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    platesurl = settings.ROOT_URL + '/sdss-plates/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
+    sqlurl = settings.ROOT_URL + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
+    namequeryurl = settings.ROOT_URL + '/namequery/?obj={obj}'
 
-    baseurl = req.path + '?'
+    baseurl = req.path
+
+    absurl = req.build_absolute_uri(settings.ROOT_URL)
 
     from django.shortcuts import render
 
     return render(req, 'index.html',
-                  dict(ra=ra, dec=dec, lat=lat, long=lng, zoom=zoom,
+                  dict(ra=ra, dec=dec, zoom=zoom,
+                       galname=galname,
                        layer=layer, tileurl=tileurl,
+                       absurl=absurl,
+                       sqlurl=sqlurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
                        smallcaturl=smallcaturl,
+                       namequeryurl=namequeryurl,
                        ccdsurl=ccdsurl,
                        expsurl=expsurl,
                        platesurl=platesurl,
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
-                       showSources='sources' in req.GET,
-                       showNgc='ngc' in req.GET,
-                       showBricks='bricks' in req.GET,
-                       showCcds='ccds' in req.GET,
-                       showExps='exps' in req.GET,
-                       showVcc='vcc' in req.GET,
-                       showSpec='spec' in req.GET,
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                        enable_nexp = settings.ENABLE_NEXP,
                        enable_vcc = settings.ENABLE_VCC,
                        enable_wl = settings.ENABLE_WL,
-                       enable_dr2 = settings.ENABLE_DR2,
                        enable_depth = settings.ENABLE_DEPTH,
+                       enable_cutouts = settings.ENABLE_CUTOUTS,
                        ))
 
 def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wcs=None,
@@ -262,9 +348,9 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     if img is None:
         sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn,
                               read_base_wcs=read_base_wcs, read_wcs=read_wcs)
-        # print('Source:', sourcefn)
+        debug('Source:', sourcefn)
         if sourcefn is None or not os.path.exists(sourcefn):
-            # print('Image source file', sourcefn, 'not found')
+            debug('Image source file', sourcefn, 'not found')
             return None
         try:
             debug('Reading:', sourcefn)
@@ -321,6 +407,80 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     if return_data:
         return I2,wcs2,fn
     return fn
+
+def name_query(req):
+    import json
+    import urllib
+    import urllib2
+
+    obj = req.GET.get('obj')
+    #print('Name query: "%s"' % obj)
+
+    if len(obj) == 0:
+        ra,dec,name = get_random_galaxy()
+        return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=name)),
+                            content_type='application/json')
+
+    url = 'http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame//NSV?'
+    url += urllib.urlencode(dict(q=obj)).replace('q=','')
+
+    print('URL', url)
+
+    '''
+    # IC 1200#Q2671982
+    #=N=NED:    1     0ms (from cache)
+    %C G     
+    %J 241.1217083 +69.6657778 = 16:04:29.20 +69:39:56.8
+    %J.E [1250.00 1250.00 0] 20032MASX.C.......:
+    %V v 7449.84363 [38.07365] 2003AJ....126.2268W
+    %T E                   
+    %MAG 13.74
+    %I.0 NGC 6079 =[G]
+    #B 17
+
+    # IC 12000#Q2672097
+    #! *** Nothing found *** 
+    #====Done (2016-Mar-04,17:43:13z)====
+
+    '''
+    try:
+        f = urllib2.urlopen(url)
+        code = f.getcode()
+        print('Code', code)
+        for line in f.readlines():
+            words = line.split()
+            if len(words) == 0:
+                continue
+            if words[0] == '%J':
+                ra = float(words[1])
+                dec = float(words[2])
+                return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=obj)),
+                                    content_type='application/json')
+            if words[0] == '#!':
+                return HttpResponse(json.dumps(dict(error=' '.join(words[1:]))),
+                                    content_type='application/json')
+
+    except Exception as e:
+        return HttpResponse(json.dumps(dict(error=str(e))),
+                            content_type='application/json')
+
+def data_for_radec(req):
+    import numpy as np
+    ra  = float(req.GET['ra'])
+    dec = float(req.GET['dec'])
+    bricks = _get_dr2_bricks()
+    I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
+                       (dec >= bricks.dec1) * (dec < bricks.dec2))
+    if len(I) == 0:
+        return HttpResponse('No DECaLS DR2 data overlaps RA,Dec = %.4f, %.4f' % (ra,dec))
+    I = I[0]
+    brickname = bricks.brickname[I]
+
+    return brick_detail(req, brickname)
+
+
+
+
 
 # "PR"
 #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
@@ -426,6 +586,10 @@ def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
     width  = min(int(req.GET.get('width',  size)), maxsize)
     height = min(int(req.GET.get('height', size)), maxsize)
 
+    if not 'pixscale' in req.GET and 'zoom' in req.GET:
+        zoom = int(req.GET.get('zoom'))
+        pixscale = pixscale * 2**(native_zoom - zoom)
+
     bands = req.GET.get('bands', bands)
     #bands = [b for b in 'grz' if b in bands]
 
@@ -477,6 +641,13 @@ def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
         fn = 'cutout_%s_%.4f_%.4f.fits' % (outtag, ra,dec)
     return send_file(tmpfn, 'image/fits', unlink=True, filename=fn)
 
+def jpeg_cutout(req):
+    layer = req.GET.get('layer', 'decals-dr2')
+    if layer == 'decals-dr1j':
+        return jpeg_cutout_decals_dr1j(req)
+    if layer in ['sdss', 'sdssco']:
+        return jpeg_cutout_sdssco(req)
+    return jpeg_cutout_decals_dr2(req)
 
 B_sdssco = None
 
@@ -547,6 +718,14 @@ def sdss_rgb(rimgs, bands, scales=None,
     rgb = np.dstack((R,G,B))
     rgb = np.clip(rgb, 0, 1)
     return rgb
+
+def layer_name_map(name):
+    return {'decals-dr2-model': 'decals-dr2',
+            'decals-dr2-resid': 'decals-dr2',
+            'decals-dr2-ccds': 'decals-dr2',
+            'decals-dr2-exps': 'decals-dr2',
+            'decals-bricks': 'decals-dr2',
+            }.get(name, name)
 
 B_dr2 = None
 def _get_dr2_bricks():
@@ -769,9 +948,15 @@ UNW_tree = None
 def map_unwise_w1w2(*args, **kwargs):
     return map_unwise(*args, **kwargs)
 
+def map_unwise_w1w2_neo1(*args, **kwargs):
+    kwargs.update(tag='unwise-neo1', unwise_dir=settings.UNWISE_NEO1_DIR)
+    return map_unwise(*args, **kwargs)
+
 def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
                get_images=False,
-               bands=[1,2], tag='unwise-w1w2', **kwargs):
+               bands=[1,2], tag='unwise-w1w2',
+               unwise_dir=settings.UNWISE_DIR,
+               **kwargs):
     global UNW
     global UNW_tree
 
@@ -791,6 +976,7 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
     basedir = settings.DATA_DIR
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
+    debug('Tilefn:', tilefn)
     if os.path.exists(tilefn) and not ignoreCached:
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
@@ -828,7 +1014,7 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
     radius = radius + max(degrees_between(ra,dec, r0,d0), degrees_between(ra,dec, r1,d1))
 
     J = tree_search_radec(UNW_tree, ra, dec, radius)
-    #debug(len(J), 'unWISE tiles nearby')
+    debug(len(J), 'unWISE tiles nearby')
     
     ww = [1, W*0.25, W*0.5, W*0.75, W]
     hh = [1, H*0.25, H*0.5, H*0.75, H]
@@ -838,7 +1024,7 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         hh          + [1]*len(ww) + list(reversed(hh)) + [H]*len(ww))
     scaled = 0
     scalepat = None
-    scaledir = 'unwise'
+    scaledir = tag
 
     if zoom < 11:
         # Get *actual* pixel scales at the top & bottom
@@ -853,10 +1039,11 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
         scaled = int(np.floor(np.log2(scale / native_scale)))
         debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled)
         scaled = np.clip(scaled, 1, 7)
-        dirnm = os.path.join(basedir, 'scaled', scaledir)
-        scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(tilename).3s', 'unwise-%(tilename)s-%(band)s.fits')
+        
+        scalepat = os.path.join(basedir, 'scaled', scaledir,
+                                '%(scale)i%(band)s', '%(tilename).3s', 'unwise-%(tilename)s-%(band)s.fits')
 
-    basepat = os.path.join(settings.UNWISE_DIR, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-u.fits')
+    basepat = os.path.join(unwise_dir, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-u.fits')
 
     rimgs = [np.zeros((H,W), np.float32) for band in bands]
     rn    = np.zeros((H,W), np.uint8)
@@ -872,8 +1059,10 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
             fn = get_scaled(scalepat, fnargs, scaled, basefn)
             fns.append(fn)
 
+        debug('Tile', tile, 'fns', fns)
         bwcs = Tan(fns[0], 0)
         ok,xx,yy = bwcs.radec2pixelxy(r, d)
+        #print('ok:', np.unique(ok))
         if not np.all(ok):
             debug('Skipping tile', tile)
             continue
@@ -913,25 +1102,11 @@ def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
 
     rgb = _unwise_to_rgb(rimgs, **kwargs)
 
-    import pylab as plt
-
     trymakedirs(tilefn)
-
-    # no jpeg output support in matplotlib in some installations...
-    if True:
-        import tempfile
-        f,tempfn = tempfile.mkstemp(suffix='.png')
-        os.close(f)
-        plt.imsave(tempfn, rgb)
-        debug('Wrote to temp file', tempfn)
-        cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, tilefn)
-        debug(cmd)
-        os.system(cmd)
-        os.unlink(tempfn)
-        debug('Wrote', tilefn)
+    save_jpeg(tilefn, rgb)
+    debug('Wrote', tilefn)
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
-
 
 sfd = None
 halpha = None
@@ -1076,19 +1251,19 @@ def _get_decals(name=None):
 def brick_list(req):
     import json
 
-    north = float(req.GET['north'])
-    south = float(req.GET['south'])
-    east  = float(req.GET['east'])
-    west  = float(req.GET['west'])
+    north = float(req.GET['dechi'])
+    south = float(req.GET['declo'])
+    east  = float(req.GET['ralo'])
+    west  = float(req.GET['rahi'])
 
     if east < 0:
         east += 360.
         west += 360.
 
-
     B = None
 
     name = req.GET.get('id', None)
+    name = layer_name_map(name)
     if name == 'decals-dr1k':
         from astrometry.util.fits import fits_table
         B = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
@@ -1121,7 +1296,7 @@ def brick_list(req):
                                  [b.dec1-mdec, ra2long_B(b.ra2+mra)],
                                  ]))
 
-    return HttpResponse(json.dumps(dict(bricks=bricks)),
+    return HttpResponse(json.dumps(dict(polys=bricks)),
                         content_type='application/json')
 
 def _objects_touching_box(kdtree, north, south, east, west,
@@ -1202,13 +1377,16 @@ def ccd_list(req):
     from astrometry.util.util import Tan
     import numpy as np
 
-    north = float(req.GET['north'])
-    south = float(req.GET['south'])
-    east  = float(req.GET['east'])
-    west  = float(req.GET['west'])
+    north = float(req.GET['dechi'])
+    south = float(req.GET['declo'])
+    east  = float(req.GET['ralo'])
+    west  = float(req.GET['rahi'])
 
     name = req.GET.get('id', None)
-
+    print('Name:', name)
+    name = layer_name_map(name)
+    print('Mapped name:', name)
+    
     CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
 
     ccdname = lambda c: '%i-%s-%s' % (c.expnum, c.extname.strip(), c.filter)
@@ -1233,7 +1411,7 @@ def ccd_list(req):
                          poly=zip(d, ra2long(r)),
                          color=ccmap[c.filter]))
 
-    return HttpResponse(json.dumps(dict(ccds=ccds)),
+    return HttpResponse(json.dumps(dict(polys=ccds)),
                         content_type='application/json')
 
 def get_exposure_table(name):
@@ -1255,11 +1433,12 @@ def exposure_list(req):
 
     global exposure_cache
 
-    north = float(req.GET['north'])
-    south = float(req.GET['south'])
-    east  = float(req.GET['east'])
-    west  = float(req.GET['west'])
+    north = float(req.GET['dechi'])
+    south = float(req.GET['declo'])
+    east  = float(req.GET['ralo'])
+    west  = float(req.GET['rahi'])
     name = req.GET.get('id', None)
+    name = layer_name_map(name)
 
     if not name in exposure_cache:
         from astrometry.libkd.spherematch import tree_build_radec
@@ -1277,14 +1456,12 @@ def exposure_list(req):
 
     exps = []
     for t in T:
-        #if t.filter != 'z':
-        #    continue
         cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
         exps.append(dict(name='%i %s' % (t.expnum, t.filter),
                          ra=t.ra, dec=t.dec, radius=radius,
                          color=cmap[t.filter]))
 
-    return HttpResponse(json.dumps(dict(exposures=exps)),
+    return HttpResponse(json.dumps(dict(objs=exps)),
                         content_type='application/json')
 
 plate_cache = {}
@@ -1297,11 +1474,10 @@ def sdss_plate_list(req):
 
     global plate_cache
 
-    north = float(req.GET['north'])
-    south = float(req.GET['south'])
-    east  = float(req.GET['east'])
-    west  = float(req.GET['west'])
-    #name = req.GET.get('id', None)
+    north = float(req.GET['dechi'])
+    south = float(req.GET['declo'])
+    east  = float(req.GET['ralo'])
+    west  = float(req.GET['rahi'])
     name = 'sdss'
 
     if not name in plate_cache:
@@ -1329,7 +1505,7 @@ def sdss_plate_list(req):
                            ra=t.ra, dec=t.dec, radius=radius,
                            color='#ffffff'))
 
-    return HttpResponse(json.dumps(dict(plates=plates)),
+    return HttpResponse(json.dumps(dict(objs=plates)),
                         content_type='application/json')
 
     
@@ -1373,9 +1549,24 @@ def nil(req):
     pass
 
 def brick_detail(req, brickname):
-    #brickname = req.GET['brick']
-    return HttpResponse('Brick ' + brickname)
+    #return HttpResponse('Brick ' + brickname)
+    import numpy as np
+    bricks = _get_dr2_bricks()
+    I = np.flatnonzero(brickname == bricks.brickname)
+    assert(len(I) == 1)
+    brick = bricks[I[0]]
 
+    return HttpResponse('\n'.join([
+                '<html><head><title>DECaLS DR2 data for brick %s</title></head>' % (brickname),
+                '<body>',
+                '<h1>DECaLS DR2 data for brick %s:</h1>' % (brickname),
+                '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
+                '<ul>',
+                '<li><a href="http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/coadd/%s/%s/decals-%s-image.jpg">JPEG image</a></li>' % (brickname[:3], brickname, brickname),
+                '<li><a href="http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/coadd/%s/%s/">Coadded images</a></li>' % (brickname[:3], brickname),
+                '<li><a href="http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (brickname[:3], brickname),
+                '</ul>',
+                '</body></html>']))
 
 def cat_spec(req, ver):
     import json
@@ -1414,8 +1605,15 @@ def cat_spec(req, ver):
 
 
 def cat_bright(req, ver):
+    return cat(req, ver, 'bright',
+               os.path.join(settings.DATA_DIR, 'bright.fits'))
+
+def cat_gals(req, ver):
+    return cat(req, ver, 'ngc',
+               os.path.join(settings.DATA_DIR,'galaxy-cats.fits'))
+
+def cat(req, ver, tag, fn):
     import json
-    tag = 'bright'
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
     declo = float(req.GET['declo'])
@@ -1430,8 +1628,8 @@ def cat_bright(req, ver):
     from decals import settings
 
     TT = []
-    T = fits_table(os.path.join(settings.DATA_DIR, 'bright.fits'))
-    debug(len(T), 'bright stars')
+    T = fits_table(fn)
+    debug(len(T), 'catalog objects')
     if ralo > rahi:
         # RA wrap
         T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
@@ -1441,47 +1639,14 @@ def cat_bright(req, ver):
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.name]
-    altnames = [t.strip() for t in T.alt_name]
-
-    return HttpResponse(json.dumps(dict(rd=rd, name=names, altname=altnames)),
-                        content_type='application/json')
-
-
-def cat_ngc(req, ver, zoom, x, y):
-    import json
-    tag = 'ngc'
-    zoom = int(zoom)
-    try:
-        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-    except RuntimeError as e:
-        return HttpResponse(e.strerror)
-    ver = int(ver)
-    if not ver in catversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-
-    from astrometry.util.fits import fits_table
-    import numpy as np
-    from astrometry.libkd.spherematch import match_radec
-    from astrometry.util.starutil_numpy import degrees_between, arcsec_between
-    from astrometry import catalogs
-
-    ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
-    ok,r0,d0 = wcs.pixelxy2radec(1, 1)
-    ok,r1,d1 = wcs.pixelxy2radec(W, H)
-    radius = max(degrees_between(ra,dec, r0,d0),
-                 degrees_between(ra,dec, r1,d1))
-
-    T = fits_table(os.path.join(os.path.dirname(catalogs.__file__), 'ngc2000.fits'))
-
-    I,J,d = match_radec(ra, dec, T.ra, T.dec, radius * 1.1)
-    
-    rd = list((float(r),float(d)) for r,d in zip(T.ra[J], T.dec[J]))
-    names = ['NGC %i' % i for i in T.ngcnum[J]]
-    radius = list(float(x) for x in T.radius[J] * 3600.)
-
-    return HttpResponse(json.dumps(dict(rd=rd, name=names,
-                                        radiusArcsec=radius)),
-                        content_type='application/json')
+    rtn = dict(rd=rd, name=names)
+    # bright stars
+    if 'alt_name' in T.columns():
+        rtn.update(altname = [t.strip() for t in T.alt_name])
+    if 'radius' in T.columns():
+        rtn.update(radiusArcsec=list(float(f) for f in T.radius * 3600.))
+        
+    return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def cat_decals_dr1j(req, ver, zoom, x, y, tag='decals-dr1j'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
@@ -2204,11 +2369,14 @@ if __name__ == '__main__':
     zoom,x,y = 14, 16383, 7875
     req = duck()
     req.META = dict()
+    req.GET = dict()
 
-    r = map_sdssco(req, ver, zoom, x, y, savecache=True, ignoreCached=True,
-                   hack_jpeg=True)
-    print('got', r)
-    sys.exit(0)
+    r = index(req)
+
+    # r = map_sdssco(req, ver, zoom, x, y, savecache=True, ignoreCached=True,
+    #                hack_jpeg=True)
+    # print('got', r)
+    # sys.exit(0)
 
     ver = 1
     zoom,x,y = 13, 2623, 3926

@@ -1,4 +1,4 @@
-from django.conf.urls import patterns, include, url
+from django.conf.urls import url
 
 from map import views
 
@@ -12,6 +12,10 @@ urlpatterns = [
     url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sdssco),
     url(r'^jpeg-cutout-sdss', views.jpeg_cutout_sdssco),
     url(r'^fits-cutout-sdss', views.fits_cutout_sdssco),
+
+    url(r'^data-for-radec/', views.data_for_radec, name='data_for_radec'),
+
+    url(r'^namequery/', views.name_query),
 
     # DR2
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2),
@@ -44,9 +48,11 @@ urlpatterns = [
     url(r'^jpeg-cutout-decals-dr2', views.jpeg_cutout_decals_dr2),
     url(r'^fits-cutout-decals-dr2', views.fits_cutout_decals_dr2),
 
-    # NGC objects
-    url(r'^ngc/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_ngc),
+    url(r'^jpeg-cutout', views.jpeg_cutout, name='cutout-jpeg'),
 
+    # NGC/IC/UGC galaxies
+    url(r'^ngc/(\d+)/cat.json', views.cat_gals),
+    
     # Virgo cluster catalog (VCC) objects
     #url(r'^vcc/(\d+)/cat.json', views.cat_vcc),
 
@@ -57,13 +63,16 @@ urlpatterns = [
     url(r'^bright/(\d+)/cat.json', views.cat_bright),
 
     # SFD dust map
-    url(r'^sfd-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sfd),
+    url(r'^sfd/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sfd),
 
     # Halpha map
-    url(r'^halpha-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_halpha),
+    url(r'^halpha/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_halpha),
 
     # unWISE W1/W2
-    url(r'^unwise-w1w2-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2),
+    url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2),
+
+    # Aaron's NEO1 unWISE W1/W2
+    url(r'^unwise-neo1/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2_neo1),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
     #url(r'^unwise-w1234-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1234),

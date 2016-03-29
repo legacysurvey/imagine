@@ -13,10 +13,10 @@
 </script> 
 
 <link rel="stylesheet" href="{% static "leaflet-0.7.7.css" %}" />
+<script src="{% static "leaflet-src-0.7.7.js" %}"></script>
 {% comment %}
-<script src="{% static "leaflet-src.js" %}"></script>
-{% endcomment %}
 <script src="{% static "leaflet-min-0.7.7.js" %}"></script>
+{% endcomment %}
 <script src="{% static "jquery-2.1.1.min.js" %}"></script>
 <script src="{% static "leaflet-pip-20150130.min.js" %}"></script>
 <script src="{% static "leaflet-zoomslider-0.6.1.js" %}"></script>
@@ -27,6 +27,9 @@
 <script src="{% static "leaflet.measurecontrol-20150626.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet.measurecontrol-20150626.css" %}" />
 {% endcomment %}
+{% comment %}
+https://github.com/Leaflet/Leaflet.label
+{% endcomment %}
 <script src="{% static "leaflet.label-20150521.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet.label-20150521.css" %}" />
 
@@ -36,6 +39,24 @@
 #thebody { margin:1; }
 
 .info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
+.query {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
+.objquery {
     padding: 6px 8px;
     font: 14px/16px Arial, Helvetica, sans-serif;
     background: white;
@@ -80,11 +101,16 @@ background: #242424;
     margin-bottom: 15px;
 }
 
+// hmm, can't get this to work
+//.leaflet-control-attribution {
+//    font-size: 200%;
+//}
+
 #gotosubmit {
-    font-size: 100%
+    font-size: 100%;
 }
 #gotocancel {
-    font-size: 100%
+    font-size: 100%;
 }
 
 </style>
@@ -96,7 +122,9 @@ background: #242424;
 <div id="map" />
 
 <script>
-MyTileLayer = L.TileLayer.extend({
+//'use strict';
+
+var MyTileLayer = L.TileLayer.extend({
     _loadTile: function (tile, tilePoint) {
         // this is just copied from the superclass
         tile._layer  = this;
@@ -118,12 +146,12 @@ MyTileLayer = L.TileLayer.extend({
 });
 
 // A subclass that switches URL patterns depending on zoom range.
-ZoomRangeTileLayer = MyTileLayer.extend({
+var ZoomRangeTileLayer = MyTileLayer.extend({
     options: {
-      urlPatterns: [],
+        urlPatterns: [],
     },
 	getTileUrl: function (tilePoint) {
-        urlpat = this._getUrlPattern(tilePoint.z);
+        var urlpat = this._getUrlPattern(tilePoint.z);
 		return L.Util.template(urlpat, L.extend({
 			s: this._getSubdomain(tilePoint),
 			z: tilePoint.z,
@@ -132,11 +160,11 @@ ZoomRangeTileLayer = MyTileLayer.extend({
 		}, this.options));
 	},
     _getUrlPattern: function (zoom) {
-        url = this._url;
+        var url = this._url;
         for (var i=0; i<this.options.urlPatterns.length; i++) {
-            zlo  = this.options.urlPatterns[i][0];
-            zhi  = this.options.urlPatterns[i][1];
-            zurl = this.options.urlPatterns[i][2];
+            var zlo  = this.options.urlPatterns[i][0];
+            var zhi  = this.options.urlPatterns[i][1];
+            var zurl = this.options.urlPatterns[i][2];
             if ((zoom >= zlo) && (zoom <= zhi)) {
                 url = zurl;
             }
@@ -145,61 +173,482 @@ ZoomRangeTileLayer = MyTileLayer.extend({
     },
 });
 
+// for attaching leaflet.Labels to circles
+L.Circle.include(L.BaseMarkerMethods);
 
-MyLayerControl = L.Control.Layers.extend({
-    // copied from leaflet-src.js
-	_onInputClick: function () {
-		var i, input, obj,
-		    inputs = this._form.getElementsByTagName('input'),
-		    inputsLen = inputs.length;
+var CatalogOverlay = L.Class.extend({
+	includes: L.Mixin.Events,
 
-		this._handlingClick = true;
+    initialize: function(name, pretty, kwargs) {
+        //console.log('CatalogOverlay: ' + name + ',' + pretty);
+        this._counter = 1;
+        this._url = kwargs['url'] || '{{ smallcaturl|safe }}'
+        this._url_term = kwargs['urlTerm'] || name;
+        this._checkbox = null;
+        this._status = null;
+        this._show = false;
+        this._name = name;
+        this._url_name = kwargs['url_name'] || this._name;
+        this._pretty = pretty;
+        this._layers = {};
+        this._group = L.layerGroup([]);
+	    // ~ 100 arcsec
+        this._radius = kwargs['radius'] || 3000;
+        this._minZoom = kwargs['minZoom'] || 3;
+        this._labelsMinZoom = kwargs['labelsMinZoom'] || 6;
+        this._style = {'color':'#ffffff',
+                       'fillOpacity':0,
+                       'weight':5,
+                      };
+        //this._oldZoom = map.getZoom();
+        this._oldZoom = {{ zoom }};
+        map.on('overlayadd',    this.overlayAdded.bind(this));
+        map.on('overlayremove', this.overlayRemoved.bind(this));
+        map.on('moveend',       this.mapBoundsChanged.bind(this));
+        map.on('zoomend',       this.onMapZoomEnd.bind(this));
 
-        var adding;
-        var removing;
-        //console.log('Click on input layer selector');
-		for (i = 0; i < inputsLen; i++) {
-			input = inputs[i];
-			obj = this._layers[input.layerId];
-			if (input.checked && !this._map.hasLayer(obj.layer)) {
-                //console.log('Layer selector: adding ' + obj.name);
-                adding = obj;
-                //console.log('Layer selector: done adding ' + obj.name);
-			} else if (!input.checked && this._map.hasLayer(obj.layer)) {
-                //console.log('Layer selector: removing ' + obj.name);
-                removing = obj;
-                //console.log('Layer selector: done removing ' + obj.name);
-			}
-		}
-        if ((adding != undefined) && (removing != undefined)) {
-            //console.log('Layer selector: switching base layers from ' + removing.name + ' to ' + adding.name);
-            if (!adding.overlay) {
-                this._map.fire('prebaselayerchange', {'removing':removing.layer,
-                                                      'adding':adding.layer});
+        $(document).ready(this.ready.bind(this));
+    },
+
+    ready: function() {
+        //console.log(this._name + ' ready function called');
+        this._checkbox = getOverlayCheckbox(this._pretty);
+        // _checkbox is a jQuery node
+        //console.log('checkbox:', this._checkbox);
+        // add status span after the layer name span
+        var nxt = this._checkbox.next();
+        var stat = L.DomUtil.create('span', 'layer-status');
+        var statid = this._name + '_status';
+        stat.id = statid
+        nxt.after(stat);
+        nxt.after('&nbsp;');
+        // find it with jQuery
+        this._status = $('#' + statid);
+    },
+
+    getGroup: function() {
+        return this._group;
+    },
+
+    overlayAdded: function(e) {
+        //console.log(this._name + ': overlayAdded, zoom ' + map.getZoom() + ', my min ' + this._minZoom);
+        if (e.name == this._pretty) {
+            this._show = true;
+	        if (map.getZoom() >= this._minZoom) {
+	            this.load();
+	        }
+        }
+    },
+
+    overlayRemoved: function(e) {
+        if (e.name == this._pretty) {
+	        this._show = false;
+            this.removeAllLayers();
+        }
+    },
+
+    mapBoundsChanged: function() {
+        //console.log('Map bounds changed: zoom: ' + map.getZoom());
+        if (this._show && map.getZoom() >= this._minZoom) {
+            this.load();
+        }
+    },
+
+    onMapZoomEnd: function() {
+        //console.log(this._name + ': map zoom end; oldzoom: ' + this._oldZoom +
+        //', new zoom: ' + map.getZoom());
+        var zoom = map.getZoom();
+        if ((this._oldZoom >= this._minZoom) && (zoom < this._minZoom)) {
+            //console.log(this._name + ': zoomed out past boundary');
+            if (this._show) {
+                //console.log(this._name + ': removing');
+                // By the time we get here, onTileUnload() has already fired.
+                this._show = false;
+                // remove any extra ones that have stuck around (fast zoom-outs)
+                this.removeAllLayers();
+            }
+            if (this._checkbox) {
+                this._checkbox.attr('disabled', 'disabled');
+            }
+
+        } else if ((this._oldZoom < this._minZoom) && (zoom >= this._minZoom)) {
+            //console.log(this._name + ': zoomed in past boundary');
+            if (this._checkbox) {
+                this._checkbox.removeAttr('disabled');
+                if (this._checkbox.prop('checked')) {
+                    //console.log('Re-adding ' + this._name);
+                    this.overlayAdded({name:this._pretty});
+                }
             }
         }
-        if (adding != undefined) {
-		    this._map.addLayer(adding.layer);
-        }
-        if (removing != undefined) {
-		    this._map.removeLayer(removing.layer);
-        }
-        if ((adding != undefined) && (removing != undefined)) {
-            //console.log('Layer selector: done switching base layers from ' + removing.name + ' to ' + adding.name);
-            if (!adding.overlay) {
-                this._map.fire('postbaselayerchange', {'removing':removing.layer,
-                                                       'adding':adding.layer});
-            }
-        }
+        this._oldZoom = zoom;
+    },
 
-		this._handlingClick = false;
-		this._refocusOnMap();
-	}
+    load: function() {
+        var b = map.getBounds();
+        var url = L.Util.template(this._url, L.extend({
+            s: subdomains[0],
+	        ralo: long2ra(b.getEast()).toFixed(4),
+	        rahi: long2ra(b.getWest()).toFixed(4),
+	        declo: lat2dec(b.getSouth()).toFixed(4),
+	        dechi: lat2dec(b.getNorth()).toFixed(4),
+            id: this._url_name,
+            ver: getcatversion(this._name),
+        }));
+        this._counter += 1;
+        //console.log('Loading: ' + this._name + ' for counter ' + this._counter);
+        this._status && this._status.html('loading...');
+        $.getJSON(url, this.loaded.bind(this, this._counter));
+    },
+
+    loaded: function(counter, result) {
+        if (counter != this._counter) {
+            console.log(this._name + ': loaded counter ' + counter + ' but ' +
+                        this._counter + ' is current.');
+            return;
+        }
+        this._status && this._status.html('');
+        if (!this._show) {
+            return;
+        }
+        var circles = this.getLayer(result);
+        // remove old layers
+        for (var k in this._layers) {
+	        if (k < counter) {
+	            //console.log(this._name + ': removing previous counter ' + k);
+	            this._group.removeLayer(this._layers[k]);
+	            delete this._layers[k];
+                //console.log(this._name + ': now contains layers:', this._group.getLayers());
+	        } else {
+	            console.log(this._name + ': k ' + k + ' vs counter ' + counter);
+	        }
+        }
+        this._group.clearLayers();
+        this._group.addLayer(circles);
+        // save this new layer
+        this._layers[counter] = circles;
+        //console.log(this._name + ': saved counter ' + counter);
+        this.fire('loaded', {'counter':counter, 'result':result});
+    },
+
+    removeAllLayers: function() {
+        for (var key in this._layers) {
+	        //console.log(this._name + ' removeAllLayers: removing ' + key);
+	        var circles = this._layers[key];
+	        this._group.removeLayer(circles);
+	        delete this._layers[key];
+        }
+        this._group.clearLayers();
+    },
+
+    getLayer: function(result) {
+        var showlabels = (map.getZoom() >= this._labelsMinZoom);
+        var rdlist = result['rd'];
+        var circleList = new Array(rdlist.length);
+        var clong = map.getCenter().lng;
+        var radii = result['radiusArcsec'];
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            if (radii) {
+	            // arcsec to meters:
+	            var meters = (radii[i] * 30.87) || 30;
+                var circ = L.circle([lat, lng], meters, this._style);
+            } else {
+                var circ = L.circle([lat, lng], this._radius, this._style);
+            }
+	        if (showlabels) {
+                var txt = this.getLabel(result, i);
+                if (txt.length > 0) {
+                    circ.bindLabel(txt, { noHide: true, clickable: true });
+                    circ.showLabel();
+                }
+	        }
+            circleList[i] = circ;
+        }
+        return L.layerGroup(circleList);
+    },
+
+    getLabel: function(json, i) {
+        return json['name'][i];
+    },
+    
 });
 
+var BrightCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        var oname = json['name'][i];
+        var name = oname;
+        var altnames = json['altname'];
+        if (altnames[i].length > 0) {
+            name = name + ' (' + altnames[i] + ')';
+        }
+	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
+            oname.replace(' ','+') + '">' + name + '</a>';
+        return name;
+    },
+});
+
+var GalaxyCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        var oname = json['name'][i];
+        var name = oname;
+	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
+            oname.replace(' ','+') + '">' + name + '</a>';
+        return name;
+    },
+});
+
+var SdssSpectraCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        var label = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' +
+            json['mjd'][i] + '&fiber=' + json['fiber'][i] + '&plateid=' +
+            json['plate'][i] + '">' + json.name[i] + '</a>';
+        return label;
+    },
+});
+
+var TileWatcher = L.Class.extend({
+	includes: L.Mixin.Events,
+
+    initialize: function() {
+        // string keys z:x:y of currently visible tiles
+        this._visibleTiles = {};
+    },
+
+    listenToLayer: function(layer) {
+        layer.on('tileloadstart', this.tileLoadStart.bind(this));
+        layer.on('tileunload',    this.tileUnload.bind(this));
+    },
+
+    tileLoadStart: function(e) {
+        var tile = e.tile;
+        var key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
+        //console.log('Tile load start: ' + key);
+        if (key in this._visibleTiles) {
+            //console.log('tile was already in visible tiles');
+        } else {
+            e.key = key;
+            //console.log('firing tilevisible: ' + key);
+            this._visibleTiles[key] = true;
+            // A tile became visible
+            this.fire('tilevisible', e);
+        }
+    },
+
+    tileUnload: function(e) {
+        var tile = e.tile;
+        var key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
+        //console.log('Tile unload: ' + key);
+        delete this._visibleTiles[key];
+        e.key = key;
+        // A tile became invisible
+        this.fire('tileinvisible', e);
+    },
+
+});
+
+var TiledOverlay = CatalogOverlay.extend({
+
+    initialize: function(tw, name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        // count of how many tile loads are outstanding
+        this._loadingTiles = 0;
+        this._tw = tw;
+        tw.on('tilevisible', this.tileVisible.bind(this));
+        tw.on('tileinvisible', this.tileInvisible.bind(this));
+    },
+
+    tileVisible: function(e) {
+        if (!this._show) {
+            return;
+        }
+        var tile = e.tile;
+        if (tile.z < this._minZoom) {
+            return;
+        }
+        this.load(tile.z, tile.tilex, tile.tiley);
+    },
+
+    load: function(zoom, x, y) {
+        //console.log('Loading tiled catalog: URL pattern: ' + this._url +
+        //            ' x,y,zoom: ' + x + ',' + y + ', ' + zoom);
+        var s = getSubdomain(x, y);
+	    var url = L.Util.template(this._url, L.extend({
+            s: s,
+            z: zoom,
+            x: x,
+            y: y,
+            id: this._url_name,
+            ver: getcatversion(this._name),
+	    }));
+        this._loadingTiles += 1;
+        this.setStatusText();
+        $.getJSON(url, this.loaded.bind(this, zoom, x, y));
+    },
+
+    setStatusText: function() {
+        if (this._loadingTiles == 0) {
+            this._status && this._status.html('');
+        } else {
+            this._status && this._status.html('loading ' + this._loadingTiles
+                                              + '...');
+        }
+    },
+
+    tileInvisible: function(e) {
+        var key = e.key;
+        if (!(key in this._layers)) {
+            return;
+        }
+        var circles = this._layers[key];
+        this._group.removeLayer(circles);
+    },
+
+    // override superclass
+    mapBoundsChanged: function() {
+    },
+
+    overlayAdded: function(e) {
+        if (e.name != this._pretty) {
+            return;
+        }
+        this._show = true;
+	    if (map.getZoom() < this._minZoom) {
+            return;
+        }
+        // load all visible tiles
+        for (var key in this._tw._visibleTiles) {
+            // parse into zoom:x:y
+            var words = key.split(':');
+            var zoom = parseInt(words[0]);
+            var x = parseInt(words[1]);
+            var y = parseInt(words[2]);
+            this.load(zoom, x, y);
+        }
+    },
+    
+    loaded: function(zoom, tilex, tiley, result) {
+        //console.log('Loaded: zoom ' + zoom + ' x,y ' + tilex + ',' + tiley);
+        // waiting for how many tiles now?
+        this._loadingTiles -= 1;
+        this.setStatusText();
+        if (!this._show) {
+            console.log('not shown');
+            return;
+        }
+        var circles = this.getLayer(result);
+        this._group.addLayer(circles);
+        // save this new layer
+        var key = ''+zoom+':'+tilex+':'+tiley;
+        this._layers[key] = circles;
+        this.fire('loaded', {'zoom':zoom, 'x':tilex, 'y':tiley, 'result':result});
+    },
+});
+
+// DECaLS catalog
+var DecalsCatalogLayer = TiledOverlay.extend({
+    getLayer: function(result) {
+        var rdlist = result['rd'];
+        var objtype = result['sourcetype'];
+        var fluxes = result['fluxes'];
+        var nobs = result['nobs'];
+        var bricknames = result['bricknames'];
+        var objids = result['objid'];
+        var circleList = new Array(rdlist.length);
+        var clong = map.getCenter().lng;
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            var color = 'blue';
+            var typ = 'nil';
+            if (objtype == undefined) {
+            } else {
+                typ = objtype[i];
+	            // PSF
+                if (objtype[i] == 'P') {
+                    color = '#9AFE2E'; //#D8F781'; //'green';
+	            } else if (objtype[i] == 'S') {
+		            // Simple
+                    color = 'orange';
+	                //if (objtype[i] == 'S') {
+                } else if (objtype[i] == 'D') {
+                    color = 'red';
+                } else if (objtype[i] == 'E') {
+                    color = '#58ACFA'; // blue
+                } else if (objtype[i] == 'C') {
+                    color = '#DA81F5'; // magenta
+                }
+            }
+            var circ = L.circle([lat, lng], 30, {'color':color,
+                                             'fillOpacity':0, 'weight':5});
+            circ.ra = r;
+            circ.dec = d;
+            circ.type = typ;
+            circ.fluxes = (fluxes ? fluxes[i] : {});
+            circ.nobs   = (nobs   ? nobs  [i] : {});
+            circ.brickname = bricknames ? bricknames[i] : '';
+            circ.objid     = objids     ? objids    [i] : '';
+            circ.on('click', onSourceClick);
+            circleList[i] = circ;
+        }
+        return L.layerGroup(circleList);
+    },
+});
+
+var SqlCatalogOverlay = CatalogOverlay.extend({
+
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this._jsonQuery = null;
+    },
+
+    newQuery: function() {
+        this._show = true;
+        this.load();
+    },
+
+    overlayAdded: function() {
+    },
+
+    ready: function() {
+        // find it with jQuery
+        this._status = $('#sqlquery_status');
+    },
+
+    load: function() {
+        if (this._jsonQuery) {
+            this._jsonQuery.abort();
+        }
+        var sqlQueryString = $('#sqlquery').val();
+        var b = map.getBounds();
+        var url = L.Util.template(this._url, L.extend({
+            s: subdomains[0],
+	        east: long2ra(b.getEast()).toFixed(4),
+	        west: long2ra(b.getWest()).toFixed(4),
+	        south: lat2dec(b.getSouth()).toFixed(4),
+	        north: lat2dec(b.getNorth()).toFixed(4),
+            q: sqlQueryString,
+        }));
+        this._counter += 1;
+        this._status && this._status.html('loading...');
+        this._jsonQuery =$.getJSON(url, this.loaded.bind(this, this._counter));
+    },
+
+    getLabel: function(json, i) {
+        return '';
+    },
+
+});
+
+
 function getkeys(obj) {
-    s = '';
-    for (k in obj) {
+    var s = '';
+    for (var k in obj) {
         if (s.length) {
             s += ', ';
         }
@@ -211,7 +660,7 @@ function getkeys(obj) {
 var subdomains = {{ subdomains|safe }};
 
 function long2ra(lng) {
-    ra = 180. - lng;
+    var ra = 180. - lng;
     while (ra < 0) {
         ra += 360.;
     }
@@ -223,25 +672,25 @@ function long2ra(lng) {
 
 function wrap_long(lng, clong) {
     while (lng < clong-180) {
-      lng += 360;
+        lng += 360;
     }
     while (lng > clong+180) {
-      lng -= 360;
+        lng -= 360;
     }
     return lng;
 }
 
 function ra2long_C(ra, clong) {
-    lng = 180 - ra;
+    var lng = 180 - ra;
     lng = wrap_long(lng, clong);
     return lng;
 }
 
 function dec2lat(dec) {
-  return dec;
+    return dec;
 }
 function lat2dec(lat) {
-  return lat;
+    return lat;
 }
 
 function getSubdomain(x,y) {
@@ -253,8 +702,13 @@ function fluxToMag(f) {
 }
 
 function cutout_radec_link(ra, dec) {
+    {% if enable_cutouts %}
     return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&name=' + idname + '">' +
         ra.toFixed(4) + ', ' + dec.toFixed(4) + '</a>';
+    {% else %}
+    return ra.toFixed(4) + ', ' + dec.toFixed(4);
+    {% endif %}
+
 }
 
 function onSourceClick(e) {
@@ -271,469 +725,23 @@ function onSourceClick(e) {
     }
     nobs_g = 0
     if ('g' in src.nobs) {
-	nobs_g = src.nobs.g;
+	    nobs_g = src.nobs.g;
     }
     nobs_r = 0
     if ('r' in src.nobs) {
-	nobs_r = src.nobs.r;
+	    nobs_r = src.nobs.r;
     }
     nobs_z = 0
     if ('z' in src.nobs) {
-	nobs_z = src.nobs.z;
+	    nobs_z = src.nobs.z;
     }
 
     txt = 'Source RA,Dec = ' + cutout_radec_link(src.ra, src.dec) +
         '<br/>Source type: ' + src.type +
         '<br/>Mags: ' + fluxstr +
         '<br/>Brick: ' + src.brickname + ', Objid: ' + src.objid +
-	'<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z;
+	    '<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z;
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
-}
-
-function catLoaded(zoom, tilex, tiley, result) {
-    if (!showSources) {
-        return;
-    }
-    //console.log('catloaded: z,x,y: ' + zoom + ',' + tilex + ',' + tiley);
-    rdlist = result['rd'];
-    objtype = result['sourcetype'];
-    fluxes = result['fluxes'];
-    nobs = result['nobs'];
-    var circleList = new Array(rdlist.length);
-    var clong = map.getCenter().lng;
-    for (i=0, len=rdlist.length; i<len; i++) {
-        r = rdlist[i][0];
-        d = rdlist[i][1];
-        lat = dec2lat(d);
-        lng = ra2long_C(r, clong);
-        
-        color = 'blue';
-        if (objtype == undefined) {
-            typ = 'nil';
-        } else {
-            typ = objtype[i];
-	    // PSF
-            if (objtype[i] == 'P') {
-                color = '#9AFE2E'; //#D8F781'; //'green';
-	    } else if (objtype[i] == 'S') {
-		// Simple
-                color = 'orange';
-	    //if (objtype[i] == 'S') {
-            } else if (objtype[i] == 'D') {
-                color = 'red';
-            } else if (objtype[i] == 'E') {
-                color = '#58ACFA'; // blue
-            } else if (objtype[i] == 'C') {
-                color = '#DA81F5'; // magenta
-            }
-        }
-
-        //circ = L.circleMarker([lat, lng], {'radius':10, 'color':color,
-        //                                 'fillOpacity':0, 'weight':5});
-        circ = L.circle([lat, lng], 30, {'color':color,
-                                         'fillOpacity':0, 'weight':5});
-        circ.ra = r;
-        circ.dec = d;
-        circ.type = typ;
-
-        if (fluxes == undefined) {
-            circ.fluxes = {};
-        } else {
-            circ.fluxes = fluxes[i];
-        }
-
-        if (nobs == undefined) {
-            circ.nobs = {};
-        } else {
-            circ.nobs = nobs[i];
-        }
-
-        if (result.bricknames == undefined) {
-            circ.brickname = '';
-        } else {
-            circ.brickname = result.bricknames[i];
-        }
-        if (result.objids == undefined) {
-            circ.objid = '';
-        } else {
-            circ.objid = result.objids[i];
-        }
-
-        circ.on('click', onSourceClick);
-
-        circleList[i] = circ;
-    }
-    circles = L.layerGroup(circleList);
-    //circles = L.featureGroup(circleList);
-    //circles.on('click', onSourceClick);
-    sourcesGroup.addLayer(circles);
-    // save this for later.
-    key = ''+zoom+':'+tilex+':'+tiley;
-    //console.log('catalog loaded: key ' + key);
-    catLayers[key] = circles;
-}
-
-function ngcLoaded(zoom, tilex, tiley, result) {
-    if (!showNgc) {
-        return;
-    }
-
-    c = map.getCenter();
-    clong = c.lng
-    //console.log('NGC loaded: map center ' + c.lng + ',' + c.lat);
-
-    rdlist = result['rd'];
-    radius = result['radiusArcsec'];
-    names = result['name'];
-
-    showlabels = (map.getZoom() >= ngcLabelsMinZoom);
-
-    var circleList = new Array(rdlist.length);
-    for (i=0, len=rdlist.length; i<len; i++) {
-        r = rdlist[i][0];
-        d = rdlist[i][1];
-        lat = dec2lat(d);
-        lng = ra2long_C(r, clong);
-        
-	// arcsec to meters:
-	meters = radius[i] * 30.87;
-	if (meters == 0.) {
-	    meters = 30;
-	}
-
-	//color = '#8080a0';
-	color = '#ffffff';
-
-        circ = L.circle([lat, lng], meters, {'color':color,
-                                             'fillOpacity':0, 'weight':5});
-        circ.ra = r;
-        circ.dec = d;
-	circ.name = names[i];
-
-	circ._showLabelAdded = true;
-	circ.bindLabel(circ.name, { noHide: true });
-	circ.label._latlng = L.latLng(lat,lng);
-
-	if (showlabels) {
-	    circ.on('remove', function(e){
-		console.log('Removing label for ' + e.target.name);
-		map.removeLayer(e.target.label);
-	    });
-	}
-
-        circleList[i] = circ;
-    }
-    circles = L.layerGroup(circleList);
-    ngcGroup.addLayer(circles);
-    if (showlabels) {
-	// show labels
-	for (i=0; i<circleList.length; i++) {
-	    circ = circleList[i];
-	    map.showLabel(circ.label);
-	}
-    }
-
-    // save this for later.
-    key = ''+result['zoom']+':'+result['tilex']+':'+result['tiley'];
-    //console.log('NGC loaded: key ' + key);
-    ngcLayers[key] = circles;
-}
-
-function specLoaded(counter, result) {
-    console.log('specLoaded: counter ' + counter);
-    if (!showSpec) {
-        return;
-    }
-    for (var k in specLayers) {
-	if (k > counter) {
-	    console.log('spec: counter ' + k + ' exists; bye');
-	    return;
-	}
-    }
-
-    for (var k in specLayers) {
-	console.log('spec: counter ' + k + ' exists');
-    }
-
-    rdlist = result['rd'];
-    names = result['name'];
-
-    mjds = result['mjd'];
-    plates = result['plate'];
-    fibers = result['fiber'];
-
-    showlabels = (map.getZoom() >= specLabelsMinZoom);
-
-    //console.log('Creating ' + rdlist.length + ' labels');
-
-    var circleList = new Array(rdlist.length);
-    var clong = map.getCenter().lng;
-    for (i=0, len=rdlist.length; i<len; i++) {
-        r = rdlist[i][0];
-        d = rdlist[i][1];
-        lat = dec2lat(d);
-        lng = ra2long_C(r, clong);
-
-	// ~ 10 arcsec
-	meters = 300;
-	color = '#ffffff';
-        circ = L.circle([lat, lng], meters, {'color':color,
-                                             'fillOpacity':0, 'weight':5});
-        circ.ra = r;
-        circ.dec = d;
-
-	//console.log('ra,dec ' + r + ',' + d + ', lat,long ' + lat + ', ' + lng + ': ' + names[i]);
-
-	if (showlabels) {
-	    circ.name = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' + mjds[i] + '&fiber=' + fibers[i] + '&plateid=' + plates[i]
-	+ '">' + names[i] + '</a>';
-
-	    circ._showLabelAdded = true;
-	    circ.bindLabel(circ.name, { noHide: true, clickable: true });
-	    circ.label._latlng = L.latLng(lat,lng);
-	
-	    circ.on('remove', function(e){
-		console.log('Removing label for ' + e.target.name);
-		map.removeLayer(e.target.label);
-	    });
-	}
-        circleList[i] = circ;
-    }
-    circles = L.layerGroup(circleList);
-    specGroup.addLayer(circles);
-    if (showlabels) {
-    	// show labels
-    	for (i=0; i<circleList.length; i++) {
-    	    circ = circleList[i];
-    	    map.showLabel(circ.label);
-    	}
-    }
-
-    // remove old layers
-    for (var k in specLayers) {
-	if (k < counter) {
-	    console.log('spec: removing previous counter ' + k);
-	    specGroup.removeLayer(specLayers[k]);
-	    delete specLayers[k];
-	} else {
-	    console.log('spec: k ' + k + ' vs counter ' + counter);
-	}
-    }
-    // save this new layer
-    specLayers[counter] = [circles];
-    console.log('spec: saved counter ' + counter);
-}
-
-
-function brightLoaded(counter, result) {
-    console.log('brightLoaded: counter ' + counter);
-    if (!showBright) {
-        return;
-    }
-    for (var k in brightLayers) {
-	if (k > counter) {
-	    console.log('bright: counter ' + k + ' exists; bye');
-	    return;
-	}
-    }
-    for (var k in brightLayers) {
-	console.log('bright: counter ' + k + ' exists');
-    }
-
-    rdlist = result['rd'];
-    names = result['name'];
-    altnames = result['altname'];
-
-    showlabels = (map.getZoom() >= brightLabelsMinZoom);
-
-    var circleList = new Array(rdlist.length);
-    var clong = map.getCenter().lng;
-    for (i=0, len=rdlist.length; i<len; i++) {
-        r = rdlist[i][0];
-        d = rdlist[i][1];
-        lat = dec2lat(d);
-        lng = ra2long_C(r, clong);
-
-	// ~ 100 arcsec
-	meters = 3000;
-	color = '#ffffff';
-        circ = L.circle([lat, lng], meters, {'color':color,
-                                             'fillOpacity':0, 'weight':5});
-        circ.ra = r;
-        circ.dec = d;
-
-	if (showlabels) {
-        name = names[i];
-        if (altnames[i].length > 0) {
-            name = name + ' (' + altnames[i] + ')';
-        }
-	    circ.name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' + names[i].replace(' ','+') + '">' + name + '</a>';
-	    circ._showLabelAdded = true;
-	    circ.bindLabel(circ.name, { noHide: true, clickable: true });
-	    circ.label._latlng = L.latLng(lat,lng);
-	
-	    circ.on('remove', function(e){
-		console.log('Removing label for ' + e.target.name);
-		map.removeLayer(e.target.label);
-	    });
-	}
-        circleList[i] = circ;
-    }
-
-    circles = L.layerGroup(circleList);
-
-    // remove old layers
-    for (var k in brightLayers) {
-	if (k < counter) {
-	    console.log('bright: removing previous counter ' + k);
-	    brightGroup.removeLayer(brightLayers[k]);
-	    delete brightLayers[k];
-
-        console.log('bright: now brightGroup contains layers:', brightGroup.getLayers());
-
-	} else {
-	    console.log('bright: k ' + k + ' vs counter ' + counter);
-	}
-    }
-
-    brightGroup.clearLayers();
-
-    brightGroup.addLayer(circles);
-    if (showlabels) {
-    	// show labels
-    	for (i=0; i<circleList.length; i++) {
-    	    circ = circleList[i];
-    	    map.showLabel(circ.label);
-    	}
-    }
-
-    // save this new layer
-    brightLayers[counter] = [circles];
-    console.log('bright: saved counter ' + counter);
-}
-
-
-
-
-
-// Reads global "catname", name of catalog sources to load.
-// and 'sourcesMinZoom'
-function doLoadTile(tile) {
-    if (!(showSources || showNgc)) {
-	return;
-    }
-    //console.log('doLoadtile: ' + tile);
-
-    s = getSubdomain(tile.tilex, tile.tiley);
-    if (showSources && (tile.z >= sourcesMinZoom)) {
-	caturl = L.Util.template('{{ caturl|safe }}', L.extend({
-            s: s,
-            z: tile.z,
-            x: tile.tilex,
-            y: tile.tiley,
-            id: catname,
-            ver: getcatversion(catname),
-	}));
-	console.log('Loading catalog version ' + catname);
-    //console.log('zoom, tilex, tiley: ' + tile.z + ',' + tile.tilex + ',' + tile.tiley);
-	$.getJSON(caturl, catLoaded.bind(true,
-					 tile.z, tile.tilex, tile.tiley));
-    }
-    if (showNgc) {
-	url = L.Util.template('{{ caturl|safe }}', L.extend({
-            s: s,
-            z: tile.z,
-            x: tile.tilex,
-            y: tile.tiley,
-            id: 'ngc',
-            ver: getcatversion('ngc'),
-	}));
-	$.getJSON(url, ngcLoaded.bind(true,
-				     tile.z, tile.tilex, tile.tiley));
-    }
-}
-
-function onTileLoadStart(e) {
-    tile = e.tile;
-    key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
-    if (key in visibleTiles) {
-      console.log('onTileLoadStart: key ' + key + ' was already in visibleTiles');
-      return;
-    }
-    visibleTiles[key] = tile;
-    //console.log('onTileLoadStart: ' + key);
-    doLoadTile(tile);
-}
-
-function doUnloadTile(key) {
-    //console.log('doUnloadTile: ' + key);
-    //if (!showSources) {
-    if (key in catLayers) {
-	circles = catLayers[key];
-	if (typeof(circles) == 'undefined') {
-	    console.log('doUnloadTile on a tile with no catalog; whatevs');
-	} else {
-	    sourcesGroup.removeLayer(circles);
-	    delete catLayers[key];
-	    console.log('remaining catalog layers: ' + getkeys(catLayers));
-	}
-    }
-    //if (!showNgc) {
-    if (key in ngcLayers) {
-	circles = ngcLayers[key];
-	if (typeof(circles) == 'undefined') {
-	    console.log('doUnloadTile on a tile with no NGC; whatevs');
-	} else {
-	    ngcGroup.removeLayer(circles);
-	    delete ngcLayers[key];
-	    console.log('remaining NGC layers: ' + getkeys(ngcLayers));
-	}
-    }
-}
-
-function removeAllCatalogLayers() {
-    for (key in catLayers) {
-	console.log('removeAllCatalogLayers: removing ' + key);
-	circles = catLayers[key];
-	sourcesGroup.removeLayer(circles);
-	delete catLayers[key];
-    }
-
-    sourcesGroup.clearLayers();
-}
-
-function removeAllSpecLayers() {
-    for (key in specLayers) {
-	console.log('removeAllSpecLayers: removing ' + key);
-	circles = specLayers[key];
-	specGroup.removeLayer(circles);
-	delete specLayers[key];
-    }
-
-    //
-    specGroup.clearLayers();
-
-}
-
-function removeAllBrightLayers() {
-    for (key in brightLayers) {
-	console.log('removeAllBrightLayers: removing ' + key);
-	circles = brightLayers[key];
-	brightGroup.removeLayer(circles);
-	delete brightLayers[key];
-    }
-
-    //
-    brightGroup.clearLayers();
-
-}
-
-function onTileUnload(e) {
-    tile = e.tile;
-    key = ''+tile.z+':'+tile.tilex+':'+tile.tiley;
-    //console.log('onTileUnload: ' + key);
-    delete visibleTiles[key];
-    doUnloadTile(key);
 }
 
 function brick_detail(name) {
@@ -752,19 +760,45 @@ function exp_detail(name, aparams) {
 }
 
 function onMapClick(e) {
-    ra  = long2ra(e.latlng.lng);
-    dec = lat2dec(e.latlng.lat);
-    bricks = bricksUnderLatlng(e.latlng);
-    ccds = ccdsUnderLatlng(e.latlng);
-    exps = expsUnderLatlng(e.latlng);
-    //'lat,lng =' + e.latlng.lat.toFixed(4) + ',' + e.latlng.lng.toFixed(4) + '; ' +
-    //ra.toFixed(4) + ', ' + dec.toFixed(4) +
-    txt = 
+    var ra  = long2ra(e.latlng.lng);
+    var dec = lat2dec(e.latlng.lat);
+
+    var bricks = brickOverlay.under(e.latlng);
+    var ccds = ccdOverlay.under(e.latlng);
+    var exps = expOverlay.under(e.latlng);
+
+    var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
+    var qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
+
+    var cutout = '{{ absurl }}/jpeg-cutout/?' + qstr;
+
+    var linkurl = '{{ absurl }}?' + qstr;
+
+    for (var i=0,len=overlays.length; i<len; i++) {
+        console.log('Overlay ' + overlays[i]._name + ' shown? ' + overlays[i]._show + ', url term ' + overlays[i]._url_term);
+        if (overlays[i]._show) {
+            linkurl += '&' + overlays[i]._url_term;
+        }
+    }
+
+
+    var discuss = 'http://discuss.legacysurvey.org/new-topic?title=Interesting+object&body=' +
+        '%3Cimg+src%3D%22' + encodeURIComponent(cutout) + '%22%3E' +
+        '%0A' +
+        encodeURIComponent(linkurl) +
+        '&category=Interesting+things';
+
+    var datalink = '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + idname;
+    var spacer = ' &nbsp;|&nbsp; ';
+
+    var txt =
         'RA,Dec = ' + cutout_radec_link(ra, dec) +
-        '<br/><a href="{{ baseurl }}ra=' + ra.toFixed(4) +
-        '&dec=' + dec.toFixed(4) + '&zoom=' + map.getZoom() +
-	'&layer=' + idname
-        + '">link here</a>';
+        '<br/><a href="' + linkurl +
+        '">Link Here</a>' + spacer +
+        '<a href="' + datalink + '">Data</a>' + spacer +
+        '<a href="' + cutout + '">Cutout</a>' + spacer +
+        '<a href="' + discuss + '">Discuss This Object</a>';
+
     if (bricks.length) {
         for (var i=0; i<bricks.length; i++) {
             txt += '<br/>Brick: ' + brick_detail(bricks[i]);
@@ -784,300 +818,85 @@ function onMapClick(e) {
 }
 
 function onMouseMove(e) {
-    ra  = long2ra(e.latlng.lng);
-    dec = lat2dec(e.latlng.lat);
+    var ra  = long2ra(e.latlng.lng);
+    var dec = lat2dec(e.latlng.lat);
     lastLatLng = e.latlng;
     if (infoBoxActive) {
-	info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) + ", zoom " + map.getZoom();
+	    info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) + ", zoom " + map.getZoom();
 	    //+ ', lat,long ' + e.latlng.lat.toFixed(3) + ',' + e.latlng.lng.toFixed(3);
     }
     if (inbrickccdAdded) {
-        e.ra = ra;
-        e.dec = dec;
         inbrickccdUpdate(e);
     }
 }
 
-function bricksUnderLatlng(latlng) {
-    // Returns a list of the brick names under a given lat,long
-    bricks = [];
-    if (showBricks) {
-        geos = [];
-        for (var name in currentBricks) {
-            brick = currentBricks[name];
-            gj = brick.toGeoJSON();
-            gj.properties['name'] = name;
-            geos.push(gj);
-        }
-        geo = {type:'FeatureCollection', features:geos};
-        leafgeo = L.geoJson(geo);
-        inside = leafletPip.pointInLayer(latlng, leafgeo);
-        for (var i=0; i<inside.length; i++) {
-            bricks.push(inside[i].feature.properties.name);
-        }
-        bricks.sort();
-    }
-    return bricks;
-}
-
-function ccdsUnderLatlng(latlng) {
-    ccds = [];
-    if (showCcds) {
-        geos = [];
-        for (var name in currentCcds) {
-            ccd = currentCcds[name];
-            gj = ccd.toGeoJSON();
-            gj.properties['name'] = name;
-            geos.push(gj);
-        }
-        geo = {type:'FeatureCollection', features:geos};
-        leafgeo = L.geoJson(geo);
-        inside = leafletPip.pointInLayer(latlng, leafgeo);
-        for (var i=0; i<inside.length; i++) {
-            ccds.push(inside[i].feature.properties.name);
-        }
-        if (highlightedCcdName != '') {
-            if (ccds.indexOf(highlightedCcdName) == -1) {
-                ccds.push(highlightedCcdName);
-            }
-        }
-        //ccds.sort();
-    }
-    return ccds;
-}
-
-function expsUnderLatlng(latlng) {
-    exps = [];
-    if (showExps) {
-        for (var name in currentExps) {
-            exp = currentExps[name];
-	    if (latlng.distanceTo(exp.getLatLng()) < exp.getRadius()) {
-		exps.push(exp.name);
-	    }
-        }
-        if (highlightedExpName != '') {
-            if (exps.indexOf(highlightedExpName) == -1) {
-                exps.push(highlightedExpName);
-            }
-        }
-    }
-    return exps;
-}
-
 function inbrickccdUpdate(props) {
     if (props == undefined) {
-        return;
+        props = { 'latlng': lastLatLng };
     }
-    bricks = bricksUnderLatlng(props.latlng);
-    ccds = ccdsUnderLatlng(props.latlng);
-    exps = expsUnderLatlng(props.latlng);
-    txt = '';
-    if (bricks.length || ccds.length || exps.length) {
-        if (bricks.length) {
-            txt = txt + 'In brick: ';
-            for (var i=0; i<bricks.length; i++) {
-                if (i) {
-                    txt = txt + ', ';
-                }
-                txt = txt + brick_detail(bricks[i]);
+    var bricks = brickOverlay.under(props.latlng);
+    var ccds = ccdOverlay.under(props.latlng);
+    var exps = expOverlay.under(props.latlng);
+
+    var txt = '';
+    if (bricks.length) {
+        txt = txt + 'In brick: ';
+        for (var i=0; i<bricks.length; i++) {
+            if (i) {
+                txt = txt + ', ';
             }
-            if (ccds.length) {
-                txt = txt + '<br/>';
-            }
+            txt = txt + brick_detail(bricks[i]);
         }
-        if (ccds.length) {
-            txt = txt + 'In CCDs:<ul>';
-            for (var i=0; i<ccds.length; i++) {
-                ccdname = ccds[i];
-                aparams = '';
-                if (ccdname == highlightedCcdName) {
-                    aparams = ' class="highccd"';
-                }
-                //ccdtext = ccdname;
-                ccdtext = ccd_detail(ccdname, aparams);
-                //ccdtext = '<div class="highccd">' + ccdtext + '</div>';
-                //}
-                txt = txt + '<li>'+ccdtext+'</li>';
-            }
-            txt = txt + '</ul>';
+    }
+    if (ccds.length) {
+        if (txt.length) {
+            txt += '<br/>';
         }
-        if (exps.length) {
-            txt = txt + 'In Exposures:<ul>';
-            for (var i=0; i<exps.length; i++) {
-                expname = exps[i];
-                aparams = '';
-                if (expname == highlightedExpName) {
-                    aparams = ' class="highexp"';
-                }
-                exptext = exp_detail(expname.replace(' ','-'), aparams);
-                txt = txt + '<li>'+exptext+'</li>';
+        txt = txt + 'In CCDs:<ul>';
+        for (var i=0; i<ccds.length; i++) {
+            var ccdname = ccds[i];
+            var aparams = '';
+            if (ccdname == ccdOverlay._highlighted) {
+                aparams = ' class="highccd"';
             }
-            txt = txt + '</ul>';
+            var ccdtext = ccd_detail(ccdname, aparams);
+            txt = txt + '<li>'+ccdtext+'</li>';
         }
+        txt = txt + '</ul>';
+    }
+    if (exps.length) {
+        if (txt.length) {
+            txt += '<br/>';
+        }
+        txt = txt + 'In Exposures:<ul>';
+        for (var i=0; i<exps.length; i++) {
+            var expname = exps[i];
+            var aparams = '';
+            if (expname == expOverlay._highlighted) {
+                aparams = ' class="highexp"';
+            }
+            var exptext = exp_detail(expname.replace(' ','-'), aparams);
+            txt = txt + '<li>'+exptext+'</li>';
+        }
+        txt = txt + '</ul>';
     }
     inbrickccd._div.innerHTML = txt;
 }
 
 
-var specCounter = 1;
-
-function loadSpecCatalog() {
-    b = map.getBounds();
-    url = L.Util.template('{{ smallcaturl|safe }}', L.extend({
-        s: subdomains[0],
-	ralo: long2ra(b.getEast()).toFixed(4),
-	rahi: long2ra(b.getWest()).toFixed(4),
-	declo: lat2dec(b.getSouth()).toFixed(4),
-	dechi: lat2dec(b.getNorth()).toFixed(4),
-        id: 'spec',
-        ver: getcatversion('spec'),
-    }));
-    console.log('Loading spectra for counter ' + specCounter);
-    $.getJSON(url, specLoaded.bind(true, specCounter));
-    specCounter += 1;
-}
-
-var brightCounter = 1;
-
-function loadBrightCatalog() {
-    b = map.getBounds();
-    url = L.Util.template('{{ smallcaturl|safe }}', L.extend({
-        s: subdomains[0],
-	ralo: long2ra(b.getEast()).toFixed(4),
-	rahi: long2ra(b.getWest()).toFixed(4),
-	declo: lat2dec(b.getSouth()).toFixed(4),
-	dechi: lat2dec(b.getNorth()).toFixed(4),
-        id: 'bright',
-        ver: getcatversion('bright'),
-    }));
-    console.log('Loading bright stars for counter ' + brightCounter);
-    $.getJSON(url, brightLoaded.bind(true, brightCounter));
-    brightCounter += 1;
-}
-
-// "Sources", "Bricks", "CCDs" button checked
+// "Bricks", "CCDs", etc button checked
 function overlayAdded(e) {
-    //console.log('OverlayAdded: ' + e.name);
-    cat = false;
-    ngc = false
-    if (e.name == 'Sources') {
-        showSources = true;
-        cat = true;
-    }
-    if (e.name == ngcName) {
-        showNgc = true;
-        ngc = true;
-    }
-    if (e.name == specName) {
-	showSpec = true;
-	if (map.getZoom() >= specMinZoom) {
-	    loadSpecCatalog();
-	}
-    }
-    if (e.name == brightName) {
-	showBright = true;
-	if (map.getZoom() >= brightMinZoom) {
-	    loadBrightCatalog();
-	}
-    }
-
-    if (cat || ngc) {
-        // request catalogs for currently-visible tiles
-        //console.log('Visible tiles: ' + visibleTiles);
-        for (var i in visibleTiles) {
-            doLoadTile(visibleTiles[i]);
-        }
-    }
-
-    if (e.name == 'Bricks') {
-        showBricks = true;
-        mapBoundsChanged();
-        // set initial 'in brick'
-        //inbrickccdUpdate(e);
-    }
-    if (e.name == 'Exposures') {
-        showExps = true;
-        mapBoundsChanged();
-    }
-    if (e.name == 'SDSS Spectro Plates') {
-        showPlates = true;
-        mapBoundsChanged();
-    }
-    if (e.name == 'CCDs') {
-        showCcds = true;
-        mapBoundsChanged();
-    }
-    if (showBricks || showCcds || showExps || showPlates) {
+    if (ccdOverlay._show || brickOverlay._show || expOverlay._show) {
         if (!inbrickccdAdded) {
-            inbrickccd.addTo(map);
             inbrickccdAdded = true;
+            inbrickccd.addTo(map);
         }
     }
 }
 
 // "Sources", "Bricks", "CCDs" button unchecked
 function overlayRemoved(e) {
-    //console.log('OverlayRemoved: ' + e.name);
-    unload = false;
-    if (e.name == 'Sources') {
-        showSources = false;
-	unload = true;
-    }
-    if (e.name == ngcName) {
-        showNgc = false;
-	unload = true;
-    }
-    if (e.name == specName) {
-	showSpec = false;
-	for (var k in specLayers) {
-	    specGroup.removeLayer(k);
-	}
-	specLayers = {};
-    }
-
-    if (e.name == brightName) {
-	showBright = false;
-	for (var k in brightLayers) {
-	    brightGroup.removeLayer(k);
-	}
-	brightLayers = {};
-    }
-
-    if (unload) {
-        // remove all catalogs
-        for (var i in visibleTiles) {
-            doUnloadTile(i);
-        }
-    }
-
-    if (e.name == 'Bricks') {
-        showBricks = false;
-        for (var i in currentBricks) {
-            removeBrick(i);
-        }
-    }
-    if (e.name == 'CCDs') {
-        showCcds = false;
-        for (var i in currentCcds) {
-            removeCcd(i);
-        }
-        for (var name in ccdFills) {
-            map.removeLayer(ccdFills[name]);
-            delete ccdFills[name];
-        }
-    }
-    if (e.name == 'Exposures') {
-        showExps = false;
-        for (var i in currentExps) {
-            removeExp(i);
-        }
-        for (var name in expFills) {
-            map.removeLayer(expFills[name]);
-            delete expFills[name];
-        }
-    }
-
-    if (!(showBricks || showCcds || showExps)) {
+    if (!(ccdOverlay._show || brickOverlay._show || expOverlay._show)) {
         if (inbrickccdAdded) {
             map.removeControl(inbrickccd);
             inbrickccdAdded = false;
@@ -1085,337 +904,28 @@ function overlayRemoved(e) {
     }
 }
 
-function removeBrick(name) {
-    brick = currentBricks[name];
-    bricksGroup.removeLayer(brick);
-    delete currentBricks[name];
-}
-
-function removeCcd(name) {
-    ccd = currentCcds[name];
-    ccdsGroup.removeLayer(ccd);
-    delete currentCcds[name];
-}
-
-function removeExp(name) {
-    exp = currentExps[name];
-    expsGroup.removeLayer(exp);
-    delete currentExps[name];
-}
-
-function removePlate(name) {
-    exp = currentPlates[name];
-    expsGroup.removeLayer(exp);
-    delete currentPlates[name];
-}
-
-function bricksLoaded(result) {
-    if (!showBricks) {
-        return;
-    }
-    bricks = result['bricks'];
-    var clong = map.getCenter().lng;
-    for (var i=0, len=bricks.length; i<len; i++) {
-        //console.log('brick ' + i + ': ' + bricks[i]);
-        name = bricks[i].name;
-        if (name in currentBricks) {
-            //console.log('Brick ' + name + ' already exists');
-            continue;
-        }
-        poly = bricks[i].poly;
-        for (var j=0, npoly=poly.length; j<npoly; j++) {
-            while (poly[j][1] < clong-180) { poly[j][1] += 360; }
-            while (poly[j][1] > clong+180) { poly[j][1] -= 360; }
-        }
-        b = L.polygon(poly, {fill:false, weight:4, color:'blue' });
-        b.name = name;
-        //console.log('Adding brick ' + name + ': polygon ' + poly);
-        bricksGroup.addLayer(b);
-        currentBricks[name] = b;
-    }
-}
-
-function unhighlightCcd(name) {
-    map.removeLayer(ccdFills[name]);
-    delete ccdFills[name];
-}
-
-function highlightCcd(ccd) {
-    cf = L.polygon(ccd.getLatLngs(),
-                   {fill:true, fillOpacity:0.05, color:'yellow', weight:1});
-    ccdFills[ccd.name] = cf;
-    cf.addTo(map);
-    cf.bringToBack();
-}
-
-function ccdMouseOver(e) {
-    e.target.setStyle({color: 'yellow'});
-    ccd = e.target;
-    highlightedCcdName = ccd.name;
-    console.log('ccdMouseOver: ' + highlightedCcdName);
-    // remove other CCDs from ccdFills
-    for (var i=0; i<ccdFills.length; i++) {
-        console.log('ccdMouseOver: ccd ' + ccd.name + '; ccdFills ' + ccdFills[i]);
-        if (ccdFills[i] != ccd.name) {
-            unhighlightCcd(ccdFills[i]);
-        }
-    }
-    if (!(ccd.name in ccdFills)) {
-        highlightCcd(ccd);
-    }
-    inbrickccdUpdate(e);
-}
-
-function ccdMouseOut(e) {
-    e.target.setStyle({color: e.target.orig_color});
-    ccd = e.target;
-    highlightedCcdName = '';
-    if (ccd.name in ccdFills) {
-        unhighlightCcd(ccd.name);
-    }
-    inbrickccdUpdate(e);
-}
-
-function ccdsLoaded(result) {
-    if (!showCcds) {
-        return;
-    }
-    ccds = result['ccds'];
-    console.log('Received ' + ccds.length + ' CCDs');
-    var clong = map.getCenter().lng;
-    console.log('Center long', clong);
-    for (var i=0, len=ccds.length; i<len; i++) {
-        // console.log('ccd ' + i + ': ' + ccds[i]);
-        name = ccds[i].name;
-        if (name in currentCcds) {
-            //console.log('Ccd ' + name + ' already exists');
-            continue;
-        }
-        poly = ccds[i].poly;
-        for (var j=0, plen=poly.length; j<plen; j++) {
-            // lng = poly[j][1];
-            // wlng = wrap_long(lng, clong);
-            // poly[j][1] = wlng;
-            // console.log('ccd ' + i + ' poly ' + j + ' lng ' + lng + ' -> ' + wlng);
-            poly[j][1] = wrap_long(poly[j][1], clong);
-        }
-        color = ccds[i].color;
-        c = L.polygon(poly, {fill:false, color:color, weight:4 });
-        c.orig_color = color;
-        c.name = name;
-        c.on('mouseover', ccdMouseOver);
-        c.on('mouseout', ccdMouseOut);
-        // console.log('Adding ccd ' + name + ': polygon ' + poly);
-        ccdsGroup.addLayer(c);
-        currentCcds[name] = c;
-    }
-}
-
-function unhighlightExp(name) {
-    map.removeLayer(expFills[name]);
-    delete expFills[name];
-}
-
-function highlightExp(exp) {
-    cf = L.circle(exp.getLatLng(), exp.getRadius(),
-                  {fill:true, fillOpacity:0.05, color:'yellow', weight:1});
-    expFills[exp.name] = cf;
-    cf.addTo(map);
-    cf.bringToBack();
-}
-
-function expsLoaded(result) {
-    if (!showExps) {
-        return;
-    }
-    exps = result['exposures'];
-    console.log('Exposures:', exps.length);
-    var clong = map.getCenter().lng;
-    for (var i=0, len=exps.length; i<len; i++) {
-        // console.log('exp ' + i + ': ' + exps[i]);
-        name = exps[i].name;
-        if (name in currentExps) {
-            //console.log('Exp ' + name + ' already exists');
-            continue;
-        }
-        lat = dec2lat(exps[i].dec);
-        lng = ra2long_C(exps[i].ra, clong);
-
-
-	meters = 30 * 3600 * exps[i].radius;
-	color = exps[i].color;
-	c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
-					 'weight':5, 'opacity':0.4 });
-        c.name = name;
-        expsGroup.addLayer(c);
-        currentExps[name] = c;
-    }
-}
-
-function platesLoaded(result) {
-    if (!showPlates) {
-        return;
-    }
-    plates = result['plates'];
-    console.log('Plates:', plates.length);
-    var clong = map.getCenter().lng;
-    for (var i=0, len=plates.length; i<len; i++) {
-        // console.log('plate ' + i + ': ' + plates[i]);
-        name = plates[i].name;
-        if (name in currentPlates) {
-            //console.log('Plate ' + name + ' already exists');
-            continue;
-        }
-        lat = dec2lat(plates[i].dec);
-        lng = ra2long_C(plates[i].ra, clong);
-	meters = 30 * 3600 * plates[i].radius;
-	color = plates[i].color;
-	c = L.circle([lat,lng], meters, {'color':color, 'fillOpacity':0,
-					 'weight':5, 'opacity':0.4 });
-        c.name = name;
-        platesGroup.addLayer(c);
-        currentPlates[name] = c;
-    }
-}
-
-
-function mapBoundsChanged() {
-    latlng = map.getCenter();
-    zoom = map.getZoom();
-    ra  = long2ra(latlng.lng);
-    dec = lat2dec(latlng.lat);
-    //console.log('map zoom: ' + zoom + ', RA,Dec ' + ra + ', ' + dec);
-
-    if (showSpec && zoom > specMinZoom) {
-        loadSpecCatalog();
-    }
-    if (showBright && zoom > brightMinZoom) {
-        loadBrightCatalog();
-    }
-
-    if (showBricks) {
-        bounds = map.getBounds();
-        bricksurl = L.Util.template('{{ bricksurl|safe }}', L.extend({
-            s: 'a',
-            z: zoom,
-            west:  long2ra(bounds.getWest()).toFixed(4),
-            east:  long2ra(bounds.getEast()).toFixed(4),
-            north: lat2dec(bounds.getNorth()).toFixed(4),
-            south: lat2dec(bounds.getSouth()).toFixed(4),
-            id: idname,
-        }));
-        $.getJSON(bricksurl, bricksLoaded);
-    }
-    if (showCcds) {
-        bounds = map.getBounds();
-        ccdsurl = L.Util.template('{{ ccdsurl|safe }}', L.extend({
-            s: 'a',
-            z: zoom,
-            west:  long2ra(bounds.getWest()).toFixed(4),
-            east:  long2ra(bounds.getEast()).toFixed(4),
-            north: lat2dec(bounds.getNorth()).toFixed(4),
-            south: lat2dec(bounds.getSouth()).toFixed(4),
-            id: idname,
-        }));
-        $.getJSON(ccdsurl, ccdsLoaded);
-    }
-    if (showExps) {
-        bounds = map.getBounds();
-        expsurl = L.Util.template('{{ expsurl|safe }}', L.extend({
-            s: 'a',
-            z: zoom,
-            west:  long2ra(bounds.getWest()).toFixed(4),
-            east:  long2ra(bounds.getEast()).toFixed(4),
-            north: lat2dec(bounds.getNorth()).toFixed(4),
-            south: lat2dec(bounds.getSouth()).toFixed(4),
-            id: idname,
-        }));
-        $.getJSON(expsurl, expsLoaded);
-    }
-    if (showPlates) {
-        bounds = map.getBounds();
-        platesurl = L.Util.template('{{ platesurl|safe }}', L.extend({
-            s: 'a',
-            z: zoom,
-            west:  long2ra(bounds.getWest()).toFixed(4),
-            east:  long2ra(bounds.getEast()).toFixed(4),
-            north: lat2dec(bounds.getNorth()).toFixed(4),
-            south: lat2dec(bounds.getSouth()).toFixed(4),
-        }));
-        $.getJSON(platesurl, platesLoaded);
-    }
-
-}
-
-function onMapMoveEnd(e) {
-    //console.log('Map move end.');
-    mapBoundsChanged();
-}
-
-var inbrickccd = L.control();
+// List of bricks / CCDs under the mouse position
+var inbrickccd = L.control({'position': 'bottomleft'});
 inbrickccd.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'inbrickccd');
-    this.update();
     return this._div;
 };
-inbrickccd.update = inbrickccdUpdate;
 var inbrickccdAdded = false;
 
-var showSources = false;
-// "switchingSources" is only used when changing map base layers
-// that have different catalogs; this requires some carefulness in
-// the ordering of adding and removing layers.
-var switchingSources = false;
-var sourcesGroup = L.layerGroup([]);
-var catLayers = {};
-var visibleTiles = {};
-
-var showNgc = false;
-var ngcGroup = L.layerGroup([]);
-var ngcLayers = {};
-
-var showSpec = false;
-var specGroup = L.layerGroup([]);
-var specLayers = {};
-
-var showBright = false;
-var brightGroup = L.layerGroup([]);
-var brightLayers = {};
-
-var conGroup = L.layerGroup([]);
-
-var showBricks = false;
-var bricksGroup = L.layerGroup([]);
-var currentBricks = {};
-
-var showCcds = false;
-var ccdsGroup = L.layerGroup([]);
-var currentCcds = {};
-var ccdFills = {};
-var highlightedCcdName = '';
-
-var showExps = false;
-var expsGroup = L.layerGroup([]);
-var currentExps = {};
-var expFills = {};
-var highlightedExpName = '';
-
-var showPlates = false;
-var platesGroup = L.layerGroup([]);
-var currentPlates = {};
-var plateFills = {};
-var highlightedPlateName = '';
+//var conGroup = L.layerGroup([]);
 
 var map = L.map('map');
 var popup = L.popup();
 
+map.attributionControl.options.prefix += ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
+
 // default to 1.
 var tileversions = {
-  'decals-wl':4,
-  'decals-dr2':2,
+    'decals-wl':4,
+    'decals-dr2':2,
 };
 var catversions  = {
-  'decals-dr2': 2,
+    'decals-dr2': 2,
 };
 
 function getversion(layer) {
@@ -1432,196 +942,91 @@ function getcatversion(layer) {
     return 1;
 }
 
-var idname = '{{ layer }}';
-var catname = 'decals-dr1j';
-
 var minZoom = 1;
 var maxZoom = 16;
 
-allLayers = [];
+var allLayers = [];
 
-static_tile_url = '{{ static_tile_url|safe }}';
+var static_tile_url = '{{ static_tile_url|safe }}';
 
-decals_attrib = '<a href="http://legacysurvey.org">Legacy Survey</a>,' +
-  '<a href="https://www.noao.edu/image_gallery/copyright.html">(c)</a>' +
-  ' <a href="http://noao.edu">NOAO</a>/<a href="http://www.aura-astronomy.org/">AURA</a>/<a href="http://www.nsf.gov/">NSF</a>';
+var decals_attrib = '<a href="http://legacysurvey.org">Legacy Survey</a>,' +
+    '<a href="https://www.noao.edu/image_gallery/copyright.html">&copy;</a>' +
+    ' <a href="http://noao.edu">NOAO</a>/<a href="http://www.aura-astronomy.org/">AURA</a>/<a href="http://www.nsf.gov/">NSF</a>';
+var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">(c)</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
 
-
-tilesSfd = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    minZoom: minZoom,
-    maxNativeZoom: 10,
-    attribution: decals_attrib,
-    id: 'sfd-tiles',
-    ver: getversion('sfd'),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
-  });
-tilesSfd.on('tileloadstart', onTileLoadStart);
-tilesSfd.on('tileunload', onTileUnload);
-
-tilesHalpha = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    minZoom: minZoom,
-    maxNativeZoom: 10,
-    attribution: decals_attrib,
-    id: 'halpha-tiles',
-    ver: getversion('halpha'),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
-  });
-tilesHalpha.on('tileloadstart', onTileLoadStart);
-tilesHalpha.on('tileunload', onTileUnload);
-
-function createStaticTileLayer(id, vertag) {
-    var tiles = new MyTileLayer(static_tile_url, {
+var mylayer = function (name, pretty, kwargs) {
+    var args = {
         maxZoom: maxZoom,
         minZoom: minZoom,
+        maxNativeZoom: {{maxNativeZoom}},
         attribution: decals_attrib,
-        id: id,
-        ver: getversion(vertag),
-        // ?
+        id: name,
+        ver: getversion(name),
         unloadInvisibleTiles: true,
         subdomains: subdomains,
-    });
-    tiles.on('tileloadstart', onTileLoadStart);
-    tiles.on('tileunload',    onTileUnload);
+    };
+    for (var key in kwargs) {
+        args[key] = kwargs[key];
+    }
+    var tiles = new ZoomRangeTileLayer(static_tile_url, args);
+    tiles.name = name;
+    tiles.pretty = pretty;
     return tiles;
-}
+};
 
+var tiles;
 
-{% if enable_dr2 %}
-id = 'decals-dr2'
-catname = 'decals-dr2';
+tiles = mylayer('decals-dr2', 'DECaLS DR2 images',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+var tilesDecalsDr2Image = tiles;
 
-// Use the static URL until zoom level 14, then the dynamic URL.
-tiles = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-tiles.catname = catname;
-allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 images", catname:catname});
+tiles = mylayer('decals-dr2-model', 'DECaLS DR2 models',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+var tilesDecalsDr2Model = tiles;
 
+tiles = mylayer('decals-dr2-resid', 'DECaLS DR2 residuals',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+var tilesDecalsDr2Resid = tiles;
 
-id = 'decals-dr2-model'
-tiles = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-tiles.catname = catname;
-allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 models", catname:catname});
+tiles = mylayer('decals-dr1j', 'DECaLS DR1 images',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 
-id = 'decals-dr2-resid'
-tiles = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-tiles.catname = catname;
-allLayers.push({name:id, tiles:tiles, pretty:"DECaLS DR2 residuals", catname:catname});
+tiles = mylayer('decals-model-dr1j', 'DECaLS DR1 models',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 
+tiles = mylayer('decals-resid-dr1j', 'DECaLS DR1 residuals',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 
+tiles = mylayer('sdssco', 'SDSS images',
+                {'attribution': sdss_attrib,
+                 'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 
-{% endif %}
+tiles = mylayer('unwise-w1w2', 'unWISE W1/W2',
+                {'maxNativeZoom': 10});
+allLayers.push(tiles);
 
+tiles = mylayer('unwise-neo1', 'unWISE W1/W2 NEO1',
+                {'maxNativeZoom': 10});
+allLayers.push(tiles);
 
+tiles = mylayer('sfd', 'SFD dust map',
+                {'maxNativeZoom':10,
+                 'urlPatterns': [ [7, 10, '{{ tileurl|safe }}'],], });
+allLayers.push(tiles);
 
-
-
-id = 'decals-dr1j'
-catname = 'decals-dr1j';
-
-// Use the static URL until zoom level 14, then the dynamic URL.
-tilesDr1j = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-
-tilesDr1j.catname = catname;
-allLayers.push({name:id, tiles:tilesDr1j, pretty:"DECaLS DR1 images", catname:catname});
-
-id = 'decals-model-dr1j'
-tilesModDr1j = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-
-tilesModDr1j.catname = catname;
-allLayers.push({name:id, tiles:tilesModDr1j, pretty:"DECaLS DR1 models", catname:catname});
-
-id = 'decals-resid-dr1j'
-tilesResidDr1j = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: decals_attrib,
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-
-tilesResidDr1j.catname = catname;
-allLayers.push({name:id, tiles:tilesResidDr1j, pretty:"DECaLS DR1 residuals", catname:catname});
-
-id = 'sdssco'
-tiles = new ZoomRangeTileLayer(static_tile_url, {
-    maxZoom: maxZoom,
-    maxNativeZoom: {{ maxNativeZoom }},
-    minZoom: minZoom,
-    attribution: '<a href="http://sdss.org/collaboration/#image-use">(c)</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>',
-    id: id,
-    ver: getversion(id),
-    unloadInvisibleTiles: true,
-    subdomains: subdomains,
-    urlPatterns: [ [14, 16, '{{ tileurl|safe }}'], ],
-  });
-allLayers.push({name:id, tiles:tiles, pretty:"SDSS images", catname:""});
-
-allLayers.push({name:'sfd', tiles:tilesSfd, pretty:"SFD dust map", catname:""});
-
-allLayers.push({name:'halpha', tiles:tilesHalpha, pretty:"Halpha map", catname:""});
-
+tiles = mylayer('halpha', 'Halpha map',
+                {'maxNativeZoom':10,
+                 'urlPatterns': [ [7, 10, '{{ tileurl|safe }}'],],});
+allLayers.push(tiles);
 
 {% if enable_wl %}
-
 tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
     maxZoom: maxZoom,
     minZoom: minZoom,
@@ -1632,56 +1037,27 @@ tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
     unloadInvisibleTiles: true,
     subdomains: subdomains,
     //urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
-  });
-tilesWl.on('tileloadstart', onTileLoadStart);
-tilesWl.on('tileunload', onTileUnload);
-
-allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map", catname:""});
-
+});
+allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map"});
 {% endif %}
 
-id = 'unwise-w1w2-tiles'
-vertag = 'unwise'
-tilesUnwise = new MyTileLayer('{{ tileurl|safe }}', {
-      maxZoom: maxZoom,
-      //maxNativeZoom: 11,
-      maxNativeZoom: 10,
-      minZoom: minZoom,
-      attribution: decals_attrib,
-      id: id,
-      ver: getversion(vertag),
-      unloadInvisibleTiles: true,
-      subdomains: subdomains,
-});
-
-allLayers.push({name:'unwise', tiles:tilesUnwise, pretty:"unWISE W1/W2", catname:""});
-
 var baseMaps = {};
-for (i in allLayers) {
-  layer = allLayers[i];
-
-  tiles = layer.tiles;
-  tiles.on('tileloadstart', onTileLoadStart);
-  tiles.on('tileunload', onTileUnload);
-
-  tiles.name = layer.name;
-
-  baseMaps[layer.pretty] = tiles;
+for (var i in allLayers) {
+    var layer = allLayers[i];
+    baseMaps[layer.pretty] = layer;
 }
 
-added = false;
+var added = false;
+var idname = '{{ layer }}';
 for (i in allLayers) {
-  layer = allLayers[i];
-  if (idname == layer.name) {
-    layer.tiles.addTo(map);
-    added = true;
-    if (layer.catname.length > 0) {
-      catname = layer.catname;
+    layer = allLayers[i];
+    if (idname == layer.name) {
+        layer.addTo(map);
+        added = true;
     }
-  }
 }
 if (!added) {
-  tilesDr1j.addTo(map);
+    tilesDecalsDr2Image.addTo(map);
 }
 
 function doGoto() {
@@ -1711,15 +1087,15 @@ function cancelGoto(e) {
 
 function gotoKeypress(e) {
     if (e.which == 13) {
-	// Enter key
-	doGoto();
+	    // Enter key
+	    doGoto();
     }
 }
 
 function infoBoxClicked(e) {
     console.log('Info box clicked');
     if (!infoBoxActive) {
-	return;
+	    return;
     }
     infoBoxActive = false;
     ra  = long2ra(map.getCenter().lng);
@@ -1727,23 +1103,23 @@ function infoBoxClicked(e) {
     ra = ra.toFixed(4);
     // trim trailing zeros
     while (ra.length && ra.charAt(ra.length-1) == '0') {
-	ra = ra.substring(0, ra.length-1);
+	    ra = ra.substring(0, ra.length-1);
     }
     dec = dec.toFixed(4);
     while (dec.length && dec.charAt(dec.length-1) == '0') {
-	dec = dec.substring(0, dec.length-1);
+	    dec = dec.substring(0, dec.length-1);
     }
 
     info._div.innerHTML = '<center><form>RA,Dec '
-	+ '<input name="ra"  id="gotora"  value="' + ra
-	+ '" size=6>, '
-	+ '<input name="dec" id="gotodec" value="' + dec
-	+ '" size=6>, '
-	+ 'zoom <input name="zoom" id="gotozoom" value="' + map.getZoom() + '" size=4>'
-	+ '<br/><br/>'
-	+ '<input type="button" value="Go" id="gotosubmit">'
-	+ '<input type="button" value="Cancel" id="gotocancel">'
-	+ '</form></center>';
+	    + '<input name="ra"  id="gotora"  value="' + ra
+	    + '" size=6>, '
+	    + '<input name="dec" id="gotodec" value="' + dec
+	    + '" size=6>, '
+	    + 'zoom <input name="zoom" id="gotozoom" value="' + map.getZoom() + '" size=4>'
+	    + '<br/><br/>'
+	    + '<input type="button" value="Go" id="gotosubmit">'
+	    + '<input type="button" value="Cancel" id="gotocancel">'
+	    + '</form></center>';
     $('#gotosubmit').click(submitGoto);
     $('#gotocancel').click(cancelGoto);
     $('#gotora').keypress(gotoKeypress);
@@ -1760,314 +1136,431 @@ info.onAdd = function (map) {
 };
 info.addTo(map);
 
-container = info.getContainer();
+var container = info.getContainer();
 L.DomEvent
-  .disableClickPropagation(container)
-  .disableScrollPropagation(container);
+    .disableClickPropagation(container)
+    .disableScrollPropagation(container);
 L.DomEvent.on(container, 'click', infoBoxClicked);
 
-var specName = "Spectra";
-var ngcName = "NGC galaxies";
-var brightName = "Bright stars";
-
-var overlayMaps = {
-    "Sources": sourcesGroup,
-    "Bricks": bricksGroup,
-    "CCDs": ccdsGroup,
-    "Exposures": expsGroup,
+// SQL query input field
+var query = L.control({'position':'bottomleft'});
+query.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'query');
+    this._div.innerHTML = 'SQL catalog query: <input type="text" id="sqlquery" value="rflux > 100" size="50"/> <span id="sqlquery_status"></span>'
+    return this._div;
 };
-overlayMaps[ngcName] = ngcGroup;
-overlayMaps[brightName] = brightGroup;
-overlayMaps[specName] = specGroup;
-overlayMaps["SDSS Spectro Plates"] = platesGroup;
+query.addTo(map);
+
+// Named object search field
+var objquery = L.control({'position':'bottomright'});
+objquery.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'objquery');
+    this._div.innerHTML = 'Jump to object: <input type="text" id="objquery" value="NGC 5614" size="25"/> <span id="objquerystatus"></span>';
+    return this._div;
+};
+objquery.addTo(map);
+
+// A list of object names mapped to [lat,lng,zoom], for history navgation
+var hashLocations = {};
+
+function objQueryLoaded(result) {
+    console.log('Result: ' + result);
+    if ("error" in result) {
+        $('#objquerystatus').html(result["error"]);
+        return;
+    }
+    var ra = result['ra'];
+    var dec = result['dec'];
+    var lat = dec2lat(dec);
+    var lng = ra2long_C(ra, 0.);
+    var zoom = map.getZoom();
+    map.setView(L.latLng(lat, lng), zoom);
+    $('#objquerystatus').html("");
+    location.hash = result['name'];
+    hashLocations[location.hash] = [lat, lng, zoom];
+    console.log('Saved hash location:', location.hash, '=', hashLocations[location.hash]);
+}
+
+$(document).ready(function() {
+    $('#sqlquery').keydown(function(event) {
+        // when Enter is hit in the SQL box
+        if (event.keyCode == 13) {
+            sqlOverlay.newQuery();
+            return false;
+        }
+    });
+
+    // stop event propagation to the map layer
+    $('#sqlquery').click(function(event) {
+        return false;
+    });
+
+    $('#objquery').keydown(function(event) {
+        // when Enter is hit in the Object name search box
+        if (event.keyCode == 13) {
+            var qstring = $('#objquery').val();
+            var url = L.Util.template('{{ namequeryurl|safe }}', L.extend({
+                obj: qstring,
+            }));
+            $.getJSON(url, objQueryLoaded);
+            $('#objquerystatus').html('Searching...');
+            return false;
+        }
+    });
+    // stop event propagation to the map layer
+    $('#objquery').click(function(event) {
+        return false;
+    });
+
+    // set initial hash location
+    var loc = [map.getCenter().lat, map.getCenter().lng, map.getZoom()];
+    //console.log('Initial location:', loc);
+    {% if galname %}
+    location.hash = '{{galname}}';
+    {% endif %}
+    hashLocations[location.hash] = loc;
+    //console.log('Initial hashLocations:', hashLocations);
+
+});
+
+function onHashChange() {
+    console.log('Hash changed to', location.hash);
+    if (location.hash in hashLocations) {
+        var loc = hashLocations[location.hash];
+        console.log('Known hash location:', loc);
+        var lat = loc[0];
+        var lng = loc[1];
+        var zoom = loc[2];
+        map.setView(L.latLng(lat, lng), zoom);
+    }
+}
+
+L.DomEvent.addListener(window, 'hashchange', onHashChange);
+
+var PolygonOverlay = CatalogOverlay.extend({
+
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        if ('doHighlight' in kwargs) {
+            this._doHighlight = kwargs['doHighlight'];
+        } else {
+            this._doHighlight = true;
+        }
+        this._highlighted = null;
+        this._filled = {};
+        this._current = {};
+        this._color = 'blue';
+    },
+
+    loaded: function(counter, result) {
+        // reset current polygon list.
+        this._current = {};
+        CatalogOverlay.prototype.loaded.call(this, counter, result);
+    },
+
+    getLabel: function(json, i) {
+        return '';
+    },
+
+    getLayer: function(result) {
+        var objs = result['polys'];
+        //console.log('Received ' + objs.length + ' Objs');
+        var circleList = [];
+        var clong = map.getCenter().lng;
+        for (var i=0, len=objs.length; i<len; i++) {
+            var name = objs[i].name;
+            var poly = objs[i].poly;
+            for (var j=0, plen=poly.length; j<plen; j++) {
+                poly[j][1] = wrap_long(poly[j][1], clong);
+            }
+            var color = objs[i].color || this._color;
+            var c = L.polygon(poly, {fill:false, color:color, weight:4 });
+            c.orig_color = color;
+            c.name = name;
+            if (this._doHighlight) {
+                c.on('mouseover', this.mouseOver.bind(this));
+                c.on('mouseout',  this.mouseOut.bind(this));
+            }
+            circleList.push(c);
+            this._current[name] = c;
+        }
+        return L.layerGroup(circleList);
+    },
+
+    mouseOver: function(e) {
+        e.target.setStyle({color: 'yellow'});
+        var obj = e.target;
+        this._highlighted = obj.name;
+        // remove other objs from fills
+        for (var i=0, len=this._filled.length; i<len; i++) {
+            if (this._filled[i] != obj.name) {
+                this.unhighlight(this._filled[i]);
+            }
+        }
+        if (!(obj.name in this._filled)) {
+            this.highlight(obj);
+        }
+        inbrickccdUpdate(e);
+    },
+
+    unhighlight: function(name) {
+        this._group.removeLayer(this._filled[name]);
+        delete this._filled[name];
+    },
+
+    highlight: function(obj) {
+        var cf = L.polygon(obj.getLatLngs(),
+                           {fill:true, fillOpacity:0.05, color:'yellow',
+                            weight:1});
+        this._filled[obj.name] = cf;
+        cf.addTo(this._group);
+        cf.bringToBack();
+    },
+
+    mouseOut: function(e) {
+        var obj = e.target;
+        obj.setStyle({color: obj.orig_color});
+        this._highlighted = null;
+        if (obj.name in this._filled) {
+            this.unhighlight(obj.name);
+        }
+        inbrickccdUpdate(e);
+    },
+
+    under: function(latlng) {
+        var objs = [];
+        if (!this._show) {
+            return [];
+        }
+        var geos = [];
+        for (var name in this._current) {
+            var obj = this._current[name];
+            var gj = obj.toGeoJSON();
+            gj.properties['name'] = name;
+            geos.push(gj);
+        }
+        var geo = {type:'FeatureCollection', features:geos};
+        var leafgeo = L.geoJson(geo);
+        var inside = leafletPip.pointInLayer(latlng, leafgeo);
+        for (var i=0; i<inside.length; i++) {
+            objs.push(inside[i].feature.properties.name);
+        }
+        if (this._doHighlight) {
+            if (this._highlighted != null) {
+                if (objs.indexOf(this._highlighted) == -1) {
+                    objs.push(this._highlighted);
+                }
+            }
+        }
+        //objs.sort();
+        return objs;
+    },
+
+});
+
+var CircleOverlay = PolygonOverlay.extend({
+    getLayer: function(result) {
+        var objs = result['objs'];
+        //console.log('Received ' + objs.length + ' objs');
+        var objList = [];
+        var clong = map.getCenter().lng;
+        for (var i=0, len=objs.length; i<len; i++) {
+            var name = objs[i].name;
+	        var meters = 30 * 3600 * objs[i].radius;
+            var ra = objs[i].ra;
+            var dec = objs[i].dec;
+            var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
+            var color = objs[i].color || this._color;
+            var c = L.circle(latlng, meters, {fill:false, color:color, weight:5 });
+            c.orig_color = color;
+            c.name = name;
+            if (this._doHighlight) {
+                c.on('mouseover', this.mouseOver.bind(this));
+                c.on('mouseout',  this.mouseOut.bind(this));
+            }
+            objList.push(c);
+            this._current[name] = c;
+        }
+        return L.layerGroup(objList);
+    },
+
+    highlight: function(obj) {
+        var cf = L.circle(obj.getLatLng(), obj.getRadius(),
+                           {fill:true, fillOpacity:0.05, color:'yellow',
+                            weight:1});
+        this._filled[obj.name] = cf;
+        cf.addTo(this._group);
+        cf.bringToBack();
+    },
+
+    under: function(latlng) {
+        if (!this._show) {
+            return [];
+        }
+        var objs = [];
+        var geos = [];
+        for (var name in this._current) {
+            var obj = this._current[name];
+	        if (latlng.distanceTo(obj.getLatLng()) < obj.getRadius()) {
+		        objs.push(obj.name);
+	        }
+        }
+        if (this._doHighlight) {
+            if (this._highlighted != null) {
+                if (objs.indexOf(this._highlighted) == -1) {
+                    objs.push(this._highlighted);
+                }
+            }
+        }
+        return objs;
+    },
+
+});
+
+var tileWatcher = new TileWatcher();
+
+for (var k in baseMaps) {
+    var layer = baseMaps[k];
+    tileWatcher.listenToLayer(layer);
+}
+
+var ccdOverlay = new PolygonOverlay('decals-dr2-ccds', 'DECaLS DR2 CCDs',
+                                    {'url':'{{ ccdsurl|safe }}',
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds',
+                                    });
+
+var expOverlay = new CircleOverlay('decals-dr2-exps', 'DECaLS DR2 Exposures',
+                                    {'url':'{{ expsurl|safe }}',
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'exps',
+                                    });
+
+var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
+                                      {'url':'{{ bricksurl|safe }}',
+                                       'minZoom': 8,
+                                       'labelMinZoom': 100,
+                                       'doHighlight': false,
+                                       'urlTerm': 'bricks',
+                                      });
+
+ccdOverlay.on('loaded', function() { inbrickccdUpdate(); });
+expOverlay.on('loaded', function() { inbrickccdUpdate(); });
+brickOverlay.on('loaded', function() { inbrickccdUpdate(); });
+
+var plateOverlay = new CircleOverlay('sdss-plates', 'SDSS Spectro Plates',
+                                    {'url':'{{ platesurl|safe }}',
+                                     'labelMinZoom': 100,
+                                    });
+
+var decalscat = new DecalsCatalogLayer(tileWatcher,
+                                       'decals-dr2', 'DECaLS DR2 Catalog',
+                                       {'url': '{{caturl|safe}}', 
+                                        'minZoom': 12,
+                                        'urlTerm': 'sources'});
+
+var bright = new BrightCatalog('bright', 'Bright stars', {});
+
+var gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
+                             {'url_name': 'ngc',
+                              'minZoom': 5,
+                              'labelsMinZoom': 7,
+                             'urlTerm': 'ngc',});
+
+var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
+                                  {'radius': 300,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 9,
+                                   'urlTerm': 'spectra'});
+
+var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
+                                       {'url': '{{sqlurl|safe}}',
+                                        'radius': 300,
+                                       });
 
 {% comment %}
-    "Constellations": conGroup,
+"Constellations": conGroup,
 {% endcomment %}
 
-new MyLayerControl(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
-
-function onMapPreBaseLayerChange(e) {
-    console.log('PRE Map base layer change');
-    console.log('removing: catalog name: ' + e.removing.catname);
-    console.log('adding: catalog name: ' + e.adding.catname);
-    if ((typeof(e.adding.catname)   == 'undefined') ||
-        (typeof(e.removing.catname) == 'undefined')) {
-        return;
-    }
-    if (!showSources) {
-        catname = e.adding.catname;
-        return;
-    }
-    if (e.removing.catname == e.adding.catname) {
-        return;
-    }
-    console.log('Removing sources');
-    switchingSources = true;
-    overlayRemoved({name:'Sources'});
-    catname = e.adding.catname;
-    console.log('Switched catalog name to ' + catname);
+var overlays = [decalscat, ccdOverlay, expOverlay, brickOverlay,
+                gals, bright, spec, plateOverlay];
+var layerControl = new L.control.layers(baseMaps, {}, { collapsed: false })
+for (var i=0,len=overlays.length; i<len; i++) {
+    layerControl._addLayer(overlays[i].getGroup(), overlays[i]._pretty, true);
 }
-
-function onMapPostBaseLayerChange(e) {
-    console.log('POST Map base layer change');
-    console.log('removing: catalog name: ' + e.removing.catname);
-    console.log('adding: catalog name: ' + e.adding.catname);
-
-    if (typeof(e.adding.name) != 'undefined') {
-      idname = e.adding.name;
-      console.log('Layer name: ' + e.adding.name);
-    }
-
-    if ((e.adding.catname == undefined) || (e.removing.catname == undefined)) {
-        return;
-    }
-    if (!switchingSources || (e.removing.catname == e.adding.catname)) {
-        return;
-    }
-    console.log('Re-adding sources');
-    overlayAdded({name:'Sources'});
-}
-
+layerControl.addTo(map);
 
 /*
-The overlays DOM looks like this:
+  The overlays DOM looks like this:
 
-<div class="leaflet-control-layers-overlays">
+  <div class="leaflet-control-layers-overlays">
   <label>
-    <input class="leaflet-control-layers-selector" type="checkbox">
-    <span> Sources</span>
+  <input class="leaflet-control-layers-selector" type="checkbox">
+  <span> Sources</span>
   </label>
   <label>
-    <input class="leaflet-control-layers-selector" type="checkbox">
-    <span> Bricks</span>
+  <input class="leaflet-control-layers-selector" type="checkbox">
+  <span> Bricks</span>
   </label>
   <label>
-</div>
+  </div>
 */
 // We iterate through the <input> tags, getting the text from the next sibling.
 function getOverlayCheckbox(name) {
-  var ov = false;
-  overlays = $('.leaflet-control-layers-overlays .leaflet-control-layers-selector');
-  overlays.each(function(i) {
-    o = $(this);
-    text = $.trim(o.next().text());
-    if (text == name) {
-      ov = o;
-    }
-  });
-  return ov;
-}
-function isOverlayChecked(name) {
-  o = getOverlayCheckbox(name);
-  return $(o).prop('checked');
-}
-function setOverlayEnabled(name, enabled) {
-  o = getOverlayCheckbox(name);
-  if (enabled) {
-    o.removeAttr('disabled');
-  } else {
-    o.attr('disabled', 'disabled');
-  }
+    var ov = false;
+    var ovs = $('.leaflet-control-layers-overlays .leaflet-control-layers-selector');
+    ovs.each(function(i) {
+        var o = $(this);
+        var text = $.trim(o.next().text());
+        //console.log('Looking for overlay "' + name + '", found "' + text + '"');
+        if (text == name) {
+            ov = o;
+        }
+    });
+    return ov;
 }
 
-//
-var bricksMinZoom = 8;
-var ccdsMinZoom = 8;
-var sourcesMinZoom = 12;
-var ngcLabelsMinZoom = 8;
-
-var specMinZoom = 10;
-var specLabelsMinZoom = 11;
-
-var brightMinZoom = 3;
-var brightLabelsMinZoom = 6;
-
-// variable for tracking old & new zoom via zoomstart / zoomend
-var oldZoom = {{ zoom }};
-function onMapZoomStart(e) {
-  zoom = map.getZoom();
-  console.log('map zoom start: ' + zoom + ', previous' + oldZoom);
-  oldZoom = zoom;
-
-}
 function onMapZoomEnd(e) {
-  zoom = map.getZoom();
-  //console.log('map zoom: ' + zoom + ', old zoom' + oldZoom + ' vs brick zoom', bricksMinZoom);
-
-  // Bricks
-
-  if ((oldZoom >= bricksMinZoom) && (zoom < bricksMinZoom)) {
-    // zoomed out past the boundary
-    console.log('zoomed out past brick boundary');
-    if (showBricks) {
-      console.log('removing brick outlines');
-      overlayRemoved({name:'Bricks'});
+    // update the RA,Dec,zoom info box
+    if (typeof(lastLatLng) != 'undefined') {
+        onMouseMove({ latlng: lastLatLng });
     }
-    setOverlayEnabled('Bricks', false);
-  } else if ((oldZoom < bricksMinZoom) && (zoom >= bricksMinZoom)) {
-    // zoomed in past the boundary
-    console.log('zoomed in past boundary');
-    setOverlayEnabled('Bricks', true);
-    if (isOverlayChecked('Bricks')) {
-      console.log('Re-adding bricks');
-      overlayAdded({name:'Bricks'});
+}
+
+map.setView([ dec2lat({{ dec }}), ra2long_C({{ ra }}, 180.) ], {{ zoom }});
+var lastLatLng = map.getCenter();
+
+map.addLayer(sqlOverlay.getGroup());
+
+// Function to search the current page URL's GET query portion URL?x=y
+var QueryItems = function() {
+    var terms = window.location.search.substr(1).split('&');
+    var items = {};
+    for (var i = 0; i < terms.length; ++i) {
+        var words = terms[i].split('=');
+        if (words.length == 1) {
+            items[words[0]] = true;
+        } else if (words.length == 2) {
+            items[words[0]] = decodeURIComponent(words[1].replace(/\+/g, ' '));
+        }
     }
-  }
+    return items;
+};
 
-  // CCDs
+var qstr = QueryItems();
 
-  if ((oldZoom >= ccdsMinZoom) && (zoom < ccdsMinZoom)) {
-    console.log('zoomed out past CCD boundary');
-    if (showCcds) {
-      console.log('removing CCD outlines');
-      overlayRemoved({name:'CCDs'});
+for (var i=0,len=overlays.length; i<len; i++) {
+    if (overlays[i]._url_term in qstr) {
+        map.addLayer(overlays[i].getGroup());
     }
-    setOverlayEnabled('CCDs', false);
-  } else if ((oldZoom < ccdsMinZoom) && (zoom >= ccdsMinZoom)) {
-    console.log('zoomed in past boundary');
-    setOverlayEnabled('CCDs', true);
-    if (isOverlayChecked('CCDs')) {
-      console.log('Re-adding ccds');
-      overlayAdded({name:'CCDs'});
-    }
-  }
-
-  // Sources
-
-  if ((oldZoom >= sourcesMinZoom) && (zoom < sourcesMinZoom)) {
-    console.log('zoomed out past sources boundary');
-    if (showSources) {
-      console.log('removing sources');
-      // By the time we get here, onTileUnload() has already fired.
-      showSources = false;
-
-      // remove any extra ones that have stuck around (fast zoom-outs)
-      removeAllCatalogLayers();
-
-    }
-    setOverlayEnabled('Sources', false);
-  } else if ((oldZoom < sourcesMinZoom) && (zoom >= sourcesMinZoom)) {
-    console.log('zoomed in past boundary');
-    setOverlayEnabled('Sources', true);
-    if (isOverlayChecked('Sources')) {
-      console.log('Re-adding sources');
-      overlayAdded({name:'Sources'});
-    }
-  }
-
-
-  // Spectra
-
-  if ((oldZoom >= specMinZoom) && (zoom < specMinZoom)) {
-    console.log('zoomed out past spec boundary');
-    if (showSpec) {
-      console.log('removing spec');
-      // By the time we get here, onTileUnload() has already fired.
-      showSpec = false;
-
-      // remove any extra ones that have stuck around (fast zoom-outs)
-      removeAllSpecLayers();
-
-    }
-    setOverlayEnabled(specName, false);
-  } else if ((oldZoom < specMinZoom) && (zoom >= specMinZoom)) {
-    console.log('zoomed in past boundary');
-    setOverlayEnabled(specName, true);
-    if (isOverlayChecked(specName)) {
-      console.log('Re-adding spec');
-      overlayAdded({name:specName});
-    }
-  }
-
-
-  // Bright stars
-
-  if ((oldZoom >= brightMinZoom) && (zoom < brightMinZoom)) {
-    console.log('zoomed out past bright boundary');
-    if (showBright) {
-      console.log('removing bright');
-      // By the time we get here, onTileUnload() has already fired.
-      showBright = false;
-
-      // remove any extra ones that have stuck around (fast zoom-outs)
-      removeAllBrightLayers();
-
-    }
-    setOverlayEnabled(brightName, false);
-  } else if ((oldZoom < brightMinZoom) && (zoom >= brightMinZoom)) {
-    console.log('zoomed in past boundary');
-    setOverlayEnabled(brightName, true);
-    if (isOverlayChecked(brightName)) {
-      console.log('Re-adding bright');
-      overlayAdded({name:brightName});
-    }
-  }
-
-
-
-
-  // update the RA,Dec,zoom info box
-  //console.log('last latlng: ' + lastLatLng);
-  if (typeof(lastLatLng) != 'undefined') {
-    onMouseMove({ latlng: lastLatLng });
-  }
-
-
-  oldZoom = zoom;
-
 }
 
 map.on('mousemove', onMouseMove);
 map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
 map.on('click', onMapClick);
-map.on('moveend', onMapMoveEnd);
-map.on('prebaselayerchange', onMapPreBaseLayerChange);
-map.on('postbaselayerchange', onMapPostBaseLayerChange);
-map.on('zoomstart', onMapZoomStart);
 map.on('zoomend', onMapZoomEnd);
-
-map.setView([ {{ lat }}, {{ long }}], {{ zoom }});
-
-//var lastRaDec = [ long2ra({{long}}), lat2dec({{lat}}) ];
-var lastLatLng = map.getCenter();
-
-{% if showBricks %}
-map.addLayer(bricksGroup);
-overlayAdded({name:'Bricks'});
-{% endif %}
-
-{% if showCcds %}
-console.log('addLayer(ccds)');
-map.addLayer(ccdsGroup);
-console.log('done addLayer(ccds)');
-overlayAdded({name:'CCDs'});
-{% endif %}
-
-{% if showExps %}
-console.log('addLayer(exps)');
-map.addLayer(expsGroup);
-console.log('done addLayer(exps)');
-overlayAdded({name:'Exposures'});
-{% endif %}
-
-{% if showSources %}
-map.addLayer(sourcesGroup);
-// If you do this, you get double-adding!
-//overlayAdded({name:'Sources'});
-showSoures = true;
-{% endif %}
-
-{% if showNgc %}
-map.addLayer(ngcGroup);
-showNgc = true;
-{% endif %}
-
-{% if showSpec %}
-map.addLayer(specGroup);
-showSpec = true;
-{% endif %}
 
 {% comment %}
 var constellation_shortnames =  [ "Aql","And","Scl","Ara","Lib","Cet","Ari","Sct","Pyx","Boo","Cae","Cha","Cnc","Cap","Car","Cas","Cen","Cep","Com","Cvn","Aur","Col","Cir","Crt","CrA","CrB","Crv","Cru","Cyg","Del","Dor","Dra","Nor","Eri","Sge","For","Gem","Cam","CMa","UMa","Gru","Her","Hor","Hya","Hyi","Ind","Lac","Mon","Lep","Leo","Lup","Lyn","Lyr","Ant","Mic","Mus","Oct","Aps","Oph","Ori","Pav","Peg","Pic","Per","Equ","CMi","LMi","Vul","UMi","Phe","Psc","PsA","Vol","Pup","Ret","Sgr","Sco","Ser","Sex","Men","Tau","Tel","Tuc","Tri","Tra","Aqr","Vir","Vel" ]
@@ -2173,50 +1666,50 @@ for (var i in constellation_lines) {
     var lastlng = 180. - ra;
     //var lastlng = ra2long_B(ra);
     for (var j in line) {
-	s = line[j];
-	//console.log('line: ' + s + ' RA,Dec ' + constellation_stars[2*s] + ', ' + constellation_stars[2*s+1]);
-	ra = constellation_stars[2*s]
-	lng = 180. - ra;
-	//ra2long_B(ra);
-	if (lng - lastlng > 180) {
-	    lng -= 360;
-	}
-	if (lng - lastlng < -180) {
-	    lng += 360;
-	}
-	lastlng = lng;
-	latlngs.push(L.latLng(dec2lat(constellation_stars[2*s+1]),
-			      lng));
+	    s = line[j];
+	    //console.log('line: ' + s + ' RA,Dec ' + constellation_stars[2*s] + ', ' + constellation_stars[2*s+1]);
+	    ra = constellation_stars[2*s]
+	    lng = 180. - ra;
+	    //ra2long_B(ra);
+	    if (lng - lastlng > 180) {
+	        lng -= 360;
+	    }
+	    if (lng - lastlng < -180) {
+	        lng += 360;
+	    }
+	    lastlng = lng;
+	    latlngs.push(L.latLng(dec2lat(constellation_stars[2*s+1]),
+			                  lng));
     }
     var polyline = L.polyline(latlngs, {color: 'red'});
     conGroup.addLayer(polyline);
 }
-%}
+{% endcomment %}
 
 // A scale bar that shows arcsec / arcmin / degrees rather than meters
-AstroControl = L.Control.Scale.extend({
+var AstroControl = L.Control.Scale.extend({
     options: {
-	imperial: false,
-	maxWidth: 300,
+	    imperial: false,
+	    maxWidth: 300,
     },
     _updateMetric: function (maxMeters) {
-	// meters -> arcsec
-	maxArcsec = maxMeters / 30.87;
-	maxUnit = maxArcsec;
-	unitName = 'arcsec';
+	    // meters -> arcsec
+	    var maxArcsec = maxMeters / 30.87;
+	    var maxUnit = maxArcsec;
+	    var unitName = 'arcsec';
 
-	if (maxArcsec > 7200) {
-	    // degrees
-	    maxUnit /= 3600;
-	    unitName = 'deg';
-	} else if (maxArcsec >= 180) {
-	    // arcmin
-	    maxUnit /= 60;
-	    unitName = 'arcmin';
-	}
-	var unit = this._getRoundNum(maxUnit);
-	this._mScale.style.width = this._getScaleWidth(unit / maxUnit) + 'px';
-	this._mScale.innerHTML = unit + ' ' + unitName;
+	    if (maxArcsec > 7200) {
+	        // degrees
+	        maxUnit /= 3600;
+	        unitName = 'deg';
+	    } else if (maxArcsec >= 180) {
+	        // arcmin
+	        maxUnit /= 60;
+	        unitName = 'arcmin';
+	    }
+	    var unit = this._getRoundNum(maxUnit);
+	    this._mScale.style.width = this._getScaleWidth(unit / maxUnit) + 'px';
+	    this._mScale.innerHTML = unit + ' ' + unitName;
     },
 
     // Yep, astronomers even have different ideas about what numbers are round.
@@ -2239,8 +1732,8 @@ AstroMeasureControl = L.Control.MeasureControl.extend({
     onAdd: function(map) {
         var className = 'leaflet-control-draw';
         this._container = L.DomUtil.create('div', 'leaflet-bar');
-	
-	// This is the only line changed --
+	    
+	    // This is the only line changed --
         this.handler = new AstroPolylineMeasure(map, this.options.handler);
 
         this.handler.on('enabled', function () {

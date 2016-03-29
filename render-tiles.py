@@ -9,6 +9,9 @@ import django
 import os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
 
+from decals import settings
+settings.READ_ONLY_BASEDIR = False
+#settings.DEBUG_LOGGING = True
 
 from map.views import *
 
@@ -90,6 +93,12 @@ def _one_tile((kind, zoom, x, y, ignore)):
     elif kind == 'unwise':
         map_unwise_w1w2(req, version, zoom, x, y, savecache=True,
                         ignoreCached=ignore)
+        print('unWISE zoom', zoom, 'x,y', x,y)
+
+    elif kind == 'unwise-neo1':
+        map_unwise_w1w2_neo1(req, version, zoom, x, y, savecache=True,
+                             ignoreCached=ignore)
+        print('unWISE NEO1 zoom', zoom, 'x,y', x,y)
 
 def _bounce_one_tile(*args):
     try:
@@ -103,7 +112,11 @@ def _bounce_one_tile(*args):
 
 
 def _bounce_map_unwise_w1w2(args):
+    print('Bounce unwise:', args)
     return map_unwise_w1w2(*args, ignoreCached=True, get_images=True)
+def _bounce_map_unwise_neo1(args):
+    print('Bounce neo1:', args)
+    return map_unwise_w1w2_neo1(*args, ignoreCached=True, get_images=True)
 def _bounce_map_unwise_w3w4(args):
     return map_unwise_w3w4(*args, ignoreCached=True, get_images=True)
 
@@ -189,16 +202,20 @@ def _bounce_decals_dr2((args,kwargs)):
     return ims
 
 def top_levels(mp, opt):
-    if opt.kind in ['unwise', 'unwise-w3w4']:
+    if opt.kind in ['unwise', 'unwise-neo1', 'unwise-w3w4']:
         import pylab as plt
         from decals import settings
-        from map.views import _unwise_to_rgb
+        from map.views import _unwise_to_rgb, save_jpeg, trymakedirs
         import fitsio
 
         if opt.kind == 'unwise-w3w4':
             tag = 'unwise-w3w4'
             bands = [3,4]
             bounce = _bounce_map_unwise_w3w4
+        elif opt.kind == 'unwise-neo1':
+            tag = 'unwise-neo1'
+            bands = [1,2]
+            bounce = _bounce_map_unwise_neo1
         else:
             tag = 'unwise-w1w2'
             bands = [1,2]
@@ -209,7 +226,7 @@ def top_levels(mp, opt):
         ver = 1
         patdata = dict(ver=ver)
 
-        basescale = 2
+        basescale = 4
 
         tilesize = 256
         tiles = 2**basescale
@@ -319,7 +336,8 @@ def top_levels(mp, opt):
                     pp = patdata.copy()
                     pp.update(zoom=scale, x=x, y=y)
                     fn = pat % pp
-                    plt.imsave(fn, tile)
+                    trymakedirs(fn)
+                    save_jpeg(fn, tile)
                     print 'Wrote', fn
 
 
@@ -544,7 +562,7 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -25
-    elif opt.kind == 'halpha':
+    elif opt.kind in ['halpha', 'unwise-neo1']:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
