@@ -314,10 +314,9 @@ def index(req):
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
-                       enable_nexp = settings.ENABLE_NEXP,
+                       enable_sql = settings.ENABLE_SQL,
                        enable_vcc = settings.ENABLE_VCC,
                        enable_wl = settings.ENABLE_WL,
-                       enable_depth = settings.ENABLE_DEPTH,
                        enable_cutouts = settings.ENABLE_CUTOUTS,
                        ))
 

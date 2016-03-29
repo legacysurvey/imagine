@@ -15,6 +15,8 @@ APPEND_SLASH = False
 
 ENABLE_CUTOUTS = True
 
+ENABLE_SQL = False
+
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False
 
@@ -25,16 +27,11 @@ SDSS_RESOLVE = None
 
 MAX_NATIVE_ZOOM = 15
 
-# Enable DECaLS number of exposures layer?
-ENABLE_NEXP = True
-
 # Enable Virgo Cluster Catalog layer?
 ENABLE_VCC = False
 
 # Enable DECaLS Weak Lensing map?
 ENABLE_WL = False
-
-ENABLE_DEPTH = False
 
 # Tile cache is writable?
 SAVE_CACHE = False

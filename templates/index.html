@@ -600,6 +600,7 @@ var DecalsCatalogLayer = TiledOverlay.extend({
     },
 });
 
+{% if enable_sql %}
 var SqlCatalogOverlay = CatalogOverlay.extend({
 
     initialize: function(name, pretty, kwargs) {
@@ -644,7 +645,7 @@ var SqlCatalogOverlay = CatalogOverlay.extend({
     },
 
 });
-
+{% endif %}
 
 function getkeys(obj) {
     var s = '';
@@ -1142,6 +1143,7 @@ L.DomEvent
     .disableScrollPropagation(container);
 L.DomEvent.on(container, 'click', infoBoxClicked);
 
+{% if enable_sql %}
 // SQL query input field
 var query = L.control({'position':'bottomleft'});
 query.onAdd = function (map) {
@@ -1150,6 +1152,7 @@ query.onAdd = function (map) {
     return this._div;
 };
 query.addTo(map);
+{% endif %}
 
 // Named object search field
 var objquery = L.control({'position':'bottomright'});
@@ -1182,6 +1185,8 @@ function objQueryLoaded(result) {
 }
 
 $(document).ready(function() {
+
+{% if enable_sql %}
     $('#sqlquery').keydown(function(event) {
         // when Enter is hit in the SQL box
         if (event.keyCode == 13) {
@@ -1194,6 +1199,7 @@ $(document).ready(function() {
     $('#sqlquery').click(function(event) {
         return false;
     });
+{% endif %}
 
     $('#objquery').keydown(function(event) {
         // when Enter is hit in the Object name search box
@@ -1474,10 +1480,12 @@ var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
                                    'minZoom': 9,
                                    'urlTerm': 'spectra'});
 
+{% if enable_sql %}
 var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
                                        {'url': '{{sqlurl|safe}}',
                                         'radius': 300,
                                        });
+{% endif %}
 
 {% comment %}
 "Constellations": conGroup,
@@ -1531,7 +1539,9 @@ function onMapZoomEnd(e) {
 map.setView([ dec2lat({{ dec }}), ra2long_C({{ ra }}, 180.) ], {{ zoom }});
 var lastLatLng = map.getCenter();
 
+{% if enable_sql %}
 map.addLayer(sqlOverlay.getGroup());
+{% endif %}
 
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
