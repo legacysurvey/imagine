@@ -27,6 +27,8 @@ tileversions = {
     'sdss': [1,],
     'sdssco': [1,],
 
+    'decals-dr3': [1],
+
     'decals-dr2': [1, 2],
     'decals-dr2-model': [1],
     'decals-dr2-resid': [1],
@@ -766,6 +768,78 @@ def _get_dr2_bricks():
     debug('Wrote', fn)
     return B_dr2
 
+
+
+B_dr3 = None
+def _get_dr3_bricks():
+    global B_dr3
+    if B_dr3 is not None:
+        return B_dr3
+
+    fn = os.path.join(settings.DATA_DIR, 'decals-dr3', 'decals-bricks-in-dr3.fits')
+    if os.path.exists(fn):
+        from astrometry.util.fits import fits_table
+        debug('Reading', fn)
+        B_dr3 = fits_table(fn, columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2',
+                                        'has_g', 'has_r', 'has_z'])
+        return B_dr3
+
+    from astrometry.libkd.spherematch import match_radec
+    import numpy as np
+
+    decals = _get_decals('decals-dr3')
+    B = decals.get_bricks()
+    C = decals.get_ccds_readonly()
+    # CCD radius
+    radius = np.hypot(2048, 4096) / 2. * 0.262 / 3600.
+    # Brick radius
+    radius += np.hypot(0.25, 0.25)/2.
+    I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, radius * 1.05)
+    for band in 'grz':
+        has = np.zeros(len(B), bool)
+        K = (C.filter[J] == band)
+        has[I[K]] = True
+        B.set('has_%s' % band, has)
+        debug(sum(has), 'bricks have coverage in', band)
+
+    keep = np.zeros(len(B), bool)
+    keep[I] = True
+    B.cut(keep)
+    B_dr3 = B
+    B_dr3.writeto(fn)
+    debug('Wrote', fn)
+    return B_dr3
+
+
+
+def map_decals_dr3(req, ver, zoom, x, y, savecache=None,
+                    model=False, resid=False, nexp=False,
+                    **kwargs):
+    if savecache is None:
+        savecache = settings.SAVE_CACHE
+
+    B_dr3 = _get_dr3_bricks()
+
+    imagetag = 'image'
+    tag = 'decals-dr3'
+    imagedir = 'decals-dr3'
+
+    if model:
+        imagetag = 'model'
+        tag = 'decals-dr3-model'
+    if resid:
+        imagetag = 'resid'
+        kwargs.update(modeldir = 'decals-dr3-model')
+        tag = 'decals-dr3-resid'
+
+    rgb = rgbkwargs
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
+                           imagetag=imagetag,
+                           rgbkwargs=rgb,
+                           bricks=B_dr3,
+                           savecache=savecache, rgbfunc=dr2_rgb, **kwargs)
+
+
 def dr2_rgb(rimgs, bands, **ignored):
     return sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
 
@@ -1193,21 +1267,52 @@ def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
-decals = {}
-def _get_decals(name=None):
-    global decals
-    if name in decals:
-        return decals[name]
+surveys = {}
+def _get_survey(name=None):
+    global surveys
+    if name in surveys:
+        return surveys[name]
 
-    debug('Creating Decals() object for "%s"' % name)
+    debug('Creating LegacySurveyData() object for "%s"' % name)
 
     from decals import settings
     basedir = settings.DATA_DIR
-    from legacypipe.common import Decals
+    from legacypipe.common import LegacySurveyData
 
+    if name == 'decals-dr3':
+        dirnm = os.path.join(basedir, 'decals-dr3')
+        d = LegacySurveyData(survey_dir=dirnm)
+        # HACK -- drop unnecessary columns.
+        B = d.get_bricks_readonly()
+        for k in ['brickid', 'brickq', 'brickrow', 'brickcol']:
+            B.delete_column(k)
+        # HACK -- plug in a cut version of the CCDs table, if it exists
+        cutfn = os.path.join(dirnm, 'ccds-cut.fits')
+        if os.path.exists(cutfn):
+            from astrometry.util.fits import fits_table
+            C = fits_table(cutfn)
+            d.ccds = C
+        else:
+            C = d.get_ccds_readonly()
+            # HACK -- cut to photometric & not-blacklisted CCDs.
+            C.cut(d.photometric_ccds(C))
+            debug('HACK -- cut to', len(C), 'photometric CCDs')
+            C.cut(d.apply_blacklist(C))
+            debug('HACK -- cut to', len(C), 'not-blacklisted CCDs')
+            for k in ['date_obs', 'ut', 'airmass',
+                      'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
+                      'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
+                      'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
+                      'ccdnmatchb', 'ccdmdncol', 'expid']:
+                C.delete_column(k)
+            C.writeto(cutfn)
+
+        surveys[name] = d
+        return d
+    
     if name == 'decals-dr2':
         dirnm = os.path.join(basedir, 'decals-dr2')
-        d = Decals(decals_dir=dirnm)
+        d = LegacySurveyData(survey_dir=dirnm, version='dr2')
 
         # HACK -- drop unnecessary columns.
         B = d.get_bricks_readonly()
@@ -1235,16 +1340,20 @@ def _get_decals(name=None):
                 C.delete_column(k)
             # C.writeto(cutfn)
 
-        decals[name] = d
+        surveys[name] = d
         return d
 
-    name = 'decals-dr1'
+    if name is None:
+        name = 'decals-dr1'
     if name in decals:
         return decals[name]
 
+    assert(name == 'decals-dr1')
+
     dirnm = os.path.join(basedir, 'decals-dr1')
-    d = Decals(decals_dir=dirnm)
-    decals[name] = d
+    d = LegacySurveyData(survey_dir=dirnm, version='dr1')
+    surveys[name] = d
+
     return d
 
 def brick_list(req):
@@ -1272,7 +1381,7 @@ def brick_list(req):
         B = fits_table(os.path.join(settings.DATA_DIR,
                                     'decals-bricks.fits'))
 
-    D = _get_decals(name=name)
+    D = _get_survey(name=name)
     if B is None:
         B = D.get_bricks_readonly()
 
@@ -1328,7 +1437,7 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
     if not name in ccd_cache:
         debug('Finding CCDs for name=', name)
 
-        decals = _get_decals(name=name)
+        decals = _get_survey(name=name)
         CCDs = decals.get_ccds_readonly()
 
         # fn = None
@@ -1344,7 +1453,7 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
         #     fn = os.path.join(settings.DATA_DIR, 'decals-dr2',
         #                       'decals-ccds.fits')
         # else:
-        #     D = _get_decals(name=name)
+        #     D = _get_survey(name=name)
         #     if hasattr(D, 'get_ccds_readonly'):
         #         CCDs = D.get_ccds_readonly()
         #     else:
@@ -1392,7 +1501,7 @@ def ccd_list(req):
 
     if name == 'decals-dr2':
         ccdname = lambda c: '%i-%s-%s' % (c.expnum, c.ccdname.strip(), c.filter)
-        #decals = _get_decals(name)
+        #decals = _get_survey(name)
         #CCDS.cut(decals.photometric_ccds(CCDS))
 
     CCDS.cut(np.lexsort((CCDS.expnum, CCDS.filter)))
@@ -1519,7 +1628,7 @@ def ccd_detail(req, name, ccd):
     chipnum = int(words[1][1:], 10)
     extname = '%s%i' % (ns,chipnum)
 
-    decals = _get_decals(name=name)
+    decals = _get_survey(name=name)
     C = decals.find_ccds(expnum=expnum, ccdname=extname)
     assert(len(C) == 1)
     c = C[0]
@@ -1684,7 +1793,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         f,cachefn = tempfile.mkstemp(suffix='.json')
         os.close(f)
 
-    cat,hdr = _get_decals_cat(wcs, tag=tag)
+    cat,hdr = _get_survey_cat(wcs, tag=tag)
 
     if cat is None:
         rd = []
@@ -1728,7 +1837,7 @@ def _get_decals_cat(wcs, tag='decals'):
                           'tractor-%(brickname)s.fits')
 
     #debug('_get_decals_cat for tag=', tag)
-    D = _get_decals(name=tag)
+    D = _get_survey(name=tag)
     B = D.get_bricks_readonly()
     I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
     #print(len(I), 'bricks touching RA,Dec box', r.min(),r.max(), d.min(),d.max())
@@ -1840,7 +1949,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
 
     if decals is None:
-        D = _get_decals(name=drname)
+        D = _get_survey(name=drname)
     else:
         D = decals
     if bricks is None:
@@ -2044,7 +2153,7 @@ def cutouts(req):
 
     CCDs = CCDs[np.lexsort((CCDs.extname, CCDs.expnum, CCDs.filter))]
 
-    decals = _get_decals(name)
+    decals = _get_survey(name)
 
     ccds = []
     for i in range(len(CCDs)):
@@ -2163,7 +2272,7 @@ def cat_plot(req):
 
 
 def _get_ccd(expnum, ccdname, name=None):
-    decals = _get_decals(name=name)
+    decals = _get_survey(name=name)
     expnum = int(expnum, 10)
     ccdname = str(ccdname).strip()
     CCDs = decals.find_ccds(expnum=expnum, ccdname=ccdname)
@@ -2225,7 +2334,7 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
     from tractor import Tractor
 
     ccd.cpimage = fn
-    D = _get_decals(name=name)
+    D = _get_survey(name=name)
     im = D.get_image_object(ccd)
     kwargs = {}
 
