@@ -1,5 +1,7 @@
 from settings_common import *
 
+DEBUG_LOGGING = True
+
 READ_ONLY_BASEDIR = True
 
 ROOT_URL = '/viewer-dev'

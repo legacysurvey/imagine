@@ -410,6 +410,13 @@ var SdssSpectraCatalog = CatalogOverlay.extend({
     },
 });
 
+var Deep2SpectraCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        var label = json.name[i];
+        return label;
+    },
+});
+
 var TileWatcher = L.Class.extend({
 	includes: L.Mixin.Events,
 
@@ -838,6 +845,8 @@ function inbrickccdUpdate(props) {
     var bricks = brickOverlay.under(props.latlng);
     var ccds = ccdOverlay.under(props.latlng);
     var exps = expOverlay.under(props.latlng);
+    var ccds3 = ccdOverlay3.under(props.latlng);
+    var exps3 = expOverlay3.under(props.latlng);
 
     var txt = '';
     if (bricks.length) {
@@ -853,7 +862,7 @@ function inbrickccdUpdate(props) {
         if (txt.length) {
             txt += '<br/>';
         }
-        txt = txt + 'In CCDs:<ul>';
+        txt = txt + 'In DR2 CCDs:<ul>';
         for (var i=0; i<ccds.length; i++) {
             var ccdname = ccds[i];
             var aparams = '';
@@ -869,7 +878,7 @@ function inbrickccdUpdate(props) {
         if (txt.length) {
             txt += '<br/>';
         }
-        txt = txt + 'In Exposures:<ul>';
+        txt = txt + 'In DR2 Exposures:<ul>';
         for (var i=0; i<exps.length; i++) {
             var expname = exps[i];
             var aparams = '';
@@ -881,13 +890,48 @@ function inbrickccdUpdate(props) {
         }
         txt = txt + '</ul>';
     }
+
+    if (ccds3.length) {
+        if (txt.length) {
+            txt += '<br/>';
+        }
+        txt = txt + 'In DR3 CCDs:<ul>';
+        for (var i=0; i<ccds3.length; i++) {
+            var ccdname = ccds3[i];
+            var aparams = '';
+            if (ccdname == ccdOverlay._highlighted) {
+                aparams = ' class="highccd"';
+            }
+            var ccdtext = ccd_detail(ccdname, aparams);
+            txt = txt + '<li>'+ccdtext+'</li>';
+        }
+        txt = txt + '</ul>';
+    }
+    if (exps3.length) {
+        if (txt.length) {
+            txt += '<br/>';
+        }
+        txt = txt + 'In DR3 Exposures:<ul>';
+        for (var i=0; i<exps3.length; i++) {
+            var expname = exps3[i];
+            var aparams = '';
+            if (expname == expOverlay._highlighted) {
+                aparams = ' class="highexp"';
+            }
+            var exptext = exp_detail(expname.replace(' ','-'), aparams);
+            txt = txt + '<li>'+exptext+'</li>';
+        }
+        txt = txt + '</ul>';
+    }
+
     inbrickccd._div.innerHTML = txt;
 }
 
 
 // "Bricks", "CCDs", etc button checked
 function overlayAdded(e) {
-    if (ccdOverlay._show || brickOverlay._show || expOverlay._show) {
+    if (ccdOverlay._show || brickOverlay._show || expOverlay._show ||
+    ccdOverlay3._show || expOverlay3._show) {
         if (!inbrickccdAdded) {
             inbrickccdAdded = true;
             inbrickccd.addTo(map);
@@ -897,7 +941,8 @@ function overlayAdded(e) {
 
 // "Sources", "Bricks", "CCDs" button unchecked
 function overlayRemoved(e) {
-    if (!(ccdOverlay._show || brickOverlay._show || expOverlay._show)) {
+    if (!(ccdOverlay._show || brickOverlay._show || expOverlay._show ||
+    ccdOverlay3._show || expOverlay3._show)) {
         if (inbrickccdAdded) {
             map.removeControl(inbrickccd);
             inbrickccdAdded = false;
@@ -977,6 +1022,23 @@ var mylayer = function (name, pretty, kwargs) {
 
 var tiles;
 
+tiles = mylayer('decals-dr3', 'DECaLS DR3 images',
+                //{'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+//var tilesDecalsDr3Image = tiles;
+
+tiles = mylayer('decals-dr3-model', 'DECaLS DR3 models',
+                //{'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
+tiles = mylayer('decals-dr3-resid', 'DECaLS DR3 residuals',
+                //{'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
+                                     
 tiles = mylayer('decals-dr2', 'DECaLS DR2 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
@@ -1437,12 +1499,25 @@ var ccdOverlay = new PolygonOverlay('decals-dr2-ccds', 'DECaLS DR2 CCDs',
                                      'urlTerm': 'ccds',
                                     });
 
+var ccdOverlay3 = new PolygonOverlay('decals-dr3-ccds', 'DECaLS DR3 CCDs',
+                                    {'url':'{{ ccdsurl|safe }}',
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds',
+                                    });
+                                                     
 var expOverlay = new CircleOverlay('decals-dr2-exps', 'DECaLS DR2 Exposures',
                                     {'url':'{{ expsurl|safe }}',
                                      'labelMinZoom': 100,
                                      'urlTerm': 'exps',
                                     });
 
+var expOverlay3 = new CircleOverlay('decals-dr3-exps', 'DECaLS DR3 Exposures',
+                                    {'url':'{{ expsurl|safe }}',
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'exps',
+                                    });
+                                                     
 var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
                                       {'url':'{{ bricksurl|safe }}',
                                        'minZoom': 8,
@@ -1453,6 +1528,8 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
 
 ccdOverlay.on('loaded', function() { inbrickccdUpdate(); });
 expOverlay.on('loaded', function() { inbrickccdUpdate(); });
+ccdOverlay3.on('loaded', function() { inbrickccdUpdate(); });
+expOverlay3.on('loaded', function() { inbrickccdUpdate(); });
 brickOverlay.on('loaded', function() { inbrickccdUpdate(); });
 
 var plateOverlay = new CircleOverlay('sdss-plates', 'SDSS Spectro Plates',
@@ -1462,6 +1539,12 @@ var plateOverlay = new CircleOverlay('sdss-plates', 'SDSS Spectro Plates',
 
 var decalscat = new DecalsCatalogLayer(tileWatcher,
                                        'decals-dr2', 'DECaLS DR2 Catalog',
+                                       {'url': '{{caturl|safe}}', 
+                                        'minZoom': 12,
+                                        'urlTerm': 'sources'});
+
+var decalscat3 = new DecalsCatalogLayer(tileWatcher,
+                                       'decals-dr3', 'DECaLS DR3 Catalog',
                                        {'url': '{{caturl|safe}}', 
                                         'minZoom': 12,
                                         'urlTerm': 'sources'});
@@ -1480,6 +1563,13 @@ var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
                                    'minZoom': 9,
                                    'urlTerm': 'spectra'});
 
+var specDeep2 = new Deep2SpectraCatalog('spec-deep2', 'DEEP2 Spectra',
+                                  {'radius': 100,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 9,
+                                   'urlTerm': 'spectra-deep2'});
+
+
 {% if enable_sql %}
 var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
                                        {'url': '{{sqlurl|safe}}',
@@ -1491,8 +1581,9 @@ var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
 "Constellations": conGroup,
 {% endcomment %}
 
-var overlays = [decalscat, ccdOverlay, expOverlay, brickOverlay,
-                gals, bright, spec, plateOverlay];
+var overlays = [decalscat, decalscat3, ccdOverlay, ccdOverlay3, expOverlay, expOverlay3,
+                brickOverlay,
+                gals, bright, spec, plateOverlay, specDeep2];
 var layerControl = new L.control.layers(baseMaps, {}, { collapsed: false })
 for (var i=0,len=overlays.length; i<len; i++) {
     layerControl._addLayer(overlays[i].getGroup(), overlays[i]._pretty, true);

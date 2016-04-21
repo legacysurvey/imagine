@@ -577,8 +577,8 @@ def main():
         top_levels(mp, opt)
         sys.exit(0)
 
-    from legacypipe.common import Decals
-    decals = Decals()
+    from legacypipe.common import LegacySurveyData
+    decals = LegacySurveyData()
 
     if opt.near:
         if opt.kind == 'sdss':
@@ -703,6 +703,45 @@ def main():
         sys.exit(0)
 
     if opt.scale:
+        if opt.kind in ['decals-dr3', 'decals-dr3-model']:
+            from glob import glob
+            from map.views import _get_survey
+            
+            decals = _get_survey('decals-dr3')
+
+            # find all image files
+            model = False
+            imagetag = 'image'
+            if opt.kind == 'decals-dr3-model':
+                model = True
+                imagetag = 'model'
+
+            pat = decals.survey_dir + '/coadd/*/*/*-%s-?.fits*' % imagetag
+            print('Pattern:', pat)
+            fns = glob(pat)
+            fns.sort()
+            print len(fns), 'image files'
+            scaledir = 'decals-dr3'
+            basedir = settings.DATA_DIR
+            dirnm = os.path.join(basedir, 'scaled', scaledir)
+            for fn in fns:
+                parts = fn.split('/')
+                brick = parts[-2]
+                if model:
+                    # MAGIC: -9 = '....-B.fits.gz'
+                    band = parts[-1][-9]
+                else:
+                    # MAGIC: -6 = '....-B.fits'
+                    band = parts[-1][-6]
+                
+                scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
+                fnargs = dict(band=band, brickname=brick)
+                scaled = 8
+                scaledfn = get_scaled(scalepat, fnargs, scaled, fn)
+                print 'get_scaled:', scaledfn
+
+            sys.exit(0)
+            
         if opt.kind == 'sdss':
             C.cut((C.dec >= opt.mindec) * (C.dec < opt.maxdec))
             print len(C), 'in Dec range'

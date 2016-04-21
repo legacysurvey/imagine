@@ -28,6 +28,8 @@ tileversions = {
     'sdssco': [1,],
 
     'decals-dr3': [1],
+    'decals-dr3-model': [1],
+    'decals-dr3-resid': [1],
 
     'decals-dr2': [1, 2],
     'decals-dr2-model': [1],
@@ -63,8 +65,10 @@ tileversions = {
 catversions = {
     'decals-dr1j': [1,],
     'decals-dr2': [2,],
+    'decals-dr3': [1,],
     'ngc': [1,],
     'spec': [1,],
+    'spec-deep2': [1,],
     'bright': [1,],
     }
 
@@ -726,7 +730,11 @@ def layer_name_map(name):
             'decals-dr2-ccds': 'decals-dr2',
             'decals-dr2-exps': 'decals-dr2',
             'decals-bricks': 'decals-dr2',
-            }.get(name, name)
+
+            'decals-dr3-ccds': 'decals-dr3',
+            'decals-dr3-exps': 'decals-dr3',
+
+    }.get(name, name)
 
 B_dr2 = None
 def _get_dr2_bricks():
@@ -745,7 +753,7 @@ def _get_dr2_bricks():
     from astrometry.libkd.spherematch import match_radec
     import numpy as np
 
-    decals = _get_decals('decals-dr2')
+    decals = _get_survey('decals-dr2')
     B = decals.get_bricks()
     C = decals.get_ccds_readonly()
     # CCD radius
@@ -787,7 +795,7 @@ def _get_dr3_bricks():
     from astrometry.libkd.spherematch import match_radec
     import numpy as np
 
-    decals = _get_decals('decals-dr3')
+    decals = _get_survey('decals-dr3')
     B = decals.get_bricks()
     C = decals.get_ccds_readonly()
     # CCD radius
@@ -806,11 +814,19 @@ def _get_dr3_bricks():
     keep[I] = True
     B.cut(keep)
     B_dr3 = B
-    B_dr3.writeto(fn)
-    debug('Wrote', fn)
+    B_dr3.writeto('/tmp/decals-bricks-in-dr3.fits')
+    #B_dr3.writeto(fn)
+    #debug('Wrote', fn)
     return B_dr3
 
 
+def map_decals_dr3_model(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(model=True, model_gz=True, add_gz=True)
+    return map_decals_dr3(req, ver, zoom, x, y, **kwargs)
+
+def map_decals_dr3_resid(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(resid=True, model_gz=True)
+    return map_decals_dr3(req, ver, zoom, x, y, **kwargs)
 
 def map_decals_dr3(req, ver, zoom, x, y, savecache=None,
                     model=False, resid=False, nexp=False,
@@ -819,7 +835,8 @@ def map_decals_dr3(req, ver, zoom, x, y, savecache=None,
         savecache = settings.SAVE_CACHE
 
     B_dr3 = _get_dr3_bricks()
-
+    decals = _get_survey('decals-dr3')
+    
     imagetag = 'image'
     tag = 'decals-dr3'
     imagedir = 'decals-dr3'
@@ -837,6 +854,7 @@ def map_decals_dr3(req, ver, zoom, x, y, savecache=None,
                            imagetag=imagetag,
                            rgbkwargs=rgb,
                            bricks=B_dr3,
+                           decals=decals,
                            savecache=savecache, rgbfunc=dr2_rgb, **kwargs)
 
 
@@ -858,6 +876,7 @@ def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
         savecache = settings.SAVE_CACHE
 
     B_dr2 = _get_dr2_bricks()
+    decals = _get_survey('decals-dr2')
 
     imagetag = 'image'
     tag = 'decals-dr2'
@@ -873,6 +892,7 @@ def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
 
     rgb = rgbkwargs
     return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
+                           decals=decals,
                            imagetag=imagetag,
                            rgbkwargs=rgb,
                            bricks=B_dr2,
@@ -1274,7 +1294,8 @@ def _get_survey(name=None):
         return surveys[name]
 
     debug('Creating LegacySurveyData() object for "%s"' % name)
-
+    debug('cwd:', os.getcwd())
+    
     from decals import settings
     basedir = settings.DATA_DIR
     from legacypipe.common import LegacySurveyData
@@ -1304,8 +1325,9 @@ def _get_survey(name=None):
                       'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
                       'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
                       'ccdnmatchb', 'ccdmdncol', 'expid']:
-                C.delete_column(k)
-            C.writeto(cutfn)
+                if k in C.columns():
+                    C.delete_column(k)
+            C.writeto('/tmp/cut-ccds-dr3.fits')#cutfn)
 
         surveys[name] = d
         return d
@@ -1345,8 +1367,8 @@ def _get_survey(name=None):
 
     if name is None:
         name = 'decals-dr1'
-    if name in decals:
-        return decals[name]
+    if name in surveys:
+        return surveys[name]
 
     assert(name == 'decals-dr1')
 
@@ -1499,7 +1521,7 @@ def ccd_list(req):
 
     ccdname = lambda c: '%i-%s-%s' % (c.expnum, c.extname.strip(), c.filter)
 
-    if name == 'decals-dr2':
+    if name in ['decals-dr2', 'decals-dr3']:
         ccdname = lambda c: '%i-%s-%s' % (c.expnum, c.ccdname.strip(), c.filter)
         #decals = _get_survey(name)
         #CCDS.cut(decals.photometric_ccds(CCDS))
@@ -1509,7 +1531,7 @@ def ccd_list(req):
     ccds = []
     for c in CCDS:
         wcs = Tan(*[float(x) for x in [
-            c.ra_bore, c.dec_bore, c.crpix1, c.crpix2, c.cd1_1, c.cd1_2,
+            c.crval1, c.crval2, c.crpix1, c.crpix2, c.cd1_1, c.cd1_2,
             c.cd2_1, c.cd2_2, c.width, c.height]])
         x = np.array([1, 1, c.width, c.width])
         y = np.array([1, c.height, c.height, 1])
@@ -1526,6 +1548,21 @@ def get_exposure_table(name):
     from astrometry.util.fits import fits_table
     if name == 'decals-dr2':
         T = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr2',
+                                    'decals-exposures.fits'))
+    elif name == 'decals-dr3':
+        '''
+        T1=fits_table('survey-ccds-extra.fits.gz')
+        T2=fits_table('survey-ccds-decals.fits.gz')
+        T3=fits_table('survey-ccds-nondecals.fits.gz')
+        T = merge_tables([T1,T2,T3])
+        e,I = np.unique(T.expnum, return_index=True)
+        E = T[I]
+        E.ra = E.ra_bore
+        E.dec = E.dec_bore
+        E.writeto('dr3-exposures.fits', columns=['ra', 'dec', 'expnum', 'seeing', 'propid',
+        'fwhm', 'zpt', 'airmass', 'exptime', 'date_obs', 'ut', 'filter', 'mjd_obs', 'image_filename'])
+        '''
+        T = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
                                     'decals-exposures.fits'))
     else:
         T = fits_table(os.path.join(settings.DATA_DIR, 'decals-exposures-dr1.fits'))
@@ -1546,7 +1583,9 @@ def exposure_list(req):
     east  = float(req.GET['ralo'])
     west  = float(req.GET['rahi'])
     name = req.GET.get('id', None)
+    print('Name:', name)
     name = layer_name_map(name)
+    print('Mapped name:', name)
 
     if not name in exposure_cache:
         from astrometry.libkd.spherematch import tree_build_radec
@@ -1712,6 +1751,54 @@ def cat_spec(req, ver):
                         content_type='application/json')
 
 
+def cat_spec_deep2(req, ver):
+    import json
+    tag = 'spec-deep2'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from astrometry.util.fits import fits_table, merge_tables
+    import numpy as np
+    from decals import settings
+
+    TT = []
+    T = fits_table(os.path.join(settings.DATA_DIR, 'deep2-zcat-dr4-uniq.fits'))
+    debug(len(T), 'spectra')
+    if ralo > rahi:
+        # RA wrap
+        T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
+    else:
+        T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
+    debug(len(T), 'in cut')
+
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    names = []
+
+    classes = T.get('class')
+    subclasses = T.subclass
+    zbests = T.zbest
+    zq = T.zquality
+    for i in range(len(T)):
+        clazz = classes[i]
+        clazz = clazz[0] + clazz[1:].lower()
+
+        #if zq[i] >= 3:
+        nm = clazz
+        sc = subclasses[i].strip()
+        if sc != 'NONE':
+            nm += ' ' + sc
+        if not (zq[i] == -1 and clazz.strip() == 'Star'):
+            nm += ' z=%.2f, q=%i' % (zbests[i], zq[i])
+        names.append(nm)
+
+    return HttpResponse(json.dumps(dict(rd=rd, name=names)),
+                        content_type='application/json')
+
 def cat_bright(req, ver):
     return cat(req, ver, 'bright',
                os.path.join(settings.DATA_DIR, 'bright.fits'))
@@ -1762,6 +1849,9 @@ def cat_decals_dr1j(req, ver, zoom, x, y, tag='decals-dr1j'):
 def cat_decals_dr2(req, ver, zoom, x, y, tag='decals-dr2'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
+def cat_decals_dr3(req, ver, zoom, x, y, tag='decals-dr3'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     import json
     zoom = int(zoom)
@@ -1793,7 +1883,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         f,cachefn = tempfile.mkstemp(suffix='.json')
         os.close(f)
 
-    cat,hdr = _get_survey_cat(wcs, tag=tag)
+    cat,hdr = _get_decals_cat(wcs, tag=tag)
 
     if cat is None:
         rd = []
@@ -1998,12 +2088,15 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             fnargs = dict(band=band, brickname=brickname)
 
             if imagetag == 'resid':
-                basefn = basepat % fnargs
+                #basefn = basepat % fnargs
 
-                modbasefn = modbasepat % fnargs
-                modbasefn = modbasefn.replace('resid', 'model')
-                if model_gz:
-                    modbasefn += '.gz'
+                basefn = D.find_file('image', brick=brickname, band=band)
+
+                modbasefn = D.find_file('model', brick=brickname, band=band)
+                #modbasefn = modbasepat % fnargs
+                #modbasefn = modbasefn.replace('resid', 'model')
+                #if model_gz:
+                #    modbasefn += '.gz'
 
                 if scalepat is None:
                     imscalepat = None
@@ -2020,7 +2113,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                 fn = imfn
 
             else:
-                basefn = basepat % fnargs
+                basefn = D.find_file(imagetag, brick=brickname, band=band)
                 fn = get_scaled(scalepat, fnargs, scaled, basefn)
             if fn is None:
                 debug('not found: brick', brickname, 'band', band, 'with basefn', basefn)
@@ -2074,13 +2167,21 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                 import sys
                 traceback.print_exc(None, sys.stdout)
                 continue
+
             try:
                 Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
             except OverlapError:
                 debug('Resampling exception')
                 continue
-
             rimg[Yo,Xo] += img[Yi,Xi]
+
+            # try:
+            #     Yo,Xo,Yi,Xi,[rim] = resample_with_wcs(wcs, subwcs, [img], 3)
+            # except OverlapError:
+            #     debug('Resampling exception')
+            #     continue
+            # rimg[Yo,Xo] += rim
+            
             rn  [Yo,Xo] += 1
         rimg /= np.maximum(rn, 1)
         rimgs.append(rimg)

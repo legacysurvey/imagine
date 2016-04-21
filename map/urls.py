@@ -8,6 +8,9 @@ urlpatterns = [
     #url(r'^jpeg-cutout-sdss', views.jpeg_cutout_sdss),
     #url(r'^fits-cutout-sdss', views.fits_cutout_sdss),
 
+    # DEEP2 Spectroscopy
+    url(r'^spec-deep2/(\d+)/cat.json', views.cat_spec_deep2),
+
     # SDSS tiled coadd
     url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sdssco),
     url(r'^jpeg-cutout-sdss', views.jpeg_cutout_sdssco),
@@ -17,6 +20,18 @@ urlpatterns = [
 
     url(r'^namequery/', views.name_query),
 
+    # CCDs: list of polygons
+    url(r'^ccds/', views.ccd_list),
+    # Exposures: list of circles
+    url(r'^exps/', views.exposure_list),
+    
+    # DR3
+    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3),
+    url(r'^decals-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3_model),
+    url(r'^decals-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3_resid),
+    # catalog
+    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_decals_dr3),
+    
     # DR2
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2),
     url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2_model),
@@ -86,11 +101,6 @@ urlpatterns = [
 
     # bricks: list of polygons
     url(r'^bricks/', views.brick_list),
-    # CCDs: list of polygons
-    url(r'^ccds/', views.ccd_list),
-
-    # Exposures: list of circles
-    url(r'^exps/', views.exposure_list),
 
     # SDSS spectro plates: list of circles
     url(r'^sdss-plates/', views.sdss_plate_list),
