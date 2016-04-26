@@ -70,7 +70,8 @@ catversions = {
     'spec': [1,],
     'spec-deep2': [1,],
     'bright': [1,],
-    }
+    'tycho2': [1,],
+}
 
 oneyear = (3600 * 24 * 365)
 
@@ -1300,8 +1301,8 @@ def _get_survey(name=None):
     basedir = settings.DATA_DIR
     from legacypipe.common import LegacySurveyData
 
-    if name == 'decals-dr3':
-        dirnm = os.path.join(basedir, 'decals-dr3')
+    if name in ['decals-dr3', 'mobo-dr3']:
+        dirnm = os.path.join(basedir, name)
         d = LegacySurveyData(survey_dir=dirnm)
         # HACK -- drop unnecessary columns.
         B = d.get_bricks_readonly()
@@ -1327,7 +1328,7 @@ def _get_survey(name=None):
                       'ccdnmatchb', 'ccdmdncol', 'expid']:
                 if k in C.columns():
                     C.delete_column(k)
-            C.writeto('/tmp/cut-ccds-dr3.fits')#cutfn)
+            C.writeto('/tmp/cut-ccds-%s.fits' % name)
 
         surveys[name] = d
         return d
@@ -1802,6 +1803,10 @@ def cat_spec_deep2(req, ver):
 def cat_bright(req, ver):
     return cat(req, ver, 'bright',
                os.path.join(settings.DATA_DIR, 'bright.fits'))
+
+def cat_tycho2(req, ver):
+    return cat(req, ver, 'tycho2',
+               os.path.join(settings.DATA_DIR, 'tycho2.fits'))
 
 def cat_gals(req, ver):
     return cat(req, ver, 'ngc',

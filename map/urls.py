@@ -24,7 +24,10 @@ urlpatterns = [
     url(r'^ccds/', views.ccd_list),
     # Exposures: list of circles
     url(r'^exps/', views.exposure_list),
-    
+
+    # Tycho-2 stars
+    url(r'^tycho2/(\d+)/cat.json', views.cat_tycho2),
+
     # DR3
     url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3),
     url(r'^decals-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3_model),

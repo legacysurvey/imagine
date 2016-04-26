@@ -703,11 +703,14 @@ def main():
         sys.exit(0)
 
     if opt.scale:
-        if opt.kind in ['decals-dr3', 'decals-dr3-model']:
+        if opt.kind in ['decals-dr3', 'decals-dr3-model', 'mobo-dr3']:
             from glob import glob
             from map.views import _get_survey
             
-            decals = _get_survey('decals-dr3')
+            if 'decals-dr3' in opt.kind:
+                decals = _get_survey('decals-dr3')
+            else:
+                decals = _get_survey('mobo-dr3')
 
             # find all image files
             model = False

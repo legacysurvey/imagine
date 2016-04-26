@@ -1022,6 +1022,13 @@ var mylayer = function (name, pretty, kwargs) {
 
 var tiles;
 
+tiles = mylayer('mobo-dr3', 'Mosaic/Bok DR3 images',
+                //{'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
+
+
 tiles = mylayer('decals-dr3', 'DECaLS DR3 images',
                 //{'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
                 {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
@@ -1551,6 +1558,8 @@ var decalscat3 = new DecalsCatalogLayer(tileWatcher,
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
+var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {});
+
 var gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
                              {'url_name': 'ngc',
                               'minZoom': 5,
@@ -1583,7 +1592,7 @@ var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
 
 var overlays = [decalscat, decalscat3, ccdOverlay, ccdOverlay3, expOverlay, expOverlay3,
                 brickOverlay,
-                gals, bright, spec, plateOverlay, specDeep2];
+                gals, bright, tycho2, spec, plateOverlay, specDeep2];
 var layerControl = new L.control.layers(baseMaps, {}, { collapsed: false })
 for (var i=0,len=overlays.length; i<len; i++) {
     layerControl._addLayer(overlays[i].getGroup(), overlays[i]._pretty, true);
