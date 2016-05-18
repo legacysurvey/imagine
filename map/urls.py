@@ -28,6 +28,9 @@ urlpatterns = [
     # Tycho-2 stars
     url(r'^tycho2/(\d+)/cat.json', views.cat_tycho2),
 
+    # DR3 Mosaic+Bok
+    url(r'^mobo-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3),
+
     # DR3
     url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3),
     url(r'^decals-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3_model),

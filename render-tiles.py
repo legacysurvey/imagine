@@ -40,6 +40,28 @@ def _one_tile((kind, zoom, x, y, ignore)):
         map_sdssco(req, version, zoom, x, y, savecache=True, forcecache=True,
                    return_if_not_found=True, hack_jpeg=True)
 
+    elif kind in ['mobo-dr3', 'mobo-dr3-model', 'mobo-dr3-resid']:
+        v = 1
+        kwa = {}
+        if 'model' in kind:
+            kwa.update(model=True, add_gz=True)
+        if 'resid' in kind:
+            kwa.update(resid=True, model_gz=True)
+        print 'map_mobo_dr3 kwargs:', kwa
+        map_mobo_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
+                       hack_jpeg=True, **kwa)
+        
+    elif kind in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
+        v = 1
+        kwa = {}
+        if 'model' in kind:
+            kwa.update(model=True, add_gz=True)
+        if 'resid' in kind:
+            kwa.update(resid=True, model_gz=True)
+        print 'map_decals_dr3 kwargs:', kwa
+        map_decals_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
+                       hack_jpeg=True, drname='decals-dr3', **kwa)
+        
     elif kind in ['decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
         v = 2
         kwa = {}
@@ -708,9 +730,10 @@ def main():
             from map.views import _get_survey
             
             if 'decals-dr3' in opt.kind:
-                decals = _get_survey('decals-dr3')
+                surveyname = 'decals-dr3'
             else:
-                decals = _get_survey('mobo-dr3')
+                surveyname = 'mobo-dr3'
+            decals = _get_survey(surveyname)
 
             # find all image files
             model = False
@@ -724,7 +747,7 @@ def main():
             fns = glob(pat)
             fns.sort()
             print len(fns), 'image files'
-            scaledir = 'decals-dr3'
+            scaledir = surveyname
             basedir = settings.DATA_DIR
             dirnm = os.path.join(basedir, 'scaled', scaledir)
             for fn in fns:
