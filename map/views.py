@@ -28,6 +28,8 @@ tileversions = {
     'sdssco': [1,],
 
     'mobo-dr3': [1],
+    'mobo-dr3-model': [1],
+    'mobo-dr3-resid': [1],
     
     'decals-dr3': [1],
     'decals-dr3-model': [1],
@@ -823,6 +825,14 @@ def _get_mobo_dr3_bricks():
     #B_dr3.writeto(fn)
     #debug('Wrote', fn)
     return B_mobo_dr3
+
+def map_mobo_dr3_model(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(model=True, model_gz=True, add_gz=True)
+    return map_mobo_dr3(req, ver, zoom, x, y, **kwargs)
+
+def map_mobo_dr3_resid(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(resid=True, model_gz=True)
+    return map_mobo_dr3(req, ver, zoom, x, y, **kwargs)
 
 def map_mobo_dr3(req, ver, zoom, x, y, savecache=None,
                     model=False, resid=False, nexp=False,
