@@ -1,3 +1,5 @@
+import os
+
 w_flist = None
 w_flist_tree = None
 
@@ -8,12 +10,16 @@ if False:
     matplotlib.use('Agg')
     sdssps = PlotSequence('sdss')
 
+from map.views import tileversions, get_scaled, _read_sip_wcs, sdss_rgb, save_jpeg
+tileversions.update(dict(sdss=[1,]))
+
 def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
              get_images=False,
              ignoreCached=False,
              wcs=None,
              forcecache=False,
              forcescale=None,
+             bestOnly=False,
              **kwargs):
     from decals import settings
 
@@ -207,9 +213,16 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                 else:
                     img = fitsimg[slc]
             #rimg[Yo,Xo] += img[Yi-y0, Xi-x0]
-            rimg[Yo,Xo] += resamp * weight
 
-            rn  [Yo,Xo] += weight
+            if bestOnly:
+                K = np.flatnonzero(weight > rn[Yo,Xo])
+                print('Updating', len(K), 'of', len(Yo), 'pixels')
+                if len(K):
+                    rimg[Yo[K],Xo[K]] = resamp[K] * weight
+                    rn  [Yo[K],Xo[K]] = weight
+            else:
+                rimg[Yo,Xo] += resamp * weight
+                rn  [Yo,Xo] += weight
 
             if sdssps is not None:
                 # goodpix = np.ones(img.shape, bool)
@@ -773,3 +786,33 @@ def read_astrans(fn, hdu, hdr=None, W=None, H=None, fitsfile=None):
     return sip
 
 
+
+
+
+if __name__ == '__main__':
+    from astrometry.util.util import Tan
+    import fitsio
+
+    W,H = 9000,9000
+    #W,H = 500,500
+    pixscale = 0.4 / 3600.
+
+    wcs = Tan(*[float(x) for x in 
+                [194.954, 27.980, (W+1)/2., (H+1)/2., -pixscale, 0, 0, pixscale,
+                 W, H]])
+    gri = map_sdss(None, 1, 1, 1, 1, get_images=True, wcs=wcs, forcescale=0,
+                   bestOnly=True)
+    #print 'Got', gri
+    g,r,i = gri
+    print 'g', g.shape
+
+    hdr = fitsio.FITSHDR()
+    wcs.add_to_header(hdr)
+
+    fitsio.write('coma-g.fits', g, header=hdr, clobber=True)
+    fitsio.write('coma-r.fits', r, header=hdr, clobber=True)
+    fitsio.write('coma-i.fits', i, header=hdr, clobber=True)
+
+    bands = 'gri'
+    rgb = sdss_rgb(gri, bands)
+    save_jpeg('coma.jpg', rgb)
