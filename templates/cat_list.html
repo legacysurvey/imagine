@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block css %}
+#tiletab {
+font-size: 14px;
+background: #fff;
+margin: 15px;
+border-collapse: collapse;
+text-align: center;
+border-bottom: 2px solid #6678b1;
+}
+#tiletab th {
+padding: 15px 15px;
+border-bottom: 2px solid #6678b1;
+}
+#tiletab td {
+color: #669;
+padding: 6px 8px;
+}
+.odd {
+border-bottom: 1px solid #ccc;
+}
+#tiletab tbody tr:hover td {
+color: #009;
+}
+#optbox {
+text-align:left;
+width: 60%;
+}
+.light {
+text-align: center;
+font-size: 12;
+color: #888;
+}
+{% endblock %}
+
+
+{% block content %}
+<center>
+<h2>unWISE Coadd Tiles</h2>
+<h3>{{ total_items }} tiles near RA,Dec = ({{ ra }}, {{ dec}}) radius {{ radius }} degrees</h3>
+
+{% if is_paginated %}
+    <div class="pagination">
+        <span class="step-links">
+            {% if page_obj.has_previous %}
+                <a href="{{ myurl }}&page={{ page_obj.previous_page_number }}">previous</a>
+            {% endif %}
+
+            <span class="current">
+                Page {{ page_obj.number }} of {{ paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="{{ myurl}}&page={{ page_obj.next_page_number }}">next</a>
+            {% endif %}
+        </span>
+    </div>
+{% endif %}
+
+  {% for tile in object_list %}
+    {{ tile }}
+    {% endfor %}
+{% endblock %}
+    

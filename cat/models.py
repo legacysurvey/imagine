@@ -367,7 +367,8 @@ class Wise(models.Model):
         db_table = 'wise'
 
 class Photom(models.Model):
-    cand_id = models.BigIntegerField(blank=True, null=True)
+    cand = models.ForeignKey(Candidate, models.DO_NOTHING,blank=True, null=True,
+                                primary_key=True)
     ra = models.FloatField(blank=True, null=True)
     dec = models.FloatField(blank=True, null=True)
     g = models.FloatField(blank=True, null=True)
