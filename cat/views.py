@@ -209,11 +209,12 @@ class CoordSearchCatalogList(ListView):
         if rad is None:
             rad = 0.
         rad = max(0., rad)
-        rad = min(rad, 3600.)
+        # 1 degree max!
+        rad = min(rad, 1.)
         
         print('q3c radial query:', ra, dec, rad)
         cat = Photom.objects.extra(where=['q3c_radial_query(ra, dec, %.4f, %.4f, %g)' %
-                                          (ra, dec, rad / 3600.)])
+                                          (ra, dec, rad)])
         print('Got:', cat)
         return cat
     
