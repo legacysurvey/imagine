@@ -553,8 +553,11 @@ def cutout_decals(req, jpeg=False, fits=False, default_tag='decals-dr1j',
     if dr2:
         rgbfunc = dr2_rgb
 
+    print('Calling cutout_on_bricks: tag="%s"' % tag)
+        
     return cutout_on_bricks(req, tag, bricks=bricks, imagetag=imagetag,
                             jpeg=jpeg, fits=fits,
+                            drname=tag,
                             rgbfunc=rgbfunc, outtag=tag, hdr=hdr)
 
 
@@ -619,6 +622,8 @@ def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
     zoom = native_zoom - int(np.round(np.log2(pixscale / native_pixscale)))
     zoom = max(0, min(zoom, 16))
 
+    print('Calling map_coadd_bands: tag="%s"' % tag)
+    
     rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts',
                           tag, wcs=wcs, imagetag=imagetag,
                           savecache=False, get_images=fits, **kwargs)

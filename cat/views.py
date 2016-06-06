@@ -219,7 +219,10 @@ class CoordSearchCatalogList(ListView):
         return cat
     
     def get_context_data(self, **kwargs):
+        from decals import settings
+
         context = super(CoordSearchCatalogList, self).get_context_data(**kwargs)
+        context.update(root_url=settings.ROOT_URL)
         req = self.request
         args = req.GET.copy()
         args.pop('page', None)
