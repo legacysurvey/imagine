@@ -3,11 +3,6 @@ from django.conf.urls import url
 from map import views
 
 urlpatterns = [
-    # SDSS
-    #url(r'^sdss/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sdss),
-    #url(r'^jpeg-cutout-sdss', views.jpeg_cutout_sdss),
-    #url(r'^fits-cutout-sdss', views.fits_cutout_sdss),
-
     # DEEP2 Spectroscopy
     url(r'^spec-deep2/(\d+)/cat.json', views.cat_spec_deep2),
 
@@ -27,6 +22,11 @@ urlpatterns = [
 
     # Tycho-2 stars
     url(r'^tycho2/(\d+)/cat.json', views.cat_tycho2),
+
+    # DR3 Mosaic+Bok
+    url(r'^mobo-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3),
+    url(r'^mobo-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3_model),
+    url(r'^mobo-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3_resid),
 
     # DR3
     url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3),
@@ -123,4 +123,6 @@ urlpatterns = [
 
     # fall-through
     url(r'', views.index),
+
+
 ]

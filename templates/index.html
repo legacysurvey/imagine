@@ -847,6 +847,7 @@ function inbrickccdUpdate(props) {
     var exps = expOverlay.under(props.latlng);
     var ccds3 = ccdOverlay3.under(props.latlng);
     var exps3 = expOverlay3.under(props.latlng);
+    var ccds3mb = ccdOverlay3mb.under(props.latlng);
 
     var txt = '';
     if (bricks.length) {
@@ -899,7 +900,7 @@ function inbrickccdUpdate(props) {
         for (var i=0; i<ccds3.length; i++) {
             var ccdname = ccds3[i];
             var aparams = '';
-            if (ccdname == ccdOverlay._highlighted) {
+            if (ccdname == ccdOverlay3._highlighted) {
                 aparams = ' class="highccd"';
             }
             var ccdtext = ccd_detail(ccdname, aparams);
@@ -924,6 +925,23 @@ function inbrickccdUpdate(props) {
         txt = txt + '</ul>';
     }
 
+    if (ccds3mb.length) {
+        if (txt.length) {
+            txt += '<br/>';
+        }
+        txt = txt + 'In DR3 CCDs:<ul>';
+        for (var i=0; i<ccds3mb.length; i++) {
+            var ccdname = ccds3mb[i];
+            var aparams = '';
+            if (ccdname == ccdOverlay3mb._highlighted) {
+                aparams = ' class="highccd"';
+            }
+            var ccdtext = ccd_detail(ccdname, aparams);
+            txt = txt + '<li>'+ccdtext+'</li>';
+        }
+        txt = txt + '</ul>';
+    }
+                                      
     inbrickccd._div.innerHTML = txt;
 }
 
@@ -931,7 +949,7 @@ function inbrickccdUpdate(props) {
 // "Bricks", "CCDs", etc button checked
 function overlayAdded(e) {
     if (ccdOverlay._show || brickOverlay._show || expOverlay._show ||
-    ccdOverlay3._show || expOverlay3._show) {
+    ccdOverlay3._show || ccdOverlay3mb._show || expOverlay3._show) {
         if (!inbrickccdAdded) {
             inbrickccdAdded = true;
             inbrickccd.addTo(map);
@@ -942,7 +960,7 @@ function overlayAdded(e) {
 // "Sources", "Bricks", "CCDs" button unchecked
 function overlayRemoved(e) {
     if (!(ccdOverlay._show || brickOverlay._show || expOverlay._show ||
-    ccdOverlay3._show || expOverlay3._show)) {
+    ccdOverlay3._show || ccdOverlay3mb._show || expOverlay3._show)) {
         if (inbrickccdAdded) {
             map.removeControl(inbrickccd);
             inbrickccdAdded = false;
@@ -1023,26 +1041,33 @@ var mylayer = function (name, pretty, kwargs) {
 var tiles;
 
 tiles = mylayer('mobo-dr3', 'Mosaic/Bok DR3 images',
-                //{'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-                {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                //{'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
+tiles = mylayer('mobo-dr3-model', 'Mosaic/Bok DR3 models',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 
+tiles = mylayer('mobo-dr3-resid', 'Mosaic/Bok DR3 residuals',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 
+                                        
 tiles = mylayer('decals-dr3', 'DECaLS DR3 images',
-                //{'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-                {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                //{'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 //var tilesDecalsDr3Image = tiles;
 
 tiles = mylayer('decals-dr3-model', 'DECaLS DR3 models',
-                //{'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-                {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                //{'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
 tiles = mylayer('decals-dr3-resid', 'DECaLS DR3 residuals',
-                //{'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-                {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                //{'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
                                      
@@ -1512,6 +1537,13 @@ var ccdOverlay3 = new PolygonOverlay('decals-dr3-ccds', 'DECaLS DR3 CCDs',
                                      'labelMinZoom': 100,
                                      'urlTerm': 'ccds',
                                     });
+
+var ccdOverlay3mb = new PolygonOverlay('mobo-dr3-ccds', 'Mosaic+Bok DR3 CCDs',
+                                    {'url':'{{ ccdsurl|safe }}',
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds',
+                                    });
                                                      
 var expOverlay = new CircleOverlay('decals-dr2-exps', 'DECaLS DR2 Exposures',
                                     {'url':'{{ expsurl|safe }}',
@@ -1537,6 +1569,7 @@ ccdOverlay.on('loaded', function() { inbrickccdUpdate(); });
 expOverlay.on('loaded', function() { inbrickccdUpdate(); });
 ccdOverlay3.on('loaded', function() { inbrickccdUpdate(); });
 expOverlay3.on('loaded', function() { inbrickccdUpdate(); });
+ccdOverlay3mb.on('loaded', function() { inbrickccdUpdate(); });
 brickOverlay.on('loaded', function() { inbrickccdUpdate(); });
 
 var plateOverlay = new CircleOverlay('sdss-plates', 'SDSS Spectro Plates',
@@ -1590,7 +1623,7 @@ var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
 "Constellations": conGroup,
 {% endcomment %}
 
-var overlays = [decalscat, decalscat3, ccdOverlay, ccdOverlay3, expOverlay, expOverlay3,
+var overlays = [decalscat, decalscat3, ccdOverlay, ccdOverlay3, ccdOverlay3mb, expOverlay, expOverlay3,
                 brickOverlay,
                 gals, bright, tycho2, spec, plateOverlay, specDeep2];
 var layerControl = new L.control.layers(baseMaps, {}, { collapsed: false })

@@ -27,6 +27,10 @@ tileversions = {
     'sdss': [1,],
     'sdssco': [1,],
 
+    'mobo-dr3': [1],
+    'mobo-dr3-model': [1],
+    'mobo-dr3-resid': [1],
+    
     'decals-dr3': [1],
     'decals-dr3-model': [1],
     'decals-dr3-resid': [1],
@@ -549,8 +553,11 @@ def cutout_decals(req, jpeg=False, fits=False, default_tag='decals-dr1j',
     if dr2:
         rgbfunc = dr2_rgb
 
+    print('Calling cutout_on_bricks: tag="%s"' % tag)
+        
     return cutout_on_bricks(req, tag, bricks=bricks, imagetag=imagetag,
                             jpeg=jpeg, fits=fits,
+                            drname=tag,
                             rgbfunc=rgbfunc, outtag=tag, hdr=hdr)
 
 
@@ -615,6 +622,8 @@ def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
     zoom = native_zoom - int(np.round(np.log2(pixscale / native_pixscale)))
     zoom = max(0, min(zoom, 16))
 
+    print('Calling map_coadd_bands: tag="%s"' % tag)
+    
     rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts',
                           tag, wcs=wcs, imagetag=imagetag,
                           savecache=False, get_images=fits, **kwargs)
@@ -735,6 +744,8 @@ def layer_name_map(name):
             'decals-dr3-ccds': 'decals-dr3',
             'decals-dr3-exps': 'decals-dr3',
 
+            'mobo-dr3-ccds': 'mobo-dr3',
+
     }.get(name, name)
 
 B_dr2 = None
@@ -779,6 +790,85 @@ def _get_dr2_bricks():
 
 
 
+B_mobo_dr3 = None
+def _get_mobo_dr3_bricks():
+    global B_mobo_dr3
+    if B_mobo_dr3 is not None:
+        return B_mobo_dr3
+
+    fn = os.path.join(settings.DATA_DIR, 'mobo-dr3', 'mobo-bricks-in-dr3.fits')
+    if os.path.exists(fn):
+        from astrometry.util.fits import fits_table
+        debug('Reading', fn)
+        B_mobo_dr3 = fits_table(fn, columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2',
+                                        'has_g', 'has_r', 'has_z'])
+        return B_mobo_dr3
+
+    from astrometry.libkd.spherematch import match_radec
+    import numpy as np
+
+    decals = _get_survey('mobo-dr3')
+    B = decals.get_bricks()
+    C = decals.get_ccds_readonly()
+    # CCD radius
+    radius = np.hypot(2048, 4096) / 2. * 0.262 / 3600.
+    # Brick radius
+    radius += np.hypot(0.25, 0.25)/2.
+    I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, radius * 1.05)
+    for band in 'grz':
+        has = np.zeros(len(B), bool)
+        K = (C.filter[J] == band)
+        has[I[K]] = True
+        B.set('has_%s' % band, has)
+        debug(sum(has), 'bricks have coverage in', band)
+
+    keep = np.zeros(len(B), bool)
+    keep[I] = True
+    B.cut(keep)
+    B_mobo_dr3 = B
+    B_mobo_dr3.writeto('/tmp/mobo-bricks-in-dr3.fits')
+    #B_dr3.writeto(fn)
+    #debug('Wrote', fn)
+    return B_mobo_dr3
+
+def map_mobo_dr3_model(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(model=True, model_gz=True, add_gz=True)
+    return map_mobo_dr3(req, ver, zoom, x, y, **kwargs)
+
+def map_mobo_dr3_resid(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(resid=True, model_gz=True)
+    return map_mobo_dr3(req, ver, zoom, x, y, **kwargs)
+
+def map_mobo_dr3(req, ver, zoom, x, y, savecache=None,
+                    model=False, resid=False, nexp=False,
+                    **kwargs):
+    if savecache is None:
+        savecache = settings.SAVE_CACHE
+
+    B_dr3 = _get_mobo_dr3_bricks()
+    survey = _get_survey('mobo-dr3')
+    
+    imagetag = 'image'
+    tag = 'mobo-dr3'
+    imagedir = 'mobo-dr3'
+
+    if model:
+        imagetag = 'model'
+        tag = 'mobo-dr3-model'
+    if resid:
+        imagetag = 'resid'
+        kwargs.update(modeldir = 'mobo-dr3-model')
+        tag = 'mobo-dr3-resid'
+
+    rgb = rgbkwargs
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
+                           imagetag=imagetag,
+                           rgbkwargs=rgb,
+                           bricks=B_dr3,
+                           decals=survey,
+                           savecache=savecache, rgbfunc=dr2_rgb, **kwargs)
+
+
 B_dr3 = None
 def _get_dr3_bricks():
     global B_dr3
@@ -819,7 +909,6 @@ def _get_dr3_bricks():
     #B_dr3.writeto(fn)
     #debug('Wrote', fn)
     return B_dr3
-
 
 def map_decals_dr3_model(req, ver, zoom, x, y, **kwargs):
     kwargs.update(model=True, model_gz=True, add_gz=True)
@@ -1520,10 +1609,10 @@ def ccd_list(req):
     
     CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
 
-    ccdname = lambda c: '%i-%s-%s' % (c.expnum, c.extname.strip(), c.filter)
+    ccdname = lambda c: '%s %i-%s-%s' % (c.camera, c.expnum, c.extname.strip(), c.filter)
 
-    if name in ['decals-dr2', 'decals-dr3']:
-        ccdname = lambda c: '%i-%s-%s' % (c.expnum, c.ccdname.strip(), c.filter)
+    if name in ['decals-dr2', 'decals-dr3', 'mobo-dr3']:
+        ccdname = lambda c: '%s %i-%s-%s' % (c.camera, c.expnum, c.ccdname.strip(), c.filter)
         #decals = _get_survey(name)
         #CCDS.cut(decals.photometric_ccds(CCDS))
 

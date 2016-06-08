@@ -365,3 +365,24 @@ class Wise(models.Model):
     class Meta:
         managed = False
         db_table = 'wise'
+
+class Photom(models.Model):
+    cand = models.ForeignKey(Candidate, models.DO_NOTHING,blank=True, null=True,
+                                primary_key=True)
+    ra = models.FloatField(blank=True, null=True)
+    dec = models.FloatField(blank=True, null=True)
+    g = models.FloatField(blank=True, null=True)
+    r = models.FloatField(blank=True, null=True)
+    z = models.FloatField(blank=True, null=True)
+    w1 = models.FloatField(blank=True, null=True)
+    w2 = models.FloatField(blank=True, null=True)
+    w3 = models.FloatField(blank=True, null=True)
+    w4 = models.FloatField(blank=True, null=True)
+    gmr = models.FloatField(blank=True, null=True)
+    rmz = models.FloatField(blank=True, null=True)
+    zmw1 = models.FloatField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'photom'
+

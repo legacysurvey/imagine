@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block css %}
+#tiletab {
+font-size: 14px;
+background: #fff;
+margin: 15px;
+border-collapse: collapse;
+text-align: center;
+border-bottom: 2px solid #6678b1;
+}
+#tiletab th {
+padding: 15px 15px;
+border-bottom: 2px solid #6678b1;
+}
+#tiletab td {
+color: #669;
+padding: 6px 8px;
+}
+.odd {
+border-bottom: 1px solid #ccc;
+}
+#tiletab tbody tr:hover td {
+color: #009;
+}
+#optbox {
+text-align:left;
+width: 60%;
+}
+.light {
+text-align: center;
+font-size: 12;
+color: #888;
+}
+{% endblock %}
+
+
+{% block content %}
+<center>
+<h2>DR2 Catalog Search Results</h2>
+<h3>{{ total_items }} sources near RA,Dec = ({{ ra }}, {{ dec}}) radius {{ radius }} degrees</h3>
+
+{% if is_paginated %}
+    <div class="pagination">
+        <span class="step-links">
+            {% if page_obj.has_previous %}
+                <a href="{{ myurl }}&page={{ page_obj.previous_page_number }}">previous</a>
+            {% endif %}
+
+            <span class="current">
+                Page {{ page_obj.number }} of {{ paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="{{ myurl}}&page={{ page_obj.next_page_number }}">next</a>
+            {% endif %}
+        </span>
+    </div>
+{% endif %}
+
+    <table>
+    <tr><th>Cutout</th><th>RA</th><th>Dec</th><th>Type</th><th>g</th><th>r</th><th>z</th></tr>
+    
+  {% for src in object_list %}
+<tr>
+  <td><img src="{{root_url}}/jpeg-cutout-decals-dr2/?ra={{src.ra}}&dec={{src.dec}}&size=64" width="64" height="64" /></td>
+  <td>{{src.ra}}</td>
+  <td>{{src.dec}}</td>
+  <td>{{src.cand.type}}</td>
+  <td>{{src.g}}</td>
+  <td>{{src.r}}</td>
+  <td>{{src.z}}</td>
+  </tr>
+  {% endfor %}
+    </table>
+    
+{% endblock %}
+    

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}
+DECaLS DR2 Catalog Search
+{% endblock %}
+
+{% block css %}
+.formtab {
+font-size: 14px;
+background: #fff;
+margin: 15px;
+width: 480px;
+border-collapse: collapse;
+text-align: left;
+}
+.formtab td
+{
+color: #669;
+padding: 9px 8px 0px 8px;
+}
+.formtab tbody tr:hover td
+{
+color: #009;
+}
+.notebox {
+text-align:left;
+width: 60%;
+}
+{% endblock %}
+
+{% block content %}
+<center>
+<h2>DECaLS DR2 Catalog Search</h2>
+
+<hr>
+
+<h3>Cone Search:</h3>
+<form action="{{ url }}">
+  {{ form.non_field_errors }}
+  <table class="formtab">
+    <tbody>
+    <tr>
+      <td align="right"><label for="id_coord">Coordinates:</label></td>
+      <td>
+        {{ form.coord }}
+        {{ form.coord.errors }}
+      </td>
+    </tr>
+    <tr>
+      <td  align="right"><label for="id_radius">Radius (deg):</label></td>
+      <td>
+        {{ form.radius }}
+        {{ form.radius.errors }}
+      </td>
+    </tr>
+    <tr><td colspan="2" align="center">
+        <input type="submit" value="Search" class="bigbutton" />
+    </td></tr>
+    </tbody>
+  </table>
+  example: "45.1 17.4" (decimal degrees) or "12:57:10.4 -43:65:10" (hh:mm:ss dd:mm:ss).<br/><br/>
+</td></tr>
+</form>
+
+<hr>
+
+</center>
+{% endblock %}
