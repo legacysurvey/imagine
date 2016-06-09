@@ -115,25 +115,27 @@ def sql_where(req):
 
 def cone_search(req):
     if 'coord' in req.GET:
-        form = CoordSearchForm(req.GET)
-
-        if form.is_valid():
-            # Process the data in form.cleaned_data
-            ra,dec = parse_coord(form.cleaned_data['coord'])
-            try:
-                radius = float(form.cleaned_data['radius'])
-            except:
-                radius = 0.
-            print('ra,dec,radius', ra,dec,radius)
-
-            from decals import settings
-            
-            ## FIXME -- URL lookup
-            return HttpResponseRedirect(settings.ROOT_URL +
-                                        '/catalog_near/?ra=%g&dec=%g&radius=%g' %
-                                        (ra, dec, radius))
+        v = CoordSearchCatalogList.as_view()
+        return v(req)
+    # form = CoordSearchForm(req.GET)
+    # 
+    #     if form.is_valid():
+    #         # Process the data in form.cleaned_data
+    #         ra,dec = parse_coord(form.cleaned_data['coord'])
+    #         try:
+    #             radius = float(form.cleaned_data['radius'])
+    #         except:
+    #             radius = 0.
+    #         print('ra,dec,radius', ra,dec,radius)
+    # 
+    #         from decals import settings
+    #         
+    #         ## FIXME -- URL lookup
+    #         return HttpResponseRedirect(settings.ROOT_URL +
+    #                                     '/catalog_near/?ra=%g&dec=%g&radius=%g' %
+    #  (ra, dec, radius))
     else:
-        form = CoordSearchForm()
+        form = CatalogSearchForm()
 
     return render(req, 'coordsearch.html', {
         'form': form,
@@ -187,24 +189,64 @@ class RaDecBoxSearchForm(forms.Form):
     declo = forms.FloatField(required=False, validators=[parse_dec])
     dechi = forms.FloatField(required=False, validators=[parse_dec])
 
-        
+#shortNum = forms.NumberInput(attrs={'size': '10'})
+shortNum = forms.TextInput(attrs={'size': '10'})
+
+class CatalogSearchForm(CoordSearchForm):
+    g_gt = forms.FloatField(required=False, widget=shortNum)
+    g_lt = forms.FloatField(required=False, widget=shortNum)
+
+    r_gt = forms.FloatField(required=False, widget=shortNum)
+    r_lt = forms.FloatField(required=False, widget=shortNum)
+
+    z_gt = forms.FloatField(required=False, widget=shortNum)
+    z_lt = forms.FloatField(required=False, widget=shortNum)
+
+    w1_gt = forms.FloatField(required=False, widget=shortNum)
+    w1_lt = forms.FloatField(required=False, widget=shortNum)
+
+    gmr_gt = forms.FloatField(required=False, widget=shortNum)
+    gmr_lt = forms.FloatField(required=False, widget=shortNum)
+
+    rmz_gt = forms.FloatField(required=False, widget=shortNum)
+    rmz_lt = forms.FloatField(required=False, widget=shortNum)
+    
+    zmw1_gt = forms.FloatField(required=False, widget=shortNum)
+    zmw1_lt = forms.FloatField(required=False, widget=shortNum)
+    
 class CoordSearchCatalogList(ListView):
     template_name = 'cat_list.html'
     paginate_by = 20
     model = Photom
 
+    # def get(self, req, *args, **kwargs):
+    #     if 'coord' in req.GET:
+    #         form = CoordSearchForm(req.GET)
+    #         if form.is_valid():
+    #             # Process the data in form.cleaned_data
+    #             ra,dec = parse_coord(form.cleaned_data['coord'])
+    #             try:
+    #                 radius = float(form.cleaned_data['radius'])
+    #             except:
+    #                 radius = 0.
+    #             print('ra,dec,radius', ra,dec,radius)
+    #             return self.as_view
+
     def get_queryset(self):
         req = self.request
-        form = RaDecSearchForm(req.GET)
+        #form = RaDecSearchForm(req.GET)
+        #form = CoordSearchForm(req.GET)
+        form = CatalogSearchForm(req.GET)
 
         if not form.is_valid():
             return []
-        ra  = form.cleaned_data['ra']
-        if ra is None:
-            ra = 0.
-        dec = form.cleaned_data['dec']
-        if dec is None:
-            dec = 0
+        ra,dec = parse_coord(form.cleaned_data['coord'])
+        # ra  = form.cleaned_data['ra']
+        # if ra is None:
+        #     ra = 0.
+        # dec = form.cleaned_data['dec']
+        # if dec is None:
+        #     dec = 0
         rad = form.cleaned_data['radius']
         if rad is None:
             rad = 0.
@@ -215,6 +257,42 @@ class CoordSearchCatalogList(ListView):
         print('q3c radial query:', ra, dec, rad)
         cat = Photom.objects.extra(where=['q3c_radial_query(ra, dec, %.4f, %.4f, %g)' %
                                           (ra, dec, rad)])
+
+        for k in ['g', 'r', 'z', 'w1', 'gmr', 'rmz', 'zmw1']:
+            gt = form.cleaned_data[k + '_gt']
+            lt = form.cleaned_data[k + '_lt']
+            print('Limits for', k, ':', gt, lt)
+            if gt is not None:
+                cat = cat.filter(**{ k+'__gt': gt})
+            if lt is not None:
+                cat = cat.filter(**{ k+'__lt': lt})
+        
+        # g_gt = form.cleaned_data['g_gt']
+        # g_lt = form.cleaned_data['g_lt']
+        # print('g band limits', g_lt, g_gt)
+        # if g_gt is not None:
+        #     cat = cat.filter(g__gt=g_gt)
+        # if g_lt is not None:
+        #     cat = cat.filter(g__lt=g_lt)
+        # 
+        # r_gt = form.cleaned_data['r_gt']
+        # r_lt = form.cleaned_data['r_lt']
+        # print('r band limits', r_lt, r_gt)
+        # if r_gt is not None:
+        #     cat = cat.filter(r__gt=r_gt)
+        # if r_lt is not None:
+        #     cat = cat.filter(r__lt=r_lt)
+        # 
+        # z_gt = form.cleaned_data['z_gt']
+        # z_lt = form.cleaned_data['z_lt']
+        # print('z band limits', z_lt, z_gt)
+        # if z_gt is not None:
+        #     cat = cat.filter(z__gt=z_gt)
+        # if z_lt is not None:
+        #     cat = cat.filter(z__lt=z_lt)
+
+
+            
         print('Got:', cat)
         return cat
     
@@ -222,16 +300,28 @@ class CoordSearchCatalogList(ListView):
         from decals import settings
 
         context = super(CoordSearchCatalogList, self).get_context_data(**kwargs)
-        context.update(root_url=settings.ROOT_URL)
+        context.update(root_url=settings.ROOT_URL,
+                       #gtltbands = ['g','r','z','w1']
+        )
         req = self.request
         args = req.GET.copy()
         args.pop('page', None)
         pager = context.get('paginator')
         context['total_items'] = pager.count
         #context['myurl'] = req.path + '?' + args.urlencode()
-        context['ra'] = args.pop('ra', [0])[0]
-        context['dec'] = args.pop('dec', [0])[0]
-        context['radius'] = args.pop('radius', [0])[0]
+        form = CatalogSearchForm(req.GET)
+        form.is_valid()
+        ra,dec = parse_coord(form.cleaned_data['coord'])
+        context['ra'] = ra
+        context['dec'] = dec
+        rad = form.cleaned_data['radius']
+        rad = max(0., rad)
+        # 1 degree max!
+        rad = min(rad, 1.)
+        context['radius'] = rad
+        # context['ra'] = args.pop('ra', [0])[0]
+        # context['dec'] = args.pop('dec', [0])[0]
+        # context['radius'] = args.pop('radius', [0])[0]
         # ??
         #context['version'] = args.pop('version', ['1'])[0]
         return context

@@ -5,6 +5,7 @@ DECaLS DR2 Catalog Search
 {% endblock %}
 
 {% block css %}
+
 .formtab {
 font-size: 14px;
 background: #fff;
@@ -13,56 +14,176 @@ width: 480px;
 border-collapse: collapse;
 text-align: left;
 }
+
 .formtab td
 {
 color: #669;
 padding: 9px 8px 0px 8px;
 }
+
 .formtab tbody tr:hover td
 {
 color: #009;
 }
+
 .notebox {
 text-align:left;
 width: 60%;
 }
+
+.bigbutton { font-size:125%; padding:2px; padding-left:10px; padding-right:10px;
+font-weight: bold}
+
 {% endblock %}
 
 {% block content %}
 <center>
 <h2>DECaLS DR2 Catalog Search</h2>
 
-<hr>
+<hr />
 
-<h3>Cone Search:</h3>
 <form action="{{ url }}">
   {{ form.non_field_errors }}
   <table class="formtab">
     <tbody>
-    <tr>
+
+      <tr>
+        <th>Cone search:</th>
+      </tr>
+
+
+      <tr>
       <td align="right"><label for="id_coord">Coordinates:</label></td>
-      <td>
+      <td colspan="2">
         {{ form.coord }}
         {{ form.coord.errors }}
       </td>
     </tr>
     <tr>
+      <td />
+      <td colspan="2">
+        example: "45.1 17.4" (decimal degrees) or
+        <br/>"12:57:10.4 -43:65:10" (hh:mm:ss dd:mm:ss).
+      </td>
+    </tr>
+
+    <tr>
       <td  align="right"><label for="id_radius">Radius (deg):</label></td>
-      <td>
+      <td colspan="2">
         {{ form.radius }}
         {{ form.radius.errors }}
       </td>
     </tr>
-    <tr><td colspan="2" align="center">
-        <input type="submit" value="Search" class="bigbutton" />
-    </td></tr>
+    <tr>
+      <td />
+      <td colspan="2">
+        max: 1 degree
+      </td>
+    </tr>
+
+    <tr>
+      <th>Mag limits:</th>
+    </tr>
+
+    <tr>
+      <td>
+        {{ form.g_gt }}
+        {{ form.g_gt.errors }}
+      </td>
+      <td  align="center">&lt; g mag &lt;</td>
+      <td>
+        {{ form.g_lt }}
+        {{ form.g_lt.errors }}
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        {{ form.r_gt }}
+        {{ form.r_gt.errors }}
+      </td>
+      <td  align="center">&lt; r mag &lt;</td>
+      <td>
+        {{ form.r_lt }}
+        {{ form.r_lt.errors }}
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        {{ form.z_gt }}
+        {{ form.z_gt.errors }}
+      </td>
+      <td  align="center">&lt; z mag &lt;</td>
+      <td>
+        {{ form.z_lt }}
+        {{ form.z_lt.errors }}
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        {{ form.w1_gt }}
+        {{ form.w1_gt.errors }}
+      </td>
+      <td  align="center">&lt; W1 mag &lt;</td>
+      <td>
+        {{ form.w1_lt }}
+        {{ form.w1_lt.errors }}
+      </td>
+    </tr>
+
+    <tr>
+      <th>Color limits:</th>
+    </tr>
+
+    <tr>
+      <td>
+        {{ form.gmr_gt }}
+        {{ form.gmr_gt.errors }}
+      </td>
+      <td  align="center">&lt; g - r &lt;</td>
+      <td>
+        {{ form.gmr_lt }}
+        {{ form.gmr_lt.errors }}
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        {{ form.rmz_gt }}
+        {{ form.rmz_gt.errors }}
+      </td>
+      <td  align="center">&lt; r - z &lt;</td>
+      <td>
+        {{ form.rmz_lt }}
+        {{ form.rmz_lt.errors }}
+      </td>
+    </tr>
+
+    <tr>
+      <td>
+        {{ form.zmw1_gt }}
+        {{ form.zmw1_gt.errors }}
+      </td>
+      <td  align="center">&lt; z - W1 &lt;</td>
+      <td>
+        {{ form.zmw1_lt }}
+        {{ form.zmw1_lt.errors }}
+      </td>
+    </tr>
+    
+    
+      <tr>
+        <td colspan="3" align="center">
+          <input type="submit" value="Search" class="bigbutton" />
+        </td>
+      </tr>
     </tbody>
   </table>
-  example: "45.1 17.4" (decimal degrees) or "12:57:10.4 -43:65:10" (hh:mm:ss dd:mm:ss).<br/><br/>
-</td></tr>
 </form>
 
-<hr>
+<hr />
 
 </center>
 {% endblock %}

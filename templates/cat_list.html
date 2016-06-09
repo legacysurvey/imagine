@@ -58,18 +58,19 @@ color: #888;
     </div>
 {% endif %}
 
-    <table>
-    <tr><th>Cutout</th><th>RA</th><th>Dec</th><th>Type</th><th>g</th><th>r</th><th>z</th></tr>
+    <table id="tiletab">
+    <tr><th>Cutout</th><th>RA</th><th>Dec</th><th>Type</th><th>g</th><th>r</th><th>z</th><th>W1</th></tr>
     
   {% for src in object_list %}
 <tr>
   <td><img src="{{root_url}}/jpeg-cutout-decals-dr2/?ra={{src.ra}}&dec={{src.dec}}&size=64" width="64" height="64" /></td>
-  <td>{{src.ra}}</td>
-  <td>{{src.dec}}</td>
+  <td>{{src.ra|floatformat:4}}</td>
+  <td>{{src.dec|floatformat:4}}</td>
   <td>{{src.cand.type}}</td>
-  <td>{{src.g}}</td>
-  <td>{{src.r}}</td>
-  <td>{{src.z}}</td>
+  <td>{{src.g|floatformat:3}}</td>
+  <td>{{src.r|floatformat:3}}</td>
+  <td>{{src.z|floatformat:3}}</td>
+  <td>{{src.w1|floatformat:3}}</td>
   </tr>
   {% endfor %}
     </table>
