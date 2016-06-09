@@ -2666,6 +2666,70 @@ if __name__ == '__main__':
     # req.META = dict()
     # map_unwise_w1w2(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
 
+    from tractor.brightness import NanoMaggies
+    import fitsio
+    import pylab as plt
+    import numpy as np
+    from astrometry.util.miscutils import estimate_mode
+    
+    # J,jhdr = fitsio.read('j0.fits', header=True)
+    # H,hhdr = fitsio.read('h0.fits', header=True)
+    # K,khdr = fitsio.read('k0.fits', header=True)
+    J,jhdr = fitsio.read('j2.fits', header=True)
+    H,hhdr = fitsio.read('h2.fits', header=True)
+    K,khdr = fitsio.read('k2.fits', header=True)
+
+    print('J', J.dtype, J.shape)
+
+    # Convert all to nanomaggies
+    J /= NanoMaggies.zeropointToScale(jhdr['MAGZP'])
+    H /= NanoMaggies.zeropointToScale(hhdr['MAGZP'])
+    K /= NanoMaggies.zeropointToScale(khdr['MAGZP'])
+
+    # Hacky sky subtraction
+    J -= np.median(J.ravel())
+    H -= np.median(H.ravel())
+    K -= np.median(K.ravel())
+
+    mo = estimate_mode(J)
+    print('J mode', mo)
+    J -= mo
+    mo = estimate_mode(H)
+    print('H mode', mo)
+    H -= mo
+    mo = estimate_mode(K)
+    print('K mode', mo)
+    K -= mo
+    
+    ha = dict(histtype='step', log=True, range=(-2e3, 2e3), bins=100)
+    plt.clf()
+    plt.hist(J.ravel(), color='b', **ha)
+    plt.hist(H.ravel(), color='g', **ha)
+    plt.hist(K.ravel(), color='r', **ha)
+    plt.savefig('jhk.png')
+
+    rgb = sdss_rgb([J,H,K], bands=['J','H','K'],
+                   scales=dict(J=0.0072,
+                               H=0.0032,
+                               K=0.002))
+
+    # scales=dict(J=0.0036,
+    #             H=0.0016,
+    #             K=0.001))
+
+    print('RGB', rgb.shape)
+    plt.clf()
+    plt.hist(rgb[:,:,0].ravel(), histtype='step', color='r', bins=256)
+    plt.hist(rgb[:,:,1].ravel(), histtype='step', color='g', bins=256)
+    plt.hist(rgb[:,:,2].ravel(), histtype='step', color='b', bins=256)
+    plt.savefig('rgb2.png')
+
+    plt.clf()
+    plt.imshow(rgb, interpolation='nearest', origin='lower')
+    plt.savefig('rgb.png')
+
+    sys.exit(0)
+    
     # http://i.legacysurvey.org/static/tiles/decals-dr1j/1/13/2623/3926.jpg
 
     ver = 1
