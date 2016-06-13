@@ -594,7 +594,7 @@ def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
     pixscale = float(req.GET.get('pixscale', pixscale))
-    maxsize = 512
+    maxsize = 1024
     size   = min(int(req.GET.get('size',    256)), maxsize)
     width  = min(int(req.GET.get('width',  size)), maxsize)
     height = min(int(req.GET.get('height', size)), maxsize)
