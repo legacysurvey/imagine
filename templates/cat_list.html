@@ -38,7 +38,7 @@ color: #888;
 {% block content %}
 <center>
 <h2>DR2 Catalog Search Results</h2>
-<h3>{{ total_items }} sources near RA,Dec = ({{ ra }}, {{ dec}}) radius {{ radius }} degrees</h3>
+<h3>{{ total_items }} sources {{ search_description }}</h3>
 
 {% if is_paginated %}
     <div class="pagination">

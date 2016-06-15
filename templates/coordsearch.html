@@ -48,7 +48,11 @@ font-weight: bold}
     <tbody>
 
       <tr>
-        <th>Cone search:</th>
+        <th>{{ form.spatial_choices.0 }}</th>
+      </tr>
+
+      <tr>
+        <th>{{ form.spatial_choices.1 }}:</th>
       </tr>
 
 
@@ -77,8 +81,29 @@ font-weight: bold}
     <tr>
       <td />
       <td colspan="2">
+        {% comment %}
         max: 1 degree
+        {% endcomment %}
       </td>
+    </tr>
+
+    <tr>
+      <th colspan="2">Source types: (leave all unchecked to search everything)</th>
+    </tr>
+    <tr>
+      <td>
+        {{ form.sourcetypes_choices.0 }}
+        <br />
+        {{ form.sourcetypes_choices.1 }}
+        <br />
+        {{ form.sourcetypes_choices.2 }}
+        <br />
+        {{ form.sourcetypes_choices.3 }}
+        <br />
+        {{ form.sourcetypes_choices.4 }}
+        <br />
+      </td>
+      <td /><td />
     </tr>
 
     <tr>

@@ -193,6 +193,23 @@ class RaDecBoxSearchForm(forms.Form):
 shortNum = forms.TextInput(attrs={'size': '10'})
 
 class CatalogSearchForm(CoordSearchForm):
+
+    spatial_choices = (('allsky', 'All Sky'),
+                       ('cone', 'Cone Search'),
+                       )
+
+    spatial = forms.ChoiceField(widget=forms.RadioSelect,
+                                choices=spatial_choices, initial='allsky',
+                                required=True)
+
+    type_choices = (('PSF', 'PSF'),
+                    ('SIMP', 'SIMP'),
+                    ('DEV', 'DEV'),
+                    ('EXP', 'EXP'),
+                    ('COMP', 'COMP'))
+    sourcetypes = forms.MultipleChoiceField(choices=type_choices, required=False,
+                                            widget=forms.CheckboxSelectMultiple)
+    
     g_gt = forms.FloatField(required=False, widget=shortNum)
     g_lt = forms.FloatField(required=False, widget=shortNum)
 
@@ -213,6 +230,32 @@ class CatalogSearchForm(CoordSearchForm):
     
     zmw1_gt = forms.FloatField(required=False, widget=shortNum)
     zmw1_lt = forms.FloatField(required=False, widget=shortNum)
+
+    # from http://stackoverflow.com/questions/6766994/in-a-django-form-how-do-i-render-a-radio-button-so-that-the-choices-are-separat
+    def spatial_choices(self):
+        field = self['spatial']
+        widget = field.field.widget
+        attrs = {}
+        auto_id = field.auto_id
+        if auto_id and 'id' not in widget.attrs:
+            attrs['id'] = auto_id
+        # print('Spatial choices: attrs', attrs)
+        # print('dir:', dir(field))
+        # for i,(k,v) in enumerate(self['spatial_choices']):
+        #     attrs[k] = 
+        name = field.html_name
+        return widget.get_renderer(name, field.value(), attrs=attrs)
+
+    def sourcetypes_choices(self):
+        field = self['sourcetypes']
+        widget = field.field.widget
+        attrs = {}
+        auto_id = field.auto_id
+        if auto_id and 'id' not in widget.attrs:
+            attrs['id'] = auto_id
+        name = field.html_name
+        return widget.get_renderer(name, field.value(), attrs=attrs)
+
     
 class CoordSearchCatalogList(ListView):
     template_name = 'cat_list.html'
@@ -232,77 +275,100 @@ class CoordSearchCatalogList(ListView):
     #             print('ra,dec,radius', ra,dec,radius)
     #             return self.as_view
 
+    def __init__(self, *args, **kwargs):
+        super(CoordSearchCatalogList, self).__init__(*args, **kwargs)
+        self.querydesc = ''
+
     def get_queryset(self):
+        print('get_queryset called')
         req = self.request
-        #form = RaDecSearchForm(req.GET)
-        #form = CoordSearchForm(req.GET)
         form = CatalogSearchForm(req.GET)
 
         if not form.is_valid():
+            print('FORM NOT VALID!')
             return []
-        ra,dec = parse_coord(form.cleaned_data['coord'])
-        # ra  = form.cleaned_data['ra']
-        # if ra is None:
-        #     ra = 0.
-        # dec = form.cleaned_data['dec']
-        # if dec is None:
-        #     dec = 0
-        rad = form.cleaned_data['radius']
-        if rad is None:
-            rad = 0.
-        rad = max(0., rad)
-        # 1 degree max!
-        rad = min(rad, 1.)
-        
-        print('q3c radial query:', ra, dec, rad)
-        cat = Photom.objects.extra(where=['q3c_radial_query(ra, dec, %.4f, %.4f, %g)' %
-                                          (ra, dec, rad)])
+
+        desc = ''
+
+        spatial = str(form.cleaned_data['spatial'])
+        print('Spatial search type: "%s"' % spatial)
+        print('type', type(spatial))
+
+        if spatial == 'cone':
+            ra,dec = parse_coord(form.cleaned_data['coord'])
+            rad = form.cleaned_data['radius']
+            if rad is None:
+                rad = 0.
+            rad = max(0., rad)
+            # 1 degree max!
+            # rad = min(rad, 1.)
+            print('q3c radial query:', ra, dec, rad)
+            cat = Photom.objects.extra(where=['q3c_radial_query(ra, dec, %.4f, %.4f, %g)'
+                                              % (ra, dec, rad)])
+            desc += 'near RA,Dec = (%.4f, %.4f) radius %f degrees' % (ra, dec, rad)
+
+        elif spatial == 'allsky':
+            cat = Photom.objects.all()
+            desc += 'all sky'
+        else:
+            print('Invalid spatial type "%s"' % spatial)
+            return []
+
+        terms = []
+
+        types = form.cleaned_data['sourcetypes']
+        print('Search for types:', types)
+
+        if len(types):
+            tt = []
+            for t in types:
+                if len(t) == 3:
+                    t = t + ' '
+                tt.append(str(t))
+
+            if len(tt) == 1:
+                terms.append('Type is %s' % tt[0])
+                cat = cat.filter(cand__type=tt)
+            else:
+                terms.append('Type in %s' % tt)
+                cat = cat.filter(cand__type__in=tt)
 
         for k in ['g', 'r', 'z', 'w1', 'gmr', 'rmz', 'zmw1']:
             gt = form.cleaned_data[k + '_gt']
             lt = form.cleaned_data[k + '_lt']
-            print('Limits for', k, ':', gt, lt)
+            #print('Limits for', k, ':', gt, lt)
             if gt is not None:
                 cat = cat.filter(**{ k+'__gt': gt})
             if lt is not None:
                 cat = cat.filter(**{ k+'__lt': lt})
-        
-        # g_gt = form.cleaned_data['g_gt']
-        # g_lt = form.cleaned_data['g_lt']
-        # print('g band limits', g_lt, g_gt)
-        # if g_gt is not None:
-        #     cat = cat.filter(g__gt=g_gt)
-        # if g_lt is not None:
-        #     cat = cat.filter(g__lt=g_lt)
-        # 
-        # r_gt = form.cleaned_data['r_gt']
-        # r_lt = form.cleaned_data['r_lt']
-        # print('r band limits', r_lt, r_gt)
-        # if r_gt is not None:
-        #     cat = cat.filter(r__gt=r_gt)
-        # if r_lt is not None:
-        #     cat = cat.filter(r__lt=r_lt)
-        # 
-        # z_gt = form.cleaned_data['z_gt']
-        # z_lt = form.cleaned_data['z_lt']
-        # print('z band limits', z_lt, z_gt)
-        # if z_gt is not None:
-        #     cat = cat.filter(z__gt=z_gt)
-        # if z_lt is not None:
-        #     cat = cat.filter(z__lt=z_lt)
 
+            if gt is not None and lt is not None:
+                terms.append(k + 'between %f and %f' % (gt, lt))
+            elif gt is not None:
+                terms.append(k + '>', gt)
+            elif lt is not None:
+                terms.append(k + '<', lt)
 
-            
-        print('Got:', cat)
+        if len(terms):
+            desc += ' where' + ' and '.join(terms)
+
+        self.querydesc = desc
+        #print('Got:', cat.count(), 'hits')
+
+        print('Set query description:', desc)
+
         return cat
     
     def get_context_data(self, **kwargs):
+        print('get_context_data called')
         from decals import settings
+
+        print('Using query description:', self.querydesc)
 
         context = super(CoordSearchCatalogList, self).get_context_data(**kwargs)
         context.update(root_url=settings.ROOT_URL,
-                       #gtltbands = ['g','r','z','w1']
-        )
+                       search_description=self.querydesc,
+                       )
         req = self.request
         args = req.GET.copy()
         args.pop('page', None)
@@ -311,14 +377,14 @@ class CoordSearchCatalogList(ListView):
         #context['myurl'] = req.path + '?' + args.urlencode()
         form = CatalogSearchForm(req.GET)
         form.is_valid()
-        ra,dec = parse_coord(form.cleaned_data['coord'])
-        context['ra'] = ra
-        context['dec'] = dec
-        rad = form.cleaned_data['radius']
-        rad = max(0., rad)
-        # 1 degree max!
-        rad = min(rad, 1.)
-        context['radius'] = rad
+        #ra,dec = parse_coord(form.cleaned_data['coord'])
+        #context['ra'] = ra
+        #context['dec'] = dec
+        #rad = form.cleaned_data['radius']
+        #rad = max(0., rad)
+        ## 1 degree max!
+        #rad = min(rad, 1.)
+        #context['radius'] = rad
         # context['ra'] = args.pop('ra', [0])[0]
         # context['dec'] = args.pop('dec', [0])[0]
         # context['radius'] = args.pop('radius', [0])[0]
