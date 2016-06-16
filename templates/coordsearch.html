@@ -76,6 +76,8 @@ font-weight: bold}
       <td colspan="2">
         {{ form.radius }}
         {{ form.radius.errors }}
+        <br />
+        <br />
       </td>
     </tr>
     <tr>
@@ -88,7 +90,7 @@ font-weight: bold}
     </tr>
 
     <tr>
-      <th colspan="2">Source types: (leave all unchecked to search everything)</th>
+      <th colspan="3">Source types: (leave all unchecked to search everything)</th>
     </tr>
     <tr>
       <td>
@@ -101,6 +103,8 @@ font-weight: bold}
         {{ form.sourcetypes_choices.3 }}
         <br />
         {{ form.sourcetypes_choices.4 }}
+        <br />
+        <br />
         <br />
       </td>
       <td /><td />
@@ -151,12 +155,17 @@ font-weight: bold}
         {{ form.w1_gt }}
         {{ form.w1_gt.errors }}
       </td>
-      <td  align="center">&lt; W1 mag &lt;</td>
+      <td  align="center">&lt; W1 mag &lt;
+      </td>
       <td>
         {{ form.w1_lt }}
         {{ form.w1_lt.errors }}
       </td>
     </tr>
+
+    <tr><td>
+        <br />
+    </td></tr>
 
     <tr>
       <th>Color limits:</th>
@@ -209,6 +218,7 @@ font-weight: bold}
 </form>
 
 <hr />
+<br />
 
 </center>
 {% endblock %}
