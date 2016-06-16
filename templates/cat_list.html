@@ -65,7 +65,7 @@ color: #888;
     
   {% for src in object_list %}
 <tr>
-  <td><img src="{{root_url}}/jpeg-cutout-decals-dr2/?ra={{src.ra}}&dec={{src.dec}}&size=64" width="64" height="64" /></td>
+  <td><a href="{{root_url}}/?ra={{src.ra}}&dec={{src.dec}}"><img src="{{root_url}}/jpeg-cutout-decals-dr2/?ra={{src.ra}}&dec={{src.dec}}&size=64" width="64" height="64" /></a></td>
   <td>{{src.ra|floatformat:4}}</td>
   <td>{{src.dec|floatformat:4}}</td>
   <td>{{src.cand.type}}</td>
