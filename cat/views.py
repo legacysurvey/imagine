@@ -7,6 +7,7 @@ if __name__ == '__main__':
     django.setup()
     import cat
 
+import os
 from django.shortcuts import render
 from django.http import HttpResponse, StreamingHttpResponse, HttpResponseRedirect, HttpResponseBadRequest, QueryDict
 from django import forms
@@ -15,6 +16,10 @@ from django.core.urlresolvers import reverse
 from django.views.generic import ListView, DetailView
 
 from models import Candidate, Decam, Photom
+
+from map.views import index, send_file
+
+from astrometry.util.ttime import Time
 
 def sql_box(req):
     import json
@@ -245,6 +250,8 @@ class CatalogSearchList(ListView):
 
     def get_queryset(self):
         print('get_queryset called')
+        t0 = Time()
+
         req = self.request
         form = CatalogSearchForm(req.GET)
 
@@ -292,7 +299,7 @@ class CatalogSearchList(ListView):
 
             if len(tt) == 1:
                 terms.append('Type is %s' % tt[0])
-                cat = cat.filter(cand__type=tt)
+                cat = cat.filter(cand__type=tt[0])
             else:
                 terms.append('Type in %s' % tt)
                 cat = cat.filter(cand__type__in=tt)
@@ -321,28 +328,91 @@ class CatalogSearchList(ListView):
         self.querydesc = desc
         #print('Got:', cat.count(), 'hits')
 
-        print('Set query description:', desc)
+        print('SQL:', cat.query)
 
+        print('Set query description:', desc)
+        print('Finished get_queryset in', Time()-t0)
+        
         return cat
     
     def get_context_data(self, **kwargs):
         print('get_context_data called')
+        t0 = Time()
+
         from decals import settings
 
         print('Using query description:', self.querydesc)
 
         context = super(CatalogSearchList, self).get_context_data(**kwargs)
-        print('Got context data', context)
+        print('Got context data', context, 'in', Time()-t0)
         context.update(root_url=settings.ROOT_URL,
                        search_description=self.querydesc,
                        )
         req = self.request
         args = req.GET.copy()
         args.pop('page', None)
+
+        qstring = '?' + '&'.join(['%s=%s' % (k,v)
+                                  for k,v in args.items() if len(v)])
+
+        context['myurl'] = req.path + qstring
+
+        context['fitsurl'] = reverse(fits_results) + qstring
+        context['viewurl'] = reverse(viewer_results) + qstring
+
         pager = context.get('paginator')
         context['total_items'] = pager.count
-        print('Done updating context')
+
+        print('Done updating context:', Time()-t0)
         return context
+
+
+def fits_results(req):
+    from astrometry.util.fits import fits_table
+    import tempfile
+    import numpy as np
+
+    search = CatalogSearchList()
+    search.request = req
+    cat = search.get_queryset()
+    #print('fits_results: got', cat)
+
+    #v = cat[0]
+    #print('photom object:', v)
+    #print(dir(v))
+
+    cols = ['ra','dec','g','r','z','w1','w2','w3','w4',
+            'cand__type', 'cand__brickid', 'cand__objid']
+    values = cat.values_list(*cols)
+
+    def convert_nan(x):
+        if x is None:
+            return np.nan
+        return x
+
+    T = fits_table()
+    for i,c in enumerate(cols):
+        v = values[0][i]
+        convert = None
+        if isinstance(v, unicode):
+            convert = str
+        if isinstance(v, float):
+            convert = convert_nan
+        #print('Type of column', c, 'is', type(v), 'eg', v)
+        cname = c.replace('cand__', '')
+        if convert is None:
+            T.set(cname, np.array([v[i] for v in values]))
+        else:
+            T.set(cname, np.array([convert(v[i]) for v in values]))
+    
+    f,tmpfn = tempfile.mkstemp(suffix='.fits')
+    os.close(f)
+    os.unlink(tmpfn)
+    T.writeto(tmpfn)
+    return send_file(tmpfn, 'image/fits', unlink=True, filename='dr2-query.fits')
+
+def viewer_results(req):
+    pass
 
 if __name__ == '__main__':
     import os

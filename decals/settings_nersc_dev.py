@@ -1,6 +1,7 @@
 from settings_common import *
 
-DEBUG_LOGGING = True
+#DEBUG_LOGGING = True
+DEBUG_LOGGING = False
 
 READ_ONLY_BASEDIR = True
 
