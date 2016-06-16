@@ -303,7 +303,7 @@ class CoordSearchCatalogList(ListView):
             # 1 degree max!
             # rad = min(rad, 1.)
             print('q3c radial query:', ra, dec, rad)
-            cat = Photom.objects.extra(where=['q3c_radial_query(ra, dec, %.4f, %.4f, %g)'
+            cat = Photom.objects.extra(where=['q3c_radial_query(photom.ra, photom.dec, %.4f, %.4f, %g)'
                                               % (ra, dec, rad)])
             desc += 'near RA,Dec = (%.4f, %.4f) radius %f degrees' % (ra, dec, rad)
 
@@ -345,12 +345,14 @@ class CoordSearchCatalogList(ListView):
             if gt is not None and lt is not None:
                 terms.append(k + 'between %f and %f' % (gt, lt))
             elif gt is not None:
-                terms.append(k + '>', gt)
+                terms.append(k + '> %g' % gt)
             elif lt is not None:
-                terms.append(k + '<', lt)
+                terms.append(k + '< %g' % lt)
 
         if len(terms):
-            desc += ' where' + ' and '.join(terms)
+            desc += ' where ' + ' and '.join(terms)
+
+        cat = cat[:1000]
 
         self.querydesc = desc
         #print('Got:', cat.count(), 'hits')
@@ -366,6 +368,7 @@ class CoordSearchCatalogList(ListView):
         print('Using query description:', self.querydesc)
 
         context = super(CoordSearchCatalogList, self).get_context_data(**kwargs)
+        print('Got context data', context)
         context.update(root_url=settings.ROOT_URL,
                        search_description=self.querydesc,
                        )
@@ -374,9 +377,10 @@ class CoordSearchCatalogList(ListView):
         args.pop('page', None)
         pager = context.get('paginator')
         context['total_items'] = pager.count
+        print('Done updating context')
         #context['myurl'] = req.path + '?' + args.urlencode()
-        form = CatalogSearchForm(req.GET)
-        form.is_valid()
+        #form = CatalogSearchForm(req.GET)
+        #form.is_valid()
         #ra,dec = parse_coord(form.cleaned_data['coord'])
         #context['ra'] = ra
         #context['dec'] = dec
