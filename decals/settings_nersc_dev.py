@@ -3,6 +3,8 @@ from settings_common import *
 #DEBUG_LOGGING = True
 DEBUG_LOGGING = False
 
+USER_QUERY_DIR = '/tmp/viewer-dev-user'
+
 READ_ONLY_BASEDIR = True
 
 ROOT_URL = '/viewer-dev'

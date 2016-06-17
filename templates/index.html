@@ -189,6 +189,7 @@ var CatalogOverlay = L.Class.extend({
         this._show = false;
         this._name = name;
         this._url_name = kwargs['url_name'] || this._name;
+        this._url_args = kwargs['url_args'] || {};
         this._pretty = pretty;
         this._layers = {};
         this._group = L.layerGroup([]);
@@ -294,14 +295,16 @@ var CatalogOverlay = L.Class.extend({
 	        dechi: lat2dec(b.getNorth()).toFixed(4),
             id: this._url_name,
             ver: getcatversion(this._name),
-        }));
+        }, this._url_args));
         this._counter += 1;
-        //console.log('Loading: ' + this._name + ' for counter ' + this._counter);
         this._status && this._status.html('loading...');
+        console.log('Loading: ' + this._name + ' for counter ' + this._counter);
         $.getJSON(url, this.loaded.bind(this, this._counter));
+        console.log('Called getJSON');
     },
 
     loaded: function(counter, result) {
+        console.log('Loaded catalog');
         if (counter != this._counter) {
             console.log(this._name + ': loaded counter ' + counter + ' but ' +
                         this._counter + ' is current.');
@@ -312,6 +315,7 @@ var CatalogOverlay = L.Class.extend({
             return;
         }
         var circles = this.getLayer(result);
+        console.log('Got marker layer ' + circles);
         // remove old layers
         for (var k in this._layers) {
 	        if (k < counter) {
@@ -555,55 +559,66 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 });
 
+var decals_getLayer = function(result, radius) {
+    var rdlist = result['rd'];
+    var objtype = result['sourcetype'];
+    var fluxes = result['fluxes'];
+    var nobs = result['nobs'];
+    var bricknames = result['bricknames'];
+    var objids = result['objids'];
+    var circleList = new Array(rdlist.length);
+    var clong = map.getCenter().lng;
+    for (var i=0, len=rdlist.length; i<len; i++) {
+        var r = rdlist[i][0];
+        var d = rdlist[i][1];
+        var lat = dec2lat(d);
+        var lng = ra2long_C(r, clong);
+        var color = 'blue';
+        var typ = 'nil';
+        if (objtype == undefined) {
+        } else {
+            typ = objtype[i];
+            // PSF
+            if (objtype[i] == 'P') {
+                color = '#9AFE2E'; //#D8F781'; //'green';
+            } else if (objtype[i] == 'S') {
+	            // Simple
+                color = 'orange';
+                //if (objtype[i] == 'S') {
+            } else if (objtype[i] == 'D') {
+                color = 'red';
+            } else if (objtype[i] == 'E') {
+                color = '#58ACFA'; // blue
+            } else if (objtype[i] == 'C') {
+                color = '#DA81F5'; // magenta
+            }
+        }
+        var circ = L.circle([lat, lng], radius, {'color':color,
+                                         'fillOpacity':0, 'weight':5});
+        circ.ra = r;
+        circ.dec = d;
+        circ.type = typ;
+        circ.fluxes = (fluxes ? fluxes[i] : {});
+        circ.nobs   = (nobs   ? nobs  [i] : {});
+        circ.brickname = bricknames ? bricknames[i] : '';
+        circ.objid     = objids     ? objids    [i] : '';
+        circ.on('click', onSourceClick);
+        circleList[i] = circ;
+    }
+    return L.layerGroup(circleList);
+};
+
 // DECaLS catalog
 var DecalsCatalogLayer = TiledOverlay.extend({
     getLayer: function(result) {
-        var rdlist = result['rd'];
-        var objtype = result['sourcetype'];
-        var fluxes = result['fluxes'];
-        var nobs = result['nobs'];
-        var bricknames = result['bricknames'];
-        var objids = result['objid'];
-        var circleList = new Array(rdlist.length);
-        var clong = map.getCenter().lng;
-        for (var i=0, len=rdlist.length; i<len; i++) {
-            var r = rdlist[i][0];
-            var d = rdlist[i][1];
-            var lat = dec2lat(d);
-            var lng = ra2long_C(r, clong);
-            var color = 'blue';
-            var typ = 'nil';
-            if (objtype == undefined) {
-            } else {
-                typ = objtype[i];
-	            // PSF
-                if (objtype[i] == 'P') {
-                    color = '#9AFE2E'; //#D8F781'; //'green';
-	            } else if (objtype[i] == 'S') {
-		            // Simple
-                    color = 'orange';
-	                //if (objtype[i] == 'S') {
-                } else if (objtype[i] == 'D') {
-                    color = 'red';
-                } else if (objtype[i] == 'E') {
-                    color = '#58ACFA'; // blue
-                } else if (objtype[i] == 'C') {
-                    color = '#DA81F5'; // magenta
-                }
-            }
-            var circ = L.circle([lat, lng], 30, {'color':color,
-                                             'fillOpacity':0, 'weight':5});
-            circ.ra = r;
-            circ.dec = d;
-            circ.type = typ;
-            circ.fluxes = (fluxes ? fluxes[i] : {});
-            circ.nobs   = (nobs   ? nobs  [i] : {});
-            circ.brickname = bricknames ? bricknames[i] : '';
-            circ.objid     = objids     ? objids    [i] : '';
-            circ.on('click', onSourceClick);
-            circleList[i] = circ;
-        }
-        return L.layerGroup(circleList);
+        return decals_getLayer(result, 30);
+    },
+});
+
+// User catalog
+var UserCatalogLayer = CatalogOverlay.extend({
+    getLayer: function(result) {
+        return decals_getLayer(result, 300);
     },
 });
 
@@ -1626,6 +1641,14 @@ var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
 var overlays = [decalscat, decalscat3, ccdOverlay, ccdOverlay3, ccdOverlay3mb, expOverlay, expOverlay3,
                 brickOverlay,
                 gals, bright, tycho2, spec, plateOverlay, specDeep2];
+
+{% if usercatalog %}
+var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{ usercatalog }}',
+    {'url': '{{usercatalogurl|safe}}', 'url_args': {'cat': '{{usercatalog}}'}});
+overlays = [usercat].concat(overlays);
+{% endif %}
+
+
 var layerControl = new L.control.layers(baseMaps, {}, { collapsed: false })
 for (var i=0,len=overlays.length; i<len; i++) {
     layerControl._addLayer(overlays[i].getGroup(), overlays[i]._pretty, true);

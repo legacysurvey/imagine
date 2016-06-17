@@ -4,7 +4,9 @@ if __name__ == '__main__':
     sys.path.insert(0, 'django-1.7')
 
 import os
+import re
 from django.http import HttpResponse, StreamingHttpResponse
+from django.core.urlresolvers import reverse
 
 from decals import settings
 from map.utils import get_tile_wcs
@@ -304,6 +306,13 @@ def index(req):
     sqlurl = settings.ROOT_URL + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
     namequeryurl = settings.ROOT_URL + '/namequery/?obj={obj}'
 
+    usercatalog = req.GET.get('catalog', None)
+    if not re.match('\w?', usercatalog):
+        print('Usercatalog "%s" did not match regex' % usercatalog)
+        usercatalog = None
+
+    usercatalogurl = reverse(cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
+
     baseurl = req.path
 
     absurl = req.build_absolute_uri(settings.ROOT_URL)
@@ -325,6 +334,8 @@ def index(req):
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
+                       usercatalog = usercatalog,
+                       usercatalogurl = usercatalogurl,
                        enable_sql = settings.ENABLE_SQL,
                        enable_vcc = settings.ENABLE_VCC,
                        enable_wl = settings.ENABLE_WL,
@@ -1887,6 +1898,49 @@ def cat_spec_deep2(req, ver):
         names.append(nm)
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names)),
+                        content_type='application/json')
+
+def cat_user(req, ver):
+    from decals import settings
+    from astrometry.util.fits import fits_table
+    import json
+    cat = str(req.GET.get('cat'))
+    if not re.match('\w?', cat):
+        print('Catalog "%s" did not match regex' % cat)
+        return
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    fn = os.path.join(settings.USER_QUERY_DIR, cat+'.fits')
+    if not os.path.exists(fn):
+        return
+    cat = fits_table(fn)
+    if ralo > rahi:
+        # RA wrap
+        cat.cut(np.logical_or(cat.ra > ralo, cat.ra < rahi) *
+                (cat.dec > declo) * (cat.dec < dechi))
+    else:
+        cat.cut((cat.ra > ralo) * (cat.ra < rahi) *
+                (cat.dec > declo) * (cat.dec < dechi))
+    print(len(cat), 'user catalog sources after RA,Dec cut')
+    rd = zip(cat.ra, cat.dec)
+    types = list([t[0] for t in cat.get('type')])
+
+    fluxes = [dict(g=float(g), r=float(r), z=float(z))
+              for g,r,z in zip(10.**((cat.g - 22.5)/-2.5),
+                               10.**((cat.r - 22.5)/-2.5),
+                               10.**((cat.z - 22.5)/-2.5))]
+
+    nobs = [dict(g=int(g), r=int(r), z=int(z))
+            for g,r,z in zip(cat.gnobs, cat.rnobs, cat.znobs)]
+    bricknames = list(cat.brickname)
+    #brickids = list(cat.brickid)
+    objids = [int(x) for x in cat.objid]
+
+    return HttpResponse(json.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes,
+                                        nobs=nobs, objids=objids,
+                                        bricknames=bricknames)),
                         content_type='application/json')
 
 def cat_bright(req, ver):

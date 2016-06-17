@@ -15,7 +15,7 @@ from django.core.urlresolvers import reverse
 
 from django.views.generic import ListView, DetailView
 
-from models import Candidate, Decam, Photom
+from models import Candidate, Decam, Photom, Bricks
 
 from map.views import index, send_file
 
@@ -247,32 +247,35 @@ class CatalogSearchList(ListView):
     def __init__(self, *args, **kwargs):
         super(CatalogSearchList, self).__init__(*args, **kwargs)
         self.querydesc = ''
+        self.form = None
+        self.radecradius = None
 
     def get_queryset(self):
         print('get_queryset called')
         t0 = Time()
 
         req = self.request
-        form = CatalogSearchForm(req.GET)
+        self.form = CatalogSearchForm(req.GET)
 
-        if not form.is_valid():
+        if not self.form.is_valid():
             print('FORM NOT VALID!')
             return []
 
         desc = ''
 
-        spatial = str(form.cleaned_data['spatial'])
+        spatial = str(self.form.cleaned_data['spatial'])
         print('Spatial search type: "%s"' % spatial)
         print('type', type(spatial))
 
         if spatial == 'cone':
-            ra,dec = parse_coord(form.cleaned_data['coord'])
-            rad = form.cleaned_data['radius']
+            ra,dec = parse_coord(self.form.cleaned_data['coord'])
+            rad = self.form.cleaned_data['radius']
             if rad is None:
                 rad = 0.
             rad = max(0., rad)
             # 1 degree max!
             # rad = min(rad, 1.)
+            self.radecradius = (ra, dec, rad)
             print('q3c radial query:', ra, dec, rad)
             cat = Photom.objects.extra(where=['q3c_radial_query(photom.ra, photom.dec, %.4f, %.4f, %g)'
                                               % (ra, dec, rad)])
@@ -287,7 +290,7 @@ class CatalogSearchList(ListView):
 
         terms = []
 
-        types = form.cleaned_data['sourcetypes']
+        types = self.form.cleaned_data['sourcetypes']
         print('Search for types:', types)
 
         if len(types):
@@ -305,8 +308,8 @@ class CatalogSearchList(ListView):
                 cat = cat.filter(cand__type__in=tt)
 
         for k in ['g', 'r', 'z', 'w1', 'gmr', 'rmz', 'zmw1']:
-            gt = form.cleaned_data[k + '_gt']
-            lt = form.cleaned_data[k + '_lt']
+            gt = self.form.cleaned_data[k + '_gt']
+            lt = self.form.cleaned_data[k + '_lt']
             #print('Limits for', k, ':', gt, lt)
             if gt is not None:
                 cat = cat.filter(**{ k+'__gt': gt})
@@ -367,22 +370,12 @@ class CatalogSearchList(ListView):
         return context
 
 
-def fits_results(req):
+def catalog_to_fits(cat):
     from astrometry.util.fits import fits_table
-    import tempfile
     import numpy as np
 
-    search = CatalogSearchList()
-    search.request = req
-    cat = search.get_queryset()
-    #print('fits_results: got', cat)
-
-    #v = cat[0]
-    #print('photom object:', v)
-    #print(dir(v))
-
     cols = ['ra','dec','g','r','z','w1','w2','w3','w4',
-            'cand__type', 'cand__brickid', 'cand__objid']
+            'cand__id', 'cand__type', 'cand__brickid', 'cand__objid']
     values = cat.values_list(*cols)
 
     def convert_nan(x):
@@ -399,12 +392,53 @@ def fits_results(req):
         if isinstance(v, float):
             convert = convert_nan
         #print('Type of column', c, 'is', type(v), 'eg', v)
-        cname = c.replace('cand__', '')
+        if c == 'cand__id':
+            cname = 'cand_id'
+        else:
+            cname = c.replace('cand__', '')
         if convert is None:
             T.set(cname, np.array([v[i] for v in values]))
         else:
             T.set(cname, np.array([convert(v[i]) for v in values]))
-    
+
+    # From candidate ID, look up Decam
+    cand_id = T.cand_id
+    T.delete_column('cand_id')
+
+    print('Looking up DECam objects...')
+    cols = ['gnobs','rnobs', 'znobs']
+    decam = Decam.objects.filter(cand__in=cand_id).values_list(*['cand'] + cols)
+    print('Got', len(decam), 'objects')
+
+    dcand = np.array([d[0] for d in decam])
+    cmap = dict([(c,i) for i,c in enumerate(dcand)])
+    I = np.array([cmap[c] for c in cand_id])
+
+    for ic,c in enumerate(cols):
+        T.set(c, np.array([decam[i][ic+1] for i in I]).astype(np.uint8))
+
+    # From brick ID, look up Brickname
+    brickid = T.brickid
+    T.delete_column('brickid')
+
+    print('Looking up Brick objects...')
+    cols = ['brickname']
+    bricks = Bricks.objects.filter(brickid__in=brickid).values_list(*['brickid'] + cols)
+    print('Got', len(bricks), 'objects')
+
+    idtoname = dict([(b[0], str(b[1])) for b in bricks])
+    T.brickname = np.array([idtoname[bid] for bid in brickid])
+
+    return T
+
+def fits_results(req):
+    import tempfile
+
+    search = CatalogSearchList()
+    search.request = req
+    cat = search.get_queryset()
+    T = catalog_to_fits(cat)
+
     f,tmpfn = tempfile.mkstemp(suffix='.fits')
     os.close(f)
     os.unlink(tmpfn)
@@ -412,7 +446,39 @@ def fits_results(req):
     return send_file(tmpfn, 'image/fits', unlink=True, filename='dr2-query.fits')
 
 def viewer_results(req):
-    pass
+    import tempfile
+    from decals import settings
+
+    search = CatalogSearchList()
+    search.request = req
+    cat = search.get_queryset()
+    T = catalog_to_fits(cat)
+
+    dirnm = settings.USER_QUERY_DIR
+    if not os.path.exists(dirnm):
+        try:
+            os.makedirs(dirnm)
+        except:
+            pass
+
+    f,tmpfn = tempfile.mkstemp(suffix='.fits', dir=dirnm)
+    os.close(f)
+    os.unlink(tmpfn)
+    T.writeto(tmpfn)
+    print('Wrote', tmpfn)
+
+    tmpfn = tmpfn.replace(dirnm, '').replace('.fits', '')
+    if tmpfn.startswith('/'):
+        tmpfn = tmpfn[1:]
+
+    if search.radecradius is None:
+        # arbitrarily center on one point...?
+        ra,dec = T.ra[0], T.dec[0]
+    else:
+        ra,dec,nil = search.radecradius
+
+    return HttpResponseRedirect(reverse(index) +
+                                '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, tmpfn))
 
 if __name__ == '__main__':
     import os

@@ -3,6 +3,10 @@ from django.conf.urls import url
 from map import views
 
 urlpatterns = [
+
+    # User catalogs
+    url(r'^usercatalog/(\d+)/cat.json', views.cat_user),
+
     # DEEP2 Spectroscopy
     url(r'^spec-deep2/(\d+)/cat.json', views.cat_spec_deep2),
 
