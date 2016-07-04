@@ -4,7 +4,10 @@ from map import views
 
 urlpatterns = [
 
-    # User catalogs
+    # Upload user catalog
+    url(r'^upload-cat/', views.upload_cat),
+
+    # AJAX retrieval of user catalogs
     url(r'^usercatalog/(\d+)/cat.json', views.cat_user),
 
     # DEEP2 Spectroscopy

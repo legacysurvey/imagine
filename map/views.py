@@ -7,6 +7,7 @@ import os
 import re
 from django.http import HttpResponse, StreamingHttpResponse
 from django.core.urlresolvers import reverse
+from django import forms
 
 from decals import settings
 from map.utils import get_tile_wcs
@@ -306,11 +307,13 @@ def index(req):
     sqlurl = settings.ROOT_URL + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
     namequeryurl = settings.ROOT_URL + '/namequery/?obj={obj}'
 
-    usercatalog = req.GET.get('catalog', None)
-    if not re.match('\w?', usercatalog):
-        print('Usercatalog "%s" did not match regex' % usercatalog)
-        usercatalog = None
+    uploadurl = settings.ROOT_URL + '/upload-cat/'
 
+    usercatalog = req.GET.get('catalog', None)
+    if usercatalog is not None:
+        if not re.match('\w?', usercatalog):
+            print('Usercatalog "%s" did not match regex' % usercatalog)
+            usercatalog = None
     usercatalogurl = reverse(cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
 
     baseurl = req.path
@@ -321,10 +324,13 @@ def index(req):
 
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, zoom=zoom,
+                       mosaic_bok=False,
+                       dr1=False,
                        galname=galname,
                        layer=layer, tileurl=tileurl,
                        absurl=absurl,
                        sqlurl=sqlurl,
+                       uploadurl=uploadurl,
                        baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
                        smallcaturl=smallcaturl,
                        namequeryurl=namequeryurl,
@@ -341,6 +347,48 @@ def index(req):
                        enable_wl = settings.ENABLE_WL,
                        enable_cutouts = settings.ENABLE_CUTOUTS,
                        ))
+
+def upload_cat(req):
+    import tempfile
+    from decals import settings
+    from astrometry.util.fits import fits_table
+    from django.http import HttpResponseRedirect
+
+    if req.method != 'POST':
+        return HttpResponse('POST only')
+    print('Files:', req.FILES)
+    cat = req.FILES['catalog']
+
+    dirnm = settings.USER_QUERY_DIR
+    if not os.path.exists(dirnm):
+        try:
+            os.makedirs(dirnm)
+        except:
+            pass
+    f,tmpfn = tempfile.mkstemp(suffix='.fits', dir=dirnm)
+    os.close(f)
+    os.unlink(tmpfn)
+    print('Saving to', tmpfn)
+    with open(tmpfn, 'wb+') as destination:
+        for chunk in cat.chunks():
+            destination.write(chunk)    
+    print('Wrote', tmpfn)
+
+    try:
+        T = fits_table(tmpfn)
+    except:
+        return HttpResponse('Must upload FITS format catalog including "RA", "Dec", optionally "Name" columns')
+    cols = T.columns()
+    if not (('ra' in cols) and ('dec' in cols)):
+        return HttpResponse('Must upload catalog including "RA", "Dec", optionally "Name" columns')
+
+    ra,dec = T.ra[0], T.dec[0]
+    catname = tmpfn.replace(dirnm, '').replace('.fits', '')
+    if catname.startswith('/'):
+        catname = catname[1:]
+
+    return HttpResponseRedirect(reverse(index) +
+                                '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, catname))
 
 def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wcs=None,
                wcs=None, img=None, return_data=False):
@@ -1938,10 +1986,13 @@ def cat_user(req, ver):
     #brickids = list(cat.brickid)
     objids = [int(x) for x in cat.objid]
 
-    return HttpResponse(json.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes,
-                                        nobs=nobs, objids=objids,
-                                        bricknames=bricknames)),
-                        content_type='application/json')
+    D = dict(rd=rd, sourcetype=types, fluxes=fluxes,
+             nobs=nobs, objids=objids,
+             bricknames=bricknames)
+    if 'name' in cat.columns():
+        D.update(names=list(cat.name))
+
+    return HttpResponse(json.dumps(D), content_type='application/json')
 
 def cat_bright(req, ver):
     return cat(req, ver, 'bright',

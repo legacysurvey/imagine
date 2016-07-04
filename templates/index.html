@@ -56,6 +56,15 @@ https://github.com/Leaflet/Leaflet.label
     border-radius: 5px;
 }
 
+.upload {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
 .objquery {
     padding: 6px 8px;
     font: 14px/16px Arial, Helvetica, sans-serif;
@@ -566,6 +575,7 @@ var decals_getLayer = function(result, radius) {
     var nobs = result['nobs'];
     var bricknames = result['bricknames'];
     var objids = result['objids'];
+    var labels = result['names'];
     var circleList = new Array(rdlist.length);
     var clong = map.getCenter().lng;
     for (var i=0, len=rdlist.length; i<len; i++) {
@@ -595,6 +605,16 @@ var decals_getLayer = function(result, radius) {
         }
         var circ = L.circle([lat, lng], radius, {'color':color,
                                          'fillOpacity':0, 'weight':5});
+
+        if (labels == undefined) {
+        } else {
+            var txt = labels[i];
+            if (txt.length > 0) {
+                circ.bindLabel(txt, { noHide: true, clickable: true });
+                circ.showLabel();
+            }
+        }
+
         circ.ra = r;
         circ.dec = d;
         circ.type = typ;
@@ -1055,6 +1075,7 @@ var mylayer = function (name, pretty, kwargs) {
 
 var tiles;
 
+{% if mosaic_bok %}
 tiles = mylayer('mobo-dr3', 'Mosaic/Bok DR3 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
                 //{'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
@@ -1067,7 +1088,7 @@ allLayers.push(tiles);
 tiles = mylayer('mobo-dr3-resid', 'Mosaic/Bok DR3 residuals',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
-
+{% endif %}
                                         
 tiles = mylayer('decals-dr3', 'DECaLS DR3 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
@@ -1101,6 +1122,7 @@ tiles = mylayer('decals-dr2-resid', 'DECaLS DR2 residuals',
 allLayers.push(tiles);
 var tilesDecalsDr2Resid = tiles;
 
+{% if dr1 %}
 tiles = mylayer('decals-dr1j', 'DECaLS DR1 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
@@ -1112,6 +1134,7 @@ allLayers.push(tiles);
 tiles = mylayer('decals-resid-dr1j', 'DECaLS DR1 residuals',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
+{% endif %}
 
 tiles = mylayer('sdssco', 'SDSS images',
                 {'attribution': sdss_attrib,
@@ -1262,6 +1285,15 @@ query.onAdd = function (map) {
 };
 query.addTo(map);
 {% endif %}
+
+// upload catalog input field
+var upload = L.control({'position':'bottomleft'});
+upload.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'upload');
+    this._div.innerHTML = 'Custom catalog upload (FITS table; RA,Dec,[name]): <form action="{{ uploadurl }}" method="POST" enctype="multipart/form-data"><input type="file" name="catalog" /><span id="upload_status"></span><input type="submit" value="Upload"></form>'
+    return this._div;
+};
+upload.addTo(map);
 
 // Named object search field
 var objquery = L.control({'position':'bottomright'});
@@ -1646,6 +1678,7 @@ var overlays = [decalscat, decalscat3, ccdOverlay, ccdOverlay3, ccdOverlay3mb, e
 var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{ usercatalog }}',
     {'url': '{{usercatalogurl|safe}}', 'url_args': {'cat': '{{usercatalog}}'}});
 overlays = [usercat].concat(overlays);
+map.addLayer(usercat.getGroup());
 {% endif %}
 
 

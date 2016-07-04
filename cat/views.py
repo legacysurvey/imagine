@@ -460,7 +460,6 @@ def viewer_results(req):
             os.makedirs(dirnm)
         except:
             pass
-
     f,tmpfn = tempfile.mkstemp(suffix='.fits', dir=dirnm)
     os.close(f)
     os.unlink(tmpfn)
