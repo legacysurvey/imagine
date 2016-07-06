@@ -1494,8 +1494,15 @@ def _get_survey(name=None):
         cutfn = os.path.join(dirnm, 'decals-ccds-cut.fits')
         if os.path.exists(cutfn):
             from astrometry.util.fits import fits_table
+            import numpy as np
             C = fits_table(cutfn)
             d.ccds = C
+            # Remove trailing spaces from 'ccdname' column
+            # "N4 " -> "N4"
+            C.ccdname = np.array([s.strip() for s in C.ccdname])
+            # Remove trailing spaces from 'camera' column.
+            C.camera = np.array([c.strip() for c in C.camera])
+
         else:
             C = d.get_ccds_readonly()
             # HACK -- cut to photometric & not-blacklisted CCDs.
@@ -1809,15 +1816,18 @@ def ccd_detail(req, name, ccd):
     import numpy as np
     #ccd = req.GET['ccd']
     words = ccd.split('-')
-    assert(len(words) == 3)
-    expnum = int(words[0], 10)
-    assert(words[1][0] in 'NS')
-    ns = words[1][0]
-    chipnum = int(words[1][1:], 10)
-    extname = '%s%i' % (ns,chipnum)
+    #print('Words:', words)
+    #assert(len(words) == 3)
+    if len(words) == 4:
+        # "decam-EXPNUM-CCD-BAND"
+        words = words[1:]
+    expnum = words[0]
+    expnum = int(expnum, 10)
+    ccdname = words[1]
 
     decals = _get_survey(name=name)
-    C = decals.find_ccds(expnum=expnum, ccdname=extname)
+    C = decals.find_ccds(expnum=expnum, ccdname=ccdname)
+    #print('Got', len(C), 'chips for expnum %i, ccdname "%s"' % (expnum, ccdname))
     assert(len(C) == 1)
     c = C[0]
 

@@ -793,7 +793,7 @@ function brick_detail(name) {
 }
 
 function ccd_detail(name, aparams) {
-    return '<a href="{% url 'ccd_detail_blank' %}' + idname + '/' + name
+    return '<a href="{% url 'ccd_detail_blank' %}' + idname + '/' + name.replace(' ','-')
         + '/"' + aparams + '>' + name + '</a>';
 }
 
