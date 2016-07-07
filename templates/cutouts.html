@@ -29,10 +29,13 @@ SDSS objects: X
 <tr>
 <th>CCD</th>
 <th>Image</th>
+
+{% comment %}
 <th>Model (DR1)</th>
 <th>Resid (DR1)</th>
 <th>PSF fit</th>
 <th>PsfEx</th>
+{% endcomment %}
 </tr>
 
 {% for ccdstr,ccdurl in ccds %}
@@ -40,8 +43,14 @@ SDSS objects: X
 <td>
 {{ ccdstr|safe }}
 </td>
+
+{% comment %}
 <td colspan="5">
 <img src="{{ ccdurl}}" width="500" height="100" />
+{% endcomment %}
+<td>
+<img src="{{ ccdurl}}" width="100" height="100" />
+
 </td>
 </tr>
 {% endfor %}

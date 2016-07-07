@@ -1510,13 +1510,14 @@ def _get_survey(name=None):
             debug('HACK -- cut to', len(C), 'photometric CCDs')
             C.cut(d.apply_blacklist(C))
             debug('HACK -- cut to', len(C), 'not-blacklisted CCDs')
-            for k in ['date_obs', 'ut', 'airmass',
+            for k in [#'date_obs', 'ut', 'airmass',
                       'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
                       'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
                       'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
                       'ccdnmatchb', 'ccdmdncol', 'expid']:
                 C.delete_column(k)
             # C.writeto(cutfn)
+            C.writeto('/tmp/decals-ccds-cut.fits')
 
         surveys[name] = d
         return d
@@ -1607,7 +1608,7 @@ def _objects_touching_box(kdtree, north, south, east, west,
 
 ccd_cache = {}
 
-def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
+def _ccds_touching_box(north, south, east, west, Nmax=None, name=None, survey=None):
     from astrometry.libkd.spherematch import tree_build_radec
     import numpy as np
     global ccd_cache
@@ -1615,31 +1616,11 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None):
     if not name in ccd_cache:
         debug('Finding CCDs for name=', name)
 
-        decals = _get_survey(name=name)
-        CCDs = decals.get_ccds_readonly()
+        if survey is None:
+            survey = _get_survey(name=name)
+        CCDs = survey.get_ccds_readonly()
 
-        # fn = None
-        # CCDs = None
-        # if name == 'decals-dr1j':
-        #     fn = os.path.join(settings.DATA_DIR, 'decals-dr1', 'decals-ccds.fits')
-        # elif name == 'decals-dr1k':
-        #     fn = os.path.join(settings.DATA_DIR, 'decals-dr1k',
-        #                       'decals-ccds.fits')
-        # elif name == 'decals-dr1n':
-        #     fn = os.path.join(settings.DATA_DIR, 'decals-ccds-dr1n.fits')
-        # elif name == 'decals-dr2':
-        #     fn = os.path.join(settings.DATA_DIR, 'decals-dr2',
-        #                       'decals-ccds.fits')
-        # else:
-        #     D = _get_survey(name=name)
-        #     if hasattr(D, 'get_ccds_readonly'):
-        #         CCDs = D.get_ccds_readonly()
-        #     else:
-        #         CCDs = D.get_ccds()
-        # 
-        # if CCDs is None:
-        #     from astrometry.util.fits import fits_table
-        #     CCDs = fits_table(fn)
+        print('Read CCDs:', CCDs.columns())
 
         if name == 'decals-dr2':
             CCDs.extname = CCDs.ccdname
@@ -2457,21 +2438,21 @@ def cutouts(req):
     west,nil  = wcs.pixelxy2radec(1, size+0.5)
     east,nil  = wcs.pixelxy2radec(W, size+0.5)
     
-    CCDs = _ccds_touching_box(north, south, east, west, name=name)
-
+    print('Survey name:', name)
+    survey = _get_survey(name)
+    CCDs = _ccds_touching_box(north, south, east, west, name=name, survey=survey)
     debug(len(CCDs), 'CCDs')
+    print('CCDs:', CCDs.columns())
 
     CCDs = CCDs[np.lexsort((CCDs.extname, CCDs.expnum, CCDs.filter))]
-
-    decals = _get_survey(name)
 
     ccds = []
     for i in range(len(CCDs)):
         c = CCDs[i]
         try:
             c.cpimage = _get_image_filename(c)
-            dim = decals.get_image_object(c)
-            wcs = dim.read_wcs()
+            dim = survey.get_image_object(c)
+            wcs = dim.get_wcs()
         except:
             import traceback
             traceback.print_exc()
@@ -2486,7 +2467,7 @@ def cutouts(req):
             continue
         ccds.append((c, x, y))
 
-    B = decals.get_bricks_readonly()
+    B = survey.get_bricks_readonly()
     I = np.flatnonzero((B.ra1  <= ra)  * (B.ra2  >= ra) *
                        (B.dec1 <= dec) * (B.dec2 >= dec))
     brick = B[I[0]]
@@ -2510,8 +2491,9 @@ def cutouts(req):
         theurl = url % (domains[i%len(domains)], int(ccd.expnum), ccd.extname.strip()) + '?x=%i&y=%i' % (x,y)
         if name is not None:
             theurl += '&name=' + name
-        ccdsx.append(('CCD %s %i %s, %.1f sec (x,y = %i,%i)<br/><small>(%s [%i])</small>' %
-                      (ccd.filter, ccd.expnum, ccd.extname, ccd.exptime, x, y, fn, ccd.cpimage_hdu), theurl))
+        print('CCD columns:', ccd.columns())
+        ccdsx.append(('CCD %s %i %s, %.1f sec (x,y = %i,%i)<br/><small>(%s [%i])</small><br/><small>(observed %s @ %s)</small>' %
+                      (ccd.filter, ccd.expnum, ccd.extname, ccd.exptime, x, y, fn, ccd.cpimage_hdu, ccd.date_obs, ccd.ut), theurl))
     return render(req, 'cutouts.html',
                   dict(ra=ra, dec=dec, ccds=ccdsx, name=name,
                        brick=brick, brickx=brickx, bricky=bricky))
@@ -2631,13 +2613,24 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
     if not os.path.exists(fn):
         return HttpResponse('no such image: ' + fn)
 
-    wfn = fn.replace('ooi', 'oow')
-    if not os.path.exists(wfn):
-        return HttpResponse('no such image: ' + wfn)
-
     # half-size in DECam pixels -- must match cutouts():size
     size = 50
     img,slc,xstart,ystart = _get_image_slice(fn, ccd.image_hdu, x, y, size=size)
+
+    plt.clf()
+    import tempfile
+    f,jpegfn = tempfile.mkstemp(suffix='.jpg')
+    os.close(f)
+    mn,mx = np.percentile(img.ravel(), [25, 99])
+    save_jpeg(jpegfn, img, origin='lower', cmap='gray',
+              vmin=mn, vmax=mx)
+    return send_file(jpegfn, 'image/jpeg', unlink=True)
+
+
+
+    wfn = fn.replace('ooi', 'oow')
+    if not os.path.exists(wfn):
+        return HttpResponse('no such image: ' + wfn)
 
     from legacypipe.decam import DecamImage
     from legacypipe.desi_common import read_fits_catalog
