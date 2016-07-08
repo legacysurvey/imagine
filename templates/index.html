@@ -861,6 +861,7 @@ function onMapClick(e) {
 }
 
 function onMouseMove(e) {
+    //console.log('mouse move: ' + e.latlng);
     var ra  = long2ra(e.latlng.lng);
     var dec = lat2dec(e.latlng.lat);
     lastLatLng = e.latlng;
@@ -1787,10 +1788,8 @@ var constellation_shortnames =  [ "Aql","And","Scl","Ara","Lib","Cet","Ari","Sct
 
 var constellation_longnames = [ "Aquila", "Andromeda", "Sculptor", "Ara", "Libra", "Cetus", "Aries", "Scutum", "Pyxis", "Bootes", "Caelum", "Chamaeleon", "Cancer", "Capricornus", "Carina", "Cassiopeia", "Centaurus", "Cepheus", "Coma Berenices", "Canes Venatici", "Auriga", "Columba", "Circinus", "Crater", "Corona Austrina", "Corona Borealis", "Corvus", "Crux", "Cygnus", "Delphinus", "Dorado", "Draco", "Norma", "Eridanus", "Sagitta", "Fornax", "Gemini", "Camelopardalis", "Canis Major", "Ursa Major", "Grus", "Hercules", "Horologium", "Hydra", "Hydrus", "Indus", "Lacerta", "Monoceros", "Lepus", "Leo", "Lupus", "Lynx", "Lyra", "Antlia", "Microscopium", "Musca", "Octans", "Apus", "Ophiuchus", "Orion", "Pavo", "Pegasus", "Pictor", "Perseus", "Equuleus", "Canis Minor", "Leo Minor", "Vulpecula", "Ursa Minor", "Phoenix", "Pisces", "Piscis Austrinus", "Volans", "Puppis", "Reticulum", "Sagittarius", "Scorpius", "Serpens", "Sextans", "Mensa", "Taurus", "Telescopium", "Tucana", "Triangulum", "Triangulum Australe", "Aquarius", "Virgo", "Vela" ];
 
-// np.random.randint(128, size=(88,3))+128
-//var constellation_colors = [[193, 134, 218],[140, 241, 251],[129, 176, 214],[178, 208, 198],[246, 205, 154],[186, 175, 219],[155, 192, 212],[238, 176, 157],[201, 161, 181],[148, 172, 255],[216, 144, 158],[244, 200, 219],[234, 147, 220],[192, 189, 195],[169, 238, 137],[132, 152, 209],[213, 131, 210],[171, 166, 246],[243, 129, 147],[183, 203, 154],[189, 220, 215],[221, 153, 140],[246, 155, 226],[138, 235, 163],[138, 193, 208],[151, 203, 159],[196, 217, 184],[199, 215, 199],[161, 172, 158],[134, 196, 212],[169, 254, 182],[192, 163, 209],[163, 177, 128],[222, 128, 238],[145, 235, 231],[238, 219, 206],[183, 210, 209],[194, 178, 208],[248, 165, 244],[149, 210, 142],[243, 139, 144],[185, 239, 147],[172, 253, 136],[236, 216, 188],[171, 215, 196],[187, 201, 202],[197, 158, 205],[141, 252, 221],[251, 214, 192],[190, 195, 160],[199, 132, 183],[255, 195, 199],[246, 253, 209],[143, 140, 253],[179, 255, 137],[181, 131, 192],[131, 229, 195],[241, 132, 242],[246, 154, 246],[244, 162, 248],[194, 203, 198],[227, 250, 212],[147, 249, 215],[246, 197, 143],[251, 130, 169],[139, 252, 210],[169, 249, 246],[141, 176, 226],[173, 172, 191],[229, 203, 187],[206, 169, 214],[138, 247, 148],[185, 130, 153],[211, 175, 131],[133, 172, 182],[145, 167, 189],[177, 183, 220],[165, 234, 233],[176, 148, 175],[202, 166, 138],[191, 253, 204],[227, 229, 208],[134, 232, 146],[178, 135, 168],[208, 139, 236],[212, 198, 191],[197, 132, 224],[241, 147, 148]];
 //'","'.join(['#%02x%02x%02x' % (x[0],x[1],x[2]) for x in (np.random.randint(128, size=(88,3))+128)])
-var constellation_colors = ["'#90d581","#e1f093","#d18693","#f5ea94","#96d495","#93abaf","#d49eac","#b2f9b1","#ab9cd5","#e4a9dc","#bfa6d1","#b2faee","#eaa8cb","#8d82aa","#96cfde","#f7a5f2","#e5d6cf","#d5f483","#8785d4","#87f3b7","#fea7b4","#b4f0b2","#ce84c7","#bdf3b8","#aa9898","#8cbc91","#dcecd5","#c4c5ee","#deb7e4","#efed9c","#b0d4eb","#b9e9d9","#b4c3c6","#92c0a6","#d8fe84","#bfc4d3","#89a3f0","#c2c19c","#b384f9","#fdb1cc","#beb4d2","#b1bcf3","#bfeca9","#f4b2b1","#9492e0","#efd590","#90b6c2","#d19a81","#c6d781","#def7cd","#9cd581","#ab8199","#d0fdd4","#b9b4d3","#f6cdde","#85aeba","#cb9ad3","#81859d","#cedf93","#95f495","#aabeba","#c5f5a6","#aca4b3","#a2e0ab","#8c8bc5","#dceac2","#f4ddcd","#d0c785","#d5f58a","#c5fafe","#a595be","#e6f6ab","#e2eddf","#96f4b8","#fea5a2","#aaf3e3","#9da4a5","#dff99b","#f3c1ce","#b484c4","#9cf6d4","#c2c6bc","#8ff5a7","#9d8be4","#9e9ac3","#f5eb99","#d3d9d2","#f6cff3"];
+var constellation_colors = ["#90d581","#e1f093","#d18693","#f5ea94","#96d495","#93abaf","#d49eac","#b2f9b1","#ab9cd5","#e4a9dc","#bfa6d1","#b2faee","#eaa8cb","#8d82aa","#96cfde","#f7a5f2","#e5d6cf","#d5f483","#8785d4","#87f3b7","#fea7b4","#b4f0b2","#ce84c7","#bdf3b8","#aa9898","#8cbc91","#dcecd5","#c4c5ee","#deb7e4","#efed9c","#b0d4eb","#b9e9d9","#b4c3c6","#92c0a6","#d8fe84","#bfc4d3","#89a3f0","#c2c19c","#b384f9","#fdb1cc","#beb4d2","#b1bcf3","#bfeca9","#f4b2b1","#9492e0","#efd590","#90b6c2","#d19a81","#c6d781","#def7cd","#9cd581","#ab8199","#d0fdd4","#b9b4d3","#f6cdde","#85aeba","#cb9ad3","#81859d","#cedf93","#95f495","#aabeba","#c5f5a6","#aca4b3","#a2e0ab","#8c8bc5","#dceac2","#f4ddcd","#d0c785","#d5f58a","#c5fafe","#a595be","#e6f6ab","#e2eddf","#96f4b8","#fea5a2","#aaf3e3","#9da4a5","#dff99b","#f3c1ce","#b484c4","#9cf6d4","#c2c6bc","#8ff5a7","#9d8be4","#9e9ac3","#f5eb99","#d3d9d2","#f6cff3"];
 
 var constellation_lines = [
     [582,579,579,576,579,568,568,580,591,580,568,555,555,551,568,556],
@@ -1892,18 +1891,18 @@ var buildConstellations = function() {
     conGroup.clearLayers();
     for (var i in constellation_lines) {
         //console.log('Constellation ' + constellation_shortnames[i]);
-        line = constellation_lines[i];
+        lines = constellation_lines[i];
         latlngs = [];
         var clong = map.getCenter().lng;
-        s1 = line[0];
+        s1 = lines[0];
         ra1  = constellation_stars[2*s1];
         long1 = ra2long_C(ra1, clong);
 
-        // duplicate this constellation if the viewpoint is wider than 360 degrees
+        // duplicate this constellation if the viewpoint is wider than 360 degrees?
     
-        for (var j=0; j<line.length/2; j++) {
-    	    var s1 = line[2*j];
-    	    var s2 = line[2*j+1];
+        for (var j=0; j<lines.length/2; j++) {
+    	    var s1 = lines[2*j];
+    	    var s2 = lines[2*j+1];
     	    var ra1  = constellation_stars[2*s1];
     	    var dec1 = constellation_stars[2*s1+1];
     	    var ra2  = constellation_stars[2*s2];
@@ -1911,27 +1910,55 @@ var buildConstellations = function() {
             var latlng1 = L.latLng(dec2lat(dec1), ra2long_C(ra1, long1));
             var latlng2 = L.latLng(dec2lat(dec2), ra2long_C(ra2, long1));
     	    latlngs.push([ latlng1, latlng2 ]);
-            //console.log('  line from ' + latlng1 + ' to ' + latlng2);
+            if (i == 0) console.log('  line from star ' + s1 + ' to ' + s2 + ', ra,dec ' + ra1 + ',' + dec1 + ' to ' + ra2 + ',' + dec2 + '; latlng ' + latlng1 + ' to ' + latlng2);
+
+            //conGroup.addLayer(L.polyline([latlng1, latlng2], {'color':constellation_colors[i]}));
+
+            //conGroup.addLayer(L.circle(latlng1, 10., {'color':'green'}));
+            //conGroup.addLayer(L.circle(latlng2, 10., {'color':'green'}));
 
         }
-        mpl = L.multiPolyline(latlngs, {color: constellation_colors[i]});
-        //mpl.bindPopup(constellation_shortnames[i]);
-        //mpl.bindPopup(constellation_longnames[i]);
-        mpl.bindLabel(constellation_longnames[i], { noHide: true, clickable: true });
-        //mpl.showLabel();
+        if (i == 0) console.log('  adding ' + latlngs.length + ' line segments');
+        var mpl = L.multiPolyline(latlngs, {'color': constellation_colors[i]});
         conGroup.addLayer(mpl);
 
         // add a fake Circle marker to hold the label.
-        s1 = line[0];
-        ra1  = constellation_stars[2*s1];
- 	    var dec1 = constellation_stars[2*s1+1];
-        var latlng1 = L.latLng(dec2lat(dec1), ra2long_C(ra1, long1));
-        var circ = L.circle(latlng1, 0., {'color':'red',
+        // compute center of mass of stars in this constellation
+        ustars = new Set(lines);
+        console.log('Constellation ' + constellation_longnames[i] + ': ' + ustars.size + ' ustars');
+        var xc = 0.;
+        var yc = 0.;
+        //var zc = 0;
+        var decc = 0.;
+        for (let s of ustars) {
+            if (i == 0) console.log('s ', s);
+            var ra  = Math.PI / 180. * constellation_stars[2*s];
+            var dec = Math.PI / 180. * constellation_stars[2*s+1];
+            xc += Math.cos(dec) * Math.cos(ra);
+            yc += Math.cos(dec) * Math.sin(ra);
+            //zc += Math.sin(dec);
+            decc += constellation_stars[2*s+1];
+        }
+        if (i == 0) console.log('total xc,yc,decc' + xc + ',' + yc + ',' + decc);
+        xc /= (ustars.size + 0.0);
+        yc /= (ustars.size + 0.0);
+        //zc /= ustars.size;
+        ra  = 180. / Math.PI * Math.atan2(yc, xc);
+        //dec = 180. * Math.PI * Math.asinh(zc);
+        dec = decc / (ustars.size + 0.0);
+
+        if (i == 0) console.log('mean xc,yc' + xc + ',' + yc);
+        if (i == 0) console.log('mean ra,dec', + ra + ',' + dec);
+
+        var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, long1));
+        if (i == 0) console.log('latlng ' + latlng + ' vs long1 ' + long1);
+        var circ = L.circle(latlng, 0., {'color':'red', 'opacity':0.,
                                          'fillOpacity':0, 'weight':5});
         circ.bindLabel(constellation_longnames[i], { noHide: true, clickable: true });
         circ.showLabel();
         conGroup.addLayer(circ);
-            
+
+        break;
     }
 };
 
