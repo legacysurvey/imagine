@@ -10,7 +10,10 @@ if False:
     matplotlib.use('Agg')
     sdssps = PlotSequence('sdss')
 
-from map.views import tileversions, get_scaled, _read_sip_wcs, sdss_rgb, save_jpeg
+from map.views import tileversions, sdss_rgb
+from map.coadds import get_scaled, read_sip_wcs, sdss_rgb, 
+from map.utils import save_jpeg
+
 tileversions.update(dict(sdss=[1,]))
 
 def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
@@ -170,7 +173,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                 fnargs = dict(band=band, rerun=im.rerun, run=im.run,
                               camcol=im.camcol, field=im.field)
                 fn = get_scaled(scalepat, fnargs, scaled, basefn,
-                                read_base_wcs=read_astrans, read_wcs=_read_sip_wcs)
+                                read_base_wcs=read_astrans, read_wcs=read_sip_wcs)
                 print 'get_scaled:', fn
             else:
                 fn = basefn
@@ -491,7 +494,7 @@ def map_decals_wl(req, ver, zoom, x, y):
     for tilei in T.i:
         fn = os.path.join(mydir, 'map%i.fits' % tilei)
         try:
-            bwcs = _read_tan_wcs(fn, 0)
+            bwcs = read_tan_wcs(fn, 0)
         except:
             print('Failed to read WCS:', fn)
             savecache = False
