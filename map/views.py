@@ -261,6 +261,19 @@ def get_sdssco_bricks():
     return B_sdssco
 
 
+B_unwise = None
+
+def get_unwise_bricks():
+    global B_unwise
+    if B_unwise is None:
+        from decals import settings
+        from astrometry.util.fits import fits_table
+        B_unwise = fits_table(os.path.join(settings.UNWISE_DIR,
+                                           'allsky-atlas.fits'),
+                                           columns=['ra','dec','coadd_id'])
+        B_unwise.rename('coadd_id', 'brickname')
+    return B_unwise
+
 def map_sdssco(req, ver, zoom, x, y, savecache=None, tag='sdssco',
                get_images=False,
                wcs=None,
