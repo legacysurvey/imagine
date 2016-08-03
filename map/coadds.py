@@ -1,9 +1,15 @@
+from __future__ import print_function
 import os
 import fitsio
 
-from map.utils import save_jpeg, send_file, trymakedirs
+from map.utils import save_jpeg, send_file, trymakedirs, oneyear, get_tile_wcs
 
-from map.views import _get_survey
+from decals import settings
+debug = print
+if not settings.DEBUG_LOGGING:
+    def debug(*args, **kwargs):
+        pass
+
 
 def read_tansip_wcs(sourcefn, ext, hdr=None, W=None, H=None, tansip=None):
     wcs = None
@@ -139,6 +145,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     nativescale=14, maxscale=8,
                     ):
     from decals import settings
+    from map.views import tileversions
 
     zoom = int(zoom)
     zoomscale = 2.**zoom
@@ -202,6 +209,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
 
     if decals is None:
+        from map.views import _get_survey
         D = _get_survey(name=drname)
     else:
         D = decals

@@ -11,7 +11,7 @@ from django import forms
 
 from decals import settings
 from map.utils import (get_tile_wcs, trymakedirs, save_jpeg, ra2long, ra2long_B,
-                       send_file)
+                       send_file, oneyear)
 from map.coadds import get_scaled, map_coadd_bands
 from map.cats import get_random_galaxy
 
@@ -72,11 +72,11 @@ tileversions = {
     'cutouts': [1],
     }
 
-oneyear = (3600 * 24 * 365)
-
 galaxycat = None
 
 def index(req):
+    from cats import cat_user
+
     layer = req.GET.get('layer', 'decals-dr2')
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13

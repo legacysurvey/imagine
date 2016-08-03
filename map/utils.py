@@ -2,6 +2,8 @@ import numpy as np
 from astrometry.util.miscutils import clip_wcs
 import os
 
+oneyear = (3600 * 24 * 365)
+
 def ra2long(ra):
     lng = 180. - ra
     lng += 360 * (lng < 0.)

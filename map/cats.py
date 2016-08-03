@@ -1,9 +1,15 @@
+from __future__ import print_function
 import os
 import fitsio
 from django.http import HttpResponse, StreamingHttpResponse
 from decals import settings
-from map.utils import send_file, trymakedirs
-from map.views import _get_survey
+from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
+
+
+debug = print
+if not settings.DEBUG_LOGGING:
+    def debug(*args, **kwargs):
+        pass
 
 catversions = {
     'decals-dr1j': [1,],
@@ -14,6 +20,7 @@ catversions = {
     'spec-deep2': [1,],
     'bright': [1,],
     'tycho2': [1,],
+    'targets-dr2': [1,],
 }
 
 def upload_cat(req):
@@ -60,6 +67,7 @@ def upload_cat(req):
 
 def get_random_galaxy():
     import numpy as np
+    from map.views import galaxycat
 
     global galaxycat
     galfn = os.path.join(settings.DATA_DIR, 'galaxy-cats-in-dr2.fits')
@@ -136,6 +144,47 @@ def get_random_galaxy():
     dec = galaxycat.dec[i]
     name = galaxycat.name[i].strip()
     return ra,dec,name
+
+
+def cat_targets_dr2(req, ver):
+    import json
+    tag = 'targets-dr2'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from astrometry.util.fits import fits_table, merge_tables
+    import numpy as np
+    from decals import settings
+    from cat.models import Target
+
+    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
+    xyz1 = radectoxyz(ralo, declo)
+    xyz2 = radectoxyz(rahi, dechi)
+    xyz = (xyz1 + xyz2)/2.
+    xyz /= np.sqrt(np.sum(xyz**2))
+    rc,dc = xyztoradec(xyz)
+    rc = rc[0]
+    dc = dc[0]
+    rad = degrees_between(rc, dc, ralo, declo)
+
+    objs = Target.objects.extra(where=[
+            'q3c_radial_query(target.ra, target.dec, %.4f, %.4f, %g)'
+            % (rc, dc, rad * 1.01)])
+    print('Got', objs.count(), 'targets')
+    print('types:', np.unique([o.type for o in objs]))
+    print('versions:', np.unique([o.version for o in objs]))
+
+    return HttpResponse(json.dumps(dict(
+                rd=[(float(o.ra),float(o.dec)) for o in objs],
+                name=[o.type for o in objs],
+                )),
+                        content_type='application/json')
 
 def cat_spec(req, ver):
     import json
@@ -389,6 +438,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
 def _get_decals_cat(wcs, tag='decals'):
     from decals import settings
     from astrometry.util.fits import fits_table, merge_tables
+    from map.views import _get_survey
 
     basedir = settings.DATA_DIR
     H,W = wcs.shape

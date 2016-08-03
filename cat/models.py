@@ -388,7 +388,7 @@ class Photom(models.Model):
 
 class Target(models.Model):
     id = models.BigIntegerField(primary_key=True)
-    cand_id = models.ForeignKey(Candidate, blank=True, null=True)
+    cand = models.ForeignKey(Candidate, blank=True, null=True)
     ra = models.FloatField(blank=True, null=True)
     dec = models.FloatField(blank=True, null=True)
     type = models.TextField(blank=True)

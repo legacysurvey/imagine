@@ -1652,6 +1652,11 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
                               'labelsMinZoom': 7,
                              'urlTerm': 'ngc',});
 
+var targets_dr2 = new CatalogOverlay('targets-dr2', 'DECaLS DR2 Targets',
+                                  {'radius': 100,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
 var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
                                   {'radius': 300,
                                    'labelsMinZoom': 11,
@@ -1674,7 +1679,7 @@ var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
 
 var overlays = [decalscat, decalscat3, ccdOverlay, ccdOverlay3, ccdOverlay3mb, expOverlay, expOverlay3,
                 brickOverlay,
-                gals, bright, tycho2, spec, plateOverlay, specDeep2];
+                gals, bright, tycho2, spec, plateOverlay, specDeep2, targets_dr2];
 
 {% if usercatalog %}
 var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{ usercatalog }}',
