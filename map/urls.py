@@ -49,6 +49,10 @@ urlpatterns = [
     # catalog
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_decals_dr2),
 
+
+    url(r'^targets-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_targets_dr2),
+
+
     # depth maps
     #url(r'^decam-depth/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decam_depth),
 
