@@ -1,22 +1,24 @@
 from django.conf.urls import url
 
 from map import views
+from map import cats
+from map import cutouts
 
 urlpatterns = [
 
     # Upload user catalog
-    url(r'^upload-cat/', views.upload_cat),
+    url(r'^upload-cat/', cats.upload_cat),
 
     # AJAX retrieval of user catalogs
-    url(r'^usercatalog/(\d+)/cat.json', views.cat_user),
+    url(r'^usercatalog/(\d+)/cat.json', cats.cat_user),
 
     # DEEP2 Spectroscopy
-    url(r'^spec-deep2/(\d+)/cat.json', views.cat_spec_deep2),
+    url(r'^spec-deep2/(\d+)/cat.json', cats.cat_spec_deep2),
 
     # SDSS tiled coadd
     url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sdssco),
-    url(r'^jpeg-cutout-sdss', views.jpeg_cutout_sdssco),
-    url(r'^fits-cutout-sdss', views.fits_cutout_sdssco),
+    url(r'^jpeg-cutout-sdss', cutouts.jpeg_cutout_sdssco),
+    url(r'^fits-cutout-sdss', cutouts.fits_cutout_sdssco),
 
     url(r'^data-for-radec/', views.data_for_radec, name='data_for_radec'),
 
@@ -28,7 +30,7 @@ urlpatterns = [
     url(r'^exps/', views.exposure_list),
 
     # Tycho-2 stars
-    url(r'^tycho2/(\d+)/cat.json', views.cat_tycho2),
+    url(r'^tycho2/(\d+)/cat.json', cats.cat_tycho2),
 
     # DR3 Mosaic+Bok
     url(r'^mobo-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3),
@@ -40,14 +42,14 @@ urlpatterns = [
     url(r'^decals-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3_model),
     url(r'^decals-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3_resid),
     # catalog
-    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_decals_dr3),
+    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr3),
     
     # DR2
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2),
     url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2_model),
     url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2_resid),
     # catalog
-    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_decals_dr2),
+    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr2),
 
 
     url(r'^targets-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_targets_dr2),
@@ -65,31 +67,31 @@ urlpatterns = [
     url(r'^decals-resid-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_resid_dr1j),
 
     # catalog
-    url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).cat.json', views.cat_decals_dr1j),
+    url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr1j),
 
     #url(r'^decals-nexp-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_nexp_dr1j),
     #url(r'^decals-wl/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_wl),
 
     # Cutouts
-    url(r'^fits-cutout-decals-dr1', views.fits_cutout_decals_dr1j),
-    url(r'^jpeg-cutout-decals-dr1', views.jpeg_cutout_decals_dr1j),
+    url(r'^fits-cutout-decals-dr1', cutouts.fits_cutout_decals_dr1j),
+    url(r'^jpeg-cutout-decals-dr1', cutouts.jpeg_cutout_decals_dr1j),
 
-    url(r'^jpeg-cutout-decals-dr2', views.jpeg_cutout_decals_dr2),
-    url(r'^fits-cutout-decals-dr2', views.fits_cutout_decals_dr2),
+    url(r'^jpeg-cutout-decals-dr2', cutouts.jpeg_cutout_decals_dr2),
+    url(r'^fits-cutout-decals-dr2', cutouts.fits_cutout_decals_dr2),
 
-    url(r'^jpeg-cutout', views.jpeg_cutout, name='cutout-jpeg'),
+    url(r'^jpeg-cutout', cutouts.jpeg_cutout, name='cutout-jpeg'),
 
     # NGC/IC/UGC galaxies
-    url(r'^ngc/(\d+)/cat.json', views.cat_gals),
+    url(r'^ngc/(\d+)/cat.json', cats.cat_gals),
     
     # Virgo cluster catalog (VCC) objects
     #url(r'^vcc/(\d+)/cat.json', views.cat_vcc),
 
     # Spectroscopy
-    url(r'^spec/(\d+)/cat.json', views.cat_spec),
+    url(r'^spec/(\d+)/cat.json', cats.cat_spec),
 
     # Bright stars
-    url(r'^bright/(\d+)/cat.json', views.cat_bright),
+    url(r'^bright/(\d+)/cat.json', cats.cat_bright),
 
     # SFD dust map
     url(r'^sfd/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sfd),

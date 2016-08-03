@@ -1,5 +1,72 @@
 import numpy as np
 from astrometry.util.miscutils import clip_wcs
+import os
+
+def ra2long(ra):
+    lng = 180. - ra
+    lng += 360 * (lng < 0.)
+    lng -= 360 * (lng > 360.)
+    return lng
+
+def ra2long_B(ra):
+    lng = 180. - ra
+    lng += 360 * (lng < -180.)
+    lng -= 360 * (lng >  180.)
+    return lng
+
+def trymakedirs(fn):
+    dirnm = os.path.dirname(fn)
+    if not os.path.exists(dirnm):
+        try:
+            os.makedirs(dirnm)
+        except:
+            pass
+
+def save_jpeg(fn, rgb, **kwargs):
+    import pylab as plt
+    import tempfile
+    f,tempfn = tempfile.mkstemp(suffix='.png')
+    os.close(f)
+    plt.imsave(tempfn, rgb, **kwargs)
+    cmd = 'pngtopnm %s | pnmtojpeg -quality 90 > %s' % (tempfn, fn)
+    os.system(cmd)
+    os.unlink(tempfn)
+
+def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
+              filename=None):
+    import datetime
+    from django.http import HttpResponseNotModified, StreamingHttpResponse
+    '''
+    modsince: If-Modified-Since header string from the client.
+    '''
+    st = os.stat(fn)
+    f = open(fn)
+    if unlink:
+        os.unlink(fn)
+    # file was last modified...
+    lastmod = datetime.datetime.fromtimestamp(st.st_mtime)
+
+    if modsince:
+        #print('If-modified-since:', modsince #Sat, 22 Nov 2014 01:12:39 GMT)
+        ifmod = datetime.datetime.strptime(modsince, '%a, %d %b %Y %H:%M:%S %Z')
+        #print('Parsed:', ifmod)
+        #print('Last mod:', lastmod)
+        dt = (lastmod - ifmod).total_seconds()
+        if dt < 1:
+            return HttpResponseNotModified()
+
+    res = StreamingHttpResponse(f, content_type=content_type)
+    # res['Cache-Control'] = 'public, max-age=31536000'
+    res['Content-Length'] = st.st_size
+    if filename is not None:
+        res['Content-Disposition'] = 'attachment; filename="%s"' % filename
+    # expires in an hour?
+    now = datetime.datetime.utcnow()
+    then = now + datetime.timedelta(0, expires, 0)
+    timefmt = '%a, %d %b %Y %H:%M:%S GMT'
+    res['Expires'] = then.strftime(timefmt)
+    res['Last-Modified'] = lastmod.strftime(timefmt)
+    return res
 
 class RARange(object):
     def __init__(self, rlo, rhi):
