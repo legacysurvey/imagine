@@ -386,3 +386,17 @@ class Photom(models.Model):
         managed = False
         db_table = 'photom'
 
+class Target(models.Model):
+    id = models.BigIntegerField(primary_key=True)
+    cand_id = models.BigIntegerField(blank=True, null=True)
+    ra = models.FloatField(blank=True, null=True)
+    dec = models.FloatField(blank=True, null=True)
+    type = models.TextField(blank=True)
+    priority = models.SmallIntegerField(blank=True, null=True)
+    nobs = models.SmallIntegerField(blank=True, null=True)
+    version = models.TextField(blank=True)
+
+    class Meta:
+        managed = False
+        db_table = 'target'
+
