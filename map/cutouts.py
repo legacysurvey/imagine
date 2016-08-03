@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import fitsio
 import numpy as np
@@ -7,6 +8,13 @@ from map.utils import send_file
 from map.views import _get_dr2_bricks, dr2_rgb
 
 from map.coadds import map_coadd_bands
+
+from decals import settings
+
+debug = print
+if not settings.DEBUG_LOGGING:
+    def debug(*args, **kwargs):
+        pass
 
 def jpeg_cutout_decals_dr1j(req):
     return cutout_decals(req, jpeg=True, default_tag='decals-dr1j')
