@@ -3,6 +3,7 @@ import os
 import fitsio
 from django.http import HttpResponse, StreamingHttpResponse
 from decals import settings
+from django.core.urlresolvers import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 
 
@@ -28,6 +29,7 @@ def upload_cat(req):
     from decals import settings
     from astrometry.util.fits import fits_table
     from django.http import HttpResponseRedirect
+    from map.views import index
 
     if req.method != 'POST':
         return HttpResponse('POST only')
@@ -274,6 +276,8 @@ def cat_user(req, ver):
     from decals import settings
     from astrometry.util.fits import fits_table
     import json
+    import re
+
     cat = str(req.GET.get('cat'))
     if not re.match('\w?', cat):
         print('Catalog "%s" did not match regex' % cat)
@@ -295,24 +299,25 @@ def cat_user(req, ver):
                 (cat.dec > declo) * (cat.dec < dechi))
     print(len(cat), 'user catalog sources after RA,Dec cut')
     rd = zip(cat.ra, cat.dec)
-    types = list([t[0] for t in cat.get('type')])
 
-    fluxes = [dict(g=float(g), r=float(r), z=float(z))
-              for g,r,z in zip(10.**((cat.g - 22.5)/-2.5),
-                               10.**((cat.r - 22.5)/-2.5),
-                               10.**((cat.z - 22.5)/-2.5))]
-
-    nobs = [dict(g=int(g), r=int(r), z=int(z))
-            for g,r,z in zip(cat.gnobs, cat.rnobs, cat.znobs)]
-    bricknames = list(cat.brickname)
-    #brickids = list(cat.brickid)
-    objids = [int(x) for x in cat.objid]
-
-    D = dict(rd=rd, sourcetype=types, fluxes=fluxes,
-             nobs=nobs, objids=objids,
-             bricknames=bricknames)
-    if 'name' in cat.columns():
+    D = dict(rd=rd)
+    cols = cat.columns()
+    if 'name' in cols:
         D.update(names=list(cat.name))
+    if 'type' in cols:
+        D.update(sourcetype=list([t[0] for t in cat.get('type')]))
+    if 'g' in cols and 'r' in cols and 'z' in cols:
+        D.update(fluxes=[dict(g=float(g), r=float(r), z=float(z))
+                         for g,r,z in zip(10.**((cat.g - 22.5)/-2.5),
+                                          10.**((cat.r - 22.5)/-2.5),
+                                          10.**((cat.z - 22.5)/-2.5))])
+    if 'gnobs' in cols and 'rnobs' in cols and 'znobs' in cols:
+        D.update(nobs=[dict(g=int(g), r=int(r), z=int(z))
+                       for g,r,z in zip(cat.gnobs, cat.rnobs, cat.znobs)])
+    if 'objids' in cols:
+        D.update(objids=[int(x) for x in cat.objid])
+    if 'brickname' in cols:
+        D.update(bricknames=list(cat.brickname))
 
     return HttpResponse(json.dumps(D), content_type='application/json')
 

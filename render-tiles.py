@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 
 ###
@@ -35,7 +36,7 @@ def _one_tile((kind, zoom, x, y, ignore)):
     kwargs = dict(ignoreCached=ignore)
     # forcecache=False, return_if_not_found=True)
     if kind == 'sdss':
-        print 'Zoom', zoom, 'x,y', x,y
+        print('Zoom', zoom, 'x,y', x,y)
         #map_sdss(req, version, zoom, x, y, savecache=True, forcecache=True)
         map_sdssco(req, version, zoom, x, y, savecache=True, forcecache=True,
                    return_if_not_found=True, hack_jpeg=True)
@@ -47,7 +48,7 @@ def _one_tile((kind, zoom, x, y, ignore)):
             kwa.update(model=True, add_gz=True)
         if 'resid' in kind:
             kwa.update(resid=True, model_gz=True)
-        print 'map_mobo_dr3 kwargs:', kwa
+        print('map_mobo_dr3 kwargs:', kwa)
         map_mobo_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
                        hack_jpeg=True, **kwa)
         
@@ -58,7 +59,7 @@ def _one_tile((kind, zoom, x, y, ignore)):
             kwa.update(model=True, add_gz=True)
         if 'resid' in kind:
             kwa.update(resid=True, model_gz=True)
-        print 'map_decals_dr3 kwargs:', kwa
+        print('map_decals_dr3 kwargs:', kwa)
         map_decals_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
                        hack_jpeg=True, drname='decals-dr3', **kwa)
         
@@ -72,7 +73,7 @@ def _one_tile((kind, zoom, x, y, ignore)):
             v = 1
             kwa.update(resid=True, model_gz=True)
 
-        print 'map_decals_dr2 kwargs:', kwa
+        print('map_decals_dr2 kwargs:', kwa)
         map_decals_dr2(req, v, zoom, x, y, savecache=True, forcecache=True,
                        hack_jpeg=True, drname='decals-dr2', **kwa)
 
@@ -128,7 +129,7 @@ def _bounce_one_tile(*args):
     except KeyboardInterrupt:
         raise
     except:
-        print 'Error in _one_tile(', args, '):'
+        print('Error in _one_tile(', args, '):')
         import traceback
         traceback.print_exc()
 
@@ -144,15 +145,15 @@ def _bounce_map_unwise_w3w4(args):
 
 
 def _bounce_map_decals((args,kwargs)):
-    print 'Bounce_map_decals:', args
+    print('Bounce_map_decals:', args)
     X = map_decals_dr1j(*args, ignoreCached=True, get_images=True, **kwargs)
-    print 'Returning: type', type(X), X
+    print('Returning: type', type(X), X)
     return X
 
 def _bounce_map_decals_dr1k((args,kwargs)):
-    print 'Bounce_map_decals_dr1k:', args
+    print('Bounce_map_decals_dr1k:', args)
     X = map_decals_dr1k(*args, ignoreCached=True, get_images=True, **kwargs)
-    print 'Returning: type', type(X), X
+    print('Returning: type', type(X), X)
     return X
 
 #def _bounce_sdss((args,kwargs)):
@@ -162,7 +163,7 @@ def _bounce_sdssco((args,kwargs)):
     save = False
     if os.path.exists(fn):
         img = fitsio.read(fn)
-        print 'Read', img.shape
+        print('Read', img.shape)
         H,W,planes = img.shape
         ims = [img[:,:,i] for i in range(planes)]
     else:
@@ -185,29 +186,29 @@ def _bounce_sdssco((args,kwargs)):
         rgb = sdss_rgb(ims, bands)
         trymakedirs(tilefn)
         save_jpeg(tilefn, rgb)
-        print 'Wrote', tilefn
+        print('Wrote', tilefn)
 
     # Save FITS
     if save:
         d = np.dstack(ims)
-        print 'writing', d.shape, 'to', fn
+        print('writing', d.shape, 'to', fn)
         fitsio.write(fn, d, clobber=True)
 
     return ims
 
 def _bounce_decals_dr2((args,kwargs)):
-    print 'Bounce_decals_dr2: kwargs', kwargs
+    print('Bounce_decals_dr2: kwargs', kwargs)
     tag = 'image'
     if 'model' in kwargs:
         tag = 'model'
     if 'resid' in kwargs:
         tag = 'resid'
     (req,ver,zoom,x,y) = args
-    print 'Tag', tag
+    print('Tag', tag)
     fn = 'top-dr2-%s-%i-%i-%i.fits' % (tag, zoom, x, y)
     if os.path.exists(fn):
         img = fitsio.read(fn)
-        print 'Read', img.shape
+        print('Read', img.shape)
         H,W,planes = img.shape
         ims = [img[:,:,i] for i in range(planes)]
         return ims
@@ -218,7 +219,7 @@ def _bounce_decals_dr2((args,kwargs)):
         return ims
     # save FITS
     d = np.dstack(ims)
-    print 'writing', d.shape, 'to', fn
+    print('writing', d.shape, 'to', fn)
     fitsio.write(fn, d, clobber=True)
 
     return ims
@@ -277,7 +278,7 @@ def top_levels(mp, opt):
             for fn,base in zip(basefns, bases):
                 fitsio.write(fn, base, clobber=True)
         else:
-            print 'Reading', basefns
+            print('Reading', basefns)
             bases = [fitsio.read(fn) for fn in basefns]
 
             if False:
@@ -295,39 +296,39 @@ def top_levels(mp, opt):
                 # Try converting to galactic coords...
                 from astrometry.util.util import anwcs_create_mercator_2
 
-                print 'Base images:', w1base.shape
+                print('Base images:', w1base.shape)
                 zoom = basescale
                 h,w = w1base.shape
                 zoomscale = 2.**zoom * (256./h)
-                print 'Zoomscale', zoomscale
+                print('Zoomscale', zoomscale)
                 wcs = anwcs_create_mercator_2(180., 0., w/2., h/2.,
                                               zoomscale, w, h, 1)
 
                 wcs2 = anwcs_create_mercator_2(0., 0., w/2., h/2.,
                                                zoomscale, w, h, 1)
 
-                print 'WCS:'
+                print('WCS:')
                 for x,y in [(1,1), (1,h), (w,1), (w,h), (w/2,1), (w/2,h/2)]:
-                    print 'x,y', (x,y), '-> RA,Dec', wcs.pixelxy2radec(x,y)[-2:]
+                    print('x,y', (x,y), '-> RA,Dec', wcs.pixelxy2radec(x,y)[-2:])
 
                 ok,ras,nil  = wcs2.pixelxy2radec(np.arange(w), np.ones(w))
                 ok,nil,decs = wcs2.pixelxy2radec(np.ones(h), np.arange(h))
-                print 'RAs', ras.shape
-                print 'Decs', decs.shape
+                print('RAs', ras.shape)
+                print('Decs', decs.shape)
 
                 lls = ras
                 bbs = decs
 
                 ll,bb = np.meshgrid(lls, bbs)
-                print 'LL,BB', ll.shape, bb.shape
+                print('LL,BB', ll.shape, bb.shape)
 
                 from astrometry.util.starutil_numpy import lbtoradec
 
                 ra,dec = lbtoradec(ll,bb)
-                print 'RA,Dec', ra.shape, dec.shape
+                print('RA,Dec', ra.shape, dec.shape)
 
                 ok,xx,yy = wcs.radec2pixelxy(ra, dec)
-                print 'xx,yy', xx.shape, yy.shape
+                print('xx,yy', xx.shape, yy.shape)
 
                 lb1 = w1base[np.clip(np.round(yy-1).astype(int), 0, h-1),
                              np.clip(np.round(xx-1).astype(int), 0, w-1)]
@@ -360,7 +361,7 @@ def top_levels(mp, opt):
                     fn = pat % pp
                     trymakedirs(fn)
                     save_jpeg(fn, tile)
-                    print 'Wrote', fn
+                    print('Wrote', fn)
 
 
     if opt.kind in ['depth-g', 'depth-r', 'depth-z']:
@@ -387,7 +388,7 @@ def top_levels(mp, opt):
                 dat.update(zoom=basescale, x=x, y=y)
                 fn = pat % dat
                 if not os.path.exists(fn):
-                    print 'Does not exist:', fn
+                    print('Does not exist:', fn)
                     continue
                 img = plt.imread(fn)
                 base[y*tilesize:(y+1)*tilesize,
@@ -414,7 +415,7 @@ def top_levels(mp, opt):
                     fn = pat % pp
                     trymakedirs(fn)
                     plt.imsave(fn, np.clip(np.round(img).astype(np.uint8), 0, 255))
-                    print 'Wrote', fn
+                    print('Wrote', fn)
 
 
     ### HACK... factor this out...
@@ -451,7 +452,7 @@ def top_levels(mp, opt):
             rgbkwargs = {}
 
         ver = tileversions.get(opt.kind, [1])[-1]
-        print 'Version', ver
+        print('Version', ver)
         basescale = 5
 
         pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
@@ -500,11 +501,11 @@ def top_levels(mp, opt):
             for fn,base in zip(basefns, bases):
                 fitsio.write(fn, base, clobber=True)
         else:
-            print 'Reading', basefns
+            print('Reading', basefns)
             bases = [fitsio.read(fn) for fn in basefns]
 
         for scale in range(basescale-1, -1, -1):
-            print 'Scale', scale
+            print('Scale', scale)
             for i,base in enumerate(bases):
                 #base = gaussian_filter(base, 1.)
                 base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
@@ -527,7 +528,7 @@ def top_levels(mp, opt):
                     fn = pat % pp
                     trymakedirs(fn)
                     save_jpeg(fn, rgb)
-                    print 'Wrote', fn
+                    print('Wrote', fn)
 
 
 
@@ -593,136 +594,12 @@ def main():
         if opt.maxdec is None:
             opt.maxdec = 40
         if opt.mindec is None:
-            opt.mindec = -20
+            opt.mindec = -25
 
     if opt.top:
         top_levels(mp, opt)
         sys.exit(0)
 
-    from legacypipe.common import LegacySurveyData
-    decals = LegacySurveyData()
-
-    if opt.near:
-        if opt.kind == 'sdss':
-            B = fits_table(os.path.join(settings.DATA_DIR, 'bricks-sdssco.fits'))
-        else:
-            B = decals.get_bricks()
-        print len(B), 'bricks'
-
-    if opt.scale:
-        opt.near_ccds = True
-
-    if opt.near_ccds:
-        if opt.kind == 'sdss':
-            C = fits_table(os.path.join(settings.DATA_DIR, 'sdss', 'window_flist.fits'),
-                           columns=['rerun','ra','dec', 'run', 'camcol', 'field', 'score'])
-            C.cut(C.rerun == '301')
-            C.cut(C.score >= 0.6)
-            #C.delete_column('rerun')
-            # SDSS field size
-            radius = 1.01 * np.hypot(10., 14.)/2. / 60.
-            ccdsize = radius
-            print len(C), 'SDSS fields'
-
-        else:
-            C = decals.get_ccds()
-            print len(C), 'CCDs'
-            ccdsize = 0.2
-
-    if opt.x is not None:
-        opt.x0 = opt.x
-        opt.x1 = opt.x + 1
-    if opt.y is not None:
-        opt.y0 = opt.y
-        opt.y1 = opt.y + 1
-
-    if opt.coadd and opt.kind == 'sdss':
-        from legacypipe.common import wcs_for_brick
-        from map.views import trymakedirs
-
-        B = decals.get_bricks()
-        print len(B), 'bricks'
-        B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
-        print len(B), 'in Dec range'
-        B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
-        print len(B), 'in RA range'
-
-        if opt.queue:
-            # ~ square-degree tiles
-            # RA slices
-            rr = np.arange(opt.minra , opt.maxra +1)
-            dd = np.arange(opt.mindec, opt.maxdec+1)
-            for rlo,rhi in zip(rr, rr[1:]):
-                for dlo,dhi in zip(dd, dd[1:]):
-                    print 'time python render-tiles.py --kind sdss --coadd --minra %f --maxra %f --mindec %f --maxdec %f' % (rlo, rhi, dlo, dhi)
-            sys.exit(0)
-
-        if opt.grass:
-            basedir = settings.DATA_DIR
-            codir = os.path.join(basedir, 'coadd', 'sdssco')
-            rr,dd = [],[]
-            exist = []
-            for i,b in enumerate(B):
-                print 'Brick', b.brickname,
-                fn = os.path.join(codir, b.brickname[:3], 'sdssco-%s-%s.fits' % (b.brickname, 'r'))
-                print '-->', fn,
-                if not os.path.exists(fn):
-                    print
-                    continue
-                print 'found'
-                rr.append(b.ra)
-                dd.append(b.dec)
-                exist.append(i)
-
-            exist = np.array(exist)
-            B.cut(exist)
-            B.writeto('bricks-sdssco-exist.fits')
-
-            import pylab as plt
-            plt.clf()
-            plt.plot(rr, dd, 'k.')
-            plt.title('SDSS coadd tiles')
-            plt.savefig('sdss.png')
-            sys.exit(0)
-
-        basedir = settings.DATA_DIR
-        codir = os.path.join(basedir, 'coadd', 'sdssco')
-        for b in B:
-            print 'Brick', b.brickname
-            wcs = wcs_for_brick(b, W=2400, H=2400, pixscale=0.396)
-            bands = 'gri'
-            dirnm = os.path.join(codir, b.brickname[:3])
-            fns = [os.path.join(dirnm, 'sdssco-%s-%s.fits' % (b.brickname, band))
-                   for band in bands]
-
-            hdr = fitsio.FITSHDR()
-            hdr['SURVEY'] = 'SDSS'
-            wcs.add_to_header(hdr)
-
-            if all([os.path.exists(fn) for fn in fns]):
-                print 'Already exist'
-                continue
-            ims = map_sdss(req, 1, 0, 0, 0, get_images=True, wcs=wcs, ignoreCached=True,
-                           forcescale=0)
-            if ims is None:
-                print 'No overlap'
-                continue
-            trymakedirs(os.path.join(dirnm, 'xxx'))
-            for fn,band,im in zip(fns,bands, ims):
-                fitsio.write(fn, im, header=hdr, clobber=True)
-                print 'Wrote', fn
-
-            # Also write scaled versions
-            dirnm = os.path.join(basedir, 'scaled', 'sdssco')
-            scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', 'sdssco-%(brickname)s-%(band)s.fits')
-            for im,band in zip(ims,bands):
-                scalekwargs = dict(band=band, brick=b.brickid, brickname=b.brickname)
-                imwcs = wcs
-                for scale in range(1, 7):
-                    print 'Writing scale level', scale
-                    im,imwcs,sfn = get_scaled(scalepat, scalekwargs, scale, None,
-                                              wcs=imwcs, img=im, return_data=True)
-        sys.exit(0)
 
     if opt.scale:
         if opt.kind in ['decals-dr3', 'decals-dr3-model', 'mobo-dr3', 'mobo-dr3-model']:
@@ -733,46 +610,70 @@ def main():
                 surveyname = 'decals-dr3'
             else:
                 surveyname = 'mobo-dr3'
-            decals = _get_survey(surveyname)
+            survey = _get_survey(surveyname)
+
+            B = survey.get_bricks()
+            print(len(B), 'bricks')
+            B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
+            print(len(B), 'in Dec range')
+            B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
+            print(len(B), 'in RA range')
 
             # find all image files
+            filetype = 'image'
             model = False
-            imagetag = 'image'
             if '-model' in opt.kind:
                 model = True
-                imagetag = 'model'
+                filetype = 'model'
+            imagetag = filetype
 
-            pat = decals.survey_dir + '/coadd/*/*/*-%s-?.fits*' % imagetag
-            print('Pattern:', pat)
-            fns = glob(pat)
-            fns.sort()
-            print len(fns), 'image files'
+            bands = 'grz'
+
+            # pat = survey.survey_dir + '/coadd/*/*/*-%s-?.fits*' % imagetag
+            # print('Pattern:', pat)
+            # fns = glob(pat)
+            # fns.sort()
+            # print(len(fns), 'image files')
             scaledir = surveyname
             basedir = settings.DATA_DIR
             dirnm = os.path.join(basedir, 'scaled', scaledir)
-            for fn in fns:
-                parts = fn.split('/')
-                brick = parts[-2]
-                if model:
-                    # MAGIC: -9 = '....-B.fits.gz'
-                    band = parts[-1][-9]
-                else:
-                    # MAGIC: -6 = '....-B.fits'
-                    band = parts[-1][-6]
-                
-                scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
-                fnargs = dict(band=band, brickname=brick)
-                scaled = 8
-                scaledfn = get_scaled(scalepat, fnargs, scaled, fn)
-                print 'get_scaled:', scaledfn
+
+            for brick in B.brickname:
+                for band in bands:
+                    fn = survey.find_file(filetype, brick=brick, band=band)
+                    if not os.path.exists(fn):
+                        print('Does not exist:', fn)
+                        continue
+
+                    scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
+                    fnargs = dict(band=band, brickname=brick)
+                    scaled = 8
+                    scaledfn = get_scaled(scalepat, fnargs, scaled, fn)
+                    print('get_scaled:', scaledfn)
+
+            # for fn in fns:
+            #     parts = fn.split('/')
+            #     brick = parts[-2]
+            #     if model:
+            #         # MAGIC: -9 = '....-B.fits.gz'
+            #         band = parts[-1][-9]
+            #     else:
+            #         # MAGIC: -6 = '....-B.fits'
+            #         band = parts[-1][-6]
+            #     
+            #     scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
+            #     fnargs = dict(band=band, brickname=brick)
+            #     scaled = 8
+            #     scaledfn = get_scaled(scalepat, fnargs, scaled, fn)
+            #     print('get_scaled:', scaledfn)
 
             sys.exit(0)
             
         if opt.kind == 'sdss':
             C.cut((C.dec >= opt.mindec) * (C.dec < opt.maxdec))
-            print len(C), 'in Dec range'
+            print(len(C), 'in Dec range')
             C.cut((C.ra  >= opt.minra)  * (C.ra  < opt.maxra))
-            print len(C), 'in RA range'
+            print(len(C), 'in RA range')
 
             from astrometry.sdss import AsTransWrapper, DR9
             sdss = DR9(basedir=settings.SDSS_DIR)
@@ -799,12 +700,139 @@ def main():
                     scaled = 1
                     fn = get_scaled(scalepat, fnargs, scaled, basefn,
                                     read_base_wcs=read_astrans, read_wcs=_read_sip_wcs)
-                    print 'get_scaled:', fn
+                    print('get_scaled:', fn)
 
             return 0
 
         else:
             assert(False)
+
+
+
+    from legacypipe.common import LegacySurveyData
+    survey = LegacySurveyData()
+
+    if opt.near:
+        if opt.kind == 'sdss':
+            B = fits_table(os.path.join(settings.DATA_DIR, 'bricks-sdssco.fits'))
+        else:
+            B = survey.get_bricks()
+        print(len(B), 'bricks')
+
+    #if opt.scale:
+    #    opt.near_ccds = True
+
+    if opt.near_ccds:
+        if opt.kind == 'sdss':
+            C = fits_table(os.path.join(settings.DATA_DIR, 'sdss', 'window_flist.fits'),
+                           columns=['rerun','ra','dec', 'run', 'camcol', 'field', 'score'])
+            C.cut(C.rerun == '301')
+            C.cut(C.score >= 0.6)
+            #C.delete_column('rerun')
+            # SDSS field size
+            radius = 1.01 * np.hypot(10., 14.)/2. / 60.
+            ccdsize = radius
+            print(len(C), 'SDSS fields')
+
+        else:
+            C = survey.get_ccds()
+            print(len(C), 'CCDs')
+            ccdsize = 0.2
+
+    if opt.x is not None:
+        opt.x0 = opt.x
+        opt.x1 = opt.x + 1
+    if opt.y is not None:
+        opt.y0 = opt.y
+        opt.y1 = opt.y + 1
+
+    if opt.coadd and opt.kind == 'sdss':
+        from legacypipe.common import wcs_for_brick
+        from map.views import trymakedirs
+
+        B = survey.get_bricks()
+        print(len(B), 'bricks')
+        B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
+        print(len(B), 'in Dec range')
+        B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
+        print(len(B), 'in RA range')
+
+        if opt.queue:
+            # ~ square-degree tiles
+            # RA slices
+            rr = np.arange(opt.minra , opt.maxra +1)
+            dd = np.arange(opt.mindec, opt.maxdec+1)
+            for rlo,rhi in zip(rr, rr[1:]):
+                for dlo,dhi in zip(dd, dd[1:]):
+                    print('time python render-tiles.py --kind sdss --coadd --minra %f --maxra %f --mindec %f --maxdec %f' % (rlo, rhi, dlo, dhi))
+            sys.exit(0)
+
+        if opt.grass:
+            basedir = settings.DATA_DIR
+            codir = os.path.join(basedir, 'coadd', 'sdssco')
+            rr,dd = [],[]
+            exist = []
+            for i,b in enumerate(B):
+                print('Brick', b.brickname,)
+                fn = os.path.join(codir, b.brickname[:3], 'sdssco-%s-%s.fits' % (b.brickname, 'r'))
+                print('-->', fn,)
+                if not os.path.exists(fn):
+                    print()
+                    continue
+                print('found')
+                rr.append(b.ra)
+                dd.append(b.dec)
+                exist.append(i)
+
+            exist = np.array(exist)
+            B.cut(exist)
+            B.writeto('bricks-sdssco-exist.fits')
+
+            import pylab as plt
+            plt.clf()
+            plt.plot(rr, dd, 'k.')
+            plt.title('SDSS coadd tiles')
+            plt.savefig('sdss.png')
+            sys.exit(0)
+
+        basedir = settings.DATA_DIR
+        codir = os.path.join(basedir, 'coadd', 'sdssco')
+        for b in B:
+            print('Brick', b.brickname)
+            wcs = wcs_for_brick(b, W=2400, H=2400, pixscale=0.396)
+            bands = 'gri'
+            dirnm = os.path.join(codir, b.brickname[:3])
+            fns = [os.path.join(dirnm, 'sdssco-%s-%s.fits' % (b.brickname, band))
+                   for band in bands]
+
+            hdr = fitsio.FITSHDR()
+            hdr['SURVEY'] = 'SDSS'
+            wcs.add_to_header(hdr)
+
+            if all([os.path.exists(fn) for fn in fns]):
+                print('Already exist')
+                continue
+            ims = map_sdss(req, 1, 0, 0, 0, get_images=True, wcs=wcs, ignoreCached=True,
+                           forcescale=0)
+            if ims is None:
+                print('No overlap')
+                continue
+            trymakedirs(os.path.join(dirnm, 'xxx'))
+            for fn,band,im in zip(fns,bands, ims):
+                fitsio.write(fn, im, header=hdr, clobber=True)
+                print('Wrote', fn)
+
+            # Also write scaled versions
+            dirnm = os.path.join(basedir, 'scaled', 'sdssco')
+            scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', 'sdssco-%(brickname)s-%(band)s.fits')
+            for im,band in zip(ims,bands):
+                scalekwargs = dict(band=band, brick=b.brickid, brickname=b.brickname)
+                imwcs = wcs
+                for scale in range(1, 7):
+                    print('Writing scale level', scale)
+                    im,imwcs,sfn = get_scaled(scalepat, scalekwargs, scale, None,
+                                              wcs=imwcs, img=im, return_data=True)
+        sys.exit(0)
 
 
     for zoom in opt.zoom:
@@ -839,7 +867,7 @@ def main():
                 dirnames.sort()
                 if len(filenames) == 0:
                     continue
-                print 'Dirpath', dirpath
+                print('Dirpath', dirpath)
                 #print 'Dirnames', dirnames
                 #print 'Filenames', filenames
 
@@ -850,7 +878,7 @@ def main():
                         fullfn = os.path.join(tiledir, dirpath, fn)
                         if os.path.isfile(fullfn) and not os.path.islink(fullfn):
                             fns.append(fn)
-                    print len(fns), 'of', len(filenames), 'are files (not symlinks)'
+                    print(len(fns), 'of', len(filenames), 'are files (not symlinks)')
                     filenames = fns
 
                 x = os.path.basename(dirpath)
@@ -859,7 +887,7 @@ def main():
 
                 yy = [int(fn.replace('.jpg','')) for fn in filenames]
                 #print 'yy', yy
-                print len(yy), 'tiles'
+                print(len(yy), 'tiles')
                 for y in yy:
                     tileexists[y - opt.y0, x - opt.x0] = True
             plt.clf()
@@ -868,7 +896,7 @@ def main():
             fn = 'exist-%s-z%02i' % (opt.kind, zoom)
             plt.savefig(fn+'.png')
             fitsio.write(fn+'.fits', tileexists, clobber=True)
-            print 'Wrote', fn+'.png and', fn+'.fits'
+            print('Wrote', fn+'.png and', fn+'.fits')
 
             continue
 
@@ -885,7 +913,7 @@ def main():
             rr = np.array(rr)
             if len(dd) > 1:
                 tilesize = max(np.abs(np.diff(dd)))
-                print 'Tile size:', tilesize
+                print('Tile size:', tilesize)
             else:
                 if opt.near_ccds or opt.near:
                     try:
@@ -895,46 +923,46 @@ def main():
                         wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, 0, opt.y0-1)
                         r2,d2 = wcs.get_center()
                     tilesize = np.abs(dd[0] - d2)
-                    print 'Tile size:', tilesize
+                    print('Tile size:', tilesize)
                 else:
                     tilesize = 180.
             I = np.flatnonzero((dd >= opt.mindec) * (dd <= opt.maxdec))
-            print 'Keeping', len(I), 'Dec points between', opt.mindec, 'and', opt.maxdec
+            print('Keeping', len(I), 'Dec points between', opt.mindec, 'and', opt.maxdec)
             dd = dd[I]
             yy = yy[I]
             I = np.flatnonzero((rr >= opt.minra) * (rr <= opt.maxra))
-            print 'Keeping', len(I), 'RA points between', opt.minra, 'and', opt.maxra
+            print('Keeping', len(I), 'RA points between', opt.minra, 'and', opt.maxra)
             rr = rr[I]
             xx = xx[I]
             
-            print len(rr), 'RA points x', len(dd), 'Dec points'
-            print 'x tile range:', xx.min(), xx.max(), 'y tile range:', yy.min(), yy.max()
+            print(len(rr), 'RA points x', len(dd), 'Dec points')
+            print('x tile range:', xx.min(), xx.max(), 'y tile range:', yy.min(), yy.max())
 
         for iy,y in enumerate(yy):
-            print
-            print 'Y row', y
+            print()
+            print('Y row', y)
 
             if opt.near:
                 d = dd[iy]
                 I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25 + tilesize, nearest=True)
                 if len(I) == 0:
-                    print 'No matches to bricks'
+                    print('No matches to bricks')
                     continue
                 keep = np.zeros(len(rr), bool)
                 keep[I] = True
-                print 'Keeping', sum(keep), 'tiles in row', y, 'Dec', d
+                print('Keeping', sum(keep), 'tiles in row', y, 'Dec', d)
                 x = xx[keep]
             elif opt.near_ccds:
                 d = dd[iy]
-                print 'RA range of tiles:', rr.min(), rr.max()
-                print 'Dec of tile row:', d
+                print('RA range of tiles:', rr.min(), rr.max())
+                print('Dec of tile row:', d)
                 I,J,dist = match_radec(rr, d+np.zeros_like(rr), C.ra, C.dec, ccdsize + tilesize, nearest=True)
                 if len(I) == 0:
-                    print 'No matches to CCDs'
+                    print('No matches to CCDs')
                     continue
                 keep = np.zeros(len(rr), bool)
                 keep[I] = True
-                print 'Keeping', sum(keep), 'tiles in row', y, 'Dec', d
+                print('Keeping', sum(keep), 'tiles in row', y, 'Dec', d)
                 x = xx[keep]
             else:
                 x = xx
@@ -947,7 +975,7 @@ def main():
                     cmd += ' --all'
                 if opt.ignore:
                     cmd += ' --ignore'
-                print cmd
+                print(cmd)
                 continue
 
             # if opt.grass:
@@ -965,9 +993,9 @@ def main():
             args = []
             for xi in x:
                 args.append((opt.kind,zoom,xi,y, opt.ignore))
-            print 'Rendering', len(args), 'tiles in row y =', y
+            print('Rendering', len(args), 'tiles in row y =', y)
             mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
-            print 'Rendered', len(args), 'tiles'
+            print('Rendered', len(args), 'tiles')
 
         # if opt.grass:
         #     plt.clf()
