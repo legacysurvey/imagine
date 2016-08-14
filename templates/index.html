@@ -792,12 +792,13 @@ function brick_detail(name) {
         + '/">' + name + '</a>';
 }
 
-function ccd_detail(name, aparams) {
-    return '<a href="{% url 'ccd_detail_blank' %}' + idname + '/' + name.replace(' ','-')
-        + '/"' + aparams + '>' + name + '</a>';
+function ccd_detail(idname, name, aparams) {
+    return '<a href="{% url 'ccd_detail_blank' %}' + idname + '/'
+                     + name.replace(' ','-')
+                     + '/"' + aparams + '>' + name + '</a>';
 }
 
-function exp_detail(name, aparams) {
+function exp_detail(idname, name, aparams) {
     return '<a href="{% url 'exp_detail_blank' %}' + idname + '/' + name
         + '/"' + aparams + '>' + name + '</a>';
 }
@@ -809,6 +810,8 @@ function onMapClick(e) {
     var bricks = brickOverlay.under(e.latlng);
     var ccds = ccdOverlay.under(e.latlng);
     var exps = expOverlay.under(e.latlng);
+    var ccds3 = ccdOverlay3.under(e.latlng);
+    var exps3 = expOverlay3.under(e.latlng);
 
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
     var qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
@@ -849,12 +852,22 @@ function onMapClick(e) {
     }
     if (ccds.length) {
         for (var i=0; i<ccds.length; i++) {
-            txt += '<br/>CCD: ' + ccd_detail(ccds[i], '');
+            txt += '<br/>CCD: ' + ccd_detail('decals-dr2', ccds[i], '');
+        }
+    }
+    if (ccds3.length) {
+        for (var i=0; i<ccds3.length; i++) {
+            txt += '<br/>CCD: ' + ccd_detail('decals-dr3', ccds3[i], '');
         }
     }
     if (exps.length) {
         for (var i=0; i<exps.length; i++) {
-            txt += '<br/>Exposure: ' + exp_detail(exps[i], '');
+            txt += '<br/>Exposure: ' + exp_detail('decals-dr2',exps[i], '');
+        }
+    }
+    if (exps3.length) {
+        for (var i=0; i<exps3.length; i++) {
+            txt += '<br/>Exposure: ' + exp_detail('decals-dr3',exps3[i],'');
         }
     }
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
@@ -906,7 +919,7 @@ function inbrickccdUpdate(props) {
             if (ccdname == ccdOverlay._highlighted) {
                 aparams = ' class="highccd"';
             }
-            var ccdtext = ccd_detail(ccdname, aparams);
+            var ccdtext = ccd_detail('decals-dr2', ccdname, aparams);
             txt = txt + '<li>'+ccdtext+'</li>';
         }
         txt = txt + '</ul>';
@@ -922,7 +935,8 @@ function inbrickccdUpdate(props) {
             if (expname == expOverlay._highlighted) {
                 aparams = ' class="highexp"';
             }
-            var exptext = exp_detail(expname.replace(' ','-'), aparams);
+            var exptext = exp_detail('decals-dr2', expname.replace(' ','-'),
+                                     aparams);
             txt = txt + '<li>'+exptext+'</li>';
         }
         txt = txt + '</ul>';
@@ -939,7 +953,7 @@ function inbrickccdUpdate(props) {
             if (ccdname == ccdOverlay3._highlighted) {
                 aparams = ' class="highccd"';
             }
-            var ccdtext = ccd_detail(ccdname, aparams);
+            var ccdtext = ccd_detail('decals-dr3', ccdname, aparams);
             txt = txt + '<li>'+ccdtext+'</li>';
         }
         txt = txt + '</ul>';
@@ -955,7 +969,8 @@ function inbrickccdUpdate(props) {
             if (expname == expOverlay._highlighted) {
                 aparams = ' class="highexp"';
             }
-            var exptext = exp_detail(expname.replace(' ','-'), aparams);
+            var exptext = exp_detail('decals-dr3', expname.replace(' ','-'),
+                                      aparams);
             txt = txt + '<li>'+exptext+'</li>';
         }
         txt = txt + '</ul>';
@@ -972,7 +987,7 @@ function inbrickccdUpdate(props) {
             if (ccdname == ccdOverlay3mb._highlighted) {
                 aparams = ' class="highccd"';
             }
-            var ccdtext = ccd_detail(ccdname, aparams);
+            var ccdtext = ccd_detail('mobo-dr3', ccdname, aparams);
             txt = txt + '<li>'+ccdtext+'</li>';
         }
         txt = txt + '</ul>';

@@ -977,6 +977,8 @@ def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0
 surveys = {}
 def _get_survey(name=None):
     global surveys
+    if name is not None:
+        name = str(name)
     if name in surveys:
         return surveys[name]
 
@@ -1366,6 +1368,7 @@ def exposure_detail(req, name, exp):
     T.cut(T.expnum == expnum)
     t = T[0]
     pixscale = 0.262
+    t.about()
     return HttpResponse('Exposure %i, %s band, %.1f sec exposure time, seeing %.2f arcsec, file %s' %
                         (t.expnum, t.filter, t.exptime, t.fwhm * pixscale,
                          t.image_filename))
