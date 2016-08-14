@@ -1009,11 +1009,13 @@ def _get_survey(name=None):
             debug('HACK -- cut to', len(C), 'photometric CCDs')
             C.cut(d.apply_blacklist(C))
             debug('HACK -- cut to', len(C), 'not-blacklisted CCDs')
+            print('CCDs:')
+            C.about()
             for k in ['date_obs', 'ut', 'airmass',
                       'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
                       'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
                       'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
-                      'ccdnmatchb', 'ccdmdncol', 'expid']:
+                      'ccdnmatchb', 'ccdmdncol', 'expid',]:
                 if k in C.columns():
                     C.delete_column(k)
             C.writeto('/tmp/cut-ccds-%s.fits' % name)
@@ -1352,7 +1354,9 @@ def ccd_detail(req, name, ccd):
     assert(len(C) == 1)
     c = C[0]
 
-    if name == 'decals-dr2':
+    c.about()
+
+    if name in ['decals-dr2', 'decals-dr3']:
         about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix' % (ccd, c.image_filename, c.image_hdu, c.exptime, c.seeing, c.fwhm)
     else:
         about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' % (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262)
