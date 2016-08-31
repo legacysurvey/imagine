@@ -319,7 +319,8 @@ def cat_user(req, ver):
     if 'brickname' in cols:
         D.update(bricknames=list(cat.brickname))
 
-    return HttpResponse(json.dumps(D), content_type='application/json')
+    return HttpResponse(json.dumps(D).replace('NaN','null'),
+                        content_type='application/json')
 
 def cat_bright(req, ver):
     return cat(req, ver, 'bright',

@@ -225,19 +225,18 @@ def data_for_radec(req):
     import numpy as np
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
-    bricks = _get_dr2_bricks()
+    name = req.GET.get('layer', 'decals-dr3')
+    survey = _get_survey(name)
+    bricks = survey.get_bricks()
+    #bricks = _get_dr2_bricks()
     I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
                        (dec >= bricks.dec1) * (dec < bricks.dec2))
     if len(I) == 0:
-        return HttpResponse('No DECaLS DR2 data overlaps RA,Dec = %.4f, %.4f' % (ra,dec))
+        return HttpResponse('No DECaLS data overlaps RA,Dec = %.4f, %.4f for version %s' % (ra, dec, name))
     I = I[0]
     brickname = bricks.brickname[I]
 
     return brick_detail(req, brickname)
-
-
-
-
 
 # "PR"
 #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
@@ -992,6 +991,14 @@ def _get_survey(name=None):
     if name in ['decals-dr3', 'mobo-dr3']:
         dirnm = os.path.join(basedir, name)
         d = LegacySurveyData(survey_dir=dirnm)
+
+        if name == 'decals-dr3':
+            d.drname = 'DECaLS DR3'
+            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3/'
+        elif name == 'mobo-dr3':
+            d.drname = 'Mosaic+BASS DR3'
+            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3-mobo/'
+
         # HACK -- drop unnecessary columns.
         B = d.get_bricks_readonly()
         for k in ['brickid', 'brickq', 'brickrow', 'brickcol']:
@@ -1026,6 +1033,10 @@ def _get_survey(name=None):
     if name == 'decals-dr2':
         dirnm = os.path.join(basedir, 'decals-dr2')
         d = LegacySurveyData(survey_dir=dirnm, version='dr2')
+
+        if name == 'decals-dr2':
+            d.drname = 'DECaLS DR2'
+            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/'
 
         # HACK -- drop unnecessary columns.
         B = d.get_bricks_readonly()
@@ -1073,6 +1084,8 @@ def _get_survey(name=None):
 
     dirnm = os.path.join(basedir, 'decals-dr1')
     d = LegacySurveyData(survey_dir=dirnm, version='dr1')
+    d.drname = 'DECaLS DR1'
+    d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr1/'
     surveys[name] = d
 
     return d
@@ -1383,20 +1396,22 @@ def nil(req):
 def brick_detail(req, brickname):
     #return HttpResponse('Brick ' + brickname)
     import numpy as np
-    bricks = _get_dr2_bricks()
+    #bricks = _get_dr2_bricks()
+    survey = _get_survey('decals-dr3')
+    bricks = survey.get_bricks()
     I = np.flatnonzero(brickname == bricks.brickname)
     assert(len(I) == 1)
     brick = bricks[I[0]]
 
     return HttpResponse('\n'.join([
-                '<html><head><title>DECaLS DR2 data for brick %s</title></head>' % (brickname),
+                '<html><head><title>%s data for brick %s</title></head>' % (survey.drname, brickname),
                 '<body>',
-                '<h1>DECaLS DR2 data for brick %s:</h1>' % (brickname),
+                '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
                 '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
                 '<ul>',
-                '<li><a href="http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/coadd/%s/%s/decals-%s-image.jpg">JPEG image</a></li>' % (brickname[:3], brickname, brickname),
-                '<li><a href="http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/coadd/%s/%s/">Coadded images</a></li>' % (brickname[:3], brickname),
-                '<li><a href="http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (brickname[:3], brickname),
+                '<li><a href="%s/coadd/%s/%s/decals-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
+                '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
+                '<li><a href="%s/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
                 '</ul>',
                 '</body></html>']))
 

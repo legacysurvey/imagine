@@ -221,7 +221,7 @@ var CatalogOverlay = L.Class.extend({
     },
 
     ready: function() {
-        //console.log(this._name + ' ready function called');
+        console.log(this._name + ' ready function called');
         this._checkbox = getOverlayCheckbox(this._pretty);
         // _checkbox is a jQuery node
         //console.log('checkbox:', this._checkbox);
@@ -890,6 +890,10 @@ function onMouseMove(e) {
 function inbrickccdUpdate(props) {
     if (props == undefined) {
         props = { 'latlng': lastLatLng };
+    }
+    if (!inbrickccdAdded) {
+        inbrickccdAdded = true;
+        inbrickccd.addTo(map);
     }
     var bricks = brickOverlay.under(props.latlng);
     var ccds = ccdOverlay.under(props.latlng);
@@ -1667,8 +1671,8 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
                               'labelsMinZoom': 7,
                              'urlTerm': 'ngc',});
 
-var targets_dr2 = new CatalogOverlay('targets-dr2', 'DECaLS DR2 Targets',
-                                  {'radius': 100,
+var targets_dr2 = new CatalogOverlay('targets-dr2', 'DESI Targets (DR2)',
+                                  {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
 
@@ -1796,6 +1800,13 @@ map.on('zoomend', onMapZoomEnd);
 map.on('moveend', function(e) {
     console.log('moveend');
     buildConstellations();
+});
+
+map.on('baselayerchange', function(e) {
+    console.log('baselayerchange: ' + e);
+    console.log('layer: ' + e.layer);
+    console.log('idname: ' + e.layer.name);
+    idname = e.layer.name;
 });
 
 // These are from Astrometry.net's stellarium_constellations.c
@@ -1935,13 +1946,13 @@ var buildConstellations = function() {
         var xc = 0.;
         var yc = 0.;
         var decc = 0.;
-        for (let s of ustars) {
+        ustars.forEach(function(s) {
             var ra  = Math.PI / 180. * constellation_stars[2*s];
             var dec = Math.PI / 180. * constellation_stars[2*s+1];
             xc += Math.cos(dec) * Math.cos(ra);
             yc += Math.cos(dec) * Math.sin(ra);
             decc += constellation_stars[2*s+1];
-        }
+        });
         xc /= (ustars.size + 0.0);
         yc /= (ustars.size + 0.0);
         ra  = 180. / Math.PI * Math.atan2(yc, xc);
