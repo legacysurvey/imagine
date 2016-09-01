@@ -286,6 +286,10 @@ def index(req):
 
     static_tile_url = settings.STATIC_TILE_URL
 
+    static_tile_url_dr1 = settings.STATIC_TILE_URL_DR1
+    subdomains_dr1 = settings.SUBDOMAINS_DR1
+    subdomains_dr1 = '[' + ','.join(["'%s'" % s for s in subdomains_dr1]) + '];'
+
     ccdsurl = settings.ROOT_URL + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
     bricksurl = settings.ROOT_URL + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
     expsurl = settings.ROOT_URL + '/exps/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
@@ -313,6 +317,10 @@ def index(req):
                        platesurl=platesurl,
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
+
+                       static_tile_url_dr1=static_tile_url_dr1,
+                       subdomains_dr1=subdomains_dr1,
+
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                        enable_sql = settings.ENABLE_SQL,
                        enable_vcc = settings.ENABLE_VCC,
@@ -825,8 +833,8 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
                                           B_dr1j.has_image_r,
                                           B_dr1j.has_image_z]))
         B_dr1j.rename('has_image_g', 'has_g')
-        B_dr1j.rename('has_image_g', 'has_g')
-        B_dr1j.rename('has_image_g', 'has_g')
+        B_dr1j.rename('has_image_r', 'has_r')
+        B_dr1j.rename('has_image_z', 'has_z')
         debug(len(B_dr1j), 'DR1 bricks with images')
 
     imagetag = 'image'

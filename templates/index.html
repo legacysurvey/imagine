@@ -992,6 +992,9 @@ tiles = mylayer('decals-dr2-resid', 'DECaLS DR2 residuals',
 allLayers.push(tiles);
 var tilesDecalsDr2Resid = tiles;
 
+
+
+{% comment %}
 tiles = mylayer('decals-dr1j', 'DECaLS DR1 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
@@ -1003,6 +1006,47 @@ allLayers.push(tiles);
 tiles = mylayer('decals-resid-dr1j', 'DECaLS DR1 residuals',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
+{% endcomment %}
+
+
+var subdomains_dr1 = {{ subdomains_dr1|safe }};
+
+var mylayer_dr1 = function (name, pretty, kwargs) {
+    var args = {
+        maxZoom: maxZoom,
+        minZoom: minZoom,
+        maxNativeZoom: {{maxNativeZoom}},
+        attribution: decals_attrib,
+        id: name,
+        ver: getversion(name),
+        unloadInvisibleTiles: true,
+        subdomains: subdomains_dr1,
+    };
+    for (var key in kwargs) {
+        args[key] = kwargs[key];
+    }
+    var tiles = new ZoomRangeTileLayer('{{ static_tile_url_dr1|safe }}', args);
+    tiles.name = name;
+    tiles.pretty = pretty;
+    return tiles;
+};
+
+tiles = mylayer_dr1('decals-dr1j', 'DECaLS DR1 images',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_dr1('decals-model-dr1j', 'DECaLS DR1 models',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_dr1('decals-resid-dr1j', 'DECaLS DR1 residuals',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
+
+
+
+
 
 tiles = mylayer('sdssco', 'SDSS images',
                 {'attribution': sdss_attrib,
