@@ -613,9 +613,9 @@ def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
                                           B_dr1j.has_image_r,
                                           B_dr1j.has_image_z]))
         B_dr1j.rename('has_image_g', 'has_g')
-        B_dr1j.rename('has_image_g', 'has_g')
-        B_dr1j.rename('has_image_g', 'has_g')
-        debug(len(B_dr1j), 'DR1 bricks with images')
+        B_dr1j.rename('has_image_r', 'has_r')
+        B_dr1j.rename('has_image_z', 'has_z')
+        print(len(B_dr1j), 'DR1 bricks with images')
 
     imagetag = 'image'
     tag = 'decals-dr1j'
