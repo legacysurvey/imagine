@@ -116,6 +116,10 @@ def index(req):
 
     static_tile_url = settings.STATIC_TILE_URL
 
+    static_tile_url_dr1 = settings.STATIC_TILE_URL_DR1
+    subdomains_dr1 = settings.SUBDOMAINS_DR1
+    subdomains_dr1 = '[' + ','.join(["'%s'" % s for s in subdomains_dr1]) + '];'
+
     ccdsurl = settings.ROOT_URL + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
     bricksurl = settings.ROOT_URL + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
     expsurl = settings.ROOT_URL + '/exps/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
@@ -141,7 +145,7 @@ def index(req):
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, zoom=zoom,
                        mosaic_bok=False,
-                       dr1=False,
+                       dr1=True,
                        galname=galname,
                        layer=layer, tileurl=tileurl,
                        absurl=absurl,
@@ -155,6 +159,10 @@ def index(req):
                        platesurl=platesurl,
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
+
+                       static_tile_url_dr1=static_tile_url_dr1,
+                       subdomains_dr1=subdomains_dr1,
+
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                        usercatalog = usercatalog,
                        usercatalogurl = usercatalogurl,
@@ -988,7 +996,7 @@ def _get_survey(name=None):
     basedir = settings.DATA_DIR
     from legacypipe.common import LegacySurveyData
 
-    if name in ['decals-dr3', 'mobo-dr3']:
+    if name in ['decals-dr3', 'mobo-dr3', 'mzls-dr3']:
         dirnm = os.path.join(basedir, name)
         d = LegacySurveyData(survey_dir=dirnm)
 
@@ -998,6 +1006,9 @@ def _get_survey(name=None):
         elif name == 'mobo-dr3':
             d.drname = 'Mosaic+BASS DR3'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3-mobo/'
+        elif name == 'mzls-dr3':
+            d.drname = 'MzLS DR3'
+            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3-mzls/'
 
         # HACK -- drop unnecessary columns.
         B = d.get_bricks_readonly()

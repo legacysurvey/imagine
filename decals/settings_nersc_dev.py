@@ -13,7 +13,11 @@ STATIC_URL_PATH = '/viewer-dev/static'
 
 STATIC_URL = 'http://%s%s/' % (HOSTNAME, STATIC_URL_PATH)
 TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+
 STATIC_TILE_URL = 'http://{s}.%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, STATIC_URL_PATH)
+
+STATIC_TILE_URL_DR1 = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+SUBDOMAINS_DR1 = SUBDOMAINS
 
 # no CORS -- so don't use subdomains, or specify hostname (www.legacysurvey.org vs legacysurvey.org)
 CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)

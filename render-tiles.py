@@ -573,6 +573,8 @@ def main():
     parser.add_option('--coadd', action='store_true', help='Create SDSS coadd images?')
     parser.add_option('--grass', action='store_true', help='progress plot')
 
+    parser.add_option('--bands', default='grz')
+
     opt,args = parser.parse_args()
 
     if len(opt.zoom) == 0:
@@ -602,12 +604,15 @@ def main():
 
 
     if opt.scale:
-        if opt.kind in ['decals-dr3', 'decals-dr3-model', 'mobo-dr3', 'mobo-dr3-model']:
+        if opt.kind in ['decals-dr3', 'decals-dr3-model', 'mobo-dr3', 'mobo-dr3-model',
+                        'mzls-dr3' ]:
             from glob import glob
             from map.views import _get_survey
             
             if 'decals-dr3' in opt.kind:
                 surveyname = 'decals-dr3'
+            elif 'mzls-dr3' in opt.kind:
+                surveyname = 'mzls-dr3'
             else:
                 surveyname = 'mobo-dr3'
             survey = _get_survey(surveyname)
@@ -627,7 +632,7 @@ def main():
                 filetype = 'model'
             imagetag = filetype
 
-            bands = 'grz'
+            bands = opt.bands
 
             # pat = survey.survey_dir + '/coadd/*/*/*-%s-?.fits*' % imagetag
             # print('Pattern:', pat)
