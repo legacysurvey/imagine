@@ -286,9 +286,9 @@ def index(req):
 
     static_tile_url = settings.STATIC_TILE_URL
 
-    static_tile_url_dr1 = settings.STATIC_TILE_URL_DR1
-    subdomains_dr1 = settings.SUBDOMAINS_DR1
-    subdomains_dr1 = '[' + ','.join(["'%s'" % s for s in subdomains_dr1]) + '];'
+    static_tile_url_B = settings.STATIC_TILE_URL_B
+    subdomains_B = settings.SUBDOMAINS_B
+    subdomains_B = '[' + ','.join(["'%s'" % s for s in subdomains_B]) + '];'
 
     ccdsurl = settings.ROOT_URL + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
     bricksurl = settings.ROOT_URL + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
@@ -318,8 +318,8 @@ def index(req):
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
 
-                       static_tile_url_dr1=static_tile_url_dr1,
-                       subdomains_dr1=subdomains_dr1,
+                       static_tile_url_B=static_tile_url_B,
+                       subdomains_B=subdomains_B,
 
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                        enable_sql = settings.ENABLE_SQL,
