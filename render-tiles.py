@@ -51,6 +51,17 @@ def _one_tile((kind, zoom, x, y, ignore)):
         print('map_mobo_dr3 kwargs:', kwa)
         map_mobo_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
                        hack_jpeg=True, **kwa)
+
+    elif kind in ['mzls-dr3', 'mzls-dr3-model', 'mzls-dr3-resid']:
+        v = 1
+        kwa = {}
+        if 'model' in kind:
+            kwa.update(model=True, add_gz=True)
+        if 'resid' in kind:
+            kwa.update(resid=True, model_gz=True)
+        print('map_mzls_dr3 kwargs:', kwa)
+        map_mzls_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
+                       hack_jpeg=True, **kwa)
         
     elif kind in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
         v = 1
@@ -59,7 +70,7 @@ def _one_tile((kind, zoom, x, y, ignore)):
             kwa.update(model=True, add_gz=True)
         if 'resid' in kind:
             kwa.update(resid=True, model_gz=True)
-        print('map_decals_dr3 kwargs:', kwa)
+        #print('map_decals_dr3 kwargs:', kwa)
         map_decals_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
                        hack_jpeg=True, drname='decals-dr3', **kwa)
         
@@ -653,8 +664,9 @@ def main():
                     scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
                     fnargs = dict(band=band, brickname=brick)
                     scaled = 8
-                    scaledfn = get_scaled(scalepat, fnargs, scaled, fn)
-                    print('get_scaled:', scaledfn)
+                    for i in range(1, scaled+1):
+                        scaledfn = get_scaled(scalepat, fnargs, i, fn)
+                        print('get_scaled:', scaledfn)
 
             # for fn in fns:
             #     parts = fn.split('/')

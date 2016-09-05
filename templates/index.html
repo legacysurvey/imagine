@@ -1127,26 +1127,10 @@ tiles = mylayer('decals-dr3-resid', 'DECaLS DR3 residuals',
 allLayers.push(tiles);
 
                                      
-tiles = mylayer('decals-dr2', 'DECaLS DR2 images',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-var tilesDecalsDr2Image = tiles;
 
-tiles = mylayer('decals-dr2-model', 'DECaLS DR2 models',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-var tilesDecalsDr2Model = tiles;
+var subdomains_B = {{ subdomains_B|safe }};
 
-tiles = mylayer('decals-dr2-resid', 'DECaLS DR2 residuals',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-var tilesDecalsDr2Resid = tiles;
-
-{% if dr1 %}
-
-var subdomains_dr1 = {{ subdomains_dr1|safe }};
-
-var mylayer_dr1 = function (name, pretty, kwargs) {
+var mylayer_B = function (name, pretty, kwargs) {
     var args = {
         maxZoom: maxZoom,
         minZoom: minZoom,
@@ -1155,26 +1139,44 @@ var mylayer_dr1 = function (name, pretty, kwargs) {
         id: name,
         ver: getversion(name),
         unloadInvisibleTiles: true,
-        subdomains: subdomains_dr1,
+        subdomains: subdomains_B,
     };
     for (var key in kwargs) {
         args[key] = kwargs[key];
     }
-    var tiles = new ZoomRangeTileLayer('{{ static_tile_url_dr1|safe }}', args);
+    var tiles = new ZoomRangeTileLayer('{{ static_tile_url_B|safe }}', args);
     tiles.name = name;
     tiles.pretty = pretty;
     return tiles;
 };
 
-tiles = mylayer_dr1('decals-dr1j', 'DECaLS DR1 images',
+
+tiles = mylayer_B('decals-dr2', 'DECaLS DR2 images',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+var tilesDecalsDr2Image = tiles;
+
+tiles = mylayer_B('decals-dr2-model', 'DECaLS DR2 models',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+var tilesDecalsDr2Model = tiles;
+
+tiles = mylayer_B('decals-dr2-resid', 'DECaLS DR2 residuals',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+var tilesDecalsDr2Resid = tiles;
+
+{% if dr1 %}
+
+tiles = mylayer_B('decals-dr1j', 'DECaLS DR1 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
-tiles = mylayer_dr1('decals-model-dr1j', 'DECaLS DR1 models',
+tiles = mylayer_B('decals-model-dr1j', 'DECaLS DR1 models',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
-tiles = mylayer_dr1('decals-resid-dr1j', 'DECaLS DR1 residuals',
+tiles = mylayer_B('decals-resid-dr1j', 'DECaLS DR1 residuals',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 {% endif %}

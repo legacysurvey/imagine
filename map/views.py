@@ -116,9 +116,9 @@ def index(req):
 
     static_tile_url = settings.STATIC_TILE_URL
 
-    static_tile_url_dr1 = settings.STATIC_TILE_URL_DR1
-    subdomains_dr1 = settings.SUBDOMAINS_DR1
-    subdomains_dr1 = '[' + ','.join(["'%s'" % s for s in subdomains_dr1]) + '];'
+    static_tile_url_B = settings.STATIC_TILE_URL_B
+    subdomains_B = settings.SUBDOMAINS_B
+    subdomains_B = '[' + ','.join(["'%s'" % s for s in subdomains_B]) + '];'
 
     ccdsurl = settings.ROOT_URL + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
     bricksurl = settings.ROOT_URL + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
@@ -160,8 +160,8 @@ def index(req):
                        static_tile_url=static_tile_url,
                        subdomains=subdomains,
 
-                       static_tile_url_dr1=static_tile_url_dr1,
-                       subdomains_dr1=subdomains_dr1,
+                       static_tile_url_B=static_tile_url_B,
+                       subdomains_B=subdomains_B,
 
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                        usercatalog = usercatalog,
@@ -471,6 +471,123 @@ def map_mobo_dr3(req, ver, zoom, x, y, savecache=None,
                            bricks=B_dr3,
                            decals=survey,
                            savecache=savecache, rgbfunc=dr2_rgb, **kwargs)
+
+
+
+
+B_mzls_dr3 = None
+def _get_mzls_dr3_bricks():
+    global B_mzls_dr3
+    if B_mzls_dr3 is not None:
+        return B_mzls_dr3
+
+    fn = os.path.join(settings.DATA_DIR, 'mzls-dr3', 'mzls-bricks-in-dr3.fits')
+    if os.path.exists(fn):
+        from astrometry.util.fits import fits_table
+        debug('Reading', fn)
+        B_mzls_dr3 = fits_table(fn, columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2',
+                                        'has_g', 'has_r', 'has_z'])
+        return B_mzls_dr3
+
+    from astrometry.libkd.spherematch import match_radec
+    import numpy as np
+
+    decals = _get_survey('mzls-dr3')
+    B = decals.get_bricks()
+    C = decals.get_ccds_readonly()
+    # CCD radius
+    radius = np.hypot(2048, 4096) / 2. * 0.262 / 3600.
+    # Brick radius
+    radius += np.hypot(0.25, 0.25)/2.
+    I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, radius * 1.05)
+    for band in 'grz':
+        has = np.zeros(len(B), bool)
+        K = (C.filter[J] == band)
+        has[I[K]] = True
+        B.set('has_%s' % band, has)
+        debug(sum(has), 'bricks have coverage in', band)
+
+    keep = np.zeros(len(B), bool)
+    keep[I] = True
+    B.cut(keep)
+    B_mzls_dr3 = B
+    B_mzls_dr3.writeto('/tmp/mzls-bricks-in-dr3.fits')
+    #B_dr3.writeto(fn)
+    #debug('Wrote', fn)
+    return B_mzls_dr3
+
+def map_mzls_dr3_model(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(model=True, model_gz=True, add_gz=True)
+    return map_mzls_dr3(req, ver, zoom, x, y, **kwargs)
+
+def map_mzls_dr3_resid(req, ver, zoom, x, y, **kwargs):
+    kwargs.update(resid=True, model_gz=True)
+    return map_mzls_dr3(req, ver, zoom, x, y, **kwargs)
+
+def map_mzls_dr3(req, ver, zoom, x, y, savecache=None,
+                    model=False, resid=False, nexp=False,
+                    **kwargs):
+    if savecache is None:
+        savecache = settings.SAVE_CACHE
+
+    B_dr3 = _get_mzls_dr3_bricks()
+    survey = _get_survey('mzls-dr3')
+    
+    imagetag = 'image'
+    tag = 'mzls-dr3'
+    imagedir = 'mzls-dr3'
+
+    if model:
+        imagetag = 'model'
+        tag = 'mzls-dr3-model'
+    if resid:
+        imagetag = 'resid'
+        kwargs.update(modeldir = 'mzls-dr3-model')
+        tag = 'mzls-dr3-resid'
+
+    rgb = rgbkwargs
+    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
+                           imagetag=imagetag,
+                           rgbkwargs=rgb,
+                           bricks=B_dr3,
+                           decals=survey,
+                           bands='z',
+                           savecache=savecache, rgbfunc=mzls_dr3_rgb, **kwargs)
+
+def mzls_dr3_rgb(rimgs, bands, scales=None,
+             m = 0.02):
+    import numpy as np
+    rgbscales = {'u': 1.5, #1.0,
+                 'g': 2.5,
+                 'r': 1.5,
+                 'i': 1.0,
+                 'z': 0.4, #0.3
+                 }
+    if scales is not None:
+        rgbscales.update(scales)
+        
+    b,g,r = [rimg * rgbscales[b] for rimg,b in zip(rimgs, bands)]
+    r = np.maximum(0, r + m)
+    g = np.maximum(0, g + m)
+    b = np.maximum(0, b + m)
+    I = (r+g+b)/3.
+    Q = 20
+    #alpha = 1.0
+    #m2 = 0.
+    #fI = np.arcsinh(alpha * Q * (I - m2)) / np.sqrt(Q)
+    fI = np.arcsinh(Q * I) / np.sqrt(Q)
+    I += (I == 0.) * 1e-6
+    R = fI * r / I
+    G = fI * g / I
+    B = fI * b / I
+    # maxrgb = reduce(np.maximum, [R,G,B])
+    # J = (maxrgb > 1.)
+    # R[J] = R[J]/maxrgb[J]
+    # G[J] = G[J]/maxrgb[J]
+    # B[J] = B[J]/maxrgb[J]
+    rgb = np.dstack((R,G,B))
+    rgb = np.clip(rgb, 0, 1)
+    return rgb
 
 
 B_dr3 = None
