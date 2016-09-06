@@ -1,7 +1,7 @@
 from settings_common import *
 
-#DEBUG_LOGGING = True
-DEBUG_LOGGING = False
+DEBUG_LOGGING = True
+#DEBUG_LOGGING = False
 
 USER_QUERY_DIR = '/tmp/viewer-dev-user'
 #USER_CATALOG_DIR = USER_QUERY_DIR

@@ -33,9 +33,14 @@ urlpatterns = [
     url(r'^tycho2/(\d+)/cat.json', cats.cat_tycho2),
 
     # DR3 Mosaic+Bok
-    url(r'^mobo-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3),
-    url(r'^mobo-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3_model),
-    url(r'^mobo-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3_resid),
+    # url(r'^mobo-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3),
+    # url(r'^mobo-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3_model),
+    # url(r'^mobo-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3_resid),
+
+    # DR3 MzLS
+    url(r'^mzls-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mzls_dr3),
+    url(r'^mzls-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mzls_dr3_model),
+    url(r'^mzls-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mzls_dr3_resid),
 
     # DR3
     url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3),
@@ -132,6 +137,10 @@ urlpatterns = [
     url(r'^exposure/([\w-]+)/([\w-]+)', views.exposure_detail, name='exp_detail'),
     # this one is here to provide a name for the javascript to refer to.
     url(r'^exposure/', views.nil, name='exp_detail_blank'),
+
+    # Image data
+    url(r'^image-data/([\w-]+)/([\w-]+)', views.image_data, name='image_data'),
+    url(r'^dq-data/([\w-]+)/([\w-]+)', views.dq_data, name='dq_data'),
 
     # fall-through
     url(r'', views.index),

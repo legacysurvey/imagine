@@ -33,6 +33,8 @@ tileversions = {
     'sdss': [1,],
     'sdssco': [1,],
 
+    'mzls-dr3': [1],
+
     'mobo-dr3': [1],
     'mobo-dr3-model': [1],
     'mobo-dr3-resid': [1],
@@ -350,6 +352,8 @@ def layer_name_map(name):
 
             'mobo-dr3-ccds': 'mobo-dr3',
 
+            'mzls-dr3-ccds': 'mzls-dr3',
+
     }.get(name, name)
 
 B_dr2 = None
@@ -532,7 +536,10 @@ def map_mzls_dr3(req, ver, zoom, x, y, savecache=None,
 
     B_dr3 = _get_mzls_dr3_bricks()
     survey = _get_survey('mzls-dr3')
-    
+
+    print('MzLS-DR3 tile zoom', zoom, 'x,y', x,y)
+    print('DR3 bricks:', len(B_dr3))
+
     imagetag = 'image'
     tag = 'mzls-dr3'
     imagedir = 'mzls-dr3'
@@ -546,49 +553,32 @@ def map_mzls_dr3(req, ver, zoom, x, y, savecache=None,
         tag = 'mzls-dr3-resid'
 
     rgb = rgbkwargs
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
+    return map_coadd_bands(req, ver, zoom, x, y, 'z', tag, imagedir,
                            imagetag=imagetag,
                            rgbkwargs=rgb,
                            bricks=B_dr3,
                            decals=survey,
-                           bands='z',
                            savecache=savecache, rgbfunc=mzls_dr3_rgb, **kwargs)
 
 def mzls_dr3_rgb(rimgs, bands, scales=None,
-             m = 0.02):
+                 m = 0.02, **stuff):
     import numpy as np
-    rgbscales = {'u': 1.5, #1.0,
-                 'g': 2.5,
-                 'r': 1.5,
-                 'i': 1.0,
-                 'z': 0.4, #0.3
-                 }
+    rgbscales = {'z': 0.4,}
     if scales is not None:
         rgbscales.update(scales)
-        
-    b,g,r = [rimg * rgbscales[b] for rimg,b in zip(rimgs, bands)]
-    r = np.maximum(0, r + m)
-    g = np.maximum(0, g + m)
-    b = np.maximum(0, b + m)
-    I = (r+g+b)/3.
+    assert(bands == 'z')
+    assert(len(rimgs) == 1)
+
+    z = rimgs[0] * rgbscales[bands[0]]
+    z = np.maximum(0, z + m)
+    I = z
     Q = 20
-    #alpha = 1.0
-    #m2 = 0.
-    #fI = np.arcsinh(alpha * Q * (I - m2)) / np.sqrt(Q)
     fI = np.arcsinh(Q * I) / np.sqrt(Q)
     I += (I == 0.) * 1e-6
-    R = fI * r / I
-    G = fI * g / I
-    B = fI * b / I
-    # maxrgb = reduce(np.maximum, [R,G,B])
-    # J = (maxrgb > 1.)
-    # R[J] = R[J]/maxrgb[J]
-    # G[J] = G[J]/maxrgb[J]
-    # B[J] = B[J]/maxrgb[J]
-    rgb = np.dstack((R,G,B))
+    Z = fI * z / I
+    rgb = np.dstack((Z,Z,Z))
     rgb = np.clip(rgb, 0, 1)
     return rgb
-
 
 B_dr3 = None
 def _get_dr3_bricks():
@@ -1341,7 +1331,7 @@ def ccd_list(req):
 
     ccdname = lambda c: '%s %i-%s-%s' % (c.camera, c.expnum, c.extname.strip(), c.filter)
 
-    if name in ['decals-dr2', 'decals-dr3', 'mobo-dr3']:
+    if name in ['decals-dr2', 'decals-dr3', 'mobo-dr3', 'mzls-dr3']:
         ccdname = lambda c: '%s %i-%s-%s' % (c.camera, c.expnum, c.ccdname.strip(), c.filter)
         #decals = _get_survey(name)
         #CCDS.cut(decals.photometric_ccds(CCDS))
@@ -1475,11 +1465,8 @@ def sdss_plate_list(req):
     return HttpResponse(json.dumps(dict(objs=plates)),
                         content_type='application/json')
 
-    
-def ccd_detail(req, name, ccd):
-    import numpy as np
-    #ccd = req.GET['ccd']
-    words = ccd.split('-')
+def parse_ccd_name(name):
+    words = name.split('-')
     #print('Words:', words)
     #assert(len(words) == 3)
     if len(words) == 4:
@@ -1488,21 +1475,41 @@ def ccd_detail(req, name, ccd):
     expnum = words[0]
     expnum = int(expnum, 10)
     ccdname = words[1]
-
-    decals = _get_survey(name=name)
-    C = decals.find_ccds(expnum=expnum, ccdname=ccdname)
-    #print('Got', len(C), 'chips for expnum %i, ccdname "%s"' % (expnum, ccdname))
+    return expnum, ccdname
+    
+def get_ccd_object(survey, ccd):
+    expnum,ccdname = parse_ccd_name(ccd)
+    survey = _get_survey(name=survey)
+    C = survey.find_ccds(expnum=expnum, ccdname=ccdname)
     assert(len(C) == 1)
     c = C[0]
+    #c.about()
+    return survey, c
 
-    c.about()
+def ccd_detail(req, name, ccd):
+    survey, c = get_ccd_object(name, ccd)
 
-    if name in ['decals-dr2', 'decals-dr3']:
-        about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix' % (ccd, c.image_filename, c.image_hdu, c.exptime, c.seeing, c.fwhm)
+    if name in ['decals-dr2', 'decals-dr3', 'mzls-dr3']:
+        imgurl = reverse('image_data', args=[name, ccd])
+        dqurl  = reverse('dq_data', args=[name, ccd])
+        about = '''
+<html><body>
+CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix
+<br />
+<ul>
+<li>image <a href="%s">%s</a>
+<li>data quality (flags) <a href="%s">%s</a>
+</ul>
+</body></html>
+'''
+        about = about % (ccd, c.image_filename, c.image_hdu, c.exptime, c.seeing, c.fwhm,
+                         imgurl, ccd, dqurl, ccd)
+
     else:
-        about = lambda ccd, c: 'CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' % (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262)
+        about = ('CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' %
+                 (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262))
 
-    return HttpResponse(about(ccd, c))
+    return HttpResponse(about)
 
 
 def exposure_detail(req, name, exp):
@@ -1889,6 +1896,37 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
                      expires=3600)
 
 
+def image_data(req, survey, ccd):
+    import fitsio
+    survey, c = get_ccd_object(survey, ccd)
+    im = survey.get_image_object(c)
+    fn = im.imgfn
+    #dirnm = survey.get_image_dir()
+    #fn = os.path.join(dirnm, c.image_filename)
+    print('Opening', fn)
+    import tempfile
+    ff,tmpfn = tempfile.mkstemp(suffix='.fits')
+    os.close(ff)
+    primhdr = fitsio.read_header(fn)
+    pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
+    fitsio.write(tmpfn, None, header=primhdr, clobber=True)
+    fitsio.write(tmpfn, pix,  header=hdr)
+    return send_file(tmpfn, 'image/fits', unlink=True, filename='image-%s.fits' % ccd)
+
+def dq_data(req, survey, ccd):
+    import fitsio
+    survey, c = get_ccd_object(survey, ccd)
+    im = survey.get_image_object(c)
+    fn = im.dqfn
+    print('Opening', fn)
+    import tempfile
+    ff,tmpfn = tempfile.mkstemp(suffix='.fits')
+    os.close(ff)
+    primhdr = fitsio.read_header(fn)
+    pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
+    fitsio.write(tmpfn, None, header=primhdr, clobber=True)
+    fitsio.write(tmpfn, pix,  header=hdr)
+    return send_file(tmpfn, 'image/fits', unlink=True, filename='dq-%s.fits' % ccd)
 
 if __name__ == '__main__':
     import os
