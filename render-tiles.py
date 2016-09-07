@@ -1027,6 +1027,17 @@ def main():
             print()
             print('Y row', y)
 
+            if opt.queue:
+                cmd = 'python -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s --mindec %f --maxdec %f' % (zoom, y, y+1, opt.kind, opt.mindec, opt.maxdec)
+                if opt.near_ccds:
+                    cmd += ' --near-ccds'
+                if opt.all:
+                    cmd += ' --all'
+                if opt.ignore:
+                    cmd += ' --ignore'
+                print(cmd)
+                continue
+
             if opt.near:
                 d = dd[iy]
                 I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25 + tilesize, nearest=True)
@@ -1051,17 +1062,6 @@ def main():
                 x = xx[keep]
             else:
                 x = xx
-
-            if opt.queue:
-                cmd = 'python -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s' % (zoom, y, y+1, opt.kind)
-                if opt.near_ccds:
-                    cmd += ' --near-ccds'
-                if opt.all:
-                    cmd += ' --all'
-                if opt.ignore:
-                    cmd += ' --ignore'
-                print(cmd)
-                continue
 
             # if opt.grass:
             #     for xi in x:

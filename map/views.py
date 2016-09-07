@@ -1090,6 +1090,7 @@ def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0
 
 surveys = {}
 def _get_survey(name=None):
+    import numpy as np
     global surveys
     if name is not None:
         name = str(name)
@@ -1144,6 +1145,10 @@ def _get_survey(name=None):
                 if k in C.columns():
                     C.delete_column(k)
             C.writeto('/tmp/cut-ccds-%s.fits' % name)
+
+        # Remove trailing spaces...
+        C.ccdname = np.array([s.strip() for s in C.ccdname])
+        C.camera  = np.array([c.strip() for c in C.camera ])
 
         surveys[name] = d
         return d
@@ -1480,7 +1485,20 @@ def parse_ccd_name(name):
 def get_ccd_object(survey, ccd):
     expnum,ccdname = parse_ccd_name(ccd)
     survey = _get_survey(name=survey)
-    C = survey.find_ccds(expnum=expnum, ccdname=ccdname)
+    #
+    # import numpy as np
+    # allccds = survey.get_ccds_readonly()
+    # print('Got', len(allccds), 'CCDs')
+    # print('Got', sum(allccds.expnum == expnum), 'matching exposure number')
+    # print('CCDnames:', np.unique(allccds.ccdname))
+    # allccds.ccdname = np.array([s.strip() for s in allccds.ccdname])
+    # print('CCDnames:', np.unique(allccds.ccdname))
+    # print('Got', sum(allccds.ccdname == ccdname), 'matching ccdname')
+    # print('Got', sum((allccds.ccdname == ccdname) * (allccds.expnum == expnum)),
+    #       'matching ccdname & expnum')
+    #
+    C = survey.find_ccds(expnum=expnum, ccdname=str(ccdname))
+    print('Searching for expnum=%i, ccdname="%s" -> %i ccds' % (expnum, ccdname,len(C)))
     assert(len(C) == 1)
     c = C[0]
     #c.about()
@@ -1905,13 +1923,13 @@ def image_data(req, survey, ccd):
     #fn = os.path.join(dirnm, c.image_filename)
     print('Opening', fn)
     import tempfile
-    ff,tmpfn = tempfile.mkstemp(suffix='.fits')
+    ff,tmpfn = tempfile.mkstemp(suffix='.fits.gz')
     os.close(ff)
     primhdr = fitsio.read_header(fn)
     pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
     fitsio.write(tmpfn, None, header=primhdr, clobber=True)
     fitsio.write(tmpfn, pix,  header=hdr)
-    return send_file(tmpfn, 'image/fits', unlink=True, filename='image-%s.fits' % ccd)
+    return send_file(tmpfn, 'image/fits', unlink=True, filename='image-%s.fits.gz' % ccd)
 
 def dq_data(req, survey, ccd):
     import fitsio
@@ -1920,13 +1938,13 @@ def dq_data(req, survey, ccd):
     fn = im.dqfn
     print('Opening', fn)
     import tempfile
-    ff,tmpfn = tempfile.mkstemp(suffix='.fits')
+    ff,tmpfn = tempfile.mkstemp(suffix='.fits.gz')
     os.close(ff)
     primhdr = fitsio.read_header(fn)
     pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
     fitsio.write(tmpfn, None, header=primhdr, clobber=True)
     fitsio.write(tmpfn, pix,  header=hdr)
-    return send_file(tmpfn, 'image/fits', unlink=True, filename='dq-%s.fits' % ccd)
+    return send_file(tmpfn, 'image/fits', unlink=True, filename='dq-%s.fits.gz' % ccd)
 
 if __name__ == '__main__':
     import os
