@@ -84,6 +84,7 @@ urlpatterns = [
     url(r'^fits-cutout-decals-dr2', cutouts.fits_cutout_decals_dr2),
 
     url(r'^jpeg-cutout', cutouts.jpeg_cutout, name='cutout-jpeg'),
+    url(r'^fits-cutout', cutouts.fits_cutout, name='cutout-fits'),
 
     # NGC/IC/UGC galaxies
     url(r'^ngc/(\d+)/cat.json', cats.cat_gals),

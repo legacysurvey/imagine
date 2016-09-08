@@ -142,6 +142,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
                     hack_jpeg=False,
                     drname=None, decals=None,
                     basepat=None,
+                    scalepat=None,
                     nativescale=14, maxscale=8,
                     ):
     from decals import settings
@@ -198,7 +199,6 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         basepat += '.gz'
 
     scaled = 0
-    scalepat = None
     if scaledir is None:
         scaledir = imagedir
     if zoom < nativescale:
@@ -206,7 +206,8 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
         scaled = np.clip(scaled, 1, maxscale)
         #debug('Scaled-down:', scaled)
         dirnm = os.path.join(basedir, 'scaled', scaledir)
-        scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
+        if scalepat is None:
+            scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
 
     if decals is None:
         from map.views import _get_survey
@@ -286,6 +287,7 @@ def map_coadd_bands(req, ver, zoom, x, y, bands, tag, imagedir,
             else:
                 basefn = D.find_file(imagetag, brick=brickname, band=band)
                 fn = get_scaled(scalepat, fnargs, scaled, basefn)
+
             if fn is None:
                 debug('not found: brick', brickname, 'band', band, 'with basefn', basefn)
                 savecache = False

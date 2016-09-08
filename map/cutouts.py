@@ -29,8 +29,7 @@ def fits_cutout_decals_dr2(req):
     return cutout_decals(req, fits=True, default_tag='decals-dr2', dr2=True)
 
 def cutout_decals(req, jpeg=False, fits=False, default_tag='decals-dr1j',
-                  dr2=False):
-
+                  dr2=False, dr3=False):
     kwa = {}
     tag = req.GET.get('tag', None)
     debug('Requested tag:', tag)
@@ -49,33 +48,25 @@ def cutout_decals(req, jpeg=False, fits=False, default_tag='decals-dr1j',
         imagetag = 'resid'
         kwa.update(model_gz=True)
 
-    bricks = None
-    #if tag == 'decals-dr1n':
-    #    bricks = get_dr1n_bricks()
-    if dr2:
-        bricks = _get_dr2_bricks()
-
     hdr = None
     if fits:
         import fitsio
         hdr = fitsio.FITSHDR()
         hdr['SURVEY'] = 'DECaLS'
-        if dr2:
+        if dr3:
+            hdr['VERSION'] = 'DR3'
+        elif dr2:
             hdr['VERSION'] = 'DR2'
         else:
             hdr['VERSION'] = 'DR1'
 
     rgbfunc = None
-    if dr2:
+    if dr2 or dr3:
         rgbfunc = dr2_rgb
 
-    #print('Calling cutout_on_bricks: tag="%s"' % tag)
-        
-    return cutout_on_bricks(req, tag, bricks=bricks, imagetag=imagetag,
+    return cutout_on_bricks(req, tag, imagetag=imagetag, drname=tag,
                             jpeg=jpeg, fits=fits,
-                            drname=tag,
                             rgbfunc=rgbfunc, outtag=tag, hdr=hdr)
-
 
 def jpeg_cutout_sdssco(req):
     return cutout_sdssco(req, jpeg=True)
@@ -90,16 +81,22 @@ def cutout_sdssco(req, jpeg=False, fits=False):
         hdr = fitsio.FITSHDR()
         hdr['SURVEY'] = 'SDSS'
 
-    # data/coadd/sdssco/000/sdssco-0001m002-g.fits
     from decals import settings
     basedir = settings.DATA_DIR
-    basepat = os.path.join(basedir, 'coadd', 'sdssco', '%(brickname).3s',
-                           'sdssco-%(brickname)s-%(band)s.fits')
+    scalepat = os.path.join(basedir, 'scaled', 'sdssco', '%(scale)i%(band)s',
+                            '%(brickname).3s', 'sdssco-%(brickname)s-%(band)s.fits')
 
-    return cutout_on_bricks(req, 'sdssco', bricks=get_sdssco_bricks(), imagetag='sdssco',
+    from views import get_sdssco_bricks, sdss_rgb
+
+    from views import _get_survey
+    survey = _get_survey('sdssco')
+
+    return cutout_on_bricks(req, 'sdssco',
+                            decals=survey,
                             jpeg=jpeg, fits=fits,
                             pixscale=0.396, bands='gri', native_zoom=13, maxscale=6,
-                            rgbfunc=sdss_rgb, outtag='sdss', hdr=hdr, basepat=basepat)
+                            rgbfunc=sdss_rgb, outtag='sdss', hdr=hdr,
+                            scalepat=scalepat)
 
 # def jpeg_cutout_unwise(req):
 #     return cutout_unwise(req, jpeg=True)
@@ -196,9 +193,24 @@ def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
     return send_file(tmpfn, 'image/fits', unlink=True, filename=fn)
 
 def jpeg_cutout(req):
-    layer = req.GET.get('layer', 'decals-dr2')
+    layer = req.GET.get('layer', 'decals-dr3')
     if layer == 'decals-dr1j':
         return jpeg_cutout_decals_dr1j(req)
     if layer in ['sdss', 'sdssco']:
         return jpeg_cutout_sdssco(req)
-    return jpeg_cutout_decals_dr2(req)
+    if layer == 'decals-dr2':
+        return cutout_decals(req, jpeg=True, default_tag='decals-dr2', dr2=True)
+    if layer == 'decals-dr3':
+        return cutout_decals(req, jpeg=True, default_tag='decals-dr3', dr3=True)
+
+def fits_cutout(req):
+    layer = req.GET.get('layer', 'decals-dr3')
+    if layer == 'decals-dr1j':
+        return fits_cutout_decals_dr1j(req)
+    if layer in ['sdss', 'sdssco']:
+        return fits_cutout_sdssco(req)
+    if layer == 'decals-dr2':
+        return cutout_decals(req, fits=True, default_tag='decals-dr2', dr2=True)
+    if layer == 'decals-dr3':
+        return cutout_decals(req, fits=True, default_tag='decals-dr3', dr3=True)
+

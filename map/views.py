@@ -1098,7 +1098,6 @@ def _get_survey(name=None):
         return surveys[name]
 
     debug('Creating LegacySurveyData() object for "%s"' % name)
-    debug('cwd:', os.getcwd())
     
     from decals import settings
     basedir = settings.DATA_DIR
@@ -1158,6 +1157,42 @@ def _get_survey(name=None):
         C.ccdname = np.array([s.strip() for s in C.ccdname])
         C.camera  = np.array([c.strip() for c in C.camera ])
 
+        surveys[name] = d
+        return d
+
+    if name == 'sdssco':
+        from views import get_sdssco_bricks
+        dirnm = os.path.join(basedir, name)
+
+        class SdssData(LegacySurveyData):
+            def find_file(self, filetype, brick=None, brickpre=None, band='%(band)s',
+                          output=False):
+                if brick is None:
+                    brick = '%(brick)s'
+                    brickpre = '%(brick).3s'
+                else:
+                    brickpre = brick[:3]
+        
+                if output:
+                    basedir = self.output_dir
+                else:
+                    basedir = self.survey_dir
+        
+                if brick is not None:
+                    codir = os.path.join(basedir, 'coadd', brickpre)
+        
+                sname = self.file_prefix
+                if filetype in ['invvar', 'chi2', 'image']:
+                    return os.path.join(codir, '%s-%s-%s.fits' %
+                                        (sname, brick, band))
+                return super(SdssData, self).find_file(
+                    filetype, brick=brick, brickpre=brickpre, band=band, output=output)
+
+        d = SdssData(survey_dir=dirnm)
+        d.bricks = get_sdssco_bricks()
+        d.drname = 'SDSS'
+        d.drurl = None
+        d.file_prefix = 'sdssco'
         surveys[name] = d
         return d
 
