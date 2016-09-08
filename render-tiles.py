@@ -521,10 +521,14 @@ def top_levels(mp, opt):
 
         rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
+        bands = 'grz'
         if opt.kind in ['decals-dr2', 'decals-dr2-model',
-                        'decals-dr3', 'decals-dr3-model',
-                        'mzls-dr3', 'mzls-dr3-model']:
+                        'decals-dr3', 'decals-dr3-model',]:
             get_rgb = dr2_rgb
+            rgbkwargs = {}
+        elif opt.kind in ['mzls-dr3', 'mzls-dr3-model']:
+            get_rgb = mzls_dr3_rgb
+            bands = 'z'
             rgbkwargs = {}
         elif opt.kind == 'sdssco':
             rgbfunc=sdss_rgb
@@ -543,7 +547,6 @@ def top_levels(mp, opt):
         side = tiles * tilesize
 
         basepat = 'base-%s-%i-%%s.fits' % (opt.kind, basescale)
-        bands = 'grz'
 
         basefns = [basepat % band for band in bands]
         if not all([os.path.exists(fn) for fn in basefns]):
@@ -583,13 +586,9 @@ def top_levels(mp, opt):
             print('Reading', basefns)
             bases = [fitsio.read(fn) for fn in basefns]
 
-        for scale in range(basescale-1, -1, -1):
+        #for scale in range(basescale-1, -1, -1):
+        for scale in range(basescale, -1, -1):
             print('Scale', scale)
-            for i,base in enumerate(bases):
-                #base = gaussian_filter(base, 1.)
-                base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
-                bases[i] = base
-
             tiles = 2**scale
             for y in range(tiles):
                 for x in range(tiles):
@@ -608,6 +607,11 @@ def top_levels(mp, opt):
                     trymakedirs(fn)
                     save_jpeg(fn, rgb)
                     print('Wrote', fn)
+
+            for i,base in enumerate(bases):
+                #base = gaussian_filter(base, 1.)
+                base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
+                bases[i] = base
 
 
 

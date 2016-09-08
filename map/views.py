@@ -1104,11 +1104,19 @@ def _get_survey(name=None):
     basedir = settings.DATA_DIR
     from legacypipe.common import LegacySurveyData
 
-    if name in ['decals-dr3', 'mobo-dr3', 'mzls-dr3']:
+    if name in [ 'decals-dr2', 'decals-dr3', 'mobo-dr3', 'mzls-dr3']:
         dirnm = os.path.join(basedir, name)
-        d = LegacySurveyData(survey_dir=dirnm)
 
-        if name == 'decals-dr3':
+        if name == 'decals-dr2':
+            d = LegacySurveyData(survey_dir=dirnm, version='dr2')
+        else:
+            d = LegacySurveyData(survey_dir=dirnm)
+
+
+        if name == 'decals-dr2':
+            d.drname = 'DECaLS DR2'
+            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/'
+        elif name == 'decals-dr3':
             d.drname = 'DECaLS DR3'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3/'
         elif name == 'mobo-dr3':
@@ -1118,11 +1126,11 @@ def _get_survey(name=None):
             d.drname = 'MzLS DR3'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3-mzls/'
 
-        # HACK -- drop unnecessary columns.
+        # drop unnecessary columns.
         B = d.get_bricks_readonly()
         for k in ['brickid', 'brickq', 'brickrow', 'brickcol']:
             B.delete_column(k)
-        # HACK -- plug in a cut version of the CCDs table, if it exists
+        # plug in a cut version of the CCDs table, if it exists
         cutfn = os.path.join(dirnm, 'ccds-cut.fits')
         if os.path.exists(cutfn):
             from astrometry.util.fits import fits_table
@@ -1137,7 +1145,7 @@ def _get_survey(name=None):
             debug('HACK -- cut to', len(C), 'not-blacklisted CCDs')
             print('CCDs:')
             C.about()
-            for k in ['date_obs', 'ut', 'airmass',
+            for k in [#'date_obs', 'ut', 'airmass',
                       'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
                       'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
                       'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
@@ -1149,51 +1157,6 @@ def _get_survey(name=None):
         # Remove trailing spaces...
         C.ccdname = np.array([s.strip() for s in C.ccdname])
         C.camera  = np.array([c.strip() for c in C.camera ])
-
-        surveys[name] = d
-        return d
-    
-    if name == 'decals-dr2':
-        dirnm = os.path.join(basedir, 'decals-dr2')
-        d = LegacySurveyData(survey_dir=dirnm, version='dr2')
-
-        if name == 'decals-dr2':
-            d.drname = 'DECaLS DR2'
-            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/'
-
-        # HACK -- drop unnecessary columns.
-        B = d.get_bricks_readonly()
-        for k in ['brickid', 'brickq', 'brickrow', 'brickcol']:
-            B.delete_column(k)
-
-        # HACK -- plug in a cut version of the CCDs table, if it exists
-        cutfn = os.path.join(dirnm, 'decals-ccds-cut.fits')
-        if os.path.exists(cutfn):
-            from astrometry.util.fits import fits_table
-            import numpy as np
-            C = fits_table(cutfn)
-            d.ccds = C
-            # Remove trailing spaces from 'ccdname' column
-            # "N4 " -> "N4"
-            C.ccdname = np.array([s.strip() for s in C.ccdname])
-            # Remove trailing spaces from 'camera' column.
-            C.camera = np.array([c.strip() for c in C.camera])
-
-        else:
-            C = d.get_ccds_readonly()
-            # HACK -- cut to photometric & not-blacklisted CCDs.
-            C.cut(d.photometric_ccds(C))
-            debug('HACK -- cut to', len(C), 'photometric CCDs')
-            C.cut(d.apply_blacklist(C))
-            debug('HACK -- cut to', len(C), 'not-blacklisted CCDs')
-            for k in [#'date_obs', 'ut', 'airmass',
-                      'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
-                      'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
-                      'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
-                      'ccdnmatchb', 'ccdmdncol', 'expid']:
-                C.delete_column(k)
-            # C.writeto(cutfn)
-            C.writeto('/tmp/decals-ccds-cut.fits')
 
         surveys[name] = d
         return d
@@ -1598,13 +1561,13 @@ def cutouts(req):
     debug(len(CCDs), 'CCDs')
     print('CCDs:', CCDs.columns())
 
-    CCDs = CCDs[np.lexsort((CCDs.extname, CCDs.expnum, CCDs.filter))]
+    CCDs = CCDs[np.lexsort((CCDs.ccdname, CCDs.expnum, CCDs.filter))]
 
     ccds = []
     for i in range(len(CCDs)):
         c = CCDs[i]
         try:
-            c.cpimage = _get_image_filename(c)
+            c.image_filename = _get_image_filename(c)
             dim = survey.get_image_object(c)
             wcs = dim.get_wcs()
         except:
@@ -1641,13 +1604,13 @@ def cutouts(req):
 
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
-        fn = ccd.cpimage.replace(settings.DATA_DIR + '/', '')
-        theurl = url % (domains[i%len(domains)], int(ccd.expnum), ccd.extname.strip()) + '?x=%i&y=%i' % (x,y)
+        fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
+        theurl = url % (domains[i%len(domains)], int(ccd.expnum), ccd.ccdname.strip()) + '?x=%i&y=%i' % (x,y)
         if name is not None:
             theurl += '&name=' + name
         print('CCD columns:', ccd.columns())
         ccdsx.append(('CCD %s %i %s, %.1f sec (x,y = %i,%i)<br/><small>(%s [%i])</small><br/><small>(observed %s @ %s)</small>' %
-                      (ccd.filter, ccd.expnum, ccd.extname, ccd.exptime, x, y, fn, ccd.cpimage_hdu, ccd.date_obs, ccd.ut), theurl))
+                      (ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y, fn, ccd.image_hdu, ccd.date_obs, ccd.ut), theurl))
     return render(req, 'cutouts.html',
                   dict(ra=ra, dec=dec, ccds=ccdsx, name=name,
                        brick=brick, brickx=brickx, bricky=bricky))
