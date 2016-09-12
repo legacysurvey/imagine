@@ -815,15 +815,6 @@ function onMapClick(e) {
     var ra  = long2ra(e.latlng.lng);
     var dec = lat2dec(e.latlng.lat);
 
-{% comment %}
-    var bricks = brickOverlay.under(e.latlng);
-    var ccds = ccdOverlay.under(e.latlng);
-    var exps = expOverlay.under(e.latlng);
-    var ccds3 = ccdOverlay3.under(e.latlng);
-    var ccds3m = ccdOverlay3m.under(e.latlng);
-    var exps3 = expOverlay3.under(e.latlng);
-{% endcomment %}
-
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
     var qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
 
@@ -832,7 +823,7 @@ function onMapClick(e) {
     var linkurl = '{{ absurl }}?' + qstr;
 
     for (var i=0,len=overlays.length; i<len; i++) {
-        console.log('Overlay ' + overlays[i]._name + ' shown? ' + overlays[i]._show + ', url term ' + overlays[i]._url_term);
+        // console.log('Overlay ' + overlays[i]._name + ' shown? ' + overlays[i]._show + ', url term ' + overlays[i]._url_term);
         if (overlays[i]._show) {
             linkurl += '&' + overlays[i]._url_term;
         }
@@ -862,39 +853,6 @@ function onMapClick(e) {
             txt += '<br/>' + overlay._detail(overlay._url_name, objs[j], '');
         }
     }
-                                            
-{% comment %}
-    if (bricks.length) {
-        for (var i=0; i<bricks.length; i++) {
-            txt += '<br/>Brick: ' + brick_detail(bricks[i]);
-        }
-    }
-    if (ccds.length) {
-        for (var i=0; i<ccds.length; i++) {
-            txt += '<br/>CCD: ' + ccd_detail('decals-dr2', ccds[i], '');
-        }
-    }
-    if (ccds3.length) {
-        for (var i=0; i<ccds3.length; i++) {
-            txt += '<br/>CCD: ' + ccd_detail('decals-dr3', ccds3[i], '');
-        }
-    }
-    if (ccds3m.length) {
-        for (var i=0; i<ccds3m.length; i++) {
-            txt += '<br/>CCD: ' + ccd_detail('mzls-dr3', ccds3m[i], '');
-        }
-    }
-    if (exps.length) {
-        for (var i=0; i<exps.length; i++) {
-            txt += '<br/>Exposure: ' + exp_detail('decals-dr2',exps[i], '');
-        }
-    }
-    if (exps3.length) {
-        for (var i=0; i<exps3.length; i++) {
-            txt += '<br/>Exposure: ' + exp_detail('decals-dr3',exps3[i],'');
-        }
-    }
-{% endcomment %}
 
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
 }
@@ -922,17 +880,7 @@ function inbrickccdUpdate(props) {
         inbrickccd.addTo(map);
     }
 
-{% comment %}
-    var bricks = brickOverlay.under(props.latlng);
-    var ccds = ccdOverlay.under(props.latlng);
-    var exps = expOverlay.under(props.latlng);
-    var ccds3 = ccdOverlay3.under(props.latlng);
-    var exps3 = expOverlay3.under(props.latlng);
-    var ccds3mb = ccdOverlay3m.under(props.latlng);
-{% endcomment %}
-
     var txt = '';
-
     for (var i=0; i<polygonOverlays.length; i++) {
         var overlay = polygonOverlays[i];
         if (overlay._detail_list == undefined) {
@@ -941,105 +889,6 @@ function inbrickccdUpdate(props) {
         var objs = overlay.under(props.latlng);
         txt += overlay._detail_list(overlay, objs);
     }
-
-
-{% comment %}
-    if (bricks.length) {
-        txt = txt + 'In brick: ';
-        for (var i=0; i<bricks.length; i++) {
-            if (i) {
-                txt = txt + ', ';
-            }
-            txt = txt + brick_detail(bricks[i]);
-        }
-    }
-    if (ccds.length) {
-        if (txt.length) {
-            txt += '<br/>';
-        }
-        txt = txt + 'In DR2 CCDs:<ul>';
-        for (var i=0; i<ccds.length; i++) {
-            var ccdname = ccds[i];
-            var aparams = '';
-            if (ccdname == ccdOverlay._highlighted) {
-                aparams = ' class="highccd"';
-            }
-            var ccdtext = ccd_detail('decals-dr2', ccdname, aparams);
-            txt = txt + '<li>'+ccdtext+'</li>';
-        }
-        txt = txt + '</ul>';
-    }
-    if (exps.length) {
-        if (txt.length) {
-            txt += '<br/>';
-        }
-        txt = txt + 'In DR2 Exposures:<ul>';
-        for (var i=0; i<exps.length; i++) {
-            var expname = exps[i];
-            var aparams = '';
-            if (expname == expOverlay._highlighted) {
-                aparams = ' class="highexp"';
-            }
-            var exptext = exp_detail('decals-dr2', expname.replace(' ','-'),
-                                     aparams);
-            txt = txt + '<li>'+exptext+'</li>';
-        }
-        txt = txt + '</ul>';
-    }
-
-    if (ccds3.length) {
-        if (txt.length) {
-            txt += '<br/>';
-        }
-        txt = txt + 'In DR3 CCDs:<ul>';
-        for (var i=0; i<ccds3.length; i++) {
-            var ccdname = ccds3[i];
-            var aparams = '';
-            if (ccdname == ccdOverlay3._highlighted) {
-                aparams = ' class="highccd"';
-            }
-            var ccdtext = ccd_detail('decals-dr3', ccdname, aparams);
-            txt = txt + '<li>'+ccdtext+'</li>';
-        }
-        txt = txt + '</ul>';
-    }
-    if (exps3.length) {
-        if (txt.length) {
-            txt += '<br/>';
-        }
-        txt = txt + 'In DR3 Exposures:<ul>';
-        for (var i=0; i<exps3.length; i++) {
-            var expname = exps3[i];
-            var aparams = '';
-            if (expname == expOverlay._highlighted) {
-                aparams = ' class="highexp"';
-            }
-            var exptext = exp_detail('decals-dr3', expname.replace(' ','-'),
-                                      aparams);
-            txt = txt + '<li>'+exptext+'</li>';
-        }
-        txt = txt + '</ul>';
-    }
-{% endcomment %}
-
-{% comment %}
-    if (ccds3mb.length) {
-        if (txt.length) {
-            txt += '<br/>';
-        }
-        txt = txt + 'In MzLS DR3 CCDs:<ul>';
-        for (var i=0; i<ccds3mb.length; i++) {
-            var ccdname = ccds3mb[i];
-            var aparams = '';
-            if (ccdname == ccdOverlay3m._highlighted) {
-                aparams = ' class="highccd"';
-            }
-            var ccdtext = ccd_detail('mobo-dr3', ccdname, aparams);
-            txt = txt + '<li>'+ccdtext+'</li>';
-        }
-        txt = txt + '</ul>';
-    }
-{% endcomment %}
                                       
     inbrickccd._div.innerHTML = txt;
 }
@@ -1718,7 +1567,7 @@ var ccd_detail_list = function(ov, objs) {
 };
 
 
-var ccdOverlay = new PolygonOverlay('decals-dr2-ccds', 'DECaLS DR2 CCDs',
+var ccdOverlay2 = new PolygonOverlay('decals-dr2-ccds', 'DECaLS DR2 CCDs',
                                     {'url':'{{ ccdsurl|safe }}',
                                      'minZoom': 8,
                                      'labelMinZoom': 100,
@@ -1767,7 +1616,7 @@ var ccdOverlay3m = new PolygonOverlay('mzls-dr3-ccds', 'MzLS DR3 CCDs',
 {% endif %}
 
                                                      
-var expOverlay = new CircleOverlay('decals-dr2-exps', 'DECaLS DR2 Exposures',
+var expOverlay2 = new CircleOverlay('decals-dr2-exps', 'DECaLS DR2 Exposures',
                                     {'url':'{{ expsurl|safe }}',
                                      'labelMinZoom': 100,
                                      'urlTerm': 'exps',
@@ -1810,7 +1659,7 @@ These are overlays that have entries when you click on the map,
 and entries in the "in brick/ccd" panel.
 {% endcomment %}
 
-var polygonOverlays = [ ccdOverlay, expOverlay, ccdOverlay3, expOverlay3,
+var polygonOverlays = [ ccdOverlay2, expOverlay2, ccdOverlay3, expOverlay3,
                         brickOverlay ];
 
 {% if enable_mzls %}
@@ -1826,7 +1675,7 @@ var plateOverlay = new CircleOverlay('sdss-plates', 'SDSS Spectro Plates',
                                      'labelMinZoom': 100,
                                     });
 
-var decalscat = new DecalsCatalogLayer(tileWatcher,
+var decalscat2 = new DecalsCatalogLayer(tileWatcher,
                                        'decals-dr2', 'DECaLS DR2 Catalog',
                                        {'url': '{{caturl|safe}}', 
                                         'minZoom': 12,
@@ -1873,11 +1722,11 @@ var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
                                        });
 {% endif %}
 
-var overlays = [decalscat, decalscat3, ccdOverlay, ccdOverlay3,
+var overlays = [decalscat2, decalscat3, ccdOverlay2, ccdOverlay3,
 {% if enable_mzls %}
                 ccdOverlay3m,
 {% endif %}
-                expOverlay, expOverlay3, brickOverlay,
+                expOverlay2, expOverlay3, brickOverlay,
                 
                 gals, bright, tycho2, spec, plateOverlay, specDeep2, targets_dr2];
 
