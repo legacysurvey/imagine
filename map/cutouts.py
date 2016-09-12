@@ -86,13 +86,13 @@ def cutout_sdssco(req, jpeg=False, fits=False):
     scalepat = os.path.join(basedir, 'scaled', 'sdssco', '%(scale)i%(band)s',
                             '%(brickname).3s', 'sdssco-%(brickname)s-%(band)s.fits')
 
-    from views import get_sdssco_bricks, sdss_rgb
+    from views import sdss_rgb
 
-    from views import _get_survey
-    survey = _get_survey('sdssco')
+    #from views import _get_survey
+    #survey = _get_survey('sdssco')
 
     return cutout_on_bricks(req, 'sdssco',
-                            decals=survey,
+                            #decals=survey,
                             jpeg=jpeg, fits=fits,
                             pixscale=0.396, bands='gri', native_zoom=13, maxscale=6,
                             rgbfunc=sdss_rgb, outtag='sdss', hdr=hdr,
@@ -158,11 +158,16 @@ def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
     zoom = native_zoom - int(np.round(np.log2(pixscale / native_pixscale)))
     zoom = max(0, min(zoom, 16))
 
-    #print('Calling map_coadd_bands: tag="%s"' % tag)
-    
-    rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts',
-                          tag, wcs=wcs, imagetag=imagetag,
-                          savecache=False, get_images=fits, **kwargs)
+    from map.views import _get_layer
+    layer = _get_layer(tag)
+    if layer is not None:
+        rtn = layer.get_tile(req, ver, zoom, 0, 0, wcs=wcs, get_images=fits,
+                             savecache=False)
+
+    else:
+        rtn = map_coadd_bands(req, ver, zoom, 0, 0, bands, 'cutouts',
+                              tag, wcs=wcs, imagetag=imagetag,
+                              savecache=False, get_images=fits, **kwargs)
 
     if jpeg:
         return rtn

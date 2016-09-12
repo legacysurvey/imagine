@@ -261,6 +261,7 @@ class MapLayer(object):
         '''
         self.name = name
         self.nativescale = nativescale
+        self.minscale = 1
         self.maxscale = maxscale
         self.hack_jpeg = False
 
@@ -289,11 +290,12 @@ class MapLayer(object):
         return tilefn
 
     def get_scale(self, zoom, x, y, wcs):
+        import numpy as np
         '''Integer scale step (1=binned 2x2, 2=binned 4x4, ...)'''
         if zoom >= self.nativescale:
             return 0
         scale = (self.nativescale - zoom)
-        scale = np.clip(scale, 1, self.maxscale)
+        scale = np.clip(scale, self.minscale, self.maxscale)
         return scale
 
     # def get_scaled_pattern(self):
@@ -1209,7 +1211,7 @@ class MyLegacySurveyData(LegacySurveyData):
             from astrometry.util.fits import fits_table
             C = fits_table(cutfn)
         else:
-            C = super(MyLegacySurveyData,super).get_ccds()
+            C = super(MyLegacySurveyData,self).get_ccds()
             # HACK -- cut to photometric & not-blacklisted CCDs.
             C.cut(self.photometric_ccds(C))
             debug('Cut to', len(C), 'photometric CCDs')
@@ -2012,6 +2014,8 @@ dr3_image = DecalsLayer('decals-dr3', 'image', survey_dr3)
 dr3_model = DecalsLayer('decals-dr3-model', 'model', survey_dr3)
 dr3_resid = DecalsResidLayer(dr3_image, dr3_model,
                              'decals-dr3-resid', 'resid', survey_dr3)
+# No room for DR3 scale=1 !
+dr3_image.minscale = dr3_model.minscale = dr3_resid.minscale = 2
 
 survey_dr3mzls = _get_survey('mzls-dr3')
 mzls3_image = MzlsLayer('mzls-dr3', 'image', survey_dr3mzls)
@@ -2020,6 +2024,19 @@ mzls3_resid = MzlsResidLayer(mzls3_image, mzls3_model,
                              'mzls-dr3-resid', 'resid', survey_dr3mzls)
 
 sdss_layer = SdssLayer('sdssco')
+
+
+layers = { 'sdssco': sdss_layer,
+           'decals-dr3': dr3_image,
+           'decals-dr3-model': dr3_model,
+           'decals-dr3-resid': dr3_resid,
+           'decals-dr2': dr2_image,
+           'decals-dr2-model': dr2_model,
+           'decals-dr2-resid': dr2_resid,
+           }
+
+def _get_layer(name, default=None):
+    return layers.get(name, default)
 
 # Not quite ready yet...
 # from decals import settings
