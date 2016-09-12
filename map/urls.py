@@ -40,25 +40,26 @@ urlpatterns = [
     # url(r'^mobo-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3_resid),
 
     # DR3 MzLS
-    url(r'^mzls-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mzls_dr3),
-    url(r'^mzls-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mzls_dr3_model),
-    url(r'^mzls-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mzls_dr3_resid),
+    url(r'^mzls-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.mzls3_image.get_tile_view()),
+    url(r'^mzls-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.mzls3_model.get_tile_view()),
+    url(r'^mzls-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.mzls3_resid.get_tile_view()),
 
     # DR3
-    #url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3),
     url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.dr3_image.get_tile_view()),
-    url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.sdss_layer.get_tile_view),
+    url(r'^decals-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.dr3_model.get_tile_view()),
+    url(r'^decals-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.dr3_resid.get_tile_view()),
 
-
-    url(r'^decals-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3_model),
-    url(r'^decals-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3_resid),
     # catalog
     url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr3),
     
     # DR2
-    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2),
-    url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2_model),
-    url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2_resid),
+    # url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2),
+    # url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2_model),
+    # url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2_resid),
+    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.dr2_image.get_tile_view()),
+    url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.dr2_model.get_tile_view()),
+    url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.dr2_resid.get_tile_view()),
+
     # catalog
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr2),
 

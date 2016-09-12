@@ -22,7 +22,9 @@ SUBDOMAINS_B = SUBDOMAINS
 # no CORS -- so don't use subdomains, or specify hostname (www.legacysurvey.org vs legacysurvey.org)
 CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
-ENABLE_SQL = True
+#ENABLE_SQL = True
+#ENABLE_MZLS = True
+
 ENABLE_VCC  = False
 ENABLE_WL   = False
 ENABLE_DR2  = True

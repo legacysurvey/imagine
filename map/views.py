@@ -79,7 +79,7 @@ galaxycat = None
 def index(req):
     from cats import cat_user
 
-    layer = req.GET.get('layer', 'decals-dr2')
+    layer = req.GET.get('layer', 'decals-dr3')
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
 
@@ -147,7 +147,7 @@ def index(req):
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, zoom=zoom,
                        mosaic_bok=False,
-                       dr1=True,
+                       dr1=False,
                        galname=galname,
                        layer=layer, tileurl=tileurl,
                        absurl=absurl,
@@ -172,6 +172,7 @@ def index(req):
                        enable_vcc = settings.ENABLE_VCC,
                        enable_wl = settings.ENABLE_WL,
                        enable_cutouts = settings.ENABLE_CUTOUTS,
+                       enable_mzls = settings.ENABLE_MZLS,
                        ))
 
 
@@ -238,7 +239,6 @@ def data_for_radec(req):
     name = req.GET.get('layer', 'decals-dr3')
     survey = _get_survey(name)
     bricks = survey.get_bricks()
-    #bricks = _get_dr2_bricks()
     I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
                        (dec >= bricks.dec1) * (dec < bricks.dec2))
     if len(I) == 0:
@@ -494,7 +494,7 @@ class MapLayer(object):
         return view
         
 class DecalsLayer(MapLayer):
-    def __init__(self, name, imagetype, survey):
+    def __init__(self, name, imagetype, survey, bands='grz'):
         '''
         name like 'decals-dr2-model'
         imagetype: 'image', 'model', 'resid'
@@ -504,12 +504,19 @@ class DecalsLayer(MapLayer):
         self.imagetype = imagetype
         self.survey = survey
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+        self.bands = bands
 
     def get_bricks(self):
-        return self.survey.get_bricks_readonly()
+        B = self.survey.get_bricks_readonly()
+        # drop unnecessary columns.
+        cols = B.columns()
+        for k in ['brickid', 'brickq', 'brickrow', 'brickcol']:
+            if k in cols:
+                B.delete_column(k)
+        return B
 
     def get_bands(self):
-        return 'grz'
+        return self.bands
         
     def bricks_touching_radec_box(self, rlo, rhi, dlo, dhi):
         bricks = self.get_bricks()
@@ -537,12 +544,12 @@ class DecalsLayer(MapLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         return dr2_rgb(imgs, bands, **self.rgbkwargs)
     
-class DecalsResidLayer(DecalsLayer):
-    def __init__(self, name, imagetype, survey, image_layer, model_layer):
+class ResidMixin(object):
+    def __init__(self, image_layer, model_layer, *args, **kwargs):
         '''
         image_layer, model_layer: DecalsLayer objects
         '''
-        super(DecalsResidLayer, self).__init__(name, imagetype, survey)
+        super(ResidMixin, self).__init__(*args, **kwargs)
         self.image_layer = image_layer
         self.model_layer = model_layer
         self.rgbkwargs = dict(mnmx=(-5,5))
@@ -558,6 +565,25 @@ class DecalsResidLayer(DecalsLayer):
 
     def read_wcs(self, brickname, band, scale):
         return self.image_layer.read_wcs(brickname, band, scale)
+
+
+class DecalsResidLayer(ResidMixin, DecalsLayer):
+    pass
+
+class MzlsMixin(object):
+    def __init__(self, *args, **kwargs):
+        super(MzlsMixin, self).__init__(*args, **kwargs)
+        self.bands = 'z'
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        return mzls_dr3_rgb(imgs, bands, **kwargs)
+
+class MzlsLayer(MzlsMixin, DecalsLayer):
+    pass
+
+class MzlsResidLayer(ResidMixin, DecalsLayer):
+    pass
+
 
 class SdssLayer(MapLayer):
     def __init__(self, name):
@@ -614,31 +640,71 @@ class SdssLayer(MapLayer):
 
     def get_rgb(self, imgs, bands, **kwargs):
         return sdss_rgb(imgs, bands)
+
+
+# class UnwiseLayer(MapLayer):
+#     def __init__(self, name, unwise_dir):
+#         super(UnwiseLayer, self).__init__(name, nativescale=13)
+#         self.bricks = None
+#         self.dir = unwise_dir
+#         
+#     def get_bricks(self):
+#         if self.bricks is not None:
+#             return self.bricks
+#         from decals import settings
+#         from astrometry.util.fits import fits_table
+#         basedir = settings.DATA_DIR
+#         self.bricks = fits_table(os.path.join(basedir, 'unwise-bricks.fits'))
+#         return self.bricks
+# 
+#     def get_bands(self):
+#         return ['w1','w2']
+# 
+#     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi):
+#         import numpy as np
+#         bricks = self.get_bricks()
+#         if rahi < ralo:
+#             I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
+#                                           bricks.ra1 <= rahi) *
+#                             (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+#         else:
+#             I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
+#                             (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+#         if len(I) == 0:
+#             return None
+#         return bricks[I]
+# 
+#     def get_filename(self, brickname, band, scale):
+#         brickpre = brickname[:3]
+#         fn = os.path.join(self.dir, brickpre, brickname,
+#                           'unwise-%s-%s.fits' % (brickname, band))
+#         if scale == 0:
+#             return fn
+#         fnargs = dict(band=band, brickname=brickname)
+#         fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn)
+#         return fn
+#     
+#     def get_scaled_pattern(self):
+#         from decals import settings
+#         basedir = settings.DATA_DIR
+#         return os.path.join(
+#             basedir, 'scaled', self.name,
+#             '%(scale)i%(band)s', '%(brickname).3s',
+#             'unwise-%(brickname)s-%(band)s.fits')
+# 
+#     def get_rgb(self, imgs, bands, **kwargs):
+#         return _unwise_to_rgb(imgs, **kwargs)
+
     
 # "PR"
 #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
 rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
-rgbkwargs_nexp = dict(mnmx=(0,25), arcsinh=1.,
-                      scales=dict(g=(2,1),r=(1,1),z=(0,1)))
-
-
-B_sdssco = None
-
-def get_sdssco_bricks():
-    global B_sdssco
-    if B_sdssco is None:
-        from decals import settings
-        from astrometry.util.fits import fits_table
-        basedir = settings.DATA_DIR
-        B_sdssco = fits_table(os.path.join(basedir, 'bricks-sdssco.fits'),
-                              columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2'])
-    return B_sdssco
-
+#rgbkwargs_nexp = dict(mnmx=(0,25), arcsinh=1.,
+#                      scales=dict(g=(2,1),r=(1,1),z=(0,1)))
 
 B_unwise = None
-
 def get_unwise_bricks():
     global B_unwise
     if B_unwise is None:
@@ -649,28 +715,6 @@ def get_unwise_bricks():
                                            columns=['ra','dec','coadd_id'])
         B_unwise.rename('coadd_id', 'brickname')
     return B_unwise
-
-def map_sdssco(req, ver, zoom, x, y, savecache=None, tag='sdssco',
-               get_images=False,
-               wcs=None,
-               **kwargs):
-    from decals import settings
-
-    if savecache is None:
-        savecache = settings.SAVE_CACHE
-
-    B_sdssco = get_sdssco_bricks()
-
-    bands = 'gri'
-    basedir = settings.DATA_DIR
-    basepat = os.path.join(basedir, 'coadd', tag, '%(brickname).3s',
-                           'sdssco-%(brickname)s-%(band)s.fits')
-    return map_coadd_bands(req, ver, zoom, x, y, bands, tag, tag,
-                           imagetag=tag,
-                           get_images=get_images,
-                           savecache=savecache,
-                           rgbfunc=sdss_rgb, basepat=basepat, bricks=B_sdssco,
-                           nativescale=13, maxscale=6, **kwargs)
 
 def sdss_rgb(rimgs, bands, scales=None,
              m = 0.02):
@@ -690,9 +734,6 @@ def sdss_rgb(rimgs, bands, scales=None,
     b = np.maximum(0, b + m)
     I = (r+g+b)/3.
     Q = 20
-    #alpha = 1.0
-    #m2 = 0.
-    #fI = np.arcsinh(alpha * Q * (I - m2)) / np.sqrt(Q)
     fI = np.arcsinh(Q * I) / np.sqrt(Q)
     I += (I == 0.) * 1e-6
     R = fI * r / I
@@ -723,210 +764,30 @@ def layer_name_map(name):
 
     }.get(name, name)
 
-B_dr2 = None
-def _get_dr2_bricks():
-    global B_dr2
-    if B_dr2 is not None:
-        return B_dr2
-
-    fn = os.path.join(settings.DATA_DIR, 'decals-dr2', 'decals-bricks-in-dr2.fits')
-    if os.path.exists(fn):
-        from astrometry.util.fits import fits_table
-        debug('Reading', fn)
-        B_dr2 = fits_table(fn, columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2',
-                                        'has_g', 'has_r', 'has_z'])
-        return B_dr2
-
-    from astrometry.libkd.spherematch import match_radec
-    import numpy as np
-
-    decals = _get_survey('decals-dr2')
-    B = decals.get_bricks()
-    C = decals.get_ccds_readonly()
-    # CCD radius
-    radius = np.hypot(2048, 4096) / 2. * 0.262 / 3600.
-    # Brick radius
-    radius += np.hypot(0.25, 0.25)/2.
-    I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, radius * 1.05)
-    for band in 'grz':
-        has = np.zeros(len(B), bool)
-        K = (C.filter[J] == band)
-        has[I[K]] = True
-        B.set('has_%s' % band, has)
-        debug(sum(has), 'bricks have coverage in', band)
-
-    keep = np.zeros(len(B), bool)
-    keep[I] = True
-    B.cut(keep)
-    B_dr2 = B
-    B_dr2.writeto(fn)
-    debug('Wrote', fn)
-    return B_dr2
+# get_bricks_in_X...
+#     decals = _get_survey('mzls-dr3')
+#     B = decals.get_bricks()
+#     C = decals.get_ccds_readonly()
+#     # CCD radius
+#     radius = np.hypot(2048, 4096) / 2. * 0.262 / 3600.
+#     # Brick radius
+#     radius += np.hypot(0.25, 0.25)/2.
+#     I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, radius * 1.05)
+#     for band in 'grz':
+#         has = np.zeros(len(B), bool)
+#         K = (C.filter[J] == band)
+#         has[I[K]] = True
+#         B.set('has_%s' % band, has)
+#         debug(sum(has), 'bricks have coverage in', band)
+# 
+#     keep = np.zeros(len(B), bool)
+#     keep[I] = True
+#     B.cut(keep)
+#     B_mzls_dr3 = B
+#     B_mzls_dr3.writeto('/tmp/mzls-bricks-in-dr3.fits')
 
 
-
-B_mobo_dr3 = None
-def _get_mobo_dr3_bricks():
-    global B_mobo_dr3
-    if B_mobo_dr3 is not None:
-        return B_mobo_dr3
-
-    fn = os.path.join(settings.DATA_DIR, 'mobo-dr3', 'mobo-bricks-in-dr3.fits')
-    if os.path.exists(fn):
-        from astrometry.util.fits import fits_table
-        debug('Reading', fn)
-        B_mobo_dr3 = fits_table(fn, columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2',
-                                        'has_g', 'has_r', 'has_z'])
-        return B_mobo_dr3
-
-    from astrometry.libkd.spherematch import match_radec
-    import numpy as np
-
-    decals = _get_survey('mobo-dr3')
-    B = decals.get_bricks()
-    C = decals.get_ccds_readonly()
-    # CCD radius
-    radius = np.hypot(2048, 4096) / 2. * 0.262 / 3600.
-    # Brick radius
-    radius += np.hypot(0.25, 0.25)/2.
-    I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, radius * 1.05)
-    for band in 'grz':
-        has = np.zeros(len(B), bool)
-        K = (C.filter[J] == band)
-        has[I[K]] = True
-        B.set('has_%s' % band, has)
-        debug(sum(has), 'bricks have coverage in', band)
-
-    keep = np.zeros(len(B), bool)
-    keep[I] = True
-    B.cut(keep)
-    B_mobo_dr3 = B
-    B_mobo_dr3.writeto('/tmp/mobo-bricks-in-dr3.fits')
-    #B_dr3.writeto(fn)
-    #debug('Wrote', fn)
-    return B_mobo_dr3
-
-def map_mobo_dr3_model(req, ver, zoom, x, y, **kwargs):
-    kwargs.update(model=True, model_gz=True, add_gz=True)
-    return map_mobo_dr3(req, ver, zoom, x, y, **kwargs)
-
-def map_mobo_dr3_resid(req, ver, zoom, x, y, **kwargs):
-    kwargs.update(resid=True, model_gz=True)
-    return map_mobo_dr3(req, ver, zoom, x, y, **kwargs)
-
-def map_mobo_dr3(req, ver, zoom, x, y, savecache=None,
-                    model=False, resid=False, nexp=False,
-                    **kwargs):
-    if savecache is None:
-        savecache = settings.SAVE_CACHE
-
-    B_dr3 = _get_mobo_dr3_bricks()
-    survey = _get_survey('mobo-dr3')
-    
-    imagetag = 'image'
-    tag = 'mobo-dr3'
-    imagedir = 'mobo-dr3'
-
-    if model:
-        imagetag = 'model'
-        tag = 'mobo-dr3-model'
-    if resid:
-        imagetag = 'resid'
-        kwargs.update(modeldir = 'mobo-dr3-model')
-        tag = 'mobo-dr3-resid'
-
-    rgb = rgbkwargs
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
-                           imagetag=imagetag,
-                           rgbkwargs=rgb,
-                           bricks=B_dr3,
-                           decals=survey,
-                           savecache=savecache, rgbfunc=dr2_rgb, **kwargs)
-
-
-
-
-B_mzls_dr3 = None
-def _get_mzls_dr3_bricks():
-    global B_mzls_dr3
-    if B_mzls_dr3 is not None:
-        return B_mzls_dr3
-
-    fn = os.path.join(settings.DATA_DIR, 'mzls-dr3', 'mzls-bricks-in-dr3.fits')
-    if os.path.exists(fn):
-        from astrometry.util.fits import fits_table
-        debug('Reading', fn)
-        B_mzls_dr3 = fits_table(fn, columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2',
-                                        'has_g', 'has_r', 'has_z'])
-        return B_mzls_dr3
-
-    from astrometry.libkd.spherematch import match_radec
-    import numpy as np
-
-    decals = _get_survey('mzls-dr3')
-    B = decals.get_bricks()
-    C = decals.get_ccds_readonly()
-    # CCD radius
-    radius = np.hypot(2048, 4096) / 2. * 0.262 / 3600.
-    # Brick radius
-    radius += np.hypot(0.25, 0.25)/2.
-    I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, radius * 1.05)
-    for band in 'grz':
-        has = np.zeros(len(B), bool)
-        K = (C.filter[J] == band)
-        has[I[K]] = True
-        B.set('has_%s' % band, has)
-        debug(sum(has), 'bricks have coverage in', band)
-
-    keep = np.zeros(len(B), bool)
-    keep[I] = True
-    B.cut(keep)
-    B_mzls_dr3 = B
-    B_mzls_dr3.writeto('/tmp/mzls-bricks-in-dr3.fits')
-    #B_dr3.writeto(fn)
-    #debug('Wrote', fn)
-    return B_mzls_dr3
-
-def map_mzls_dr3_model(req, ver, zoom, x, y, **kwargs):
-    kwargs.update(model=True, model_gz=True, add_gz=True)
-    return map_mzls_dr3(req, ver, zoom, x, y, **kwargs)
-
-def map_mzls_dr3_resid(req, ver, zoom, x, y, **kwargs):
-    kwargs.update(resid=True, model_gz=True)
-    return map_mzls_dr3(req, ver, zoom, x, y, **kwargs)
-
-def map_mzls_dr3(req, ver, zoom, x, y, savecache=None,
-                    model=False, resid=False, nexp=False,
-                    **kwargs):
-    if savecache is None:
-        savecache = settings.SAVE_CACHE
-
-    B_dr3 = _get_mzls_dr3_bricks()
-    survey = _get_survey('mzls-dr3')
-
-    print('MzLS-DR3 tile zoom', zoom, 'x,y', x,y)
-    print('DR3 bricks:', len(B_dr3))
-
-    imagetag = 'image'
-    tag = 'mzls-dr3'
-    imagedir = 'mzls-dr3'
-
-    if model:
-        imagetag = 'model'
-        tag = 'mzls-dr3-model'
-    if resid:
-        imagetag = 'resid'
-        kwargs.update(modeldir = 'mzls-dr3-model')
-        tag = 'mzls-dr3-resid'
-
-    rgb = rgbkwargs
-    return map_coadd_bands(req, ver, zoom, x, y, 'z', tag, imagedir,
-                           imagetag=imagetag,
-                           rgbkwargs=rgb,
-                           bricks=B_dr3,
-                           decals=survey,
-                           savecache=savecache, rgbfunc=mzls_dr3_rgb, **kwargs)
-
+# z-band only B&W images
 def mzls_dr3_rgb(rimgs, bands, scales=None,
                  m = 0.02, **stuff):
     import numpy as np
@@ -947,128 +808,10 @@ def mzls_dr3_rgb(rimgs, bands, scales=None,
     rgb = np.clip(rgb, 0, 1)
     return rgb
 
-B_dr3 = None
-def _get_dr3_bricks():
-    global B_dr3
-    if B_dr3 is not None:
-        return B_dr3
-
-    fn = os.path.join(settings.DATA_DIR, 'decals-dr3', 'decals-bricks-in-dr3.fits')
-    if os.path.exists(fn):
-        from astrometry.util.fits import fits_table
-        debug('Reading', fn)
-        B_dr3 = fits_table(fn, columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2',
-                                        'has_g', 'has_r', 'has_z'])
-        return B_dr3
-
-    from astrometry.libkd.spherematch import match_radec
-    import numpy as np
-
-    decals = _get_survey('decals-dr3')
-    B = decals.get_bricks()
-    C = decals.get_ccds_readonly()
-    # CCD radius
-    radius = np.hypot(2048, 4096) / 2. * 0.262 / 3600.
-    # Brick radius
-    radius += np.hypot(0.25, 0.25)/2.
-    I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, radius * 1.05)
-    for band in 'grz':
-        has = np.zeros(len(B), bool)
-        K = (C.filter[J] == band)
-        has[I[K]] = True
-        B.set('has_%s' % band, has)
-        debug(sum(has), 'bricks have coverage in', band)
-
-    keep = np.zeros(len(B), bool)
-    keep[I] = True
-    B.cut(keep)
-    B_dr3 = B
-    B_dr3.writeto('/tmp/decals-bricks-in-dr3.fits')
-    #B_dr3.writeto(fn)
-    #debug('Wrote', fn)
-    return B_dr3
-
-def map_decals_dr3_model(req, ver, zoom, x, y, **kwargs):
-    kwargs.update(model=True, model_gz=True, add_gz=True)
-    return map_decals_dr3(req, ver, zoom, x, y, **kwargs)
-
-def map_decals_dr3_resid(req, ver, zoom, x, y, **kwargs):
-    kwargs.update(resid=True, model_gz=True)
-    return map_decals_dr3(req, ver, zoom, x, y, **kwargs)
-
-def map_decals_dr3(req, ver, zoom, x, y, savecache=None,
-                    model=False, resid=False, nexp=False,
-                    **kwargs):
-    if savecache is None:
-        savecache = settings.SAVE_CACHE
-
-    B_dr3 = _get_dr3_bricks()
-    decals = _get_survey('decals-dr3')
-    
-    imagetag = 'image'
-    tag = 'decals-dr3'
-    imagedir = 'decals-dr3'
-
-    if model:
-        imagetag = 'model'
-        tag = 'decals-dr3-model'
-    if resid:
-        imagetag = 'resid'
-        kwargs.update(modeldir = 'decals-dr3-model')
-        tag = 'decals-dr3-resid'
-
-    rgb = rgbkwargs
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
-                           imagetag=imagetag,
-                           rgbkwargs=rgb,
-                           bricks=B_dr3,
-                           decals=decals,
-                           savecache=savecache, rgbfunc=dr2_rgb, **kwargs)
-
-
 def dr2_rgb(rimgs, bands, **ignored):
     return sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
 
-def map_decals_dr2_model(req, ver, zoom, x, y, **kwargs):
-    kwargs.update(model=True, model_gz=True, add_gz=True)
-    return map_decals_dr2(req, ver, zoom, x, y, **kwargs)
-
-def map_decals_dr2_resid(req, ver, zoom, x, y, **kwargs):
-    kwargs.update(resid=True, model_gz=True)
-    return map_decals_dr2(req, ver, zoom, x, y, **kwargs)
-
-def map_decals_dr2(req, ver, zoom, x, y, savecache=None,
-                    model=False, resid=False, nexp=False,
-                    **kwargs):
-    if savecache is None:
-        savecache = settings.SAVE_CACHE
-
-    B_dr2 = _get_dr2_bricks()
-    decals = _get_survey('decals-dr2')
-
-    imagetag = 'image'
-    tag = 'decals-dr2'
-    imagedir = 'decals-dr2'
-
-    if model:
-        imagetag = 'model'
-        tag = 'decals-dr2-model'
-    if resid:
-        imagetag = 'resid'
-        kwargs.update(modeldir = 'decals-dr2-model')
-        tag = 'decals-dr2-resid'
-
-    rgb = rgbkwargs
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
-                           decals=decals,
-                           imagetag=imagetag,
-                           rgbkwargs=rgb,
-                           bricks=B_dr2,
-                           savecache=savecache, rgbfunc=dr2_rgb, **kwargs)
-
-
 B_dr1j = None
-
 def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
                     model=False, resid=False, nexp=False,
                     **kwargs):
@@ -1455,6 +1198,39 @@ def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
+from legacypipe.common import LegacySurveyData
+class MyLegacySurveyData(LegacySurveyData):
+    def get_ccds(self):
+        import numpy as np
+        dirnm = self.survey_dir
+        # plug in a cut version of the CCDs table, if it exists
+        cutfn = os.path.join(dirnm, 'ccds-cut.fits')
+        if os.path.exists(cutfn):
+            from astrometry.util.fits import fits_table
+            C = fits_table(cutfn)
+        else:
+            C = super(MyLegacySurveyData,super).get_ccds()
+            # HACK -- cut to photometric & not-blacklisted CCDs.
+            C.cut(self.photometric_ccds(C))
+            debug('Cut to', len(C), 'photometric CCDs')
+            C.cut(self.apply_blacklist(C))
+            debug('Cut to', len(C), 'not-blacklisted CCDs')
+            for k in [#'date_obs', 'ut', 'airmass',
+                      'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
+                      'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
+                      'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
+                      'ccdnmatchb', 'ccdmdncol', 'expid',]:
+                if k in C.columns():
+                    C.delete_column(k)
+            fn = '/tmp/cut-ccds-%s.fits' % os.path.basename(self.survey_dir)
+            C.writeto(fn)
+            print('Wrote', fn)
+        # Remove trailing spaces...
+        C.ccdname = np.array([s.strip() for s in C.ccdname])
+        C.camera  = np.array([c.strip() for c in C.camera ])
+        return C
+
+
 surveys = {}
 def _get_survey(name=None):
     import numpy as np
@@ -1468,16 +1244,14 @@ def _get_survey(name=None):
     
     from decals import settings
     basedir = settings.DATA_DIR
-    from legacypipe.common import LegacySurveyData
 
     if name in [ 'decals-dr2', 'decals-dr3', 'mobo-dr3', 'mzls-dr3']:
         dirnm = os.path.join(basedir, name)
 
         if name == 'decals-dr2':
-            d = LegacySurveyData(survey_dir=dirnm, version='dr2')
+            d = MyLegacySurveyData(survey_dir=dirnm, version='dr2')
         else:
-            d = LegacySurveyData(survey_dir=dirnm)
-
+            d = MyLegacySurveyData(survey_dir=dirnm)
 
         if name == 'decals-dr2':
             d.drname = 'DECaLS DR2'
@@ -1492,74 +1266,6 @@ def _get_survey(name=None):
             d.drname = 'MzLS DR3'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3-mzls/'
 
-        # drop unnecessary columns.
-        B = d.get_bricks_readonly()
-        for k in ['brickid', 'brickq', 'brickrow', 'brickcol']:
-            B.delete_column(k)
-        # plug in a cut version of the CCDs table, if it exists
-        cutfn = os.path.join(dirnm, 'ccds-cut.fits')
-        if os.path.exists(cutfn):
-            from astrometry.util.fits import fits_table
-            C = fits_table(cutfn)
-            d.ccds = C
-        else:
-            C = d.get_ccds_readonly()
-            # HACK -- cut to photometric & not-blacklisted CCDs.
-            C.cut(d.photometric_ccds(C))
-            debug('HACK -- cut to', len(C), 'photometric CCDs')
-            C.cut(d.apply_blacklist(C))
-            debug('HACK -- cut to', len(C), 'not-blacklisted CCDs')
-            print('CCDs:')
-            C.about()
-            for k in [#'date_obs', 'ut', 'airmass',
-                      'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
-                      'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
-                      'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
-                      'ccdnmatchb', 'ccdmdncol', 'expid',]:
-                if k in C.columns():
-                    C.delete_column(k)
-            C.writeto('/tmp/cut-ccds-%s.fits' % name)
-
-        # Remove trailing spaces...
-        C.ccdname = np.array([s.strip() for s in C.ccdname])
-        C.camera  = np.array([c.strip() for c in C.camera ])
-
-        surveys[name] = d
-        return d
-
-    if name == 'sdssco':
-        from views import get_sdssco_bricks
-        dirnm = os.path.join(basedir, name)
-
-        class SdssData(LegacySurveyData):
-            def find_file(self, filetype, brick=None, brickpre=None, band='%(band)s',
-                          output=False):
-                if brick is None:
-                    brick = '%(brick)s'
-                    brickpre = '%(brick).3s'
-                else:
-                    brickpre = brick[:3]
-        
-                if output:
-                    basedir = self.output_dir
-                else:
-                    basedir = self.survey_dir
-        
-                if brick is not None:
-                    codir = os.path.join(basedir, 'coadd', brickpre)
-        
-                sname = self.file_prefix
-                if filetype in ['invvar', 'chi2', 'image']:
-                    return os.path.join(codir, '%s-%s-%s.fits' %
-                                        (sname, brick, band))
-                return super(SdssData, self).find_file(
-                    filetype, brick=brick, brickpre=brickpre, band=band, output=output)
-
-        d = SdssData(survey_dir=dirnm)
-        d.bricks = get_sdssco_bricks()
-        d.drname = 'SDSS'
-        d.drurl = None
-        d.file_prefix = 'sdssco'
         surveys[name] = d
         return d
 
@@ -1580,12 +1286,10 @@ def _get_survey(name=None):
 
 def brick_list(req):
     import json
-
     north = float(req.GET['dechi'])
     south = float(req.GET['declo'])
     east  = float(req.GET['ralo'])
     west  = float(req.GET['rahi'])
-
     if east < 0:
         east += 360.
         west += 360.
@@ -1594,25 +1298,25 @@ def brick_list(req):
 
     name = req.GET.get('id', None)
     name = layer_name_map(name)
-    if name == 'decals-dr1k':
-        from astrometry.util.fits import fits_table
-        B = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
-                                    'decals-bricks.fits'))
-    elif name == 'decals-dr1n':
-        from astrometry.util.fits import fits_table
-        B = fits_table(os.path.join(settings.DATA_DIR,
-                                    'decals-bricks.fits'))
+
+    # if name == 'decals-dr1k':
+    #     from astrometry.util.fits import fits_table
+    #     B = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
+    #                                 'decals-bricks.fits'))
+    # elif name == 'decals-dr1n':
+    #     from astrometry.util.fits import fits_table
+    #     B = fits_table(os.path.join(settings.DATA_DIR,
+    #                                 'decals-bricks.fits'))
 
     D = _get_survey(name=name)
     if B is None:
         B = D.get_bricks_readonly()
 
     I = D.bricks_touching_radec_box(B, east, west, south, north)
-    # HACK -- limit result size...
+    # Limit result size...
     if len(I) > 10000:
         return HttpResponse(json.dumps(dict(bricks=[])),
                             content_type='application/json')
-    #I = I[:1000]
     bricks = []
     for b in B[I]:
         # brick overlap margin:
@@ -1625,7 +1329,6 @@ def brick_list(req):
                                  [b.dec2+mdec, ra2long_B(b.ra2+mra)],
                                  [b.dec1-mdec, ra2long_B(b.ra2+mra)],
                                  ]))
-
     return HttpResponse(json.dumps(dict(polys=bricks)),
                         content_type='application/json')
 
@@ -1649,6 +1352,7 @@ def _objects_touching_box(kdtree, north, south, east, west,
         J = J[:Nmax]
     return J
 
+# A cache of kd-trees of CCDs
 ccd_cache = {}
 
 def _ccds_touching_box(north, south, east, west, Nmax=None, name=None, survey=None):
@@ -1658,18 +1362,10 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None, survey=No
 
     if not name in ccd_cache:
         debug('Finding CCDs for name=', name)
-
         if survey is None:
             survey = _get_survey(name=name)
         CCDs = survey.get_ccds_readonly()
-
         print('Read CCDs:', CCDs.columns())
-
-        if name == 'decals-dr2':
-            CCDs.extname = CCDs.ccdname
-            CCDs.cpimage = CCDs.image_filename
-            CCDs.cpimage_hdu = CCDs.image_hdu
-
         tree = tree_build_radec(CCDs.ra, CCDs.dec)
         ccd_cache[name] = (CCDs, tree)
     else:
@@ -1686,28 +1382,16 @@ def ccd_list(req):
     import json
     from astrometry.util.util import Tan
     import numpy as np
-
     north = float(req.GET['dechi'])
     south = float(req.GET['declo'])
     east  = float(req.GET['ralo'])
     west  = float(req.GET['rahi'])
-
     name = req.GET.get('id', None)
     print('Name:', name)
     name = layer_name_map(name)
     print('Mapped name:', name)
-    
     CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
-
-    ccdname = lambda c: '%s %i-%s-%s' % (c.camera, c.expnum, c.extname.strip(), c.filter)
-
-    if name in ['decals-dr2', 'decals-dr3', 'mobo-dr3', 'mzls-dr3']:
-        ccdname = lambda c: '%s %i-%s-%s' % (c.camera, c.expnum, c.ccdname.strip(), c.filter)
-        #decals = _get_survey(name)
-        #CCDS.cut(decals.photometric_ccds(CCDS))
-
     CCDS.cut(np.lexsort((CCDS.expnum, CCDS.filter)))
-
     ccds = []
     for c in CCDS:
         wcs = Tan(*[float(x) for x in [
@@ -1717,12 +1401,10 @@ def ccd_list(req):
         y = np.array([1, c.height, c.height, 1])
         r,d = wcs.pixelxy2radec(x, y)
         ccmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
-        ccds.append(dict(name=ccdname(c),
+        ccds.append(dict(name='%s %i-%s-%s' % (c.camera, c.expnum, c.ccdname, c.filter),
                          poly=zip(d, ra2long(r)),
                          color=ccmap[c.filter]))
-
-    return HttpResponse(json.dumps(dict(polys=ccds)),
-                        content_type='application/json')
+    return HttpResponse(json.dumps(dict(polys=ccds)), content_type='application/json')
 
 def get_exposure_table(name):
     from astrometry.util.fits import fits_table
@@ -1912,9 +1594,7 @@ def nil(req):
     pass
 
 def brick_detail(req, brickname):
-    #return HttpResponse('Brick ' + brickname)
     import numpy as np
-    #bricks = _get_dr2_bricks()
     survey = _get_survey('decals-dr3')
     bricks = survey.get_bricks()
     I = np.flatnonzero(brickname == bricks.brickname)
@@ -2292,8 +1972,12 @@ def image_data(req, survey, ccd):
     os.close(ff)
     primhdr = fitsio.read_header(fn)
     pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
-    fitsio.write(tmpfn, None, header=primhdr, clobber=True)
-    fitsio.write(tmpfn, pix,  header=hdr)
+
+    os.unlink(tmpfn)
+    fits = fitsio.FITS(tmpfn, 'rw')
+    fits.write(None, header=primhdr, clobber=True)
+    fits.write(pix,  header=hdr)
+    fits.close()
     return send_file(tmpfn, 'image/fits', unlink=True, filename='image-%s.fits.gz' % ccd)
 
 def dq_data(req, survey, ccd):
@@ -2307,8 +1991,12 @@ def dq_data(req, survey, ccd):
     os.close(ff)
     primhdr = fitsio.read_header(fn)
     pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
-    fitsio.write(tmpfn, None, header=primhdr, clobber=True)
-    fitsio.write(tmpfn, pix,  header=hdr)
+
+    os.unlink(tmpfn)
+    fits = fitsio.FITS(tmpfn, 'rw')
+    fits.write(None, header=primhdr, clobber=True)
+    fits.write(pix,  header=hdr)
+    fits.close()
     return send_file(tmpfn, 'image/fits', unlink=True, filename='dq-%s.fits.gz' % ccd)
 
 
@@ -2316,17 +2004,29 @@ def dq_data(req, survey, ccd):
 survey_dr2 = _get_survey('decals-dr2')
 dr2_image = DecalsLayer('decals-dr2', 'image', survey_dr2)
 dr2_model = DecalsLayer('decals-dr2-model', 'model', survey_dr2)
-dr2_resid = DecalsResidLayer('decals-dr2-resid', 'resid', survey_dr2,
-                             dr2_image, dr2_model)
+dr2_resid = DecalsResidLayer(dr2_image, dr2_model,
+                             'decals-dr2-resid', 'resid', survey_dr2)
 
 survey_dr3 = _get_survey('decals-dr3')
 dr3_image = DecalsLayer('decals-dr3', 'image', survey_dr3)
 dr3_model = DecalsLayer('decals-dr3-model', 'model', survey_dr3)
-dr3_resid = DecalsResidLayer('decals-dr3-resid', 'resid', survey_dr3,
-                             dr3_image, dr3_model)
+dr3_resid = DecalsResidLayer(dr3_image, dr3_model,
+                             'decals-dr3-resid', 'resid', survey_dr3)
+
+survey_dr3mzls = _get_survey('mzls-dr3')
+mzls3_image = MzlsLayer('mzls-dr3', 'image', survey_dr3mzls)
+mzls3_model = MzlsLayer('mzls-dr3-model', 'model', survey_dr3mzls)
+mzls3_resid = MzlsResidLayer(mzls3_image, mzls3_model,
+                             'mzls-dr3-resid', 'resid', survey_dr3mzls)
 
 sdss_layer = SdssLayer('sdssco')
 
+# Not quite ready yet...
+# from decals import settings
+# unwise_layer = UnwiseLayer('unwise-w1w2',
+#                            settings.UNWISE_DIR)
+# unwise_neo1_layer = UnwiseLayer('unwise-neo1',
+#                                 settings.UNWISE_NEO1_DIR)
 
 if __name__ == '__main__':
     import os

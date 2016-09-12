@@ -13,6 +13,8 @@ import secrets.database
 
 APPEND_SLASH = False
 
+ENABLE_MZLS = False
+
 ENABLE_CUTOUTS = True
 
 ENABLE_SQL = False

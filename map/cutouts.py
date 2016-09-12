@@ -5,7 +5,7 @@ import numpy as np
 
 from map.utils import send_file
 
-from map.views import _get_dr2_bricks, dr2_rgb
+from map.views import dr2_rgb
 
 from map.coadds import map_coadd_bands
 
