@@ -262,6 +262,7 @@ class MapLayer(object):
         self.name = name
         self.nativescale = nativescale
         self.maxscale = maxscale
+        self.hack_jpeg = False
 
     def get_bricks(self):
         pass
@@ -329,6 +330,7 @@ class MapLayer(object):
 
     #def read_image(self, fn, slc):
     def read_image(self, brickname, band, scale, slc):
+        import fitsio
         fn = self.get_filename(brickname, band, scale)
         f = fitsio.FITS(fn)[0]
         img = f[slc]
@@ -336,12 +338,13 @@ class MapLayer(object):
 
     # def read_wcs(self, fn):
     def read_wcs(self, brickname, band, scale):
+        from coadds import read_tan_wcs
         fn = self.get_filename(brickname, band, scale)
         return read_tan_wcs(fn, 0)
 
     def get_tile(self, req, ver, zoom, x, y,
                  wcs=None,
-                 savecache = True, forcecache = False,
+                 savecache = None, forcecache = False,
                  return_if_not_found=False,
                  get_images=False,
                  write_jpeg=False,
@@ -354,7 +357,9 @@ class MapLayer(object):
         '''
         from decals import settings
         from map.views import tileversions
-    
+        if savecache is None:
+            savecache = settings.SAVE_CACHE
+
         zoom = int(zoom)
         zoomscale = 2.**zoom
         x = int(x)
@@ -454,7 +459,7 @@ class MapLayer(object):
         if get_images and not write_jpeg:
             return rimgs
     
-        rgb = self.rgb(rimgs, bands)
+        rgb = self.get_rgb(rimgs, bands)
     
         if forcecache:
             savecache = True
@@ -476,12 +481,12 @@ class MapLayer(object):
     def write_jpeg(self, fn, rgb):
         # no jpeg output support in matplotlib in some installations...
         if self.hack_jpeg:
-            save_jpeg(tilefn, rgb)
-            debug('Wrote', tilefn)
+            save_jpeg(fn, rgb)
+            debug('Wrote', fn)
         else:
             import pylab as plt
-            plt.imsave(tilefn, rgb)
-            debug('Wrote', tilefn)
+            plt.imsave(fn, rgb)
+            debug('Wrote', fn)
 
     def get_tile_view(self):
         def view(request, ver, zoom, x, y):
@@ -501,7 +506,7 @@ class DecalsLayer(MapLayer):
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
     def get_bricks(self):
-        return survey.get_bricks_readonly()
+        return self.survey.get_bricks_readonly()
 
     def get_bands(self):
         return 'grz'
@@ -573,7 +578,8 @@ class SdssLayer(MapLayer):
     def get_bands(self):
         return 'gri'
 
-    def bricks_touching_radec_box(self, rlo, rhi, dlo, dhi):
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi):
+        import numpy as np
         bricks = self.get_bricks()
         if rahi < ralo:
             I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,

@@ -17,7 +17,7 @@ urlpatterns = [
 
     # SDSS tiled coadd
     #url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sdssco),
-    url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.sdss_layer.get_tile_view),
+    url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.sdss_layer.get_tile_view()),
 
     url(r'^jpeg-cutout-sdss', cutouts.jpeg_cutout_sdssco),
     url(r'^fits-cutout-sdss', cutouts.fits_cutout_sdssco),
@@ -45,7 +45,11 @@ urlpatterns = [
     url(r'^mzls-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mzls_dr3_resid),
 
     # DR3
-    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3),
+    #url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3),
+    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.dr3_image.get_tile_view()),
+    url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.sdss_layer.get_tile_view),
+
+
     url(r'^decals-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3_model),
     url(r'^decals-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr3_resid),
     # catalog
