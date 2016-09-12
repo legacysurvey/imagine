@@ -12,11 +12,13 @@ urlpatterns = [
     # AJAX retrieval of user catalogs
     url(r'^usercatalog/(\d+)/cat.json', cats.cat_user),
 
-    # DEEP2 Spectroscopy
+    # DEEP2 Spectroscopy catalog
     url(r'^spec-deep2/(\d+)/cat.json', cats.cat_spec_deep2),
 
     # SDSS tiled coadd
-    url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sdssco),
+    #url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sdssco),
+    url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.sdss_layer.get_tile_view),
+
     url(r'^jpeg-cutout-sdss', cutouts.jpeg_cutout_sdssco),
     url(r'^fits-cutout-sdss', cutouts.fits_cutout_sdssco),
 

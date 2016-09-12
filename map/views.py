@@ -248,6 +248,367 @@ def data_for_radec(req):
 
     return brick_detail(req, brickname)
 
+
+
+class MapLayer(object):
+    '''
+    Represents a "bricked" image map layer: eg, DECaLS DRx (image, model, or
+    resid), SDSSco, unWISE.
+    '''
+    def __init__(self, name,
+                 nativescale=14, maxscale=8):
+        ''' name: like 'decals-dr2-model'
+        '''
+        self.name = name
+        self.nativescale = nativescale
+        self.maxscale = maxscale
+
+    def get_bricks(self):
+        pass
+
+    def get_bands(self):
+        pass
+    
+    #def get_coadd_filename(self, brick, band):
+    #    pass
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        pass
+
+    def tileversion_ok(self, ver):
+        global tileversions
+        return ver in tileversions.get(self.name, [])
+
+    def get_tile_filename(self, ver, zoom, x, y):
+        '''Pre-rendered JPEG tile filename.'''
+        from decals import settings
+        basedir = settings.DATA_DIR
+        tilefn = os.path.join(basedir, 'tiles', self.name,
+                              '%i' % ver, '%i' % zoom, '%i' % x, '%i.jpg' % y)
+        return tilefn
+
+    def get_scale(self, zoom, x, y, wcs):
+        '''Integer scale step (1=binned 2x2, 2=binned 4x4, ...)'''
+        if zoom >= self.nativescale:
+            return 0
+        scale = (self.nativescale - zoom)
+        scale = np.clip(scale, 1, self.maxscale)
+        return scale
+
+    # def get_scaled_pattern(self):
+    #     '''Returns a filename pattern with %(scale), %(band) and %(brick)
+    #     keys.'''
+    #     pass
+
+    def bricks_touching_wcs(self, wcs):
+        W = wcs.get_width()
+        H = wcs.get_height()
+        rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
+        rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
+        r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
+        r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
+        dlo = min(d1, d2)
+        dhi = max(d1, d2)
+        return self.bricks_touching_radec_box(rlo, rhi, dlo, dhi)
+
+    def bricks_touching_radec_box(self, rlo, rhi, dlo, dhi):
+        pass
+
+    def bricknames_for_band(self, bricks, band):
+        return bricks.brickname
+        '''
+            has = getattr(B, 'has_%s' % band, None)
+            if has is not None and not has[i]:
+                # No coverage for band in this brick.
+                debug('Brick', brickname, 'has no', band, 'band')
+                continue
+        '''
+
+    def get_filename(self, brickname, band, scale):
+        pass
+
+    #def read_image(self, fn, slc):
+    def read_image(self, brickname, band, scale, slc):
+        fn = self.get_filename(brickname, band, scale)
+        f = fitsio.FITS(fn)[0]
+        img = f[slc]
+        return img
+
+    # def read_wcs(self, fn):
+    def read_wcs(self, brickname, band, scale):
+        fn = self.get_filename(brickname, band, scale)
+        return read_tan_wcs(fn, 0)
+
+    def get_tile(self, req, ver, zoom, x, y,
+                 wcs=None,
+                 savecache = True, forcecache = False,
+                 return_if_not_found=False,
+                 get_images=False,
+                 write_jpeg=False,
+                 ignoreCached=False,
+                 filename=None
+                ):
+        '''
+        *filename*: filename returned in http response
+        *wcs*: render into the given WCS rather than zoom/x/y Mercator
+        '''
+        from decals import settings
+        from map.views import tileversions
+    
+        zoom = int(zoom)
+        zoomscale = 2.**zoom
+        x = int(x)
+        y = int(y)
+        if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
+            raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
+        ver = int(ver)
+    
+        if not self.tileversion_ok(ver):
+            raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+    
+        tilefn = self.get_tile_filename(ver, zoom, x, y)
+        if os.path.exists(tilefn) and not ignoreCached:
+            return send_file(tilefn, 'image/jpeg', expires=oneyear,
+                             modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
+                             filename=filename)
+    
+        from astrometry.util.resample import resample_with_wcs, OverlapError
+        from astrometry.util.util import Tan
+        import numpy as np
+        import fitsio
+    
+        if wcs is None:
+            #try:
+            wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
+            #except RuntimeError as e:
+            #return HttpResponse(e.strerror)
+        else:
+            W = wcs.get_width()
+            H = wcs.get_height()
+    
+        bricks = self.bricks_touching_wcs(wcs)
+        if bricks is None or len(bricks) == 0:
+            if get_images:
+                return None
+            from django.http import HttpResponseRedirect
+            return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
+    
+        bands = self.get_bands()
+        scale = self.get_scale(zoom, x, y, wcs)
+        
+        r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
+                                [1,H/2,H,H,H,H/2,1,1])[-2:]
+        rimgs = []
+        for band in bands:
+            rimg = np.zeros((H,W), np.float32)
+            rn   = np.zeros((H,W), np.uint8)
+            bricknames = self.bricknames_for_band(bricks, band)
+            for brickname in bricknames:
+                try:
+                    bwcs = self.read_wcs(brickname, band, scale)
+                except:
+                    print('Failed to read WCS:', brickname, band, scale)
+                    savecache = False
+                    import traceback
+                    import sys
+                    traceback.print_exc(None, sys.stdout)
+                    continue
+
+                # Check for pixel overlap area
+                ok,xx,yy = bwcs.radec2pixelxy(r, d)
+                xx = xx.astype(np.int)
+                yy = yy.astype(np.int)
+                imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
+                M = 10
+                xlo = np.clip(xx.min() - M, 0, imW)
+                xhi = np.clip(xx.max() + M, 0, imW)
+                ylo = np.clip(yy.min() - M, 0, imH)
+                yhi = np.clip(yy.max() + M, 0, imH)
+                if xlo >= xhi or ylo >= yhi:
+                    continue
+    
+                subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
+                slc = slice(ylo,yhi), slice(xlo,xhi)
+                try:
+                    img = self.read_image(brickname, band, scale, slc)
+                except:
+                    print('Failed to read image:', brickname, band, scale)
+                    savecache = False
+                    import traceback
+                    import sys
+                    traceback.print_exc(None, sys.stdout)
+                    continue
+    
+                try:
+                    Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
+                except OverlapError:
+                    debug('Resampling exception')
+                    continue
+                rimg[Yo,Xo] += img[Yi,Xi]
+                rn  [Yo,Xo] += 1
+            rimg /= np.maximum(rn, 1)
+            rimgs.append(rimg)
+    
+        if return_if_not_found and not savecache:
+            return
+        if get_images and not write_jpeg:
+            return rimgs
+    
+        rgb = self.rgb(rimgs, bands)
+    
+        if forcecache:
+            savecache = True
+        if savecache:
+            trymakedirs(tilefn)
+        else:
+            import tempfile
+            f,tilefn = tempfile.mkstemp(suffix='.jpg')
+            os.close(f)
+
+        self.write_jpeg(tilefn, rgb)
+    
+        if get_images:
+            return rimgs
+    
+        return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
+                         filename=filename)
+
+    def write_jpeg(self, fn, rgb):
+        # no jpeg output support in matplotlib in some installations...
+        if self.hack_jpeg:
+            save_jpeg(tilefn, rgb)
+            debug('Wrote', tilefn)
+        else:
+            import pylab as plt
+            plt.imsave(tilefn, rgb)
+            debug('Wrote', tilefn)
+
+    def get_tile_view(self):
+        def view(request, ver, zoom, x, y):
+            return self.get_tile(request, ver, zoom, x, y)
+        return view
+        
+class DecalsLayer(MapLayer):
+    def __init__(self, name, imagetype, survey):
+        '''
+        name like 'decals-dr2-model'
+        imagetype: 'image', 'model', 'resid'
+        survey: LegacySurveyData object
+        '''
+        super(DecalsLayer, self).__init__(name)
+        self.imagetype = imagetype
+        self.survey = survey
+        self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+
+    def get_bricks(self):
+        return survey.get_bricks_readonly()
+
+    def get_bands(self):
+        return 'grz'
+        
+    def bricks_touching_radec_box(self, rlo, rhi, dlo, dhi):
+        bricks = self.get_bricks()
+        I = self.survey.bricks_touching_radec_box(bricks, rlo, rhi, dlo, dhi)
+        if len(I) == 0:
+            return None
+        return bricks[I]
+
+    def get_scaled_pattern(self):
+        from decals import settings
+        basedir = settings.DATA_DIR
+        return os.path.join(
+            basedir, 'scaled', self.name,
+            '%(scale)i%(band)s', '%(brickname).3s',
+            self.imagetype + '-%(brickname)s-%(band)s.fits')
+
+    def get_filename(self, brickname, band, scale):
+        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
+        if scale == 0:
+            return fn
+        fnargs = dict(band=band, brickname=brickname)
+        fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn)
+        return fn
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        return dr2_rgb(imgs, bands, **self.rgbkwargs)
+    
+class DecalsResidLayer(DecalsLayer):
+    def __init__(self, name, imagetype, survey, image_layer, model_layer):
+        '''
+        image_layer, model_layer: DecalsLayer objects
+        '''
+        super(DecalsResidLayer, self).__init__(name, imagetype, survey)
+        self.image_layer = image_layer
+        self.model_layer = model_layer
+        self.rgbkwargs = dict(mnmx=(-5,5))
+
+    def read_image(self, brickname, band, scale, slc):
+        img = self.image_layer.read_image(brickname, band, scale, slc)
+        if img is None:
+            return None
+        mod = self.model_layer.read_image(brickname, band, scale, slc)
+        if mod is None:
+            return None
+        return img - mod
+
+    def read_wcs(self, brickname, band, scale):
+        return self.image_layer.read_wcs(brickname, band, scale)
+
+class SdssLayer(MapLayer):
+    def __init__(self, name):
+        super(SdssLayer, self).__init__(name, nativescale=13)
+        self.bricks = None
+        
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        from decals import settings
+        from astrometry.util.fits import fits_table
+        basedir = settings.DATA_DIR
+        self.bricks = fits_table(os.path.join(basedir, 'bricks-sdssco.fits'),
+                                 columns=['brickname', 'ra1', 'ra2',
+                                          'dec1', 'dec2'])
+        return self.bricks
+
+    def get_bands(self):
+        return 'gri'
+
+    def bricks_touching_radec_box(self, rlo, rhi, dlo, dhi):
+        bricks = self.get_bricks()
+        if rahi < ralo:
+            I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
+                                          bricks.ra1 <= rahi) *
+                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        else:
+            I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
+                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        if len(I) == 0:
+            return None
+        return bricks[I]
+
+    def get_filename(self, brickname, band, scale):
+        from decals import settings
+        basedir = settings.DATA_DIR
+        brickpre = brickname[:3]
+        fn = os.path.join(basedir, 'sdssco', 'coadd', brickpre,
+                          'sdssco-%s-%s.fits' % (brickname, band))
+        if scale == 0:
+            return fn
+        fnargs = dict(band=band, brickname=brickname)
+        fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn)
+        return fn
+    
+    def get_scaled_pattern(self):
+        from decals import settings
+        basedir = settings.DATA_DIR
+        return os.path.join(
+            basedir, 'scaled', self.name,
+            '%(scale)i%(band)s', '%(brickname).3s',
+            'sdssco' + '-%(brickname)s-%(band)s.fits')
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        return sdss_rgb(imgs, bands)
+    
 # "PR"
 #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
@@ -1943,6 +2304,23 @@ def dq_data(req, survey, ccd):
     fitsio.write(tmpfn, None, header=primhdr, clobber=True)
     fitsio.write(tmpfn, pix,  header=hdr)
     return send_file(tmpfn, 'image/fits', unlink=True, filename='dq-%s.fits.gz' % ccd)
+
+
+
+survey_dr2 = _get_survey('decals-dr2')
+dr2_image = DecalsLayer('decals-dr2', 'image', survey_dr2)
+dr2_model = DecalsLayer('decals-dr2-model', 'model', survey_dr2)
+dr2_resid = DecalsResidLayer('decals-dr2-resid', 'resid', survey_dr2,
+                             dr2_image, dr2_model)
+
+survey_dr3 = _get_survey('decals-dr3')
+dr3_image = DecalsLayer('decals-dr3', 'image', survey_dr3)
+dr3_model = DecalsLayer('decals-dr3-model', 'model', survey_dr3)
+dr3_resid = DecalsResidLayer('decals-dr3-resid', 'resid', survey_dr3,
+                             dr3_image, dr3_model)
+
+sdss_layer = SdssLayer('sdssco')
+
 
 if __name__ == '__main__':
     import os
