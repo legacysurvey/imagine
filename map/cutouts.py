@@ -198,24 +198,63 @@ def cutout_on_bricks(req, tag, imagetag='image', jpeg=False, fits=False,
     return send_file(tmpfn, 'image/fits', unlink=True, filename=fn)
 
 def jpeg_cutout(req):
-    layer = req.GET.get('layer', 'decals-dr3')
-    if layer == 'decals-dr1j':
+    name = req.GET.get('layer', 'decals-dr3')
+
+    print('jpeg_cutout: name', name)
+
+    from map.views import _get_layer
+    layer = _get_layer(name)
+    print('layer:', layer)
+
+    if layer is not None:
+        return layer.get_cutout(req, jpeg=True)
+
+    if name == 'decals-dr1j':
         return jpeg_cutout_decals_dr1j(req)
-    if layer in ['sdss', 'sdssco']:
-        return jpeg_cutout_sdssco(req)
-    if layer == 'decals-dr2':
-        return cutout_decals(req, jpeg=True, default_tag='decals-dr2', dr2=True)
-    if layer == 'decals-dr3':
-        return cutout_decals(req, jpeg=True, default_tag='decals-dr3', dr3=True)
+
+    #layer = req.GET.get('layer', 'decals-dr3')
+    #if layer == 'decals-dr1j':
+    #    return jpeg_cutout_decals_dr1j(req)
+    #if layer in ['sdss', 'sdssco']:
+    #    return jpeg_cutout_sdssco(req)
+    #if layer == 'decals-dr2':
+    #    return cutout_decals(req, jpeg=True, default_tag='decals-dr2', dr2=True)
+    #if layer == 'decals-dr3':
+    #    return cutout_decals(req, jpeg=True, default_tag='decals-dr3', dr3=True)
 
 def fits_cutout(req):
-    layer = req.GET.get('layer', 'decals-dr3')
-    if layer == 'decals-dr1j':
-        return fits_cutout_decals_dr1j(req)
-    if layer in ['sdss', 'sdssco']:
-        return fits_cutout_sdssco(req)
-    if layer == 'decals-dr2':
-        return cutout_decals(req, fits=True, default_tag='decals-dr2', dr2=True)
-    if layer == 'decals-dr3':
-        return cutout_decals(req, fits=True, default_tag='decals-dr3', dr3=True)
+    name = req.GET.get('layer', 'decals-dr3')
 
+    from views import _get_layer
+    layer = _get_layer(name)
+
+    if layer is not None:
+        return layer.get_cutout(req, fits=True)
+
+    if name == 'decals-dr1j':
+        return fits_cutout_decals_dr1j(req)
+
+    # if layer in ['sdss', 'sdssco']:
+    #     return fits_cutout_sdssco(req)
+    # if layer == 'decals-dr2':
+    #     return cutout_decals(req, fits=True, default_tag='decals-dr2', dr2=True)
+    # if layer == 'decals-dr3':
+    #     return cutout_decals(req, fits=True, default_tag='decals-dr3', dr3=True)
+
+
+
+
+if __name__ == '__main__':
+    import os
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+
+    class duck(object):
+        pass
+
+    req = duck()
+    req.META = dict()
+    req.GET = dict(layer='decals-dr3', ra=246.2093, dec=9.6062)
+
+    r = jpeg_cutout(req)
+    print('Result', r)
+    
