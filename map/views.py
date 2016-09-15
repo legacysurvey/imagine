@@ -239,10 +239,13 @@ def data_for_radec(req):
     name = req.GET.get('layer', 'decals-dr3')
 
     ## FIXME -- could point to unWISE data!
-    if 'unwise' in name:
-        name = 'decals-dr3'
+    #if 'unwise' in name or name == 'sdssco':
+    #    name = 'decals-dr3'
 
     survey = _get_survey(name)
+    if survey is None:
+        survey = _get_survey('decals-dr3')
+
     bricks = survey.get_bricks()
     I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
                        (dec >= bricks.dec1) * (dec < bricks.dec2))
@@ -1243,20 +1246,21 @@ def _get_survey(name=None):
         surveys[name] = d
         return d
 
-    if name is None:
-        name = 'decals-dr1'
-    if name in surveys:
-        return surveys[name]
-
-    assert(name == 'decals-dr1')
-
-    dirnm = os.path.join(basedir, 'decals-dr1')
-    d = LegacySurveyData(survey_dir=dirnm, version='dr1')
-    d.drname = 'DECaLS DR1'
-    d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr1/'
-    surveys[name] = d
-
-    return d
+    return None
+    # if name is None:
+    #     name = 'decals-dr1'
+    # if name in surveys:
+    #     return surveys[name]
+    # 
+    # assert(name == 'decals-dr1')
+    # 
+    # dirnm = os.path.join(basedir, 'decals-dr1')
+    # d = LegacySurveyData(survey_dir=dirnm, version='dr1')
+    # d.drname = 'DECaLS DR1'
+    # d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr1/'
+    # surveys[name] = d
+    # 
+    # return d
 
 def brick_list(req):
     import json
@@ -1569,8 +1573,13 @@ def nil(req):
 
 def brick_detail(req, brickname):
     import numpy as np
-    name = 'decals-dr3'
+
+    name = req.GET.get('layer', 'decals-dr3')
     survey = _get_survey(name)
+    #survey = _get_survey(name)
+    if survey is None:
+        survey = _get_survey('decals-dr3')
+
     bricks = survey.get_bricks()
     I = np.flatnonzero(brickname == bricks.brickname)
     assert(len(I) == 1)
