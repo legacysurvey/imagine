@@ -16,11 +16,10 @@ urlpatterns = [
     url(r'^spec-deep2/(\d+)/cat.json', cats.cat_spec_deep2),
 
     # SDSS tiled coadd
-    #url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sdssco),
     url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.sdss_layer.get_tile_view()),
 
-    url(r'^jpeg-cutout-sdss', cutouts.jpeg_cutout_sdssco),
-    url(r'^fits-cutout-sdss', cutouts.fits_cutout_sdssco),
+    #url(r'^jpeg-cutout-sdss', cutouts.jpeg_cutout_sdssco),
+    #url(r'^fits-cutout-sdss', cutouts.fits_cutout_sdssco),
 
     url(r'^data-for-radec/', views.data_for_radec, name='data_for_radec'),
 
@@ -53,9 +52,6 @@ urlpatterns = [
     url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr3),
     
     # DR2
-    # url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2),
-    # url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2_model),
-    # url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr2_resid),
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.dr2_image.get_tile_view()),
     url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.dr2_model.get_tile_view()),
     url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.dr2_resid.get_tile_view()),
@@ -64,7 +60,6 @@ urlpatterns = [
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr2),
 
     url(r'^targets-dr2/(\d+)/cat.json', cats.cat_targets_dr2),
-
 
     # depth maps
     #url(r'^decam-depth/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decam_depth),
@@ -84,12 +79,6 @@ urlpatterns = [
     #url(r'^decals-wl/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_wl),
 
     # Cutouts
-    url(r'^fits-cutout-decals-dr1', cutouts.fits_cutout_decals_dr1j),
-    url(r'^jpeg-cutout-decals-dr1', cutouts.jpeg_cutout_decals_dr1j),
-
-    url(r'^jpeg-cutout-decals-dr2', cutouts.jpeg_cutout_decals_dr2),
-    url(r'^fits-cutout-decals-dr2', cutouts.fits_cutout_decals_dr2),
-
     url(r'^jpeg-cutout', cutouts.jpeg_cutout, name='cutout-jpeg'),
     url(r'^fits-cutout', cutouts.fits_cutout, name='cutout-fits'),
 
@@ -112,10 +101,12 @@ urlpatterns = [
     url(r'^halpha/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_halpha),
 
     # unWISE W1/W2
-    url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2),
+    #url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2),
+    url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.unwise_layer.get_tile_view()),
 
     # Aaron's NEO1 unWISE W1/W2
-    url(r'^unwise-neo1/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2_neo1),
+    url(r'^unwise-neo1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.unwise_neo1_layer.get_tile_view()),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
     #url(r'^unwise-w1234-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1234),
@@ -152,6 +143,5 @@ urlpatterns = [
 
     # fall-through
     url(r'', views.index),
-
 
 ]

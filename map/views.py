@@ -237,6 +237,11 @@ def data_for_radec(req):
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
     name = req.GET.get('layer', 'decals-dr3')
+
+    ## FIXME -- could point to unWISE data!
+    if 'unwise' in name:
+        name = 'decals-dr3'
+
     survey = _get_survey(name)
     bricks = survey.get_bricks()
     I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
@@ -264,6 +269,7 @@ class MapLayer(object):
         self.minscale = 1
         self.maxscale = maxscale
         self.hack_jpeg = False
+        self.pixscale = 0.262
 
     def get_bricks(self):
         pass
@@ -271,9 +277,6 @@ class MapLayer(object):
     def get_bands(self):
         pass
     
-    #def get_coadd_filename(self, brick, band):
-    #    pass
-
     def get_rgb(self, imgs, bands, **kwargs):
         pass
 
@@ -297,11 +300,6 @@ class MapLayer(object):
         scale = (self.nativescale - zoom)
         scale = np.clip(scale, self.minscale, self.maxscale)
         return scale
-
-    # def get_scaled_pattern(self):
-    #     '''Returns a filename pattern with %(scale), %(band) and %(brick)
-    #     keys.'''
-    #     pass
 
     def bricks_touching_wcs(self, wcs):
         W = wcs.get_width()
@@ -330,7 +328,6 @@ class MapLayer(object):
     def get_filename(self, brickname, band, scale):
         pass
 
-    #def read_image(self, fn, slc):
     def read_image(self, brickname, band, scale, slc):
         import fitsio
         fn = self.get_filename(brickname, band, scale)
@@ -338,7 +335,6 @@ class MapLayer(object):
         img = f[slc]
         return img
 
-    # def read_wcs(self, fn):
     def read_wcs(self, brickname, band, scale):
         from coadds import read_tan_wcs
         fn = self.get_filename(brickname, band, scale)
@@ -351,7 +347,8 @@ class MapLayer(object):
                  get_images=False,
                  write_jpeg=False,
                  ignoreCached=False,
-                 filename=None
+                 filename=None,
+                 bands=None,
                 ):
         '''
         *filename*: filename returned in http response
@@ -368,16 +365,21 @@ class MapLayer(object):
         y = int(y)
         if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
             raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
-        ver = int(ver)
-    
-        if not self.tileversion_ok(ver):
-            raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-    
-        tilefn = self.get_tile_filename(ver, zoom, x, y)
-        if os.path.exists(tilefn) and not ignoreCached:
-            return send_file(tilefn, 'image/jpeg', expires=oneyear,
-                             modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
-                             filename=filename)
+
+        if ver is not None:
+            ver = int(ver)
+            if not self.tileversion_ok(ver):
+                raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+        else:
+            # Set default version...?
+            ver = tileversions[self.name][-1]
+
+        if not get_images:
+            tilefn = self.get_tile_filename(ver, zoom, x, y)
+            if os.path.exists(tilefn) and not ignoreCached:
+                return send_file(tilefn, 'image/jpeg', expires=oneyear,
+                                 modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
+                                 filename=filename)
     
         from astrometry.util.resample import resample_with_wcs, OverlapError
         from astrometry.util.util import Tan
@@ -385,10 +387,7 @@ class MapLayer(object):
         import fitsio
     
         if wcs is None:
-            #try:
             wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-            #except RuntimeError as e:
-            #return HttpResponse(e.strerror)
         else:
             W = wcs.get_width()
             H = wcs.get_height()
@@ -400,8 +399,11 @@ class MapLayer(object):
             from django.http import HttpResponseRedirect
             return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
     
-        bands = self.get_bands()
+        if bands is None:
+            bands = self.get_bands()
         scale = self.get_scale(zoom, x, y, wcs)
+
+        print('get_tile: scale', scale)
         
         r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                 [1,H/2,H,H,H,H/2,1,1])[-2:]
@@ -411,6 +413,7 @@ class MapLayer(object):
             rn   = np.zeros((H,W), np.uint8)
             bricknames = self.bricknames_for_band(bricks, band)
             for brickname in bricknames:
+                print('Reading', brickname, 'band', band, 'scale', scale)
                 try:
                     bwcs = self.read_wcs(brickname, band, scale)
                 except:
@@ -494,19 +497,126 @@ class MapLayer(object):
         def view(request, ver, zoom, x, y):
             return self.get_tile(request, ver, zoom, x, y)
         return view
+
+    def populate_fits_cutout_header(self, hdr):
+        pass
+
+    def parse_bands(self, bands):
+        # default: assume single-character band names
+        mybands = self.get_bands()
+        bb = []
+        for b in bands:
+            if b in mybands:
+                bb.append(b)
+            else:
+                return None
+        return bb
+
+    def get_cutout(self, req, fits=False, jpeg=False, outtag=None):
+        hdr = None
+        if fits:
+            import fitsio
+            hdr = fitsio.FITSHDR()
+            self.populate_fits_cutout_header(hdr)
+
+        native_pixscale = self.pixscale
+        native_zoom = self.nativescale
+
+        ra  = float(req.GET['ra'])
+        dec = float(req.GET['dec'])
+        pixscale = float(req.GET.get('pixscale', self.pixscale))
+        maxsize = 1024
+        size   = min(int(req.GET.get('size',    256)), maxsize)
+        width  = min(int(req.GET.get('width',  size)), maxsize)
+        height = min(int(req.GET.get('height', size)), maxsize)
+        bands = req.GET.get('bands', None)
+        #print('get_cutout: GET bands=', bands)
+
+        if not 'pixscale' in req.GET and 'zoom' in req.GET:
+            zoom = int(req.GET.get('zoom'))
+            pixscale = pixscale * 2**(native_zoom - zoom)
+    
+        if bands is not None:
+            bands = self.parse_bands(bands)
+            #print('parsed bands:', bands)
+        if bands is None:
+            bands = self.get_bands()
+
+        #print('get_cutout: bands=', bands)
+
+        from astrometry.util.util import Tan
+        import numpy as np
+        import fitsio
+        import tempfile
+    
+        ps = pixscale / 3600.
+        raps = -ps
+        decps = ps
+        if jpeg:
+            decps *= -1.
+        wcs = Tan(*[float(x) for x in [ra, dec, (width+1)/2., (height+1)/2.,
+                                       raps, 0., 0., decps, width, height]])
+    
+        zoom = native_zoom - int(np.round(np.log2(pixscale / native_pixscale)))
+        zoom = max(0, min(zoom, 16))
+
+        rtn = self.get_tile(req, None, zoom, 0, 0, wcs=wcs, get_images=fits,
+                             savecache=False, bands=bands)
+        if jpeg:
+            return rtn
+        ims = rtn
+    
+        if hdr is not None:
+            hdr['BANDS'] = ''.join([str(b) for b in bands])
+            for i,b in enumerate(bands):
+                hdr['BAND%i' % i] = b
+            wcs.add_to_header(hdr)
+    
+        f,tmpfn = tempfile.mkstemp(suffix='.fits')
+        os.close(f)
+        os.unlink(tmpfn)
+    
+        if len(bands) > 1:
+            cube = np.empty((len(bands), height, width), np.float32)
+            for i,im in enumerate(ims):
+                cube[i,:,:] = im
+        else:
+            cube = ims[0]
+        del ims
+        fitsio.write(tmpfn, cube, clobber=True, header=hdr)
+        if outtag is None:
+            fn = 'cutout_%.4f_%.4f.fits' % (ra,dec)
+        else:
+            fn = 'cutout_%s_%.4f_%.4f.fits' % (outtag, ra,dec)
+        return send_file(tmpfn, 'image/fits', unlink=True, filename=fn)
+
+    def get_jpeg_cutout_view(self):
+        def view(request, ver, zoom, x, y):
+            return self.get_cutout(request, jpeg=True)
+        return view
+
+    def get_fits_cutout_view(self):
+        def view(request, ver, zoom, x, y):
+            return self.get_cutout(request, fits=True)
+        return view
+
         
 class DecalsLayer(MapLayer):
-    def __init__(self, name, imagetype, survey, bands='grz'):
+    def __init__(self, name, imagetype, survey, bands='grz', drname=None):
         '''
         name like 'decals-dr2-model'
         imagetype: 'image', 'model', 'resid'
         survey: LegacySurveyData object
+        drname like 'decals-dr2'
         '''
         super(DecalsLayer, self).__init__(name)
         self.imagetype = imagetype
         self.survey = survey
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
         self.bands = bands
+        if drname is None:
+            drname = name
+        self.drname = drname
 
     def get_bricks(self):
         B = self.survey.get_bricks_readonly()
@@ -531,21 +641,29 @@ class DecalsLayer(MapLayer):
         from decals import settings
         basedir = settings.DATA_DIR
         return os.path.join(
-            basedir, 'scaled', self.name,
+            basedir, 'scaled', self.drname,
             '%(scale)i%(band)s', '%(brickname).3s',
             self.imagetype + '-%(brickname)s-%(band)s.fits')
 
     def get_filename(self, brickname, band, scale):
+        print('get_filename for', brickname, band, 'scale', scale)
         fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
+        print('get_filename ->', fn)
         if scale == 0:
             return fn
         fnargs = dict(band=band, brickname=brickname)
         fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn)
+        print('get_filename: scaled ->', fn)
         return fn
 
     def get_rgb(self, imgs, bands, **kwargs):
         return dr2_rgb(imgs, bands, **self.rgbkwargs)
-    
+
+    def populate_fits_cutout_header(self, hdr):
+        hdr['SURVEY'] = 'DECaLS'
+        hdr['VERSION'] = self.survey.drname.split(' ')[-1]
+        hdr['IMAGETYP'] = self.imagetype
+
 class ResidMixin(object):
     def __init__(self, image_layer, model_layer, *args, **kwargs):
         '''
@@ -568,7 +686,6 @@ class ResidMixin(object):
     def read_wcs(self, brickname, band, scale):
         return self.image_layer.read_wcs(brickname, band, scale)
 
-
 class DecalsResidLayer(ResidMixin, DecalsLayer):
     pass
 
@@ -579,6 +696,10 @@ class MzlsMixin(object):
 
     def get_rgb(self, imgs, bands, **kwargs):
         return mzls_dr3_rgb(imgs, bands, **kwargs)
+
+    def populate_fits_cutout_header(self, hdr):
+        hdr['SURVEY'] = 'MzLS'
+        hdr['VERSION'] = self.survey.drname.split(' ')[-1]
 
 class MzlsLayer(MzlsMixin, DecalsLayer):
     pass
@@ -643,61 +764,91 @@ class SdssLayer(MapLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         return sdss_rgb(imgs, bands)
 
+    def populate_fits_cutout_header(self, hdr):
+        hdr['SURVEY'] = 'SDSS'
 
-# class UnwiseLayer(MapLayer):
-#     def __init__(self, name, unwise_dir):
-#         super(UnwiseLayer, self).__init__(name, nativescale=13)
-#         self.bricks = None
-#         self.dir = unwise_dir
-#         
-#     def get_bricks(self):
-#         if self.bricks is not None:
-#             return self.bricks
-#         from decals import settings
-#         from astrometry.util.fits import fits_table
-#         basedir = settings.DATA_DIR
-#         self.bricks = fits_table(os.path.join(basedir, 'unwise-bricks.fits'))
-#         return self.bricks
-# 
-#     def get_bands(self):
-#         return ['w1','w2']
-# 
-#     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi):
-#         import numpy as np
-#         bricks = self.get_bricks()
-#         if rahi < ralo:
-#             I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
-#                                           bricks.ra1 <= rahi) *
-#                             (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-#         else:
-#             I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
-#                             (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-#         if len(I) == 0:
-#             return None
-#         return bricks[I]
-# 
-#     def get_filename(self, brickname, band, scale):
-#         brickpre = brickname[:3]
-#         fn = os.path.join(self.dir, brickpre, brickname,
-#                           'unwise-%s-%s.fits' % (brickname, band))
-#         if scale == 0:
-#             return fn
-#         fnargs = dict(band=band, brickname=brickname)
-#         fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn)
-#         return fn
-#     
-#     def get_scaled_pattern(self):
-#         from decals import settings
-#         basedir = settings.DATA_DIR
-#         return os.path.join(
-#             basedir, 'scaled', self.name,
-#             '%(scale)i%(band)s', '%(brickname).3s',
-#             'unwise-%(brickname)s-%(band)s.fits')
-# 
-#     def get_rgb(self, imgs, bands, **kwargs):
-#         return _unwise_to_rgb(imgs, **kwargs)
+class UnwiseLayer(MapLayer):
+    def __init__(self, name, unwise_dir):
+        super(UnwiseLayer, self).__init__(name, nativescale=13)
+        self.bricks = None
+        self.dir = unwise_dir
+        
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        from decals import settings
+        from astrometry.util.fits import fits_table
+        basedir = settings.DATA_DIR
+        self.bricks = fits_table(os.path.join(basedir, 'unwise-bricks.fits'))
+        return self.bricks
 
+    def get_bands(self):
+        # Note, not 'w1','w2'...
+        return '12'
+
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi):
+        import numpy as np
+        bricks = self.get_bricks()
+        if rahi < ralo:
+            I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
+                                          bricks.ra1 <= rahi) *
+                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        else:
+            I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
+                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        if len(I) == 0:
+            return None
+        return bricks[I]
+
+    def get_filename(self, brickname, band, scale):
+        '''
+        band: string '1' or '2'
+        '''
+        assert(band in self.get_bands())
+        brickpre = brickname[:3]
+        fn = os.path.join(self.dir, brickpre, brickname,
+                          'unwise-%s-w%s-img-u.fits' % (brickname, band))
+        if scale == 0:
+            return fn
+        fnargs = dict(band=band, brickname=brickname)
+        fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn)
+        return fn
     
+    def get_scaled_pattern(self):
+        from decals import settings
+        basedir = settings.DATA_DIR
+        return os.path.join(
+            basedir, 'scaled', self.name,
+            #'%(scale)i%(band)s',
+            '%(scale)iw%(band)s',
+            '%(brickname).3s', 'unwise-%(brickname)s-%(band)s.fits')
+            
+
+    def get_scale(self, zoom, x, y, wcs):
+        import numpy as np
+        from astrometry.util.starutil_numpy import arcsec_between
+
+        '''Integer scale step (1=binned 2x2, 2=binned 4x4, ...)'''
+        if zoom >= self.nativescale:
+            return 0
+
+        # Get *actual* pixel scales at the top & bottom
+        W,H = wcs.get_width(), wcs.get_height()
+        r1,d1 = wcs.pixelxy2radec(W/2., H)[-2:]
+        r2,d2 = wcs.pixelxy2radec(W/2., H-1.)[-2:]
+        r3,d3 = wcs.pixelxy2radec(W/2., 1.)[-2:]
+        r4,d4 = wcs.pixelxy2radec(W/2., 2.)[-2:]
+        # Take the min = most zoomed-in
+        tilescale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
+        native_pixscale = 2.75
+        scale = int(np.floor(np.log2(tilescale / native_pixscale)))
+        debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', tilescale, 'Scale:',scale)
+        scale = np.clip(scale, 0, 7)
+        return scale
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        return _unwise_to_rgb(imgs, **kwargs)
+
 # "PR"
 #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
@@ -705,18 +856,6 @@ rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
 #rgbkwargs_nexp = dict(mnmx=(0,25), arcsinh=1.,
 #                      scales=dict(g=(2,1),r=(1,1),z=(0,1)))
-
-B_unwise = None
-def get_unwise_bricks():
-    global B_unwise
-    if B_unwise is None:
-        from decals import settings
-        from astrometry.util.fits import fits_table
-        B_unwise = fits_table(os.path.join(settings.UNWISE_DIR,
-                                           'allsky-atlas.fits'),
-                                           columns=['ra','dec','coadd_id'])
-        B_unwise.rename('coadd_id', 'brickname')
-    return B_unwise
 
 def sdss_rgb(rimgs, bands, scales=None,
              m = 0.02):
@@ -872,7 +1011,6 @@ def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
     img = imgs[0]
     H,W = img.shape
 
-
     if S is not None or Q is not None:
         # 
         if S is None:
@@ -947,172 +1085,6 @@ def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
     rgb[:,:,1] = rgb[:,:,0]/2 + rgb[:,:,2]/2
 
     return rgb
-
-UNW = None
-UNW_tree = None
-
-def map_unwise_w1w2(*args, **kwargs):
-    return map_unwise(*args, **kwargs)
-
-def map_unwise_w1w2_neo1(*args, **kwargs):
-    kwargs.update(tag='unwise-neo1', unwise_dir=settings.UNWISE_NEO1_DIR)
-    return map_unwise(*args, **kwargs)
-
-def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
-               get_images=False,
-               bands=[1,2], tag='unwise-w1w2',
-               unwise_dir=settings.UNWISE_DIR,
-               **kwargs):
-    global UNW
-    global UNW_tree
-
-    zoom = int(zoom)
-    zoomscale = 2.**zoom
-    x = int(x)
-    y = int(y)
-    if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
-        raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
-    ver = int(ver)
-
-    if not ver in tileversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-
-    from decals import settings
-
-    basedir = settings.DATA_DIR
-    tilefn = os.path.join(basedir, 'tiles', tag,
-                          '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
-    debug('Tilefn:', tilefn)
-    if os.path.exists(tilefn) and not ignoreCached:
-        return send_file(tilefn, 'image/jpeg', expires=oneyear,
-                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
-
-    if not savecache:
-        import tempfile
-        f,tilefn = tempfile.mkstemp(suffix='.jpg')
-        os.close(f)
-
-    try:
-        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-    except RuntimeError as e:
-        return HttpResponse(e.strerror)
-
-    from astrometry.util.fits import fits_table
-    import numpy as np
-    from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
-    from astrometry.util.starutil_numpy import degrees_between, arcsec_between
-    from astrometry.util.resample import resample_with_wcs, OverlapError
-    from astrometry.util.util import Tan
-    import fitsio
-
-    if UNW is None:
-        UNW = fits_table(os.path.join(settings.UNWISE_DIR, 'allsky-atlas.fits'),
-                         columns=['ra','dec','coadd_id'])
-        UNW_tree = tree_build_radec(UNW.ra, UNW.dec)
-
-    # unWISE tile size
-    radius = 1.01 * np.sqrt(2.)/2. * 2.75 * 2048 / 3600.
-
-    # leaflet tile size
-    ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
-    ok,r0,d0 = wcs.pixelxy2radec(1, 1)
-    ok,r1,d1 = wcs.pixelxy2radec(W, H)
-    radius = radius + max(degrees_between(ra,dec, r0,d0), degrees_between(ra,dec, r1,d1))
-
-    J = tree_search_radec(UNW_tree, ra, dec, radius)
-    debug(len(J), 'unWISE tiles nearby')
-    
-    ww = [1, W*0.25, W*0.5, W*0.75, W]
-    hh = [1, H*0.25, H*0.5, H*0.75, H]
-
-    ok,r,d = wcs.pixelxy2radec(
-        [1]*len(hh) + ww          + [W]*len(hh) +        list(reversed(ww)),
-        hh          + [1]*len(ww) + list(reversed(hh)) + [H]*len(ww))
-    scaled = 0
-    scalepat = None
-    scaledir = tag
-
-    if zoom < 11:
-        # Get *actual* pixel scales at the top & bottom
-        ok,r1,d1 = wcs.pixelxy2radec(W/2., H)
-        ok,r2,d2 = wcs.pixelxy2radec(W/2., H-1.)
-        ok,r3,d3 = wcs.pixelxy2radec(W/2., 1.)
-        ok,r4,d4 = wcs.pixelxy2radec(W/2., 2.)
-        # Take the min = most zoomed-in
-        scale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
-        
-        native_scale = 2.75
-        scaled = int(np.floor(np.log2(scale / native_scale)))
-        debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled)
-        scaled = np.clip(scaled, 1, 7)
-        
-        scalepat = os.path.join(basedir, 'scaled', scaledir,
-                                '%(scale)i%(band)s', '%(tilename).3s', 'unwise-%(tilename)s-%(band)s.fits')
-
-    basepat = os.path.join(unwise_dir, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-u.fits')
-
-    rimgs = [np.zeros((H,W), np.float32) for band in bands]
-    rn    = np.zeros((H,W), np.uint8)
-
-    for j in J:
-        tile = UNW.coadd_id[j]
-
-        fns = []
-        for band in bands:
-            bandname = 'w%i' % band
-            fnargs = dict(band=bandname, tilename=tile)
-            basefn = basepat % fnargs
-            fn = get_scaled(scalepat, fnargs, scaled, basefn)
-            fns.append(fn)
-
-        debug('Tile', tile, 'fns', fns)
-        bwcs = Tan(fns[0], 0)
-        ok,xx,yy = bwcs.radec2pixelxy(r, d)
-        #print('ok:', np.unique(ok))
-        if not np.all(ok):
-            debug('Skipping tile', tile)
-            continue
-        assert(np.all(ok))
-        xx = xx.astype(np.int)
-        yy = yy.astype(np.int)
-        imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
-        # Margin
-        M = 20
-        xlo = np.clip(xx.min() - M, 0, imW)
-        xhi = np.clip(xx.max() + M, 0, imW)
-        ylo = np.clip(yy.min() - M, 0, imH)
-        yhi = np.clip(yy.max() + M, 0, imH)
-        if xlo >= xhi or ylo >= yhi:
-            continue
-        subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
-        slc = slice(ylo,yhi), slice(xlo,xhi)
-
-        try:
-            Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
-        except OverlapError:
-            continue
-
-        for fn, rimg in zip(fns, rimgs):
-            f = fitsio.FITS(fn)[0]
-            img = f[slc]
-            rimg[Yo,Xo] += img[Yi,Xi]
-            del img, f
-        rn  [Yo,Xo] += 1
-
-    for rimg in rimgs:
-        rimg /= np.maximum(rn, 1)
-    del rn
-
-    if get_images:
-        return rimgs
-
-    rgb = _unwise_to_rgb(rimgs, **kwargs)
-
-    trymakedirs(tilefn)
-    save_jpeg(tilefn, rgb)
-    debug('Wrote', tilefn)
-
-    return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
 sfd = None
 halpha = None
@@ -1597,23 +1569,45 @@ def nil(req):
 
 def brick_detail(req, brickname):
     import numpy as np
-    survey = _get_survey('decals-dr3')
+    name = 'decals-dr3'
+    survey = _get_survey(name)
     bricks = survey.get_bricks()
     I = np.flatnonzero(brickname == bricks.brickname)
     assert(len(I) == 1)
     brick = bricks[I[0]]
 
-    return HttpResponse('\n'.join([
-                '<html><head><title>%s data for brick %s</title></head>' % (survey.drname, brickname),
-                '<body>',
-                '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
-                '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
-                '<ul>',
-                '<li><a href="%s/coadd/%s/%s/decals-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
-                '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
-                '<li><a href="%s/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
-                '</ul>',
-                '</body></html>']))
+    html = [
+        '<html><head><title>%s data for brick %s</title></head>' % (survey.drname, brickname),
+        '<body>',
+        '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
+        '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
+        '<ul>',
+        '<li><a href="%s/coadd/%s/%s/decals-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
+        '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
+        '<li><a href="%s/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
+        '</ul>',
+        ]
+
+    ccdsfn = survey.find_file('ccds-table', brick=brickname)
+    if not os.path.exists(ccdsfn):
+        print('No CCDs table:', ccdsfn)
+    else:
+        from astrometry.util.fits import fits_table
+        ccds = fits_table(ccdsfn)
+        if len(ccds):
+            html.extend(['CCDs overlapping brick:', '<ul>'])
+            for ccd in ccds:
+                ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum, ccd.ccdname.strip(), ccd.filter.strip())
+                html.append('<li><a href="%s">%s</a></li>' % (
+                        reverse(ccd_detail, args=(name, ccdname.replace(' ','-'))),
+                        ccdname))
+            html.append('</ul>')
+
+    html.extend([
+            '</body></html>',
+            ])
+
+    return HttpResponse('\n'.join(html))
 
 
 def cutouts(req):
@@ -2005,27 +1999,38 @@ def dq_data(req, survey, ccd):
 
 survey_dr2 = _get_survey('decals-dr2')
 dr2_image = DecalsLayer('decals-dr2', 'image', survey_dr2)
-dr2_model = DecalsLayer('decals-dr2-model', 'model', survey_dr2)
+dr2_model = DecalsLayer('decals-dr2-model', 'model', survey_dr2,
+                             drname='decals-dr2')
 dr2_resid = DecalsResidLayer(dr2_image, dr2_model,
-                             'decals-dr2-resid', 'resid', survey_dr2)
+                             'decals-dr2-resid', 'resid', survey_dr2,
+                             drname='decals-dr2')
 
 survey_dr3 = _get_survey('decals-dr3')
 dr3_image = DecalsLayer('decals-dr3', 'image', survey_dr3)
-dr3_model = DecalsLayer('decals-dr3-model', 'model', survey_dr3)
+dr3_model = DecalsLayer('decals-dr3-model', 'model', survey_dr3,
+                        drname='decals-dr3')
 dr3_resid = DecalsResidLayer(dr3_image, dr3_model,
-                             'decals-dr3-resid', 'resid', survey_dr3)
-# No room for DR3 scale=1 !
+                             'decals-dr3-resid', 'resid', survey_dr3,
+                             drname='decals-dr3')
+# No disk space for DR3 scale=1 !
 dr3_image.minscale = dr3_model.minscale = dr3_resid.minscale = 2
 
 survey_dr3mzls = _get_survey('mzls-dr3')
-mzls3_image = MzlsLayer('mzls-dr3', 'image', survey_dr3mzls)
-mzls3_model = MzlsLayer('mzls-dr3-model', 'model', survey_dr3mzls)
+mzls3_image = MzlsLayer('mzls-dr3', 'image', survey_dr3mzls,
+                        drname='mzls-dr3')
+mzls3_model = MzlsLayer('mzls-dr3-model', 'model', survey_dr3mzls,
+                        drname='mzls-dr3')
 mzls3_resid = MzlsResidLayer(mzls3_image, mzls3_model,
-                             'mzls-dr3-resid', 'resid', survey_dr3mzls)
+                             'mzls-dr3-resid', 'resid', survey_dr3mzls,
+                             drname='mzls-dr3')
 
 sdss_layer = SdssLayer('sdssco')
 
-
+from decals import settings
+unwise_layer = UnwiseLayer('unwise-w1w2',
+                           settings.UNWISE_DIR)
+unwise_neo1_layer = UnwiseLayer('unwise-neo1',
+                                settings.UNWISE_NEO1_DIR)
 layers = { 'sdssco': sdss_layer,
            'decals-dr3': dr3_image,
            'decals-dr3-model': dr3_model,
@@ -2033,17 +2038,12 @@ layers = { 'sdssco': sdss_layer,
            'decals-dr2': dr2_image,
            'decals-dr2-model': dr2_model,
            'decals-dr2-resid': dr2_resid,
+           'unwise-w1w2': unwise_layer,
+           'unwise-neo1': unwise_neo1_layer,
            }
 
 def _get_layer(name, default=None):
     return layers.get(name, default)
-
-# Not quite ready yet...
-# from decals import settings
-# unwise_layer = UnwiseLayer('unwise-w1w2',
-#                            settings.UNWISE_DIR)
-# unwise_neo1_layer = UnwiseLayer('unwise-neo1',
-#                                 settings.UNWISE_NEO1_DIR)
 
 if __name__ == '__main__':
     import os

@@ -1097,7 +1097,8 @@ tiles = mylayer_B('sdssco', 'SDSS images',
 allLayers.push(tiles);
 
 tiles = mylayer('unwise-w1w2', 'unWISE W1/W2',
-                {'maxNativeZoom': 10});
+                {'maxNativeZoom': 12,
+                 'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
 tiles = mylayer('unwise-neo1', 'unWISE W1/W2 NEO1',
