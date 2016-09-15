@@ -272,9 +272,6 @@ class MapLayer(object):
     def get_bands(self):
         pass
     
-    #def get_coadd_filename(self, brick, band):
-    #    pass
-
     def get_rgb(self, imgs, bands, **kwargs):
         pass
 
@@ -298,11 +295,6 @@ class MapLayer(object):
         scale = (self.nativescale - zoom)
         scale = np.clip(scale, self.minscale, self.maxscale)
         return scale
-
-    # def get_scaled_pattern(self):
-    #     '''Returns a filename pattern with %(scale), %(band) and %(brick)
-    #     keys.'''
-    #     pass
 
     def bricks_touching_wcs(self, wcs):
         W = wcs.get_width()
@@ -331,7 +323,6 @@ class MapLayer(object):
     def get_filename(self, brickname, band, scale):
         pass
 
-    #def read_image(self, fn, slc):
     def read_image(self, brickname, band, scale, slc):
         import fitsio
         fn = self.get_filename(brickname, band, scale)
@@ -339,7 +330,6 @@ class MapLayer(object):
         img = f[slc]
         return img
 
-    # def read_wcs(self, fn):
     def read_wcs(self, brickname, band, scale):
         from coadds import read_tan_wcs
         fn = self.get_filename(brickname, band, scale)
@@ -392,10 +382,7 @@ class MapLayer(object):
         import fitsio
     
         if wcs is None:
-            #try:
             wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-            #except RuntimeError as e:
-            #return HttpResponse(e.strerror)
         else:
             W = wcs.get_width()
             H = wcs.get_height()
@@ -598,9 +585,6 @@ class MapLayer(object):
             fn = 'cutout_%s_%.4f_%.4f.fits' % (outtag, ra,dec)
         return send_file(tmpfn, 'image/fits', unlink=True, filename=fn)
 
-
-
-
     def get_jpeg_cutout_view(self):
         def view(request, ver, zoom, x, y):
             return self.get_cutout(request, jpeg=True)
@@ -794,7 +778,8 @@ class UnwiseLayer(MapLayer):
         return self.bricks
 
     def get_bands(self):
-        return '12' #['w1','w2']
+        # Note, not 'w1','w2'...
+        return '12'
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi):
         import numpy as np
@@ -859,23 +844,6 @@ class UnwiseLayer(MapLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         return _unwise_to_rgb(imgs, **kwargs)
 
-    # def parse_bands(self, bands):
-    #     print('Parsing bands string: "%s"' % bands)
-    #     #mybands = self.get_bands()
-    #     mybands = ['1','2']
-    #     print('My bands:', mybands)
-    #     bb = []
-    #     for b in bands:
-    #         b = int(b, 10)
-    #         if b in mybands:
-    #             bb.append('w%i' % b)
-    #         else:
-    #             print('Band', b, 'not known')
-    #             return None
-    #     print('Parsed bands:', bb)
-    #     return bb
-
-    
 # "PR"
 #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
@@ -883,18 +851,6 @@ rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
 #rgbkwargs_nexp = dict(mnmx=(0,25), arcsinh=1.,
 #                      scales=dict(g=(2,1),r=(1,1),z=(0,1)))
-
-B_unwise = None
-def get_unwise_bricks():
-    global B_unwise
-    if B_unwise is None:
-        from decals import settings
-        from astrometry.util.fits import fits_table
-        B_unwise = fits_table(os.path.join(settings.UNWISE_DIR,
-                                           'allsky-atlas.fits'),
-                                           columns=['ra','dec','coadd_id'])
-        B_unwise.rename('coadd_id', 'brickname')
-    return B_unwise
 
 def sdss_rgb(rimgs, bands, scales=None,
              m = 0.02):
@@ -1050,7 +1006,6 @@ def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
     img = imgs[0]
     H,W = img.shape
 
-
     if S is not None or Q is not None:
         # 
         if S is None:
@@ -1125,172 +1080,6 @@ def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
     rgb[:,:,1] = rgb[:,:,0]/2 + rgb[:,:,2]/2
 
     return rgb
-
-UNW = None
-UNW_tree = None
-
-def map_unwise_w1w2(*args, **kwargs):
-    return map_unwise(*args, **kwargs)
-
-def map_unwise_w1w2_neo1(*args, **kwargs):
-    kwargs.update(tag='unwise-neo1', unwise_dir=settings.UNWISE_NEO1_DIR)
-    return map_unwise(*args, **kwargs)
-
-def map_unwise(req, ver, zoom, x, y, savecache = False, ignoreCached=False,
-               get_images=False,
-               bands=[1,2], tag='unwise-w1w2',
-               unwise_dir=settings.UNWISE_DIR,
-               **kwargs):
-    global UNW
-    global UNW_tree
-
-    zoom = int(zoom)
-    zoomscale = 2.**zoom
-    x = int(x)
-    y = int(y)
-    if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
-        raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
-    ver = int(ver)
-
-    if not ver in tileversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-
-    from decals import settings
-
-    basedir = settings.DATA_DIR
-    tilefn = os.path.join(basedir, 'tiles', tag,
-                          '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
-    debug('Tilefn:', tilefn)
-    if os.path.exists(tilefn) and not ignoreCached:
-        return send_file(tilefn, 'image/jpeg', expires=oneyear,
-                         modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
-
-    if not savecache:
-        import tempfile
-        f,tilefn = tempfile.mkstemp(suffix='.jpg')
-        os.close(f)
-
-    try:
-        wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-    except RuntimeError as e:
-        return HttpResponse(e.strerror)
-
-    from astrometry.util.fits import fits_table
-    import numpy as np
-    from astrometry.libkd.spherematch import tree_build_radec, tree_search_radec
-    from astrometry.util.starutil_numpy import degrees_between, arcsec_between
-    from astrometry.util.resample import resample_with_wcs, OverlapError
-    from astrometry.util.util import Tan
-    import fitsio
-
-    if UNW is None:
-        UNW = fits_table(os.path.join(settings.UNWISE_DIR, 'allsky-atlas.fits'),
-                         columns=['ra','dec','coadd_id'])
-        UNW_tree = tree_build_radec(UNW.ra, UNW.dec)
-
-    # unWISE tile size
-    radius = 1.01 * np.sqrt(2.)/2. * 2.75 * 2048 / 3600.
-
-    # leaflet tile size
-    ok,ra,dec = wcs.pixelxy2radec(W/2., H/2.)
-    ok,r0,d0 = wcs.pixelxy2radec(1, 1)
-    ok,r1,d1 = wcs.pixelxy2radec(W, H)
-    radius = radius + max(degrees_between(ra,dec, r0,d0), degrees_between(ra,dec, r1,d1))
-
-    J = tree_search_radec(UNW_tree, ra, dec, radius)
-    debug(len(J), 'unWISE tiles nearby')
-    
-    ww = [1, W*0.25, W*0.5, W*0.75, W]
-    hh = [1, H*0.25, H*0.5, H*0.75, H]
-
-    ok,r,d = wcs.pixelxy2radec(
-        [1]*len(hh) + ww          + [W]*len(hh) +        list(reversed(ww)),
-        hh          + [1]*len(ww) + list(reversed(hh)) + [H]*len(ww))
-    scaled = 0
-    scalepat = None
-    scaledir = tag
-
-    if zoom < 11:
-        # Get *actual* pixel scales at the top & bottom
-        ok,r1,d1 = wcs.pixelxy2radec(W/2., H)
-        ok,r2,d2 = wcs.pixelxy2radec(W/2., H-1.)
-        ok,r3,d3 = wcs.pixelxy2radec(W/2., 1.)
-        ok,r4,d4 = wcs.pixelxy2radec(W/2., 2.)
-        # Take the min = most zoomed-in
-        scale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
-        
-        native_scale = 2.75
-        scaled = int(np.floor(np.log2(scale / native_scale)))
-        debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled)
-        scaled = np.clip(scaled, 1, 7)
-        
-        scalepat = os.path.join(basedir, 'scaled', scaledir,
-                                '%(scale)i%(band)s', '%(tilename).3s', 'unwise-%(tilename)s-%(band)s.fits')
-
-    basepat = os.path.join(unwise_dir, '%(tilename).3s', '%(tilename)s', 'unwise-%(tilename)s-%(band)s-img-u.fits')
-
-    rimgs = [np.zeros((H,W), np.float32) for band in bands]
-    rn    = np.zeros((H,W), np.uint8)
-
-    for j in J:
-        tile = UNW.coadd_id[j]
-
-        fns = []
-        for band in bands:
-            bandname = 'w%i' % band
-            fnargs = dict(band=bandname, tilename=tile)
-            basefn = basepat % fnargs
-            fn = get_scaled(scalepat, fnargs, scaled, basefn)
-            fns.append(fn)
-
-        debug('Tile', tile, 'fns', fns)
-        bwcs = Tan(fns[0], 0)
-        ok,xx,yy = bwcs.radec2pixelxy(r, d)
-        #print('ok:', np.unique(ok))
-        if not np.all(ok):
-            debug('Skipping tile', tile)
-            continue
-        assert(np.all(ok))
-        xx = xx.astype(np.int)
-        yy = yy.astype(np.int)
-        imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
-        # Margin
-        M = 20
-        xlo = np.clip(xx.min() - M, 0, imW)
-        xhi = np.clip(xx.max() + M, 0, imW)
-        ylo = np.clip(yy.min() - M, 0, imH)
-        yhi = np.clip(yy.max() + M, 0, imH)
-        if xlo >= xhi or ylo >= yhi:
-            continue
-        subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
-        slc = slice(ylo,yhi), slice(xlo,xhi)
-
-        try:
-            Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
-        except OverlapError:
-            continue
-
-        for fn, rimg in zip(fns, rimgs):
-            f = fitsio.FITS(fn)[0]
-            img = f[slc]
-            rimg[Yo,Xo] += img[Yi,Xi]
-            del img, f
-        rn  [Yo,Xo] += 1
-
-    for rimg in rimgs:
-        rimg /= np.maximum(rn, 1)
-    del rn
-
-    if get_images:
-        return rimgs
-
-    rgb = _unwise_to_rgb(rimgs, **kwargs)
-
-    trymakedirs(tilefn)
-    save_jpeg(tilefn, rgb)
-    debug('Wrote', tilefn)
-
-    return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
 sfd = None
 halpha = None
