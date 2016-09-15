@@ -101,10 +101,12 @@ urlpatterns = [
     url(r'^halpha/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_halpha),
 
     # unWISE W1/W2
-    url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2),
+    #url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2),
+    url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.unwise_layer.get_tile_view()),
 
     # Aaron's NEO1 unWISE W1/W2
-    url(r'^unwise-neo1/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2_neo1),
+    url(r'^unwise-neo1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.unwise_neo1_layer.get_tile_view()),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
     #url(r'^unwise-w1234-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1234),
