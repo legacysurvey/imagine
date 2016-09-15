@@ -237,6 +237,11 @@ def data_for_radec(req):
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
     name = req.GET.get('layer', 'decals-dr3')
+
+    ## FIXME -- could point to unWISE data!
+    if 'unwise' in name:
+        name = 'decals-dr3'
+
     survey = _get_survey(name)
     bricks = survey.get_bricks()
     I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
@@ -1564,23 +1569,45 @@ def nil(req):
 
 def brick_detail(req, brickname):
     import numpy as np
-    survey = _get_survey('decals-dr3')
+    name = 'decals-dr3'
+    survey = _get_survey(name)
     bricks = survey.get_bricks()
     I = np.flatnonzero(brickname == bricks.brickname)
     assert(len(I) == 1)
     brick = bricks[I[0]]
 
-    return HttpResponse('\n'.join([
-                '<html><head><title>%s data for brick %s</title></head>' % (survey.drname, brickname),
-                '<body>',
-                '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
-                '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
-                '<ul>',
-                '<li><a href="%s/coadd/%s/%s/decals-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
-                '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
-                '<li><a href="%s/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
-                '</ul>',
-                '</body></html>']))
+    html = [
+        '<html><head><title>%s data for brick %s</title></head>' % (survey.drname, brickname),
+        '<body>',
+        '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
+        '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
+        '<ul>',
+        '<li><a href="%s/coadd/%s/%s/decals-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
+        '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
+        '<li><a href="%s/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
+        '</ul>',
+        ]
+
+    ccdsfn = survey.find_file('ccds-table', brick=brickname)
+    if not os.path.exists(ccdsfn):
+        print('No CCDs table:', ccdsfn)
+    else:
+        from astrometry.util.fits import fits_table
+        ccds = fits_table(ccdsfn)
+        if len(ccds):
+            html.extend(['CCDs overlapping brick:', '<ul>'])
+            for ccd in ccds:
+                ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum, ccd.ccdname.strip(), ccd.filter.strip())
+                html.append('<li><a href="%s">%s</a></li>' % (
+                        reverse(ccd_detail, args=(name, ccdname.replace(' ','-'))),
+                        ccdname))
+            html.append('</ul>')
+
+    html.extend([
+            '</body></html>',
+            ])
+
+    return HttpResponse('\n'.join(html))
 
 
 def cutouts(req):
