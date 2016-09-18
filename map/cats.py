@@ -298,7 +298,7 @@ def cat_user(req, ver):
         cat.cut((cat.ra > ralo) * (cat.ra < rahi) *
                 (cat.dec > declo) * (cat.dec < dechi))
     print(len(cat), 'user catalog sources after RA,Dec cut')
-    rd = zip(cat.ra, cat.dec)
+    rd = zip(cat.ra.astype(float), cat.dec.astype(float))
 
     D = dict(rd=rd)
     cols = cat.columns()
