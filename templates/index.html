@@ -1013,13 +1013,6 @@ tiles = mylayer('mobo-dr3-resid', 'Mosaic/Bok DR3 residuals',
 allLayers.push(tiles);
 {% endif %}
 
-{% if enable_mzls %}
-tiles = mylayer('mzls-dr3', 'MzLS DR3 images',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-{% endif %}
-
-                                        
 tiles = mylayer('decals-dr3', 'DECaLS DR3 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
                 //{'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
@@ -1037,6 +1030,12 @@ tiles = mylayer('decals-dr3-resid', 'DECaLS DR3 residuals',
 allLayers.push(tiles);
 
                                      
+{% if enable_mzls %}
+tiles = mylayer('mzls-dr3', 'MzLS DR3 images',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+{% endif %}
+
 
 var subdomains_B = {{ subdomains_B|safe }};
 
@@ -1664,7 +1663,7 @@ var polygonOverlays = [ ccdOverlay2, expOverlay2, ccdOverlay3, expOverlay3,
                         brickOverlay ];
 
 {% if enable_mzls %}
-polygonOverlay.push(ccdOverlay3m);
+polygonOverlays.push(ccdOverlay3m);
 {% endif %}
 
 for (var i=0; i<polygonOverlays.length; i++) {
