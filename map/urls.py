@@ -6,6 +6,9 @@ from map import cutouts
 
 urlpatterns = [
 
+    # Gaia catalog
+    url(r'^gaia-dr1/(\d+)/cat.json', cats.cat_gaia_dr1),
+
     # Upload user catalog
     url(r'^upload-cat/', cats.upload_cat),
 

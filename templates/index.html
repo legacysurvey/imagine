@@ -1698,6 +1698,13 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC/UGC galaxies',
                               'labelsMinZoom': 7,
                              'urlTerm': 'ngc',});
 
+var gaia = new CatalogOverlay('gaia-dr1', 'Gaia DR1 sources',
+                             {'url_name': 'gaia-dr1',
+                              'minZoom': 11,
+                              'labelsMinZoom': 99,
+                              'urlTerm': 'gaia-dr1',
+                              'radius': 300, });
+
 var targets_dr2 = new CatalogOverlay('targets-dr2', 'DESI Targets (DR2)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
@@ -1729,7 +1736,8 @@ var overlays = [decalscat2, decalscat3, ccdOverlay2, ccdOverlay3,
 {% endif %}
                 expOverlay2, expOverlay3, brickOverlay,
                 
-                gals, bright, tycho2, spec, plateOverlay, specDeep2, targets_dr2];
+                gals, bright, tycho2, gaia,
+                spec, plateOverlay, specDeep2, targets_dr2];
 
 {% if usercatalog %}
 var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{ usercatalog }}',
