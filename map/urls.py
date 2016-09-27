@@ -98,10 +98,12 @@ urlpatterns = [
     url(r'^bright/(\d+)/cat.json', cats.cat_bright),
 
     # SFD dust map
-    url(r'^sfd/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_sfd),
+    url(r'^sfd/(\d+)/(\d+)/(\d+)/(\d+).jpg', #views.map_sfd),
+        views.sfd_layer.get_tile_view()),
 
     # Halpha map
-    url(r'^halpha/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_halpha),
+    url(r'^halpha/(\d+)/(\d+)/(\d+)/(\d+).jpg', #views.map_halpha),
+        views.halpha_layer.get_tile_view()),
 
     # unWISE W1/W2
     #url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2),
