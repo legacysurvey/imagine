@@ -479,6 +479,8 @@ class MapLayer(object):
         if get_images and not write_jpeg:
             return rimgs
     
+        if bands is None:
+            bands = self.get_bands()
         rgb = self.get_rgb(rimgs, bands)
 
         if forcecache:
@@ -2041,6 +2043,12 @@ layers = { 'sdssco': sdss_layer,
 
 def _get_layer(name, default=None):
     return layers.get(name, default)
+
+def get_tile_view(name):
+    def view(request, ver, zoom, x, y):
+        layer = _get_layer(name)
+        return layer.get_tile(request, ver, zoom, x, y)
+    return view
 
 if __name__ == '__main__':
     import os
