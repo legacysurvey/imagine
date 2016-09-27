@@ -21,9 +21,6 @@ urlpatterns = [
     # SDSS tiled coadd
     url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.sdss_layer.get_tile_view()),
 
-    #url(r'^jpeg-cutout-sdss', cutouts.jpeg_cutout_sdssco),
-    #url(r'^fits-cutout-sdss', cutouts.fits_cutout_sdssco),
-
     url(r'^data-for-radec/', views.data_for_radec, name='data_for_radec'),
 
     url(r'^namequery/', views.name_query),
@@ -71,9 +68,9 @@ urlpatterns = [
     #url(r'^decals-dr1k/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr1k),
 
     # DR1j full
-    url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr1j),
-    url(r'^decals-model-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_model_dr1j),
-    url(r'^decals-resid-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_resid_dr1j),
+    # url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr1j),
+    # url(r'^decals-model-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_model_dr1j),
+    # url(r'^decals-resid-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_resid_dr1j),
 
     # catalog
     url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr1j),
@@ -98,15 +95,14 @@ urlpatterns = [
     url(r'^bright/(\d+)/cat.json', cats.cat_bright),
 
     # SFD dust map
-    url(r'^sfd/(\d+)/(\d+)/(\d+)/(\d+).jpg', #views.map_sfd),
+    url(r'^sfd/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.sfd_layer.get_tile_view()),
 
     # Halpha map
-    url(r'^halpha/(\d+)/(\d+)/(\d+)/(\d+).jpg', #views.map_halpha),
+    url(r'^halpha/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.halpha_layer.get_tile_view()),
 
     # unWISE W1/W2
-    #url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1w2),
     url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.unwise_layer.get_tile_view()),
 
     # Aaron's NEO1 unWISE W1/W2
