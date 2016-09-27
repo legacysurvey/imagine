@@ -999,45 +999,7 @@ var mylayer = function (name, pretty, kwargs) {
 
 var tiles;
 
-{% if mosaic_bok %}
-tiles = mylayer('mobo-dr3', 'Mosaic/Bok DR3 images',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-                //{'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
 
-tiles = mylayer('mobo-dr3-model', 'Mosaic/Bok DR3 models',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-
-tiles = mylayer('mobo-dr3-resid', 'Mosaic/Bok DR3 residuals',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-{% endif %}
-
-{% if enable_mzls %}
-tiles = mylayer('mzls-dr3', 'MzLS DR3 images',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-{% endif %}
-
-                                        
-tiles = mylayer('decals-dr3', 'DECaLS DR3 images',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-                //{'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-var tilesDecalsDr3Image = tiles;
-
-tiles = mylayer('decals-dr3-model', 'DECaLS DR3 models',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-                //{'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-
-tiles = mylayer('decals-dr3-resid', 'DECaLS DR3 residuals',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-                //{'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-
-                                     
 
 var subdomains_B = {{ subdomains_B|safe }};
 
@@ -1061,6 +1023,41 @@ var mylayer_B = function (name, pretty, kwargs) {
     return tiles;
 };
 
+{% if mosaic_bok %}
+tiles = mylayer('mobo-dr3', 'Mosaic/Bok DR3 images',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                //{'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
+tiles = mylayer('mobo-dr3-model', 'Mosaic/Bok DR3 models',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
+tiles = mylayer('mobo-dr3-resid', 'Mosaic/Bok DR3 residuals',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+{% endif %}
+
+{% if enable_mzls %}
+tiles = mylayer('mzls-dr3', 'MzLS DR3 images',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+{% endif %}
+
+tiles = mylayer_B('decals-dr3', 'DECaLS DR3 images',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+var tilesDecalsDr3Image = tiles;
+
+tiles = mylayer_B('decals-dr3-model', 'DECaLS DR3 models',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('decals-dr3-resid', 'DECaLS DR3 residuals',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
+                                     
 
 tiles = mylayer_B('decals-dr2', 'DECaLS DR2 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
