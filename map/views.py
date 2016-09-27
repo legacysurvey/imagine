@@ -28,7 +28,7 @@ if not settings.DEBUG_LOGGING:
         pass
 
 tileversions = {
-    'sfd': [1,],
+    'sfd': [1, 2],
     'halpha': [1,],
     'sdss': [1,],
     'sdssco': [1,],
@@ -341,73 +341,24 @@ class MapLayer(object):
     def read_wcs(self, brickname, band, scale):
         from coadds import read_tan_wcs
         fn = self.get_filename(brickname, band, scale)
+        if fn is None:
+            return None
         return read_tan_wcs(fn, 0)
 
-    def get_tile(self, req, ver, zoom, x, y,
-                 wcs=None,
-                 savecache = None, forcecache = False,
-                 return_if_not_found=False,
-                 get_images=False,
-                 write_jpeg=False,
-                 ignoreCached=False,
-                 filename=None,
-                 bands=None,
-                ):
-        '''
-        *filename*: filename returned in http response
-        *wcs*: render into the given WCS rather than zoom/x/y Mercator
-        '''
-        from decals import settings
-        from map.views import tileversions
-        if savecache is None:
-            savecache = settings.SAVE_CACHE
-
-        zoom = int(zoom)
-        zoomscale = 2.**zoom
-        x = int(x)
-        y = int(y)
-        if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
-            raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
-
-        if ver is not None:
-            ver = int(ver)
-            if not self.tileversion_ok(ver):
-                raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-        else:
-            # Set default version...?
-            ver = tileversions[self.name][-1]
-
-        if not get_images:
-            tilefn = self.get_tile_filename(ver, zoom, x, y)
-            if os.path.exists(tilefn) and not ignoreCached:
-                return send_file(tilefn, 'image/jpeg', expires=oneyear,
-                                 modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
-                                 filename=filename)
-    
-        from astrometry.util.resample import resample_with_wcs, OverlapError
-        from astrometry.util.util import Tan
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None):
         import numpy as np
-        import fitsio
-    
-        if wcs is None:
-            wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
-        else:
-            W = wcs.get_width()
-            H = wcs.get_height()
-    
+        from astrometry.util.resample import resample_with_wcs, OverlapError
         bricks = self.bricks_touching_wcs(wcs)
         if bricks is None or len(bricks) == 0:
-            if get_images:
-                return None
-            from django.http import HttpResponseRedirect
-            return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
+            return None
     
         if bands is None:
             bands = self.get_bands()
         scale = self.get_scale(zoom, x, y, wcs)
-
         print('get_tile: scale', scale)
         
+        W = wcs.get_width()
+        H = wcs.get_height()
         r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                 [1,H/2,H,H,H,H/2,1,1])[-2:]
         rimgs = []
@@ -416,9 +367,12 @@ class MapLayer(object):
             rn   = np.zeros((H,W), np.uint8)
             bricknames = self.bricknames_for_band(bricks, band)
             for brickname in bricknames:
-                print('Reading', brickname, 'band', band, 'scale', scale)
+                #print('Reading', brickname, 'band', band, 'scale', scale)
                 try:
                     bwcs = self.read_wcs(brickname, band, scale)
+                    if bwcs is None:
+                        print('No such file:', brickname, band, scale)
+                        continue
                 except:
                     print('Failed to read WCS:', brickname, band, scale)
                     savecache = False
@@ -461,6 +415,64 @@ class MapLayer(object):
                 rn  [Yo,Xo] += 1
             rimg /= np.maximum(rn, 1)
             rimgs.append(rimg)
+        return rimgs
+
+    def get_tile(self, req, ver, zoom, x, y,
+                 wcs=None,
+                 savecache = None, forcecache = False,
+                 return_if_not_found=False,
+                 get_images=False,
+                 write_jpeg=False,
+                 ignoreCached=False,
+                 filename=None,
+                 bands=None,
+                ):
+        '''
+        *filename*: filename returned in http response
+        *wcs*: render into the given WCS rather than zoom/x/y Mercator
+        '''
+        from decals import settings
+        from map.views import tileversions
+        if savecache is None:
+            savecache = settings.SAVE_CACHE
+
+        zoom = int(zoom)
+        zoomscale = 2.**zoom
+        x = int(x)
+        y = int(y)
+        if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
+            raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
+
+        if ver is not None:
+            ver = int(ver)
+            if not self.tileversion_ok(ver):
+                raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+        else:
+            # Set default version...?
+            ver = tileversions[self.name][-1]
+
+        if (not get_images) and (wcs is None):
+            tilefn = self.get_tile_filename(ver, zoom, x, y)
+            if os.path.exists(tilefn) and not ignoreCached:
+                print('Sending tile', tilefn)
+                return send_file(tilefn, 'image/jpeg', expires=oneyear,
+                                 modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
+                                 filename=filename)
+    
+        from astrometry.util.resample import resample_with_wcs, OverlapError
+        from astrometry.util.util import Tan
+        import numpy as np
+        import fitsio
+    
+        if wcs is None:
+            wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
+
+        rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands)
+        if rimgs is None:
+            if get_images:
+                return None
+            from django.http import HttpResponseRedirect
+            return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
     
         if return_if_not_found and not savecache:
             return
@@ -468,7 +480,7 @@ class MapLayer(object):
             return rimgs
     
         rgb = self.get_rgb(rimgs, bands)
-    
+
         if forcecache:
             savecache = True
         if savecache:
@@ -538,7 +550,8 @@ class MapLayer(object):
         if not 'pixscale' in req.GET and 'zoom' in req.GET:
             zoom = int(req.GET.get('zoom'))
             pixscale = pixscale * 2**(native_zoom - zoom)
-    
+            print('Request has zoom=', zoom, ': setting pixscale=', pixscale)
+
         if bands is not None:
             bands = self.parse_bands(bands)
             #print('parsed bands:', bands)
@@ -824,7 +837,7 @@ class UnwiseLayer(MapLayer):
             basedir, 'scaled', self.name,
             #'%(scale)i%(band)s',
             '%(scale)iw%(band)s',
-            '%(brickname).3s', 'unwise-%(brickname)s-%(band)s.fits')
+            '%(brickname).3s', 'unwise-%(brickname)s-w%(band)s.fits')
             
 
     def get_scale(self, zoom, x, y, wcs):
@@ -851,6 +864,44 @@ class UnwiseLayer(MapLayer):
 
     def get_rgb(self, imgs, bands, **kwargs):
         return _unwise_to_rgb(imgs, **kwargs)
+
+class ZeaLayer(MapLayer):
+    def __init__(self, name, zeamap, stretch=None, vmin=0., vmax=1.,
+                 cmap=None):
+        super(ZeaLayer, self).__init__(name)
+        self.zeamap = zeamap
+        self.stretch = stretch
+        if cmap is None:
+            self.cmap = matplotlib.cm.hot
+        else:
+            self.cmap = cmap
+        self.vmin = vmin
+        self.vmax = vmax
+
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None):
+        import numpy as np
+        xx,yy = np.meshgrid(np.arange(wcs.get_width()), np.arange(wcs.get_height()))
+        rr,dd = wcs.pixelxy2radec(1. + xx.ravel(), 1. + yy.ravel())[-2:]
+        #print('ZeaLayer rendering: RA range', rr.min(), rr.max(),
+        #  'Dec', dd.min(), dd.max())
+        # Calling ebv function for historical reasons, works for any ZEA map.
+        val = self.zeamap.ebv(rr, dd) 
+        val = val.reshape(xx.shape)
+        #print('ZeaLayer: map range', val.min(), val.max())
+        return [val]
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        val = imgs[0]
+        if self.stretch is not None:
+            val = self.stretch(val)
+        rgb = self.cmap((val - self.vmin) / (self.vmax - self.vmin))
+        #print('RGB', rgb.shape, rgb.dtype)
+        s = rgb.shape
+        if len(s) == 3 and s[2] == 4:
+            # cut out alpha layer
+            rgb = rgb[:,:,:3]
+        #print('red range', rgb[:,:,0].min(), rgb[:,:,0].max())
+        return rgb
 
 # "PR"
 #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
@@ -1127,7 +1178,6 @@ def map_zea(req, ver, zoom, x, y, ZEAmap=None, tag=None, savecache=False, vmin=0
     if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
         raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
     ver = int(ver)
-
 
     if not ver in tileversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
@@ -2041,6 +2091,26 @@ unwise_layer = UnwiseLayer('unwise-w1w2',
 unwise_neo1_layer = UnwiseLayer('unwise-neo1',
                                 settings.UNWISE_NEO1_DIR)
 
+
+from tractor.sfd import SFDMap
+halpha = SFDMap(ngp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_ngp.fits'),
+                sgp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_sgp.fits'))
+# Doug says: np.log10(halpha + 5) stretched to 0.5 to 2.5
+def stretch_halpha(x):
+    import numpy as np
+    return np.log10(x + 5)
+
+halpha_layer = ZeaLayer('halpha', halpha, stretch=stretch_halpha, vmin=0.5, vmax=2.5)
+
+from tractor.sfd import SFDMap
+sfd_map = SFDMap(dustdir=settings.DUST_DIR)
+
+def stretch_sfd(x):
+    import numpy as np
+    return np.arcsinh(x * 10.)
+
+sfd_layer = ZeaLayer('sfd', sfd_map, stretch=stretch_sfd, vmin=0.0, vmax=5.0)
+
 layers = { 'sdssco': sdss_layer,
            'decals-dr3': dr3_image,
            'decals-dr3-model': dr3_model,
@@ -2050,6 +2120,8 @@ layers = { 'sdssco': sdss_layer,
            'decals-dr2-resid': dr2_resid,
            'unwise-w1w2': unwise_layer,
            'unwise-neo1': unwise_neo1_layer,
+           'halpha': halpha_layer,
+           'sfd': sfd_layer,
            }
 
 def _get_layer(name, default=None):
