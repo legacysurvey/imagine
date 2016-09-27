@@ -1972,76 +1972,94 @@ def dq_data(req, survey, ccd):
     return send_file(tmpfn, 'image/fits', unlink=True, filename='dq-%s.fits.gz' % ccd)
 
 
-
-survey_dr2 = _get_survey('decals-dr2')
-dr2_image = DecalsLayer('decals-dr2', 'image', survey_dr2)
-dr2_model = DecalsLayer('decals-dr2-model', 'model', survey_dr2,
-                             drname='decals-dr2')
-dr2_resid = DecalsResidLayer(dr2_image, dr2_model,
-                             'decals-dr2-resid', 'resid', survey_dr2,
-                             drname='decals-dr2')
-
-survey_dr3 = _get_survey('decals-dr3')
-dr3_image = DecalsLayer('decals-dr3', 'image', survey_dr3)
-dr3_model = DecalsLayer('decals-dr3-model', 'model', survey_dr3,
-                        drname='decals-dr3')
-dr3_resid = DecalsResidLayer(dr3_image, dr3_model,
-                             'decals-dr3-resid', 'resid', survey_dr3,
-                             drname='decals-dr3')
-# No disk space for DR3 scale=1 !
-dr3_image.minscale = dr3_model.minscale = dr3_resid.minscale = 2
-
-survey_dr3mzls = _get_survey('mzls-dr3')
-mzls3_image = MzlsLayer('mzls-dr3', 'image', survey_dr3mzls,
-                        drname='mzls-dr3')
-mzls3_model = MzlsLayer('mzls-dr3-model', 'model', survey_dr3mzls,
-                        drname='mzls-dr3')
-mzls3_resid = MzlsResidLayer(mzls3_image, mzls3_model,
-                             'mzls-dr3-resid', 'resid', survey_dr3mzls,
-                             drname='mzls-dr3')
-
-sdss_layer = SdssLayer('sdssco')
-
-from decals import settings
-unwise_layer = UnwiseLayer('unwise-w1w2',
-                           settings.UNWISE_DIR)
-unwise_neo1_layer = UnwiseLayer('unwise-neo1',
-                                settings.UNWISE_NEO1_DIR)
-
-from tractor.sfd import SFDMap
-halpha = SFDMap(ngp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_ngp.fits'),
-                sgp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_sgp.fits'))
-# Doug says: np.log10(halpha + 5) stretched to 0.5 to 2.5
-def stretch_halpha(x):
-    import numpy as np
-    return np.log10(x + 5)
-
-halpha_layer = ZeaLayer('halpha', halpha, stretch=stretch_halpha, vmin=0.5, vmax=2.5)
-
-from tractor.sfd import SFDMap
-sfd_map = SFDMap(dustdir=settings.DUST_DIR)
-
-def stretch_sfd(x):
-    import numpy as np
-    return np.arcsinh(x * 10.)
-
-sfd_layer = ZeaLayer('sfd', sfd_map, stretch=stretch_sfd, vmin=0.0, vmax=5.0)
-
-layers = { 'sdssco': sdss_layer,
-           'decals-dr3': dr3_image,
-           'decals-dr3-model': dr3_model,
-           'decals-dr3-resid': dr3_resid,
-           'decals-dr2': dr2_image,
-           'decals-dr2-model': dr2_model,
-           'decals-dr2-resid': dr2_resid,
-           'unwise-w1w2': unwise_layer,
-           'unwise-neo1': unwise_neo1_layer,
-           'halpha': halpha_layer,
-           'sfd': sfd_layer,
-           }
-
+layers = {}
 def _get_layer(name, default=None):
-    return layers.get(name, default)
+    global layers
+    if name in layers:
+        return layers[name]
+
+    layer = None
+    if name == 'sdssco':
+        layer = SdssLayer('sdssco')
+
+    elif name in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
+        survey_dr3 = _get_survey('decals-dr3')
+        dr3_image = DecalsLayer('decals-dr3', 'image', survey_dr3)
+        dr3_model = DecalsLayer('decals-dr3-model', 'model', survey_dr3,
+                                drname='decals-dr3')
+        dr3_resid = DecalsResidLayer(dr3_image, dr3_model,
+                                     'decals-dr3-resid', 'resid', survey_dr3,
+                                     drname='decals-dr3')
+        # No disk space for DR3 scale=1 !
+        dr3_image.minscale = dr3_model.minscale = dr3_resid.minscale = 2
+        
+        layers['decals-dr3'] = dr3_image
+        layers['decals-dr3-model'] = dr3_model
+        layers['decals-dr3-resid'] = dr3_resid
+        layer = layers[name]
+
+    elif name in ['decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
+        survey_dr2 = _get_survey('decals-dr2')
+        dr2_image = DecalsLayer('decals-dr2', 'image', survey_dr2)
+        dr2_model = DecalsLayer('decals-dr2-model', 'model', survey_dr2,
+                                drname='decals-dr2')
+        dr2_resid = DecalsResidLayer(dr2_image, dr2_model,
+                                     'decals-dr2-resid', 'resid', survey_dr2,
+                                     drname='decals-dr2')
+        layers['decals-dr2'] = dr2_image
+        layers['decals-dr2-model'] = dr2_model
+        layers['decals-dr2-resid'] = dr2_resid
+        layer = layers[name]
+
+    elif name in ['mzls-dr3', 'mzls-dr3-model', 'mzls-dr3-resid']:
+
+        survey_dr3mzls = _get_survey('mzls-dr3')
+        mzls3_image = MzlsLayer('mzls-dr3', 'image', survey_dr3mzls,
+                                drname='mzls-dr3')
+        mzls3_model = MzlsLayer('mzls-dr3-model', 'model', survey_dr3mzls,
+                                drname='mzls-dr3')
+        mzls3_resid = MzlsResidLayer(mzls3_image, mzls3_model,
+                                     'mzls-dr3-resid', 'resid', survey_dr3mzls,
+                                     drname='mzls-dr3')
+        layers['mzls-dr3'] = mzls3_image
+        layers['mzls-dr3-model'] = mzls3_model
+        layers['mzls-dr3-resid'] = mzls3_resid
+        layer = layers[name]
+
+    elif name == 'unwise-w1w2':
+        from decals import settings
+        layer = UnwiseLayer('unwise-w1w2',
+                            settings.UNWISE_DIR)
+    elif name == 'unwise-neo1':
+        from decals import settings
+        layer = UnwiseLayer('unwise-neo1',
+                            settings.UNWISE_NEO1_DIR)
+    elif name == 'halpha':
+        from tractor.sfd import SFDMap
+        from decals import settings
+        halpha = SFDMap(
+            ngp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_ngp.fits'),
+            sgp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_sgp.fits'))
+        # Doug says: np.log10(halpha + 5) stretched to 0.5 to 2.5
+        def stretch_halpha(x):
+            import numpy as np
+            return np.log10(x + 5)
+        layer = ZeaLayer('halpha', halpha, stretch=stretch_halpha,
+                         vmin=0.5, vmax=2.5)
+
+    elif name == 'sfd':
+        from tractor.sfd import SFDMap
+        from decals import settings
+        sfd_map = SFDMap(dustdir=settings.DUST_DIR)
+        def stretch_sfd(x):
+            import numpy as np
+            return np.arcsinh(x * 10.)
+        layer = ZeaLayer('sfd', sfd_map, stretch=stretch_sfd, vmin=0.0, vmax=5.0)
+
+    if layer is None:
+        return default
+    layers[name] = layer
+    return layer
 
 def get_tile_view(name):
     def view(request, ver, zoom, x, y):
