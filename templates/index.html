@@ -576,7 +576,7 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 });
 
-var decals_getLayer = function(result, radius) {
+var decals_getLayer = function(result, radius, defaultcolor) {
     var rdlist = result['rd'];
     var objtype = result['sourcetype'];
     var fluxes = result['fluxes'];
@@ -592,6 +592,9 @@ var decals_getLayer = function(result, radius) {
         var lat = dec2lat(d);
         var lng = ra2long_C(r, clong);
         var color = 'blue';
+        if (typeof(defaultcolor) != 'undefined') {
+            color = defaultcolor;
+        }
         var typ = 'nil';
         if (objtype == undefined) {
         } else {
@@ -646,7 +649,7 @@ var DecalsCatalogLayer = TiledOverlay.extend({
 // User catalog
 var UserCatalogLayer = CatalogOverlay.extend({
     getLayer: function(result) {
-        return decals_getLayer(result, 300);
+        return decals_getLayer(result, 300, '#00ff00')
     },
 });
 
