@@ -542,7 +542,7 @@ class MapLayer(object):
         ra  = float(req.GET['ra'])
         dec = float(req.GET['dec'])
         pixscale = float(req.GET.get('pixscale', self.pixscale))
-        maxsize = 1024
+        maxsize = 3000
         size   = min(int(req.GET.get('size',    256)), maxsize)
         width  = min(int(req.GET.get('width',  size)), maxsize)
         height = min(int(req.GET.get('height', size)), maxsize)
