@@ -189,9 +189,25 @@ def name_query(req):
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=name)),
                             content_type='application/json')
 
+    # Check for RA,Dec in decimal degrees or H:M:S.
+    words = obj.strip().split()
+    print('Parsing name query: words', words)
+    if len(words) == 2:
+        try:
+            rastr,decstr = words
+            ra,dec = parse_radec_strings(rastr, decstr)
+            print('Parsed as:', ra,dec)
+            return HttpResponse(json.dumps(dict(ra=ra, dec=dec)),
+                                content_type='application/json')
+
+        except:
+            # import traceback
+            # print('Failed to parse string as RA,Dec:', obj)
+            # traceback.print_exc()
+            pass
+
     url = 'http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame//NSV?'
     url += urllib.urlencode(dict(q=obj)).replace('q=','')
-
     print('URL', url)
 
     '''
@@ -231,6 +247,19 @@ def name_query(req):
     except Exception as e:
         return HttpResponse(json.dumps(dict(error=str(e))),
                             content_type='application/json')
+
+def parse_radec_strings(rastr, decstr):
+    try:
+        ra = float(rastr)
+        dec = float(decstr)
+        return ra,dec
+    except:
+        pass
+    # or raise...
+    from astrometry.util.starutil_numpy import hmsstring2ra, dmsstring2dec
+    ra = hmsstring2ra(rastr)
+    dec = dmsstring2dec(decstr)
+    return ra,dec
 
 def data_for_radec(req):
     import numpy as np
