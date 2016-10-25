@@ -197,7 +197,7 @@ def name_query(req):
             rastr,decstr = words
             ra,dec = parse_radec_strings(rastr, decstr)
             print('Parsed as:', ra,dec)
-            return HttpResponse(json.dumps(dict(ra=ra, dec=dec)),
+            return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=obj)),
                                 content_type='application/json')
 
         except:
