@@ -383,7 +383,7 @@ def catalog_to_fits(cat):
     import numpy as np
 
     cols = ['ra','dec','g','r','z','w1','w2','w3','w4',
-            'cand__id', 'cand__type', 'cand__brickid', 'cand__objid']
+            'brickid', 'brickname', 'objid', 'type',]
     values = cat.values_list(*cols)
 
     def convert_nan(x):
@@ -400,42 +400,11 @@ def catalog_to_fits(cat):
         if isinstance(v, float):
             convert = convert_nan
         #print('Type of column', c, 'is', type(v), 'eg', v)
-        if c == 'cand__id':
-            cname = 'cand_id'
-        else:
-            cname = c.replace('cand__', '')
+        cname = c
         if convert is None:
             T.set(cname, np.array([v[i] for v in values]))
         else:
             T.set(cname, np.array([convert(v[i]) for v in values]))
-
-    # From candidate ID, look up Decam
-    cand_id = T.cand_id
-    T.delete_column('cand_id')
-
-    print('Looking up DECam objects...')
-    cols = ['gnobs','rnobs', 'znobs']
-    decam = Decam.objects.filter(cand__in=cand_id).values_list(*['cand'] + cols)
-    print('Got', len(decam), 'objects')
-
-    dcand = np.array([d[0] for d in decam])
-    cmap = dict([(c,i) for i,c in enumerate(dcand)])
-    I = np.array([cmap[c] for c in cand_id])
-
-    for ic,c in enumerate(cols):
-        T.set(c, np.array([decam[i][ic+1] for i in I]).astype(np.uint8))
-
-    # From brick ID, look up Brickname
-    brickid = T.brickid
-    T.delete_column('brickid')
-
-    print('Looking up Brick objects...')
-    cols = ['brickname']
-    bricks = Bricks.objects.filter(brickid__in=brickid).values_list(*['brickid'] + cols)
-    print('Got', len(bricks), 'objects')
-
-    idtoname = dict([(b[0], str(b[1])) for b in bricks])
-    T.brickname = np.array([idtoname[bid] for bid in brickid])
 
     return T
 
@@ -451,7 +420,7 @@ def fits_results(req):
     os.close(f)
     os.unlink(tmpfn)
     T.writeto(tmpfn)
-    return send_file(tmpfn, 'image/fits', unlink=True, filename='dr2-query.fits')
+    return send_file(tmpfn, 'image/fits', unlink=True, filename='decals-dr3-query.fits')
 
 def viewer_results(req):
     import tempfile
@@ -478,11 +447,13 @@ def viewer_results(req):
     if tmpfn.startswith('/'):
         tmpfn = tmpfn[1:]
 
-    if search.radecradius is None:
-        # arbitrarily center on one point...?
-        ra,dec = T.ra[0], T.dec[0]
-    else:
-        ra,dec,nil = search.radecradius
+    # if search.radecradius is None:
+    #     # arbitrarily center on one point...?
+    #     ra,dec = T.ra[0], T.dec[0]
+    # else:
+    #     ra,dec,nil = search.radecradius
+
+    ra,dec = T.ra[0], T.dec[0]
 
     return HttpResponseRedirect(reverse(index) +
                                 '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, tmpfn))
