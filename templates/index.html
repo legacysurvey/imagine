@@ -1737,11 +1737,13 @@ var overlays = [decalscat2, decalscat3, ccdOverlay2, ccdOverlay3,
                 gals, bright, tycho2, gaia,
                 spec, plateOverlay, specDeep2, targets_dr2];
 
-{% if usercatalog %}
-var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{ usercatalog }}',
-    {'url': '{{usercatalogurl|safe}}', 'url_args': {'cat': '{{usercatalog}}'}});
-overlays = [usercat].concat(overlays);
-map.addLayer(usercat.getGroup());
+{% if usercatalogs %}
+  {% for cat in usercatalogs %}
+    var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{cat}}',
+        {'url': '{{usercatalogurl|safe}}', 'url_args': {'cat': '{{cat}}'}});
+    overlays = [usercat].concat(overlays);
+    map.addLayer(usercat.getGroup());
+  {% endfor %}
 {% endif %}
 
 
