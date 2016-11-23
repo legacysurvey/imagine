@@ -133,9 +133,16 @@ def index(req):
 
     usercatalog = req.GET.get('catalog', None)
     if usercatalog is not None:
-        if not re.match('\w?', usercatalog):
-            print('Usercatalog "%s" did not match regex' % usercatalog)
-            usercatalog = None
+        usercats = usercatalog.split(',')
+        keepcats = []
+        for cat in usercats:
+            if not re.match('\w?', cat):
+                print('Usercatalog "%s" did not match regex' % cat)
+                continue
+            keepcats.append(cat)
+        usercats = keepcats
+        if len(usercats) == 0:
+            usercats = None
     usercatalogurl = reverse(cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
 
     baseurl = req.path
@@ -166,7 +173,7 @@ def index(req):
                        subdomains_B=subdomains_B,
 
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
-                       usercatalog = usercatalog,
+                       usercatalogs = usercats,
                        usercatalogurl = usercatalogurl,
                        enable_sql = settings.ENABLE_SQL,
                        enable_vcc = settings.ENABLE_VCC,
