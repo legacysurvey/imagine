@@ -23,6 +23,9 @@ urlpatterns = [
         views.get_tile_view('sdssco')),
         #views.sdss_layer.get_tile_view()),
 
+    # For nova.astrometry.net: SDSS for a given WCS
+    url(r'^sdss-wcs', views.sdss_wcs),
+
     url(r'^data-for-radec/', views.data_for_radec, name='data_for_radec'),
 
     url(r'^namequery/', views.name_query),

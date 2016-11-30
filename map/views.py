@@ -1,7 +1,14 @@
 from __future__ import print_function
 if __name__ == '__main__':
+    ## NOTE, if you want to run this from the command-line, probably have to do so
+    # from sgn04 node within the virtualenv.
     import sys
-    sys.path.insert(0, 'django-1.7')
+    sys.path.insert(0, 'django-1.9')
+    import os
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    import django
+    #print('Django:', django.__file__)
+    #print('Version:', django.get_version())
 
 import os
 import re
@@ -132,6 +139,7 @@ def index(req):
     uploadurl = settings.ROOT_URL + '/upload-cat/'
 
     usercatalog = req.GET.get('catalog', None)
+    usercats = None
     if usercatalog is not None:
         usercats = usercatalog.split(',')
         keepcats = []
@@ -340,7 +348,8 @@ class MapLayer(object):
         scale = np.clip(scale, self.minscale, self.maxscale)
         return scale
 
-    def bricks_touching_wcs(self, wcs):
+    def bricks_touching_aa_wcs(self, wcs):
+        '''Assumes WCS is axis-aligned and normal parity'''
         W = wcs.get_width()
         H = wcs.get_height()
         rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
@@ -349,7 +358,40 @@ class MapLayer(object):
         r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
         dlo = min(d1, d2)
         dhi = max(d1, d2)
+        #print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
         return self.bricks_touching_radec_box(rlo, rhi, dlo, dhi)
+
+    def bricks_touching_general_wcs(self, wcs):
+        import numpy as np
+        W = wcs.get_width()
+        H = wcs.get_height()
+        r,d = wcs.radec_center()
+        rad = np.hypot(W, H)/2. * wcs.pixel_scale() / 3600.
+        # margin
+        rad *= 1.01
+
+        ## FIXME -- cos(Dec) of center Dec is an approximation...
+        dra = r / np.cos(np.deg2rad(d))
+
+        allbricks = []
+
+        # Near RA=0 boundary?
+        if r - dra < 0.:
+            allbricks.append(self.bricks_touching_radec_box(0., r+dra, d-rad, d+rad))
+            allbricks.append(self.bricks_touching_radec_box(r-dra+360., 360., d-rad, d+rad))
+        # Near RA=360 boundary?
+        elif r + dra > 360.:
+            allbricks.append(self.bricks_touching_radec_box(r-dra, 360., d-rad, d+rad))
+            allbricks.append(self.bricks_touching_radec_box(0., r+dra-360., d-rad, d+rad))
+        else:
+            allbricks.append(self.bricks_touching_radec_box(r-dra, r+dra, d-rad, d+rad))
+
+        allbricks = [b for b in allbricks if b is not None]
+        if len(allbricks) == 1:
+            return allbricks[0]
+        # append
+        from astrometry.util.fits import merge_tables
+        return merge_tables(allbricks)
 
     def bricks_touching_radec_box(self, rlo, rhi, dlo, dhi):
         pass
@@ -381,17 +423,21 @@ class MapLayer(object):
             return None
         return read_tan_wcs(fn, 0)
 
-    def render_into_wcs(self, wcs, zoom, x, y, bands=None):
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False):
         import numpy as np
         from astrometry.util.resample import resample_with_wcs, OverlapError
-        bricks = self.bricks_touching_wcs(wcs)
+        if not general_wcs:
+            bricks = self.bricks_touching_aa_wcs(wcs)
+        else:
+            bricks = self.bricks_touching_general_wcs(wcs)
+
         if bricks is None or len(bricks) == 0:
             return None
     
         if bands is None:
             bands = self.get_bands()
         scale = self.get_scale(zoom, x, y, wcs)
-        print('get_tile: scale', scale)
+        print('render_into_wcs: scale', scale, 'N bricks:', len(bricks))
         
         W = wcs.get_width()
         H = wcs.get_height()
@@ -2106,12 +2152,96 @@ def get_tile_view(name):
         return layer.get_tile(request, ver, zoom, x, y)
     return view
 
+def sdss_wcs(req):
+    from astrometry.util.util import Tan,Sip
+    import json
+    import numpy as np
+    # JSON encoding of WCS header
+    jwcs = req.GET.get('wcs')
+    jwcs = json.loads(jwcs)
+    wcs = Tan(*[float(jwcs[k]) for k in ['crval1','crval2','crpix1','crpix2',
+                                         'cd11','cd12','cd21','cd22','imagew','imageh']])
+
+    print('wcs:', wcs)
+
+    if 'sip_a' in jwcs:
+        wcs = Sip(wcs)
+        a = jwcs['sip_a']
+        b = jwcs['sip_b']
+        assert(len(a) <= 10)
+        assert(len(b) == len(a))
+        # assert square matrix
+        for ai in a:
+            assert(len(ai) == len(a))
+        for bi in b:
+            assert(len(bi) == len(b))
+        wcs.a_order = wcs.b_order = len(a)+1
+        # MAGIC number 10 = SIP max order
+        for i,ai in enumerate(a):
+            for j,aij in enumerate(ai):
+                wcs.a[i*10+j] = float(aij)
+        for i,bi in enumerate(b):
+            for j,bij in enumerate(bi):
+                wcs.b[i*10+j] = float(bij)
+
+        if 'sip_ap' in jwcs:
+            ap = jwcs['sip_ap']
+            bp = jwcs['sip_bp']
+            assert(len(ap) <= 10)
+            assert(len(bp) == len(ap))
+            # assert square matrix
+            for api in ap:
+                assert(len(api) == len(ap))
+            for bpi in bp:
+                assert(len(bpi) == len(bp))
+            wcs.ap_order = wcs.bp_order = len(ap)+1
+            # MAGIC number 10 = SIP max order
+            for i,api in enumerate(ap):
+                for j,apij in enumerate(api):
+                    wcs.ap[i*10+j] = float(apij)
+            for i,bpi in enumerate(bp):
+                for j,bpij in enumerate(bpi):
+                    wcs.bp[i*10+j] = float(bpij)
+        else:
+            wcs.ensure_inverse_polynomials()
+
+    pixscale = wcs.pixel_scale()
+    zoom = 13 - np.log2(pixscale / 0.396)
+    x = y = 0
+
+    sdss = _get_layer('sdssco')
+
+    rimgs = sdss.render_into_wcs(wcs, zoom, x, y, general_wcs=True)
+    if rimgs is None:
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
+    bands = sdss.get_bands()
+    rgb = sdss.get_rgb(rimgs, bands)
+    
+    import tempfile
+    f,tilefn = tempfile.mkstemp(suffix='.jpg')
+    os.close(f)
+    sdss.write_jpeg(tilefn, rgb)
+    return send_file(tilefn, 'image/jpeg', unlink=True, filename='sdss.jpg')
+
 if __name__ == '__main__':
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    import django
 
     class duck(object):
         pass
+
+
+
+    req = duck()
+    req.META = dict()
+    req.GET = dict()
+    req.GET['wcs'] = '{"imageh": 2523.0, "crval2": 30.6256920573, "crpix1": 1913.90799288, "crpix2": 1288.18061444, "crval1": 23.4321763196, "cd22": 2.68116215986e-05, "cd21": -0.000375943381269, "cd12": 0.000376062675113, "cd11": 2.6797256038e-05, "imagew": 3770.0}'
+    sdss_wcs(req)
+
+    import sys
+    sys.exit(0)
     
     # ver = 1
     # zoom,x,y = 2, 1, 1
