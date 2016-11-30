@@ -391,6 +391,9 @@ class MapLayer(object):
             allbricks.append(self.bricks_touching_radec_box(r-dra, r+dra, d-rad, d+rad))
 
         allbricks = [b for b in allbricks if b is not None]
+        allbricks = [b for b in allbricks if len(b) > 0]
+        if len(allbricks) == 0:
+            return None
         if len(allbricks) == 1:
             return allbricks[0]
         # append
@@ -497,7 +500,7 @@ class MapLayer(object):
                 try:
                     Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
                 except OverlapError:
-                    debug('Resampling exception')
+                    #debug('Resampling exception')
                     continue
                 rimg[Yo,Xo] += img[Yi,Xi]
                 rn  [Yo,Xo] += 1
@@ -2159,13 +2162,20 @@ def get_tile_view(name):
     return view
 
 def sdss_wcs(req):
-    from astrometry.util.util import Tan,Sip
+    from astrometry.util.util import Tan
     import numpy as np
-    wcs = Tan(*[float(req.GET.get(k)) for k in ['crval1','crval2','crpix1','crpix2',
-                                                'cd11','cd12','cd21','cd22','imagew','imageh']])
+    args = []
+    for k in ['crval1','crval2','crpix1','crpix2',
+              'cd11','cd12','cd21','cd22','imagew','imageh']:
+        v = req.GET.get(k)
+        fv = float(v)
+        args.append(fv)
+    #wcs = Tan(*[float(req.GET.get(k)) for k in ['crval1','crval2','crpix1','crpix2',
+    #                                            'cd11','cd12','cd21','cd22','imagew','imageh']])
+    wcs = Tan(*args)
     print('wcs:', wcs)
     pixscale = wcs.pixel_scale()
-    zoom = 13 - int(np.ceil(np.log2(pixscale / 0.396)))
+    zoom = 13 - int(np.round(np.log2(pixscale / 0.396)))
     x = y = 0
 
     sdss = _get_layer('sdssco')

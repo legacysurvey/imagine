@@ -17,11 +17,17 @@ def read_tansip_wcs(sourcefn, ext, hdr=None, W=None, H=None, tansip=None):
         try:
             wcs = tansip(sourcefn, ext)
         except:
+            #import sys
+            #import traceback
+            #print('failed to read WCS from file', sourcefn, 'extension', ext, 'tansip:', tansip)
+            #traceback.print_exc(None, sys.stdout)
             pass
     return wcs
 
 def read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
     from astrometry.util.util import Tan
+    if not os.path.exists(sourcefn):
+        return None
     wcs = read_tansip_wcs(sourcefn, ext, hdr=hdr, W=W, H=H, tansip=Tan)
     if wcs is None:
         import fitsio
@@ -29,7 +35,10 @@ def read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
         if hdr is None:
             hdr = fitsio.read_header(sourcefn, ext)
         if W is None or H is None:
-            F = fitsio.FITS(sourcefn)
+            if fitsfile is None:
+                F = fitsio.FITS(sourcefn)
+            else:
+                F = fitsfile
             info = F[ext].get_info()
             H,W = info['dims']
         wcs = Tan(*[float(x) for x in [
