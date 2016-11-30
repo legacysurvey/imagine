@@ -371,9 +371,13 @@ class MapLayer(object):
         rad *= 1.01
 
         ## FIXME -- cos(Dec) of center Dec is an approximation...
-        dra = r / np.cos(np.deg2rad(d))
+        dra = rad / np.cos(np.deg2rad(d))
 
         allbricks = []
+
+
+        #print('Bricks touching general WCS: RA,Dec center', r,d)
+        #print('radius', rad, 'degrees; dRA', dra, 'degrees')
 
         # Near RA=0 boundary?
         if r - dra < 0.:
@@ -474,6 +478,7 @@ class MapLayer(object):
                 ylo = np.clip(yy.min() - M, 0, imH)
                 yhi = np.clip(yy.max() + M, 0, imH)
                 if xlo >= xhi or ylo >= yhi:
+                    #print('No pixel overlap')
                     continue
     
                 subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
@@ -487,7 +492,8 @@ class MapLayer(object):
                     import sys
                     traceback.print_exc(None, sys.stdout)
                     continue
-    
+
+                #print('Resampling', img.shape)
                 try:
                     Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
                 except OverlapError:
@@ -2154,59 +2160,12 @@ def get_tile_view(name):
 
 def sdss_wcs(req):
     from astrometry.util.util import Tan,Sip
-    import json
     import numpy as np
-    # JSON encoding of WCS header
-    jwcs = req.GET.get('wcs')
-    jwcs = json.loads(jwcs)
-    wcs = Tan(*[float(jwcs[k]) for k in ['crval1','crval2','crpix1','crpix2',
-                                         'cd11','cd12','cd21','cd22','imagew','imageh']])
-
+    wcs = Tan(*[float(req.GET.get(k)) for k in ['crval1','crval2','crpix1','crpix2',
+                                                'cd11','cd12','cd21','cd22','imagew','imageh']])
     print('wcs:', wcs)
-
-    if 'sip_a' in jwcs:
-        wcs = Sip(wcs)
-        a = jwcs['sip_a']
-        b = jwcs['sip_b']
-        assert(len(a) <= 10)
-        assert(len(b) == len(a))
-        # assert square matrix
-        for ai in a:
-            assert(len(ai) == len(a))
-        for bi in b:
-            assert(len(bi) == len(b))
-        wcs.a_order = wcs.b_order = len(a)+1
-        # MAGIC number 10 = SIP max order
-        for i,ai in enumerate(a):
-            for j,aij in enumerate(ai):
-                wcs.a[i*10+j] = float(aij)
-        for i,bi in enumerate(b):
-            for j,bij in enumerate(bi):
-                wcs.b[i*10+j] = float(bij)
-
-        if 'sip_ap' in jwcs:
-            ap = jwcs['sip_ap']
-            bp = jwcs['sip_bp']
-            assert(len(ap) <= 10)
-            assert(len(bp) == len(ap))
-            # assert square matrix
-            for api in ap:
-                assert(len(api) == len(ap))
-            for bpi in bp:
-                assert(len(bpi) == len(bp))
-            wcs.ap_order = wcs.bp_order = len(ap)+1
-            # MAGIC number 10 = SIP max order
-            for i,api in enumerate(ap):
-                for j,apij in enumerate(api):
-                    wcs.ap[i*10+j] = float(apij)
-            for i,bpi in enumerate(bp):
-                for j,bpij in enumerate(bpi):
-                    wcs.bp[i*10+j] = float(bpij)
-        else:
-            wcs.ensure_inverse_polynomials()
-
     pixscale = wcs.pixel_scale()
-    zoom = 13 - np.log2(pixscale / 0.396)
+    zoom = 13 - int(np.ceil(np.log2(pixscale / 0.396)))
     x = y = 0
 
     sdss = _get_layer('sdssco')
@@ -2222,7 +2181,7 @@ def sdss_wcs(req):
     f,tilefn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
     sdss.write_jpeg(tilefn, rgb)
-    return send_file(tilefn, 'image/jpeg', unlink=True, filename='sdss.jpg')
+    return send_file(tilefn, 'image/jpeg', unlink=True)
 
 if __name__ == '__main__':
     import os
