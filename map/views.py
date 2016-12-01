@@ -681,10 +681,6 @@ class MapLayer(object):
                 hdr['BAND%i' % i] = b
             wcs.add_to_header(hdr)
     
-        f,tmpfn = tempfile.mkstemp(suffix='.fits')
-        os.close(f)
-        os.unlink(tmpfn)
-    
         if len(bands) > 1:
             cube = np.empty((len(bands), height, width), np.float32)
             for i,im in enumerate(ims):
@@ -692,6 +688,10 @@ class MapLayer(object):
         else:
             cube = ims[0]
         del ims
+
+        f,tmpfn = tempfile.mkstemp(suffix='.fits')
+        os.close(f)
+        os.unlink(tmpfn)
         fitsio.write(tmpfn, cube, clobber=True, header=hdr)
         if outtag is None:
             fn = 'cutout_%.4f_%.4f.fits' % (ra,dec)
