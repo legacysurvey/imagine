@@ -12,17 +12,18 @@ if not settings.DEBUG_LOGGING:
 
 
 def read_tansip_wcs(sourcefn, ext, hdr=None, W=None, H=None, tansip=None):
-    wcs = None
-    if not sourcefn.endswith('.gz'):
-        try:
-            wcs = tansip(sourcefn, ext)
-        except:
-            #import sys
-            #import traceback
-            #print('failed to read WCS from file', sourcefn, 'extension', ext, 'tansip:', tansip)
-            #traceback.print_exc(None, sys.stdout)
-            pass
-    return wcs
+    if sourcefn.endswith('.gz'):
+        return None
+    try:
+        wcs = tansip(sourcefn, ext)
+        return wcs
+    except:
+        # import sys
+        # import traceback
+        # print('failed to read WCS from file', sourcefn, 'extension', ext, 'tansip:', tansip)
+        # traceback.print_exc(None, sys.stdout)
+        pass
+    return None
 
 def read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
     from astrometry.util.util import Tan

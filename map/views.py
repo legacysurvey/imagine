@@ -819,7 +819,8 @@ class MzlsResidLayer(ResidMixin, DecalsLayer):
 
 class SdssLayer(MapLayer):
     def __init__(self, name):
-        super(SdssLayer, self).__init__(name, nativescale=13)
+        super(SdssLayer, self).__init__(name, nativescale=13, maxscale=6)
+        self.pixscale = 0.396
         self.bricks = None
         
     def get_bricks(self):

@@ -108,7 +108,7 @@ TEMPLATES = [
     },
 ]
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['legacysurvey.org', 'www.legacysurvey.org', 'a.legacysurvey.org', 'b.legacysurvey.org', 'c.legacysurvey.org', 'd.legacysurvey.org']
 
 # Application definition
 
