@@ -2163,6 +2163,8 @@ def get_tile_view(name):
     return view
 
 def sdss_wcs(req):
+    return HttpResponse('sorry, offline for now')
+
     from astrometry.util.util import Tan
     import numpy as np
     args = []
