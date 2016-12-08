@@ -1833,6 +1833,40 @@ if ('constel' in qstr) {
   map.addLayer(conGroup);
 }
 
+if ('desi' in qstr) {
+
+var DesiFootprint = L.CircleMarker.extend({
+    initialize: function() {
+        //L.CircleMarker.prototype.initialize.call(this, map.getCenter(), 10.);
+        L.CircleMarker.prototype.initialize.call(this, [0,0], 10.);
+        this._point = L.point(200, 200);
+        this._radius = 100;
+    },
+    _project: function() {
+                                         this._updateBounds();
+
+    },
+    _updateBounds: function() {
+                                         this._pxBounds = new L.Bounds(L.point(0,0), L.point(500,500));
+    }
+});
+var desiGroup = L.layerGroup([]);
+console.log('creating DesiFootprint()');
+var f = new DesiFootprint();
+console.log('created DesiFootprint()');
+
+//desiGroup.addLayer(DesiFootprint());
+desiGroup.addLayer(f);
+
+layerControl._addLayer(desiGroup, 'DESI footprint', true);
+
+//desiGroup.addTo(map);
+map.addLayer(desiGroup);
+
+console.log('DESI Footprint')
+
+}
+
 map.on('mousemove', onMouseMove);
 map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
