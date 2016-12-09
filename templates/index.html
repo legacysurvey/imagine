@@ -12,25 +12,19 @@
   ga('send', 'pageview');
 </script> 
 
-<link rel="stylesheet" href="{% static "leaflet-0.7.7.css" %}" />
-<script src="{% static "leaflet-src-0.7.7.js" %}"></script>
+<link rel="stylesheet" href="{% static "leaflet-1.0.2.css" %}" />
+<script src="{% static "leaflet-src-1.0.2.js" %}" type="text/javascript"></script>
+<script src="{% static "jquery-2.1.1.min.js" %}" type="text/javascript"></script>
+<script src="{% static "leaflet-pip-20150130.min.js" %}" type="text/javascript"></script>
 {% comment %}
-<script src="{% static "leaflet-min-0.7.7.js" %}"></script>
+// http://kartena.github.io/Leaflet.zoomslider/
 {% endcomment %}
-<script src="{% static "jquery-2.1.1.min.js" %}"></script>
-<script src="{% static "leaflet-pip-20150130.min.js" %}"></script>
-<script src="{% static "leaflet-zoomslider-0.6.1.js" %}"></script>
+<script src="{% static "leaflet-zoomslider-0.6.1.js" %}" type="text/javascript"></script>
 <link rel="stylesheet" href="{% static "leaflet-zoomslider-0.6.1.css" %}" />
-{% comment %}
-<script src="{% static "leaflet.draw-0.2.4.js" %}"></script>
-<link rel="stylesheet" href="{% static "leaflet.draw-0.2.4.css" %}" />
-<script src="{% static "leaflet.measurecontrol-20150626.js" %}"></script>
-<link rel="stylesheet" href="{% static "leaflet.measurecontrol-20150626.css" %}" />
-{% endcomment %}
 {% comment %}
 https://github.com/Leaflet/Leaflet.label
 {% endcomment %}
-<script src="{% static "leaflet.label-20150521.js" %}"></script>
+<script src="{% static "leaflet.label-20150521.js" %}" type="text/javascript"></script>
 <link rel="stylesheet" href="{% static "leaflet.label-20150521.css" %}" />
 
 <style type="text/css">
