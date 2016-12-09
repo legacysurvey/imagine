@@ -1829,12 +1829,15 @@ if ('constel' in qstr) {
 
 if ('desi' in qstr) {
 
+/*
 var DesiFootprint = L.CircleMarker.extend({
     initialize: function() {
         //L.CircleMarker.prototype.initialize.call(this, map.getCenter(), 10.);
-        L.CircleMarker.prototype.initialize.call(this, [0,0], 10.);
+        var latlng = map.getCenter();
+        //L.CircleMarker.prototype.initialize.call(this, [0,0], 10.);
+        L.CircleMarker.prototype.initialize.call(this, latlng, 10.);
         this._point = L.point(200, 200);
-        this._radius = 100;
+        //this._radius = 100;
     },
     _project: function() {
                                          this._updateBounds();
@@ -1844,6 +1847,128 @@ var DesiFootprint = L.CircleMarker.extend({
                                          this._pxBounds = new L.Bounds(L.point(0,0), L.point(500,500));
     }
 });
+*/
+/*
+var DesiFootprint = L.Control.extend({
+  onAdd: function(map) {
+    var container = L.DomUtil.create('div', 'desi-footprint');
+    //container.innerHTML = "hello";
+    var txt = L.DomUtil.create('a', 'desi-footprint-x', container);
+    txt.innerHTML = "hello";
+    return container;
+  }
+});
+map.addControl(new DesiFootprint({'position':'topleft'}));
+*/
+
+/*
+var DesiFootprint = L.Path.extend({
+	redraw: function () {
+		if (this._map) {
+            this._updatePath();
+			//this._renderer._updatePath(this);
+		}
+		return this;
+	},
+
+	_updatePath: function () {
+        var x = new L.Class();
+        x._point = L.point(200,200);
+        x._radius = 50;
+        x._radiusY = 50;
+		this._renderer._updateCircle(x);
+	}
+});
+*/
+
+//var DesiFootprint = L.Control.extend({
+var DesiFootprint = L.Layer.extend({
+  onAdd: function(map) {
+    var container = L.DomUtil.create('div', 'desi-footprint');
+    var txt = L.DomUtil.create('a', 'desi-footprint-x', container);
+    txt.innerHTML = "hello";
+    txt.color = "red";
+    //L.DomUtil.addClass(container, 'leaflet-control');
+    //container.set
+    map.getPane('overlayPane').appendChild(container);
+    //map.getPane('mapPane').appendChild(container);
+    //return container;
+
+    //var pos = L.point(200, 200);
+    console.log('getRenderer');
+	this._renderer = map.getRenderer(this);
+    console.log('updateCircle...');
+
+    var x = new L.Class();
+    x._point = L.point(200,200);
+    x._radius = 50;
+    x._radiusY = 50;
+    x._empty = function() { return false; }
+    x._update = function() { console.log('x.update().  x._point ' + x._point); }
+    x.addInteractiveTarget = function() { };
+    x.options = { 'color': 'yellow', 'stroke': 'green', 'weight':4 }
+    this._renderer._initPath(x);
+    this._renderer._addPath(x);
+    this._renderer._updateCircle(x);
+
+    map.on('move', function() {
+      po = map.getPixelOrigin();
+      pb = map.getPixelBounds();
+      console.log('move: pixel origin ' + po + ', bounds ' + pb.min);
+      //dpix = po.subtract(pb.min);
+      dpix = pb.min.subtract(po);
+      console.log('dpix: ' + dpix);
+      x._point = dpix.add(L.point(200,200));
+      x._pxBounds = new L.Bounds(x._point.subtract([x._radius*2, x._radius*2]),
+                                 x._point.add([x._radius*2, x._radius*2]));
+                                         
+      this._renderer._updateCircle(x);
+    });
+
+    console.log('circle c');
+    c = L.circle(map.getCenter(), { 'radius': 30., 'color': 'green'});
+    c._map = map;
+	c._renderer = map.getRenderer(c);
+    console.log('init path c');
+	c._renderer._initPath(c);
+    console.log('add path c');
+	c._renderer._addPath(c);
+    console.log('project c');
+    c._project();
+    console.log('update c');
+    this._renderer._updateCircle(c);
+    console.log('updated circle');
+
+    map.on('move', function() { console.log('move: c _point: ' + c._point); });
+
+    console.log('c keys: ' + getkeys(c));
+
+    console.log('c point: ' + c._point);
+
+    return this;
+  }
+
+});
+
+var desifoot = new DesiFootprint();
+var desiGroup = L.layerGroup([]);
+desiGroup.addLayer(desifoot);
+map.addLayer(desiGroup);
+//map.addControl(desifoot);
+
+
+
+/*
+@class Canvas
+	_updateCircle: function (layer) {
+        ctx = this._ctx,
+		ctx.beginPath();
+		ctx.arc(p.x, p.y / s, r, 0, Math.PI * 2, false);
+		this._fillStroke(ctx, layer);
+*/
+
+
+/*
 var desiGroup = L.layerGroup([]);
 console.log('creating DesiFootprint()');
 var f = new DesiFootprint();
@@ -1851,11 +1976,10 @@ console.log('created DesiFootprint()');
 
 //desiGroup.addLayer(DesiFootprint());
 desiGroup.addLayer(f);
-
 layerControl._addLayer(desiGroup, 'DESI footprint', true);
-
 //desiGroup.addTo(map);
 map.addLayer(desiGroup);
+*/
 
 console.log('DESI Footprint')
 
