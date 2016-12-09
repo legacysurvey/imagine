@@ -2006,7 +2006,7 @@ var buildConstellations = function() {
     	    latlngs.push([ latlng1, latlng2 ]);
             //if (i == 0) console.log('  line from star ' + s1 + ' to ' + s2 + ', ra,dec ' + ra1 + ',' + dec1 + ' to ' + ra2 + ',' + dec2 + '; latlng ' + latlng1 + ' to ' + latlng2);
         }
-        var mpl = L.multiPolyline(latlngs, {'color': constellation_colors[i]});
+        var mpl = L.polyline(latlngs, {'color': constellation_colors[i]});
         conGroup.addLayer(mpl);
 
         // add a fake Circle marker to hold the label.
@@ -2062,7 +2062,8 @@ var AstroControl = L.Control.Scale.extend({
 	        unitName = 'arcmin';
 	    }
 	    var unit = this._getRoundNum(maxUnit);
-	    this._mScale.style.width = this._getScaleWidth(unit / maxUnit) + 'px';
+	    //this._mScale.style.width = this._getScaleWidth(unit / maxUnit) + 'px';
+        this._mScale.style.width = (this.options.maxWidth * unit / maxUnit) + 'px';
 	    this._mScale.innerHTML = unit + ' ' + unitName;
     },
 
