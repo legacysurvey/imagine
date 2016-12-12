@@ -933,8 +933,22 @@ inbrickccd.onAdd = function (map) {
 };
 var inbrickccdAdded = false;
 
+/*
+if (L.Browser.canvas) {
+var map = L.map('map', { renderer: L.canvas() });
+} else if (L.Browser.svg) {
+var map = L.map('map', { renderer: L.svg({padding: 0.5}) });
+} else {
 var map = L.map('map');
+}
+*/
+var map = L.map('map', {preferCanvas: true});
+
 var popup = L.popup();
+
+if (L.Browser.canvas) {
+console.log('supports canvas');
+}
 
 map.attributionControl.options.prefix += ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
 
@@ -1896,15 +1910,29 @@ var DesiFootprint = L.Layer.extend({
 
     //var pos = L.point(200, 200);
     console.log('getRenderer');
-	this._renderer = map.getRenderer(this);
-    console.log('updateCircle...');
+/*
+    if (L.Browser.svg) {
+      this._renderer = L.svg({ padding: 0.5 });
+    } else {
+    }
+*/
+ 	this._renderer = map.getRenderer(this);
+    console.log('renderer:', this._renderer);
+    //console.log('updateCircle...');
 
     var x = new L.Class();
     x._point = L.point(200,200);
+    x._pxBounds = new L.Bounds(x._point.subtract([1000,1000]),
+                               x._point.add([1000,1000]));
     x._radius = 50;
     x._radiusY = 50;
     x._empty = function() { return false; }
     x._update = function() { console.log('x.update().  x._point ' + x._point); }
+    x._renderer = this._renderer;
+    x._updatePath = function() {
+      this._renderer._updateCircle(this);
+      console.log('x.updatePath().  x._point ' + x._point);
+    }
     x.addInteractiveTarget = function() { };
     x.options = { 'color': 'yellow', 'stroke': 'green', 'weight':4 }
     this._renderer._initPath(x);
@@ -1919,12 +1947,20 @@ var DesiFootprint = L.Layer.extend({
       dpix = pb.min.subtract(po);
       console.log('dpix: ' + dpix);
       x._point = dpix.add(L.point(200,200));
-      x._pxBounds = new L.Bounds(x._point.subtract([x._radius*2, x._radius*2]),
-                                 x._point.add([x._radius*2, x._radius*2]));
-                                         
-      this._renderer._updateCircle(x);
+      console.log('x._point: ' + x._point);
+      //x._pxBounds = new L.Bounds(x._point.subtract([x._radius*2, x._radius*2]),
+      //                           x._point.add([x._radius*2, x._radius*2]));
+      x._pxBounds = new L.Bounds(x._point.subtract([1000,1000]),
+                                 x._point.add([1000,1000]));
+      x._renderer._updateCircle(x);
+      //x._renderer._updatePath(x);
+      // this doesn't really work right.
+      x._renderer._redraw();
     });
 
+    ///// FIXME -- should maybe subclass Circle, overriding _project?
+
+    /*
     console.log('circle c');
     c = L.circle(map.getCenter(), { 'radius': 30., 'color': 'green'});
     c._map = map;
@@ -1944,7 +1980,7 @@ var DesiFootprint = L.Layer.extend({
     console.log('c keys: ' + getkeys(c));
 
     console.log('c point: ' + c._point);
-
+    */
     return this;
   }
 

@@ -9447,6 +9447,7 @@ L.SVG = L.Renderer.extend({
 	},
 
 	_update: function () {
+        console.log('SVG._update()');
 		if (this._map._animatingZoom && this._bounds) { return; }
 
 		L.Renderer.prototype._update.call(this);
