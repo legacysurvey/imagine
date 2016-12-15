@@ -24,7 +24,7 @@ class Router(object):
 
 class Bricks(models.Model):
     id = models.BigIntegerField(primary_key=True)
-    brickname = models.CharField(max_length=-1, blank=True, null=True)
+    brickname = models.CharField(max_length=8, blank=True, null=True)
     brickid = models.IntegerField(blank=True, null=True)
     brickq = models.SmallIntegerField(blank=True, null=True)
     brickrow = models.IntegerField(blank=True, null=True)
@@ -41,7 +41,7 @@ class Bricks(models.Model):
         db_table = 'bricks'
 
 class Tractor(models.Model):
-    id = models.IntegerField(blank=True, null=True)
+    id = models.IntegerField(primary_key=True)
     brickid = models.IntegerField(blank=True, null=True)
     brickname = models.TextField(blank=True, null=True)
     objid = models.IntegerField(blank=True, null=True)
@@ -190,7 +190,7 @@ class Tractor(models.Model):
 
 
 class Wise(models.Model):
-    id = models.IntegerField(primary_key=True, blank=True, null=True)
+    id = models.IntegerField(primary_key=True)
     brickid = models.IntegerField(blank=True, null=True)
     objid = models.IntegerField(blank=True, null=True)
     type = models.TextField(blank=True, null=True)
