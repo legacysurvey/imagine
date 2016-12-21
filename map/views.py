@@ -447,7 +447,7 @@ class MapLayer(object):
         if bands is None:
             bands = self.get_bands()
         scale = self.get_scale(zoom, x, y, wcs)
-        print('render_into_wcs: scale', scale, 'N bricks:', len(bricks))
+        #print('render_into_wcs: scale', scale, 'N bricks:', len(bricks))
         
         W = int(wcs.get_width())
         H = int(wcs.get_height())
@@ -939,34 +939,34 @@ class PS1Layer(MapLayer):
             return fn
         fnargs = dict(band=band, brickname=brickname)
         def read_base_wcs(sourcefn, hdu, hdr=None, W=None, H=None, fitsfile=None):
-            print('read_base_wcs() for', sourcefn)
+            #print('read_base_wcs() for', sourcefn)
             return self.read_wcs(brickname, band, 0)
         def read_base_image(sourcefn):
-            print('read_base_image() for', sourcefn)
+            #print('read_base_image() for', sourcefn)
             return self.read_image(brickname, band, 0, None, header=True)
-        print('calling get_scaled: scale', scale)
+        #print('calling get_scaled: scale', scale)
         fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn,
                         read_base_wcs=read_base_wcs, read_base_image=read_base_image)
-        print('get_scaled: fn', fn)
+        #print('get_scaled: fn', fn)
         return fn
 
     def read_image(self, brickname, band, scale, slc, header=False):
-        print('read_image for', brickname, 'band', band, 'scale', scale)
+        #print('read_image for', brickname, 'band', band, 'scale', scale)
         #if scale > 0:
         #    return super(PS1Layer, self).read_image(brickname, band, scale, slc)
 
         # HDU = 1
         import fitsio
-        print('-> get_filename')
+        #print('-> get_filename')
         fn = self.get_filename(brickname, band, scale)
-        print('-> got filename', fn)
+        #print('-> got filename', fn)
 
         if scale == 0:
             hdu = 1
         else:
             hdu = 0
 
-        print('Reading image from', fn)
+        #print('Reading image from', fn)
         F = fitsio.FITS(fn)
         f = F[hdu]
         if slc is None:
@@ -976,7 +976,7 @@ class PS1Layer(MapLayer):
         hdr = f.read_header()
 
         if scale == 0:
-            print('scale == 0; scaling pixels')
+            #print('scale == 0; scaling pixels')
             exptime = hdr['EXPTIME']
             import numpy as np
             # print('Exptime:', exptime, 'in band', band, '; image 90th pctile:', np.percentile(img.ravel(), 90))
@@ -1010,20 +1010,19 @@ class PS1Layer(MapLayer):
     def read_wcs(self, brickname, band, scale):
         #if scale > 0:
         #    return super(PS1Layer, self).read_wcs(brickname, band, scale)
-
-        print('read_wcs for', brickname, 'band', band, 'scale', scale)
+        #print('read_wcs for', brickname, 'band', band, 'scale', scale)
 
         from coadds import read_tan_wcs
         fn = self.get_filename(brickname, band, scale)
         if fn is None:
-            print('read_wcs: filename is None')
+            #print('read_wcs: filename is None')
             return None
 
-        print('read_wcs got fn', fn)
+        #print('read_wcs got fn', fn)
         if scale > 0:
             return read_tan_wcs(fn, 0)
 
-        print('Handling PS1 WCS for', fn)
+        #print('Handling PS1 WCS for', fn)
         import fitsio
         from astrometry.util.util import Tan
         hdr = fitsio.read_header(fn, 1)

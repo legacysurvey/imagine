@@ -72,8 +72,6 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     import tempfile
     import numpy as np
 
-    print('get_scaled: scale', scale)
-
     if scale <= 0:
         return basefn
     fn = scalepat % dict(scale=scale, **scalekwargs)
@@ -102,10 +100,9 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
             debug('Image source file', sourcefn, 'not found')
             return None
         try:
-            debug('Reading image:', sourcefn, 'for scale', scale, '; read_base_image is', read_base_image)
+            #debug('Reading image:', sourcefn, 'for scale', scale, '; read_base_image is', read_base_image)
 
             if scale == 1 and read_base_image is not None:
-                print('Calling read_base_image()')
                 img,hdr = read_base_image(sourcefn)
             else:
                 F = fitsio.FITS(sourcefn)
@@ -147,7 +144,6 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     from decals import settings
     ro = settings.READ_ONLY_BASEDIR
     if ro:
-        print('Read-only; creating scaled image in temp file')
         dirnm = None
 
     hdr = fitsio.FITSHDR()
