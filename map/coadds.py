@@ -65,12 +65,14 @@ def read_sip_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
     return read_tansip_wcs(sourcefn, ext, hdr=hdr, W=W, H=H, tansip=Sip)
 
 def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wcs=None,
-               wcs=None, img=None, return_data=False): #, base_hdu=0):
+               wcs=None, img=None, return_data=False, read_base_image=None):
     from scipy.ndimage.filters import gaussian_filter
     import fitsio
     from astrometry.util.util import Tan
     import tempfile
     import numpy as np
+
+    print('get_scaled: scale', scale)
 
     if scale <= 0:
         return basefn
@@ -90,22 +92,31 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
             return img,wcs,fn
         return fn
 
+    F = None
     if img is None:
         sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn,
-                              read_base_wcs=read_base_wcs, read_wcs=read_wcs)
+                              read_base_wcs=read_base_wcs, read_wcs=read_wcs,
+                              read_base_image=read_base_image)
         debug('Source:', sourcefn)
         if sourcefn is None or not os.path.exists(sourcefn):
             debug('Image source file', sourcefn, 'not found')
             return None
         try:
-            debug('Reading:', sourcefn)
-            F = fitsio.FITS(sourcefn)
-            #img = F[0].read()
-            #hdr = F[0].read_header()
-            img = F[-1].read()
-            hdr = F[-1].read_header()
+            debug('Reading image:', sourcefn, 'for scale', scale, '; read_base_image is', read_base_image)
+
+            if scale == 1 and read_base_image is not None:
+                print('Calling read_base_image()')
+                img,hdr = read_base_image(sourcefn)
+            else:
+                F = fitsio.FITS(sourcefn)
+                # img = F[0].read()
+                # hdr = F[0].read_header()
+                img = F[-1].read()
+                hdr = F[-1].read_header()
         except:
             debug('Failed to read:', sourcefn)
+            import traceback
+            traceback.print_exc()
             return None
 
     H,W = img.shape
@@ -136,6 +147,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     from decals import settings
     ro = settings.READ_ONLY_BASEDIR
     if ro:
+        print('Read-only; creating scaled image in temp file')
         dirnm = None
 
     hdr = fitsio.FITSHDR()
@@ -151,6 +163,8 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     if not ro:
         os.rename(tmpfn, fn)
         debug('Wrote', fn)
+    else:
+        fn = tmpfn
     if return_data:
         return I2,wcs2,fn
     return fn
