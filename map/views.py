@@ -39,6 +39,7 @@ tileversions = {
     'halpha': [1,],
     'sdss': [1,],
     'sdssco': [1,],
+    'ps1': [1],
 
     'mzls-dr3': [1],
 
@@ -421,6 +422,8 @@ class MapLayer(object):
         fn = self.get_filename(brickname, band, scale)
         f = fitsio.FITS(fn)[0]
         img = f[slc]
+        import numpy as np
+        print('Band', band, '; image 90th pctile:', np.percentile(img.ravel(), 90))
         return img
 
     def read_wcs(self, brickname, band, scale):
@@ -444,10 +447,10 @@ class MapLayer(object):
         if bands is None:
             bands = self.get_bands()
         scale = self.get_scale(zoom, x, y, wcs)
-        print('render_into_wcs: scale', scale, 'N bricks:', len(bricks))
+        #print('render_into_wcs: scale', scale, 'N bricks:', len(bricks))
         
-        W = wcs.get_width()
-        H = wcs.get_height()
+        W = int(wcs.get_width())
+        H = int(wcs.get_height())
         r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                 [1,H/2,H,H,H,H/2,1,1])[-2:]
         rimgs = []
@@ -537,7 +540,7 @@ class MapLayer(object):
         if ver is not None:
             ver = int(ver)
             if not self.tileversion_ok(ver):
-                raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+                raise RuntimeError('Invalid tile version %i for %s' % (ver, str(self)))
         else:
             # Set default version...?
             ver = tileversions[self.name][-1]
@@ -602,8 +605,8 @@ class MapLayer(object):
             debug('Wrote', fn)
 
     def get_tile_view(self):
-        def view(request, ver, zoom, x, y):
-            return self.get_tile(request, ver, zoom, x, y)
+        def view(request, ver, zoom, x, y, **kwargs):
+            return self.get_tile(request, ver, zoom, x, y, **kwargs)
         return view
 
     def populate_fits_cutout_header(self, hdr):
@@ -876,6 +879,187 @@ class SdssLayer(MapLayer):
 
     def populate_fits_cutout_header(self, hdr):
         hdr['SURVEY'] = 'SDSS'
+
+
+class PS1Layer(MapLayer):
+    def __init__(self, name):
+        super(PS1Layer, self).__init__(name, nativescale=14, maxscale=6)
+        self.pixscale = 0.25
+        self.bricks = None
+        self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+
+    def get_bands(self):
+        return 'grz'
+        #return 'gri'
+
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        from decals import settings
+        from astrometry.util.fits import fits_table
+        basedir = settings.DATA_DIR
+        self.bricks = fits_table(os.path.join(basedir, 'ps1skycells-sub.fits'))
+        print('Read', len(self.bricks), 'bricks')
+        self.bricks.cut(self.bricks.filter == 'r')
+        print('Cut to', len(self.bricks), 'r-band bricks')
+        self.bricks.ra += (360. * (self.bricks.ra < 0.))
+        self.bricks.ra += (-360. * (self.bricks.ra > 360.))
+        # ROUGHLY...
+        self.bricks.dec1 = self.bricks.dec - 0.2
+        self.bricks.dec2 = self.bricks.dec + 0.2
+        import numpy as np
+        cosdec = np.cos(np.deg2rad(self.bricks.dec))
+        self.bricks.ra1 = self.bricks.ra - 0.2 / cosdec
+        self.bricks.ra2 = self.bricks.ra + 0.2 / cosdec
+        self.bricks.brickname = np.array(['%04i.%03i' % (c,s) for c,s in zip(self.bricks.projcell, self.bricks.subcell)])
+        #self.bricks.writeto('/tmp/ps1.fits')
+        return self.bricks
+
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi):
+        import numpy as np
+        bricks = self.get_bricks()
+        if rahi < ralo:
+            I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
+                                          bricks.ra1 <= rahi) *
+                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        else:
+            I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
+                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        if len(I) == 0:
+            return None
+        return bricks[I]
+
+    def get_filename(self, brickname, band, scale):
+        from decals import settings
+        basedir = settings.DATA_DIR
+        cell = brickname[:4]
+        fn = os.path.join(basedir, 'ps1', 'skycells', cell,
+                          'ps1-%s-%s.fits' % (brickname.replace('.','-'), band))
+        if scale == 0:
+            return fn
+        fnargs = dict(band=band, brickname=brickname)
+        def read_base_wcs(sourcefn, hdu, hdr=None, W=None, H=None, fitsfile=None):
+            #print('read_base_wcs() for', sourcefn)
+            return self.read_wcs(brickname, band, 0)
+        def read_base_image(sourcefn):
+            #print('read_base_image() for', sourcefn)
+            return self.read_image(brickname, band, 0, None, header=True)
+        #print('calling get_scaled: scale', scale)
+        fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn,
+                        read_base_wcs=read_base_wcs, read_base_image=read_base_image)
+        #print('get_scaled: fn', fn)
+        return fn
+
+    def read_image(self, brickname, band, scale, slc, header=False):
+        #print('read_image for', brickname, 'band', band, 'scale', scale)
+        #if scale > 0:
+        #    return super(PS1Layer, self).read_image(brickname, band, scale, slc)
+
+        # HDU = 1
+        import fitsio
+        #print('-> get_filename')
+        fn = self.get_filename(brickname, band, scale)
+        #print('-> got filename', fn)
+
+        if scale == 0:
+            hdu = 1
+        else:
+            hdu = 0
+
+        #print('Reading image from', fn)
+        F = fitsio.FITS(fn)
+        f = F[hdu]
+        if slc is None:
+            img = f.read()
+        else:
+            img = f[slc]
+        hdr = f.read_header()
+
+        if scale == 0:
+            #print('scale == 0; scaling pixels')
+            exptime = hdr['EXPTIME']
+            import numpy as np
+            # print('Exptime:', exptime, 'in band', band, '; image 90th pctile:', np.percentile(img.ravel(), 90))
+
+            # Srsly?
+            alpha = 2.5 * np.log10(np.e)
+            boff = hdr['BOFFSET']
+            bsoft = hdr['BSOFTEN']
+            img = boff + bsoft * 2. * np.sinh(img / alpha)
+
+            # print('After linearitity: image 90th pctile:', np.percentile(img.ravel(), 90))
+
+            # Zeropoint of 25 = factor of 10 vs nanomaggies
+            img *= 0.1 / exptime
+
+        if header:
+            return img,hdr
+
+        return img
+
+    '''
+    Obsolete WCS keywords:
+
+    CDELT1  = 6.94444461259988E-05
+    CDELT2  = 6.94444461259988E-05
+    PC001001=                  -1.
+    PC001002=                   0.
+    PC002001=                   0.
+    PC002002=                   1.
+    '''
+    def read_wcs(self, brickname, band, scale):
+        #if scale > 0:
+        #    return super(PS1Layer, self).read_wcs(brickname, band, scale)
+        #print('read_wcs for', brickname, 'band', band, 'scale', scale)
+
+        from coadds import read_tan_wcs
+        fn = self.get_filename(brickname, band, scale)
+        if fn is None:
+            #print('read_wcs: filename is None')
+            return None
+
+        #print('read_wcs got fn', fn)
+        if scale > 0:
+            return read_tan_wcs(fn, 0)
+
+        #print('Handling PS1 WCS for', fn)
+        import fitsio
+        from astrometry.util.util import Tan
+        hdr = fitsio.read_header(fn, 1)
+
+        # PS1 wonky WCS
+        cdelt1 = hdr['CDELT1']
+        cdelt2 = hdr['CDELT2']
+        # ????
+        cd11 = hdr['PC001001'] * cdelt1
+        cd12 = hdr['PC001002'] * cdelt1
+        cd21 = hdr['PC002001'] * cdelt2
+        cd22 = hdr['PC002002'] * cdelt2
+        H = hdr['ZNAXIS1']
+        W = hdr['ZNAXIS2']
+        wcs = Tan(*[float(x) for x in [
+                    hdr['CRVAL1'], hdr['CRVAL2'], hdr['CRPIX1'], hdr['CRPIX2'],
+                    cd11, cd12, cd21, cd22, W, H]])
+        return wcs
+    
+    def get_scaled_pattern(self):
+        from decals import settings
+        basedir = settings.DATA_DIR
+        return os.path.join(
+            basedir, 'scaled', self.name,
+            '%(scale)i%(band)s', '%(brickname).4s',
+            'ps1' + '-%(brickname)s-%(band)s.fits')
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        return dr2_rgb(imgs, bands, **self.rgbkwargs)
+        #return sdss_rgb(imgs, bands)
+
+    #def get_rgb(self, imgs, bands, **kwargs):
+    #    return sdss_rgb(imgs, bands)
+
+    def populate_fits_cutout_header(self, hdr):
+        hdr['SURVEY'] = 'PS1'
+
 
 class UnwiseLayer(MapLayer):
     def __init__(self, name, unwise_dir):
@@ -2074,6 +2258,9 @@ def get_layer(name, default=None):
     if name == 'sdssco':
         layer = SdssLayer('sdssco')
 
+    elif name == 'ps1':
+        layer = PS1Layer('ps1')
+
     elif name in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
         survey_dr3 = _get_survey('decals-dr3')
         dr3_image = DecalsLayer('decals-dr3', 'image', survey_dr3)
@@ -2157,9 +2344,9 @@ def get_layer(name, default=None):
     return layer
 
 def get_tile_view(name):
-    def view(request, ver, zoom, x, y):
+    def view(request, ver, zoom, x, y, **kwargs):
         layer = get_layer(name)
-        return layer.get_tile(request, ver, zoom, x, y)
+        return layer.get_tile(request, ver, zoom, x, y, **kwargs)
     return view
 
 def sdss_wcs(req):

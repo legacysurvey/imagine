@@ -23,6 +23,10 @@ urlpatterns = [
         views.get_tile_view('sdssco')),
         #views.sdss_layer.get_tile_view()),
 
+    # PS1 skycells
+    url(r'^ps1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('ps1')),
+
     # For nova.astrometry.net: SDSS for a given WCS
     url(r'^sdss-wcs', views.sdss_wcs),
 

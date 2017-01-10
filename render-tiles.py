@@ -34,12 +34,20 @@ version = 1
 
 def _one_tile((kind, zoom, x, y, ignore)):
     kwargs = dict(ignoreCached=ignore)
+
     # forcecache=False, return_if_not_found=True)
     if kind == 'sdss':
         print('Zoom', zoom, 'x,y', x,y)
         #map_sdss(req, version, zoom, x, y, savecache=True, forcecache=True)
         map_sdssco(req, version, zoom, x, y, savecache=True, forcecache=True,
                    return_if_not_found=True, hack_jpeg=True)
+
+    elif kind == 'ps1':
+        print('Zoom', zoom, 'x,y', x,y)
+        from map import views
+        get_tile = views.get_tile_view('ps1')
+        get_tile(req, version, zoom, x, y, savecache=True,
+                 return_if_not_found=True)
 
     elif kind in ['mobo-dr3', 'mobo-dr3-model', 'mobo-dr3-resid']:
         v = 1

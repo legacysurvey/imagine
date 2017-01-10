@@ -42,10 +42,22 @@ def read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
                 F = fitsfile
             info = F[ext].get_info()
             H,W = info['dims']
+
+        # PS1 wonky WCS
+        if (not 'CD1_1' in hdr) and ('PC001001' in hdr):
+            cdelt1 = hdr['CDELT1']
+            cdelt2 = hdr['CDELT2']
+            # ????
+            cd11 = hdr['PC001001'] * cdelt1
+            cd12 = hdr['PC001002'] * cdelt1
+            cd21 = hdr['PC002001'] * cdelt2
+            cd22 = hdr['PC002002'] * cdelt2
+        else:
+            cd11,cd12,cd21,cd22 = hdr['CD1_1'], hdr['CD1_2'], hdr['CD2_1'], hdr['CD2_2'],
+
         wcs = Tan(*[float(x) for x in [
                     hdr['CRVAL1'], hdr['CRVAL2'], hdr['CRPIX1'], hdr['CRPIX2'],
-                    hdr['CD1_1'], hdr['CD1_2'], hdr['CD2_1'], hdr['CD2_2'],
-                    W, H]])
+                    cd11, cd12, cd21, cd22, W, H]])                    
     return wcs
 
 def read_sip_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
@@ -53,7 +65,7 @@ def read_sip_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
     return read_tansip_wcs(sourcefn, ext, hdr=hdr, W=W, H=H, tansip=Sip)
 
 def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wcs=None,
-               wcs=None, img=None, return_data=False):
+               wcs=None, img=None, return_data=False, read_base_image=None):
     from scipy.ndimage.filters import gaussian_filter
     import fitsio
     from astrometry.util.util import Tan
@@ -70,26 +82,38 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     if os.path.exists(fn):
         if return_data:
             F = fitsio.FITS(sourcefn)
-            img = F[0].read()
-            hdr = F[0].read_header()
+            #img = F[0].read()
+            #hdr = F[0].read_header()
+            img = F[-1].read()
+            hdr = F[-1].read_header()
             wcs = read_wcs(fn, 0, hdr=hdr, W=W, H=H, fitsfile=F)
             return img,wcs,fn
         return fn
 
+    F = None
     if img is None:
         sourcefn = get_scaled(scalepat, scalekwargs, scale-1, basefn,
-                              read_base_wcs=read_base_wcs, read_wcs=read_wcs)
+                              read_base_wcs=read_base_wcs, read_wcs=read_wcs,
+                              read_base_image=read_base_image)
         debug('Source:', sourcefn)
         if sourcefn is None or not os.path.exists(sourcefn):
             debug('Image source file', sourcefn, 'not found')
             return None
         try:
-            debug('Reading:', sourcefn)
-            F = fitsio.FITS(sourcefn)
-            img = F[0].read()
-            hdr = F[0].read_header()
+            #debug('Reading image:', sourcefn, 'for scale', scale, '; read_base_image is', read_base_image)
+
+            if scale == 1 and read_base_image is not None:
+                img,hdr = read_base_image(sourcefn)
+            else:
+                F = fitsio.FITS(sourcefn)
+                # img = F[0].read()
+                # hdr = F[0].read_header()
+                img = F[-1].read()
+                hdr = F[-1].read_header()
         except:
             debug('Failed to read:', sourcefn)
+            import traceback
+            traceback.print_exc()
             return None
 
     H,W = img.shape
@@ -135,6 +159,8 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     if not ro:
         os.rename(tmpfn, fn)
         debug('Wrote', fn)
+    else:
+        fn = tmpfn
     if return_data:
         return I2,wcs2,fn
     return fn
