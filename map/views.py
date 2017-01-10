@@ -2065,7 +2065,7 @@ def dq_data(req, survey, ccd):
 
 
 layers = {}
-def _get_layer(name, default=None):
+def get_layer(name, default=None):
     global layers
     if name in layers:
         return layers[name]
@@ -2158,7 +2158,7 @@ def _get_layer(name, default=None):
 
 def get_tile_view(name):
     def view(request, ver, zoom, x, y):
-        layer = _get_layer(name)
+        layer = get_layer(name)
         return layer.get_tile(request, ver, zoom, x, y)
     return view
 
@@ -2181,7 +2181,7 @@ def sdss_wcs(req):
     zoom = 13 - int(np.round(np.log2(pixscale / 0.396)))
     x = y = 0
 
-    sdss = _get_layer('sdssco')
+    sdss = get_layer('sdssco')
 
     rimgs = sdss.render_into_wcs(wcs, zoom, x, y, general_wcs=True)
     if rimgs is None:
