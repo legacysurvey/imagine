@@ -41,6 +41,8 @@ tileversions = {
     'sdssco': [1,],
     'ps1': [1],
 
+    'mobo-dr4': [1],
+
     'mzls-dr3': [1],
 
     'mobo-dr3': [1],
@@ -565,11 +567,11 @@ class MapLayer(object):
         if rimgs is None:
             if get_images:
                 return None
+            if return_if_not_found and not forcecache:
+                return
             from django.http import HttpResponseRedirect
             return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
     
-        if return_if_not_found and not savecache:
-            return
         if get_images and not write_jpeg:
             return rimgs
     
@@ -1465,8 +1467,9 @@ def _get_survey(name=None):
     from decals import settings
     basedir = settings.DATA_DIR
 
-    if name in [ 'decals-dr2', 'decals-dr3', 'mobo-dr3', 'mzls-dr3']:
+    if name in [ 'decals-dr2', 'decals-dr3', 'mobo-dr3', 'mzls-dr3', 'mobo-dr4']:
         dirnm = os.path.join(basedir, name)
+        print('survey_dir', dirnm)
 
         if name == 'decals-dr2':
             d = MyLegacySurveyData(survey_dir=dirnm, version='dr2')
@@ -1485,6 +1488,9 @@ def _get_survey(name=None):
         elif name == 'mzls-dr3':
             d.drname = 'MzLS DR3'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3-mzls/'
+        elif name == 'mobo-dr4':
+            d.drname = 'MzLS+BASS DR4'
+            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr4/'
 
         surveys[name] = d
         return d
@@ -1775,13 +1781,14 @@ def get_ccd_object(survey, ccd):
 def ccd_detail(req, name, ccd):
     survey, c = get_ccd_object(name, ccd)
 
-    if name in ['decals-dr2', 'decals-dr3', 'mzls-dr3']:
+    if name in ['decals-dr2', 'decals-dr3', 'mzls-dr3', 'mobo-dr4']:
         imgurl = reverse('image_data', args=[name, ccd])
         dqurl  = reverse('dq_data', args=[name, ccd])
         about = '''
 <html><body>
 CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix
 <br />
+Observed MJD %.3f, %s %s UT
 <ul>
 <li>image <a href="%s">%s</a>
 <li>data quality (flags) <a href="%s">%s</a>
@@ -1789,6 +1796,7 @@ CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix
 </body></html>
 '''
         about = about % (ccd, c.image_filename, c.image_hdu, c.exptime, c.seeing, c.fwhm,
+                         c.mjd_obs, c.date_obs, c.ut,
                          imgurl, ccd, dqurl, ccd)
 
     else:
@@ -2260,6 +2268,21 @@ def get_layer(name, default=None):
 
     elif name == 'ps1':
         layer = PS1Layer('ps1')
+
+    elif name in ['mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid']:
+
+        survey_dr4mobo = _get_survey('mobo-dr4')
+        mobo4_image = DecalsLayer('mobo-dr4', 'image', survey_dr4mobo,
+                                  drname='mobo-dr4')
+        mobo4_model = DecalsLayer('mobo-dr4-model', 'model', survey_dr4mobo,
+                                  drname='mobo-dr4')
+        mobo4_resid = DecalsResidLayer(mobo4_image, mobo4_model,
+                                       'mobo-dr4-resid', 'resid', survey_dr4mobo,
+                                       drname='mobo-dr4')
+        layers['mobo-dr4'] = mobo4_image
+        layers['mobo-dr4-model'] = mobo4_model
+        layers['mobo-dr4-resid'] = mobo4_resid
+        layer = layers[name]
 
     elif name in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
         survey_dr3 = _get_survey('decals-dr3')

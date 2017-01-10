@@ -13,6 +13,7 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
+    'mobo-dr4': [1,],
     'decals-dr1j': [1,],
     'decals-dr2': [2,],
     'decals-dr3': [1,],
@@ -23,6 +24,7 @@ catversions = {
     'tycho2': [1,],
     'targets-dr2': [1,],
     'gaia-dr1': [1,],
+    'ps1': [1,],
 }
 
 def cat_gaia_dr1(req, ver):
@@ -360,6 +362,18 @@ def cat_gals(req, ver):
     return cat(req, ver, 'ngc',
                os.path.join(settings.DATA_DIR,'galaxy-cats.fits'))
 
+def cat_ps1(req, ver):
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    # We have the EDR region and a block around 0,0
+    if (rahi > 241) and (ralo < 246) * (dechi >= 6.5) * (declo < 11.5):
+        return cat(req, ver, 'ps1',
+                   os.path.join(settings.DATA_DIR,'ps1-cat-edr.fits'))
+    return cat(req, ver, 'ps1',
+               os.path.join(settings.DATA_DIR,'ps1-cat.fits'))
+
 def cat(req, ver, tag, fn):
     import json
     ralo = float(req.GET['ralo'])
@@ -386,8 +400,15 @@ def cat(req, ver, tag, fn):
     debug(len(T), 'in cut')
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
-    names = [t.strip() for t in T.name]
-    rtn = dict(rd=rd, name=names)
+    rtn = dict(rd=rd)
+
+    # PS1
+    if 'ndetections' in T.columns():
+        T.name = np.array(['%i' % n for n in T.ndetections])
+
+    if 'name' in T.columns():
+        names = [t.strip() for t in T.name]
+        rtn['name'] = names
     # bright stars
     if 'alt_name' in T.columns():
         rtn.update(altname = [t.strip() for t in T.alt_name])
@@ -403,6 +424,9 @@ def cat_decals_dr2(req, ver, zoom, x, y, tag='decals-dr2'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_decals_dr3(req, ver, zoom, x, y, tag='decals-dr3'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def cat_mobo_dr4(req, ver, zoom, x, y, tag='mobo-dr4'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):

@@ -49,6 +49,11 @@ def _one_tile((kind, zoom, x, y, ignore)):
         get_tile(req, version, zoom, x, y, savecache=True,
                  return_if_not_found=True)
 
+    elif kind in ['mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid']:
+        v = 1
+        layer = get_layer(kind)
+        layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True)
+
     elif kind in ['mobo-dr3', 'mobo-dr3-model', 'mobo-dr3-resid']:
         v = 1
         kwa = {}
@@ -680,6 +685,11 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -90
+    elif opt.kind in ['mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid']:
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = 30
     else:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -1024,6 +1034,14 @@ def main():
             print('Keeping', len(I), 'Dec points between', opt.mindec, 'and', opt.maxdec)
             dd = dd[I]
             yy = yy[I]
+
+            if opt.near_ccds:
+                margin = tilesize + ccdsize
+                I = np.flatnonzero((dd > C.dec.min()-margin) * (dd < C.dec.max()+margin))
+                print('Keeping', len(I), 'Dec points within range of CCDs')
+                dd = dd[I]
+                yy = yy[I]
+
             I = np.flatnonzero((rr >= opt.minra) * (rr <= opt.maxra))
             print('Keeping', len(I), 'RA points between', opt.minra, 'and', opt.maxra)
             rr = rr[I]

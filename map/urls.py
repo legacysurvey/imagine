@@ -23,9 +23,18 @@ urlpatterns = [
         views.get_tile_view('sdssco')),
         #views.sdss_layer.get_tile_view()),
 
+    # MzLS+BASS DR4 tiles
+    url(r'^mobo-dr4/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('mobo-dr4')),
+
+    # DR4 catalog
+    url(r'^mobo-dr4/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr4),
+
     # PS1 skycells
     url(r'^ps1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('ps1')),
+    # PS1 catalog test
+    url(r'^ps1/(\d+)/cat.json', cats.cat_ps1),
 
     # For nova.astrometry.net: SDSS for a given WCS
     url(r'^sdss-wcs', views.sdss_wcs),
