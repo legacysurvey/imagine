@@ -65,22 +65,8 @@ def _one_tile((kind, zoom, x, y, ignore)):
         
     elif kind in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
         v = 1
-        # kwa = {}
-        # if 'model' in kind:
-        #     kwa.update(model=True, add_gz=True)
-        # if 'resid' in kind:
-        #     kwa.update(resid=True, model_gz=True)
-        # #print('map_decals_dr3 kwargs:', kwa)
-        # map_decals_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
-        #                hack_jpeg=True, drname='decals-dr3', **kwa)
-
         layer = get_layer(kind)
-        # layer = { 'decals-dr3': dr3_image,
-        #           'decals-dr3-model': dr3_model,
-        #           'decals-dr3-resid': dr3_resid,
-        #           }[kind]
         layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True)
-                       #hack_jpeg=True,
 
     elif kind in ['decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
         v = 2
