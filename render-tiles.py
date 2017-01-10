@@ -73,11 +73,12 @@ def _one_tile((kind, zoom, x, y, ignore)):
         # #print('map_decals_dr3 kwargs:', kwa)
         # map_decals_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
         #                hack_jpeg=True, drname='decals-dr3', **kwa)
-        
-        layer = { 'decals-dr3': dr3_image,
-                  'decals-dr3-model': dr3_model,
-                  'decals-dr3-resid': dr3_resid,
-                  }[kind]
+
+        layer = get_layer(kind)
+        # layer = { 'decals-dr3': dr3_image,
+        #           'decals-dr3-model': dr3_model,
+        #           'decals-dr3-resid': dr3_resid,
+        #           }[kind]
         layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True)
                        #hack_jpeg=True,
 
