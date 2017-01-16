@@ -321,6 +321,7 @@ def top_levels(mp, opt):
         tag = opt.kind
         bands = 'grz'
         get_rgb = dr2_rgb
+        rgbkwargs = {}
 
         ver = tileversions.get(opt.kind, [1])[-1]
         print('Version', ver)
@@ -790,6 +791,8 @@ def main():
                 has_band[band][i] = ex
                 if ex:
                     found = True
+            exists[i] = found
+
         B.cut(exists)
         B.writeto('bricks-exist-%s.fits' % opt.kind)
         sys.exit(0)
