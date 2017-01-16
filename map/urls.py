@@ -23,6 +23,10 @@ urlpatterns = [
         views.get_tile_view('sdssco')),
         #views.sdss_layer.get_tile_view()),
 
+    # DECaPS tiles
+    url(r'^decaps/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps')),
+
     # MzLS+BASS DR4 tiles
     url(r'^mobo-dr4/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('mobo-dr4')),

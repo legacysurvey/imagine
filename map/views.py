@@ -41,6 +41,8 @@ tileversions = {
     'sdssco': [1,],
     'ps1': [1],
 
+    'decaps': [1],
+
     'mobo-dr4': [1],
 
     'mzls-dr3': [1],
@@ -1467,7 +1469,7 @@ def _get_survey(name=None):
     from decals import settings
     basedir = settings.DATA_DIR
 
-    if name in [ 'decals-dr2', 'decals-dr3', 'mobo-dr3', 'mzls-dr3', 'mobo-dr4']:
+    if name in [ 'decals-dr2', 'decals-dr3', 'mobo-dr3', 'mzls-dr3', 'mobo-dr4', 'decaps']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
@@ -1491,6 +1493,9 @@ def _get_survey(name=None):
         elif name == 'mobo-dr4':
             d.drname = 'MzLS+BASS DR4'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr4/'
+        elif name == 'decaps':
+            d.drname = 'DECaPS'
+            d.drurl = 'http://legacysurvey.org/'
 
         surveys[name] = d
         return d
@@ -2282,6 +2287,12 @@ def get_layer(name, default=None):
         layers['mobo-dr4'] = mobo4_image
         layers['mobo-dr4-model'] = mobo4_model
         layers['mobo-dr4-resid'] = mobo4_resid
+        layer = layers[name]
+
+    elif name in ['decaps']:
+        survey = _get_survey('decaps')
+        image = DecalsLayer('decaps', 'image', survey)
+        layers['decaps'] = image
         layer = layers[name]
 
     elif name in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
