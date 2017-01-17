@@ -1053,7 +1053,8 @@ allLayers.push(tiles);
 
 // set maxZoom=13: images on $SCRATCH
 tiles = mylayer_B('decaps', 'DECaPS images',
-                {'urlPatterns': [ [6, 13, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+//                {'urlPatterns': [ [6, 13, '{{ tileurl|safe }}'], ],});
 //                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 //var tilesDecaps = tiles;

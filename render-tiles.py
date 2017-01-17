@@ -80,8 +80,8 @@ def _one_tile((kind, zoom, x, y, ignore, get_images)):
     elif kind in ['decaps']:
         v = 1
         layer = get_layer(kind)
-        layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
-                       get_images=get_images)
+        return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
+                              get_images=get_images)
         
     elif kind in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
         v = 1
@@ -818,6 +818,15 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = 30
+    elif opt.kind == 'decaps':
+        if opt.maxdec is None:
+            opt.maxdec = -20
+        if opt.mindec is None:
+            opt.mindec = -70
+        if opt.maxra is None:
+            opt.maxra = 280
+        if opt.minra is None:
+            opt.minra = 120
     else:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -831,7 +840,7 @@ def main():
 
     if opt.scale:
         if opt.kind in ['decals-dr3', 'decals-dr3-model', 'mobo-dr3', 'mobo-dr3-model',
-                        'mzls-dr3', 'mobo-dr4' ]:
+                        'mzls-dr3', 'mobo-dr4', 'decaps' ]:
             from glob import glob
             from map.views import _get_survey
             
@@ -841,6 +850,8 @@ def main():
                 surveyname = 'mzls-dr3'
             elif 'mobo-dr4' in opt.kind:
                 surveyname = 'mobo-dr4'
+            elif opt.kind == 'decaps':
+                surveyname = opt.kind
             else:
                 surveyname = 'mobo-dr3'
             survey = _get_survey(surveyname)
