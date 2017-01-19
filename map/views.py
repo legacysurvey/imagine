@@ -320,7 +320,8 @@ class MapLayer(object):
         self.nativescale = nativescale
         self.minscale = 1
         self.maxscale = maxscale
-        self.hack_jpeg = False
+        #self.hack_jpeg = False
+        self.hack_jpeg = True
         self.pixscale = 0.262
 
     def get_bricks(self):
@@ -424,10 +425,11 @@ class MapLayer(object):
     def read_image(self, brickname, band, scale, slc):
         import fitsio
         fn = self.get_filename(brickname, band, scale)
+        print('Reading image from', fn)
         f = fitsio.FITS(fn)[0]
         img = f[slc]
         import numpy as np
-        print('Band', band, '; image 90th pctile:', np.percentile(img.ravel(), 90))
+        #print('Band', band, '; image 90th pctile:', np.percentile(img.ravel(), 90))
         return img
 
     def read_wcs(self, brickname, band, scale):
@@ -566,6 +568,7 @@ class MapLayer(object):
             wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
 
         rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands)
+        #print('rimgs:', rimgs)
         if rimgs is None:
             if get_images:
                 return None
@@ -762,14 +765,14 @@ class DecalsLayer(MapLayer):
             self.imagetype + '-%(brickname)s-%(band)s.fits')
 
     def get_filename(self, brickname, band, scale):
-        print('get_filename for', brickname, band, 'scale', scale)
+        #print('get_filename for', brickname, band, 'scale', scale)
         fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
-        print('get_filename ->', fn)
+        #print('get_filename ->', fn)
         if scale == 0:
             return fn
         fnargs = dict(band=band, brickname=brickname)
         fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn)
-        print('get_filename: scaled ->', fn)
+        #print('get_filename: scaled ->', fn)
         return fn
 
     def get_rgb(self, imgs, bands, **kwargs):

@@ -53,7 +53,7 @@ def _one_tile((kind, zoom, x, y, ignore, get_images)):
     elif kind in ['mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid']:
         v = 1
         layer = get_layer(kind)
-        layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True)
+        return layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
 
     elif kind in ['mobo-dr3', 'mobo-dr3-model', 'mobo-dr3-resid']:
         v = 1
@@ -311,7 +311,7 @@ def _bounce_mzls_dr3((args,kwargs)):
 def top_levels(mp, opt):
     from map.views import save_jpeg, trymakedirs
 
-    if opt.kind in ['decaps']:
+    if opt.kind in ['decaps', 'mobo-dr4']:
         import pylab as plt
         from decals import settings
         from legacypipe.common import get_rgb
@@ -353,8 +353,17 @@ def top_levels(mp, opt):
                 for x in range(opt.x0, opt.x1):
                     args.append((opt.kind, basescale, x, y, False, True))
                     xy.append((x,y))
-            tiles = mp.map(_one_tile, args)
-            for ims,(x,y) in zip(tiles, xy):
+
+            #tiles = mp.map(_one_tile, args)
+            #for ims,(x,y) in zip(tiles, xy):
+
+
+            for a,(x,y) in zip(args, xy):
+
+                print('_one_tile args:', a)
+                ims = _one_tile(a)
+                print('-> ', ims)
+
                 if ims is None:
                     continue
                 for im,base in zip(ims, bases):
@@ -954,9 +963,13 @@ def main():
 
 
 
-    from legacypipe.common import LegacySurveyData
-    survey = LegacySurveyData()
+    #from legacypipe.common import LegacySurveyData
+    #survey = LegacySurveyData()
 
+    from map.views import _get_survey
+    surveyname = opt.kind
+    survey = _get_survey(surveyname)
+    
     if opt.near:
         if opt.kind == 'sdss':
             B = fits_table(os.path.join(settings.DATA_DIR, 'bricks-sdssco.fits'))
@@ -1245,7 +1258,8 @@ def main():
 
             args = []
             for xi in x:
-                args.append((opt.kind,zoom,xi,y, opt.ignore, False))
+                #args.append((opt.kind,zoom,xi,y, opt.ignore, False))
+                args.append((opt.kind,zoom,xi,y, opt.ignore, True))
             print('Rendering', len(args), 'tiles in row y =', y)
             mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
             print('Rendered', len(args), 'tiles')
