@@ -165,6 +165,7 @@ def index(req):
         if len(usercats) == 0:
             usercats = None
     usercatalogurl = reverse(cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
+    usercatalogurl2 = reverse(cat_user, args=(1,)) + '?start={start}&N={N}&cat={cat}'
 
     baseurl = req.path
 
@@ -196,6 +197,7 @@ def index(req):
                        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                        usercatalogs = usercats,
                        usercatalogurl = usercatalogurl,
+                       usercatalogurl2 = usercatalogurl2,
                        enable_sql = settings.ENABLE_SQL,
                        enable_vcc = settings.ENABLE_VCC,
                        enable_wl = settings.ENABLE_WL,
