@@ -334,9 +334,9 @@ def cat_user(req, ver):
         dechi = float(req.GET['dechi'])
         haverd = True
     elif ('start' in req.GET and 'N' in req.GET):
-        start = int(req.GET('start'))
-        N = int(req.GET('N'))
-        haverd = True
+        start = int(req.GET['start'])
+        N = int(req.GET['N'])
+        havei = True
     else:
         return HttpResponse('need {ra,dec}{lo,hi} or start,N')
     

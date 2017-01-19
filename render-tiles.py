@@ -354,15 +354,13 @@ def top_levels(mp, opt):
                     args.append((opt.kind, basescale, x, y, False, True))
                     xy.append((x,y))
 
-            #tiles = mp.map(_one_tile, args)
-            #for ims,(x,y) in zip(tiles, xy):
+            tiles = mp.map(_one_tile, args)
+            for ims,(x,y) in zip(tiles, xy):
 
-
-            for a,(x,y) in zip(args, xy):
-
-                print('_one_tile args:', a)
-                ims = _one_tile(a)
-                print('-> ', ims)
+                #for a,(x,y) in zip(args, xy):
+                #print('_one_tile args:', a)
+                #ims = _one_tile(a)
+                #print('-> ', ims)
 
                 if ims is None:
                     continue

@@ -661,6 +661,36 @@ var UserCatalogLayer = CatalogOverlay.extend({
         this.color = '#00ff00';
     },
 
+    ready: function() {
+        console.log(this._name + ' ready function called (UserCatalogLayer)');
+        this._checkbox = getOverlayCheckbox(this._pretty);
+        // _checkbox is a jQuery node
+        //console.log('checkbox:', this._checkbox);
+        var nxt = this._checkbox.next();
+
+        // add a 'next' button after the layer name span
+        var nextbutton = L.DomUtil.create('a', 'layer-next');
+        var nextbuttonid = this._name + '_next';
+        nextbutton.id = nextbuttonid;
+        nxt.after(nextbutton);
+        nxt.after('&nbsp;');
+        // find it with jQuery
+        var jbutton = $('#' + nextbuttonid);
+        jbutton.attr('href', '#');
+        jbutton.attr('onClick', 'userCatNext(\'' + this._url_args['cat'] + '\');');
+        jbutton.html('next');
+
+        // add status span after the layer name span
+        var stat = L.DomUtil.create('span', 'layer-status');
+        var statid = this._name + '_status';
+        stat.id = statid
+        nxt.after(stat);
+        nxt.after('&nbsp;');
+        // find it with jQuery
+        this._status = $('#' + statid);
+
+    },
+
     getLayer: function(result) {
         return decals_getLayer(result, 300, this.color);
     },
@@ -1801,12 +1831,62 @@ var overlays = [decalscat2, decalscat3, mobocat4, ccdOverlay2, ccdOverlay3, ccdO
 
 {% if usercatalogs %}
 
+var userCatData = {};
+var userCatIndex = {};
+var userCatOffset = {};
+
+var userCatLoaded = function(catname, result) {
+  console.log('User catalog loaded: ' + catname);
+  rdlist = result['rd'];
+  userCatData[catname] = rdlist;
+  userCatIndex[catname] = 0;
+  userCatNext(catname);
+}
+
 var userCatNext = function(catname) {
   console.log('userCatNext: ' + catname);
+  if (catname in userCatData) {
+    iold = userCatIndex[catname];
+    //console.log('Old index for ' + catname + ': ' + iold);
+    i = iold + 1;
+    console.log('Jumping to index ' + i + ' for catalog ' + catname);
+    console.log('with offset ' + userCatOffset[catname]);
+    userCatIndex[catname] = i;
+    data = userCatData[catname];
+    if (i < data.length) {
+      ra  = data[i][0];
+      dec = data[i][1];
+      console.log('New RA,Dec ' + ra + ', ' + dec);
+      lat = dec2lat(dec);
+      lng = ra2long_C(ra, 0);
+      map.panTo(L.latLng(lat,lng));
+      return;
+    } else {
+      // retrieve next block of data
+      console.log('Retrieving next block of user catalog data');
+      userCatOffset[catname] = userCatOffset[catname] + data.length;
+    }
+  } else {
+    userCatOffset[catname] = 0;
+  }
+
+  start = userCatOffset[catname];
+
+  var url = L.Util.template('{{ usercatalogurl2|safe }}', {
+    s: subdomains[0],
+    cat: catname,
+    start: start,
+    N: 100,
+  });
+  console.log('Loading catalog: ' + catname + ' from ' + url);
+  $.getJSON(url, userCatLoaded.bind('nil', catname));
+    
 };
 
+// <a href="#" onClick="userCatNext(\"{{cat}}\");">next</a>',
+
   {% for cat,name,color in usercatalogs %}
-    var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{name}} <a href="#" onClick="userCatNext(\"{{cat}}\");">next</a>',
+    var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{name}}',
         {'url': '{{usercatalogurl|safe}}', 'url_args': {'cat': '{{cat}}'}});
     var color = '{{color}}';
     if (color.length > 0) {
