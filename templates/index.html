@@ -659,6 +659,10 @@ var UserCatalogLayer = CatalogOverlay.extend({
     initialize: function(name, pretty, kwargs) {
         CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
         this.color = '#00ff00';
+        this._catname = this._url_args['cat'];
+        this._catdata = null;
+        this._catindex = 0;
+        this._catoffset = 0;
     },
 
     ready: function() {
@@ -677,8 +681,30 @@ var UserCatalogLayer = CatalogOverlay.extend({
         // find it with jQuery
         var jbutton = $('#' + nextbuttonid);
         jbutton.attr('href', '#');
-        jbutton.attr('onClick', 'userCatNext(\'' + this._url_args['cat'] + '\');');
+        jbutton.click(this.nextObject.bind(this));
         jbutton.html('next');
+
+        // catalog index
+        var indx = L.DomUtil.create('span', 'layer-index');
+        var indxid = this._name + '_indx';
+        indx.id = indxid;
+        nxt.after(indx);
+        nxt.after('&nbsp;');
+        // find it with jQuery
+        this._index = $('#' + indxid);
+        this._index.html('[0]');
+
+        // prev catalog entry
+        var prevbutton = L.DomUtil.create('a', 'layer-prev');
+        var prevbuttonid = this._name + '_prev';
+        prevbutton.id = prevbuttonid;
+        nxt.after(prevbutton);
+        nxt.after('&nbsp;');
+        // find it with jQuery
+        var jbutton = $('#' + prevbuttonid);
+        jbutton.attr('href', '#');
+        jbutton.click(this.prevObject.bind(this));
+        jbutton.html('prev');
 
         // add status span after the layer name span
         var stat = L.DomUtil.create('span', 'layer-status');
@@ -689,6 +715,87 @@ var UserCatalogLayer = CatalogOverlay.extend({
         // find it with jQuery
         this._status = $('#' + statid);
 
+    },
+
+    nextObject: function() {
+      console.log('next object for catalog ' + this._catname);
+      if (this._catdata != null) {
+        this._catindex += 1;
+        console.log('catalog index now ', this._catindex);
+        if (this._catindex >= this._catdata.length) {
+          console.log('index exceeds catalog length: ' + this._catdata.length);
+          this._catoffset += this._catdata.length;
+          this._catindex = -1;
+        } else {
+          
+          this._index.html('[' + (this._catoffset + this._catindex) + ']');
+          ra  = this._catdata[this._catindex][0];
+          dec = this._catdata[this._catindex][1];
+          console.log('New RA,Dec ' + ra + ', ' + dec);
+          lat = dec2lat(dec);
+          lng = ra2long_C(ra, 0);
+          map.panTo(L.latLng(lat,lng));
+          return;
+        }
+      }
+
+      // retrieve next chunk.
+
+      var url = L.Util.template('{{ usercatalogurl2|safe }}', {
+        s: subdomains[0],
+        cat: this._catname,
+        start: this._catoffset,
+        N: 4,
+      });
+      console.log('Loading catalog: ' + this._catname + ' from ' + url);
+      $.getJSON(url, this.catLoaded.bind(this, true));
+    },
+
+    prevObject: function() {
+      console.log('prev object for catalog ' + this._catname);
+      if (this._catindex + this._catoffset < 0) {
+        // don't go negative
+        return;
+      }
+      if (this._catdata != null) {
+        this._catindex -= 1;
+        console.log('catalog index now ', this._catindex);
+        if (this._catindex < 0) {
+          console.log('index negative');
+          this._catoffset -= this._catdata.length;
+          this._catindex = -1;
+        } else {
+          this._index.html('[' + (this._catoffset + this._catindex) + ']');
+          ra  = this._catdata[this._catindex][0];
+          dec = this._catdata[this._catindex][1];
+          console.log('New RA,Dec ' + ra + ', ' + dec);
+          lat = dec2lat(dec);
+          lng = ra2long_C(ra, 0);
+          map.panTo(L.latLng(lat,lng));
+          return;
+        }
+      }
+
+      // retrieve prev chunk.
+      var url = L.Util.template('{{ usercatalogurl2|safe }}', {
+        s: subdomains[0],
+        cat: this._catname,
+        start: this._catoffset,
+        N: 4,
+      });
+      console.log('Loading catalog: ' + this._catname + ' from ' + url);
+      $.getJSON(url, this.catLoaded.bind(this, false));
+    },
+
+    catLoaded: function(nxt, result) {
+      console.log('User catalog loaded: ' + this._catname);
+      this._catdata = result['rd'];
+      if (nxt) {
+        this.nextObject();
+      } else {
+        this._catindex = this._catdata.length;
+        this.prevObject();
+      }
     },
 
     getLayer: function(result) {
@@ -1830,60 +1937,6 @@ var overlays = [decalscat2, decalscat3, mobocat4, ccdOverlay2, ccdOverlay3, ccdO
                 spec, plateOverlay, specDeep2, targets_dr2];
 
 {% if usercatalogs %}
-
-var userCatData = {};
-var userCatIndex = {};
-var userCatOffset = {};
-
-var userCatLoaded = function(catname, result) {
-  console.log('User catalog loaded: ' + catname);
-  rdlist = result['rd'];
-  userCatData[catname] = rdlist;
-  userCatIndex[catname] = 0;
-  userCatNext(catname);
-}
-
-var userCatNext = function(catname) {
-  console.log('userCatNext: ' + catname);
-  if (catname in userCatData) {
-    iold = userCatIndex[catname];
-    //console.log('Old index for ' + catname + ': ' + iold);
-    i = iold + 1;
-    console.log('Jumping to index ' + i + ' for catalog ' + catname);
-    console.log('with offset ' + userCatOffset[catname]);
-    userCatIndex[catname] = i;
-    data = userCatData[catname];
-    if (i < data.length) {
-      ra  = data[i][0];
-      dec = data[i][1];
-      console.log('New RA,Dec ' + ra + ', ' + dec);
-      lat = dec2lat(dec);
-      lng = ra2long_C(ra, 0);
-      map.panTo(L.latLng(lat,lng));
-      return;
-    } else {
-      // retrieve next block of data
-      console.log('Retrieving next block of user catalog data');
-      userCatOffset[catname] = userCatOffset[catname] + data.length;
-    }
-  } else {
-    userCatOffset[catname] = 0;
-  }
-
-  start = userCatOffset[catname];
-
-  var url = L.Util.template('{{ usercatalogurl2|safe }}', {
-    s: subdomains[0],
-    cat: catname,
-    start: start,
-    N: 100,
-  });
-  console.log('Loading catalog: ' + catname + ' from ' + url);
-  $.getJSON(url, userCatLoaded.bind('nil', catname));
-    
-};
-
-// <a href="#" onClick="userCatNext(\"{{cat}}\");">next</a>',
 
   {% for cat,name,color in usercatalogs %}
     var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{name}}',
