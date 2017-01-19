@@ -92,6 +92,18 @@ def upload_cat(req):
     if catname.startswith('/'):
         catname = catname[1:]
 
+    try:
+        import fitsio
+        primhdr = fitsio.read_header(tmpfn)
+        name = primhdr.get('CATNAME', '')
+        color = primhdr.get('CATCOLOR', '')
+        if len(name):
+            catname = catname + '-n%s' % name
+        if len(color):
+            catname = catname + '-c%s' % color
+    except:
+        pass
+    
     return HttpResponseRedirect(reverse(index) +
                                 '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, catname))
 

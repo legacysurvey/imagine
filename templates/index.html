@@ -656,8 +656,13 @@ var DecalsCatalogLayer = TiledOverlay.extend({
 
 // User catalog
 var UserCatalogLayer = CatalogOverlay.extend({
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this.color = '#00ff00';
+    },
+
     getLayer: function(result) {
-        return decals_getLayer(result, 300, '#00ff00')
+        return decals_getLayer(result, 300, this.color);
     },
 });
 
@@ -1352,6 +1357,7 @@ $(document).ready(function() {
 
     // stop event propagation to the map layer
     $('#upload').click(function(event) {
+        console.log('upload clicked.');
         return false;
     });
 
@@ -1794,9 +1800,12 @@ var overlays = [decalscat2, decalscat3, mobocat4, ccdOverlay2, ccdOverlay3, ccdO
                 spec, plateOverlay, specDeep2, targets_dr2];
 
 {% if usercatalogs %}
-  {% for cat in usercatalogs %}
-    var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{cat}}',
+  {% for cat,name,color in usercatalogs %}
+    var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{name}}',
         {'url': '{{usercatalogurl|safe}}', 'url_args': {'cat': '{{cat}}'}});
+    if (color.length > 0) {
+      usercat.color = color;
+    }
     overlays = [usercat].concat(overlays);
     map.addLayer(usercat.getGroup());
   {% endfor %}
