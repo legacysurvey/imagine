@@ -655,6 +655,9 @@ var DecalsCatalogLayer = TiledOverlay.extend({
 });
 
 // User catalog
+
+var userCatN = 100;
+
 var UserCatalogLayer = CatalogOverlay.extend({
     initialize: function(name, pretty, kwargs) {
         CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
@@ -745,7 +748,7 @@ var UserCatalogLayer = CatalogOverlay.extend({
         s: subdomains[0],
         cat: this._catname,
         start: this._catoffset,
-        N: 4,
+        N: userCatN,
       });
       console.log('Loading catalog: ' + this._catname + ' from ' + url);
       $.getJSON(url, this.catLoaded.bind(this, true));
@@ -781,7 +784,7 @@ var UserCatalogLayer = CatalogOverlay.extend({
         s: subdomains[0],
         cat: this._catname,
         start: this._catoffset,
-        N: 4,
+        N: userCatN,
       });
       console.log('Loading catalog: ' + this._catname + ' from ' + url);
       $.getJSON(url, this.catLoaded.bind(this, false));
