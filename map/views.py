@@ -153,7 +153,14 @@ def index(req):
             if m is None:
                 print('Usercatalog "%s" did not match regex' % cat)
                 continue
-            keepcats.append(cat)
+            fn = m.group('fn')
+            name = m.group('name')
+            if name is None:
+                name = fn
+            color = m.group('color')
+            if color is None:
+                color = ''
+            keepcats.append((fn, name, color))
         usercats = keepcats
         if len(usercats) == 0:
             usercats = None
