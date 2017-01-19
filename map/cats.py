@@ -322,22 +322,40 @@ def cat_user(req, ver):
     if not re.match('\w?', cat):
         print('Catalog "%s" did not match regex' % cat)
         return
-    ralo = float(req.GET['ralo'])
-    rahi = float(req.GET['rahi'])
-    declo = float(req.GET['declo'])
-    dechi = float(req.GET['dechi'])
+
+    haverd = False
+    havei = False
+    
+    if ('ralo'  in req.GET and 'rahi'  in req.GET and
+        'declo' in req.GET and 'dechi' in req.GET):
+        ralo = float(req.GET['ralo'])
+        rahi = float(req.GET['rahi'])
+        declo = float(req.GET['declo'])
+        dechi = float(req.GET['dechi'])
+        haverd = True
+    elif ('start' in req.GET and 'N' in req.GET):
+        start = int(req.GET('start'))
+        N = int(req.GET('N'))
+        haverd = True
+    else:
+        return HttpResponse('need {ra,dec}{lo,hi} or start,N')
+    
     fn = os.path.join(settings.USER_QUERY_DIR, cat+'.fits')
     if not os.path.exists(fn):
         return
     cat = fits_table(fn)
-    if ralo > rahi:
-        # RA wrap
-        cat.cut(np.logical_or(cat.ra > ralo, cat.ra < rahi) *
-                (cat.dec > declo) * (cat.dec < dechi))
-    else:
-        cat.cut((cat.ra > ralo) * (cat.ra < rahi) *
-                (cat.dec > declo) * (cat.dec < dechi))
-    print(len(cat), 'user catalog sources after RA,Dec cut')
+    if haverd:
+        if ralo > rahi:
+            # RA wrap
+            cat.cut(np.logical_or(cat.ra > ralo, cat.ra < rahi) *
+                    (cat.dec > declo) * (cat.dec < dechi))
+        else:
+            cat.cut((cat.ra > ralo) * (cat.ra < rahi) *
+            (cat.dec > declo) * (cat.dec < dechi))
+        print(len(cat), 'user catalog sources after RA,Dec cut')
+    elif havei:
+        cat = cat[start:start+N]
+
     rd = zip(cat.ra.astype(float), cat.dec.astype(float))
 
     D = dict(rd=rd)

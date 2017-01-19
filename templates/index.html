@@ -1800,8 +1800,13 @@ var overlays = [decalscat2, decalscat3, mobocat4, ccdOverlay2, ccdOverlay3, ccdO
                 spec, plateOverlay, specDeep2, targets_dr2];
 
 {% if usercatalogs %}
+
+var userCatNext = function(catname) {
+  console.log('userCatNext: ' + catname);
+};
+
   {% for cat,name,color in usercatalogs %}
-    var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{name}}',
+    var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{name}} <a href="#" onClick="userCatNext(\"{{cat}}\");">next</a>',
         {'url': '{{usercatalogurl|safe}}', 'url_args': {'cat': '{{cat}}'}});
     var color = '{{color}}';
     if (color.length > 0) {
