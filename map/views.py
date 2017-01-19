@@ -164,6 +164,7 @@ def index(req):
         usercats = keepcats
         if len(usercats) == 0:
             usercats = None
+    print('User catalogs:', usercats)
     usercatalogurl = reverse(cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
 
     baseurl = req.path

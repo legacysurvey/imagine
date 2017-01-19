@@ -98,9 +98,9 @@ def upload_cat(req):
         name = primhdr.get('CATNAME', '')
         color = primhdr.get('CATCOLOR', '')
         if len(name):
-            catname = catname + '-n%s' % name
+            catname = catname + '-n%s' % name.strip().replace(' ','_')
         if len(color):
-            catname = catname + '-c%s' % color
+            catname = catname + '-c%s' % color.strip()
     except:
         pass
     
