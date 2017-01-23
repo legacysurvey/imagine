@@ -144,6 +144,7 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     },
     'cosmo': secrets.database.COSMO_DB,
+    'dr2': secrets.database.DR2_DB,
 }
 
 DATABASE_ROUTERS = ['cat.models.Router']

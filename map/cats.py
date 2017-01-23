@@ -203,7 +203,7 @@ def cat_targets_dr2(req, ver):
     from astrometry.util.fits import fits_table, merge_tables
     import numpy as np
     from decals import settings
-    from cat.models import Target
+    from cat.models import DR2_Target as Target
 
     from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
     xyz1 = radectoxyz(ralo, declo)
