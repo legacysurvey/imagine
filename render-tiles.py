@@ -53,7 +53,10 @@ def _one_tile((kind, zoom, x, y, ignore, get_images)):
     elif kind in ['mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid']:
         v = 1
         layer = get_layer(kind)
-        return layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
+        #return layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
+        r = layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
+        #print(r)
+        return r
 
     elif kind in ['mobo-dr3', 'mobo-dr3-model', 'mobo-dr3-resid']:
         v = 1
