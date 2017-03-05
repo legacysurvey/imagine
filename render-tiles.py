@@ -311,7 +311,7 @@ def _bounce_mzls_dr3((args,kwargs)):
 def top_levels(mp, opt):
     from map.views import save_jpeg, trymakedirs
 
-    if opt.kind in ['decaps', 'mobo-dr4']:
+    if opt.kind in ['decaps', 'mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid']:
         import pylab as plt
         from decals import settings
         from legacypipe.common import get_rgb
@@ -966,6 +966,10 @@ def main():
 
     from map.views import _get_survey
     surveyname = opt.kind
+    if surveyname.endswith('-model'):
+        surveyname = surveyname.replace('-model','')
+    if surveyname.endswith('-resid'):
+        surveyname = surveyname.replace('-resid','')
     survey = _get_survey(surveyname)
     
     if opt.near:
@@ -1190,9 +1194,10 @@ def main():
             if opt.near_ccds:
                 margin = tilesize + ccdsize
                 I = np.flatnonzero((dd > C.dec.min()-margin) * (dd < C.dec.max()+margin))
-                print('Keeping', len(I), 'Dec points within range of CCDs')
                 dd = dd[I]
                 yy = yy[I]
+                print('Keeping', len(I), 'Dec points within range of CCDs: Dec',
+                      dd.min(), dd.max())
 
             I = np.flatnonzero((rr >= opt.minra) * (rr <= opt.maxra))
             print('Keeping', len(I), 'RA points between', opt.minra, 'and', opt.maxra)
@@ -1256,8 +1261,8 @@ def main():
 
             args = []
             for xi in x:
-                #args.append((opt.kind,zoom,xi,y, opt.ignore, False))
-                args.append((opt.kind,zoom,xi,y, opt.ignore, True))
+                args.append((opt.kind,zoom,xi,y, opt.ignore, False))
+                #args.append((opt.kind,zoom,xi,y, opt.ignore, True))
             print('Rendering', len(args), 'tiles in row y =', y)
             mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
             print('Rendered', len(args), 'tiles')

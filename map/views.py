@@ -44,6 +44,8 @@ tileversions = {
     'decaps': [1],
 
     'mobo-dr4': [1],
+    'mobo-dr4-model': [1],
+    'mobo-dr4-resid': [1],
 
     'mzls-dr3': [1],
 
@@ -476,11 +478,13 @@ class MapLayer(object):
             rn   = np.zeros((H,W), np.uint8)
             bricknames = self.bricknames_for_band(bricks, band)
             for brickname in bricknames:
-                #print('Reading', brickname, 'band', band, 'scale', scale)
+                print('Reading', brickname, 'band', band, 'scale', scale)
                 try:
                     bwcs = self.read_wcs(brickname, band, scale)
                     if bwcs is None:
                         print('No such file:', brickname, band, scale)
+                        fn = self.get_filename(brickname, band, scale)
+                        print(' (filename', fn, ')')
                         continue
                 except:
                     print('Failed to read WCS:', brickname, band, scale)

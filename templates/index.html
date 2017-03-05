@@ -1206,10 +1206,17 @@ allLayers.push(tiles);
 
 // set maxZoom=13: images on $SCRATCH
 tiles = mylayer_B('mobo-dr4', 'MzLS+BASS DR4 images',
-                {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+                  {'urlPatterns': [ [1, 14, '{{ tileurl|safe }}'], ],});
 //                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 var tilesMoboDr4Image = tiles;
+
+// set maxZoom=13: images on $SCRATCH
+tiles = mylayer_B('mobo-dr4-model', 'MzLS+BASS DR4 models',
+                  {'urlPatterns': [ [1, 14, '{{ tileurl|safe }}'], ],});
+//                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
 
 tiles = mylayer_B('decals-dr3', 'DECaLS DR3 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
