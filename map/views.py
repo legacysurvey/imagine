@@ -461,13 +461,14 @@ class MapLayer(object):
             bricks = self.bricks_touching_general_wcs(wcs)
 
         if bricks is None or len(bricks) == 0:
+            print('No bricks touching WCS')
             return None
-    
+
         if bands is None:
             bands = self.get_bands()
         scale = self.get_scale(zoom, x, y, wcs)
         #print('render_into_wcs: scale', scale, 'N bricks:', len(bricks))
-        
+
         W = int(wcs.get_width())
         H = int(wcs.get_height())
         r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
@@ -573,7 +574,7 @@ class MapLayer(object):
                 return send_file(tilefn, 'image/jpeg', expires=oneyear,
                                  modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
                                  filename=filename)
-    
+
         from astrometry.util.resample import resample_with_wcs, OverlapError
         from astrometry.util.util import Tan
         import numpy as np
@@ -699,14 +700,20 @@ class MapLayer(object):
         if jpeg:
             return rtn
         ims = rtn
+        if ims is None:
+            # ...?
+            print('ims is None')
     
         if hdr is not None:
             hdr['BANDS'] = ''.join([str(b) for b in bands])
             for i,b in enumerate(bands):
                 hdr['BAND%i' % i] = b
             wcs.add_to_header(hdr)
-    
-        if len(bands) > 1:
+
+        if ims is None:
+            hdr['OVERLAP'] = False
+            cube = None
+        elif len(bands) > 1:
             cube = np.empty((len(bands), height, width), np.float32)
             for i,im in enumerate(ims):
                 cube[i,:,:] = im
@@ -1848,6 +1855,7 @@ def nil(req):
 def brick_detail(req, brickname):
     import numpy as np
 
+    brickname = str(brickname)
     name = req.GET.get('layer', 'decals-dr3')
     survey = _get_survey(name)
     #survey = _get_survey(name)
@@ -1859,15 +1867,17 @@ def brick_detail(req, brickname):
     assert(len(I) == 1)
     brick = bricks[I[0]]
 
+    coadd_prefix = 'legacysurvey'
+
     html = [
         '<html><head><title>%s data for brick %s</title></head>' % (survey.drname, brickname),
         '<body>',
         '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
         '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
         '<ul>',
-        '<li><a href="%s/coadd/%s/%s/decals-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
-        '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
-        '<li><a href="%s/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
+        '<li><a href="%scoadd/%s/%s/%s-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, coadd_prefix, brickname),
+        '<li><a href="%scoadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
+        '<li><a href="%stractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
         '</ul>',
         ]
 
