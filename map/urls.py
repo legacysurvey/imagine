@@ -155,6 +155,9 @@ urlpatterns = [
     url(r'^unwise-neo1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-neo1')),
     #views.unwise_neo1_layer.get_tile_view()),
+    # NEO2
+    url(r'^unwise-neo2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('unwise-neo2')),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
     #url(r'^unwise-w1234-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1234),

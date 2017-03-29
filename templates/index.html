@@ -1288,7 +1288,12 @@ allLayers.push(tiles);
 tiles = mylayer('unwise-neo1', 'unWISE W1/W2 NEO1',
                 {'maxNativeZoom': 12,
                  'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
-//                {'maxNativeZoom': 10});
+allLayers.push(tiles);
+
+tiles = mylayer('unwise-neo2', 'unWISE W1/W2 NEO2',
+                {'maxNativeZoom': 12,
+                 'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
+//                 'urlPatterns': [ [6, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
 tiles = mylayer('sfd', 'SFD dust map',

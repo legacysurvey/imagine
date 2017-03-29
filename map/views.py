@@ -82,6 +82,7 @@ tileversions = {
 
     'unwise-w1w2': [1],
     'unwise-neo1': [1],
+    'unwise-neo2': [1],
     #'unwise-w3w4': [1],
     #'unwise-w1234': [1],
 
@@ -2375,6 +2376,11 @@ def get_layer(name, default=None):
         from decals import settings
         layer = UnwiseLayer('unwise-neo1',
                             settings.UNWISE_NEO1_DIR)
+
+    elif name == 'unwise-neo2':
+        from decals import settings
+        layer = UnwiseLayer('unwise-neo2',
+                            settings.UNWISE_NEO2_DIR)
 
     elif name == 'halpha':
         from tractor.sfd import SFDMap

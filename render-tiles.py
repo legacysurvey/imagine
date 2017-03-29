@@ -154,6 +154,11 @@ def _one_tile((kind, zoom, x, y, ignore, get_images)):
                              ignoreCached=ignore)
         print('unWISE NEO1 zoom', zoom, 'x,y', x,y)
 
+    elif kind == 'unwise-neo2':
+        from map import views
+        view = views.get_tile_view(kind)
+        view(req, version, zoom, x, y, savecache=True)
+
 def _bounce_one_tile(*args):
     try:
         _one_tile(*args)
@@ -314,17 +319,24 @@ def _bounce_mzls_dr3((args,kwargs)):
 def top_levels(mp, opt):
     from map.views import save_jpeg, trymakedirs
 
-    if opt.kind in ['decaps', 'mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid']:
+    if opt.kind in ['decaps', 'mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid',
+                    'unwise-neo2']:
         import pylab as plt
         from decals import settings
         from legacypipe.common import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
+        from map.views import _unwise_to_rgb
         tag = opt.kind
-        bands = 'grz'
-        get_rgb = dr2_rgb
+
         rgbkwargs = {}
+        if opt.kind == 'unwise-neo2':
+            bands = [1, 2]
+            get_rgb = _unwise_to_rgb
+        else:
+            bands = 'grz'
+            get_rgb = dr2_rgb
 
         ver = tileversions.get(opt.kind, [1])[-1]
         print('Version', ver)
@@ -399,7 +411,7 @@ def top_levels(mp, opt):
                 bases[i] = base
 
 
-    elif opt.kind in ['unwise', 'unwise-neo1', 'unwise-w3w4']:
+    elif opt.kind in ['unwise', 'unwise-neo1', 'unwise-w3w4',]:
         import pylab as plt
         from decals import settings
         from map.views import _unwise_to_rgb, save_jpeg, trymakedirs
