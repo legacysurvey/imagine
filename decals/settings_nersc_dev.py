@@ -1,5 +1,9 @@
 from settings_common import *
 
+#ENABLE_SQL = True
+
+ENABLE_MZLS = True
+
 DEBUG_LOGGING = True
 #DEBUG_LOGGING = False
 

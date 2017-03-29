@@ -23,6 +23,28 @@ urlpatterns = [
         views.get_tile_view('sdssco')),
         #views.sdss_layer.get_tile_view()),
 
+    # # DECaPS tiles
+    # url(r'^decaps/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+    #     views.get_tile_view('decaps')),
+    # 
+    # # MzLS+BASS DR4 tiles
+    # url(r'^mobo-dr4/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+    #     views.get_tile_view('mobo-dr4')),
+    # url(r'^mobo-dr4-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+    #     views.get_tile_view('mobo-dr4-model')),
+    # 
+    # # DR4 catalog
+    # url(r'^mobo-dr4/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr4),
+    # 
+    # # PS1 skycells
+    # url(r'^ps1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+    #     views.get_tile_view('ps1')),
+    # # PS1 catalog test
+    # url(r'^ps1/(\d+)/cat.json', cats.cat_ps1),
+
+    # For nova.astrometry.net: SDSS for a given WCS
+    url(r'^sdss-wcs', views.sdss_wcs),
+
     url(r'^data-for-radec/', views.data_for_radec, name='data_for_radec'),
 
     url(r'^namequery/', views.name_query),
@@ -133,6 +155,10 @@ urlpatterns = [
     url(r'^unwise-neo1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-neo1')),
     #views.unwise_neo1_layer.get_tile_view()),
+
+    # NEO2
+    url(r'^unwise-neo2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('unwise-neo2')),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
     #url(r'^unwise-w1234-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1234),
