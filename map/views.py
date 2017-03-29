@@ -132,6 +132,7 @@ def index(req):
     uploadurl = settings.ROOT_URL + '/upload-cat/'
 
     usercatalog = req.GET.get('catalog', None)
+    usercats = None
     if usercatalog is not None:
         usercats = usercatalog.split(',')
         keepcats = []
@@ -1548,6 +1549,7 @@ def nil(req):
 def brick_detail(req, brickname):
     import numpy as np
 
+    brickname = str(brickname)
     name = req.GET.get('layer', 'decals-dr3')
     survey = _get_survey(name)
     #survey = _get_survey(name)
