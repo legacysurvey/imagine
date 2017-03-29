@@ -889,7 +889,7 @@ class SdssLayer(MapLayer):
         basedir = settings.DATA_DIR
         brickpre = brickname[:3]
         fn = os.path.join(basedir, 'sdssco', 'coadd', brickpre,
-                          'sdssco-%s-%s.fits' % (brickname, band))
+                          'sdssco-%s-%s.fits.fz' % (brickname, band))
         if scale == 0:
             return fn
         fnargs = dict(band=band, brickname=brickname)
@@ -910,6 +910,25 @@ class SdssLayer(MapLayer):
     def populate_fits_cutout_header(self, hdr):
         hdr['SURVEY'] = 'SDSS'
 
+    # Need to override this function to read WCS from ext 1 of fits.fz files
+    def read_wcs(self, brickname, band, scale):
+        from coadds import read_tan_wcs
+        fn = self.get_filename(brickname, band, scale)
+        if fn is None:
+            return None
+        ext = 1 if (scale == 0) else 0
+        return read_tan_wcs(fn, ext)
+
+    # Need to override this function to read image from ext 1 of fits.fz files
+    def read_image(self, brickname, band, scale, slc):
+        import fitsio
+        fn = self.get_filename(brickname, band, scale)
+        print('Reading image from', fn)
+        ext = 1 if (scale == 0) else 0
+        f = fitsio.FITS(fn)[ext]
+        img = f[slc]
+        import numpy as np
+        return img
 
 class PS1Layer(MapLayer):
     def __init__(self, name):
