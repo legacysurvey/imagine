@@ -1803,16 +1803,16 @@ var ccdOverlay3m = new PolygonOverlay('mzls-dr3-ccds', 'MzLS DR3 CCDs',
                                     });
 {% endif %}
 
-var ccdOverlay4 = new PolygonOverlay('mobo-dr4-ccds', 'MzLS+BASS DR4 CCDs',
-                                    {'url':'{{ ccdsurl|safe }}',
-                                     'minZoom': 8,
-                                     'labelMinZoom': 100,
-                                     'urlTerm': 'ccds4',
-                                     'detail': ccd_detail,
-                                     'detail_list': ccd_detail_list,
-                                     'url_name': 'mobo-dr4',
-                                     'dr_name': 'DR4',
-                                    });
+//   var ccdOverlay4 = new PolygonOverlay('mobo-dr4-ccds', 'MzLS+BASS DR4 CCDs',
+//                                       {'url':'{{ ccdsurl|safe }}',
+//                                        'minZoom': 8,
+//                                        'labelMinZoom': 100,
+//                                        'urlTerm': 'ccds4',
+//                                        'detail': ccd_detail,
+//                                        'detail_list': ccd_detail_list,
+//                                        'url_name': 'mobo-dr4',
+//                                        'dr_name': 'DR4',
+//                                       });
 
                                                      
 var expOverlay2 = new CircleOverlay('decals-dr2-exps', 'DECaLS DR2 Exposures',
@@ -1859,7 +1859,7 @@ and entries in the "in brick/ccd" panel.
 {% endcomment %}
 
 var polygonOverlays = [ ccdOverlay2, expOverlay2, ccdOverlay3, expOverlay3,
-                                 ccdOverlay4,
+//                        ccdOverlay4,
                         brickOverlay ];
 
 {% if enable_mzls %}
@@ -1887,11 +1887,11 @@ var decalscat3 = new DecalsCatalogLayer(tileWatcher,
                                         'minZoom': 12,
                                         'urlTerm': 'sources-dr3'});
 
-var mobocat4 = new DecalsCatalogLayer(tileWatcher,
-                                       'mobo-dr4', 'MzLS+BASS DR4 Catalog',
-                                       {'url': '{{caturl|safe}}', 
-                                        'minZoom': 12,
-                                        'urlTerm': 'sources-dr4'});
+//  var mobocat4 = new DecalsCatalogLayer(tileWatcher,
+//                                         'mobo-dr4', 'MzLS+BASS DR4 Catalog',
+//                                         {'url': '{{caturl|safe}}', 
+//                                          'minZoom': 12,
+//                                          'urlTerm': 'sources-dr4'});
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
@@ -1937,7 +1937,10 @@ var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
                                        });
 {% endif %}
 
-var overlays = [decalscat2, decalscat3, mobocat4, ccdOverlay2, ccdOverlay3, ccdOverlay4,
+var overlays = [decalscat2, decalscat3,
+  // mobocat4,
+  ccdOverlay2, ccdOverlay3,
+  // ccdOverlay4,
 {% if enable_mzls %}
                 ccdOverlay3m,
 {% endif %}
