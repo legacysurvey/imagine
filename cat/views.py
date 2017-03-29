@@ -15,7 +15,7 @@ from django.core.urlresolvers import reverse
 
 from django.views.generic import ListView, DetailView
 
-from models import Candidate, Decam, Photom, Bricks
+from models import Bricks, Tractor
 
 from map.views import index, send_file
 
@@ -35,87 +35,67 @@ def sql_box(req):
         east += 360.
         west += 360.
 
-    sql = ('SELECT *, ' +#candidate.ra as ra, candidate.dec as dec, ' +
-           '-2.5*(log(greatest(1e-3,decam.gflux))-9) as g, ' +
-           '-2.5*(log(greatest(1e-3,decam.rflux))-9) as r, ' +
-           '-2.5*(log(greatest(1e-3,decam.zflux))-9) as z, ' +
-           '-2.5*(log(greatest(1e-3,wise.w1flux))-9) as w1, ' +
-           '-2.5*(log(greatest(1e-3,wise.w2flux))-9) as w2, ' +
-           '-2.5*(log(greatest(1e-3,wise.w3flux))-9) as w3, ' +
-           '-2.5*(log(greatest(1e-3,wise.w4flux))-9) as w4 ' +
-           'FROM candidate ' +
-           'LEFT OUTER JOIN decam ON (decam.cand_id = candidate.id) ' +
-           'LEFT OUTER JOIN wise  ON (wise .cand_id = candidate.id) ' +
+    sql = ('SELECT id, ra, dec, type, g, r, z, w1, w2, w3, w4 ' +
+           'FROM tractor ' +
            'WHERE (q3c_poly_query(ra, dec, ARRAY[%s,%s,%s,%s,%s,%s,%s,%s]))')
-    sql = 'SELECT * FROM (' + sql + ') AS t'
 
-    # sql = ('SELECT * FROM photom ' +
-    #        'LEFT OUTER JOIN candidate ON (candidate.id  = photom.cand_id) ' +
-    #        'LEFT OUTER JOIN decam     ON (decam.cand_id = photom.cand_id) ' +
-    #        'LEFT OUTER JOIN wise      ON (wise .cand_id = photom.cand_id) ' +
-    #        'WHERE (q3c_poly_query(photom.ra, photom.dec, ARRAY[%s,%s,%s,%s,%s,%s,%s,%s]))')
-           
-    sql = 'SELECT * FROM (' + sql + ') AS t'
-    
     if q is not None and len(q):
-        sql += ' WHERE ' + q
+        sql += ' AND ' + q
 
-    print('SQL:', sql)
+    print('SQL:', sql, '\nParams:', [east,south,west,south,west,north,east,north])
     #print('Literal', sql.replace('%s', '%f') % (east,south,west,south,west,north,east,north))
-    
-    #cat = Decam.objects.raw(sql,
-    cat = Candidate.objects.raw(sql,
-    #cat = Photom.objects.raw(sql,
-                             params=[east,south,west,south,west,north,east,north])
+    cat = Tractor.objects.raw(sql,
+                              params=[east,south,west,south,west,north,east,north])
+    #print('Got', len(cat), 'results')
     cat = cat[:1000]
 
     return HttpResponse(json.dumps(dict(rd=[(c.ra, c.dec) for c in cat])),
                         content_type='application/json')
 
-def sql_where(req):
-    import json
-
-    q = req.GET.get('q', None)
-
-    # sql = ('SELECT *, ' +
-    #        '-2.5*(log(greatest(1e-3,decam.gflux))-9) as g, ' +
-    #        '-2.5*(log(greatest(1e-3,decam.rflux))-9) as r, ' +
-    #        '-2.5*(log(greatest(1e-3,decam.zflux))-9) as z, ' +
-    #        '-2.5*(log(greatest(1e-3,wise.w1flux))-9) as w1, ' +
-    #        '-2.5*(log(greatest(1e-3,wise.w2flux))-9) as w2, ' +
-    #        '-2.5*(log(greatest(1e-3,wise.w3flux))-9) as w3, ' +
-    #        '-2.5*(log(greatest(1e-3,wise.w4flux))-9) as w4 ' +
-    #        'FROM candidate ' +
-    #        'LEFT OUTER JOIN decam ON (decam.cand_id = candidate.id) ' +
-    #        'LEFT OUTER JOIN wise  ON (wise .cand_id = candidate.id)')
-    # #sql = 'SELECT * FROM (' + sql + ') AS t'
-
-    #SELECT photom.cand_id as cand_id, photom.ra as ra, photom.dec as dec,g,r,z,w1,w2,w3,w4,gmr,rmz,zmw1 FROM photom ' +
-    sql = ('SELECT * FROM photom ' +
-           'LEFT OUTER JOIN candidate ON (candidate.id  = photom.cand_id) ' +
-           'LEFT OUTER JOIN decam     ON (decam.cand_id = photom.cand_id) ' +
-           'LEFT OUTER JOIN wise      ON (wise .cand_id = photom.cand_id)')
-
-    ### FIXME -- parse SQL...?
-    q = q.lower().replace('ra', 'photom.ra').replace('dec', 'photom.dec')
-    
-    if q is not None and len(q):
-        sql += ' WHERE ' + q
-
-    print('SQL:', sql)
-        
-    #cat = Candidate.objects.raw(sql)
-    cat = Photom.objects.raw(sql)
-    cat = cat[:1000]
-    cat = cat.values()
-
-    print('Catalog:', cat)
-
-    #fields = Candidate._meta.get_fields()
-    #print('Candidate fields:', fields)
-
-    return HttpResponse(json.dumps(cat),
-                        content_type='application/json')
+# def sql_where(req):
+#     import json
+# 
+#     q = req.GET.get('q', None)
+# 
+#     # sql = ('SELECT *, ' +
+#     #        '-2.5*(log(greatest(1e-3,decam.gflux))-9) as g, ' +
+#     #        '-2.5*(log(greatest(1e-3,decam.rflux))-9) as r, ' +
+#     #        '-2.5*(log(greatest(1e-3,decam.zflux))-9) as z, ' +
+#     #        '-2.5*(log(greatest(1e-3,wise.w1flux))-9) as w1, ' +
+#     #        '-2.5*(log(greatest(1e-3,wise.w2flux))-9) as w2, ' +
+#     #        '-2.5*(log(greatest(1e-3,wise.w3flux))-9) as w3, ' +
+#     #        '-2.5*(log(greatest(1e-3,wise.w4flux))-9) as w4 ' +
+#     #        'FROM candidate ' +
+#     #        'LEFT OUTER JOIN decam ON (decam.cand_id = candidate.id) ' +
+#     #        'LEFT OUTER JOIN wise  ON (wise .cand_id = candidate.id)')
+#     # #sql = 'SELECT * FROM (' + sql + ') AS t'
+# 
+#     #SELECT photom.cand_id as cand_id, photom.ra as ra, photom.dec as dec,g,r,z,w1,w2,w3,w4,gmr,rmz,zmw1 FROM photom ' +
+#     sql = ('SELECT * FROM photom ' +
+#            'LEFT OUTER JOIN candidate ON (candidate.id  = photom.cand_id) ' +
+#            'LEFT OUTER JOIN decam     ON (decam.cand_id = photom.cand_id) ' +
+#            'LEFT OUTER JOIN wise      ON (wise .cand_id = photom.cand_id)')
+# 
+#     ### FIXME -- parse SQL...?
+#     q = q.lower().replace('ra', 'photom.ra').replace('dec', 'photom.dec')
+#     
+#     if q is not None and len(q):
+#         sql += ' WHERE ' + q
+# 
+#     print('SQL:', sql)
+#         
+#     #cat = Candidate.objects.raw(sql)
+#     cat = Photom.objects.raw(sql)
+#     cat = cat[:1000]
+#     cat = cat.values()
+# 
+#     print('Catalog:', cat)
+# 
+#     #fields = Candidate._meta.get_fields()
+#     #print('Candidate fields:', fields)
+# 
+#     return HttpResponse(json.dumps(cat),
+#                         content_type='application/json')
 
 
 def cat_search(req):
@@ -242,7 +222,7 @@ class CatalogSearchForm(CoordSearchForm):
 class CatalogSearchList(ListView):
     template_name = 'cat_list.html'
     paginate_by = 20
-    model = Photom
+    model = Tractor
 
     def __init__(self, *args, **kwargs):
         super(CatalogSearchList, self).__init__(*args, **kwargs)
@@ -277,12 +257,12 @@ class CatalogSearchList(ListView):
             # rad = min(rad, 1.)
             self.radecradius = (ra, dec, rad)
             print('q3c radial query:', ra, dec, rad)
-            cat = Photom.objects.extra(where=['q3c_radial_query(photom.ra, photom.dec, %.4f, %.4f, %g)'
+            cat = Tractor.objects.extra(where=['q3c_radial_query(tractor.ra, tractor.dec, %.4f, %.4f, %g)'
                                               % (ra, dec, rad)])
             desc += 'near RA,Dec = (%.4f, %.4f) radius %f degrees' % (ra, dec, rad)
 
         elif spatial == 'allsky':
-            cat = Photom.objects.all()
+            cat = Tractor.objects.all()
             desc += 'all sky'
         else:
             print('Invalid spatial type "%s"' % spatial)
@@ -302,12 +282,12 @@ class CatalogSearchList(ListView):
 
             if len(tt) == 1:
                 terms.append('Type is %s' % tt[0])
-                cat = cat.filter(cand__type=tt[0])
+                cat = cat.filter(type=tt[0])
             else:
                 terms.append('Type in %s' % tt)
-                cat = cat.filter(cand__type__in=tt)
+                cat = cat.filter(type__in=tt)
 
-        for k in ['g', 'r', 'z', 'w1', 'gmr', 'rmz', 'zmw1']:
+        for k in ['g', 'r', 'z', 'w1']: #, 'gmr', 'rmz', 'zmw1']:
             gt = self.form.cleaned_data[k + '_gt']
             lt = self.form.cleaned_data[k + '_lt']
             #print('Limits for', k, ':', gt, lt)
@@ -322,6 +302,34 @@ class CatalogSearchList(ListView):
                 terms.append(k + ' > %g' % gt)
             elif lt is not None:
                 terms.append(k + ' < %g' % lt)
+
+        for k in ['gmr', 'rmz', 'zmw1']:
+            gt = self.form.cleaned_data[k + '_gt']
+            lt = self.form.cleaned_data[k + '_lt']
+
+            k1,k2 = k.split('m')
+
+            # DR2 -> DR3 -- "gmr" -> "g_r"
+            if k == 'gmr':
+                dbk = 'g_r'
+                if gt is not None:
+                    cat = cat.filter(**{ dbk+'__gt': gt})
+                if lt is not None:
+                    cat = cat.filter(**{ dbk+'__lt': lt})
+            else:
+                if gt is not None:
+                    cat = cat.extra(where=['(%s - %s) > %f' % (k1, k2, gt)])
+                if lt is not None:
+                    cat = cat.extra(where=['(%s - %s) < %f' % (k1, k2, lt)])
+
+            k = '(%s-%s)' % (k1,k2)
+            if gt is not None and lt is not None:
+                terms.append(k + ' between %g and %g' % (gt, lt))
+            elif gt is not None:
+                terms.append(k + ' > %g' % gt)
+            elif lt is not None:
+                terms.append(k + ' < %g' % lt)
+
 
         if len(terms):
             desc += ' where ' + ' and '.join(terms)
@@ -375,7 +383,7 @@ def catalog_to_fits(cat):
     import numpy as np
 
     cols = ['ra','dec','g','r','z','w1','w2','w3','w4',
-            'cand__id', 'cand__type', 'cand__brickid', 'cand__objid']
+            'brickid', 'brickname', 'objid', 'type',]
     values = cat.values_list(*cols)
 
     def convert_nan(x):
@@ -392,42 +400,11 @@ def catalog_to_fits(cat):
         if isinstance(v, float):
             convert = convert_nan
         #print('Type of column', c, 'is', type(v), 'eg', v)
-        if c == 'cand__id':
-            cname = 'cand_id'
-        else:
-            cname = c.replace('cand__', '')
+        cname = c
         if convert is None:
             T.set(cname, np.array([v[i] for v in values]))
         else:
             T.set(cname, np.array([convert(v[i]) for v in values]))
-
-    # From candidate ID, look up Decam
-    cand_id = T.cand_id
-    T.delete_column('cand_id')
-
-    print('Looking up DECam objects...')
-    cols = ['gnobs','rnobs', 'znobs']
-    decam = Decam.objects.filter(cand__in=cand_id).values_list(*['cand'] + cols)
-    print('Got', len(decam), 'objects')
-
-    dcand = np.array([d[0] for d in decam])
-    cmap = dict([(c,i) for i,c in enumerate(dcand)])
-    I = np.array([cmap[c] for c in cand_id])
-
-    for ic,c in enumerate(cols):
-        T.set(c, np.array([decam[i][ic+1] for i in I]).astype(np.uint8))
-
-    # From brick ID, look up Brickname
-    brickid = T.brickid
-    T.delete_column('brickid')
-
-    print('Looking up Brick objects...')
-    cols = ['brickname']
-    bricks = Bricks.objects.filter(brickid__in=brickid).values_list(*['brickid'] + cols)
-    print('Got', len(bricks), 'objects')
-
-    idtoname = dict([(b[0], str(b[1])) for b in bricks])
-    T.brickname = np.array([idtoname[bid] for bid in brickid])
 
     return T
 
@@ -443,7 +420,7 @@ def fits_results(req):
     os.close(f)
     os.unlink(tmpfn)
     T.writeto(tmpfn)
-    return send_file(tmpfn, 'image/fits', unlink=True, filename='dr2-query.fits')
+    return send_file(tmpfn, 'image/fits', unlink=True, filename='decals-dr3-query.fits')
 
 def viewer_results(req):
     import tempfile
@@ -470,11 +447,13 @@ def viewer_results(req):
     if tmpfn.startswith('/'):
         tmpfn = tmpfn[1:]
 
-    if search.radecradius is None:
-        # arbitrarily center on one point...?
-        ra,dec = T.ra[0], T.dec[0]
-    else:
-        ra,dec,nil = search.radecradius
+    # if search.radecradius is None:
+    #     # arbitrarily center on one point...?
+    #     ra,dec = T.ra[0], T.dec[0]
+    # else:
+    #     ra,dec,nil = search.radecradius
+
+    ra,dec = T.ra[0], T.dec[0]
 
     return HttpResponseRedirect(reverse(index) +
                                 '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, tmpfn))

@@ -62,6 +62,7 @@ DUST_DIR   = os.path.join(DATA_DIR, 'dust')
 HALPHA_DIR = os.path.join(DATA_DIR, 'halpha')
 UNWISE_DIR = os.path.join(DATA_DIR, 'unwise-coadds')
 UNWISE_NEO1_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo1')
+UNWISE_NEO2_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo2')
 SDSS_DIR   = os.path.join(DATA_DIR, 'sdss')
 
 #DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
@@ -108,7 +109,7 @@ TEMPLATES = [
     },
 ]
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['legacysurvey.org', 'www.legacysurvey.org', 'a.legacysurvey.org', 'b.legacysurvey.org', 'c.legacysurvey.org', 'd.legacysurvey.org']
 
 # Application definition
 
@@ -144,6 +145,7 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     },
     'cosmo': secrets.database.COSMO_DB,
+    'dr2': secrets.database.DR2_DB,
 }
 
 DATABASE_ROUTERS = ['cat.models.Router']

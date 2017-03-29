@@ -13,6 +13,7 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
+    'mobo-dr4': [1,],
     'decals-dr1j': [1,],
     'decals-dr2': [2,],
     'decals-dr3': [1,],
@@ -23,6 +24,7 @@ catversions = {
     'tycho2': [1,],
     'targets-dr2': [1,],
     'gaia-dr1': [1,],
+    'ps1': [1,],
 }
 
 def cat_gaia_dr1(req, ver):
@@ -90,6 +92,18 @@ def upload_cat(req):
     if catname.startswith('/'):
         catname = catname[1:]
 
+    try:
+        import fitsio
+        primhdr = fitsio.read_header(tmpfn)
+        name = primhdr.get('CATNAME', '')
+        color = primhdr.get('CATCOLOR', '')
+        if len(name):
+            catname = catname + '-n%s' % name.strip().replace(' ','_')
+        if len(color):
+            catname = catname + '-c%s' % color.strip()
+    except:
+        pass
+    
     return HttpResponseRedirect(reverse(index) +
                                 '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, catname))
 
@@ -189,7 +203,7 @@ def cat_targets_dr2(req, ver):
     from astrometry.util.fits import fits_table, merge_tables
     import numpy as np
     from decals import settings
-    from cat.models import Target
+    from cat.models import DR2_Target as Target
 
     from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
     xyz1 = radectoxyz(ralo, declo)
@@ -308,22 +322,40 @@ def cat_user(req, ver):
     if not re.match('\w?', cat):
         print('Catalog "%s" did not match regex' % cat)
         return
-    ralo = float(req.GET['ralo'])
-    rahi = float(req.GET['rahi'])
-    declo = float(req.GET['declo'])
-    dechi = float(req.GET['dechi'])
+
+    haverd = False
+    havei = False
+    
+    if ('ralo'  in req.GET and 'rahi'  in req.GET and
+        'declo' in req.GET and 'dechi' in req.GET):
+        ralo = float(req.GET['ralo'])
+        rahi = float(req.GET['rahi'])
+        declo = float(req.GET['declo'])
+        dechi = float(req.GET['dechi'])
+        haverd = True
+    elif ('start' in req.GET and 'N' in req.GET):
+        start = int(req.GET['start'])
+        N = int(req.GET['N'])
+        havei = True
+    else:
+        return HttpResponse('need {ra,dec}{lo,hi} or start,N')
+    
     fn = os.path.join(settings.USER_QUERY_DIR, cat+'.fits')
     if not os.path.exists(fn):
         return
     cat = fits_table(fn)
-    if ralo > rahi:
-        # RA wrap
-        cat.cut(np.logical_or(cat.ra > ralo, cat.ra < rahi) *
-                (cat.dec > declo) * (cat.dec < dechi))
-    else:
-        cat.cut((cat.ra > ralo) * (cat.ra < rahi) *
-                (cat.dec > declo) * (cat.dec < dechi))
-    print(len(cat), 'user catalog sources after RA,Dec cut')
+    if haverd:
+        if ralo > rahi:
+            # RA wrap
+            cat.cut(np.logical_or(cat.ra > ralo, cat.ra < rahi) *
+                    (cat.dec > declo) * (cat.dec < dechi))
+        else:
+            cat.cut((cat.ra > ralo) * (cat.ra < rahi) *
+            (cat.dec > declo) * (cat.dec < dechi))
+        print(len(cat), 'user catalog sources after RA,Dec cut')
+    elif havei:
+        cat = cat[start:start+N]
+
     rd = zip(cat.ra.astype(float), cat.dec.astype(float))
 
     D = dict(rd=rd)
@@ -360,6 +392,18 @@ def cat_gals(req, ver):
     return cat(req, ver, 'ngc',
                os.path.join(settings.DATA_DIR,'galaxy-cats.fits'))
 
+def cat_ps1(req, ver):
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    # We have the EDR region and a block around 0,0
+    if (rahi > 241) and (ralo < 246) * (dechi >= 6.5) * (declo < 11.5):
+        return cat(req, ver, 'ps1',
+                   os.path.join(settings.DATA_DIR,'ps1-cat-edr.fits'))
+    return cat(req, ver, 'ps1',
+               os.path.join(settings.DATA_DIR,'ps1-cat.fits'))
+
 def cat(req, ver, tag, fn):
     import json
     ralo = float(req.GET['ralo'])
@@ -386,8 +430,15 @@ def cat(req, ver, tag, fn):
     debug(len(T), 'in cut')
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
-    names = [t.strip() for t in T.name]
-    rtn = dict(rd=rd, name=names)
+    rtn = dict(rd=rd)
+
+    # PS1
+    if 'ndetections' in T.columns():
+        T.name = np.array(['%i' % n for n in T.ndetections])
+
+    if 'name' in T.columns():
+        names = [t.strip() for t in T.name]
+        rtn['name'] = names
     # bright stars
     if 'alt_name' in T.columns():
         rtn.update(altname = [t.strip() for t in T.alt_name])
@@ -403,6 +454,9 @@ def cat_decals_dr2(req, ver, zoom, x, y, tag='decals-dr2'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_decals_dr3(req, ver, zoom, x, y, tag='decals-dr3'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def cat_mobo_dr4(req, ver, zoom, x, y, tag='mobo-dr4'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
