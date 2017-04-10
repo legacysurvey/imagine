@@ -323,7 +323,6 @@ def top_levels(mp, opt):
                     'unwise-neo2']:
         import pylab as plt
         from decals import settings
-        from legacypipe.common import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs

@@ -1196,12 +1196,13 @@ tiles = mylayer('mobo-dr3-resid', 'Mosaic/Bok DR3 residuals',
 allLayers.push(tiles);
 {% endif %}
 
-// set maxZoom=13: images on $SCRATCH
-tiles = mylayer_B('decaps', 'DECaPS images',
-                {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
-//                {'urlPatterns': [ [6, 13, '{{ tileurl|safe }}'], ],});
-//                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
+
+//  // set maxZoom=13: images on $SCRATCH
+//  tiles = mylayer_B('decaps', 'DECaPS images',
+//                  {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+//  //                {'urlPatterns': [ [6, 13, '{{ tileurl|safe }}'], ],});
+//  //                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+//  allLayers.push(tiles);
 //var tilesDecaps = tiles;
 
 //    // set maxZoom=13: images on $SCRATCH
