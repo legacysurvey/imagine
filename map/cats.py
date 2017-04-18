@@ -482,6 +482,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
     basedir = settings.DATA_DIR
+    sendfile_kwargs = dict()
     if docache:
         cachefn = os.path.join(basedir, 'cats-cache', tag,
                                '%i/%i/%i/%i.cat.json' % (ver, zoom, x, y))
@@ -489,10 +490,12 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
             return send_file(cachefn, 'application/json',
                              modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
                              expires=oneyear)
+        sendfile_kwargs.update(expires=oneyear)
     else:
         import tempfile
         f,cachefn = tempfile.mkstemp(suffix='.json')
         os.close(f)
+        sendfile_kwargs.update(unlink=True)
 
     cat,hdr = _get_decals_cat(wcs, tag=tag)
 
@@ -523,7 +526,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     f = open(cachefn, 'w')
     f.write(json)
     f.close()
-    return send_file(cachefn, 'application/json', expires=oneyear)
+    return send_file(cachefn, 'application/json', **sendfile_kwargs)
 
 def _get_decals_cat(wcs, tag='decals'):
     from decals import settings
