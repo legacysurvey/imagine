@@ -1115,7 +1115,7 @@ class UnwiseLayer(MapLayer):
         super(UnwiseLayer, self).__init__(name, nativescale=13)
         self.bricks = None
         self.dir = unwise_dir
-        
+
     def get_bricks(self):
         if self.bricks is not None:
             return self.bricks
@@ -1132,13 +1132,11 @@ class UnwiseLayer(MapLayer):
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi):
         import numpy as np
         bricks = self.get_bricks()
-        if rahi < ralo:
-            I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
-                                          bricks.ra1 <= rahi) *
-                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-        else:
-            I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
-                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        #print('Unwise bricks touching RA,Dec box', ralo, rahi, declo, dechi)
+        I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
+        I = I[ok]
+        #print('-> bricks', bricks.brickname[I])
         if len(I) == 0:
             return None
         return bricks[I]
@@ -1480,10 +1478,16 @@ class MyLegacySurveyData(LegacySurveyData):
         else:
             C = super(MyLegacySurveyData,self).get_ccds()
             # HACK -- cut to photometric & not-blacklisted CCDs.
-            C.cut(self.photometric_ccds(C))
-            debug('Cut to', len(C), 'photometric CCDs')
-            C.cut(self.apply_blacklist(C))
-            debug('Cut to', len(C), 'not-blacklisted CCDs')
+            C.photometric = np.zeros(len(C), bool)
+            I = self.photometric_ccds(C)
+            C.photometric[I] = True
+            C.blacklist_ok = np.zeros(len(C), bool)
+            I = self.apply_blacklist(C)
+            C.blacklist_ok[I] = True
+            C.good_ccd = C.photometric * C.blacklist_ok
+            #debug('Cut to', len(C), 'photometric CCDs')
+            #C.cut(self.apply_blacklist(C))
+            #debug('Cut to', len(C), 'not-blacklisted CCDs')
             for k in [#'date_obs', 'ut', 'airmass',
                       'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
                       'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
@@ -1668,6 +1672,8 @@ def ccd_list(req):
     name = layer_name_map(name)
     print('Mapped name:', name)
     CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
+    if 'good_ccd' in CCDS.columns():
+        CCDS.cut(CCDS.good_ccd)
     CCDS.cut(np.lexsort((CCDS.expnum, CCDS.filter)))
     ccds = []
     for c in CCDS:
@@ -1834,20 +1840,28 @@ def ccd_detail(req, name, ccd):
     if name in ['decals-dr2', 'decals-dr3', 'mzls-dr3', 'mobo-dr4']:
         imgurl = reverse('image_data', args=[name, ccd])
         dqurl  = reverse('dq_data', args=[name, ccd])
+        imgstamp = reverse('image_stamp', args=[name, ccd])
+        flags = ''
+        cols = c.columns()
+        if 'photometric' in cols and 'blacklist_ok' in cols:
+            flags = 'Photometric: %s.  Not-blacklisted: %s<br />' % (c.photometric, c.blacklist_ok)
         about = '''
 <html><body>
 CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix
 <br />
+%s
 Observed MJD %.3f, %s %s UT
 <ul>
 <li>image <a href="%s">%s</a>
 <li>data quality (flags) <a href="%s">%s</a>
 </ul>
+<img src="%s" />
 </body></html>
 '''
         about = about % (ccd, c.image_filename, c.image_hdu, c.exptime, c.seeing, c.fwhm,
+                         flags,
                          c.mjd_obs, c.date_obs, c.ut,
-                         imgurl, ccd, dqurl, ccd)
+                         imgurl, ccd, dqurl, ccd, imgstamp)
 
     else:
         about = ('CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' %
@@ -2308,6 +2322,33 @@ def dq_data(req, survey, ccd):
     fits.close()
     return send_file(tmpfn, 'image/fits', unlink=True, filename='dq-%s.fits.gz' % ccd)
 
+def image_stamp(req, surveyname, ccd):
+    import fitsio
+    survey, c = get_ccd_object(surveyname, ccd)
+    im = survey.get_image_object(c)
+    fn = im.imgfn
+    print('Opening', fn)
+    import tempfile
+    ff,tmpfn = tempfile.mkstemp(suffix='.jpg')
+    os.close(ff)
+    pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
+    os.unlink(tmpfn)
+    import pylab as plt
+    import numpy as np
+    if 'decals' in surveyname:
+        # rotate image
+        pix = pix.T
+
+    mn,mx = np.percentile(pix, [25, 99])
+    h,w = pix.shape
+    plt.figure(num=1, figsize=(w/(4*100.), h/(4*100.)), dpi=100)
+    plt.clf()
+    plt.subplots_adjust(left=0.005, right=0.995, bottom=0.005, top=0.995)
+    plt.imshow(pix, interpolation='nearest', origin='lower', cmap='gray')
+    plt.xticks([]); plt.yticks([])
+    plt.savefig(tmpfn)
+    #plt.imsave(tmpfn, pix, vmin=mn, vmax=mx, cmap='gray')
+    return send_file(tmpfn, 'image/jpeg', unlink=True)
 
 layers = {}
 def get_layer(name, default=None):
@@ -2470,7 +2511,75 @@ def sdss_wcs(req):
     sdss.write_jpeg(tilefn, rgb)
     return send_file(tilefn, 'image/jpeg', unlink=True)
 
+
+def ra_ranges_overlap(ralo, rahi, ra1, ra2):
+    import numpy as np
+    x1 = np.cos(np.deg2rad(ralo))
+    y1 = np.sin(np.deg2rad(ralo))
+
+    x2 = np.cos(np.deg2rad(rahi))
+    y2 = np.sin(np.deg2rad(rahi))
+
+    x3 = np.cos(np.deg2rad(ra1))
+    y3 = np.sin(np.deg2rad(ra1))
+
+    x4 = np.cos(np.deg2rad(ra2))
+    y4 = np.sin(np.deg2rad(ra2))
+
+    #cw31 = x1*y3 - x3*y1
+    cw32 = x2*y3 - x3*y2
+
+    cw41 = x1*y4 - x4*y1
+    #cw42 = x2*y4 - x4*y2
+
+    #print('3:', cw31, cw32)
+    #print('4:', cw41, cw42)
+    return np.logical_and(cw32 <= 0, cw41 >= 0)
+
+
 if __name__ == '__main__':
+
+    assert(ra_ranges_overlap(359, 1, 0.5, 1.5) == True)
+    assert(ra_ranges_overlap(359, 1, 358, 0.)  == True)
+    assert(ra_ranges_overlap(359, 1, 358, 2.)  == True)
+    assert(ra_ranges_overlap(359, 1, 359.5, 0.5) == True)
+
+    assert(ra_ranges_overlap(359, 1, 357, 358) == False)
+    assert(ra_ranges_overlap(359, 1, 2, 3) == False)
+    assert(ra_ranges_overlap(359, 1, 179, 181) == False)
+    assert(ra_ranges_overlap(359, 1, 90, 270) == False)
+    
+    # vanilla
+    ra_ranges_overlap(0, 1, 0.5, 1.5)
+
+    # enclosed
+    ra_ranges_overlap(0, 1, -0.5, 1.5)
+
+    # not-enclosed
+    ra_ranges_overlap(0, 1, 1.5, -0.5)
+
+    print()
+    # greater
+    ra_ranges_overlap(0, 1, 2, 3)
+
+    # less
+    ra_ranges_overlap(0, 1, -2, -1)
+
+    # just touching
+    #ra_ranges_overlap(0, 1, 1, 2)
+
+    print()
+
+    # overlapping bottom of range
+    ra_ranges_overlap(0, 1, -0.5, 0.5)
+
+    # within
+    ra_ranges_overlap(0, 1, 0.25, 0.75)
+
+    sys.exit(0)
+
+
+
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
     import django

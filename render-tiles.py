@@ -157,7 +157,7 @@ def _one_tile((kind, zoom, x, y, ignore, get_images)):
     elif kind == 'unwise-neo2':
         from map import views
         view = views.get_tile_view(kind)
-        view(req, version, zoom, x, y, savecache=True)
+        return view(req, version, zoom, x, y, savecache=True, **kwargs)
 
 def _bounce_one_tile(*args):
     try:
@@ -370,6 +370,7 @@ def top_levels(mp, opt):
                     xy.append((x,y))
 
             tiles = mp.map(_one_tile, args)
+
             for ims,(x,y) in zip(tiles, xy):
 
                 #for a,(x,y) in zip(args, xy):
@@ -830,7 +831,7 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -25
-    elif opt.kind in ['halpha', 'unwise-neo1']:
+    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2']:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:

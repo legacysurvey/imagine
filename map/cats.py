@@ -256,6 +256,10 @@ def cat_spec(req, ver):
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.label]
+
+    # HACK
+    #names = [t.split()[0] for t in names]
+
     mjd   = [int(x) for x in T.mjd]
     fiber = [int(x) for x in T.fiberid]
     plate = [int(x) for x in T.plate]
