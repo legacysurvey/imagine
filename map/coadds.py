@@ -160,6 +160,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
         os.rename(tmpfn, fn)
         debug('Wrote', fn)
     else:
+        print('Leaving temp file for get_scaled:', scalepat, scalekwargs, scale, basefn)
         fn = tmpfn
     if return_data:
         return I2,wcs2,fn
