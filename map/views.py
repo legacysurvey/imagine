@@ -2339,12 +2339,13 @@ def image_stamp(req, surveyname, ccd):
         # rotate image
         pix = pix.T
 
-    mn,mx = np.percentile(pix, [25, 99])
+    mn,mx = np.percentile(pix.ravel(), [25, 99])
     h,w = pix.shape
     plt.figure(num=1, figsize=(w/(4*100.), h/(4*100.)), dpi=100)
     plt.clf()
     plt.subplots_adjust(left=0.005, right=0.995, bottom=0.005, top=0.995)
-    plt.imshow(pix, interpolation='nearest', origin='lower', cmap='gray')
+    plt.imshow(pix, interpolation='nearest', origin='lower', cmap='gray',
+               vmin=mn, vmax=mx)
     plt.xticks([]); plt.yticks([])
     plt.savefig(tmpfn)
     #plt.imsave(tmpfn, pix, vmin=mn, vmax=mx, cmap='gray')

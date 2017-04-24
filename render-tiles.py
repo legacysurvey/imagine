@@ -972,8 +972,23 @@ def main():
 
             return 0
 
+        if opt.kind in ['unwise-w1w2', 'unwise-neo2']:
+            # scaledir = opt.kind
+            # basedir = settings.DATA_DIR
+            # dirnm = os.path.join(basedir, 'scaled', scaledir)
+            # B = fits_table(os.path.join(basedir, 'unwise-bricks.fits'))
+            layer = get_layer(opt.kind)
+            B = layer.get_bricks()
+            print(len(B), 'unWISE tiles')
+            for b in B.brickname:
+                for band in ['1','2']:
+                    for scale in [1,2,3,4,5,6,7]:
+                        print('Get brick', b, 'band', band, 'scale', scale)
+                        layer.get_filename(b, band, scale)
+
         else:
             assert(False)
+
 
 
 
