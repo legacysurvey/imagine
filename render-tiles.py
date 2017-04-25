@@ -51,12 +51,9 @@ def _one_tile((kind, zoom, x, y, ignore, get_images)):
                  return_if_not_found=True)
 
     elif kind in ['mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid']:
-        v = 1
+        v = 2
         layer = get_layer(kind)
-        #return layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
-        r = layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
-        #print(r)
-        return r
+        return layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
 
     elif kind in ['mobo-dr3', 'mobo-dr3-model', 'mobo-dr3-resid']:
         v = 1
@@ -802,6 +799,10 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = 30
+        if opt.maxra is None:
+            opt.maxra = 54
+        if opt.minra is None:
+            opt.minra = 301
     elif opt.kind == 'decaps':
         if opt.maxdec is None:
             opt.maxdec = -20
