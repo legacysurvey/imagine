@@ -191,6 +191,7 @@ urlpatterns = [
     # Image data
     url(r'^image-data/([\w-]+)/([\w-]+)', views.image_data, name='image_data'),
     url(r'^dq-data/([\w-]+)/([\w-]+)', views.dq_data, name='dq_data'),
+    url(r'^iv-data/([\w-]+)/([\w-]+)', views.iv_data, name='iv_data'),
 
     url(r'^image-stamp/([\w-]+)/([\w-]+).jpg', views.image_stamp, name='image_stamp'),
 

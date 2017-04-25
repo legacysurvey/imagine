@@ -43,9 +43,9 @@ tileversions = {
 
     'decaps': [1],
 
-    'mobo-dr4': [1],
-    'mobo-dr4-model': [1],
-    'mobo-dr4-resid': [1],
+    'mobo-dr4': [1,2],
+    'mobo-dr4-model': [1,2],
+    'mobo-dr4-resid': [1,2],
 
     'mzls-dr3': [1],
 
@@ -1465,7 +1465,7 @@ def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
 
     return rgb
 
-from legacypipe.common import LegacySurveyData
+from legacypipe.survey import LegacySurveyData
 class MyLegacySurveyData(LegacySurveyData):
     def get_ccds(self):
         import numpy as np
@@ -1488,8 +1488,8 @@ class MyLegacySurveyData(LegacySurveyData):
             #debug('Cut to', len(C), 'photometric CCDs')
             #C.cut(self.apply_blacklist(C))
             #debug('Cut to', len(C), 'not-blacklisted CCDs')
-            for k in [#'date_obs', 'ut', 'airmass',
-                      'zpt', 'avsky', 'arawgain', 'ccdnum', 'ccdzpta',
+            for k in [#'date_obs', 'ut', 'airmass', 'arawgain', 
+                      'zpt', 'avsky', 'ccdnum', 'ccdzpta',
                       'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
                       'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
                       'ccdnmatchb', 'ccdmdncol', 'expid',]:
@@ -1840,6 +1840,7 @@ def ccd_detail(req, name, ccd):
     if name in ['decals-dr2', 'decals-dr3', 'mzls-dr3', 'mobo-dr4']:
         imgurl = reverse('image_data', args=[name, ccd])
         dqurl  = reverse('dq_data', args=[name, ccd])
+        ivurl  = reverse('iv_data', args=[name, ccd])
         imgstamp = reverse('image_stamp', args=[name, ccd])
         flags = ''
         cols = c.columns()
@@ -1853,6 +1854,7 @@ CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix
 Observed MJD %.3f, %s %s UT
 <ul>
 <li>image <a href="%s">%s</a>
+<li>weight or inverse-variance<a href="%s">%s</a>
 <li>data quality (flags) <a href="%s">%s</a>
 </ul>
 <img src="%s" />
@@ -1861,7 +1863,7 @@ Observed MJD %.3f, %s %s UT
         about = about % (ccd, c.image_filename, c.image_hdu, c.exptime, c.seeing, c.fwhm,
                          flags,
                          c.mjd_obs, c.date_obs, c.ut,
-                         imgurl, ccd, dqurl, ccd, imgstamp)
+                         imgurl, ccd, ivurl, ccd, dqurl, ccd, imgstamp)
 
     else:
         about = ('CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' %
@@ -2285,7 +2287,7 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
 def image_data(req, survey, ccd):
     import fitsio
     survey, c = get_ccd_object(survey, ccd)
-    im = survey.get_image_object(c)
+    im = survey.get_image_object(c, makeNewWeightMap=False)
     fn = im.imgfn
     #dirnm = survey.get_image_dir()
     #fn = os.path.join(dirnm, c.image_filename)
@@ -2306,7 +2308,7 @@ def image_data(req, survey, ccd):
 def dq_data(req, survey, ccd):
     import fitsio
     survey, c = get_ccd_object(survey, ccd)
-    im = survey.get_image_object(c)
+    im = survey.get_image_object(c, makeNewWeightMap=False)
     fn = im.dqfn
     print('Opening', fn)
     import tempfile
@@ -2322,10 +2324,30 @@ def dq_data(req, survey, ccd):
     fits.close()
     return send_file(tmpfn, 'image/fits', unlink=True, filename='dq-%s.fits.gz' % ccd)
 
+def iv_data(req, survey, ccd):
+    import fitsio
+    survey, c = get_ccd_object(survey, ccd)
+    im = survey.get_image_object(c, makeNewWeightMap=False)
+    fn = im.wtfn
+    print('Opening', fn)
+    import tempfile
+    ff,tmpfn = tempfile.mkstemp(suffix='.fits.gz')
+    os.close(ff)
+    primhdr = fitsio.read_header(fn)
+    pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
+
+    os.unlink(tmpfn)
+    fits = fitsio.FITS(tmpfn, 'rw')
+    fits.write(None, header=primhdr, clobber=True)
+    fits.write(pix,  header=hdr)
+    fits.close()
+    return send_file(tmpfn, 'image/fits', unlink=True, filename='iv-%s.fits.gz' % ccd)
+
+
 def image_stamp(req, surveyname, ccd):
     import fitsio
     survey, c = get_ccd_object(surveyname, ccd)
-    im = survey.get_image_object(c)
+    im = survey.get_image_object(c, makeNewWeightMap=False)
     fn = im.imgfn
     print('Opening', fn)
     import tempfile

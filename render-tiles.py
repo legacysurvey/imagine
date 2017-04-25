@@ -323,7 +323,7 @@ def top_levels(mp, opt):
                     'unwise-neo2']:
         import pylab as plt
         from decals import settings
-        from legacypipe.common import get_rgb
+        from legacypipe.survey import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
@@ -613,7 +613,7 @@ def top_levels(mp, opt):
                     ]:
         import pylab as plt
         from decals import settings
-        from legacypipe.common import get_rgb
+        from legacypipe.survey import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
@@ -781,45 +781,6 @@ def main():
 
     opt,args = parser.parse_args()
 
-    if opt.bricks_exist:
-        from map.views import _get_survey
-
-        surveyname = opt.kind
-        filetype = 'image'
-
-        survey = _get_survey(surveyname)
-
-        B = survey.get_bricks()
-        print(len(B), 'bricks')
-        B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
-        print(len(B), 'in Dec range')
-        B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
-        print(len(B), 'in RA range')
-
-        # find all image files
-        bands = opt.bands
-
-        has_band = {}
-        for b in bands:
-            B.set('has_%s' % b, np.zeros(len(B), bool))
-            has_band[b] = B.get('has_%s' % b)
-        exists = np.zeros(len(B), bool)
-
-        for i,brick in enumerate(B.brickname):
-            found = False
-            for band in bands:
-                fn = survey.find_file(filetype, brick=brick, band=band)
-                ex = os.path.exists(fn)
-                print('Brick', brick, 'band', band, 'exists?', ex)
-                has_band[band][i] = ex
-                if ex:
-                    found = True
-            exists[i] = found
-
-        B.cut(exists)
-        B.writeto('bricks-exist-%s.fits' % opt.kind)
-        sys.exit(0)
-                    
 
     if len(opt.zoom) == 0:
         opt.zoom = [13]
@@ -990,6 +951,45 @@ def main():
             assert(False)
 
 
+    if opt.bricks_exist:
+        from map.views import _get_survey
+
+        surveyname = opt.kind
+        filetype = 'image'
+
+        survey = _get_survey(surveyname)
+
+        B = survey.get_bricks()
+        print(len(B), 'bricks')
+        B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
+        print(len(B), 'in Dec range')
+        B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
+        print(len(B), 'in RA range')
+
+        # find all image files
+        bands = opt.bands
+
+        has_band = {}
+        for b in bands:
+            B.set('has_%s' % b, np.zeros(len(B), bool))
+            has_band[b] = B.get('has_%s' % b)
+        exists = np.zeros(len(B), bool)
+
+        for i,brick in enumerate(B.brickname):
+            found = False
+            for band in bands:
+                fn = survey.find_file(filetype, brick=brick, band=band)
+                ex = os.path.exists(fn)
+                print('Brick', brick, 'band', band, 'exists?', ex)
+                has_band[band][i] = ex
+                if ex:
+                    found = True
+            exists[i] = found
+
+        B.cut(exists)
+        B.writeto('bricks-exist-%s.fits' % opt.kind)
+        sys.exit(0)
+                    
 
 
     #from legacypipe.common import LegacySurveyData
@@ -1038,7 +1038,7 @@ def main():
         opt.y1 = opt.y + 1
 
     if opt.coadd and opt.kind == 'sdss':
-        from legacypipe.common import wcs_for_brick
+        from legacypipe.survey import wcs_for_brick
         from map.views import trymakedirs
 
         B = survey.get_bricks()
