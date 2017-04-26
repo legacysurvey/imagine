@@ -1226,6 +1226,9 @@ def main():
             if opt.near_ccds:
                 margin = tilesize + ccdsize
                 I = np.flatnonzero((dd > C.dec.min()-margin) * (dd < C.dec.max()+margin))
+                if len(I) == 0:
+                    print('No Dec points within range of CCDs')
+                    continue
                 dd = dd[I]
                 yy = yy[I]
                 print('Keeping', len(I), 'Dec points within range of CCDs: Dec',
@@ -1245,6 +1248,7 @@ def main():
 
             if opt.queue:
                 cmd = 'python -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s --mindec %f --maxdec %f' % (zoom, y, y+1, opt.kind, opt.mindec, opt.maxdec)
+                cmd += ' --threads 24'
                 if opt.near_ccds:
                     cmd += ' --near-ccds'
                 if opt.all:
