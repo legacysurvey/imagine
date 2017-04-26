@@ -825,7 +825,8 @@ def main():
 
     if opt.scale:
         if opt.kind in ['decals-dr3', 'decals-dr3-model', 'mobo-dr3', 'mobo-dr3-model',
-                        'mzls-dr3', 'mobo-dr4', 'decaps' ]:
+                        'mzls-dr3',
+                        'mobo-dr4', 'mobo-dr4-model', 'decaps' ]:
             from glob import glob
             from map.views import _get_survey
             

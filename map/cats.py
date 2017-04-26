@@ -112,7 +112,8 @@ def get_random_galaxy():
     from map.views import galaxycat
 
     global galaxycat
-    galfn = os.path.join(settings.DATA_DIR, 'galaxy-cats-in-dr2.fits')
+    #galfn = os.path.join(settings.DATA_DIR, 'galaxy-cats-in-dr2.fits')
+    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr3.fits')
 
     if galaxycat is None and not os.path.exists(galfn):
         import astrometry.catalogs
@@ -132,26 +133,31 @@ def get_random_galaxy():
         IC.name = np.array(['IC %i' % n for n in IC.icnum])
         IC.delete_column('icnum')
 
-        fn = os.path.join(settings.DATA_DIR, 'ugc.fits')
-        UGC = fits_table(fn)
-        print(len(UGC), 'UGC objects')
-        UGC.name = np.array(['UGC %i' % n for n in UGC.ugcnum])
-        UGC.delete_column('ugcnum')
+        # fn = os.path.join(settings.DATA_DIR, 'ugc.fits')
+        # UGC = fits_table(fn)
+        # print(len(UGC), 'UGC objects')
+        # UGC.name = np.array(['UGC %i' % n for n in UGC.ugcnum])
+        # UGC.delete_column('ugcnum')
 
-        T = merge_tables([NGC, IC, UGC])
-        T.writeto(os.path.join(settings.DATA_DIR, 'galaxy-cats.fits'))
+        #T = merge_tables([NGC, IC, UGC])
+        #T.writeto(os.path.join(settings.DATA_DIR, 'galaxy-cats.fits'))
+
+        T = merge_tables([NGC, IC])
+        T.writeto(os.path.join('/tmp/galaxy-cats.fits'))
         
         keep = np.zeros(len(T), bool)
 
-        bricks = _get_dr2_bricks()
+        # bricks = _get_dr2_bricks()
+        bricks = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
+                                         'decals-bricks-in-dr3.fits'))
         bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
         print(len(bricks), 'bricks with grz')
 
+        from map.views import _get_survey
+        survey = _get_survey('decals-dr3')
+
         for brick in bricks:
-            dirnm = os.path.join(settings.DATA_DIR, 'coadd', 'decals-dr2',
-                                 '%.3s' % brick.brickname, brick.brickname)
-            fn = os.path.join(dirnm,
-                              'decals-%s-nexp-r.fits.gz' % brick.brickname)
+            fn = survey.find_file('nexp', brick=brick.brickname, band='r')
             if not os.path.exists(fn):
                 print('Does not exist:', fn)
                 continue
@@ -162,11 +168,12 @@ def get_random_galaxy():
                 continue
             print('Brick', brick.brickname, 'has', len(I), 'objs')
 
-            nn = fitsio.read(fn)
+            nn,hdr = fitsio.read(fn, header=True)
             h,w = nn.shape
-            imgfn = os.path.join(dirnm,
-                                 'decals-%s-image-r.fits' % brick.brickname)
-            wcs = Tan(imgfn)
+            #imgfn = survey.find_file('image', brick=brick.brickname, band='r')
+            #wcs = Tan(imgfn)
+            print('file', fn)
+            wcs = Tan(hdr)
 
             ok,x,y = wcs.radec2pixelxy(T.ra[I], T.dec[I])
             x = np.clip((x-1).astype(int), 0, w-1)
@@ -175,6 +182,7 @@ def get_random_galaxy():
             keep[I[n > 0]] = True
 
         T.cut(keep)
+        T.writeto('/tmp/galaxies-in-dr3.fits')
         T.writeto(galfn)
 
     if galaxycat is None:
@@ -182,8 +190,8 @@ def get_random_galaxy():
         galaxycat = fits_table(galfn)
 
     i = np.random.randint(len(galaxycat))
-    ra = galaxycat.ra[i]
-    dec = galaxycat.dec[i]
+    ra = float(galaxycat.ra[i])
+    dec = float(galaxycat.dec[i])
     name = galaxycat.name[i].strip()
     return ra,dec,name
 
