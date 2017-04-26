@@ -1102,9 +1102,9 @@ var tileversions = {
     'decals-wl':4,
     'decals-dr2':2,
     'sfd':2,
-    'mobo-dr4': 2,
-    'mobo-dr4-model': 2,
-    'mobo-dr4-resid': 2,
+    'mzls+bass-dr4': 2,
+    'mzls+bass-dr4-model': 2,
+    'mzls+bass-dr4-resid': 2,
 };
 var catversions  = {
     'decals-dr2': 2,
@@ -1208,14 +1208,14 @@ allLayers.push(tiles);
 //var tilesDecaps = tiles;
 
 // set maxZoom=13: images on $SCRATCH
-tiles = mylayer_B('mobo-dr4', 'MzLS+BASS DR4 images',
+tiles = mylayer_B('mzls+bass-dr4', 'MzLS+BASS DR4 images',
                   {'urlPatterns': [ [1, 14, '{{ tileurl|safe }}'], ],});
 //                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 var tilesMoboDr4Image = tiles;
 
 // set maxZoom=13: images on $SCRATCH
-tiles = mylayer_B('mobo-dr4-model', 'MzLS+BASS DR4 models',
+tiles = mylayer_B('mzls+bass-dr4-model', 'MzLS+BASS DR4 models',
                   {'urlPatterns': [ [1, 14, '{{ tileurl|safe }}'], ],});
 //                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
@@ -1811,14 +1811,14 @@ var ccdOverlay3m = new PolygonOverlay('mzls-dr3-ccds', 'MzLS DR3 CCDs',
                                     });
 {% endif %}
 
-var ccdOverlay4 = new PolygonOverlay('mobo-dr4-ccds', 'MzLS+BASS DR4 CCDs',
+var ccdOverlay4 = new PolygonOverlay('mzls+bass-dr4-ccds', 'MzLS+BASS DR4 CCDs',
                                     {'url':'{{ ccdsurl|safe }}',
                                      'minZoom': 8,
                                      'labelMinZoom': 100,
                                      'urlTerm': 'ccds4',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
-                                     'url_name': 'mobo-dr4',
+                                     'url_name': 'mzls+bass-dr4',
                                      'dr_name': 'DR4',
                                     });
 
@@ -1896,7 +1896,7 @@ var decalscat3 = new DecalsCatalogLayer(tileWatcher,
                                         'urlTerm': 'sources-dr3'});
 
 var mobocat4 = new DecalsCatalogLayer(tileWatcher,
-                                       'mobo-dr4', 'MzLS+BASS DR4 Catalog',
+                                       'mzls+bass-dr4', 'MzLS+BASS DR4 Catalog',
                                        {'url': '{{caturl|safe}}', 
                                         'minZoom': 12,
                                         'urlTerm': 'sources-dr4'});

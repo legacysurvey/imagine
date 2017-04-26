@@ -13,7 +13,7 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
-    'mobo-dr4': [1,],
+    'mzls+bass-dr4': [1,],
     'decals-dr1j': [1,],
     'decals-dr2': [2,],
     'decals-dr3': [1,],
@@ -468,7 +468,7 @@ def cat_decals_dr2(req, ver, zoom, x, y, tag='decals-dr2'):
 def cat_decals_dr3(req, ver, zoom, x, y, tag='decals-dr3'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
-def cat_mobo_dr4(req, ver, zoom, x, y, tag='mobo-dr4'):
+def cat_mobo_dr4(req, ver, zoom, x, y, tag='mzls+bass-dr4'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):

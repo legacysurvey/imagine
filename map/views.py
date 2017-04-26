@@ -43,9 +43,9 @@ tileversions = {
 
     'decaps': [1],
 
-    'mobo-dr4': [1,2],
-    'mobo-dr4-model': [1,2],
-    'mobo-dr4-resid': [1,2],
+    'mzls+bass-dr4': [1,2],
+    'mzls+bass-dr4-model': [1,2],
+    'mzls+bass-dr4-resid': [1,2],
 
     'mzls-dr3': [1],
 
@@ -1518,7 +1518,7 @@ def _get_survey(name=None):
     from decals import settings
     basedir = settings.DATA_DIR
 
-    if name in [ 'decals-dr2', 'decals-dr3', 'mobo-dr3', 'mzls-dr3', 'mobo-dr4', 'decaps']:
+    if name in [ 'decals-dr2', 'decals-dr3', 'mobo-dr3', 'mzls-dr3', 'mzls+bass-dr4', 'decaps']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
@@ -1539,7 +1539,7 @@ def _get_survey(name=None):
         elif name == 'mzls-dr3':
             d.drname = 'MzLS DR3'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3-mzls/'
-        elif name == 'mobo-dr4':
+        elif name == 'mzls+bass-dr4':
             d.drname = 'MzLS+BASS DR4'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr4/'
         elif name == 'decaps':
@@ -1837,7 +1837,7 @@ def get_ccd_object(survey, ccd):
 def ccd_detail(req, name, ccd):
     survey, c = get_ccd_object(name, ccd)
 
-    if name in ['decals-dr2', 'decals-dr3', 'mzls-dr3', 'mobo-dr4']:
+    if name in ['decals-dr2', 'decals-dr3', 'mzls-dr3', 'mzls+bass-dr4']:
         imgurl = reverse('image_data', args=[name, ccd])
         dqurl  = reverse('dq_data', args=[name, ccd])
         ivurl  = reverse('iv_data', args=[name, ccd])
@@ -2386,19 +2386,19 @@ def get_layer(name, default=None):
     elif name == 'ps1':
         layer = PS1Layer('ps1')
 
-    elif name in ['mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid']:
+    elif name in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
 
-        survey_dr4mobo = _get_survey('mobo-dr4')
-        mobo4_image = DecalsLayer('mobo-dr4', 'image', survey_dr4mobo,
-                                  drname='mobo-dr4')
-        mobo4_model = DecalsLayer('mobo-dr4-model', 'model', survey_dr4mobo,
-                                  drname='mobo-dr4')
+        survey_dr4mobo = _get_survey('mzls+bass-dr4')
+        mobo4_image = DecalsLayer('mzls+bass-dr4', 'image', survey_dr4mobo,
+                                  drname='mzls+bass-dr4')
+        mobo4_model = DecalsLayer('mzls+bass-dr4-model', 'model', survey_dr4mobo,
+                                  drname='mzls+bass-dr4')
         mobo4_resid = DecalsResidLayer(mobo4_image, mobo4_model,
-                                       'mobo-dr4-resid', 'resid', survey_dr4mobo,
-                                       drname='mobo-dr4')
-        layers['mobo-dr4'] = mobo4_image
-        layers['mobo-dr4-model'] = mobo4_model
-        layers['mobo-dr4-resid'] = mobo4_resid
+                                       'mzls+bass-dr4-resid', 'resid', survey_dr4mobo,
+                                       drname='mzls+bass-dr4')
+        layers['mzls+bass-dr4'] = mobo4_image
+        layers['mzls+bass-dr4-model'] = mobo4_model
+        layers['mzls+bass-dr4-resid'] = mobo4_resid
         layer = layers[name]
 
     elif name in ['decaps']:

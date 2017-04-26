@@ -50,7 +50,7 @@ def _one_tile((kind, zoom, x, y, ignore, get_images)):
         get_tile(req, version, zoom, x, y, savecache=True,
                  return_if_not_found=True)
 
-    elif kind in ['mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid']:
+    elif kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         v = 2
         layer = get_layer(kind)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
@@ -316,7 +316,7 @@ def _bounce_mzls_dr3((args,kwargs)):
 def top_levels(mp, opt):
     from map.views import save_jpeg, trymakedirs
 
-    if opt.kind in ['decaps', 'mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid',
+    if opt.kind in ['decaps', 'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
                     'unwise-neo2']:
         import pylab as plt
         from decals import settings
@@ -794,7 +794,7 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -90
-    elif opt.kind in ['mobo-dr4', 'mobo-dr4-model', 'mobo-dr4-resid']:
+    elif opt.kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
@@ -826,7 +826,7 @@ def main():
     if opt.scale:
         if opt.kind in ['decals-dr3', 'decals-dr3-model', 'mobo-dr3', 'mobo-dr3-model',
                         'mzls-dr3',
-                        'mobo-dr4', 'mobo-dr4-model', 'decaps' ]:
+                        'mzls+bass-dr4', 'mzls+bass-dr4-model', 'decaps' ]:
             from glob import glob
             from map.views import _get_survey
             
@@ -834,8 +834,8 @@ def main():
                 surveyname = 'decals-dr3'
             elif 'mzls-dr3' in opt.kind:
                 surveyname = 'mzls-dr3'
-            elif 'mobo-dr4' in opt.kind:
-                surveyname = 'mobo-dr4'
+            elif 'mzls+bass-dr4' in opt.kind:
+                surveyname = 'mzls+bass-dr4'
             elif opt.kind == 'decaps':
                 surveyname = opt.kind
             else:
