@@ -546,33 +546,28 @@ def _get_decals_cat(wcs, tag='decals'):
     X = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                             [1,H/2,H,H,H,H/2,1,1])
     r,d = X[-2:]
-    catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
-                          'tractor-%(brickname)s.fits')
 
-    #debug('_get_decals_cat for tag=', tag)
-    D = _get_survey(name=tag)
-    B = D.get_bricks_readonly()
-    I = D.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
+    #catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
+    #                      'tractor-%(brickname)s.fits')
+
+    survey = _get_survey(name=tag)
+    B = survey.get_bricks_readonly()
+    I = survey.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
     #print(len(I), 'bricks touching RA,Dec box', r.min(),r.max(), d.min(),d.max())
 
     cat = []
     hdr = None
     for brickname in B.brickname[I]:
-        fnargs = dict(brickname=brickname)
-        #print('Filename args:', fnargs)
-        catfn = catpat % fnargs
+        catfn = survey.find_file('tractor', brick=brickname)
         if not os.path.exists(catfn):
             print('Does not exist:', catfn)
             continue
         debug('Reading catalog', catfn)
         T = fits_table(catfn)
-        # FIXME -- all False
-        # debug('brick_primary', np.unique(T.brick_primary))
-        # T.cut(T.brick_primary)
+        T.cut(T.brick_primary)
+        print('File', catfn, 'cut to', len(T), 'primary')
         ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
-        #debug('xx,yy', xx.min(), xx.max(), yy.min(), yy.max())
         T.cut((xx > 0) * (yy > 0) * (xx < W) * (yy < H))
-        # debug('kept', len(T), 'from', catfn)
         cat.append(T)
         if hdr is None:
             hdr = T.get_header()
