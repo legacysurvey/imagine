@@ -32,6 +32,8 @@ urlpatterns = [
         views.get_tile_view('mzls+bass-dr4')),
     url(r'^mzls\+bass-dr4-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('mzls+bass-dr4-model')),
+    url(r'^mzls\+bass-dr4-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('mzls+bass-dr4-resid')),
 
     # DR4 catalog
     url(r'^mzls\+bass-dr4/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr4),

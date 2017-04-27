@@ -98,6 +98,11 @@ def index(req):
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
 
+    #print('Layer:', layer)
+    if layer.startswith('mzls bass'):
+        layer = 'mzls+bass' + layer[9:]
+        #print('-> ', layer)
+
     ra = dec = None
     zoom = 13
 
@@ -485,8 +490,11 @@ class MapLayer(object):
                     bwcs = self.read_wcs(brickname, band, scale)
                     if bwcs is None:
                         print('No such file:', brickname, band, scale)
-                        fn = self.get_filename(brickname, band, scale)
-                        print(' (filename', fn, ')')
+                        try:
+                            fn = self.get_filename(brickname, band, scale)
+                            print(' (filename', fn, ')')
+                        except:
+                            pass
                         continue
                 except:
                     print('Failed to read WCS:', brickname, band, scale)
@@ -1281,6 +1289,8 @@ def layer_name_map(name):
             'mobo-dr3-ccds': 'mobo-dr3',
 
             'mzls-dr3-ccds': 'mzls-dr3',
+
+            'mzls bass-dr4': 'mzls+bass-dr4',
 
     }.get(name, name)
 
