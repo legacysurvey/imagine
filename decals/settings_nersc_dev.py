@@ -2,8 +2,6 @@ from settings_common import *
 
 #ENABLE_SQL = True
 
-ENABLE_MZLS = True
-
 DEBUG_LOGGING = True
 #DEBUG_LOGGING = False
 
@@ -31,7 +29,7 @@ CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
 ENABLE_VCC  = False
 ENABLE_WL   = False
-ENABLE_DR2  = True
+ENABLE_DR2  = False
 
 # SDSS_PHOTOOBJS = '/project/projectdirs/cosmo/data/sdss/dr10/boss/photoObj'
 # SDSS_RESOLVE = '/project/projectdirs/cosmo/data/sdss/pre13/eboss/resolve/2013-07-29'

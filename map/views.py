@@ -184,8 +184,6 @@ def index(req):
 
     return render(req, 'index.html',
                   dict(ra=ra, dec=dec, zoom=zoom,
-                       mosaic_bok=False,
-                       dr1=False,
                        galname=galname,
                        layer=layer, tileurl=tileurl,
                        absurl=absurl,
@@ -211,7 +209,6 @@ def index(req):
                        enable_vcc = settings.ENABLE_VCC,
                        enable_wl = settings.ENABLE_WL,
                        enable_cutouts = settings.ENABLE_CUTOUTS,
-                       enable_mzls = settings.ENABLE_MZLS,
                        ))
 
 

@@ -1228,12 +1228,6 @@ tiles = mylayer_B('decals-dr3-resid', 'DECaLS DR3 residuals',
 allLayers.push(tiles);
 
                                      
-{% if enable_mzls %}
-tiles = mylayer('mzls-dr3', 'MzLS DR3 images',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-{% endif %}
-
 
 tiles = mylayer_B('decals-dr2', 'DECaLS DR2 images',
                 {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
@@ -1250,20 +1244,6 @@ tiles = mylayer_B('decals-dr2-resid', 'DECaLS DR2 residuals',
 allLayers.push(tiles);
 var tilesDecalsDr2Resid = tiles;
 
-{% if dr1 %}
-
-tiles = mylayer_B('decals-dr1j', 'DECaLS DR1 images',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('decals-model-dr1j', 'DECaLS DR1 models',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('decals-resid-dr1j', 'DECaLS DR1 residuals',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
-{% endif %}
 
 tiles = mylayer_B('sdssco', 'SDSS images',
                   {'attribution': sdss_attrib,
@@ -1281,10 +1261,11 @@ tiles = mylayer('unwise-w1w2', 'unWISE W1/W2',
                  'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
-tiles = mylayer('unwise-neo1', 'unWISE W1/W2 NEO1',
-                {'maxNativeZoom': 12,
-                 'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
+
+// tiles = mylayer('unwise-neo1', 'unWISE W1/W2 NEO1',
+//                 {'maxNativeZoom': 12,
+//                  'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
+// allLayers.push(tiles);
 
 tiles = mylayer('unwise-neo2', 'unWISE W1/W2 NEO2',
                 {'maxNativeZoom': 12,
@@ -1777,32 +1758,6 @@ var ccdOverlay3 = new PolygonOverlay('decals-dr3-ccds', 'DECaLS DR3 CCDs',
                                      'url_name': 'decals-dr3',
                                      'dr_name': 'DR3',
                                     });
-
-{% comment %}
-var ccdOverlay3mb = new PolygonOverlay('mobo-dr3-ccds', 'Mosaic+Bok DR3 CCDs',
-                                    {'url':'{{ ccdsurl|safe }}',
-                                     'minZoom': 8,
-                                     'labelMinZoom': 100,
-                                     'urlTerm': 'ccds3mb',
-                                     'detail': ccd_detail,
-                                     'detail_list': ccd_detail_list,
-                                     'url_name': 'mobo-dr3',
-                                     'dr_name': 'MzLS+BASS DR2',
-                                    });
-{% endcomment %}
-
-{% if enable_mzls %}
-var ccdOverlay3m = new PolygonOverlay('mzls-dr3-ccds', 'MzLS DR3 CCDs',
-                                    {'url':'{{ ccdsurl|safe }}',
-                                     'minZoom': 8,
-                                     'labelMinZoom': 100,
-                                     'urlTerm': 'ccds3m',
-                                     'detail': ccd_detail,
-                                     'detail_list': ccd_detail_list,
-                                     'url_name': 'mzls-dr3',
-                                     'dr_name': 'MzLS DR3',
-                                    });
-{% endif %}
 
 var ccdOverlay4 = new PolygonOverlay('mzls+bass-dr4-ccds', 'MzLS+BASS DR4 CCDs',
                                     {'url':'{{ ccdsurl|safe }}',
