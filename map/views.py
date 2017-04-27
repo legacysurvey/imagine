@@ -2386,6 +2386,10 @@ def image_stamp(req, surveyname, ccd):
 layers = {}
 def get_layer(name, default=None):
     global layers
+
+    # mzls+bass-dr4 in URLs turns the "+" into a " "
+    name = name.replace(' ', '+')
+
     if name in layers:
         return layers[name]
 
