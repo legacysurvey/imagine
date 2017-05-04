@@ -1488,10 +1488,15 @@ class MyLegacySurveyData(LegacySurveyData):
             C.photometric = np.zeros(len(C), bool)
             I = self.photometric_ccds(C)
             C.photometric[I] = True
-            C.blacklist_ok = np.zeros(len(C), bool)
-            I = self.apply_blacklist(C)
-            C.blacklist_ok[I] = True
-            C.good_ccd = C.photometric * C.blacklist_ok
+
+            C.ccd_cuts = self.ccd_cuts(C)
+
+            from legacypipe.survey import LegacySurveyData
+            bits = LegacySurveyData.ccd_cut_bits
+
+            C.blacklist_ok = ((C.ccd_cuts & bits['BLACKLIST']) == 0)
+
+            C.good_ccd = C.photometric * (C.ccd_cuts == 0)
             #debug('Cut to', len(C), 'photometric CCDs')
             #C.cut(self.apply_blacklist(C))
             #debug('Cut to', len(C), 'not-blacklisted CCDs')
@@ -1517,7 +1522,14 @@ def _get_survey(name=None):
     global surveys
     if name is not None:
         name = str(name)
+
+        # mzls+bass-dr4 in URLs turns the "+" into a " "
+        name = name.replace(' ', '+')
+
+    print('Survey name', name)
+
     if name in surveys:
+        print('Cache hit for survey', name)
         return surveys[name]
 
     debug('Creating LegacySurveyData() object for "%s"' % name)
@@ -1525,7 +1537,7 @@ def _get_survey(name=None):
     from decals import settings
     basedir = settings.DATA_DIR
 
-    if name in [ 'decals-dr2', 'decals-dr3', 'mobo-dr3', 'mzls-dr3', 'mzls+bass-dr4', 'decaps']:
+    if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5', 'mobo-dr3', 'mzls-dr3', 'mzls+bass-dr4', 'decaps']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
@@ -1540,6 +1552,9 @@ def _get_survey(name=None):
         elif name == 'decals-dr3':
             d.drname = 'DECaLS DR3'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3/'
+        elif name == 'decals-dr5':
+            d.drname = 'DECaLS DR5'
+            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'
         elif name == 'mobo-dr3':
             d.drname = 'Mosaic+BASS DR3'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3-mobo/'
@@ -1553,6 +1568,7 @@ def _get_survey(name=None):
             d.drname = 'DECaPS'
             d.drurl = 'http://legacysurvey.org/'
 
+        print('Caching survey', name)
         surveys[name] = d
         return d
 
@@ -1698,6 +1714,7 @@ def ccd_list(req):
 
 def get_exposure_table(name):
     from astrometry.util.fits import fits_table
+    name = str(name)
     if name == 'decals-dr2':
         T = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr2',
                                     'decals-exposures.fits'))
@@ -1716,6 +1733,25 @@ def get_exposure_table(name):
         '''
         T = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
                                     'decals-exposures.fits'))
+    elif name == 'decals-dr5':
+        fn = os.path.join(settings.DATA_DIR, name, 'exposures.fits')
+        if not os.path.exists(fn):
+            import numpy as np
+            survey = _get_survey(name)
+            ccds = survey.get_ccds_readonly()
+            e,I = np.unique(ccds.expnum, return_index=True)
+            exps = ccds[I]
+            exps.ra  = exps.ra_bore
+            exps.dec = exps.dec_bore
+            ## hack -- should average
+            exps.zpt = exps.ccdzpt
+            exps.writeto('/tmp/exposures-%s.fits' % name,
+                         columns=['ra','dec','expnum','seeing','propid','fwhm','zpt',
+                                  'airmass','exptime','date_obs','ut','filter','mjd_obs',
+                                  'image_filename'])
+            T = exps
+        else:
+            T = fits_table(fn)
     else:
         T = fits_table(os.path.join(settings.DATA_DIR, 'decals-exposures-dr1.fits'))
     return T
@@ -1844,7 +1880,7 @@ def get_ccd_object(survey, ccd):
 def ccd_detail(req, name, ccd):
     survey, c = get_ccd_object(name, ccd)
 
-    if name in ['decals-dr2', 'decals-dr3', 'mzls-dr3', 'mzls+bass-dr4']:
+    if name in ['decals-dr2', 'decals-dr3', 'mzls-dr3', 'mzls+bass-dr4', 'decals-dr5']:
         imgurl = reverse('image_data', args=[name, ccd])
         dqurl  = reverse('dq_data', args=[name, ccd])
         ivurl  = reverse('iv_data', args=[name, ccd])
@@ -2294,7 +2330,7 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
 def image_data(req, survey, ccd):
     import fitsio
     survey, c = get_ccd_object(survey, ccd)
-    im = survey.get_image_object(c, makeNewWeightMap=False)
+    im = survey.get_image_object(c) #, makeNewWeightMap=False)
     fn = im.imgfn
     #dirnm = survey.get_image_dir()
     #fn = os.path.join(dirnm, c.image_filename)
@@ -2315,7 +2351,7 @@ def image_data(req, survey, ccd):
 def dq_data(req, survey, ccd):
     import fitsio
     survey, c = get_ccd_object(survey, ccd)
-    im = survey.get_image_object(c, makeNewWeightMap=False)
+    im = survey.get_image_object(c) #, makeNewWeightMap=False)
     fn = im.dqfn
     print('Opening', fn)
     import tempfile
@@ -2334,7 +2370,7 @@ def dq_data(req, survey, ccd):
 def iv_data(req, survey, ccd):
     import fitsio
     survey, c = get_ccd_object(survey, ccd)
-    im = survey.get_image_object(c, makeNewWeightMap=False)
+    im = survey.get_image_object(c) #, makeNewWeightMap=False)
     fn = im.wtfn
     print('Opening', fn)
     import tempfile
@@ -2354,7 +2390,7 @@ def iv_data(req, survey, ccd):
 def image_stamp(req, surveyname, ccd):
     import fitsio
     survey, c = get_ccd_object(surveyname, ccd)
-    im = survey.get_image_object(c, makeNewWeightMap=False)
+    im = survey.get_image_object(c) #, makeNewWeightMap=False)
     fn = im.imgfn
     print('Opening', fn)
     import tempfile

@@ -4,6 +4,9 @@ from map import views
 from map import cats
 from map import cutouts
 
+survey_regex = r'([\w +-]+)'
+
+
 urlpatterns = [
 
     # Gaia catalog
@@ -182,7 +185,7 @@ urlpatterns = [
     # this one is here to provide a name for the javascript to refer to.
     url(r'^brick/', views.nil, name='brick_detail_blank'),
     # CCD details
-    url(r'^ccd/([\w-]+)/([\w-]+)', views.ccd_detail, name='ccd_detail'),
+    url(r'^ccd/%s/([\w-]+)' % survey_regex, views.ccd_detail, name='ccd_detail'),
     # this one is here to provide a name for the javascript to refer to.
     url(r'^ccd/', views.nil, name='ccd_detail_blank'),
     # Exposure details
@@ -191,11 +194,11 @@ urlpatterns = [
     url(r'^exposure/', views.nil, name='exp_detail_blank'),
 
     # Image data
-    url(r'^image-data/([\w-]+)/([\w-]+)', views.image_data, name='image_data'),
-    url(r'^dq-data/([\w-]+)/([\w-]+)', views.dq_data, name='dq_data'),
-    url(r'^iv-data/([\w-]+)/([\w-]+)', views.iv_data, name='iv_data'),
+    url(r'^image-data/%s/([\w-]+)' % survey_regex, views.image_data, name='image_data'),
+    url(r'^dq-data/%s/([\w-]+)' % survey_regex, views.dq_data, name='dq_data'),
+    url(r'^iv-data/%s/([\w-]+)' % survey_regex, views.iv_data, name='iv_data'),
 
-    url(r'^image-stamp/([\w-]+)/([\w-]+).jpg', views.image_stamp, name='image_stamp'),
+    url(r'^image-stamp/%s/([\w-]+).jpg' % survey_regex, views.image_stamp, name='image_stamp'),
 
     # fall-through
     url(r'', views.index),
