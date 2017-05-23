@@ -7,6 +7,7 @@
 Brick {{ brick.brickname }} with RA,Dec center {{ brick.ra|floatformat:4 }}, {{ brick.dec|floatformat:4 }}.  Pixel coords: {{ brickx|floatformat:1 }}, {{ bricky|floatformat:1 }}
 </p>
 
+{% comment %}
 <table>
 <tr>
 <th>DR1 sources</th>
@@ -24,6 +25,7 @@ SDSS objects: X
 </td>
 </tr>
 </table>
+{% endcomment %}
 
 <table>
 <tr>

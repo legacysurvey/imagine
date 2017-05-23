@@ -319,8 +319,34 @@ def data_for_radec(req):
     I = I[0]
     brickname = bricks.brickname[I]
 
-    return brick_detail(req, brickname)
+    brick_html,ccds = brick_detail(req, brickname, get_html=True)
+    html = brick_html
 
+    if ccds is not None and len(ccds):
+        from legacypipe.survey import wcs_for_brick
+        brickwcs = wcs_for_brick(bricks[I])
+        ok,bx,by = brickwcs.radec2pixelxy(ra, dec)
+        print('Brick x,y:', bx,by)
+        ccds.cut((bx >= ccds.brick_x0) * (bx <= ccds.brick_x1) *
+                 (by >= ccds.brick_y0) * (by <= ccds.brick_y1))
+        print('Cut to', len(ccds), 'CCDs containing RA,Dec point')
+
+        html = ['<html><head><title>%s data for RA,Dec (%.4f, %.4f)</title></head><body>' %
+                (survey.drname, ra, dec),
+                '<h1>%s data for RA,Dec = (%.4f, %.4f): CCDs overlapping</h1>' %
+                (survey.drname, ra, dec),
+                '<ul>']
+        for i,ccd in enumerate(ccds):
+            ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum, ccd.ccdname.strip(), ccd.filter.strip())
+            html.append('<li><a href="%s">%s</a></li>' % (
+                    reverse(ccd_detail, args=(name, ccdname.replace(' ','-'))),
+                    ccdname))
+        html.append('</ul>')
+
+        html = html + brick_html[1:]
+
+
+    return HttpResponse('\n'.join(html))
 
 
 class MapLayer(object):
@@ -1675,8 +1701,10 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None, survey=No
     else:
         CCDs,tree = ccd_cache[name]
 
-    # image size
+    # image size -- DECam
     radius = np.hypot(2048, 4096) * 0.262/3600. / 2.
+    # image size -- 90prime
+    radius = max(radius, np.hypot(4096,4096) * 0.45 / 3600. / 2.)
 
     J = _objects_touching_box(tree, north, south, east, west, Nmax=Nmax,
                               radius=radius)
@@ -1931,7 +1959,7 @@ def exposure_detail(req, name, exp):
 def nil(req):
     pass
 
-def brick_detail(req, brickname):
+def brick_detail(req, brickname, get_html=False):
     import numpy as np
 
     brickname = str(brickname)
@@ -1949,8 +1977,8 @@ def brick_detail(req, brickname):
     coadd_prefix = 'legacysurvey'
 
     html = [
-        '<html><head><title>%s data for brick %s</title></head>' % (survey.drname, brickname),
-        '<body>',
+        '<html><head><title>%s data for brick %s</title></head><body>' %
+        (survey.drname, brickname),
         '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
         '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
         '<ul>',
@@ -1963,6 +1991,7 @@ def brick_detail(req, brickname):
     ccdsfn = survey.find_file('ccds-table', brick=brickname)
     if not os.path.exists(ccdsfn):
         print('No CCDs table:', ccdsfn)
+        ccds = None
     else:
         from astrometry.util.fits import fits_table
         ccds = fits_table(ccdsfn)
@@ -1979,6 +2008,9 @@ def brick_detail(req, brickname):
             '</body></html>',
             ])
 
+    if get_html:
+        return html,ccds
+
     return HttpResponse('\n'.join(html))
 
 
@@ -1986,7 +2018,7 @@ def cutouts(req):
     from astrometry.util.util import Tan
     from astrometry.util.starutil_numpy import degrees_between
     import numpy as np
-    from legacypipe.common import wcs_for_brick
+    from legacypipe.survey import wcs_for_brick
 
     ra = float(req.GET['ra'])
     dec = float(req.GET['dec'])
