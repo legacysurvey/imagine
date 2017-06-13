@@ -1,4 +1,11 @@
 from __future__ import print_function
+if __name__ == '__main__':
+    import sys
+    sys.path.insert(0, 'django-1.9')
+    import os
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    import django
+
 import os
 import fitsio
 import numpy as np

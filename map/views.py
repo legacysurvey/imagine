@@ -481,7 +481,8 @@ class MapLayer(object):
             return None
         return read_tan_wcs(fn, 0)
 
-    def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False):
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
+                        ccd=None):
         import numpy as np
         from astrometry.util.resample import resample_with_wcs, OverlapError
         if not general_wcs:
@@ -574,6 +575,7 @@ class MapLayer(object):
                  ignoreCached=False,
                  filename=None,
                  bands=None,
+                 ccd=None,
                 ):
         '''
         *filename*: filename returned in http response
@@ -615,7 +617,7 @@ class MapLayer(object):
         if wcs is None:
             wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
 
-        rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands)
+        rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, ccd=ccd)
         #print('rimgs:', rimgs)
         if rimgs is None:
             if get_images:
@@ -698,6 +700,10 @@ class MapLayer(object):
         bands = req.GET.get('bands', None)
         #print('get_cutout: GET bands=', bands)
 
+        # For retrieving a single-CCD cutout, not coadd
+        ccd = req.GET.get('ccd', None)
+        #decam-432057-S26
+
         if not 'pixscale' in req.GET and 'zoom' in req.GET:
             zoom = int(req.GET.get('zoom'))
             pixscale = pixscale * 2**(native_zoom - zoom)
@@ -728,7 +734,7 @@ class MapLayer(object):
         zoom = max(0, min(zoom, 16))
 
         rtn = self.get_tile(req, None, zoom, 0, 0, wcs=wcs, get_images=fits,
-                             savecache=False, bands=bands)
+                             savecache=False, bands=bands, ccd=ccd)
         if jpeg:
             return rtn
         ims = rtn

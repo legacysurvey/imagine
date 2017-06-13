@@ -1194,21 +1194,21 @@ allLayers.push(tiles);
 
 // set maxZoom=13: images on $SCRATCH
 tiles = mylayer_B('mzls+bass-dr4', 'MzLS+BASS DR4 images',
-                  {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+//                  {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
 //                  {'urlPatterns': [ [1, 14, '{{ tileurl|safe }}'], ],});
-//                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 var tilesMoboDr4Image = tiles;
 
 // set maxZoom=13: images on $SCRATCH
 tiles = mylayer_B('mzls+bass-dr4-model', 'MzLS+BASS DR4 models',
-                  {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+                  {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
 //                  {'urlPatterns': [ [1, 14, '{{ tileurl|safe }}'], ],});
 //                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('mzls+bass-dr4-resid', 'MzLS+BASS DR4 residuals',
-                  {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+                  {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
 //                  {'urlPatterns': [ [1, 14, '{{ tileurl|safe }}'], ],});
 //                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
