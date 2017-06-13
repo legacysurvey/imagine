@@ -481,8 +481,7 @@ class MapLayer(object):
             return None
         return read_tan_wcs(fn, 0)
 
-    def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
-                        ccd=None):
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False):
         import numpy as np
         from astrometry.util.resample import resample_with_wcs, OverlapError
         if not general_wcs:
@@ -575,7 +574,6 @@ class MapLayer(object):
                  ignoreCached=False,
                  filename=None,
                  bands=None,
-                 ccd=None,
                 ):
         '''
         *filename*: filename returned in http response
@@ -617,7 +615,7 @@ class MapLayer(object):
         if wcs is None:
             wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
 
-        rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, ccd=ccd)
+        rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands)
         #print('rimgs:', rimgs)
         if rimgs is None:
             if get_images:
@@ -701,7 +699,7 @@ class MapLayer(object):
         #print('get_cutout: GET bands=', bands)
 
         # For retrieving a single-CCD cutout, not coadd
-        ccd = req.GET.get('ccd', None)
+        #ccd = req.GET.get('ccd', None)
         #decam-432057-S26
 
         if not 'pixscale' in req.GET and 'zoom' in req.GET:
@@ -734,7 +732,7 @@ class MapLayer(object):
         zoom = max(0, min(zoom, 16))
 
         rtn = self.get_tile(req, None, zoom, 0, 0, wcs=wcs, get_images=fits,
-                             savecache=False, bands=bands, ccd=ccd)
+                             savecache=False, bands=bands)
         if jpeg:
             return rtn
         ims = rtn
@@ -1234,6 +1232,7 @@ class ZeaLayer(MapLayer):
         self.zeamap = zeamap
         self.stretch = stretch
         if cmap is None:
+            import matplotlib.cm
             self.cmap = matplotlib.cm.hot
         else:
             self.cmap = cmap
