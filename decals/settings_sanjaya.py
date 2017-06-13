@@ -5,6 +5,9 @@ MAX_NATIVE_ZOOM = 15
 SAVE_CACHE = False
 
 ENABLE_NEXP = False
+ENABLE_VCC  = False
+ENABLE_WL   = False
+ENABLE_DR2  = True
 
 HOSTNAME = 'imagine.legacysurvey.org'
 ROOT_URL = ''
@@ -18,5 +21,8 @@ CAT_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_UR
 
 STATIC_TILE_URL = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 
-os.environ['DECALS_DIR'] = os.path.join(DATA_DIR, 'decals-dr1')
+STATIC_TILE_URL_B = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+SUBDOMAINS_B = SUBDOMAINS
+
+#os.environ['DECALS_DIR'] = os.path.join(DATA_DIR, 'decals-dr1')
 
