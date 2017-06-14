@@ -1255,7 +1255,7 @@ tiles = mylayer_B('ps1', 'PS1 images',
                   //'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
-tiles = mylayer('unwise-w1w2', 'unWISE W1/W2',
+tiles = mylayer_B('unwise-w1w2', 'unWISE W1/W2',
                 {'maxNativeZoom': 12,
                  'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
@@ -1266,10 +1266,9 @@ allLayers.push(tiles);
 //                  'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
 // allLayers.push(tiles);
 
-tiles = mylayer('unwise-neo2', 'unWISE W1/W2 NEO2',
+tiles = mylayer_B('unwise-neo2', 'unWISE W1/W2 NEO2',
                 {'maxNativeZoom': 12,
                  'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
-//                 'urlPatterns': [ [6, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
 tiles = mylayer('sfd', 'SFD dust map',
