@@ -358,6 +358,7 @@ def cat_user(req, ver):
     cat = fits_table(fn)
     if haverd:
         if ralo > rahi:
+            import numpy as np
             # RA wrap
             cat.cut(np.logical_or(cat.ra > ralo, cat.ra < rahi) *
                     (cat.dec > declo) * (cat.dec < dechi))
@@ -388,6 +389,8 @@ def cat_user(req, ver):
         D.update(objids=[int(x) for x in cat.objid])
     if 'brickname' in cols:
         D.update(bricknames=list(cat.brickname))
+    if 'radius' in cols:
+        D.update(radius=list(cat.radius))
 
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
