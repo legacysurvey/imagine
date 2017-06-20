@@ -107,13 +107,18 @@ def upload_cat(req):
     return HttpResponseRedirect(reverse(index) +
                                 '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, catname))
 
-def get_random_galaxy():
+def get_random_galaxy(layer=None):
     import numpy as np
     from map.views import galaxycat
 
     global galaxycat
     #galfn = os.path.join(settings.DATA_DIR, 'galaxy-cats-in-dr2.fits')
-    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr3.fits')
+    if layer == 'mzls+bass-dr4':
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr4.fits')
+        drnum = 4
+    else:
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr3.fits')
+        drnum = 3
 
     if galaxycat is None and not os.path.exists(galfn):
         import astrometry.catalogs
@@ -147,14 +152,37 @@ def get_random_galaxy():
         
         keep = np.zeros(len(T), bool)
 
-        # bricks = _get_dr2_bricks()
-        bricks = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
-                                         'decals-bricks-in-dr3.fits'))
-        bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
-        print(len(bricks), 'bricks with grz')
+        if drnum == 3:
+            bricks = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
+                                             'decals-bricks-in-dr3.fits'))
+            bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
+            print(len(bricks), 'bricks with grz')
+            from map.views import _get_survey
+            survey = _get_survey('decals-dr3')
+        elif drnum == 4:
+            from map.views import _get_survey
+            survey = _get_survey('mzls+bass-dr4')
 
-        from map.views import _get_survey
-        survey = _get_survey('decals-dr3')
+            bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-in-dr4.fits'))
+
+            # bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-dr4.fits'))
+            # bricks.cut((bricks.nexp_g > 0) *
+            #            (bricks.nexp_r > 0) *
+            #            (bricks.nexp_z > 0))
+            # print(len(bricks), 'bricks with grz')
+            # 
+            # sbricks = survey.get_bricks()
+            # binds = dict([(b,i) for i,b in enumerate(sbricks.brickname)])
+            # I = np.array([binds[b] for b in bricks.brickname])
+            # bricks.ra1  = sbricks.ra1[I]
+            # bricks.ra2  = sbricks.ra2[I]
+            # bricks.dec1 = sbricks.dec1[I]
+            # bricks.dec2 = sbricks.dec2[I]
+            # 
+            # fn = '/tmp/survey-bricks-in-dr4.fits'
+            # bricks.writeto(fn)
+            # print('Wrote', fn)
+
 
         for brick in bricks:
             fn = survey.find_file('nexp', brick=brick.brickname, band='r')
@@ -164,9 +192,9 @@ def get_random_galaxy():
 
             I = np.flatnonzero((T.ra  >= brick.ra1 ) * (T.ra  < brick.ra2 ) *
                                (T.dec >= brick.dec1) * (T.dec < brick.dec2))
+            print('Brick', brick.brickname, 'has', len(I), 'galaxies')
             if len(I) == 0:
                 continue
-            print('Brick', brick.brickname, 'has', len(I), 'objs')
 
             nn,hdr = fitsio.read(fn, header=True)
             h,w = nn.shape
@@ -182,7 +210,9 @@ def get_random_galaxy():
             keep[I[n > 0]] = True
 
         T.cut(keep)
-        T.writeto('/tmp/galaxies-in-dr3.fits')
+        fn = '/tmp/galaxies-in-dr%i.fits' % drnum
+        T.writeto(fn)
+        print('Wrote', fn)
         T.writeto(galfn)
 
     if galaxycat is None:
@@ -590,3 +620,7 @@ def _get_decals_cat(wcs, tag='decals'):
 
     return cat,hdr
 
+
+
+if __name__ == '__main__':
+    print('Random galaxy:', get_random_galaxy(layer='mzls+bass-dr4'))

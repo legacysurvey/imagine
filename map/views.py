@@ -94,7 +94,8 @@ galaxycat = None
 def index(req):
     from cats import cat_user
 
-    layer = req.GET.get('layer', 'decals-dr3')
+    #layer = req.GET.get('layer', 'decals-dr3')
+    layer = req.GET.get('layer', 'mzls+bass-dr4')
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
 
@@ -121,7 +122,7 @@ def index(req):
 
     galname = None
     if ra is None or dec is None:
-        ra,dec,galname = get_random_galaxy()
+        ra,dec,galname = get_random_galaxy(layer=layer)
 
     lat,lng = dec, ra2long(ra)
 
