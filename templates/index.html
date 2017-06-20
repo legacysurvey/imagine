@@ -438,6 +438,7 @@ var Deep2SpectraCatalog = CatalogOverlay.extend({
     },
 });
 
+{% if enable_ps1 %}
 var Ps1CatalogOverlay = CatalogOverlay.extend({
     getLabel: function(json, i) {
         //return '';
@@ -445,6 +446,7 @@ var Ps1CatalogOverlay = CatalogOverlay.extend({
         return label;
     },
 });
+{% endif %}
 
 var TileWatcher = L.Class.extend({
 	includes: L.Mixin.Events,
@@ -1983,7 +1985,11 @@ var overlays = [
     {% endif %}
 
     brickOverlay,
-    gals, bright, tycho2, ps1cat, gaia,
+    gals, bright, tycho2,
+    {% if enable_ps1 %}
+    ps1cat,
+    {% endif %}
+    gaia,
     spec, plateOverlay, specDeep2,
     targets_dr2];
 
