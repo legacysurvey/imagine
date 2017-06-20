@@ -520,12 +520,21 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     else:
         rd = zip(cat.ra, cat.dec)
         types = list([t[0] for t in cat.get('type')])
-        fluxes = [dict(g=float(g), r=float(r), z=float(z))
-                  for g,r,z in zip(cat.decam_flux[:,1], cat.decam_flux[:,2],
-                                   cat.decam_flux[:,4])]
-        nobs = [dict(g=int(g), r=int(r), z=int(z))
-                for g,r,z in zip(cat.decam_nobs[:,1], cat.decam_nobs[:,2],
-                                 cat.decam_nobs[:,4])]
+
+        if 'decam_flux' in cat.get_columns():
+            fluxes = [dict(g=float(g), r=float(r), z=float(z))
+                      for g,r,z in zip(cat.decam_flux[:,1], cat.decam_flux[:,2],
+                                       cat.decam_flux[:,4])]
+            nobs = [dict(g=int(g), r=int(r), z=int(z))
+                    for g,r,z in zip(cat.decam_nobs[:,1], cat.decam_nobs[:,2],
+                                     cat.decam_nobs[:,4])]
+        else:
+            # DR4+
+            fluxes = [dict(g=float(g), r=float(r), z=float(z))
+                      for g,r,z in zip(cat.flux_g, cat.flux_r, cat.flux_z)]
+            nobs = [dict(g=int(g), r=int(r), z=int(z))
+                    for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
+
         bricknames = list(cat.brickname)
         objids = [int(x) for x in cat.objid]
 
