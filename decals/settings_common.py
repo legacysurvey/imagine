@@ -15,9 +15,20 @@ GAIA_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia_rel1'
 
 APPEND_SLASH = False
 
+# Enable Virgo Cluster Catalog layer?
+ENABLE_VCC = False
+# Enable DECaLS Weak Lensing map?
+ENABLE_WL = False
 ENABLE_CUTOUTS = True
-
 ENABLE_SQL = False
+
+ENABLE_DR2 = True
+ENABLE_DR3 = True
+ENABLE_DR4 = True
+ENABLE_DR5 = False
+
+ENABLE_DECAPS = False
+ENABLE_PS1 = False
 
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False
@@ -29,11 +40,6 @@ SDSS_RESOLVE = None
 
 MAX_NATIVE_ZOOM = 15
 
-# Enable Virgo Cluster Catalog layer?
-ENABLE_VCC = False
-
-# Enable DECaLS Weak Lensing map?
-ENABLE_WL = False
 
 # Tile cache is writable?
 SAVE_CACHE = False

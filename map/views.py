@@ -209,6 +209,12 @@ def index(req):
                        enable_vcc = settings.ENABLE_VCC,
                        enable_wl = settings.ENABLE_WL,
                        enable_cutouts = settings.ENABLE_CUTOUTS,
+                       enable_dr2 = settings.ENABLE_DR2,
+                       enable_dr3 = settings.ENABLE_DR3,
+                       enable_dr4 = settings.ENABLE_DR4,
+                       enable_dr5 = settings.ENABLE_DR5,
+                       enable_decaps = settings.ENABLE_DECAPS,
+                       enable_ps1 = settings.ENABLE_PS1,
                        ))
 
 
