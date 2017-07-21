@@ -1483,6 +1483,9 @@ $(document).ready(function() {
             var url = L.Util.template('{{ namequeryurl|safe }}', L.extend({
                 obj: qstring,
             }));
+            if (qstring.length == 0) {
+                url += '&layer=' + idname;
+            }
             $.getJSON(url, objQueryLoaded);
             $('#objquerystatus').html('Searching...');
             return false;

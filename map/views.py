@@ -98,11 +98,8 @@ def index(req):
     layer = req.GET.get('layer', 'mzls+bass-dr4')
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
-
     #print('Layer:', layer)
-    if layer.startswith('mzls bass'):
-        layer = 'mzls+bass' + layer[9:]
-        #print('-> ', layer)
+    layer = layer_name_map(layer)
 
     ra = dec = None
     zoom = 13
@@ -228,7 +225,11 @@ def name_query(req):
     #print('Name query: "%s"' % obj)
 
     if len(obj) == 0:
-        ra,dec,name = get_random_galaxy()
+        layer = req.GET.get('layer', None)
+        if layer is not None:
+            layer = layer_name_map(layer)
+        
+        ra,dec,name = get_random_galaxy(layer=layer)
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=name)),
                             content_type='application/json')
 
