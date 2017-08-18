@@ -420,7 +420,7 @@ def cat_user(req, ver):
     if 'brickname' in cols:
         D.update(bricknames=list(cat.brickname))
     if 'radius' in cols:
-        D.update(radius=list(cat.radius))
+        D.update(radius=list([float(r) for r in cat.radius]))
 
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
