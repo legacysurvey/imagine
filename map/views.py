@@ -42,6 +42,7 @@ tileversions = {
     'ps1': [1],
 
     'decaps': [1],
+    'decaps2': [1],
 
     'mzls+bass-dr4': [1,2],
     'mzls+bass-dr4-model': [1,2],
@@ -483,7 +484,7 @@ class MapLayer(object):
         return img
 
     def read_wcs(self, brickname, band, scale):
-        from coadds import read_tan_wcs
+        from map.coadds import read_tan_wcs
         fn = self.get_filename(brickname, band, scale)
         if fn is None:
             return None
@@ -849,6 +850,31 @@ class DecalsLayer(MapLayer):
         hdr['VERSION'] = self.survey.drname.split(' ')[-1]
         hdr['IMAGETYP'] = self.imagetype
 
+class Decaps2Layer(DecalsLayer):
+    # def read_wcs(self, brickname, band, scale):
+    #     from map.coadds import read_tan_wcs
+    #     #if scale == 
+    #     fn = self.get_filename(brickname, band, scale)
+    #     if fn is None:
+    #         return None
+    #     return read_tan_wcs(fn, 0)
+
+    def get_filename(self, brickname, band, scale, brick=None):
+        if brick is None:
+            brick = self.survey.get_brick_by_name(brickname)
+        def get_brick_wcs(*args, **kwargs):
+            from legacypipe.survey import wcs_for_brick
+            return wcs_for_brick(brick)
+
+        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
+        if scale == 0:
+            return fn
+        fnargs = dict(band=band, brickname=brickname)
+        fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn,
+                        read_base_wcs=get_brick_wcs)
+        return fn
+    
+        
 class ResidMixin(object):
     def __init__(self, image_layer, model_layer, *args, **kwargs):
         '''
@@ -955,7 +981,7 @@ class SdssLayer(MapLayer):
 
     # Need to override this function to read WCS from ext 1 of fits.fz files
     def read_wcs(self, brickname, band, scale):
-        from coadds import read_tan_wcs
+        from map.coadds import read_tan_wcs
         fn = self.get_filename(brickname, band, scale)
         if fn is None:
             return None
@@ -1104,7 +1130,7 @@ class PS1Layer(MapLayer):
         #    return super(PS1Layer, self).read_wcs(brickname, band, scale)
         #print('read_wcs for', brickname, 'band', band, 'scale', scale)
 
-        from coadds import read_tan_wcs
+        from map.coadds import read_tan_wcs
         fn = self.get_filename(brickname, band, scale)
         if fn is None:
             #print('read_wcs: filename is None')
@@ -1576,7 +1602,7 @@ def _get_survey(name=None):
     from decals import settings
     basedir = settings.DATA_DIR
 
-    if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5', 'mobo-dr3', 'mzls-dr3', 'mzls+bass-dr4', 'decaps']:
+    if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5', 'mobo-dr3', 'mzls-dr3', 'mzls+bass-dr4', 'decaps', 'decaps2']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
@@ -1604,6 +1630,9 @@ def _get_survey(name=None):
             d.drname = 'MzLS+BASS DR4'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr4/'
         elif name == 'decaps':
+            d.drname = 'DECaPS'
+            d.drurl = 'http://legacysurvey.org/'
+        elif name == 'decaps2':
             d.drname = 'DECaPS'
             d.drurl = 'http://legacysurvey.org/'
 
@@ -2493,10 +2522,13 @@ def get_layer(name, default=None):
         layers['mzls+bass-dr4-resid'] = mobo4_resid
         layer = layers[name]
 
-    elif name in ['decaps']:
-        survey = _get_survey('decaps')
-        image = DecalsLayer('decaps', 'image', survey)
-        layers['decaps'] = image
+    elif name in ['decaps', 'decaps2']:
+        survey = _get_survey(name)
+        if name == 'decaps2':
+            image = Decaps2Layer(name, 'image', survey)
+        else:
+            image = DecalsLayer(name, 'image', survey)
+        layers[name] = image
         layer = layers[name]
 
     elif name in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:

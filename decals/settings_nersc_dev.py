@@ -1,4 +1,4 @@
-from settings_common import *
+from decals.settings_common import *
 
 #ENABLE_SQL = True
 

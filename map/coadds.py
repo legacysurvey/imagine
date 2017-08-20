@@ -151,7 +151,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     trymakedirs(fn)
     f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=dirnm)
     os.close(f)
-    debug('Temp file', tmpfn)
+    #debug('Temp file', tmpfn)
     # To avoid overwriting the (empty) temp file (and fitsio
     # debuging "Removing existing file")
     os.unlink(tmpfn)

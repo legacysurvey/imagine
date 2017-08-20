@@ -2,7 +2,8 @@ from __future__ import print_function
 import sys
 
 ###
-sys.path.insert(0, 'django-1.7')
+#sys.path.insert(0, 'django-1.7')
+sys.path.insert(0, 'django-1.9')
 ###
 
 import django
@@ -32,7 +33,8 @@ req.META = dict(HTTP_IF_MODIFIED_SINCE=None)
 
 version = 1
 
-def _one_tile((kind, zoom, x, y, ignore, get_images)):
+def _one_tile(X):
+    (kind, zoom, x, y, ignore, get_images) = X
     kwargs = dict(ignoreCached=ignore,
                   get_images=get_images)
 
@@ -77,7 +79,7 @@ def _one_tile((kind, zoom, x, y, ignore, get_images)):
         map_mzls_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
                        hack_jpeg=True, **kwa)
 
-    elif kind in ['decaps']:
+    elif kind in ['decaps', 'decaps2']:
         v = 1
         layer = get_layer(kind)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
@@ -177,20 +179,23 @@ def _bounce_map_unwise_w3w4(args):
     return map_unwise_w3w4(*args, ignoreCached=True, get_images=True)
 
 
-def _bounce_map_decals((args,kwargs)):
+def _bounce_map_decals(X):
+    (args,kwargs) = X
     print('Bounce_map_decals:', args)
     X = map_decals_dr1j(*args, ignoreCached=True, get_images=True, **kwargs)
     print('Returning: type', type(X), X)
     return X
 
-def _bounce_map_decals_dr1k((args,kwargs)):
+def _bounce_map_decals_dr1k(X):
+    (args,kwargs) = X
     print('Bounce_map_decals_dr1k:', args)
     X = map_decals_dr1k(*args, ignoreCached=True, get_images=True, **kwargs)
     print('Returning: type', type(X), X)
     return X
 
 #def _bounce_sdss((args,kwargs)):
-def _bounce_sdssco((args,kwargs)):
+def _bounce_sdssco(X):
+    (args,kwargs) = X
     (req,ver,zoom,x,y) = args
     fn = 'top-sdss-%i-%i-%i.fits' % (zoom, x, y)
     save = False
@@ -229,7 +234,8 @@ def _bounce_sdssco((args,kwargs)):
 
     return ims
 
-def _bounce_decals_dr2((args,kwargs)):
+def _bounce_decals_dr2(X):
+    (args,kwargs) = X
     print('Bounce_decals_dr2: kwargs', kwargs)
     tag = 'image'
     if 'model' in kwargs:
@@ -257,7 +263,8 @@ def _bounce_decals_dr2((args,kwargs)):
 
     return ims
 
-def _bounce_decals_dr3((args,kwargs)):
+def _bounce_decals_dr3(X):
+    (args,kwargs) = X
     print('Bounce_decals_dr3: kwargs', kwargs)
     tag = 'image'
     if 'model' in kwargs:
@@ -285,7 +292,8 @@ def _bounce_decals_dr3((args,kwargs)):
 
     return ims
 
-def _bounce_mzls_dr3((args,kwargs)):
+def _bounce_mzls_dr3(X):
+    (args,kwargs) = X
     print('Bounce_mzls_dr3: kwargs', kwargs)
     tag = 'image'
     if 'model' in kwargs:
@@ -316,7 +324,7 @@ def _bounce_mzls_dr3((args,kwargs)):
 def top_levels(mp, opt):
     from map.views import save_jpeg, trymakedirs
 
-    if opt.kind in ['decaps', 'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
+    if opt.kind in ['decaps', 'decaps2', 'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
                     'unwise-neo2']:
         import pylab as plt
         from decals import settings
@@ -826,20 +834,15 @@ def main():
     if opt.scale:
         if opt.kind in ['decals-dr3', 'decals-dr3-model', 'mobo-dr3', 'mobo-dr3-model',
                         'mzls-dr3',
-                        'mzls+bass-dr4', 'mzls+bass-dr4-model', 'decaps' ]:
+                        'mzls+bass-dr4', 'mzls+bass-dr4-model', 'decaps', 'decaps2' ]:
             from glob import glob
             from map.views import _get_survey
-            
-            if 'decals-dr3' in opt.kind:
-                surveyname = 'decals-dr3'
-            elif 'mzls-dr3' in opt.kind:
-                surveyname = 'mzls-dr3'
-            elif 'mzls+bass-dr4' in opt.kind:
-                surveyname = 'mzls+bass-dr4'
-            elif opt.kind == 'decaps':
-                surveyname = opt.kind
-            else:
-                surveyname = 'mobo-dr3'
+
+            surveyname = opt.kind
+            # *-model -> *
+            for prefix in ['decals-dr3', 'mzls-dr3', 'mzls+bass-dr4',]:
+                if prefix in surveyname:
+                    surveyname = prefix
             survey = _get_survey(surveyname)
 
             B = survey.get_bricks()
@@ -859,28 +862,49 @@ def main():
 
             bands = opt.bands
 
-            # pat = survey.survey_dir + '/coadd/*/*/*-%s-?.fits*' % imagetag
-            # print('Pattern:', pat)
-            # fns = glob(pat)
-            # fns.sort()
-            # print(len(fns), 'image files')
-            scaledir = surveyname
-            basedir = settings.DATA_DIR
-            dirnm = os.path.join(basedir, 'scaled', scaledir)
+            layer = get_layer(opt.kind)
 
-            for brick in B.brickname:
+            has = {}
+            for band in bands:
+                if 'has_%s' % band in B.get_columns():
+                    has[band] = B.get('has_%s' % band)
+                else:
+                    # assume yes
+                    has[band] = np.ones(len(B), bool)
+
+            for ibrick,brick in enumerate(B):
                 for band in bands:
-                    fn = survey.find_file(filetype, brick=brick, band=band)
-                    if not os.path.exists(fn):
-                        print('Does not exist:', fn)
+                    if not has[band][ibrick]:
+                        print('Brick', brick.brickname, 'has not have', band)
                         continue
+                    fn = layer.get_filename(brick.brickname, band, 8, brick=brick)
+                    print(fn)
+                    #for scale in range(1, 9):
+                    #    fn = layer.get_filename(brick, band, scale)
+                        #print(fn)
 
-                    scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
-                    fnargs = dict(band=band, brickname=brick)
-                    scaled = 8
-                    for i in range(1, scaled+1):
-                        scaledfn = get_scaled(scalepat, fnargs, i, fn)
-                        print('get_scaled:', scaledfn)
+            # # pat = survey.survey_dir + '/coadd/*/*/*-%s-?.fits*' % imagetag
+            # # print('Pattern:', pat)
+            # # fns = glob(pat)
+            # # fns.sort()
+            # # print(len(fns), 'image files')
+            # scaledir = surveyname
+            # basedir = settings.DATA_DIR
+            # dirnm = os.path.join(basedir, 'scaled', scaledir)
+            # 
+            # for brick in B.brickname:
+            #     for band in bands:
+            #         fn = survey.find_file(filetype, brick=brick, band=band)
+            #         if not os.path.exists(fn):
+            #             print('Does not exist:', fn)
+            #             continue
+            # 
+            #         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
+            #         fnargs = dict(band=band, brickname=brick)
+            #         scaled = 8
+            #         for i in range(1, scaled+1):
+            #             scaledfn = get_scaled(scalepat, fnargs, i, fn)
+            #             print('get_scaled:', scaledfn)
 
             # for fn in fns:
             #     parts = fn.split('/')
@@ -1301,7 +1325,7 @@ def main():
                 args.append((opt.kind,zoom,xi,y, opt.ignore, False))
                 #args.append((opt.kind,zoom,xi,y, opt.ignore, True))
             print('Rendering', len(args), 'tiles in row y =', y)
-            mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
+            mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
             print('Rendered', len(args), 'tiles')
 
         # if opt.grass:

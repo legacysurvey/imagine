@@ -1202,6 +1202,10 @@ var mylayer_B = function (name, pretty, kwargs) {
 tiles = mylayer_B('decaps', 'DECaPS images',
                 {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
+
+tiles = mylayer_B('decaps2', 'DECaPS2 images',
+                {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 {% endif %}
 
 {% if enable_dr4 %}
