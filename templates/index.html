@@ -1206,6 +1206,13 @@ allLayers.push(tiles);
 tiles = mylayer_B('decaps2', 'DECaPS2 images',
                 {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
+
+tiles = mylayer_B('decaps2-model', 'DECaPS2 models',
+                {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('decaps2-resid', 'DECaPS2 residuals',
+                {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 {% endif %}
 
 {% if enable_dr4 %}

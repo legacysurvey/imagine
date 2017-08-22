@@ -79,9 +79,10 @@ def _one_tile(X):
         map_mzls_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
                        hack_jpeg=True, **kwa)
 
-    elif kind in ['decaps', 'decaps2']:
+    elif kind in ['decaps', 'decaps2', 'decaps2-model', 'decaps2-resid']:
         v = 1
         layer = get_layer(kind)
+        print('kind', kind, 'zoom', zoom, 'x,y', x,y)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
                               get_images=get_images)
         
@@ -324,7 +325,7 @@ def _bounce_mzls_dr3(X):
 def top_levels(mp, opt):
     from map.views import save_jpeg, trymakedirs
 
-    if opt.kind in ['decaps', 'decaps2', 'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
+    if opt.kind in ['decaps', 'decaps2', 'decaps2-model', 'decaps2-resid', 'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
                     'unwise-neo2']:
         import pylab as plt
         from decals import settings
@@ -834,13 +835,14 @@ def main():
     if opt.scale:
         if opt.kind in ['decals-dr3', 'decals-dr3-model', 'mobo-dr3', 'mobo-dr3-model',
                         'mzls-dr3',
-                        'mzls+bass-dr4', 'mzls+bass-dr4-model', 'decaps', 'decaps2' ]:
+                        'mzls+bass-dr4', 'mzls+bass-dr4-model', 'decaps', 'decaps2',
+                        'decaps2-model', 'decaps2-resid' ]:
             from glob import glob
             from map.views import _get_survey
 
             surveyname = opt.kind
             # *-model -> *
-            for prefix in ['decals-dr3', 'mzls-dr3', 'mzls+bass-dr4',]:
+            for prefix in ['decals-dr3', 'mzls-dr3', 'mzls+bass-dr4', 'decaps2']:
                 if prefix in surveyname:
                     surveyname = prefix
             survey = _get_survey(surveyname)

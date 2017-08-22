@@ -43,6 +43,8 @@ tileversions = {
 
     'decaps': [1],
     'decaps2': [1],
+    'decaps2-model': [1],
+    'decaps2-resid': [1],
 
     'mzls+bass-dr4': [1,2],
     'mzls+bass-dr4-model': [1,2],
@@ -851,14 +853,6 @@ class DecalsLayer(MapLayer):
         hdr['IMAGETYP'] = self.imagetype
 
 class Decaps2Layer(DecalsLayer):
-    # def read_wcs(self, brickname, band, scale):
-    #     from map.coadds import read_tan_wcs
-    #     #if scale == 
-    #     fn = self.get_filename(brickname, band, scale)
-    #     if fn is None:
-    #         return None
-    #     return read_tan_wcs(fn, 0)
-
     def get_filename(self, brickname, band, scale, brick=None):
         if brick is None:
             brick = self.survey.get_brick_by_name(brickname)
@@ -898,6 +892,9 @@ class ResidMixin(object):
         return self.image_layer.read_wcs(brickname, band, scale)
 
 class DecalsResidLayer(ResidMixin, DecalsLayer):
+    pass
+
+class Decaps2ResidLayer(ResidMixin, Decaps2Layer):
     pass
 
 class MzlsMixin(object):
@@ -1580,7 +1577,29 @@ class MyLegacySurveyData(LegacySurveyData):
         C.camera  = np.array([c.strip() for c in C.camera ])
         return C
 
-
+class Decaps2LegacySurveyData(MyLegacySurveyData):
+    def find_file(self, filetype, brick=None, brickpre=None, band='%(band)s',
+                  output=False):
+        if brick is None:
+            brick = '%(brick)s'
+            brickpre = '%(brick).3s'
+        else:
+            brickpre = brick[:3]
+        if output:
+            basedir = self.output_dir
+        else:
+            basedir = self.survey_dir
+        if brick is not None:
+            codir = os.path.join(basedir, 'coadd', brickpre, brick)
+        sname = self.file_prefix
+        if filetype == 'model':
+            return os.path.join(codir,
+                                '%s-%s-%s-%s.fits' % (sname, brick, filetype, band))
+        return super(Decaps2LegacySurveyData, self).find_file(filetype, brick=brick,
+                                                              brickpre=brickpre,
+                                                              band=band,
+                                                              output=output)
+    
 surveys = {}
 def _get_survey(name=None):
     import numpy as np
@@ -1608,6 +1627,8 @@ def _get_survey(name=None):
 
         if name == 'decals-dr2':
             d = MyLegacySurveyData(survey_dir=dirnm, version='dr2')
+        elif name == 'decaps2':
+            d = Decaps2LegacySurveyData(survey_dir=dirnm)
         else:
             d = MyLegacySurveyData(survey_dir=dirnm)
 
@@ -1632,7 +1653,7 @@ def _get_survey(name=None):
         elif name == 'decaps':
             d.drname = 'DECaPS'
             d.drurl = 'http://legacysurvey.org/'
-        elif name == 'decaps2':
+        elif name in 'decaps2':
             d.drname = 'DECaPS'
             d.drurl = 'http://legacysurvey.org/'
 
@@ -2522,13 +2543,21 @@ def get_layer(name, default=None):
         layers['mzls+bass-dr4-resid'] = mobo4_resid
         layer = layers[name]
 
-    elif name in ['decaps', 'decaps2']:
+    elif name in ['decaps']:
         survey = _get_survey(name)
-        if name == 'decaps2':
-            image = Decaps2Layer(name, 'image', survey)
-        else:
-            image = DecalsLayer(name, 'image', survey)
+        image = DecalsLayer(name, 'image', survey)
         layers[name] = image
+        layer = layers[name]
+
+    elif name in ['decaps2', 'decaps2-model', 'decaps2-resid']:
+        survey = _get_survey('decaps2')
+        image = Decaps2Layer('decaps2', 'image', survey)
+        model = Decaps2Layer('decaps2-model', 'model', survey)
+        resid = Decaps2ResidLayer(image, model,
+                                  'decaps2-resid', 'resid', survey, drname='decaps2')
+        layers['decaps2'] = image
+        layers['decaps2-model'] = model
+        layers['decaps2-resid'] = resid
         layer = layers[name]
 
     elif name in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:

@@ -33,6 +33,10 @@ urlpatterns = [
     # DECaPS2 tiles
     url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decaps2')),
+    url(r'^decaps2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps2-model')),
+    url(r'^decaps2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps2-resid')),
 
     
     # MzLS+BASS DR4 tiles
