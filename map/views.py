@@ -94,17 +94,50 @@ tileversions = {
 
 galaxycat = None
 
-def index(req):
+def index(req,
+          default_layer = 'mzls+bass-dr4',
+          default_radec = (None,None),
+          **kwargs):
+
+    kwkeys = dict(
+        enable_sql = settings.ENABLE_SQL,
+        enable_vcc = settings.ENABLE_VCC,
+        enable_wl = settings.ENABLE_WL,
+        enable_cutouts = settings.ENABLE_CUTOUTS,
+        enable_dr2 = settings.ENABLE_DR2,
+        enable_dr3 = settings.ENABLE_DR3,
+        enable_dr4 = settings.ENABLE_DR4,
+        enable_dr5 = settings.ENABLE_DR5,
+        enable_decaps = settings.ENABLE_DECAPS,
+        enable_ps1 = settings.ENABLE_PS1,
+        enable_dr3_models = settings.ENABLE_DR3,
+        enable_dr3_resids = settings.ENABLE_DR3,
+        enable_dr4_models = settings.ENABLE_DR4,
+        enable_dr4_resids = settings.ENABLE_DR4,
+        enable_dr2_overlays = settings.ENABLE_DR2,
+        enable_dr3_overlays = settings.ENABLE_DR3,
+        enable_dr4_overlays = settings.ENABLE_DR4,
+        enable_dr5_overlays = settings.ENABLE_DR5,
+        enable_desi_targets = True,
+        enable_spectra = True,
+    )
+
+    for k in kwargs.keys():
+        if not k in kwkeys:
+            raise RuntimeError('unknown kwarg "%s" in map.index()' % k)
+    for k,v in kwkeys.items():
+        if not k in kwargs:
+            kwargs[k] = v
+    
     from cats import cat_user
 
-    #layer = req.GET.get('layer', 'decals-dr3')
-    layer = req.GET.get('layer', 'mzls+bass-dr4')
+    layer = req.GET.get('layer', default_layer)
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
     #print('Layer:', layer)
     layer = layer_name_map(layer)
 
-    ra = dec = None
+    ra, dec = default_radec
     zoom = 13
 
     try:
@@ -123,8 +156,6 @@ def index(req):
     galname = None
     if ra is None or dec is None:
         ra,dec,galname = get_random_galaxy(layer=layer)
-
-    lat,lng = dec, ra2long(ra)
 
     url = req.build_absolute_uri(settings.ROOT_URL) + '/{id}/{ver}/{z}/{x}/{y}.jpg'
     caturl = settings.CAT_URL
@@ -181,42 +212,65 @@ def index(req):
 
     absurl = req.build_absolute_uri(settings.ROOT_URL)
 
+    args = dict(ra=ra, dec=dec, zoom=zoom,
+                galname=galname,
+                layer=layer, tileurl=tileurl,
+                absurl=absurl,
+                sqlurl=sqlurl,
+                uploadurl=uploadurl,
+                baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
+                smallcaturl=smallcaturl,
+                namequeryurl=namequeryurl,
+                ccdsurl=ccdsurl,
+                expsurl=expsurl,
+                platesurl=platesurl,
+                static_tile_url=static_tile_url,
+                subdomains=subdomains,
+
+                static_tile_url_B=static_tile_url_B,
+                subdomains_B=subdomains_B,
+
+                maxNativeZoom = settings.MAX_NATIVE_ZOOM,
+                usercatalogs = usercats,
+                usercatalogurl = usercatalogurl,
+                usercatalogurl2 = usercatalogurl2,
+    )
+    # enable_sql = enable_sql,
+    #             enable_vcc = enable_vcc,
+    #             enable_wl = enable_wl,
+    #             enable_cutouts = enable_cutouts,
+    #             enable_dr2 = enable_dr2,
+    #             enable_dr3 = enable_dr3,
+    #             enable_dr4 = enable_dr4,
+    #             enable_dr5 = enable_dr5,
+    #             enable_decaps = enable_decaps,
+    #             enable_ps1 = enable_ps1,
+    #
+    print('kwargs:', kwargs)
+
+    args.update(kwargs)
+    
     from django.shortcuts import render
+    # (it's not supposed to be **args, trust me)
+    return render(req, 'index.html', args)
 
-    return render(req, 'index.html',
-                  dict(ra=ra, dec=dec, zoom=zoom,
-                       galname=galname,
-                       layer=layer, tileurl=tileurl,
-                       absurl=absurl,
-                       sqlurl=sqlurl,
-                       uploadurl=uploadurl,
-                       baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
-                       smallcaturl=smallcaturl,
-                       namequeryurl=namequeryurl,
-                       ccdsurl=ccdsurl,
-                       expsurl=expsurl,
-                       platesurl=platesurl,
-                       static_tile_url=static_tile_url,
-                       subdomains=subdomains,
 
-                       static_tile_url_B=static_tile_url_B,
-                       subdomains_B=subdomains_B,
-
-                       maxNativeZoom = settings.MAX_NATIVE_ZOOM,
-                       usercatalogs = usercats,
-                       usercatalogurl = usercatalogurl,
-                       usercatalogurl2 = usercatalogurl2,
-                       enable_sql = settings.ENABLE_SQL,
-                       enable_vcc = settings.ENABLE_VCC,
-                       enable_wl = settings.ENABLE_WL,
-                       enable_cutouts = settings.ENABLE_CUTOUTS,
-                       enable_dr2 = settings.ENABLE_DR2,
-                       enable_dr3 = settings.ENABLE_DR3,
-                       enable_dr4 = settings.ENABLE_DR4,
-                       enable_dr5 = settings.ENABLE_DR5,
-                       enable_decaps = settings.ENABLE_DECAPS,
-                       enable_ps1 = settings.ENABLE_PS1,
-                       ))
+def decaps(req):
+    return index(req, enable_decaps=True,
+                 enable_dr3_models=False,
+                 enable_dr3_resids=False,
+                 enable_dr4_models=False,
+                 enable_dr4_resids=False,
+                 enable_dr5=False,
+                 enable_ps1=False,
+                 enable_dr3_overlays=False,
+                 enable_dr4_overlays=False,
+                 enable_dr5_overlays=False,
+                 enable_desi_targets=False,
+                 enable_spectra=False,
+                 default_layer='decaps2',
+                 default_radec=(223.481,-59.080),
+    )
 
 
 def name_query(req):
@@ -400,11 +454,36 @@ class MapLayer(object):
 
     def get_scale(self, zoom, x, y, wcs):
         import numpy as np
+        from astrometry.util.starutil_numpy import arcsec_between
+
         '''Integer scale step (1=binned 2x2, 2=binned 4x4, ...)'''
+
+        # previously used value:
         if zoom >= self.nativescale:
+            oldscale = 0
+        else:
+            oldscale = (self.nativescale - zoom)
+            oldscale = np.clip(oldscale, self.minscale, self.maxscale)
+
+        if zoom >= self.nativescale:
+            print('Old scale', oldscale, 'scale', 0)
             return 0
-        scale = (self.nativescale - zoom)
-        scale = np.clip(scale, self.minscale, self.maxscale)
+
+        # Get *actual* pixel scales at the top & bottom
+        W,H = wcs.get_width(), wcs.get_height()
+        r1,d1 = wcs.pixelxy2radec(W/2., H)[-2:]
+        r2,d2 = wcs.pixelxy2radec(W/2., H-1.)[-2:]
+        r3,d3 = wcs.pixelxy2radec(W/2., 1.)[-2:]
+        r4,d4 = wcs.pixelxy2radec(W/2., 2.)[-2:]
+        # Take the min = most zoomed-in
+        tilescale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
+        native_pixscale = 2.75
+        scale = int(np.floor(np.log2(tilescale / native_pixscale)))
+        debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', tilescale, 'Scale:',scale)
+        scale = np.clip(scale, 0, 7)
+
+        print('Old scale', oldscale, 'scale', scale)
+
         return scale
 
     def bricks_touching_aa_wcs(self, wcs):
@@ -518,10 +597,10 @@ class MapLayer(object):
             rimg = np.zeros((H,W), np.float32)
             rn   = np.zeros((H,W), np.uint8)
             bricknames = self.bricknames_for_band(bricks, band)
-            for brickname in bricknames:
+            for brick,brickname in zip(bricks,bricknames):
                 print('Reading', brickname, 'band', band, 'scale', scale)
                 try:
-                    bwcs = self.read_wcs(brickname, band, scale)
+                    bwcs = self.read_wcs(brickname, band, scale, brick=brick)
                     if bwcs is None:
                         print('No such file:', brickname, band, scale)
                         try:
@@ -867,6 +946,21 @@ class Decaps2Layer(DecalsLayer):
         fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn,
                         read_base_wcs=get_brick_wcs)
         return fn
+
+    def read_wcs(self, brickname, band, scale, brick=None):
+        if brick is None:
+            brick = self.survey.get_brick_by_name(brickname)
+        from legacypipe.survey import wcs_for_brick
+        return wcs_for_brick(brick)
+
+    def read_image(self, brickname, band, scale, slc):
+        import fitsio
+        fn = self.get_filename(brickname, band, scale)
+        print('Reading image from', fn)
+        f = fitsio.FITS(fn)[1]
+        img = f[slc]
+        import numpy as np
+        return img
     
         
 class ResidMixin(object):
