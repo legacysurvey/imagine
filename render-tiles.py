@@ -80,7 +80,7 @@ def _one_tile(X):
                        hack_jpeg=True, **kwa)
 
     elif kind in ['decaps', 'decaps2', 'decaps2-model', 'decaps2-resid']:
-        v = 1
+        v = 2
         layer = get_layer(kind)
         print('kind', kind, 'zoom', zoom, 'x,y', x,y)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
@@ -812,7 +812,7 @@ def main():
             opt.maxra = 54
         if opt.minra is None:
             opt.minra = 301
-    elif opt.kind == 'decaps':
+    elif opt.kind in ['decaps', 'decaps2', 'decaps2-model', 'decaps2-resid']:
         if opt.maxdec is None:
             opt.maxdec = -20
         if opt.mindec is None:
@@ -820,7 +820,7 @@ def main():
         if opt.maxra is None:
             opt.maxra = 280
         if opt.minra is None:
-            opt.minra = 120
+            opt.minra = 90
     else:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -1274,8 +1274,27 @@ def main():
             print('Y row', y)
 
             if opt.queue:
+
+                if 'decaps2' in opt.kind:
+                    layer = get_layer(opt.kind)
+
+                    if zoom >= layer.nativescale:
+                        oldscale = 0
+                    else:
+                        oldscale = (layer.nativescale - zoom)
+                        oldscale = np.clip(oldscale, layer.minscale, layer.maxscale)
+
+                    x = 0
+                    wcs, W, H, zoomscale, z,xi,yi = get_tile_wcs(zoom, x, y)
+                    newscale = layer.get_scale(zoom, 0, y, wcs)
+
+                    if oldscale == newscale:
+                        print('Oldscale = newscale = ', oldscale)
+                        continue
+                    
+                
                 cmd = 'python -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s --mindec %f --maxdec %f' % (zoom, y, y+1, opt.kind, opt.mindec, opt.maxdec)
-                cmd += ' --threads 24'
+                cmd += ' --threads 32'
                 if opt.near_ccds:
                     cmd += ' --near-ccds'
                 if opt.all:

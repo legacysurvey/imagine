@@ -1118,6 +1118,9 @@ var tileversions = {
     'mzls+bass-dr4': 2,
     'mzls+bass-dr4-model': 2,
     'mzls+bass-dr4-resid': 2,
+    'decaps2': 2,
+    'decaps2-model': 2,
+    'decaps2-resid': 2,
 };
 var catversions  = {
     'decals-dr2': 2,
@@ -1204,14 +1207,17 @@ var mylayer_B = function (name, pretty, kwargs) {
 //allLayers.push(tiles);
 
 tiles = mylayer_B('decaps2', 'DECaPS images',
-                {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+                  {'maxNativeZoom': 13,
+                   'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('decaps2-model', 'DECaPS models',
-                {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+                  {'maxNativeZoom': 13,
+                   'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 tiles = mylayer_B('decaps2-resid', 'DECaPS residuals',
-                {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+                  {'maxNativeZoom': 13,
+                   'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 {% endif %}
 

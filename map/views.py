@@ -42,9 +42,9 @@ tileversions = {
     'ps1': [1],
 
     'decaps': [1],
-    'decaps2': [1],
-    'decaps2-model': [1],
-    'decaps2-resid': [1],
+    'decaps2': [1, 2],
+    'decaps2-model': [1, 2],
+    'decaps2-resid': [1, 2],
 
     'mzls+bass-dr4': [1,2],
     'mzls+bass-dr4-model': [1,2],
@@ -120,6 +120,7 @@ def index(req,
         enable_dr5_overlays = settings.ENABLE_DR5,
         enable_desi_targets = True,
         enable_spectra = True,
+        maxNativeZoom = settings.MAX_NATIVE_ZOOM,
     )
 
     for k in kwargs.keys():
@@ -145,11 +146,7 @@ def index(req,
     except:
         pass
     try:
-        ra = float(req.GET.get('ra'))
-    except:
-        pass
-    try:
-        dec = float(req.GET.get('dec'))
+        ra,dec = parse_radec_strings(req.GET.get('ra'), req.GET.get('dec'))
     except:
         pass
 
@@ -230,23 +227,10 @@ def index(req,
                 static_tile_url_B=static_tile_url_B,
                 subdomains_B=subdomains_B,
 
-                maxNativeZoom = settings.MAX_NATIVE_ZOOM,
                 usercatalogs = usercats,
                 usercatalogurl = usercatalogurl,
                 usercatalogurl2 = usercatalogurl2,
     )
-    # enable_sql = enable_sql,
-    #             enable_vcc = enable_vcc,
-    #             enable_wl = enable_wl,
-    #             enable_cutouts = enable_cutouts,
-    #             enable_dr2 = enable_dr2,
-    #             enable_dr3 = enable_dr3,
-    #             enable_dr4 = enable_dr4,
-    #             enable_dr5 = enable_dr5,
-    #             enable_decaps = enable_decaps,
-    #             enable_ps1 = enable_ps1,
-    #
-    print('kwargs:', kwargs)
 
     args.update(kwargs)
     
@@ -466,7 +450,7 @@ class MapLayer(object):
             oldscale = np.clip(oldscale, self.minscale, self.maxscale)
 
         if zoom >= self.nativescale:
-            print('Old scale', oldscale, 'scale', 0)
+            print('Old scale', oldscale, 'scale 0 -- zoom', zoom, 'native scale', self.nativescale)
             return 0
 
         # Get *actual* pixel scales at the top & bottom
@@ -477,7 +461,7 @@ class MapLayer(object):
         r4,d4 = wcs.pixelxy2radec(W/2., 2.)[-2:]
         # Take the min = most zoomed-in
         tilescale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
-        native_pixscale = 2.75
+        native_pixscale = self.pixscale
         scale = int(np.floor(np.log2(tilescale / native_pixscale)))
         debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', tilescale, 'Scale:',scale)
         scale = np.clip(scale, 0, 7)
@@ -564,7 +548,7 @@ class MapLayer(object):
         #print('Band', band, '; image 90th pctile:', np.percentile(img.ravel(), 90))
         return img
 
-    def read_wcs(self, brickname, band, scale):
+    def read_wcs(self, brickname, band, scale, brick=None):
         from map.coadds import read_tan_wcs
         fn = self.get_filename(brickname, band, scale)
         if fn is None:
@@ -948,16 +932,19 @@ class Decaps2Layer(DecalsLayer):
         return fn
 
     def read_wcs(self, brickname, band, scale, brick=None):
+        if scale > 0:
+            return super(Decaps2Layer, self).read_wcs(brickname, band, scale, brick=brick)
+        from legacypipe.survey import wcs_for_brick
         if brick is None:
             brick = self.survey.get_brick_by_name(brickname)
-        from legacypipe.survey import wcs_for_brick
         return wcs_for_brick(brick)
 
     def read_image(self, brickname, band, scale, slc):
         import fitsio
         fn = self.get_filename(brickname, band, scale)
         print('Reading image from', fn)
-        f = fitsio.FITS(fn)[1]
+        hdu = (scale == 0 and 1 or 0)
+        f = fitsio.FITS(fn)[hdu]
         img = f[slc]
         import numpy as np
         return img
@@ -982,8 +969,8 @@ class ResidMixin(object):
             return None
         return img - mod
 
-    def read_wcs(self, brickname, band, scale):
-        return self.image_layer.read_wcs(brickname, band, scale)
+    def read_wcs(self, brickname, band, scale, brick=None):
+        return self.image_layer.read_wcs(brickname, band, scale, brick=brick)
 
 class DecalsResidLayer(ResidMixin, DecalsLayer):
     pass
@@ -1071,7 +1058,7 @@ class SdssLayer(MapLayer):
         hdr['SURVEY'] = 'SDSS'
 
     # Need to override this function to read WCS from ext 1 of fits.fz files
-    def read_wcs(self, brickname, band, scale):
+    def read_wcs(self, brickname, band, scale, brick=None):
         from map.coadds import read_tan_wcs
         fn = self.get_filename(brickname, band, scale)
         if fn is None:
@@ -1216,7 +1203,7 @@ class PS1Layer(MapLayer):
     PC002001=                   0.
     PC002002=                   1.
     '''
-    def read_wcs(self, brickname, band, scale):
+    def read_wcs(self, brickname, band, scale, brick=None):
         #if scale > 0:
         #    return super(PS1Layer, self).read_wcs(brickname, band, scale)
         #print('read_wcs for', brickname, 'band', band, 'scale', scale)
@@ -1880,8 +1867,10 @@ def ccd_list(req):
     name = layer_name_map(name)
     print('Mapped name:', name)
     CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
+    print('CCDs in box for', name, ':', len(CCDS))
     if 'good_ccd' in CCDS.columns():
         CCDS.cut(CCDS.good_ccd)
+        print('Good CCDs in box for', name, ':', len(CCDS))
     CCDS.cut(np.lexsort((CCDS.expnum, CCDS.filter)))
     ccds = []
     for c in CCDS:
