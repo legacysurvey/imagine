@@ -209,6 +209,7 @@ urlpatterns = [
 
     url(r'^image-stamp/%s/([\w-]+).jpg' % survey_regex, views.image_stamp, name='image_stamp'),
 
+    # Special DECaPS version of viewer.
     url(r'decaps', views.decaps),
     
     # fall-through

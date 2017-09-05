@@ -97,6 +97,7 @@ galaxycat = None
 def index(req,
           default_layer = 'mzls+bass-dr4',
           default_radec = (None,None),
+          rooturl=settings.ROOT_URL,
           **kwargs):
 
     kwkeys = dict(
@@ -205,9 +206,8 @@ def index(req,
     usercatalogurl = reverse(cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
     usercatalogurl2 = reverse(cat_user, args=(1,)) + '?start={start}&N={N}&cat={cat}'
 
-    baseurl = req.path
-
-    absurl = req.build_absolute_uri(settings.ROOT_URL)
+    
+    absurl = req.build_absolute_uri(rooturl)
 
     args = dict(ra=ra, dec=dec, zoom=zoom,
                 galname=galname,
@@ -215,7 +215,7 @@ def index(req,
                 absurl=absurl,
                 sqlurl=sqlurl,
                 uploadurl=uploadurl,
-                baseurl=baseurl, caturl=caturl, bricksurl=bricksurl,
+                caturl=caturl, bricksurl=bricksurl,
                 smallcaturl=smallcaturl,
                 namequeryurl=namequeryurl,
                 ccdsurl=ccdsurl,
@@ -254,6 +254,7 @@ def decaps(req):
                  enable_spectra=False,
                  default_layer='decaps2',
                  default_radec=(223.481,-59.080),
+                 rooturl=settings.ROOT_URL + '/decaps',
     )
 
 

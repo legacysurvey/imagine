@@ -84,7 +84,7 @@ def _one_tile(X):
         layer = get_layer(kind)
         print('kind', kind, 'zoom', zoom, 'x,y', x,y)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
-                              get_images=get_images)
+                              get_images=get_images, ignoreCached=True)
         
     elif kind in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
         v = 1
