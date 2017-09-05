@@ -52,23 +52,19 @@ def _one_tile(X):
         get_tile(req, version, zoom, x, y, savecache=True,
                  return_if_not_found=True)
 
+    elif kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid']:
+        v = 1
+        layer = get_layer(kind)
+        #print('kind', kind, 'zoom', zoom, 'x,y', x,y)
+        return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
+                              **kwargs)
+        
     elif kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         v = 2
         layer = get_layer(kind)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
 
-    elif kind in ['mzls-dr3', 'mzls-dr3-model', 'mzls-dr3-resid']:
-        v = 1
-        kwa = {}
-        if 'model' in kind:
-            kwa.update(model=True, add_gz=True)
-        if 'resid' in kind:
-            kwa.update(resid=True, model_gz=True)
-        #print('map_mzls_dr3 kwargs:', kwa)
-        map_mzls_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
-                       hack_jpeg=True, **kwa)
-
-    elif kind in ['decaps', 'decaps2', 'decaps2-model', 'decaps2-resid']:
+    elif kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
         v = 2
         layer = get_layer(kind)
         print('kind', kind, 'zoom', zoom, 'x,y', x,y)
@@ -94,37 +90,6 @@ def _one_tile(X):
         map_decals_dr2(req, v, zoom, x, y, savecache=True, forcecache=True,
                        hack_jpeg=True, drname='decals-dr2', **kwa)
 
-    elif kind in ['depth-g','depth-r','depth-z']:
-        band = kind[-1]
-        map_decam_depth(req, version, zoom, x, y, band=band,
-                        savecache=True, **kwargs)
-    elif kind == 'image-dr1k':
-        map_decals_dr1k(req, version, zoom, x, y, savecache=True, 
-                        forcecache=True, return_if_not_found=False, **kwargs)
-    elif kind == 'model-dr1k':
-        map_decals_model_dr1k(req, version, zoom, x, y, savecache=True, 
-                              forcecache=True, return_if_not_found=False, **kwargs)
-
-    elif kind == 'image-dr1n':
-        map_decals_dr1n(req, version, zoom, x, y, savecache=True, 
-                        forcecache=True, return_if_not_found=False, **kwargs)
-    elif kind == 'model-dr1n':
-        map_decals_model_dr1n(req, version, zoom, x, y, savecache=True, 
-                              forcecache=True, return_if_not_found=False, **kwargs)
-    elif kind == 'resid-dr1n':
-        map_decals_resid_dr1n(req, version, zoom, x, y, savecache=True, 
-                              forcecache=True, return_if_not_found=False, **kwargs)
-
-    elif kind == 'image':
-        map_decals_dr1j(req, version, zoom, x, y, savecache=True, 
-                        forcecache=False, return_if_not_found=True)
-                        #forcecache=True)
-    elif kind == 'model':
-        map_decals_model_dr1j(req, version, zoom, x, y, savecache=True, 
-                              forcecache=True)
-    elif kind == 'resid':
-        map_decals_resid_dr1j(req, version, zoom, x, y, savecache=True, 
-                              forcecache=True)
     elif kind == 'sfd':
         v = 2
         layer = sfd_layer
@@ -137,11 +102,6 @@ def _one_tile(X):
         map_unwise_w1w2(req, version, zoom, x, y, savecache=True,
                         ignoreCached=ignore)
         print('unWISE zoom', zoom, 'x,y', x,y)
-
-    elif kind == 'unwise-neo1':
-        map_unwise_w1w2_neo1(req, version, zoom, x, y, savecache=True,
-                             ignoreCached=ignore)
-        print('unWISE NEO1 zoom', zoom, 'x,y', x,y)
 
     elif kind == 'unwise-neo2':
         from map import views
@@ -158,32 +118,11 @@ def _bounce_one_tile(*args):
         import traceback
         traceback.print_exc()
 
-
 def _bounce_map_unwise_w1w2(args):
-    print('Bounce unwise:', args)
     return map_unwise_w1w2(*args, ignoreCached=True, get_images=True)
-def _bounce_map_unwise_neo1(args):
-    print('Bounce neo1:', args)
-    return map_unwise_w1w2_neo1(*args, ignoreCached=True, get_images=True)
 def _bounce_map_unwise_w3w4(args):
     return map_unwise_w3w4(*args, ignoreCached=True, get_images=True)
 
-
-def _bounce_map_decals(X):
-    (args,kwargs) = X
-    print('Bounce_map_decals:', args)
-    X = map_decals_dr1j(*args, ignoreCached=True, get_images=True, **kwargs)
-    print('Returning: type', type(X), X)
-    return X
-
-def _bounce_map_decals_dr1k(X):
-    (args,kwargs) = X
-    print('Bounce_map_decals_dr1k:', args)
-    X = map_decals_dr1k(*args, ignoreCached=True, get_images=True, **kwargs)
-    print('Returning: type', type(X), X)
-    return X
-
-#def _bounce_sdss((args,kwargs)):
 def _bounce_sdssco(X):
     (args,kwargs) = X
     (req,ver,zoom,x,y) = args
@@ -224,35 +163,6 @@ def _bounce_sdssco(X):
 
     return ims
 
-def _bounce_decals_dr2(X):
-    (args,kwargs) = X
-    print('Bounce_decals_dr2: kwargs', kwargs)
-    tag = 'image'
-    if 'model' in kwargs:
-        tag = 'model'
-    if 'resid' in kwargs:
-        tag = 'resid'
-    (req,ver,zoom,x,y) = args
-    print('Tag', tag)
-    fn = 'top-dr2-%s-%i-%i-%i.fits' % (tag, zoom, x, y)
-    if os.path.exists(fn):
-        img = fitsio.read(fn)
-        print('Read', img.shape)
-        H,W,planes = img.shape
-        ims = [img[:,:,i] for i in range(planes)]
-        return ims
-
-    ims = map_decals_dr2(*args, ignoreCached=True, get_images=True, write_jpeg=True,
-                          hack_jpeg=True, forcecache=True, **kwargs)
-    if ims is None:
-        return ims
-    # save FITS
-    d = np.dstack(ims)
-    print('writing', d.shape, 'to', fn)
-    fitsio.write(fn, d, clobber=True)
-
-    return ims
-
 def _bounce_decals_dr3(X):
     (args,kwargs) = X
     print('Bounce_decals_dr3: kwargs', kwargs)
@@ -282,39 +192,11 @@ def _bounce_decals_dr3(X):
 
     return ims
 
-def _bounce_mzls_dr3(X):
-    (args,kwargs) = X
-    print('Bounce_mzls_dr3: kwargs', kwargs)
-    tag = 'image'
-    if 'model' in kwargs:
-        tag = 'model'
-    if 'resid' in kwargs:
-        tag = 'resid'
-    (req,ver,zoom,x,y) = args
-    #print('Tag', tag)
-    fn = 'top-mzls-dr3-%s-%i-%i-%i.fits' % (tag, zoom, x, y)
-    if os.path.exists(fn):
-        img = fitsio.read(fn)
-        print('Read', img.shape)
-        H,W,planes = img.shape
-        ims = [img[:,:,i] for i in range(planes)]
-        return ims
-    ims = map_mzls_dr3(*args, ignoreCached=True, get_images=True, write_jpeg=True,
-                          hack_jpeg=True, forcecache=True, **kwargs)
-    if ims is None:
-        return ims
-    # save FITS
-    d = np.dstack(ims)
-    print('writing', d.shape, 'to', fn)
-    fitsio.write(fn, d, clobber=True)
-    return ims
-
-
-
 def top_levels(mp, opt):
     from map.views import save_jpeg, trymakedirs
 
-    if opt.kind in ['decaps', 'decaps2', 'decaps2-model', 'decaps2-resid', 'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
+    if opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid',
+                    'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
                     'unwise-neo2']:
         import pylab as plt
         from decals import settings
@@ -601,10 +483,9 @@ def top_levels(mp, opt):
 
 
     ### HACK... factor this out...
-    if opt.kind in ['image', 'model', 'resid', 'image-dr1k', 'sdss',
+    if opt.kind in ['sdss',
                     'decals-dr2', 'decals-dr2-model', 'decals-dr2-resid',
                     'decals-dr3', 'decals-dr3-model', 'decals-dr3-resid',
-                    'mzls-dr3', 'mzls-dr3-model', 'mzls-dr3-resid',
                     ]:
         import pylab as plt
         from decals import settings
@@ -613,13 +494,9 @@ def top_levels(mp, opt):
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
 
-        tagdict = dict(image='decals-dr1j', model='decals-model-dr1j',
-                       resid='decals-resid-dr1j')
-        tag = tagdict.get(opt.kind, opt.kind)
-        del tagdict
+        tag = opt.kind
 
         bouncemap = {
-            #'sdss': _bounce_sdss,
             'sdss': _bounce_sdssco,
             'decals-dr2': _bounce_decals_dr2,
             'decals-dr2-model': _bounce_decals_dr2,
@@ -627,9 +504,6 @@ def top_levels(mp, opt):
             'decals-dr3': _bounce_decals_dr3,
             'decals-dr3-model': _bounce_decals_dr3,
             'decals-dr3-resid': _bounce_decals_dr3,
-            'mzls-dr3': _bounce_mzls_dr3,
-            'mzls-dr3-model': _bounce_mzls_dr3,
-            'mzls-dr3-resid': _bounce_mzls_dr3,
             }
         bounce = bouncemap[opt.kind]
 
@@ -639,10 +513,6 @@ def top_levels(mp, opt):
         if opt.kind in ['decals-dr2', 'decals-dr2-model',
                         'decals-dr3', 'decals-dr3-model',]:
             get_rgb = dr2_rgb
-            rgbkwargs = {}
-        elif opt.kind in ['mzls-dr3', 'mzls-dr3-model']:
-            get_rgb = mzls_dr3_rgb
-            bands = 'z'
             rgbkwargs = {}
         elif opt.kind == 'sdssco':
             rgbfunc=sdss_rgb
@@ -801,7 +671,7 @@ def main():
             opt.maxra = 54
         if opt.minra is None:
             opt.minra = 301
-    elif opt.kind in ['decaps', 'decaps2', 'decaps2-model', 'decaps2-resid']:
+    elif opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
         if opt.maxdec is None:
             opt.maxdec = -20
         if opt.mindec is None:
@@ -820,18 +690,18 @@ def main():
         top_levels(mp, opt)
         sys.exit(0)
 
-
     if opt.scale:
         if opt.kind in ['decals-dr3', 'decals-dr3-model',
-                        'mzls-dr3',
-                        'mzls+bass-dr4', 'mzls+bass-dr4-model', 'decaps', 'decaps2',
-                        'decaps2-model', 'decaps2-resid' ]:
+                        'mzls+bass-dr4', 'mzls+bass-dr4-model',
+                        'decaps2', 'decaps2-model',
+                        'decals-dr5', 'decals-dr5-model',]:
+                        
             from glob import glob
             from map.views import _get_survey
 
             surveyname = opt.kind
             # *-model -> *
-            for prefix in ['decals-dr3', 'mzls-dr3', 'mzls+bass-dr4', 'decaps2']:
+            for prefix in ['decals-dr3', 'mzls+bass-dr4', 'decaps2', 'decals-dr5']:
                 if prefix in surveyname:
                     surveyname = prefix
             survey = _get_survey(surveyname)
@@ -1006,11 +876,6 @@ def main():
         B.cut(exists)
         B.writeto('bricks-exist-%s.fits' % opt.kind)
         sys.exit(0)
-                    
-
-
-    #from legacypipe.common import LegacySurveyData
-    #survey = LegacySurveyData()
 
     from map.views import _get_survey
     surveyname = opt.kind
