@@ -498,9 +498,6 @@ def top_levels(mp, opt):
 
         bouncemap = {
             'sdss': _bounce_sdssco,
-            'decals-dr2': _bounce_decals_dr2,
-            'decals-dr2-model': _bounce_decals_dr2,
-            'decals-dr2-resid': _bounce_decals_dr2,
             'decals-dr3': _bounce_decals_dr3,
             'decals-dr3-model': _bounce_decals_dr3,
             'decals-dr3-resid': _bounce_decals_dr3,

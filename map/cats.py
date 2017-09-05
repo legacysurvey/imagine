@@ -501,6 +501,9 @@ def cat_decals_dr3(req, ver, zoom, x, y, tag='decals-dr3'):
 def cat_mobo_dr4(req, ver, zoom, x, y, tag='mzls+bass-dr4'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
+def cat_decals_dr5(req, ver, zoom, x, y, tag='decals-dr5'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     import json
     zoom = int(zoom)
