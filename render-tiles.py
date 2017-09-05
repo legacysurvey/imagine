@@ -41,10 +41,17 @@ def _one_tile(X):
     # forcecache=False, return_if_not_found=True)
     if kind == 'sdss':
         print('Zoom', zoom, 'x,y', x,y)
-        #map_sdss(req, version, zoom, x, y, savecache=True, forcecache=True)
-        map_sdssco(req, version, zoom, x, y, savecache=True, forcecache=True,
-                   return_if_not_found=True, hack_jpeg=True)
+        v = 1
+        layer = get_layer('sdssco')
+        return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
+                              **kwargs)
 
+    elif kind == 'resdss':
+        v = 1
+        layer = get_layer(kind)
+        return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
+                              **kwargs)
+        
     elif kind == 'ps1':
         print('Zoom', zoom, 'x,y', x,y)
         from map import views
@@ -733,9 +740,9 @@ def main():
             for ibrick,brick in enumerate(B):
                 for band in bands:
                     if not has[band][ibrick]:
-                        print('Brick', brick.brickname, 'has not have', band)
+                        print('Brick', brick.brickname, 'does not have', band)
                         continue
-                    fn = layer.get_filename(brick.brickname, band, 8, brick=brick)
+                    fn = layer.get_filename(brick, band, 7)
                     print(fn)
                     #for scale in range(1, 9):
                     #    fn = layer.get_filename(brick, band, scale)
@@ -825,10 +832,10 @@ def main():
             layer = get_layer(opt.kind)
             B = layer.get_bricks()
             print(len(B), 'unWISE tiles')
-            for b in B.brickname:
+            for b in B:
                 for band in ['1','2']:
                     for scale in [1,2,3,4,5,6,7]:
-                        print('Get brick', b, 'band', band, 'scale', scale)
+                        print('Get brick', b.brickname, 'band', band, 'scale', scale)
                         layer.get_filename(b, band, scale)
 
         else:
@@ -1197,7 +1204,8 @@ def main():
                 args.append((opt.kind,zoom,xi,y, opt.ignore, False))
                 #args.append((opt.kind,zoom,xi,y, opt.ignore, True))
             print('Rendering', len(args), 'tiles in row y =', y)
-            mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
+            #mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
+            mp.map(_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
             print('Rendered', len(args), 'tiles')
 
         # if opt.grass:

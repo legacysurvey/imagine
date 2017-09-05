@@ -41,6 +41,8 @@ tileversions = {
     'sdssco': [1,],
     'ps1': [1],
 
+    'resdss': [1,],
+
     'decaps2': [1, 2],
     'decaps2-model': [1, 2],
     'decaps2-resid': [1, 2],
@@ -388,7 +390,6 @@ class MapLayer(object):
         self.nativescale = nativescale
         self.minscale = 1
         self.maxscale = maxscale
-        #self.hack_jpeg = False
         self.hack_jpeg = True
         self.pixscale = 0.262
 
@@ -447,7 +448,7 @@ class MapLayer(object):
 
         return scale
 
-    def bricks_touching_aa_wcs(self, wcs):
+    def bricks_touching_aa_wcs(self, wcs, scale=None):
         '''Assumes WCS is axis-aligned and normal parity'''
         W = wcs.get_width()
         H = wcs.get_height()
@@ -458,9 +459,9 @@ class MapLayer(object):
         dlo = min(d1, d2)
         dhi = max(d1, d2)
         #print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
-        return self.bricks_touching_radec_box(rlo, rhi, dlo, dhi)
+        return self.bricks_touching_radec_box(rlo, rhi, dlo, dhi, scale=scale)
 
-    def bricks_touching_general_wcs(self, wcs):
+    def bricks_touching_general_wcs(self, wcs, scale=None):
         import numpy as np
         W = wcs.get_width()
         H = wcs.get_height()
@@ -480,14 +481,19 @@ class MapLayer(object):
 
         # Near RA=0 boundary?
         if r - dra < 0.:
-            allbricks.append(self.bricks_touching_radec_box(0., r+dra, d-rad, d+rad))
-            allbricks.append(self.bricks_touching_radec_box(r-dra+360., 360., d-rad, d+rad))
+            allbricks.append(self.bricks_touching_radec_box(0., r+dra, d-rad, d+rad,
+                                                            scale=scale))
+            allbricks.append(self.bricks_touching_radec_box(r-dra+360., 360., d-rad, d+rad,
+                                                            scale=scale))
         # Near RA=360 boundary?
         elif r + dra > 360.:
-            allbricks.append(self.bricks_touching_radec_box(r-dra, 360., d-rad, d+rad))
-            allbricks.append(self.bricks_touching_radec_box(0., r+dra-360., d-rad, d+rad))
+            allbricks.append(self.bricks_touching_radec_box(r-dra, 360., d-rad, d+rad,
+                                                            scale=scale))
+            allbricks.append(self.bricks_touching_radec_box(0., r+dra-360., d-rad, d+rad,
+                                                            scale=scale))
         else:
-            allbricks.append(self.bricks_touching_radec_box(r-dra, r+dra, d-rad, d+rad))
+            allbricks.append(self.bricks_touching_radec_box(r-dra, r+dra, d-rad, d+rad,
+                                                            scale=scale))
 
         allbricks = [b for b in allbricks if b is not None]
         allbricks = [b for b in allbricks if len(b) > 0]
@@ -499,7 +505,7 @@ class MapLayer(object):
         from astrometry.util.fits import merge_tables
         return merge_tables(allbricks)
 
-    def bricks_touching_radec_box(self, rlo, rhi, dlo, dhi):
+    def bricks_touching_radec_box(self, rlo, rhi, dlo, dhi, scale=None):
         pass
 
     def bricknames_for_band(self, bricks, band):
@@ -512,22 +518,20 @@ class MapLayer(object):
                 continue
         '''
 
-    def get_filename(self, brickname, band, scale):
+    def get_filename(self, brick, band, scale):
         pass
 
-    def read_image(self, brickname, band, scale, slc):
+    def read_image(self, brick, band, scale, slc):
         import fitsio
-        fn = self.get_filename(brickname, band, scale)
+        fn = self.get_filename(brick, band, scale)
         print('Reading image from', fn)
         f = fitsio.FITS(fn)[0]
         img = f[slc]
-        import numpy as np
-        #print('Band', band, '; image 90th pctile:', np.percentile(img.ravel(), 90))
         return img
 
-    def read_wcs(self, brickname, band, scale, brick=None):
+    def read_wcs(self, brick, band, scale):
         from map.coadds import read_tan_wcs
-        fn = self.get_filename(brickname, band, scale)
+        fn = self.get_filename(brick, band, scale)
         if fn is None:
             return None
         return read_tan_wcs(fn, 0)
@@ -535,10 +539,12 @@ class MapLayer(object):
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False):
         import numpy as np
         from astrometry.util.resample import resample_with_wcs, OverlapError
+
+        scale = self.get_scale(zoom, x, y, wcs)
         if not general_wcs:
-            bricks = self.bricks_touching_aa_wcs(wcs)
+            bricks = self.bricks_touching_aa_wcs(wcs, scale=scale)
         else:
-            bricks = self.bricks_touching_general_wcs(wcs)
+            bricks = self.bricks_touching_general_wcs(wcs, scale=scale)
 
         if bricks is None or len(bricks) == 0:
             print('No bricks touching WCS')
@@ -546,7 +552,6 @@ class MapLayer(object):
 
         if bands is None:
             bands = self.get_bands()
-        scale = self.get_scale(zoom, x, y, wcs)
         #print('render_into_wcs: scale', scale, 'N bricks:', len(bricks))
 
         W = int(wcs.get_width())
@@ -561,11 +566,11 @@ class MapLayer(object):
             for brick,brickname in zip(bricks,bricknames):
                 print('Reading', brickname, 'band', band, 'scale', scale)
                 try:
-                    bwcs = self.read_wcs(brickname, band, scale, brick=brick)
+                    bwcs = self.read_wcs(brick, band, scale)
                     if bwcs is None:
                         print('No such file:', brickname, band, scale)
                         try:
-                            fn = self.get_filename(brickname, band, scale)
+                            fn = self.get_filename(brick, band, scale)
                             print(' (filename', fn, ')')
                         except:
                             pass
@@ -595,7 +600,7 @@ class MapLayer(object):
                 subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
                 slc = slice(ylo,yhi), slice(xlo,xhi)
                 try:
-                    img = self.read_image(brickname, band, scale, slc)
+                    img = self.read_image(brick, band, scale, slc)
                 except:
                     print('Failed to read image:', brickname, band, scale)
                     savecache = False
@@ -858,7 +863,7 @@ class DecalsLayer(MapLayer):
     def get_bands(self):
         return self.bands
         
-    def bricks_touching_radec_box(self, rlo, rhi, dlo, dhi):
+    def bricks_touching_radec_box(self, rlo, rhi, dlo, dhi, scale=None):
         bricks = self.get_bricks()
         I = self.survey.bricks_touching_radec_box(bricks, rlo, rhi, dlo, dhi)
         if len(I) == 0:
@@ -873,7 +878,8 @@ class DecalsLayer(MapLayer):
             '%(scale)i%(band)s', '%(brickname).3s',
             self.imagetype + '-%(brickname)s-%(band)s.fits')
 
-    def get_filename(self, brickname, band, scale):
+    def get_filename(self, brick, band, scale):
+        brickname = brick.brickname
         #print('get_filename for', brickname, band, 'scale', scale)
         fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
         #print('get_filename ->', fn)
@@ -892,10 +898,99 @@ class DecalsLayer(MapLayer):
         hdr['VERSION'] = self.survey.drname.split(' ')[-1]
         hdr['IMAGETYP'] = self.imagetype
 
+class RebrickedMixin(object):
+
+    def get_filename(self, brick, band, scale):
+        from decals import settings
+        brickname = brick.brickname
+        basedir = settings.DATA_DIR
+        brickpre = brickname[:3]
+        if scale == 0:
+            return os.path.join(basedir, 'sdssco', 'coadd', brickpre,
+                                'sdssco-%s-%s.fits.fz' % (brickname, band))
+
+        fnargs = dict(band=band, brickname=brickname)
+        fn = self.get_scaled_pattern() % fnargs
+        if not os.path.exists(fn):
+            # Create scaled-down image (recursively).
+            #from legacypipe.survey import wcs_for_brick
+            #return wcs_for_brick(brick)
+            pass
+
+        if not os.path.exists(fn):
+            return None
+        return fn
+
+    def get_bricks_for_scale(self, scale):
+        if scale in [0, None]:
+            return self.get_bricks()
+        scale = min(scale, 7)
+
+        from decals import settings
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        from astrometry.libkd.spherematch import match_radec
+
+        basedir = settings.DATA_DIR
+        fn = os.path.join(basedir, self.name, 'survey-bricks-%i.fits.gz' % scale)
+        print('Brick file:', fn, 'exists?', os.path.exists(fn))
+        if os.path.exists(fn):
+            return fits_table(fn)
+        bsmall = self.get_bricks_for_scale(scale - 1)
+        # Find generic bricks for scale...
+        afn = os.path.join(basedir, 'bricks-%i.fits' % scale)
+        print('Generic brick file:', afn)
+        assert(os.path.exists(afn))
+        allbricks = fits_table(afn)
+        print('Generic bricks:', len(allbricks))
+        
+        # Brick side lengths
+        brickside = 0.25 * 2**scale
+        brickside_small = 0.25 * 2**(scale-1)
+
+        # Spherematch from smaller scale to larger scale bricks
+        radius = (brickside + brickside_small) * np.sqrt(2.) / 2. * 1.01
+
+        inds = match_radec(allbricks.ra, allbricks.dec, bsmall.ra, bsmall.dec, radius,
+                           indexlist=True)
+        keep = []
+        for ia,I in enumerate(inds):
+            if I is None:
+                continue
+            # Check for actual RA,Dec box overlap, not spherematch possible overlap
+            good = np.any((bsmall.dec2[I] >= allbricks.dec1[ia]) *
+                          (bsmall.dec1[I] <= allbricks.dec2[ia]) *
+                          (bsmall.ra2[I] >= allbricks.ra1[ia]) *
+                          (bsmall.ra1[I] <= allbricks.ra2[ia]))
+            if good:
+                keep.append(ia)
+        keep = np.array(keep)
+        allbricks.cut(keep)
+        print('Cut generic bricks to', len(allbricks))
+        allbricks.writeto(fn)
+        print('Wrote', fn)
+        return allbricks
+
+
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
+        import numpy as np
+        bricks = self.get_bricks_for_scale(scale)
+        if rahi < ralo:
+            I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
+                                          bricks.ra1 <= rahi) *
+                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        else:
+            I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
+                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        if len(I) == 0:
+            return None
+        return bricks[I]
+
+
+        
 class Decaps2Layer(DecalsLayer):
-    def get_filename(self, brickname, band, scale, brick=None):
-        if brick is None:
-            brick = self.survey.get_brick_by_name(brickname)
+    def get_filename(self, brick, band, scale):
+        brickname = brick.brickname
         def get_brick_wcs(*args, **kwargs):
             from legacypipe.survey import wcs_for_brick
             return wcs_for_brick(brick)
@@ -908,24 +1003,21 @@ class Decaps2Layer(DecalsLayer):
                         read_base_wcs=get_brick_wcs)
         return fn
 
-    def read_wcs(self, brickname, band, scale, brick=None):
+    def read_wcs(self, brick, band, scale):
         if scale > 0:
-            return super(Decaps2Layer, self).read_wcs(brickname, band, scale, brick=brick)
+            return super(Decaps2Layer, self).read_wcs(brick, band, scale)
         from legacypipe.survey import wcs_for_brick
-        if brick is None:
-            brick = self.survey.get_brick_by_name(brickname)
         return wcs_for_brick(brick)
 
-    def read_image(self, brickname, band, scale, slc):
+    def read_image(self, brick, band, scale, slc):
         import fitsio
-        fn = self.get_filename(brickname, band, scale)
+        fn = self.get_filename(brick, band, scale)
         print('Reading image from', fn)
         hdu = (scale == 0 and 1 or 0)
         f = fitsio.FITS(fn)[hdu]
         img = f[slc]
         import numpy as np
         return img
-    
         
 class ResidMixin(object):
     def __init__(self, image_layer, model_layer, *args, **kwargs):
@@ -937,17 +1029,17 @@ class ResidMixin(object):
         self.model_layer = model_layer
         self.rgbkwargs = dict(mnmx=(-5,5))
 
-    def read_image(self, brickname, band, scale, slc):
-        img = self.image_layer.read_image(brickname, band, scale, slc)
+    def read_image(self, brick, band, scale, slc):
+        img = self.image_layer.read_image(brick, band, scale, slc)
         if img is None:
             return None
-        mod = self.model_layer.read_image(brickname, band, scale, slc)
+        mod = self.model_layer.read_image(brick, band, scale, slc)
         if mod is None:
             return None
         return img - mod
 
-    def read_wcs(self, brickname, band, scale, brick=None):
-        return self.image_layer.read_wcs(brickname, band, scale, brick=brick)
+    def read_wcs(self, brick, band, scale):
+        return self.image_layer.read_wcs(brick, band, scale)
 
 class DecalsResidLayer(ResidMixin, DecalsLayer):
     pass
@@ -988,13 +1080,13 @@ class SdssLayer(MapLayer):
         basedir = settings.DATA_DIR
         self.bricks = fits_table(os.path.join(basedir, 'bricks-sdssco.fits'),
                                  columns=['brickname', 'ra1', 'ra2',
-                                          'dec1', 'dec2'])
+                                          'dec1', 'dec2', 'ra', 'dec'])
         return self.bricks
 
     def get_bands(self):
         return 'gri'
 
-    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi):
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
         bricks = self.get_bricks()
         if rahi < ralo:
@@ -1008,7 +1100,8 @@ class SdssLayer(MapLayer):
             return None
         return bricks[I]
 
-    def get_filename(self, brickname, band, scale):
+    def get_filename(self, brick, band, scale):
+        brickname = brick.brickname
         from decals import settings
         basedir = settings.DATA_DIR
         brickpre = brickname[:3]
@@ -1035,24 +1128,27 @@ class SdssLayer(MapLayer):
         hdr['SURVEY'] = 'SDSS'
 
     # Need to override this function to read WCS from ext 1 of fits.fz files
-    def read_wcs(self, brickname, band, scale, brick=None):
+    def read_wcs(self, brick, band, scale):
         from map.coadds import read_tan_wcs
-        fn = self.get_filename(brickname, band, scale)
+        fn = self.get_filename(brick, band, scale)
         if fn is None:
             return None
         ext = 1 if (scale == 0) else 0
         return read_tan_wcs(fn, ext)
 
     # Need to override this function to read image from ext 1 of fits.fz files
-    def read_image(self, brickname, band, scale, slc):
+    def read_image(self, brick, band, scale, slc):
         import fitsio
-        fn = self.get_filename(brickname, band, scale)
+        fn = self.get_filename(brick, band, scale)
         print('Reading image from', fn)
         ext = 1 if (scale == 0) else 0
         f = fitsio.FITS(fn)[ext]
         img = f[slc]
         import numpy as np
         return img
+
+class ReSdssLayer(RebrickedMixin, SdssLayer):
+    pass
 
 class PS1Layer(MapLayer):
     def __init__(self, name):
@@ -1088,7 +1184,7 @@ class PS1Layer(MapLayer):
         #self.bricks.writeto('/tmp/ps1.fits')
         return self.bricks
 
-    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi):
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
         bricks = self.get_bricks()
         if rahi < ralo:
@@ -1102,7 +1198,8 @@ class PS1Layer(MapLayer):
             return None
         return bricks[I]
 
-    def get_filename(self, brickname, band, scale):
+    def get_filename(self, brick, band, scale):
+        brickname = brick.brickname
         from decals import settings
         basedir = settings.DATA_DIR
         cell = brickname[:4]
@@ -1113,17 +1210,17 @@ class PS1Layer(MapLayer):
         fnargs = dict(band=band, brickname=brickname)
         def read_base_wcs(sourcefn, hdu, hdr=None, W=None, H=None, fitsfile=None):
             #print('read_base_wcs() for', sourcefn)
-            return self.read_wcs(brickname, band, 0)
+            return self.read_wcs(brick, band, 0)
         def read_base_image(sourcefn):
             #print('read_base_image() for', sourcefn)
-            return self.read_image(brickname, band, 0, None, header=True)
+            return self.read_image(brick, band, 0, None, header=True)
         #print('calling get_scaled: scale', scale)
         fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn,
                         read_base_wcs=read_base_wcs, read_base_image=read_base_image)
         #print('get_scaled: fn', fn)
         return fn
 
-    def read_image(self, brickname, band, scale, slc, header=False):
+    def read_image(self, brick, band, scale, slc, header=False):
         #print('read_image for', brickname, 'band', band, 'scale', scale)
         #if scale > 0:
         #    return super(PS1Layer, self).read_image(brickname, band, scale, slc)
@@ -1131,7 +1228,7 @@ class PS1Layer(MapLayer):
         # HDU = 1
         import fitsio
         #print('-> get_filename')
-        fn = self.get_filename(brickname, band, scale)
+        fn = self.get_filename(brick, band, scale)
         #print('-> got filename', fn)
 
         if scale == 0:
@@ -1180,13 +1277,13 @@ class PS1Layer(MapLayer):
     PC002001=                   0.
     PC002002=                   1.
     '''
-    def read_wcs(self, brickname, band, scale, brick=None):
+    def read_wcs(self, brick, band, scale):
         #if scale > 0:
         #    return super(PS1Layer, self).read_wcs(brickname, band, scale)
         #print('read_wcs for', brickname, 'band', band, 'scale', scale)
 
         from map.coadds import read_tan_wcs
-        fn = self.get_filename(brickname, band, scale)
+        fn = self.get_filename(brick, band, scale)
         if fn is None:
             #print('read_wcs: filename is None')
             return None
@@ -1253,7 +1350,7 @@ class UnwiseLayer(MapLayer):
         # Note, not 'w1','w2'...
         return '12'
 
-    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi):
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
         bricks = self.get_bricks()
         #print('Unwise bricks touching RA,Dec box', ralo, rahi, declo, dechi)
@@ -1265,10 +1362,11 @@ class UnwiseLayer(MapLayer):
             return None
         return bricks[I]
 
-    def get_filename(self, brickname, band, scale):
+    def get_filename(self, brick, band, scale):
         '''
         band: string '1' or '2'
         '''
+        brickname = brick.brickname
         assert(band in self.get_bands())
         brickpre = brickname[:3]
         fn = os.path.join(self.dir, brickpre, brickname,
@@ -2473,6 +2571,9 @@ def get_layer(name, default=None):
     if name == 'sdssco':
         layer = SdssLayer('sdssco')
 
+    if name == 'resdss':
+        layer = ReSdssLayer('resdss')
+        
     elif name == 'ps1':
         layer = PS1Layer('ps1')
 
