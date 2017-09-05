@@ -1201,11 +1201,6 @@ var mylayer_B = function (name, pretty, kwargs) {
 };
 
 {% if enable_decaps %}
-//// set maxZoom=13: images on $SCRATCH
-//tiles = mylayer_B('decaps', 'DECaPS images',
-//                {'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
-//allLayers.push(tiles);
-
 tiles = mylayer_B('decaps2', 'DECaPS images',
                   {'maxNativeZoom': 13,
                    'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
@@ -1294,11 +1289,6 @@ allLayers.push(tiles);
 {% endif %}
 
 // tiles = mylayer_B('unwise-w1w2', 'unWISE W1/W2',
-//                 {'maxNativeZoom': 12,
-//                  'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
-// allLayers.push(tiles);
-
-// tiles = mylayer('unwise-neo1', 'unWISE W1/W2 NEO1',
 //                 {'maxNativeZoom': 12,
 //                  'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
 // allLayers.push(tiles);

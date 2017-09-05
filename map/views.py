@@ -41,10 +41,13 @@ tileversions = {
     'sdssco': [1,],
     'ps1': [1],
 
-    'decaps': [1],
     'decaps2': [1, 2],
     'decaps2-model': [1, 2],
     'decaps2-resid': [1, 2],
+
+    'decals-dr5': [1],
+    'decals-dr5-model': [1],
+    'decals-dr5-resid': [1],
 
     'mzls+bass-dr4': [1,2],
     'mzls+bass-dr4-model': [1,2],
@@ -59,10 +62,8 @@ tileversions = {
     'decals-dr2-resid': [1],
 
     'unwise-w1w2': [1],
-    'unwise-neo1': [1],
     'unwise-neo2': [1],
     #'unwise-w3w4': [1],
-    #'unwise-w1234': [1],
 
     'cutouts': [1],
     }
@@ -1598,7 +1599,7 @@ def _get_survey(name=None):
     basedir = settings.DATA_DIR
 
     if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5',
-                 'mzls+bass-dr4', 'decaps', 'decaps2']:
+                 'mzls+bass-dr4', 'decaps2']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
@@ -1615,15 +1616,12 @@ def _get_survey(name=None):
         elif name == 'decals-dr3':
             d.drname = 'DECaLS DR3'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3/'
-        elif name == 'decals-dr5':
-            d.drname = 'DECaLS DR5'
-            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'
         elif name == 'mzls+bass-dr4':
             d.drname = 'MzLS+BASS DR4'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr4/'
-        elif name == 'decaps':
-            d.drname = 'DECaPS'
-            d.drurl = 'http://legacysurvey.org/'
+        elif name == 'decals-dr5':
+            d.drname = 'DECaLS DR5'
+            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'
         elif name in 'decaps2':
             d.drname = 'DECaPS'
             d.drurl = 'http://legacysurvey.org/'
@@ -1633,20 +1631,6 @@ def _get_survey(name=None):
         return d
 
     return None
-    # if name is None:
-    #     name = 'decals-dr1'
-    # if name in surveys:
-    #     return surveys[name]
-    # 
-    # assert(name == 'decals-dr1')
-    # 
-    # dirnm = os.path.join(basedir, 'decals-dr1')
-    # d = LegacySurveyData(survey_dir=dirnm, version='dr1')
-    # d.drname = 'DECaLS DR1'
-    # d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr1/'
-    # surveys[name] = d
-    # 
-    # return d
 
 def brick_list(req):
     import json
@@ -1662,15 +1646,6 @@ def brick_list(req):
 
     name = req.GET.get('id', None)
     name = layer_name_map(name)
-
-    # if name == 'decals-dr1k':
-    #     from astrometry.util.fits import fits_table
-    #     B = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1k',
-    #                                 'decals-bricks.fits'))
-    # elif name == 'decals-dr1n':
-    #     from astrometry.util.fits import fits_table
-    #     B = fits_table(os.path.join(settings.DATA_DIR,
-    #                                 'decals-bricks.fits'))
 
     D = _get_survey(name=name)
     if B is None:
@@ -2501,27 +2476,6 @@ def get_layer(name, default=None):
     elif name == 'ps1':
         layer = PS1Layer('ps1')
 
-    elif name in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
-
-        survey_dr4mobo = _get_survey('mzls+bass-dr4')
-        mobo4_image = DecalsLayer('mzls+bass-dr4', 'image', survey_dr4mobo,
-                                  drname='mzls+bass-dr4')
-        mobo4_model = DecalsLayer('mzls+bass-dr4-model', 'model', survey_dr4mobo,
-                                  drname='mzls+bass-dr4')
-        mobo4_resid = DecalsResidLayer(mobo4_image, mobo4_model,
-                                       'mzls+bass-dr4-resid', 'resid', survey_dr4mobo,
-                                       drname='mzls+bass-dr4')
-        layers['mzls+bass-dr4'] = mobo4_image
-        layers['mzls+bass-dr4-model'] = mobo4_model
-        layers['mzls+bass-dr4-resid'] = mobo4_resid
-        layer = layers[name]
-
-    elif name in ['decaps']:
-        survey = _get_survey(name)
-        image = DecalsLayer(name, 'image', survey)
-        layers[name] = image
-        layer = layers[name]
-
     elif name in ['decaps2', 'decaps2-model', 'decaps2-resid']:
         survey = _get_survey('decaps2')
         image = Decaps2Layer('decaps2', 'image', survey)
@@ -2533,44 +2487,58 @@ def get_layer(name, default=None):
         layers['decaps2-resid'] = resid
         layer = layers[name]
 
+    elif name in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid']:
+        survey = _get_survey('decals-dr5')
+        image = DecalsLayer('decals-dr5', 'image', survey)
+        model = DecalsLayer('decals-dr5-model', 'model', survey, drname='decals-dr5')
+        resid = DecalsResidLayer(image, model, 'decals-dr5-resid', 'resid', survey,
+                                 drname='decals-dr5')
+        layers['decals-dr5'] = image
+        layers['decals-dr5-model'] = model
+        layers['decals-dr5-resid'] = resid
+        layer = layers[name]
+
+    elif name in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
+        survey = _get_survey('mzls+bass-dr4')
+        image = DecalsLayer('mzls+bass-dr4', 'image', survey, drname='mzls+bass-dr4')
+        model = DecalsLayer('mzls+bass-dr4-model', 'model', survey,
+                            drname='mzls+bass-dr4')
+        resid = DecalsResidLayer(image, model, 'mzls+bass-dr4-resid', 'resid', survey,
+                                 drname='mzls+bass-dr4')
+        layers['mzls+bass-dr4'] = image
+        layers['mzls+bass-dr4-model'] = model
+        layers['mzls+bass-dr4-resid'] = resid
+        layer = layers[name]
+
     elif name in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
-        survey_dr3 = _get_survey('decals-dr3')
-        dr3_image = DecalsLayer('decals-dr3', 'image', survey_dr3)
-        dr3_model = DecalsLayer('decals-dr3-model', 'model', survey_dr3,
-                                drname='decals-dr3')
-        dr3_resid = DecalsResidLayer(dr3_image, dr3_model,
-                                     'decals-dr3-resid', 'resid', survey_dr3,
-                                     drname='decals-dr3')
+        survey = _get_survey('decals-dr3')
+        image = DecalsLayer('decals-dr3', 'image', survey)
+        model = DecalsLayer('decals-dr3-model', 'model', survey, drname='decals-dr3')
+        resid = DecalsResidLayer(image, model, 'decals-dr3-resid', 'resid', survey,
+                                 drname='decals-dr3')
         # No disk space for DR3 scale=1 !
-        dr3_image.minscale = dr3_model.minscale = dr3_resid.minscale = 2
+        image.minscale = model.minscale = resid.minscale = 2
         
-        layers['decals-dr3'] = dr3_image
-        layers['decals-dr3-model'] = dr3_model
-        layers['decals-dr3-resid'] = dr3_resid
+        layers['decals-dr3'] = image
+        layers['decals-dr3-model'] = model
+        layers['decals-dr3-resid'] = resid
         layer = layers[name]
 
     elif name in ['decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
-        survey_dr2 = _get_survey('decals-dr2')
-        dr2_image = DecalsLayer('decals-dr2', 'image', survey_dr2)
-        dr2_model = DecalsLayer('decals-dr2-model', 'model', survey_dr2,
-                                drname='decals-dr2')
-        dr2_resid = DecalsResidLayer(dr2_image, dr2_model,
-                                     'decals-dr2-resid', 'resid', survey_dr2,
-                                     drname='decals-dr2')
-        layers['decals-dr2'] = dr2_image
-        layers['decals-dr2-model'] = dr2_model
-        layers['decals-dr2-resid'] = dr2_resid
+        survey = _get_survey('decals-dr2')
+        image = DecalsLayer('decals-dr2', 'image', survey)
+        model = DecalsLayer('decals-dr2-model', 'model', survey, drname='decals-dr2')
+        resid = DecalsResidLayer(image, model, 'decals-dr2-resid', 'resid', survey,
+                                 drname='decals-dr2')
+        layers['decals-dr2'] = image
+        layers['decals-dr2-model'] = model
+        layers['decals-dr2-resid'] = resid
         layer = layers[name]
 
     elif name == 'unwise-w1w2':
         from decals import settings
         layer = UnwiseLayer('unwise-w1w2',
                             settings.UNWISE_DIR)
-    elif name == 'unwise-neo1':
-        from decals import settings
-        layer = UnwiseLayer('unwise-neo1',
-                            settings.UNWISE_NEO1_DIR)
-
     elif name == 'unwise-neo2':
         from decals import settings
         layer = UnwiseLayer('unwise-neo2',
@@ -2597,8 +2565,6 @@ def get_layer(name, default=None):
             import numpy as np
             return np.arcsinh(x * 10.)
         layer = ZeaLayer('sfd', sfd_map, stretch=stretch_sfd, vmin=0.0, vmax=5.0)
-
-
 
     if layer is None:
         return default

@@ -13,8 +13,8 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
+    'decals-dr5': [1,],
     'mzls+bass-dr4': [1,],
-    'decals-dr1j': [1,],
     'decals-dr2': [2,],
     'decals-dr3': [1,],
     'ngc': [1,],
@@ -491,9 +491,6 @@ def cat(req, ver, tag, fn):
         rtn.update(radiusArcsec=list(float(f) for f in T.radius * 3600.))
         
     return HttpResponse(json.dumps(rtn), content_type='application/json')
-
-def cat_decals_dr1j(req, ver, zoom, x, y, tag='decals-dr1j'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_decals_dr2(req, ver, zoom, x, y, tag='decals-dr2'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
