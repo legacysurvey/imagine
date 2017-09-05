@@ -71,17 +71,6 @@ urlpatterns = [
     # Tycho-2 stars
     url(r'^tycho2/(\d+)/cat.json', cats.cat_tycho2),
 
-    # DR3 MzLS
-    url(r'^mzls-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls-dr3')),
-        #views.mzls3_image.get_tile_view()),
-    url(r'^mzls-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls-dr3-model')),
-        #views.mzls3_model.get_tile_view()),
-    url(r'^mzls-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls-dr3-resid')),
-        #views.mzls3_resid.get_tile_view()),
-
     # DR3
     url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decals-dr3')),

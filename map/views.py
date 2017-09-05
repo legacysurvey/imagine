@@ -50,12 +50,6 @@ tileversions = {
     'mzls+bass-dr4-model': [1,2],
     'mzls+bass-dr4-resid': [1,2],
 
-    'mzls-dr3': [1],
-
-    'mobo-dr3': [1],
-    'mobo-dr3-model': [1],
-    'mobo-dr3-resid': [1],
-    
     'decals-dr3': [1],
     'decals-dr3-model': [1],
     'decals-dr3-resid': [1],
@@ -63,25 +57,6 @@ tileversions = {
     'decals-dr2': [1, 2],
     'decals-dr2-model': [1],
     'decals-dr2-resid': [1],
-
-    'decals-dr1k': [1],
-    'decals-model-dr1k': [1],
-    'decals-resid-dr1k': [1],
-
-    'decals-dr1n': [1],
-    'decals-model-dr1n': [1],
-    'decals-resid-dr1n': [1],
-
-    'decals-dr1j': [1],
-    'decals-model-dr1j': [1],
-    'decals-resid-dr1j': [1],
-    'decals-nexp-dr1j': [1],
-
-    'decals-wl': [4],
-
-    'decam-depth-g': [1],
-    'decam-depth-r': [1],
-    'decam-depth-z': [1],
 
     'unwise-w1w2': [1],
     'unwise-neo1': [1],
@@ -1427,36 +1402,9 @@ def layer_name_map(name):
             'decals-dr3-ccds': 'decals-dr3',
             'decals-dr3-exps': 'decals-dr3',
 
-            'mobo-dr3-ccds': 'mobo-dr3',
-
-            'mzls-dr3-ccds': 'mzls-dr3',
-
             'mzls bass-dr4': 'mzls+bass-dr4',
 
     }.get(name, name)
-
-# get_bricks_in_X...
-#     decals = _get_survey('mzls-dr3')
-#     B = decals.get_bricks()
-#     C = decals.get_ccds_readonly()
-#     # CCD radius
-#     radius = np.hypot(2048, 4096) / 2. * 0.262 / 3600.
-#     # Brick radius
-#     radius += np.hypot(0.25, 0.25)/2.
-#     I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, radius * 1.05)
-#     for band in 'grz':
-#         has = np.zeros(len(B), bool)
-#         K = (C.filter[J] == band)
-#         has[I[K]] = True
-#         B.set('has_%s' % band, has)
-#         debug(sum(has), 'bricks have coverage in', band)
-# 
-#     keep = np.zeros(len(B), bool)
-#     keep[I] = True
-#     B.cut(keep)
-#     B_mzls_dr3 = B
-#     B_mzls_dr3.writeto('/tmp/mzls-bricks-in-dr3.fits')
-
 
 # z-band only B&W images
 def mzls_dr3_rgb(rimgs, bands, scales=None,
@@ -1481,60 +1429,6 @@ def mzls_dr3_rgb(rimgs, bands, scales=None,
 
 def dr2_rgb(rimgs, bands, **ignored):
     return sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
-
-B_dr1j = None
-def map_decals_dr1j(req, ver, zoom, x, y, savecache=None,
-                    model=False, resid=False, nexp=False,
-                    **kwargs):
-    if savecache is None:
-        savecache = settings.SAVE_CACHE
-    global B_dr1j
-    if B_dr1j is None:
-        from astrometry.util.fits import fits_table
-        import numpy as np
-
-        B_dr1j = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr1',
-                                         'decals-bricks-exist.fits'),
-                            columns=['has_image_g', 'has_image_r', 'has_image_z',
-                                     'brickname', 'ra1','ra2','dec1','dec2'])
-        B_dr1j.cut(reduce(np.logical_or, [B_dr1j.has_image_g,
-                                          B_dr1j.has_image_r,
-                                          B_dr1j.has_image_z]))
-        B_dr1j.rename('has_image_g', 'has_g')
-        B_dr1j.rename('has_image_r', 'has_r')
-        B_dr1j.rename('has_image_z', 'has_z')
-        print(len(B_dr1j), 'DR1 bricks with images')
-
-    imagetag = 'image'
-    tag = 'decals-dr1j'
-    imagedir = 'decals-dr1j'
-    rgb = rgbkwargs
-    if model:
-        imagetag = 'model'
-        tag = 'decals-model-dr1j'
-        scaledir = 'decals-dr1j'
-        kwargs.update(model_gz=False, add_gz=True, scaledir=scaledir)
-    if resid:
-        imagetag = 'resid'
-        kwargs.update(modeldir = 'decals-dr1j-model',
-                      model_gz=True)
-        tag = 'decals-resid-dr1j'
-    if nexp:
-        imagetag = 'nexp'
-        tag = 'decals-nexp-dr1j'
-        rgb = rgbkwargs_nexp
-
-    return map_coadd_bands(req, ver, zoom, x, y, 'grz', tag, imagedir,
-                           imagetag=imagetag,
-                           rgbkwargs=rgb,
-                           bricks=B_dr1j,
-                           savecache=savecache, **kwargs)
-
-def map_decals_model_dr1j(*args, **kwargs):
-    return map_decals_dr1j(*args, model=True, model_gz=False, **kwargs)
-
-def map_decals_resid_dr1j(*args, **kwargs):
-    return map_decals_dr1j(*args, resid=True, model_gz=False, **kwargs)
 
 def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
     import numpy as np
@@ -1703,7 +1597,8 @@ def _get_survey(name=None):
     from decals import settings
     basedir = settings.DATA_DIR
 
-    if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5', 'mzls-dr3', 'mzls+bass-dr4', 'decaps', 'decaps2']:
+    if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5',
+                 'mzls+bass-dr4', 'decaps', 'decaps2']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
@@ -1723,9 +1618,6 @@ def _get_survey(name=None):
         elif name == 'decals-dr5':
             d.drname = 'DECaLS DR5'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'
-        elif name == 'mzls-dr3':
-            d.drname = 'MzLS DR3'
-            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3-mzls/'
         elif name == 'mzls+bass-dr4':
             d.drname = 'MzLS+BASS DR4'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr4/'
@@ -2052,7 +1944,7 @@ def get_ccd_object(survey, ccd):
 def ccd_detail(req, name, ccd):
     survey, c = get_ccd_object(name, ccd)
 
-    if name in ['decals-dr2', 'decals-dr3', 'mzls-dr3', 'mzls+bass-dr4', 'decals-dr5']:
+    if name in ['decals-dr2', 'decals-dr3', 'mzls+bass-dr4', 'decals-dr5']:
         imgurl = reverse('image_data', args=[name, ccd])
         dqurl  = reverse('dq_data', args=[name, ccd])
         ivurl  = reverse('iv_data', args=[name, ccd])
@@ -2668,21 +2560,6 @@ def get_layer(name, default=None):
         layers['decals-dr2'] = dr2_image
         layers['decals-dr2-model'] = dr2_model
         layers['decals-dr2-resid'] = dr2_resid
-        layer = layers[name]
-
-    elif name in ['mzls-dr3', 'mzls-dr3-model', 'mzls-dr3-resid']:
-
-        survey_dr3mzls = _get_survey('mzls-dr3')
-        mzls3_image = MzlsLayer('mzls-dr3', 'image', survey_dr3mzls,
-                                drname='mzls-dr3')
-        mzls3_model = MzlsLayer('mzls-dr3-model', 'model', survey_dr3mzls,
-                                drname='mzls-dr3')
-        mzls3_resid = MzlsResidLayer(mzls3_image, mzls3_model,
-                                     'mzls-dr3-resid', 'resid', survey_dr3mzls,
-                                     drname='mzls-dr3')
-        layers['mzls-dr3'] = mzls3_image
-        layers['mzls-dr3-model'] = mzls3_model
-        layers['mzls-dr3-resid'] = mzls3_resid
         layer = layers[name]
 
     elif name == 'unwise-w1w2':
