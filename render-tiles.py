@@ -57,17 +57,6 @@ def _one_tile(X):
         layer = get_layer(kind)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
 
-    elif kind in ['mobo-dr3', 'mobo-dr3-model', 'mobo-dr3-resid']:
-        v = 1
-        kwa = {}
-        if 'model' in kind:
-            kwa.update(model=True, add_gz=True)
-        if 'resid' in kind:
-            kwa.update(resid=True, model_gz=True)
-        print('map_mobo_dr3 kwargs:', kwa)
-        map_mobo_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
-                       hack_jpeg=True, **kwa)
-
     elif kind in ['mzls-dr3', 'mzls-dr3-model', 'mzls-dr3-resid']:
         v = 1
         kwa = {}
@@ -833,7 +822,7 @@ def main():
 
 
     if opt.scale:
-        if opt.kind in ['decals-dr3', 'decals-dr3-model', 'mobo-dr3', 'mobo-dr3-model',
+        if opt.kind in ['decals-dr3', 'decals-dr3-model',
                         'mzls-dr3',
                         'mzls+bass-dr4', 'mzls+bass-dr4-model', 'decaps', 'decaps2',
                         'decaps2-model', 'decaps2-resid' ]:

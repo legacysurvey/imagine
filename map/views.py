@@ -1703,7 +1703,7 @@ def _get_survey(name=None):
     from decals import settings
     basedir = settings.DATA_DIR
 
-    if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5', 'mobo-dr3', 'mzls-dr3', 'mzls+bass-dr4', 'decaps', 'decaps2']:
+    if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5', 'mzls-dr3', 'mzls+bass-dr4', 'decaps', 'decaps2']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
@@ -1723,9 +1723,6 @@ def _get_survey(name=None):
         elif name == 'decals-dr5':
             d.drname = 'DECaLS DR5'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'
-        elif name == 'mobo-dr3':
-            d.drname = 'Mosaic+BASS DR3'
-            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3-mobo/'
         elif name == 'mzls-dr3':
             d.drname = 'MzLS DR3'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3-mzls/'
