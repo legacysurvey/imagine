@@ -19,7 +19,7 @@ from django import forms
 from decals import settings
 from map.utils import (get_tile_wcs, trymakedirs, save_jpeg, ra2long, ra2long_B,
                        send_file, oneyear)
-from map.coadds import get_scaled, map_coadd_bands
+from map.coadds import get_scaled
 from map.cats import get_random_galaxy
 
 import matplotlib
