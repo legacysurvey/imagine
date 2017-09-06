@@ -75,8 +75,8 @@ urlpatterns = [
     url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('sdssco')),
 
-    url(r'^resdss/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('resdss')),
+    url(r'^sdss2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('sdss2')),
     
     # PS1 skycells
     url(r'^ps1/(\d+)/(\d+)/(\d+)/(\d+).jpg',

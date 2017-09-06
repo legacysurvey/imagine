@@ -41,7 +41,7 @@ tileversions = {
     'sdssco': [1,],
     'ps1': [1],
 
-    'resdss': [1,],
+    'sdss2': [1,],
 
     'decaps2': [1, 2],
     'decaps2-model': [1, 2],
@@ -521,11 +521,15 @@ class MapLayer(object):
     def get_filename(self, brick, band, scale):
         pass
 
+    def get_fits_extension_for_scale(self, scale):
+        return 0
+    
     def read_image(self, brick, band, scale, slc):
         import fitsio
         fn = self.get_filename(brick, band, scale)
         print('Reading image from', fn)
-        f = fitsio.FITS(fn)[0]
+        ext = self.get_fits_extension_for_scale(scale)
+        f = fitsio.FITS(fn)[ext]
         img = f[slc]
         return img
 
@@ -534,13 +538,16 @@ class MapLayer(object):
         fn = self.get_filename(brick, band, scale)
         if fn is None:
             return None
-        return read_tan_wcs(fn, 0)
+        ext = self.get_fits_extension_for_scale(scale)
+        return read_tan_wcs(fn, ext)
 
-    def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False):
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
+                        scale=None):
         import numpy as np
         from astrometry.util.resample import resample_with_wcs, OverlapError
 
-        scale = self.get_scale(zoom, x, y, wcs)
+        if scale is None:
+            scale = self.get_scale(zoom, x, y, wcs)
         if not general_wcs:
             bricks = self.bricks_touching_aa_wcs(wcs, scale=scale)
         else:
@@ -900,6 +907,18 @@ class DecalsLayer(MapLayer):
 
 class RebrickedMixin(object):
 
+    def get_fits_extension_for_scale(self, scale):
+        # Original and scaled images are in ext 1.
+        return 1
+
+    def get_scaled_pattern(self):
+        from decals import settings
+        basedir = settings.DATA_DIR
+        return os.path.join(
+            basedir, 'scaled', self.name,
+            '%(scale)i%(band)s', '%(brickname).3s',
+            'sdssco' + '-%(brickname)s-%(band)s.fits.fz')
+    
     def get_filename(self, brick, band, scale):
         from decals import settings
         brickname = brick.brickname
@@ -909,13 +928,56 @@ class RebrickedMixin(object):
             return os.path.join(basedir, 'sdssco', 'coadd', brickpre,
                                 'sdssco-%s-%s.fits.fz' % (brickname, band))
 
-        fnargs = dict(band=band, brickname=brickname)
+        fnargs = dict(band=band, brickname=brickname, scale=scale)
         fn = self.get_scaled_pattern() % fnargs
         if not os.path.exists(fn):
+            import numpy as np
+            from astrometry.util.util import Tan
+            from scipy.ndimage.filters import gaussian_filter
+            import fitsio
+            import tempfile
+            
             # Create scaled-down image (recursively).
-            #from legacypipe.survey import wcs_for_brick
-            #return wcs_for_brick(brick)
-            pass
+            print('Creating scaled-down image for', brick.brickname, band, 'scale', scale)
+            # This is a little strange -- we resample into a WCS twice
+            # as big but with half the scale of the image we need, the
+            # smooth & bin the image and scale the WCS.
+            size = 4800
+            pixscale = 0.396 * 2**(scale-1)
+            cd = pixscale / 3600.
+            crpix = size/2. + 0.5
+            wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                      float(size), float(size))
+            imgs = self.render_into_wcs(wcs, None, 0, 0, bands=[band], scale=scale-1)
+            if imgs is None:
+                return None
+            img = imgs[0]
+
+            # smooth
+            img = gaussian_filter(img, 1.)
+            # bin
+            img = (img[::2,::2] + img[1::2,::2] + img[1::2,1::2] + img[::2,1::2])/4.
+            img = img.astype(np.float32)
+            # create half-size WCS
+            wcs = wcs.get_subimage(0, 0, size, size)
+            wcs = wcs.scale(0.5)
+            hdr = fitsio.FITSHDR()
+            wcs.add_to_header(hdr)
+
+            # (r1,r2,nil,nil),(nil,nil,d1,d2) = wcs.pixelxy2radec(
+            #     [1, size/2, size/4, size/4], [size/4, size/4, 1, size/2,])
+            # print('Brick RA1,RA2', brick.ra1, brick.ra2, 'vs WCS', r1, r2)
+            # print('  Dec1,Dec2', brick.dec1, brick.dec2, 'vs WCS', d1, d2)
+            
+            trymakedirs(fn)
+            dirnm = os.path.dirname(fn)
+            f,tmpfn = tempfile.mkstemp(suffix='.fits.fz.tmp', dir=dirnm)
+            os.close(f)
+            os.unlink(tmpfn)
+            compress = '[compress R 100,100; qz 4]'
+            fitsio.write(tmpfn + compress, img, header=hdr, clobber=True)
+            os.rename(tmpfn, fn)
+            print('Wrote', fn)
 
         if not os.path.exists(fn):
             return None
@@ -971,10 +1033,10 @@ class RebrickedMixin(object):
         print('Wrote', fn)
         return allbricks
 
-
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
         bricks = self.get_bricks_for_scale(scale)
+        print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale)
         if rahi < ralo:
             I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
                                           bricks.ra1 <= rahi) *
@@ -982,6 +1044,9 @@ class RebrickedMixin(object):
         else:
             I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
                             (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        print('Returning', len(I), 'bricks')
+        for i in I:
+            print('  Brick', bricks.brickname[i], 'RA', bricks.ra1[i], bricks.ra2[i], 'Dec', bricks.dec1[i], bricks.dec2[i])
         if len(I) == 0:
             return None
         return bricks[I]
@@ -1009,15 +1074,10 @@ class Decaps2Layer(DecalsLayer):
         from legacypipe.survey import wcs_for_brick
         return wcs_for_brick(brick)
 
-    def read_image(self, brick, band, scale, slc):
-        import fitsio
-        fn = self.get_filename(brick, band, scale)
-        print('Reading image from', fn)
-        hdu = (scale == 0 and 1 or 0)
-        f = fitsio.FITS(fn)[hdu]
-        img = f[slc]
-        import numpy as np
-        return img
+    def get_fits_extension_for_scale(self, scale):
+        if scale == 0:
+            return 1
+        return 0
         
 class ResidMixin(object):
     def __init__(self, image_layer, model_layer, *args, **kwargs):
@@ -1127,26 +1187,13 @@ class SdssLayer(MapLayer):
     def populate_fits_cutout_header(self, hdr):
         hdr['SURVEY'] = 'SDSS'
 
-    # Need to override this function to read WCS from ext 1 of fits.fz files
-    def read_wcs(self, brick, band, scale):
-        from map.coadds import read_tan_wcs
-        fn = self.get_filename(brick, band, scale)
-        if fn is None:
-            return None
-        ext = 1 if (scale == 0) else 0
-        return read_tan_wcs(fn, ext)
-
-    # Need to override this function to read image from ext 1 of fits.fz files
-    def read_image(self, brick, band, scale, slc):
-        import fitsio
-        fn = self.get_filename(brick, band, scale)
-        print('Reading image from', fn)
-        ext = 1 if (scale == 0) else 0
-        f = fitsio.FITS(fn)[ext]
-        img = f[slc]
-        import numpy as np
-        return img
-
+    # Need to override this function to read WCS from ext 1 of fits.fz files,
+    # ext 0 of regular scaled images.
+    def get_fits_extension_for_scale(self, scale):
+        if scale == 0:
+            return 1
+        return 0
+    
 class ReSdssLayer(RebrickedMixin, SdssLayer):
     pass
 
@@ -2571,9 +2618,9 @@ def get_layer(name, default=None):
     if name == 'sdssco':
         layer = SdssLayer('sdssco')
 
-    if name == 'resdss':
-        layer = ReSdssLayer('resdss')
-        
+    elif name == 'sdss2':
+        layer = ReSdssLayer('sdss2')
+
     elif name == 'ps1':
         layer = PS1Layer('ps1')
 

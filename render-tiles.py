@@ -744,85 +744,19 @@ def main():
                         continue
                     fn = layer.get_filename(brick, band, 7)
                     print(fn)
-                    #for scale in range(1, 9):
-                    #    fn = layer.get_filename(brick, band, scale)
-                        #print(fn)
-
-            # # pat = survey.survey_dir + '/coadd/*/*/*-%s-?.fits*' % imagetag
-            # # print('Pattern:', pat)
-            # # fns = glob(pat)
-            # # fns.sort()
-            # # print(len(fns), 'image files')
-            # scaledir = surveyname
-            # basedir = settings.DATA_DIR
-            # dirnm = os.path.join(basedir, 'scaled', scaledir)
-            # 
-            # for brick in B.brickname:
-            #     for band in bands:
-            #         fn = survey.find_file(filetype, brick=brick, band=band)
-            #         if not os.path.exists(fn):
-            #             print('Does not exist:', fn)
-            #             continue
-            # 
-            #         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
-            #         fnargs = dict(band=band, brickname=brick)
-            #         scaled = 8
-            #         for i in range(1, scaled+1):
-            #             scaledfn = get_scaled(scalepat, fnargs, i, fn)
-            #             print('get_scaled:', scaledfn)
-
-            # for fn in fns:
-            #     parts = fn.split('/')
-            #     brick = parts[-2]
-            #     if model:
-            #         # MAGIC: -9 = '....-B.fits.gz'
-            #         band = parts[-1][-9]
-            #     else:
-            #         # MAGIC: -6 = '....-B.fits'
-            #         band = parts[-1][-6]
-            #     
-            #     scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
-            #     fnargs = dict(band=band, brickname=brick)
-            #     scaled = 8
-            #     scaledfn = get_scaled(scalepat, fnargs, scaled, fn)
-            #     print('get_scaled:', scaledfn)
 
             sys.exit(0)
-            
-        if opt.kind == 'sdss':
-            C.cut((C.dec >= opt.mindec) * (C.dec < opt.maxdec))
-            print(len(C), 'in Dec range')
-            C.cut((C.ra  >= opt.minra)  * (C.ra  < opt.maxra))
-            print(len(C), 'in RA range')
 
-            from astrometry.sdss import AsTransWrapper, DR9
-            sdss = DR9(basedir=settings.SDSS_DIR)
-            sdss.saveUnzippedFiles(settings.SDSS_DIR)
-            sdss.setFitsioReadBZ2()
-            if settings.SDSS_PHOTOOBJS:
-                sdss.useLocalTree(photoObjs=settings.SDSS_PHOTOOBJS,
-                                  resolve=settings.SDSS_RESOLVE)
-            basedir = settings.DATA_DIR
-            scaledir = 'sdss'
-            dirnm = os.path.join(basedir, 'scaled', scaledir)
-            for im in C:
-                from map.views import _read_sip_wcs
-                #if im.rerun != '301':
-                #    continue
-                for band in 'gri':
-                    scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(rerun)s', '%(run)i', '%(camcol)i', 'sdss-%(run)i-%(camcol)i-%(field)i-%(band)s.fits')
-                    tmpsuff = '.tmp%08i' % np.random.randint(100000000)
-                    basefn = sdss.retrieve('frame', im.run, im.camcol, field=im.field,
-                                           band=band, rerun=im.rerun, tempsuffix=tmpsuff)
-                    fnargs = dict(band=band, rerun=im.rerun, run=im.run,
-                                  camcol=im.camcol, field=im.field)
-
-                    scaled = 1
-                    fn = get_scaled(scalepat, fnargs, scaled, basefn,
-                                    read_base_wcs=read_astrans, read_wcs=_read_sip_wcs)
-                    print('get_scaled:', fn)
-
-            return 0
+        elif opt.kind == 'sdss2':
+            layer = get_layer(opt.kind)
+            bands = 'gri'
+            maxscale = 7
+            bricks = layer.get_bricks_for_scale(maxscale)
+            for ibrick,brick in enumerate(bricks):
+                for band in bands:
+                    print('Scaling brick', ibrick, 'of', len(bricks), brick, 'band', band)
+                    fn = layer.get_filename(brick, band, maxscale)
+            sys.exit(0)
 
         if opt.kind in ['unwise-w1w2', 'unwise-neo2']:
             # scaledir = opt.kind
