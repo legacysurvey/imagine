@@ -2636,9 +2636,7 @@ def get_layer(name, default=None):
 
     layer = None
 
-    #if name == 'sdssco':
-    #    layer = SdssLayer('sdssco')
-    if name == 'sdss2':
+    if name in ['sdss2', 'sdssco', 'sdss']:
         '''
         "Rebricked" SDSS images.
         - top-level tiles are from sdss2
