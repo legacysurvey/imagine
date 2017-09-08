@@ -1232,11 +1232,18 @@ class ReSdssLayer(RebrickedMixin, SdssLayer):
 
 class DecalsDr3Layer(DecalsLayer):
     def get_filename(self, brick, band, scale):
-        fn = super(DecalsDr3Layer, self).get_filename(brick, band, scale)
-        if self.imagetype == 'image':
-            fn = fn.replace('.fits.fz', '.fits')
-        elif self.imagetype == 'model':
-            fn = fn.replace('.fits.fz', '.fits.gz')
+        # fn = super(DecalsDr3Layer, self).get_filename(brick, band, scale)
+        brickname = brick.brickname
+        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
+        if fn is not None:
+            if self.imagetype == 'image':
+                fn = fn.replace('.fits.fz', '.fits')
+            elif self.imagetype == 'model':
+                fn = fn.replace('.fits.fz', '.fits.gz')
+        if scale == 0:
+            return fn
+        fnargs = dict(band=band, brickname=brickname)
+        fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn)
         return fn
     
 class ReDecalsLayer(RebrickedMixin, DecalsLayer):

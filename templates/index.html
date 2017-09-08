@@ -1203,7 +1203,7 @@ var mylayer_B = function (name, pretty, kwargs) {
 {% if enable_dr5 %}
 //tiles = mylayer_B('decals-dr5', 'DECaLS DR5 images',
 tiles = mylayer('decals-dr5', 'DECaLS DR5 images',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 if (defaultTile == null) {
     defaultTile = tiles;
