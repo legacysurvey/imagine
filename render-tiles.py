@@ -46,7 +46,7 @@ def _one_tile(X):
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
                               **kwargs)
 
-    elif kind == 'resdss':
+    elif kind == 'sdss2':
         v = 1
         layer = get_layer(kind)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
@@ -204,7 +204,7 @@ def top_levels(mp, opt):
 
     if opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid',
                     'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
-                    'unwise-neo2']:
+                    'unwise-neo2', 'sdss2']:
         import pylab as plt
         from decals import settings
         from legacypipe.survey import get_rgb
@@ -218,6 +218,9 @@ def top_levels(mp, opt):
         if opt.kind == 'unwise-neo2':
             bands = [1, 2]
             get_rgb = _unwise_to_rgb
+        elif opt.kind == 'sdss2':
+            bands = 'gri'
+            get_rgb = sdss_rgb
         else:
             bands = 'grz'
             get_rgb = dr2_rgb
@@ -656,7 +659,7 @@ def main():
 
     mp = multiproc(opt.threads)
 
-    if opt.kind == 'sdss':
+    if opt.kind in ['sdss', 'sdss2']:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
@@ -750,12 +753,21 @@ def main():
         elif opt.kind == 'sdss2':
             layer = get_layer(opt.kind)
             bands = 'gri'
-            maxscale = 7
-            bricks = layer.get_bricks_for_scale(maxscale)
-            for ibrick,brick in enumerate(bricks):
-                for band in bands:
-                    print('Scaling brick', ibrick, 'of', len(bricks), brick, 'band', band)
-                    fn = layer.get_filename(brick, band, maxscale)
+            scales = opt.zoom
+            if len(scales) == 0:
+                scales = list(range(1,8))
+            for scale in scales:
+                #maxscale = 7
+                bricks = layer.get_bricks_for_scale(scale)
+                print('Got', len(bricks), 'bricks for scale', scale)
+                bricks.cut((bricks.dec > opt.mindec) * (bricks.dec <= opt.maxdec) *
+                           (bricks.ra  > opt.minra ) * (bricks.ra  <= opt.maxra))
+                print('Cut to', len(bricks), 'bricks within RA,Dec box')
+
+                for ibrick,brick in enumerate(bricks):
+                    for band in bands:
+                        print('Scaling brick', ibrick, 'of', len(bricks), 'scale', scale, 'brick', brick.brickname, 'band', band)
+                        fn = layer.get_filename(brick, band, scale)
             sys.exit(0)
 
         if opt.kind in ['unwise-w1w2', 'unwise-neo2']:

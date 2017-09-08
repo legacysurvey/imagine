@@ -565,6 +565,9 @@ class MapLayer(object):
         H = int(wcs.get_height())
         r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                 [1,H/2,H,H,H,H/2,1,1])[-2:]
+
+        #print('Render into wcs: RA,Dec points', r, d)
+
         rimgs = []
         for band in bands:
             rimg = np.zeros((H,W), np.float32)
@@ -594,6 +597,10 @@ class MapLayer(object):
                 ok,xx,yy = bwcs.radec2pixelxy(r, d)
                 xx = xx.astype(np.int)
                 yy = yy.astype(np.int)
+
+                #print('Brick', brickname, 'band', band, 'shape', bwcs.shape,
+                #      'pixel coords', xx, yy)
+
                 imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
                 M = 10
                 xlo = np.clip(xx.min() - M, 0, imW)
@@ -678,6 +685,10 @@ class MapLayer(object):
         if wcs is None:
             wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
 
+        # ok,ra,dec = wcs.pixelxy2radec([1, W/2, W, W, W, W/2, 1, 1],
+        #                            [1, 1, 1, H/2, H, H, H, H/2])
+        # print('WCS range: RA', ra.min(), ra.max(), 'Dec', dec.min(), dec.max())
+            
         rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands)
         #print('rimgs:', rimgs)
         if rimgs is None:
@@ -938,7 +949,7 @@ class RebrickedMixin(object):
             import tempfile
             
             # Create scaled-down image (recursively).
-            print('Creating scaled-down image for', brick.brickname, band, 'scale', scale)
+            #print('Creating scaled-down image for', brick.brickname, band, 'scale', scale)
             # This is a little strange -- we resample into a WCS twice
             # as big but with half the scale of the image we need, the
             # smooth & bin the image and scale the WCS.
@@ -1017,6 +1028,10 @@ class RebrickedMixin(object):
                            indexlist=True)
         keep = []
         for ia,I in enumerate(inds):
+
+            if (allbricks.dec[ia] > 80):
+                print('Brick', allbricks.brickname[ia], ': matches', I)
+            
             if I is None:
                 continue
             # Check for actual RA,Dec box overlap, not spherematch possible overlap
@@ -1024,6 +1039,8 @@ class RebrickedMixin(object):
                           (bsmall.dec1[I] <= allbricks.dec2[ia]) *
                           (bsmall.ra2[I] >= allbricks.ra1[ia]) *
                           (bsmall.ra1[I] <= allbricks.ra2[ia]))
+            if (allbricks.dec[ia] > 80):
+                print('Keep?', good)
             if good:
                 keep.append(ia)
         keep = np.array(keep)
@@ -1036,17 +1053,20 @@ class RebrickedMixin(object):
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
         bricks = self.get_bricks_for_scale(scale)
-        print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale)
+        #print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale)
+        # Hacky margin
+        m = { 7: 1. }.get(scale, 0.)
+
         if rahi < ralo:
             I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
                                           bricks.ra1 <= rahi) *
                             (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
         else:
-            I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
-                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-        print('Returning', len(I), 'bricks')
-        for i in I:
-            print('  Brick', bricks.brickname[i], 'RA', bricks.ra1[i], bricks.ra2[i], 'Dec', bricks.dec1[i], bricks.dec2[i])
+            I, = np.nonzero((bricks.ra1  <= rahi +m) * (bricks.ra2  >= ralo -m) *
+                            (bricks.dec1 <= dechi+m) * (bricks.dec2 >= declo-m))
+        #print('Returning', len(I), 'bricks')
+        #for i in I:
+        #    print('  Brick', bricks.brickname[i], 'RA', bricks.ra1[i], bricks.ra2[i], 'Dec', bricks.dec1[i], bricks.dec2[i])
         if len(I) == 0:
             return None
         return bricks[I]

@@ -1280,6 +1280,11 @@ tiles = mylayer_B('sdssco', 'SDSS images',
                   'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
+tiles = mylayer('sdss2', 'SDSS images (2)',
+                {'attribution': sdss_attrib,
+                 'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+
 {% if enable_ps1 %}
 tiles = mylayer_B('ps1', 'PS1 images',
                   {'attribution': ps1_attrib,
