@@ -1158,7 +1158,7 @@ class SdssLayer(MapLayer):
         from decals import settings
         from astrometry.util.fits import fits_table
         basedir = settings.DATA_DIR
-        self.bricks = fits_table(os.path.join(basedir, 'bricks-sdssco.fits'),
+        self.bricks = fits_table(os.path.join(basedir, self.name, 'bricks-sdssco.fits'),
                                  columns=['brickname', 'ra1', 'ra2',
                                           'dec1', 'dec2', 'ra', 'dec'])
         return self.bricks
@@ -2635,13 +2635,15 @@ def get_layer(name, default=None):
         return layers[name]
 
     layer = None
-    if name == 'sdssco':
-        layer = SdssLayer('sdssco')
 
-    elif name == 'sdss2':
+    #if name == 'sdssco':
+    #    layer = SdssLayer('sdssco')
+    if name == 'sdss2':
         '''
+        "Rebricked" SDSS images.
         - top-level tiles are from sdss2
         - tile levels 6-13 are from sdssco
+        (all on sanjaya)
         '''
         layer = ReSdssLayer('sdss2')
 
