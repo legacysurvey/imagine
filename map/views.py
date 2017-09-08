@@ -2728,8 +2728,8 @@ def get_layer(name, default=None):
 
     elif name in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         survey = _get_survey('mzls+bass-dr4')
-        image = DecalsLayer('mzls+bass-dr4', 'image', survey, drname='mzls+bass-dr4')
-        model = DecalsLayer('mzls+bass-dr4-model', 'model', survey,
+        image = DecalsDr3Layer('mzls+bass-dr4', 'image', survey, drname='mzls+bass-dr4')
+        model = DecalsDr3Layer('mzls+bass-dr4-model', 'model', survey,
                             drname='mzls+bass-dr4')
         resid = DecalsResidLayer(image, model, 'mzls+bass-dr4-resid', 'resid', survey,
                                  drname='mzls+bass-dr4')
