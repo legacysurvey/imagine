@@ -1263,6 +1263,7 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
                               'legacysurvey-%s-%s-%s.fits.fz' % (brickname, self.imagetype, band))
             print('try', fn)
             return fn
+        return super(ReDecalsLayer, self).get_filename(brick, band, scale)
 
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
@@ -2761,8 +2762,8 @@ def get_layer(name, default=None):
 
     elif name in ['decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
         survey = _get_survey('decals-dr2')
-        image = DecalsLayer('decals-dr2', 'image', survey)
-        model = DecalsLayer('decals-dr2-model', 'model', survey, drname='decals-dr2')
+        image = DecalsDr3Layer('decals-dr2', 'image', survey)
+        model = DecalsDr3Layer('decals-dr2-model', 'model', survey, drname='decals-dr2')
         resid = DecalsResidLayer(image, model, 'decals-dr2-resid', 'resid', survey,
                                  drname='decals-dr2')
         layers['decals-dr2'] = image

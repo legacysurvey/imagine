@@ -702,7 +702,7 @@ def main():
                         'mzls+bass-dr4', 'mzls+bass-dr4-model',
                         'decaps2', 'decaps2-model',
                         'decals-dr5', 'decals-dr5-model',]:
-                        
+
             from glob import glob
             from map.views import _get_survey
 
