@@ -1229,6 +1229,43 @@ class ReSdssLayer(RebrickedMixin, SdssLayer):
         wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
                   float(size), float(size))
         return wcs
+
+class DecalsDr3Layer(DecalsLayer):
+    def get_filename(self, brick, band, scale):
+        fn = super(DecalsDr3Layer, self).get_filename(brick, band, scale)
+        if self.imagetype == 'image':
+            fn = fn.replace('.fits.fz', '.fits')
+        elif self.imagetype == 'model':
+            fn = fn.replace('.fits.fz', '.fits.gz')
+        return fn
+    
+class ReDecalsLayer(RebrickedMixin, DecalsLayer):
+
+    # DR5 split directories HACK
+    def get_filename(self, brick, band, scale):
+        brickname = brick.brickname
+        if scale == 0:
+            fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
+            if os.path.exists(fn):
+                return fn
+            print('get_filename:', brickname, band, scale, 'not in', fn)
+            from decals import settings
+            basedir = settings.DATA_DIR
+            brickpre = brickname[:3]
+            fn = os.path.join(basedir, self.drname, 'coadd2', brickpre, brickname,
+                              'legacysurvey-%s-%s-%s.fits.fz' % (brickname, self.imagetype, band))
+            print('try', fn)
+            return fn
+
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        size = 3600
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
     
 class PS1Layer(MapLayer):
     def __init__(self, name):
@@ -2658,6 +2695,12 @@ def get_layer(name, default=None):
         '''
         layer = ReSdssLayer('sdss2')
 
+    elif name == 'decals-dr5':
+        survey = _get_survey('decals-dr5')
+        image = ReDecalsLayer('decals-dr5', 'image', survey)
+        layers[name] = image
+        layer = layers[name]
+        
     elif name == 'ps1':
         layer = PS1Layer('ps1')
 
@@ -2697,8 +2740,8 @@ def get_layer(name, default=None):
 
     elif name in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
         survey = _get_survey('decals-dr3')
-        image = DecalsLayer('decals-dr3', 'image', survey)
-        model = DecalsLayer('decals-dr3-model', 'model', survey, drname='decals-dr3')
+        image = DecalsDr3Layer('decals-dr3', 'image', survey)
+        model = DecalsDr3Layer('decals-dr3-model', 'model', survey, drname='decals-dr3')
         resid = DecalsResidLayer(image, model, 'decals-dr3-resid', 'resid', survey,
                                  drname='decals-dr3')
         # No disk space for DR3 scale=1 !
