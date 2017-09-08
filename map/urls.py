@@ -9,6 +9,56 @@ survey_regex = r'([\w +-]+)'
 
 urlpatterns = [
 
+    # DR5
+    url(r'^decals-dr5/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr5')),
+    url(r'^decals-dr5-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr5-model')),
+    url(r'^decals-dr5-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr5-resid')),
+    # DR5 catalog
+    url(r'^decals-dr5/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr5),
+
+    # MzLS+BASS DR4 tiles
+    url(r'^mzls\+bass-dr4/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('mzls+bass-dr4')),
+    url(r'^mzls\+bass-dr4-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('mzls+bass-dr4-model')),
+    url(r'^mzls\+bass-dr4-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('mzls+bass-dr4-resid')),
+    # DR4 catalog
+    url(r'^mzls\+bass-dr4/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr4),
+
+    # DR3
+    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr3')),
+    url(r'^decals-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr3-model')),
+    url(r'^decals-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr3-resid')),
+    # DR3 catalog
+    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr3),
+    
+    # DR2
+    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr2')),
+    url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr2-model')),
+    url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr2-resid')),
+    # DR2 catalog
+    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr2),
+
+    url(r'^targets-dr2/(\d+)/cat.json', cats.cat_targets_dr2),
+
+    # DECaPS2 tiles
+    url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps2')),
+    url(r'^decaps2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps2-model')),
+    url(r'^decaps2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps2-resid')),
+    
     # Gaia catalog
     url(r'^gaia-dr1/(\d+)/cat.json', cats.cat_gaia_dr1),
 
@@ -24,23 +74,10 @@ urlpatterns = [
     # SDSS tiled coadd
     url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('sdssco')),
-        #views.sdss_layer.get_tile_view()),
 
-    # DECaPS tiles
-    url(r'^decaps/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decaps')),
-
-    # MzLS+BASS DR4 tiles
-    url(r'^mzls\+bass-dr4/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls+bass-dr4')),
-    url(r'^mzls\+bass-dr4-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls+bass-dr4-model')),
-    url(r'^mzls\+bass-dr4-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls+bass-dr4-resid')),
-
-    # DR4 catalog
-    url(r'^mzls\+bass-dr4/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr4),
-
+    url(r'^sdss2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('sdss2')),
+    
     # PS1 skycells
     url(r'^ps1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('ps1')),
@@ -62,69 +99,6 @@ urlpatterns = [
     # Tycho-2 stars
     url(r'^tycho2/(\d+)/cat.json', cats.cat_tycho2),
 
-    # DR3 Mosaic+Bok
-    # url(r'^mobo-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3),
-    # url(r'^mobo-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3_model),
-    # url(r'^mobo-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_mobo_dr3_resid),
-
-    # DR3 MzLS
-    url(r'^mzls-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls-dr3')),
-        #views.mzls3_image.get_tile_view()),
-    url(r'^mzls-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls-dr3-model')),
-        #views.mzls3_model.get_tile_view()),
-    url(r'^mzls-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls-dr3-resid')),
-        #views.mzls3_resid.get_tile_view()),
-
-    # DR3
-    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr3')),
-    #views.dr3_image.get_tile_view()),
-    url(r'^decals-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr3-model')),
-        #views.dr3_model.get_tile_view()),
-    url(r'^decals-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr3-resid')),
-        #views.dr3_resid.get_tile_view()),
-
-    # catalog
-    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr3),
-    
-    # DR2
-    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr2')),
-        #views.dr2_image.get_tile_view()),
-    url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr2-model')),
-        #views.dr2_model.get_tile_view()),
-    url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr2-resid')),
-        #views.dr2_resid.get_tile_view()),
-
-    # catalog
-    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr2),
-
-    url(r'^targets-dr2/(\d+)/cat.json', cats.cat_targets_dr2),
-
-    # depth maps
-    #url(r'^decam-depth/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decam_depth),
-
-    # DR1k -- COSMOS
-    #url(r'^decals-dr1k/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr1k),
-
-    # DR1j full
-    # url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_dr1j),
-    # url(r'^decals-model-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_model_dr1j),
-    # url(r'^decals-resid-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_resid_dr1j),
-
-    # catalog
-    url(r'^decals-dr1j/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr1j),
-
-    #url(r'^decals-nexp-dr1j/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_nexp_dr1j),
-    #url(r'^decals-wl/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_decals_wl),
-
     # Cutouts
     url(r'^jpeg-cutout', cutouts.jpeg_cutout, name='cutout-jpeg'),
     url(r'^fits-cutout', cutouts.fits_cutout, name='cutout-fits'),
@@ -144,28 +118,21 @@ urlpatterns = [
     # SFD dust map
     url(r'^sfd/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('sfd')),
-        #views.sfd_layer.get_tile_view()),
 
     # Halpha map
     url(r'^halpha/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('halpha')),
-    #views.halpha_layer.get_tile_view()),
 
-    # unWISE W1/W2
+    # Original unWISE W1/W2
     url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-w1w2')),
-        #views.unwise_layer.get_tile_view()),
 
-    # Aaron's NEO1 unWISE W1/W2
-    url(r'^unwise-neo1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('unwise-neo1')),
-    #views.unwise_neo1_layer.get_tile_view()),
+    # Aaron's NEOx unWISE W1/W2
     # NEO2
     url(r'^unwise-neo2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-neo2')),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
-    #url(r'^unwise-w1234-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w1234),
 
     # Cutouts html
     url(r'^cutouts/', views.cutouts, name='cutouts'),
@@ -200,6 +167,9 @@ urlpatterns = [
 
     url(r'^image-stamp/%s/([\w-]+).jpg' % survey_regex, views.image_stamp, name='image_stamp'),
 
+    # Special DECaPS version of viewer.
+    url(r'decaps', views.decaps),
+    
     # fall-through
     url(r'', views.index),
 
