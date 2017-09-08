@@ -1275,14 +1275,14 @@ tiles = mylayer_B('decals-dr2-resid', 'DECaLS DR2 residuals',
 allLayers.push(tiles);
 {% endif %}
 
-tiles = mylayer_B('sdssco', 'SDSS images',
-                  {'attribution': sdss_attrib,
-                  'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
-allLayers.push(tiles);
+// tiles = mylayer_B('sdssco', 'SDSS images',
+//                   {'attribution': sdss_attrib,
+//                   'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+// allLayers.push(tiles);
 
-tiles = mylayer('sdss2', 'SDSS images (2)',
-                {'attribution': sdss_attrib,
-                 'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+tiles = mylayer_B('sdss2', 'SDSS images',
+                  {'attribution': sdss_attrib,
+                   'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 
 {% if enable_ps1 %}

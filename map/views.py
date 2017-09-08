@@ -2639,6 +2639,10 @@ def get_layer(name, default=None):
         layer = SdssLayer('sdssco')
 
     elif name == 'sdss2':
+        '''
+        - top-level tiles are from sdss2
+        - tile levels 6-13 are from sdssco
+        '''
         layer = ReSdssLayer('sdss2')
 
     elif name == 'ps1':
