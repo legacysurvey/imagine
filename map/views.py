@@ -922,77 +922,84 @@ class RebrickedMixin(object):
         # Original and scaled images are in ext 1.
         return 1
 
-    def get_scaled_pattern(self):
-        from decals import settings
-        basedir = settings.DATA_DIR
-        return os.path.join(
-            basedir, 'scaled', self.name,
-            '%(scale)i%(band)s', '%(brickname).3s',
-            'sdssco' + '-%(brickname)s-%(band)s.fits.fz')
-    
     def get_filename(self, brick, band, scale):
         from decals import settings
         brickname = brick.brickname
         basedir = settings.DATA_DIR
         brickpre = brickname[:3]
         if scale == 0:
-            return os.path.join(basedir, 'sdssco', 'coadd', brickpre,
-                                'sdssco-%s-%s.fits.fz' % (brickname, band))
+            return super(RebrickedMixin, self).get_filename(brick, band, scale)
 
         fnargs = dict(band=band, brickname=brickname, scale=scale)
         fn = self.get_scaled_pattern() % fnargs
         if not os.path.exists(fn):
-            import numpy as np
-            from astrometry.util.util import Tan
-            from scipy.ndimage.filters import gaussian_filter
-            import fitsio
-            import tempfile
-            
-            # Create scaled-down image (recursively).
-            #print('Creating scaled-down image for', brick.brickname, band, 'scale', scale)
-            # This is a little strange -- we resample into a WCS twice
-            # as big but with half the scale of the image we need, the
-            # smooth & bin the image and scale the WCS.
-            size = 4800
-            pixscale = 0.396 * 2**(scale-1)
-            cd = pixscale / 3600.
-            crpix = size/2. + 0.5
-            wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
-                      float(size), float(size))
-            imgs = self.render_into_wcs(wcs, None, 0, 0, bands=[band], scale=scale-1)
-            if imgs is None:
-                return None
-            img = imgs[0]
-
-            # smooth
-            img = gaussian_filter(img, 1.)
-            # bin
-            img = (img[::2,::2] + img[1::2,::2] + img[1::2,1::2] + img[::2,1::2])/4.
-            img = img.astype(np.float32)
-            # create half-size WCS
-            wcs = wcs.get_subimage(0, 0, size, size)
-            wcs = wcs.scale(0.5)
-            hdr = fitsio.FITSHDR()
-            wcs.add_to_header(hdr)
-
-            # (r1,r2,nil,nil),(nil,nil,d1,d2) = wcs.pixelxy2radec(
-            #     [1, size/2, size/4, size/4], [size/4, size/4, 1, size/2,])
-            # print('Brick RA1,RA2', brick.ra1, brick.ra2, 'vs WCS', r1, r2)
-            # print('  Dec1,Dec2', brick.dec1, brick.dec2, 'vs WCS', d1, d2)
-            
-            trymakedirs(fn)
-            dirnm = os.path.dirname(fn)
-            f,tmpfn = tempfile.mkstemp(suffix='.fits.fz.tmp', dir=dirnm)
-            os.close(f)
-            os.unlink(tmpfn)
-            compress = '[compress R 100,100; qz 4]'
-            fitsio.write(tmpfn + compress, img, header=hdr, clobber=True)
-            os.rename(tmpfn, fn)
-            print('Wrote', fn)
-
+            self.create_scaled_image(brick, band, scale, fn)
         if not os.path.exists(fn):
             return None
         return fn
+
+    def get_scaled_pattern(self):
+        fn = super(RebrickedMixin, self).get_scaled_pattern()
+        if fn.endswith('.fits'):
+            fn += '.fz'
+        return fn
+
+    def get_scaled_wcs(self, brick, band, scale):
+        pass
+    
+    def create_scaled_image(self, brick, band, scale, fn):
+        import numpy as np
+        from scipy.ndimage.filters import gaussian_filter
+        import fitsio
+        import tempfile
+        
+        # Create scaled-down image (recursively).
+        #print('Creating scaled-down image for', brick.brickname, band, 'scale', scale)
+        # This is a little strange -- we resample into a WCS twice
+        # as big but with half the scale of the image we need, then
+        # smooth & bin the image and scale the WCS.
+        finalwcs = self.get_scaled_wcs(brick, band, scale)
+        print('Scaled WCS:', finalwcs)
+        wcs = finalwcs.scale(2.)
+        print('Double-size WCS:', wcs)
+        
+        imgs = self.render_into_wcs(wcs, None, 0, 0, bands=[band], scale=scale-1)
+        if imgs is None:
+            return None
+        img = imgs[0]
+
+        H,W = img.shape
+        # make even size
+        if H % 2 == 1:
+            img = img[:-1,:]
+        if W % 2 == 1:
+            img = img[:,:-1]
+        # smooth
+        img = gaussian_filter(img, 1.)
+        # bin
+        img = (img[::2,::2] + img[1::2,::2] + img[1::2,1::2] + img[::2,1::2])/4.
+        img = img.astype(np.float32)
+        H,W = img.shape
+        # create half-size WCS
+        wcs = wcs.get_subimage(0, 0, W*2, H*2)
+        wcs = wcs.scale(0.5)
+        hdr = fitsio.FITSHDR()
+        wcs.add_to_header(hdr)
+
+        # (r1,r2,nil,nil),(nil,nil,d1,d2) = wcs.pixelxy2radec(
+        #     [1, size/2, size/4, size/4], [size/4, size/4, 1, size/2,])
+        # print('Brick RA1,RA2', brick.ra1, brick.ra2, 'vs WCS', r1, r2)
+        # print('  Dec1,Dec2', brick.dec1, brick.dec2, 'vs WCS', d1, d2)
+        
+        trymakedirs(fn)
+        dirnm = os.path.dirname(fn)
+        f,tmpfn = tempfile.mkstemp(suffix='.fits.fz.tmp', dir=dirnm)
+        os.close(f)
+        os.unlink(tmpfn)
+        compress = '[compress R 100,100; qz 4]'
+        fitsio.write(tmpfn + compress, img, header=hdr, clobber=True)
+        os.rename(tmpfn, fn)
+        print('Wrote', fn)
 
     def get_bricks_for_scale(self, scale):
         if scale in [0, None]:
@@ -1028,10 +1035,8 @@ class RebrickedMixin(object):
                            indexlist=True)
         keep = []
         for ia,I in enumerate(inds):
-
-            if (allbricks.dec[ia] > 80):
-                print('Brick', allbricks.brickname[ia], ': matches', I)
-            
+            #if (allbricks.dec[ia] > 80):
+            #    print('Brick', allbricks.brickname[ia], ': matches', I)
             if I is None:
                 continue
             # Check for actual RA,Dec box overlap, not spherematch possible overlap
@@ -1215,8 +1220,16 @@ class SdssLayer(MapLayer):
         return 0
     
 class ReSdssLayer(RebrickedMixin, SdssLayer):
-    pass
-
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        size = 2400
+        pixscale = 0.396 * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+    
 class PS1Layer(MapLayer):
     def __init__(self, name):
         super(PS1Layer, self).__init__(name, nativescale=14, maxscale=6)

@@ -136,7 +136,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
         wcs = read_wcs(sourcefn, 0, hdr=hdr, W=W, H=H, fitsfile=F)
     # include the even size clip; this may be a no-op
     H,W = img.shape
-    wcs = wcs.get_subimage(0, 0, W, H)
+    wcs = wcs.get_subimage(0, 0, W*2, H*2)
     wcs2 = wcs.scale(0.5)
 
     dirnm = os.path.dirname(fn)
