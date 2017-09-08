@@ -13,8 +13,8 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
+    'decals-dr5': [1,],
     'mzls+bass-dr4': [1,],
-    'decals-dr1j': [1,],
     'decals-dr2': [2,],
     'decals-dr3': [1,],
     'ngc': [1,],
@@ -420,7 +420,7 @@ def cat_user(req, ver):
     if 'brickname' in cols:
         D.update(bricknames=list(cat.brickname))
     if 'radius' in cols:
-        D.update(radius=list(cat.radius))
+        D.update(radius=list([float(r) for r in cat.radius]))
 
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
@@ -492,9 +492,6 @@ def cat(req, ver, tag, fn):
         
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
-def cat_decals_dr1j(req, ver, zoom, x, y, tag='decals-dr1j'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
 def cat_decals_dr2(req, ver, zoom, x, y, tag='decals-dr2'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
@@ -502,6 +499,9 @@ def cat_decals_dr3(req, ver, zoom, x, y, tag='decals-dr3'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_mobo_dr4(req, ver, zoom, x, y, tag='mzls+bass-dr4'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def cat_decals_dr5(req, ver, zoom, x, y, tag='decals-dr5'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):

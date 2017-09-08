@@ -2,7 +2,8 @@ from __future__ import print_function
 import sys
 
 ###
-sys.path.insert(0, 'django-1.7')
+#sys.path.insert(0, 'django-1.7')
+sys.path.insert(0, 'django-1.9')
 ###
 
 import django
@@ -32,17 +33,25 @@ req.META = dict(HTTP_IF_MODIFIED_SINCE=None)
 
 version = 1
 
-def _one_tile((kind, zoom, x, y, ignore, get_images)):
+def _one_tile(X):
+    (kind, zoom, x, y, ignore, get_images) = X
     kwargs = dict(ignoreCached=ignore,
                   get_images=get_images)
 
     # forcecache=False, return_if_not_found=True)
     if kind == 'sdss':
         print('Zoom', zoom, 'x,y', x,y)
-        #map_sdss(req, version, zoom, x, y, savecache=True, forcecache=True)
-        map_sdssco(req, version, zoom, x, y, savecache=True, forcecache=True,
-                   return_if_not_found=True, hack_jpeg=True)
+        v = 1
+        layer = get_layer('sdssco')
+        return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
+                              **kwargs)
 
+    elif kind == 'sdss2':
+        v = 1
+        layer = get_layer(kind)
+        return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
+                              **kwargs)
+        
     elif kind == 'ps1':
         print('Zoom', zoom, 'x,y', x,y)
         from map import views
@@ -50,38 +59,24 @@ def _one_tile((kind, zoom, x, y, ignore, get_images)):
         get_tile(req, version, zoom, x, y, savecache=True,
                  return_if_not_found=True)
 
+    elif kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid']:
+        v = 1
+        layer = get_layer(kind)
+        #print('kind', kind, 'zoom', zoom, 'x,y', x,y)
+        return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
+                              **kwargs)
+        
     elif kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         v = 2
         layer = get_layer(kind)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
 
-    elif kind in ['mobo-dr3', 'mobo-dr3-model', 'mobo-dr3-resid']:
-        v = 1
-        kwa = {}
-        if 'model' in kind:
-            kwa.update(model=True, add_gz=True)
-        if 'resid' in kind:
-            kwa.update(resid=True, model_gz=True)
-        print('map_mobo_dr3 kwargs:', kwa)
-        map_mobo_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
-                       hack_jpeg=True, **kwa)
-
-    elif kind in ['mzls-dr3', 'mzls-dr3-model', 'mzls-dr3-resid']:
-        v = 1
-        kwa = {}
-        if 'model' in kind:
-            kwa.update(model=True, add_gz=True)
-        if 'resid' in kind:
-            kwa.update(resid=True, model_gz=True)
-        #print('map_mzls_dr3 kwargs:', kwa)
-        map_mzls_dr3(req, v, zoom, x, y, savecache=True, forcecache=True,
-                       hack_jpeg=True, **kwa)
-
-    elif kind in ['decaps']:
-        v = 1
+    elif kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
+        v = 2
         layer = get_layer(kind)
+        print('kind', kind, 'zoom', zoom, 'x,y', x,y)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
-                              get_images=get_images)
+                              get_images=get_images, ignoreCached=True)
         
     elif kind in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
         v = 1
@@ -102,37 +97,6 @@ def _one_tile((kind, zoom, x, y, ignore, get_images)):
         map_decals_dr2(req, v, zoom, x, y, savecache=True, forcecache=True,
                        hack_jpeg=True, drname='decals-dr2', **kwa)
 
-    elif kind in ['depth-g','depth-r','depth-z']:
-        band = kind[-1]
-        map_decam_depth(req, version, zoom, x, y, band=band,
-                        savecache=True, **kwargs)
-    elif kind == 'image-dr1k':
-        map_decals_dr1k(req, version, zoom, x, y, savecache=True, 
-                        forcecache=True, return_if_not_found=False, **kwargs)
-    elif kind == 'model-dr1k':
-        map_decals_model_dr1k(req, version, zoom, x, y, savecache=True, 
-                              forcecache=True, return_if_not_found=False, **kwargs)
-
-    elif kind == 'image-dr1n':
-        map_decals_dr1n(req, version, zoom, x, y, savecache=True, 
-                        forcecache=True, return_if_not_found=False, **kwargs)
-    elif kind == 'model-dr1n':
-        map_decals_model_dr1n(req, version, zoom, x, y, savecache=True, 
-                              forcecache=True, return_if_not_found=False, **kwargs)
-    elif kind == 'resid-dr1n':
-        map_decals_resid_dr1n(req, version, zoom, x, y, savecache=True, 
-                              forcecache=True, return_if_not_found=False, **kwargs)
-
-    elif kind == 'image':
-        map_decals_dr1j(req, version, zoom, x, y, savecache=True, 
-                        forcecache=False, return_if_not_found=True)
-                        #forcecache=True)
-    elif kind == 'model':
-        map_decals_model_dr1j(req, version, zoom, x, y, savecache=True, 
-                              forcecache=True)
-    elif kind == 'resid':
-        map_decals_resid_dr1j(req, version, zoom, x, y, savecache=True, 
-                              forcecache=True)
     elif kind == 'sfd':
         v = 2
         layer = sfd_layer
@@ -145,11 +109,6 @@ def _one_tile((kind, zoom, x, y, ignore, get_images)):
         map_unwise_w1w2(req, version, zoom, x, y, savecache=True,
                         ignoreCached=ignore)
         print('unWISE zoom', zoom, 'x,y', x,y)
-
-    elif kind == 'unwise-neo1':
-        map_unwise_w1w2_neo1(req, version, zoom, x, y, savecache=True,
-                             ignoreCached=ignore)
-        print('unWISE NEO1 zoom', zoom, 'x,y', x,y)
 
     elif kind == 'unwise-neo2':
         from map import views
@@ -166,31 +125,13 @@ def _bounce_one_tile(*args):
         import traceback
         traceback.print_exc()
 
-
 def _bounce_map_unwise_w1w2(args):
-    print('Bounce unwise:', args)
     return map_unwise_w1w2(*args, ignoreCached=True, get_images=True)
-def _bounce_map_unwise_neo1(args):
-    print('Bounce neo1:', args)
-    return map_unwise_w1w2_neo1(*args, ignoreCached=True, get_images=True)
 def _bounce_map_unwise_w3w4(args):
     return map_unwise_w3w4(*args, ignoreCached=True, get_images=True)
 
-
-def _bounce_map_decals((args,kwargs)):
-    print('Bounce_map_decals:', args)
-    X = map_decals_dr1j(*args, ignoreCached=True, get_images=True, **kwargs)
-    print('Returning: type', type(X), X)
-    return X
-
-def _bounce_map_decals_dr1k((args,kwargs)):
-    print('Bounce_map_decals_dr1k:', args)
-    X = map_decals_dr1k(*args, ignoreCached=True, get_images=True, **kwargs)
-    print('Returning: type', type(X), X)
-    return X
-
-#def _bounce_sdss((args,kwargs)):
-def _bounce_sdssco((args,kwargs)):
+def _bounce_sdssco(X):
+    (args,kwargs) = X
     (req,ver,zoom,x,y) = args
     fn = 'top-sdss-%i-%i-%i.fits' % (zoom, x, y)
     save = False
@@ -229,35 +170,8 @@ def _bounce_sdssco((args,kwargs)):
 
     return ims
 
-def _bounce_decals_dr2((args,kwargs)):
-    print('Bounce_decals_dr2: kwargs', kwargs)
-    tag = 'image'
-    if 'model' in kwargs:
-        tag = 'model'
-    if 'resid' in kwargs:
-        tag = 'resid'
-    (req,ver,zoom,x,y) = args
-    print('Tag', tag)
-    fn = 'top-dr2-%s-%i-%i-%i.fits' % (tag, zoom, x, y)
-    if os.path.exists(fn):
-        img = fitsio.read(fn)
-        print('Read', img.shape)
-        H,W,planes = img.shape
-        ims = [img[:,:,i] for i in range(planes)]
-        return ims
-
-    ims = map_decals_dr2(*args, ignoreCached=True, get_images=True, write_jpeg=True,
-                          hack_jpeg=True, forcecache=True, **kwargs)
-    if ims is None:
-        return ims
-    # save FITS
-    d = np.dstack(ims)
-    print('writing', d.shape, 'to', fn)
-    fitsio.write(fn, d, clobber=True)
-
-    return ims
-
-def _bounce_decals_dr3((args,kwargs)):
+def _bounce_decals_dr3(X):
+    (args,kwargs) = X
     print('Bounce_decals_dr3: kwargs', kwargs)
     tag = 'image'
     if 'model' in kwargs:
@@ -285,39 +199,12 @@ def _bounce_decals_dr3((args,kwargs)):
 
     return ims
 
-def _bounce_mzls_dr3((args,kwargs)):
-    print('Bounce_mzls_dr3: kwargs', kwargs)
-    tag = 'image'
-    if 'model' in kwargs:
-        tag = 'model'
-    if 'resid' in kwargs:
-        tag = 'resid'
-    (req,ver,zoom,x,y) = args
-    #print('Tag', tag)
-    fn = 'top-mzls-dr3-%s-%i-%i-%i.fits' % (tag, zoom, x, y)
-    if os.path.exists(fn):
-        img = fitsio.read(fn)
-        print('Read', img.shape)
-        H,W,planes = img.shape
-        ims = [img[:,:,i] for i in range(planes)]
-        return ims
-    ims = map_mzls_dr3(*args, ignoreCached=True, get_images=True, write_jpeg=True,
-                          hack_jpeg=True, forcecache=True, **kwargs)
-    if ims is None:
-        return ims
-    # save FITS
-    d = np.dstack(ims)
-    print('writing', d.shape, 'to', fn)
-    fitsio.write(fn, d, clobber=True)
-    return ims
-
-
-
 def top_levels(mp, opt):
     from map.views import save_jpeg, trymakedirs
 
-    if opt.kind in ['decaps', 'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
-                    'unwise-neo2']:
+    if opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid',
+                    'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
+                    'unwise-neo2', 'sdss2']:
         import pylab as plt
         from decals import settings
         from legacypipe.survey import get_rgb
@@ -331,6 +218,9 @@ def top_levels(mp, opt):
         if opt.kind == 'unwise-neo2':
             bands = [1, 2]
             get_rgb = _unwise_to_rgb
+        elif opt.kind == 'sdss2':
+            bands = 'gri'
+            get_rgb = sdss_rgb
         else:
             bands = 'grz'
             get_rgb = dr2_rgb
@@ -603,10 +493,9 @@ def top_levels(mp, opt):
 
 
     ### HACK... factor this out...
-    if opt.kind in ['image', 'model', 'resid', 'image-dr1k', 'sdss',
+    if opt.kind in ['sdss',
                     'decals-dr2', 'decals-dr2-model', 'decals-dr2-resid',
                     'decals-dr3', 'decals-dr3-model', 'decals-dr3-resid',
-                    'mzls-dr3', 'mzls-dr3-model', 'mzls-dr3-resid',
                     ]:
         import pylab as plt
         from decals import settings
@@ -615,23 +504,13 @@ def top_levels(mp, opt):
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
 
-        tagdict = dict(image='decals-dr1j', model='decals-model-dr1j',
-                       resid='decals-resid-dr1j')
-        tag = tagdict.get(opt.kind, opt.kind)
-        del tagdict
+        tag = opt.kind
 
         bouncemap = {
-            #'sdss': _bounce_sdss,
             'sdss': _bounce_sdssco,
-            'decals-dr2': _bounce_decals_dr2,
-            'decals-dr2-model': _bounce_decals_dr2,
-            'decals-dr2-resid': _bounce_decals_dr2,
             'decals-dr3': _bounce_decals_dr3,
             'decals-dr3-model': _bounce_decals_dr3,
             'decals-dr3-resid': _bounce_decals_dr3,
-            'mzls-dr3': _bounce_mzls_dr3,
-            'mzls-dr3-model': _bounce_mzls_dr3,
-            'mzls-dr3-resid': _bounce_mzls_dr3,
             }
         bounce = bouncemap[opt.kind]
 
@@ -641,10 +520,6 @@ def top_levels(mp, opt):
         if opt.kind in ['decals-dr2', 'decals-dr2-model',
                         'decals-dr3', 'decals-dr3-model',]:
             get_rgb = dr2_rgb
-            rgbkwargs = {}
-        elif opt.kind in ['mzls-dr3', 'mzls-dr3-model']:
-            get_rgb = mzls_dr3_rgb
-            bands = 'z'
             rgbkwargs = {}
         elif opt.kind == 'sdssco':
             rgbfunc=sdss_rgb
@@ -784,7 +659,7 @@ def main():
 
     mp = multiproc(opt.threads)
 
-    if opt.kind == 'sdss':
+    if opt.kind in ['sdss', 'sdss2']:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
@@ -803,7 +678,7 @@ def main():
             opt.maxra = 54
         if opt.minra is None:
             opt.minra = 301
-    elif opt.kind == 'decaps':
+    elif opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
         if opt.maxdec is None:
             opt.maxdec = -20
         if opt.mindec is None:
@@ -811,7 +686,7 @@ def main():
         if opt.maxra is None:
             opt.maxra = 280
         if opt.minra is None:
-            opt.minra = 120
+            opt.minra = 90
     else:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -822,24 +697,20 @@ def main():
         top_levels(mp, opt)
         sys.exit(0)
 
-
     if opt.scale:
-        if opt.kind in ['decals-dr3', 'decals-dr3-model', 'mobo-dr3', 'mobo-dr3-model',
-                        'mzls-dr3',
-                        'mzls+bass-dr4', 'mzls+bass-dr4-model', 'decaps' ]:
+        if opt.kind in ['decals-dr3', 'decals-dr3-model',
+                        'mzls+bass-dr4', 'mzls+bass-dr4-model',
+                        'decaps2', 'decaps2-model',
+                        'decals-dr5', 'decals-dr5-model',]:
+                        
             from glob import glob
             from map.views import _get_survey
-            
-            if 'decals-dr3' in opt.kind:
-                surveyname = 'decals-dr3'
-            elif 'mzls-dr3' in opt.kind:
-                surveyname = 'mzls-dr3'
-            elif 'mzls+bass-dr4' in opt.kind:
-                surveyname = 'mzls+bass-dr4'
-            elif opt.kind == 'decaps':
-                surveyname = opt.kind
-            else:
-                surveyname = 'mobo-dr3'
+
+            surveyname = opt.kind
+            # *-model -> *
+            for prefix in ['decals-dr3', 'mzls+bass-dr4', 'decaps2', 'decals-dr5']:
+                if prefix in surveyname:
+                    surveyname = prefix
             survey = _get_survey(surveyname)
 
             B = survey.get_bricks()
@@ -859,81 +730,45 @@ def main():
 
             bands = opt.bands
 
-            # pat = survey.survey_dir + '/coadd/*/*/*-%s-?.fits*' % imagetag
-            # print('Pattern:', pat)
-            # fns = glob(pat)
-            # fns.sort()
-            # print(len(fns), 'image files')
-            scaledir = surveyname
-            basedir = settings.DATA_DIR
-            dirnm = os.path.join(basedir, 'scaled', scaledir)
+            layer = get_layer(opt.kind)
 
-            for brick in B.brickname:
+            has = {}
+            for band in bands:
+                if 'has_%s' % band in B.get_columns():
+                    has[band] = B.get('has_%s' % band)
+                else:
+                    # assume yes
+                    has[band] = np.ones(len(B), bool)
+
+            for ibrick,brick in enumerate(B):
                 for band in bands:
-                    fn = survey.find_file(filetype, brick=brick, band=band)
-                    if not os.path.exists(fn):
-                        print('Does not exist:', fn)
+                    if not has[band][ibrick]:
+                        print('Brick', brick.brickname, 'does not have', band)
                         continue
-
-                    scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
-                    fnargs = dict(band=band, brickname=brick)
-                    scaled = 8
-                    for i in range(1, scaled+1):
-                        scaledfn = get_scaled(scalepat, fnargs, i, fn)
-                        print('get_scaled:', scaledfn)
-
-            # for fn in fns:
-            #     parts = fn.split('/')
-            #     brick = parts[-2]
-            #     if model:
-            #         # MAGIC: -9 = '....-B.fits.gz'
-            #         band = parts[-1][-9]
-            #     else:
-            #         # MAGIC: -6 = '....-B.fits'
-            #         band = parts[-1][-6]
-            #     
-            #     scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', imagetag + '-%(brickname)s-%(band)s.fits')
-            #     fnargs = dict(band=band, brickname=brick)
-            #     scaled = 8
-            #     scaledfn = get_scaled(scalepat, fnargs, scaled, fn)
-            #     print('get_scaled:', scaledfn)
+                    fn = layer.get_filename(brick, band, 7)
+                    print(fn)
 
             sys.exit(0)
-            
-        if opt.kind == 'sdss':
-            C.cut((C.dec >= opt.mindec) * (C.dec < opt.maxdec))
-            print(len(C), 'in Dec range')
-            C.cut((C.ra  >= opt.minra)  * (C.ra  < opt.maxra))
-            print(len(C), 'in RA range')
 
-            from astrometry.sdss import AsTransWrapper, DR9
-            sdss = DR9(basedir=settings.SDSS_DIR)
-            sdss.saveUnzippedFiles(settings.SDSS_DIR)
-            sdss.setFitsioReadBZ2()
-            if settings.SDSS_PHOTOOBJS:
-                sdss.useLocalTree(photoObjs=settings.SDSS_PHOTOOBJS,
-                                  resolve=settings.SDSS_RESOLVE)
-            basedir = settings.DATA_DIR
-            scaledir = 'sdss'
-            dirnm = os.path.join(basedir, 'scaled', scaledir)
-            for im in C:
-                from map.views import _read_sip_wcs
-                #if im.rerun != '301':
-                #    continue
-                for band in 'gri':
-                    scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(rerun)s', '%(run)i', '%(camcol)i', 'sdss-%(run)i-%(camcol)i-%(field)i-%(band)s.fits')
-                    tmpsuff = '.tmp%08i' % np.random.randint(100000000)
-                    basefn = sdss.retrieve('frame', im.run, im.camcol, field=im.field,
-                                           band=band, rerun=im.rerun, tempsuffix=tmpsuff)
-                    fnargs = dict(band=band, rerun=im.rerun, run=im.run,
-                                  camcol=im.camcol, field=im.field)
+        elif opt.kind == 'sdss2':
+            layer = get_layer(opt.kind)
+            bands = 'gri'
+            scales = opt.zoom
+            if len(scales) == 0:
+                scales = list(range(1,8))
+            for scale in scales:
+                #maxscale = 7
+                bricks = layer.get_bricks_for_scale(scale)
+                print('Got', len(bricks), 'bricks for scale', scale)
+                bricks.cut((bricks.dec > opt.mindec) * (bricks.dec <= opt.maxdec) *
+                           (bricks.ra  > opt.minra ) * (bricks.ra  <= opt.maxra))
+                print('Cut to', len(bricks), 'bricks within RA,Dec box')
 
-                    scaled = 1
-                    fn = get_scaled(scalepat, fnargs, scaled, basefn,
-                                    read_base_wcs=read_astrans, read_wcs=_read_sip_wcs)
-                    print('get_scaled:', fn)
-
-            return 0
+                for ibrick,brick in enumerate(bricks):
+                    for band in bands:
+                        print('Scaling brick', ibrick, 'of', len(bricks), 'scale', scale, 'brick', brick.brickname, 'band', band)
+                        fn = layer.get_filename(brick, band, scale)
+            sys.exit(0)
 
         if opt.kind in ['unwise-w1w2', 'unwise-neo2']:
             # scaledir = opt.kind
@@ -943,10 +778,10 @@ def main():
             layer = get_layer(opt.kind)
             B = layer.get_bricks()
             print(len(B), 'unWISE tiles')
-            for b in B.brickname:
+            for b in B:
                 for band in ['1','2']:
                     for scale in [1,2,3,4,5,6,7]:
-                        print('Get brick', b, 'band', band, 'scale', scale)
+                        print('Get brick', b.brickname, 'band', band, 'scale', scale)
                         layer.get_filename(b, band, scale)
 
         else:
@@ -991,11 +826,6 @@ def main():
         B.cut(exists)
         B.writeto('bricks-exist-%s.fits' % opt.kind)
         sys.exit(0)
-                    
-
-
-    #from legacypipe.common import LegacySurveyData
-    #survey = LegacySurveyData()
 
     from map.views import _get_survey
     surveyname = opt.kind
@@ -1248,8 +1078,27 @@ def main():
             print('Y row', y)
 
             if opt.queue:
+
+                if 'decaps2' in opt.kind:
+                    layer = get_layer(opt.kind)
+
+                    if zoom >= layer.nativescale:
+                        oldscale = 0
+                    else:
+                        oldscale = (layer.nativescale - zoom)
+                        oldscale = np.clip(oldscale, layer.minscale, layer.maxscale)
+
+                    x = 0
+                    wcs, W, H, zoomscale, z,xi,yi = get_tile_wcs(zoom, x, y)
+                    newscale = layer.get_scale(zoom, 0, y, wcs)
+
+                    if oldscale == newscale:
+                        print('Oldscale = newscale = ', oldscale)
+                        continue
+                    
+                
                 cmd = 'python -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s --mindec %f --maxdec %f' % (zoom, y, y+1, opt.kind, opt.mindec, opt.maxdec)
-                cmd += ' --threads 24'
+                cmd += ' --threads 32'
                 if opt.near_ccds:
                     cmd += ' --near-ccds'
                 if opt.all:
@@ -1301,7 +1150,8 @@ def main():
                 args.append((opt.kind,zoom,xi,y, opt.ignore, False))
                 #args.append((opt.kind,zoom,xi,y, opt.ignore, True))
             print('Rendering', len(args), 'tiles in row y =', y)
-            mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, len(args)/opt.threads)))
+            #mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
+            mp.map(_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
             print('Rendered', len(args), 'tiles')
 
         # if opt.grass:

@@ -227,7 +227,7 @@ if __name__ == '__main__':
     inr = r.inrange(rr)
     assert(np.all(inr == ((rr >= 0) * (rr <= 10))))
 
-    print 'RA mid', r.ramid, 'dra', r.dra
+    print('RA mid', r.ramid, 'dra', r.dra)
     for rl,rh,truth in [(-2, -1, False),
                         (-1,  0, True),
                         (-1,  1, True),
@@ -244,7 +244,7 @@ if __name__ == '__main__':
                         (45,-45, False),
                         ]:
         o = r.overlaps(rl,rh)
-        print 'Overlaps', rl,rh, '?', o
+        print('Overlaps', rl,rh, '?', o)
         assert(o == truth)
         
     r = RARange(-45, 45)
@@ -253,7 +253,7 @@ if __name__ == '__main__':
     #print inr
     assert(np.all(inr == ((rr >= -45) * (rr <= 45))))
 
-    print 'RA mid', r.ramid, 'dra', r.dra
+    print('RA mid', r.ramid, 'dra', r.dra)
     for rl,rh,truth in [(-50, -48, False),
                         (-46,  -45, True),
                         (315, 316, True),
@@ -263,7 +263,7 @@ if __name__ == '__main__':
                         (91,269, False),
                         ]:
         o = r.overlaps(rl,rh)
-        print 'Overlaps', rl,rh, '?', o
+        print('Overlaps', rl,rh, '?', o)
         assert(o == truth)
 
 
