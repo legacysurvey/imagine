@@ -1315,10 +1315,10 @@ tiles = mylayer_B('ps1', 'PS1 images',
 allLayers.push(tiles);
 {% endif %}
 
-// tiles = mylayer_B('unwise-w1w2', 'unWISE W1/W2',
-//                 {'maxNativeZoom': 12,
-//                  'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
-// allLayers.push(tiles);
+tiles = mylayer_B('unwise-w1w2', 'unWISE W1/W2',
+                {'maxNativeZoom': 12,
+                 'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-neo2', 'unWISE W1/W2 NEO2',
                 {'maxNativeZoom': 12,

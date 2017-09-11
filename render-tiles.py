@@ -653,10 +653,6 @@ def main():
 
     opt,args = parser.parse_args()
 
-
-    if len(opt.zoom) == 0:
-        opt.zoom = [13]
-
     mp = multiproc(opt.threads)
 
     if opt.kind in ['sdss', 'sdss2']:
@@ -698,10 +694,36 @@ def main():
         sys.exit(0)
 
     if opt.scale:
+        # Rebricked
+        if opt.kind in ['decals-dr5', 'decals-dr5-model',]:
+            from map.views import get_layer
+
+            layer = get_layer(opt.kind)
+
+            if len(opt.zoom) == 0:
+                opt.zoom = [1]
+
+            for scale in opt.zoom:
+                B = layer.get_bricks_for_scale(scale)
+                print(len(B), 'bricks for scale', scale)
+                B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
+                print(len(B), 'in Dec range')
+                B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
+                print(len(B), 'in RA range')
+
+                bands = opt.bands
+
+                for ibrick,brick in enumerate(B):
+                    for band in bands:
+                        fn = layer.get_filename(brick, band, scale)
+                        print(fn)
+
+            sys.exit(0)
+                
+        
         if opt.kind in ['decals-dr3', 'decals-dr3-model',
                         'mzls+bass-dr4', 'mzls+bass-dr4-model',
-                        'decaps2', 'decaps2-model',
-                        'decals-dr5', 'decals-dr5-model',]:
+                        'decaps2', 'decaps2-model',]:
 
             from glob import glob
             from map.views import _get_survey
@@ -834,6 +856,9 @@ def main():
     if surveyname.endswith('-resid'):
         surveyname = surveyname.replace('-resid','')
     survey = _get_survey(surveyname)
+
+    if len(opt.zoom) == 0:
+        opt.zoom = [13]
     
     if opt.near:
         if opt.kind == 'sdss':
