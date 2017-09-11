@@ -79,6 +79,9 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
     if read_wcs is None:
         read_wcs = read_tan_wcs
 
+    #if not os.path.exists(fn) and os.path.exists(fn + '.fz'):
+    #    fn += '.fz'
+        
     if os.path.exists(fn):
         if return_data:
             F = fitsio.FITS(sourcefn)

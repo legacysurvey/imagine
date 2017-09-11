@@ -420,15 +420,15 @@ class MapLayer(object):
 
         '''Integer scale step (1=binned 2x2, 2=binned 4x4, ...)'''
 
-        # previously used value:
+        # # previously used value:
+        # if zoom >= self.nativescale:
+        #     oldscale = 0
+        # else:
+        #     oldscale = (self.nativescale - zoom)
+        #     oldscale = np.clip(oldscale, self.minscale, self.maxscale)
+        # 
         if zoom >= self.nativescale:
-            oldscale = 0
-        else:
-            oldscale = (self.nativescale - zoom)
-            oldscale = np.clip(oldscale, self.minscale, self.maxscale)
-
-        if zoom >= self.nativescale:
-            print('Old scale', oldscale, 'scale 0 -- zoom', zoom, 'native scale', self.nativescale)
+            #     print('Old scale', oldscale, 'scale 0 -- zoom', zoom, 'native scale', self.nativescale)
             return 0
 
         # Get *actual* pixel scales at the top & bottom
@@ -443,9 +443,7 @@ class MapLayer(object):
         scale = int(np.floor(np.log2(tilescale / native_pixscale)))
         debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', tilescale, 'Scale:',scale)
         scale = np.clip(scale, 0, 7)
-
-        print('Old scale', oldscale, 'scale', scale)
-
+        #print('Old scale', oldscale, 'scale', scale)
         return scale
 
     def bricks_touching_aa_wcs(self, wcs, scale=None):
@@ -519,17 +517,86 @@ class MapLayer(object):
         '''
 
     def get_filename(self, brick, band, scale):
+        if scale == 0:
+            return self.get_base_filename(brick, band)
+        fn = self.get_scaled_filename(brick, band, scale)
+        if os.path.exists(fn):
+            return fn
+        fn = self.create_scaled_image(brick, band, scale, fn)
+        if os.path.exists(fn):
+            return fn
+        return None
+
+    def create_scaled_image(self, brick, band, scale, fn):
+        from scipy.ndimage.filters import gaussian_filter
+        import fitsio
+        import tempfile
+        import numpy as np
+        
+        # Read scale-1 image and scale it
+        sourcefn = self.get_filename(brick, band, scale-1)
+        if sourcefn is None or not os.path.exists(sourcefn):
+            print('Image source file', sourcefn, 'not found')
+            return None
+        img = self.read_image(brick, band, scale-1, None)
+        wcs = self.read_wcs(brick, band, scale-1)
+
+        H,W = img.shape
+        # make even size; smooth down
+        if H % 2 == 1:
+            img = img[:-1,:]
+        if W % 2 == 1:
+            img = img[:,:-1]
+        img = gaussian_filter(img, 1.)
+        # bin
+        I2 = (img[::2,::2] + img[1::2,::2] + img[1::2,1::2] + img[::2,1::2])/4.
+        I2 = I2.astype(np.float32)
+        # include the even size clip; this may be a no-op
+        H,W = img.shape
+        wcs = wcs.get_subimage(0, 0, W, H)
+        wcs2 = wcs.scale(0.5)
+
+        dirnm = os.path.dirname(fn)
+        from decals import settings
+        ro = settings.READ_ONLY_BASEDIR
+        if ro:
+            dirnm = None
+        hdr = fitsio.FITSHDR()
+        wcs2.add_to_header(hdr)
+        trymakedirs(fn)
+        f,tmpfn = tempfile.mkstemp(suffix='.fits.tmp', dir=dirnm)
+        os.close(f)
+        os.unlink(tmpfn)
+        fitsio.write(tmpfn, I2, header=hdr, clobber=True)
+        if not ro:
+            os.rename(tmpfn, fn)
+            debug('Wrote', fn)
+        else:
+            print('Leaving temp file for get_scaled:', fn, '->', tmpfn)
+            fn = tmpfn
+        return fn
+        
+    def get_base_filename(self, brick, band):
         pass
 
-    def get_fits_extension_for_scale(self, scale):
+    def get_scaled_filename(self, brick, band, scale):
+        brickname = brick.brickname
+        fnargs = dict(band=band, brickname=brickname, scale=scale)
+        pat = self.get_scaled_pattern()
+        fn = pat % fnargs
+        return fn
+    
+    def get_fits_extension(self, scale, fn):
         return 0
     
     def read_image(self, brick, band, scale, slc):
         import fitsio
         fn = self.get_filename(brick, band, scale)
         print('Reading image from', fn)
-        ext = self.get_fits_extension_for_scale(scale)
+        ext = self.get_fits_extension(scale, fn)
         f = fitsio.FITS(fn)[ext]
+        if slc is None:
+            return f.read()
         img = f[slc]
         return img
 
@@ -538,7 +605,7 @@ class MapLayer(object):
         fn = self.get_filename(brick, band, scale)
         if fn is None:
             return None
-        ext = self.get_fits_extension_for_scale(scale)
+        ext = self.get_fits_extension(scale, fn)
         return read_tan_wcs(fn, ext)
 
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
@@ -896,18 +963,10 @@ class DecalsLayer(MapLayer):
             '%(scale)i%(band)s', '%(brickname).3s',
             self.imagetype + '-%(brickname)s-%(band)s.fits')
 
-    def get_filename(self, brick, band, scale):
+    def get_base_filename(self, brick, band):
         brickname = brick.brickname
-        #print('get_filename for', brickname, band, 'scale', scale)
-        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
-        #print('get_filename ->', fn)
-        if scale == 0:
-            return fn
-        fnargs = dict(band=band, brickname=brickname)
-        fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn)
-        #print('get_filename: scaled ->', fn)
-        return fn
-
+        return self.survey.find_file(self.imagetype, brick=brickname, band=band)
+    
     def get_rgb(self, imgs, bands, **kwargs):
         return dr2_rgb(imgs, bands, **self.rgbkwargs)
 
@@ -918,81 +977,88 @@ class DecalsLayer(MapLayer):
 
 class RebrickedMixin(object):
 
-    def get_fits_extension_for_scale(self, scale):
+    def get_fits_extension(self, scale, fn):
         # Original and scaled images are in ext 1.
         return 1
 
-    def get_scaled_pattern(self):
-        from decals import settings
-        basedir = settings.DATA_DIR
-        return os.path.join(
-            basedir, 'scaled', self.name,
-            '%(scale)i%(band)s', '%(brickname).3s',
-            'sdssco' + '-%(brickname)s-%(band)s.fits.fz')
-    
     def get_filename(self, brick, band, scale):
         from decals import settings
         brickname = brick.brickname
         basedir = settings.DATA_DIR
         brickpre = brickname[:3]
         if scale == 0:
-            return os.path.join(basedir, 'sdssco', 'coadd', brickpre,
-                                'sdssco-%s-%s.fits.fz' % (brickname, band))
+            return super(RebrickedMixin, self).get_filename(brick, band, scale)
 
         fnargs = dict(band=band, brickname=brickname, scale=scale)
         fn = self.get_scaled_pattern() % fnargs
         if not os.path.exists(fn):
-            import numpy as np
-            from astrometry.util.util import Tan
-            from scipy.ndimage.filters import gaussian_filter
-            import fitsio
-            import tempfile
-            
-            # Create scaled-down image (recursively).
-            #print('Creating scaled-down image for', brick.brickname, band, 'scale', scale)
-            # This is a little strange -- we resample into a WCS twice
-            # as big but with half the scale of the image we need, the
-            # smooth & bin the image and scale the WCS.
-            size = 4800
-            pixscale = 0.396 * 2**(scale-1)
-            cd = pixscale / 3600.
-            crpix = size/2. + 0.5
-            wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
-                      float(size), float(size))
-            imgs = self.render_into_wcs(wcs, None, 0, 0, bands=[band], scale=scale-1)
-            if imgs is None:
-                return None
-            img = imgs[0]
-
-            # smooth
-            img = gaussian_filter(img, 1.)
-            # bin
-            img = (img[::2,::2] + img[1::2,::2] + img[1::2,1::2] + img[::2,1::2])/4.
-            img = img.astype(np.float32)
-            # create half-size WCS
-            wcs = wcs.get_subimage(0, 0, size, size)
-            wcs = wcs.scale(0.5)
-            hdr = fitsio.FITSHDR()
-            wcs.add_to_header(hdr)
-
-            # (r1,r2,nil,nil),(nil,nil,d1,d2) = wcs.pixelxy2radec(
-            #     [1, size/2, size/4, size/4], [size/4, size/4, 1, size/2,])
-            # print('Brick RA1,RA2', brick.ra1, brick.ra2, 'vs WCS', r1, r2)
-            # print('  Dec1,Dec2', brick.dec1, brick.dec2, 'vs WCS', d1, d2)
-            
-            trymakedirs(fn)
-            dirnm = os.path.dirname(fn)
-            f,tmpfn = tempfile.mkstemp(suffix='.fits.fz.tmp', dir=dirnm)
-            os.close(f)
-            os.unlink(tmpfn)
-            compress = '[compress R 100,100; qz 4]'
-            fitsio.write(tmpfn + compress, img, header=hdr, clobber=True)
-            os.rename(tmpfn, fn)
-            print('Wrote', fn)
-
+            self.create_scaled_image(brick, band, scale, fn)
         if not os.path.exists(fn):
             return None
         return fn
+
+    def get_scaled_pattern(self):
+        fn = super(RebrickedMixin, self).get_scaled_pattern()
+        if fn.endswith('.fits'):
+            fn += '.fz'
+        return fn
+
+    def get_scaled_wcs(self, brick, band, scale):
+        pass
+    
+    def create_scaled_image(self, brick, band, scale, fn):
+        import numpy as np
+        from scipy.ndimage.filters import gaussian_filter
+        import fitsio
+        import tempfile
+        
+        # Create scaled-down image (recursively).
+        #print('Creating scaled-down image for', brick.brickname, band, 'scale', scale)
+        # This is a little strange -- we resample into a WCS twice
+        # as big but with half the scale of the image we need, then
+        # smooth & bin the image and scale the WCS.
+        finalwcs = self.get_scaled_wcs(brick, band, scale)
+        print('Scaled WCS:', finalwcs)
+        wcs = finalwcs.scale(2.)
+        print('Double-size WCS:', wcs)
+        
+        imgs = self.render_into_wcs(wcs, None, 0, 0, bands=[band], scale=scale-1)
+        if imgs is None:
+            return None
+        img = imgs[0]
+
+        H,W = img.shape
+        # make even size
+        if H % 2 == 1:
+            img = img[:-1,:]
+        if W % 2 == 1:
+            img = img[:,:-1]
+        # smooth
+        img = gaussian_filter(img, 1.)
+        # bin
+        img = (img[::2,::2] + img[1::2,::2] + img[1::2,1::2] + img[::2,1::2])/4.
+        img = img.astype(np.float32)
+        H,W = img.shape
+        # create half-size WCS
+        wcs = wcs.get_subimage(0, 0, W*2, H*2)
+        wcs = wcs.scale(0.5)
+        hdr = fitsio.FITSHDR()
+        wcs.add_to_header(hdr)
+
+        # (r1,r2,nil,nil),(nil,nil,d1,d2) = wcs.pixelxy2radec(
+        #     [1, size/2, size/4, size/4], [size/4, size/4, 1, size/2,])
+        # print('Brick RA1,RA2', brick.ra1, brick.ra2, 'vs WCS', r1, r2)
+        # print('  Dec1,Dec2', brick.dec1, brick.dec2, 'vs WCS', d1, d2)
+        
+        trymakedirs(fn)
+        dirnm = os.path.dirname(fn)
+        f,tmpfn = tempfile.mkstemp(suffix='.fits.fz.tmp', dir=dirnm)
+        os.close(f)
+        os.unlink(tmpfn)
+        compress = '[compress R 100,100; qz 4]'
+        fitsio.write(tmpfn + compress, img, header=hdr, clobber=True)
+        os.rename(tmpfn, fn)
+        print('Wrote', fn)
 
     def get_bricks_for_scale(self, scale):
         if scale in [0, None]:
@@ -1028,10 +1094,8 @@ class RebrickedMixin(object):
                            indexlist=True)
         keep = []
         for ia,I in enumerate(inds):
-
-            if (allbricks.dec[ia] > 80):
-                print('Brick', allbricks.brickname[ia], ': matches', I)
-            
+            #if (allbricks.dec[ia] > 80):
+            #    print('Brick', allbricks.brickname[ia], ': matches', I)
             if I is None:
                 continue
             # Check for actual RA,Dec box overlap, not spherematch possible overlap
@@ -1074,27 +1138,15 @@ class RebrickedMixin(object):
 
         
 class Decaps2Layer(DecalsLayer):
-    def get_filename(self, brick, band, scale):
-        brickname = brick.brickname
-        def get_brick_wcs(*args, **kwargs):
-            from legacypipe.survey import wcs_for_brick
-            return wcs_for_brick(brick)
 
-        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
-        if scale == 0:
-            return fn
-        fnargs = dict(band=band, brickname=brickname)
-        fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn,
-                        read_base_wcs=get_brick_wcs)
-        return fn
-
+    # Some of the DECaPS2 images do not have WCS headers, so create them based on the brick center.
     def read_wcs(self, brick, band, scale):
         if scale > 0:
             return super(Decaps2Layer, self).read_wcs(brick, band, scale)
         from legacypipe.survey import wcs_for_brick
         return wcs_for_brick(brick)
 
-    def get_fits_extension_for_scale(self, scale):
+    def get_fits_extension(self, scale, fn):
         if scale == 0:
             return 1
         return 0
@@ -1209,14 +1261,75 @@ class SdssLayer(MapLayer):
 
     # Need to override this function to read WCS from ext 1 of fits.fz files,
     # ext 0 of regular scaled images.
-    def get_fits_extension_for_scale(self, scale):
+    def get_fits_extension(self, scale, fn):
         if scale == 0:
             return 1
         return 0
     
 class ReSdssLayer(RebrickedMixin, SdssLayer):
-    pass
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        size = 2400
+        pixscale = 0.396 * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
 
+class DecalsDr3Layer(DecalsLayer):
+    '''The data model changed (added .fz compression) as of DR5; this
+    class retrofits pre-DR5 filenames.
+    '''
+    def get_base_filename(self, brick, band):
+        brickname = brick.brickname
+        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
+        if fn is not None:
+            if self.imagetype == 'image':
+                fn = fn.replace('.fits.fz', '.fits')
+            elif self.imagetype == 'model':
+                fn = fn.replace('.fits.fz', '.fits.gz')
+        return fn
+
+    # Allow fpacked (or not) scaled images.
+    def get_scaled_filename(self, brick, band, scale):
+        fn = super(DecalsDr3Layer, self).get_scaled_filename(brick, band, scale)
+        if not os.path.exists(fn) and os.path.exists(fn + '.fz'):
+            return fn + '.fz'
+        return fn
+
+    def get_fits_extension(self, scale, fn):
+        if fn.endswith('.fz'):
+            return 1
+        return super(DecalsDr3Layer, self).get_fits_extension(scale, fn)
+
+class ReDecalsLayer(RebrickedMixin, DecalsLayer):
+
+    # DR5 split directories HACK
+    def get_base_filename(self, brick, band):
+        brickname = brick.brickname
+        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
+        if os.path.exists(fn):
+            return fn
+        print('get_filename:', brickname, band, 'not in', fn)
+        from decals import settings
+        basedir = settings.DATA_DIR
+        brickpre = brickname[:3]
+        fn = os.path.join(basedir, self.drname, 'coadd2', brickpre, brickname,
+                          'legacysurvey-%s-%s-%s.fits.fz' % (brickname, self.imagetype, band))
+        print('try', fn)
+        return fn
+
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        size = 3600
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+    
 class PS1Layer(MapLayer):
     def __init__(self, name):
         super(PS1Layer, self).__init__(name, nativescale=14, maxscale=6)
@@ -1429,19 +1542,11 @@ class UnwiseLayer(MapLayer):
             return None
         return bricks[I]
 
-    def get_filename(self, brick, band, scale):
-        '''
-        band: string '1' or '2'
-        '''
+    def get_base_filename(self, brick, band):
         brickname = brick.brickname
-        assert(band in self.get_bands())
         brickpre = brickname[:3]
         fn = os.path.join(self.dir, brickpre, brickname,
                           'unwise-%s-w%s-img-u.fits' % (brickname, band))
-        if scale == 0:
-            return fn
-        fnargs = dict(band=band, brickname=brickname)
-        fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn)
         return fn
     
     def get_scaled_pattern(self):
@@ -1449,10 +1554,8 @@ class UnwiseLayer(MapLayer):
         basedir = settings.DATA_DIR
         return os.path.join(
             basedir, 'scaled', self.name,
-            #'%(scale)i%(band)s',
             '%(scale)iw%(band)s',
             '%(brickname).3s', 'unwise-%(brickname)s-w%(band)s.fits')
-            
 
     def get_scale(self, zoom, x, y, wcs):
         import numpy as np
@@ -2645,6 +2748,12 @@ def get_layer(name, default=None):
         '''
         layer = ReSdssLayer('sdss2')
 
+    elif name == 'decals-dr5':
+        survey = _get_survey('decals-dr5')
+        image = ReDecalsLayer('decals-dr5', 'image', survey)
+        layers[name] = image
+        layer = layers[name]
+        
     elif name == 'ps1':
         layer = PS1Layer('ps1')
 
@@ -2672,8 +2781,8 @@ def get_layer(name, default=None):
 
     elif name in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         survey = _get_survey('mzls+bass-dr4')
-        image = DecalsLayer('mzls+bass-dr4', 'image', survey, drname='mzls+bass-dr4')
-        model = DecalsLayer('mzls+bass-dr4-model', 'model', survey,
+        image = DecalsDr3Layer('mzls+bass-dr4', 'image', survey, drname='mzls+bass-dr4')
+        model = DecalsDr3Layer('mzls+bass-dr4-model', 'model', survey,
                             drname='mzls+bass-dr4')
         resid = DecalsResidLayer(image, model, 'mzls+bass-dr4-resid', 'resid', survey,
                                  drname='mzls+bass-dr4')
@@ -2684,8 +2793,8 @@ def get_layer(name, default=None):
 
     elif name in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
         survey = _get_survey('decals-dr3')
-        image = DecalsLayer('decals-dr3', 'image', survey)
-        model = DecalsLayer('decals-dr3-model', 'model', survey, drname='decals-dr3')
+        image = DecalsDr3Layer('decals-dr3', 'image', survey)
+        model = DecalsDr3Layer('decals-dr3-model', 'model', survey, drname='decals-dr3')
         resid = DecalsResidLayer(image, model, 'decals-dr3-resid', 'resid', survey,
                                  drname='decals-dr3')
         # No disk space for DR3 scale=1 !
@@ -2698,8 +2807,8 @@ def get_layer(name, default=None):
 
     elif name in ['decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
         survey = _get_survey('decals-dr2')
-        image = DecalsLayer('decals-dr2', 'image', survey)
-        model = DecalsLayer('decals-dr2-model', 'model', survey, drname='decals-dr2')
+        image = DecalsDr3Layer('decals-dr2', 'image', survey)
+        model = DecalsDr3Layer('decals-dr2-model', 'model', survey, drname='decals-dr2')
         resid = DecalsResidLayer(image, model, 'decals-dr2-resid', 'resid', survey,
                                  drname='decals-dr2')
         layers['decals-dr2'] = image

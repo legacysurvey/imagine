@@ -1200,6 +1200,28 @@ var mylayer_B = function (name, pretty, kwargs) {
     return tiles;
 };
 
+{% if enable_dr5 %}
+//tiles = mylayer_B('decals-dr5', 'DECaLS DR5 images',
+tiles = mylayer('decals-dr5', 'DECaLS DR5 images',
+                {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+if (defaultTile == null) {
+    defaultTile = tiles;
+}
+
+{% if enable_dr5_models %}
+tiles = mylayer_B('decals-dr5-model', 'DECaLS DR5 models',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+{% endif %}
+
+{% if enable_dr5_resids %}
+tiles = mylayer_B('decals-dr5-resid', 'DECaLS DR5 residuals',
+                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
 {% if enable_decaps %}
 tiles = mylayer_B('decaps2', 'DECaPS images',
                   {'maxNativeZoom': 13,
