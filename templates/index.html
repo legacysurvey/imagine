@@ -2061,6 +2061,53 @@ var overlays = [
   {% endfor %}
 {% endif %}
 
+// Function to search the current page URL's GET query portion URL?x=y
+var QueryItems = function() {
+    var terms = window.location.search.substr(1).split('&');
+    var items = {};
+    for (var i = 0; i < terms.length; ++i) {
+        var words = terms[i].split('=');
+        if (words.length == 1) {
+            items[words[0]] = true;
+        } else if (words.length == 2) {
+            items[words[0]] = decodeURIComponent(words[1].replace(/\+/g, ' '));
+        }
+    }
+    return items;
+};
+
+var qstr = QueryItems();
+
+if ('desi' in qstr) {
+    var DesiFootprint = CatalogOverlay.extend({
+
+        initialize: function(name, pretty, kwargs) {
+            CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+            this._circle = L.circle(L.latLng(0.,0.), 1000. * 30., {'color':'yellow'});
+            var circleList = [];
+            circleList.push(this._circle);
+            this._layer = L.layerGroup(circleList);
+        },
+    
+        ready: function() {
+            console.log(this._name + ' ready function called');
+        },
+    
+        overlayAdded: function(e) {
+            this._group.addLayer(this._layer);
+        },
+    
+        mapBoundsChanged: function() {
+            var cen = map.getCenter();
+            this._circle.setLatLng(cen);
+        },
+    
+    });
+    var f = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
+    overlays.push(f);
+}
+
+
 var layerControl = new L.control.layers(baseMaps, {}, { collapsed: false })
 for (var i=0,len=overlays.length; i<len; i++) {
     layerControl._addLayer(overlays[i].getGroup(), overlays[i]._pretty, true);
@@ -2115,22 +2162,6 @@ var lastLatLng = map.getCenter();
 map.addLayer(sqlOverlay.getGroup());
 {% endif %}
 
-// Function to search the current page URL's GET query portion URL?x=y
-var QueryItems = function() {
-    var terms = window.location.search.substr(1).split('&');
-    var items = {};
-    for (var i = 0; i < terms.length; ++i) {
-        var words = terms[i].split('=');
-        if (words.length == 1) {
-            items[words[0]] = true;
-        } else if (words.length == 2) {
-            items[words[0]] = decodeURIComponent(words[1].replace(/\+/g, ' '));
-        }
-    }
-    return items;
-};
-
-var qstr = QueryItems();
 
 for (var i=0,len=overlays.length; i<len; i++) {
     if (overlays[i]._url_term in qstr) {
@@ -2142,39 +2173,6 @@ if ('constel' in qstr) {
   map.addLayer(conGroup);
 }
 
-if ('desi' in qstr) {
-
-var DesiFootprint = L.CircleMarker.extend({
-    initialize: function() {
-        //L.CircleMarker.prototype.initialize.call(this, map.getCenter(), 10.);
-        L.CircleMarker.prototype.initialize.call(this, [0,0], 10.);
-        this._point = L.point(200, 200);
-        this._radius = 100;
-    },
-    _project: function() {
-                                         this._updateBounds();
-
-    },
-    _updateBounds: function() {
-                                         this._pxBounds = new L.Bounds(L.point(0,0), L.point(500,500));
-    }
-});
-var desiGroup = L.layerGroup([]);
-console.log('creating DesiFootprint()');
-var f = new DesiFootprint();
-console.log('created DesiFootprint()');
-
-//desiGroup.addLayer(DesiFootprint());
-desiGroup.addLayer(f);
-
-layerControl._addLayer(desiGroup, 'DESI footprint', true);
-
-//desiGroup.addTo(map);
-map.addLayer(desiGroup);
-
-console.log('DESI Footprint')
-
-}
 
 map.on('mousemove', onMouseMove);
 map.on('overlayadd', overlayAdded);
