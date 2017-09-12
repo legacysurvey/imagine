@@ -1599,13 +1599,14 @@ var PolygonOverlay = CatalogOverlay.extend({
     getLayer: function(result) {
         var objs = result['polys'];
         //console.log('Received ' + objs.length + ' Objs');
-        var circleList = [];
+        var drawList = [];
         var clong = map.getCenter().lng;
         for (var i=0, len=objs.length; i<len; i++) {
             var name = objs[i].name;
-            var poly = objs[i].poly;
-            for (var j=0, plen=poly.length; j<plen; j++) {
-                poly[j][1] = wrap_long(poly[j][1], clong);
+            var rd = objs[i].radecs;
+            var poly = [];
+            for (var j=0, plen=rd.length; j<plen; j++) {
+                poly.push([dec2lat(rd[j][1]), ra2long_C(rd[j][0], clong)]);
             }
             var color = objs[i].color || this._color;
             var c = L.polygon(poly, {fill:false, color:color, weight:4 });
@@ -1615,10 +1616,10 @@ var PolygonOverlay = CatalogOverlay.extend({
                 c.on('mouseover', this.mouseOver.bind(this));
                 c.on('mouseout',  this.mouseOut.bind(this));
             }
-            circleList.push(c);
+            drawList.push(c);
             this._current[name] = c;
         }
-        return L.layerGroup(circleList);
+        return L.layerGroup(drawList);
     },
 
     mouseOver: function(e) {
@@ -1686,7 +1687,6 @@ var PolygonOverlay = CatalogOverlay.extend({
                 }
             }
         }
-        //objs.sort();
         return objs;
     },
 
