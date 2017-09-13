@@ -133,31 +133,8 @@ background: #242424;
 <script>
 //'use strict';
 
-/*
-var MyTileLayer = L.TileLayer.extend({
-    _loadTile: function (tile, tilePoint) {
-        // this is just copied from the superclass
-        tile._layer  = this;
-        tile.onload  = this._tileOnLoad;
-        tile.onerror = this._tileOnError;
-        this._adjustTilePoint(tilePoint);
-        tile.src     = this.getTileUrl(tilePoint);
-        // <special sauce> - add zoom,x,y to tile object;
-        tile.tilex = tilePoint.x;
-        tile.tiley = tilePoint.y;
-        tile.z = tilePoint.z;
-        // </special sauce>
-        // copied
-        this.fire('tileloadstart', {
-            tile: tile,
-            url: tile.src,
-        });
-    }
-});
-*/
-
 // A subclass that switches URL patterns depending on zoom range.
-var ZoomRangeTileLayer = L.TileLayer.extend({ //MyTileLayer.extend({
+var ZoomRangeTileLayer = L.TileLayer.extend({
     options: {
         urlPatterns: [],
     },
@@ -2201,16 +2178,25 @@ map.on('baselayerchange', function(e) {
     idname = e.layer.name;
 });
 
+/*
+//L.DomEvent.on(map.getContainer(), 'keypress', onMapKeyPress, map);
+//map.getContainer().focus();
 function onMapKeyPress(e) {
     console.log('onMapKeyPress ' + e);
 }
-
-//L.DomEvent.on(map.getContainer(), 'keypress', onMapKeyPress, map);
-//map.getContainer().focus();
-
-// Leaflet 1.0.0+
 map.on('keypress', onMapKeyPress);
+*/
 
+function keyDown(e) {
+    console.log('keyDown ' + e);
+    // space bar
+    if (e.keyCode == 32) {
+        console.log('space bar!');
+        e.preventDefault();
+        e.stopPropagation();
+    }
+}
+document.addEventListener('keydown', keyDown);
 
 
 // These are from Astrometry.net's stellarium_constellations.c
