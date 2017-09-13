@@ -1175,9 +1175,9 @@ var mylayer_B = function (name, pretty, kwargs) {
 };
 
 {% if enable_dr5 %}
-//tiles = mylayer_B('decals-dr5', 'DECaLS DR5 images',
-tiles = mylayer('decals-dr5', 'DECaLS DR5 images',
-                {'urlPatterns': [ [1, maxZoom, '{{ tileurl|safe }}'], ],});
+tiles = mylayer_B('decals-dr5', 'DECaLS DR5 images',
+//tiles = mylayer('decals-dr5', 'DECaLS DR5 images',
+                {'urlPatterns': [ [12, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 if (defaultTile == null) {
     defaultTile = tiles;
@@ -1338,6 +1338,7 @@ for (var i in allLayers) {
 if (!added) {
     defaultTile.addTo(map);
 }
+// may be overridden by 'qstr' below.
 var lastidname = idname;
 
 function doGoto() {
@@ -2058,6 +2059,10 @@ var QueryItems = function() {
 };
 
 var qstr = QueryItems();
+
+if ('blink' in qstr) {
+    lastidname = qstr['blink'];
+}
 
 if ('desi' in qstr) {
     var DesiFootprint = CatalogOverlay.extend({

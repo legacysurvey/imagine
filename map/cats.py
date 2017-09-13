@@ -617,7 +617,7 @@ def _get_decals_cat(wcs, tag='decals'):
     if len(cat) == 0:
         cat = None
     else:
-        cat = merge_tables(cat)
+        cat = merge_tables(cat, columns='fillzero')
 
     return cat,hdr
 
