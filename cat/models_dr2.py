@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 from django.db import models
 
 class DR2_Target(models.Model):
-    id = models.BigIntegerField(primary_key=True, blank=True, null=True)
+    id = models.BigIntegerField(primary_key=True, blank=True, null=False)
     cand_id = models.BigIntegerField(blank=True, null=True)
     ra = models.FloatField(blank=True, null=True)
     dec = models.FloatField(blank=True, null=True)

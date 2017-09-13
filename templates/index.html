@@ -12,13 +12,13 @@
   ga('send', 'pageview');
 </script> 
 
+{% comment %}
 <link rel="stylesheet" href="{% static "leaflet-0.7.7.css" %}" />
 <script src="{% static "leaflet-src-0.7.7.js" %}"></script>
+{% endcomment %}
 
-{% comment %}
 <link rel="stylesheet" href="{% static "leaflet-1.2.0.css" %}" />
 <script src="{% static "leaflet-src-1.2.0.js" %}"></script>
-{% endcomment %}
 
 {% comment %}
 <script src="{% static "leaflet-min-0.7.7.js" %}"></script>
@@ -33,11 +33,13 @@
 <script src="{% static "leaflet.measurecontrol-20150626.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet.measurecontrol-20150626.css" %}" />
 {% endcomment %}
+
 {% comment %}
 https://github.com/Leaflet/Leaflet.label
-{% endcomment %}
 <script src="{% static "leaflet.label-20150521.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet.label-20150521.css" %}" />
+{% endcomment %}
+
 
 <style type="text/css">
 #map { height: 100%; width: 100%; padding: 1;}
@@ -198,8 +200,7 @@ var ZoomRangeTileLayer = MyTileLayer.extend({
 // for attaching leaflet.Labels to circles
 L.Circle.include(L.BaseMarkerMethods);
 
-var CatalogOverlay = L.Class.extend({
-	includes: L.Mixin.Events,
+var CatalogOverlay = L.Evented.extend({
 
     initialize: function(name, pretty, kwargs) {
         //console.log('CatalogOverlay: ' + name + ',' + pretty);
@@ -255,7 +256,7 @@ var CatalogOverlay = L.Class.extend({
     },
 
     overlayAdded: function(e) {
-        //console.log(this._name + ': overlayAdded, zoom ' + map.getZoom() + ', my min ' + this._minZoom);
+        console.log(this._name + ': overlayAdded, zoom ' + map.getZoom() + ', my min ' + this._minZoom);
         if (e.name == this._pretty) {
             this._show = true;
 	        if (map.getZoom() >= this._minZoom) {
@@ -389,7 +390,7 @@ var CatalogOverlay = L.Class.extend({
 	        if (showlabels) {
                 var txt = this.getLabel(result, i);
                 if (txt.length > 0) {
-                    circ.bindLabel(txt, { noHide: true, clickable: true });
+                    circ.bindTooltip(txt, { noHide: true, clickable: true });
                     circ.showLabel();
                 }
 	        }
@@ -454,8 +455,7 @@ var Ps1CatalogOverlay = CatalogOverlay.extend({
 });
 {% endif %}
 
-var TileWatcher = L.Class.extend({
-	includes: L.Mixin.Events,
+var TileWatcher = L.Evented.extend({
 
     initialize: function() {
         // string keys z:x:y of currently visible tiles
@@ -648,7 +648,7 @@ var decals_getLayer = function(result, radius, defaultcolor) {
         } else {
             var txt = labels[i];
             if (txt.length > 0) {
-                circ.bindLabel(txt, { noHide: true, clickable: true });
+                circ.bindTooltip(txt, { noHide: true, clickable: true });
                 circ.showLabel();
             }
         }
@@ -1075,7 +1075,6 @@ function overlayAdded(e) {
     if (inbrickccdAdded) {
         return;
     }
-
     for (var i=0; i<polygonOverlays.length; i++) {
         if (polygonOverlays[i]._show) {
             inbrickccdAdded = true;
@@ -2316,13 +2315,12 @@ var buildConstellations = function() {
     conGroup.clearLayers();
     for (var i in constellation_lines) {
         //console.log('Constellation ' + constellation_shortnames[i]);
-        lines = constellation_lines[i];
-        latlngs = [];
+        var lines = constellation_lines[i];
+        var latlngs = [];
         var clong = map.getCenter().lng;
-        s1 = lines[0];
-        ra1  = constellation_stars[2*s1];
-        long1 = ra2long_C(ra1, clong);
-
+        var s1 = lines[0];
+        var ra1  = constellation_stars[2*s1];
+        var long1 = ra2long_C(ra1, clong);
         // duplicate this constellation if the viewpoint is wider than 360 degrees?
     
         for (var j=0; j<lines.length/2; j++) {
@@ -2337,7 +2335,7 @@ var buildConstellations = function() {
     	    latlngs.push([ latlng1, latlng2 ]);
             //if (i == 0) console.log('  line from star ' + s1 + ' to ' + s2 + ', ra,dec ' + ra1 + ',' + dec1 + ' to ' + ra2 + ',' + dec2 + '; latlng ' + latlng1 + ' to ' + latlng2);
         }
-        var mpl = L.multiPolyline(latlngs, {'color': constellation_colors[i]});
+        var mpl = L.polyline(latlngs, {'color': constellation_colors[i]});
         conGroup.addLayer(mpl);
 
         // add a fake Circle marker to hold the label.
@@ -2362,8 +2360,9 @@ var buildConstellations = function() {
         var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, long1));
         var circ = L.circle(latlng, 0., {'color':'red', 'opacity':0.,
                                          'fillOpacity':0, 'weight':5});
-        circ.bindLabel(constellation_longnames[i], { noHide: true, clickable: true });
-        circ.showLabel();
+        circ.bindTooltip(constellation_longnames[i],
+                         {interactive: true, permanent: true,
+                          direction: 'center' });
         conGroup.addLayer(circ);
     }
 };
@@ -2393,7 +2392,8 @@ var AstroControl = L.Control.Scale.extend({
 	        unitName = 'arcmin';
 	    }
 	    var unit = this._getRoundNum(maxUnit);
-	    this._mScale.style.width = this._getScaleWidth(unit / maxUnit) + 'px';
+        var ratio = unit/maxUnit;
+		this._mScale.style.width = Math.round(this.options.maxWidth * ratio) + 'px';
 	    this._mScale.innerHTML = unit + ' ' + unitName;
     },
 

@@ -1,6 +1,11 @@
 import os
 from settings_common import *
 
+ALLOWED_HOSTS.append('127.0.0.1')
+
+STATIC_TILE_URL_B = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+SUBDOMAINS_B = SUBDOMAINS
+
 # > ssh cori -L 5432:scidb2.nersc.gov:5432
 
 DATABASE_ROUTERS = ['cat.models.Router']
