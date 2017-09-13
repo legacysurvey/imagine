@@ -1305,20 +1305,20 @@ class DecalsDr3Layer(DecalsLayer):
 
 class ReDecalsLayer(RebrickedMixin, DecalsLayer):
 
-    # DR5 split directories HACK
-    def get_base_filename(self, brick, band):
-        brickname = brick.brickname
-        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
-        if os.path.exists(fn):
-            return fn
-        print('get_filename:', brickname, band, 'not in', fn)
-        from decals import settings
-        basedir = settings.DATA_DIR
-        brickpre = brickname[:3]
-        fn = os.path.join(basedir, self.drname, 'coadd2', brickpre, brickname,
-                          'legacysurvey-%s-%s-%s.fits.fz' % (brickname, self.imagetype, band))
-        print('try', fn)
-        return fn
+    # # DR5 split directories HACK
+    # def get_base_filename(self, brick, band):
+    #     brickname = brick.brickname
+    #     fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
+    #     if os.path.exists(fn):
+    #         return fn
+    #     print('get_filename:', brickname, band, 'not in', fn)
+    #     from decals import settings
+    #     basedir = settings.DATA_DIR
+    #     brickpre = brickname[:3]
+    #     fn = os.path.join(basedir, self.drname, 'coadd2', brickpre, brickname,
+    #                       'legacysurvey-%s-%s-%s.fits.fz' % (brickname, self.imagetype, band))
+    #     print('try', fn)
+    #     return fn
 
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
@@ -1931,11 +1931,10 @@ def brick_list(req):
         #mra = mdec / np.cos(np.deg2rad(b.dec))
         mra = mdec = 0.
         bricks.append(dict(name=b.brickname,
-                           poly=[[b.dec1-mdec, ra2long_B(b.ra1-mra)],
-                                 [b.dec2+mdec, ra2long_B(b.ra1-mra)],
-                                 [b.dec2+mdec, ra2long_B(b.ra2+mra)],
-                                 [b.dec1-mdec, ra2long_B(b.ra2+mra)],
-                                 ]))
+                           radecs=[[b.ra1 - mra, b.dec1 - mdec],
+                                   [b.ra1 - mra, b.dec2 + mdec],
+                                   [b.ra2 + mra, b.dec2 + mdec],
+                                   [b.ra2 + mra, b.dec1 - mdec]]))
     return HttpResponse(json.dumps(dict(polys=bricks)),
                         content_type='application/json')
 
@@ -1964,19 +1963,35 @@ ccd_cache = {}
 
 def _ccds_touching_box(north, south, east, west, Nmax=None, name=None, survey=None):
     from astrometry.libkd.spherematch import tree_build_radec
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    from astrometry.util.fits import fits_table
     import numpy as np
     global ccd_cache
 
+    print('ccds_touching_box: ccd_cache keys:', ccd_cache.keys())
+    
     if not name in ccd_cache:
-        debug('Finding CCDs for name=', name)
+        debug('Finding CCDs for name:', name)
         if survey is None:
             survey = _get_survey(name=name)
-        CCDs = survey.get_ccds_readonly()
-        print('Read CCDs:', CCDs.columns())
-        tree = tree_build_radec(CCDs.ra, CCDs.dec)
-        ccd_cache[name] = (CCDs, tree)
-    else:
-        CCDs,tree = ccd_cache[name]
+
+        kdfns = survey.find_file('ccd-kds')
+        print('KD filenames:', kdfns)
+        if len(kdfns) == 1:
+            kdfn = kdfns[0]
+            tree = tree_open(kdfn, 'ccds')
+            def read_ccd_rows_kd(fn, J):
+                return fits_table(fn, rows=J)
+            ccd_cache[name] = (tree, read_ccd_rows_kd, kdfn)
+
+        else:
+            CCDs = survey.get_ccds_readonly()
+            print('Read CCDs:', CCDs.columns())
+            tree = tree_build_radec(CCDs.ra, CCDs.dec)
+            def read_ccd_rows_table(ccds, J):
+                return ccds[J]
+            ccd_cache[name] = (tree, read_ccd_rows_table, CCDs)
+    tree,readrows,readrows_arg = ccd_cache[name]
 
     # image size -- DECam
     radius = np.hypot(2048, 4096) * 0.262/3600. / 2.
@@ -1985,7 +2000,8 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None, survey=No
 
     J = _objects_touching_box(tree, north, south, east, west, Nmax=Nmax,
                               radius=radius)
-    return CCDs[J]
+    #return CCDs[J]
+    return readrows(readrows_arg, J)
 
 def ccd_list(req):
     import json
@@ -2015,7 +2031,7 @@ def ccd_list(req):
         r,d = wcs.pixelxy2radec(x, y)
         ccmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
         ccds.append(dict(name='%s %i-%s-%s' % (c.camera, c.expnum, c.ccdname, c.filter),
-                         poly=zip(d, ra2long(r)),
+                         radecs=zip(r, d),
                          color=ccmap[c.filter]))
     return HttpResponse(json.dumps(dict(polys=ccds)), content_type='application/json')
 
