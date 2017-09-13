@@ -14,6 +14,12 @@
 
 <link rel="stylesheet" href="{% static "leaflet-0.7.7.css" %}" />
 <script src="{% static "leaflet-src-0.7.7.js" %}"></script>
+
+{% comment %}
+<link rel="stylesheet" href="{% static "leaflet-1.2.0.css" %}" />
+<script src="{% static "leaflet-src-1.2.0.js" %}"></script>
+{% endcomment %}
+
 {% comment %}
 <script src="{% static "leaflet-min-0.7.7.js" %}"></script>
 {% endcomment %}
@@ -2191,6 +2197,18 @@ map.on('baselayerchange', function(e) {
     console.log('idname: ' + e.layer.name);
     idname = e.layer.name;
 });
+
+function onMapKeyPress(e) {
+    console.log('onMapKeyPress ' + e);
+}
+
+//L.DomEvent.on(map.getContainer(), 'keypress', onMapKeyPress, map);
+//map.getContainer().focus();
+
+// Leaflet 1.0.0+
+map.on('keypress', onMapKeyPress);
+
+
 
 // These are from Astrometry.net's stellarium_constellations.c
 
