@@ -1324,16 +1324,12 @@ tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
 allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map"});
 {% endif %}
 
+var added = false;
+var idname = '{{ layer }}';
 var baseMaps = {};
 for (var i in allLayers) {
     var layer = allLayers[i];
     baseMaps[layer.pretty] = layer;
-}
-
-var added = false;
-var idname = '{{ layer }}';
-for (i in allLayers) {
-    layer = allLayers[i];
     if (idname == layer.name) {
         layer.addTo(map);
         added = true;
@@ -1342,6 +1338,7 @@ for (i in allLayers) {
 if (!added) {
     defaultTile.addTo(map);
 }
+var lastidname = idname;
 
 function doGoto() {
     ra  = $('#gotora').val();
@@ -1726,10 +1723,8 @@ var CircleOverlay = PolygonOverlay.extend({
 });
 
 var tileWatcher = new TileWatcher();
-
 for (var k in baseMaps) {
-    var layer = baseMaps[k];
-    tileWatcher.listenToLayer(layer);
+    tileWatcher.listenToLayer(baseMaps[k]);
 }
 
 
@@ -2175,23 +2170,35 @@ map.on('baselayerchange', function(e) {
     console.log('baselayerchange: ' + e);
     console.log('layer: ' + e.layer);
     console.log('idname: ' + e.layer.name);
+    lastidname = idname;
     idname = e.layer.name;
+    console.log('new idname: ' + idname + ', new lastidname: ' + lastidname);
 });
 
-/*
-//L.DomEvent.on(map.getContainer(), 'keypress', onMapKeyPress, map);
-//map.getContainer().focus();
-function onMapKeyPress(e) {
-    console.log('onMapKeyPress ' + e);
-}
-map.on('keypress', onMapKeyPress);
-*/
-
+// When space bar is pressed, switch back to previous layer.  This allows a quick "blink" between layers.
 function keyDown(e) {
-    console.log('keyDown ' + e);
+    //console.log('keyDown ' + e);
     // space bar
     if (e.keyCode == 32) {
-        console.log('space bar!');
+        //console.log('space bar!');
+        //console.log('idname ' + idname + ', lastidname ' + lastidname);
+        if (lastidname != idname) {
+            console.log('Switching from layer ' + idname + ' back to previous layer ' + lastidname);
+            var toadd = false;
+            var torm  = false;
+            for (i in allLayers) {
+                layer = allLayers[i];
+                if (idname == layer.name) {
+                    torm = layer;
+                } else if (lastidname == layer.name) {
+                    toadd = layer;
+                }
+            }
+            if (toadd && torm) {
+                torm.removeFrom(map);
+                toadd.addTo(map);
+            }
+        }
         e.preventDefault();
         e.stopPropagation();
     }
