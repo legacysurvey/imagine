@@ -235,6 +235,14 @@ def decaps(req):
                  rooturl=settings.ROOT_URL + '/decaps',
     )
 
+def dr5(req):
+    return index(req, enable_decaps=True,
+                 enable_ps1=False,
+                 enable_desi_targets=False,
+                 default_layer='decals-dr5',
+                 default_radec=(234.7, 13.6),
+                 rooturl=settings.ROOT_URL + '/dr5',
+    )
 
 def name_query(req):
     import json
@@ -1807,11 +1815,11 @@ class MyLegacySurveyData(LegacySurveyData):
             #debug('Cut to', len(C), 'photometric CCDs')
             #C.cut(self.apply_blacklist(C))
             #debug('Cut to', len(C), 'not-blacklisted CCDs')
-            for k in [#'date_obs', 'ut', 'airmass', 'arawgain', 
+            for k in [#'date_obs', 'ut', 'arawgain', 
                       'zpt', 'avsky', 'ccdnum', 'ccdzpta',
                       'ccdzptb', 'ccdphoff', 'ccdphrms', 'ccdskyrms',
                       'ccdtransp', 'ccdnstar', 'ccdnmatch', 'ccdnmatcha',
-                      'ccdnmatchb', 'ccdmdncol', 'expid',]:
+                      'ccdnmatchb', 'ccdmdncol', 'expid']:
                 if k in C.columns():
                     C.delete_column(k)
             fn = '/tmp/cut-ccds-%s.fits' % os.path.basename(self.survey_dir)
@@ -2068,9 +2076,13 @@ def get_exposure_table(name):
             exps.dec = exps.dec_bore
             ## hack -- should average
             exps.zpt = exps.ccdzpt
+            # DECam
+            exps.seeing = exps.fwhm * 0.262
+            print('Exposures: columns', exps.columns())
+            # no airmass in dr5 kd-tree file
             exps.writeto('/tmp/exposures-%s.fits' % name,
                          columns=['ra','dec','expnum','seeing','propid','fwhm','zpt',
-                                  'airmass','exptime','date_obs','ut','filter','mjd_obs',
+                                  'exptime','date_obs','ut','filter','mjd_obs',
                                   'image_filename'])
             T = exps
         else:

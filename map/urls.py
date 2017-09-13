@@ -169,6 +169,9 @@ urlpatterns = [
 
     # Special DECaPS version of viewer.
     url(r'decaps', views.decaps),
+
+    # DR5 version of the viewer.
+    url(r'dr5', views.dr5),
     
     # fall-through
     url(r'', views.index),

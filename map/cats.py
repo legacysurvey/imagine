@@ -517,6 +517,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
+        print('e:', e)
         return HttpResponse(e.strerror)
     ver = int(ver)
     if not ver in catversions[tag]:

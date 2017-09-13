@@ -1,6 +1,9 @@
 import os
 from settings_common import *
 
+ENABLE_DR2 = False
+ENABLE_DR5 = True
+
 ALLOWED_HOSTS.append('127.0.0.1')
 
 STATIC_TILE_URL_B = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
@@ -34,7 +37,11 @@ STATIC_ROOT = None
 TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
 #CAT_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
+
 CAT_URL = '/{id}/{ver}/{z}/{x}/{y}.cat.json'
+
+# No CORS
+#CAT_URL = 'http://legacysurvey.org/viewer-dev/{id}/{ver}/{z}/{x}/{y}.cat.json'
 
 #STATIC_TILE_URL = 'http://{s}.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 STATIC_TILE_URL = 'http://{s}.legacysurvey.org/viewer-dev/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'

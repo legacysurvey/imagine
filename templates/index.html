@@ -12,19 +12,11 @@
   ga('send', 'pageview');
 </script> 
 
-{% comment %}
-<link rel="stylesheet" href="{% static "leaflet-0.7.7.css" %}" />
-<script src="{% static "leaflet-src-0.7.7.js" %}"></script>
-{% endcomment %}
-
 <link rel="stylesheet" href="{% static "leaflet-1.2.0.css" %}" />
 <script src="{% static "leaflet-src-1.2.0.js" %}"></script>
+<script src="{% static "leaflet-pip-20170913.js" %}"></script>
 
-{% comment %}
-<script src="{% static "leaflet-min-0.7.7.js" %}"></script>
-{% endcomment %}
 <script src="{% static "jquery-2.1.1.min.js" %}"></script>
-<script src="{% static "leaflet-pip-20150130.min.js" %}"></script>
 <script src="{% static "leaflet-zoomslider-0.6.1.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet-zoomslider-0.6.1.css" %}" />
 {% comment %}
@@ -33,13 +25,6 @@
 <script src="{% static "leaflet.measurecontrol-20150626.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet.measurecontrol-20150626.css" %}" />
 {% endcomment %}
-
-{% comment %}
-https://github.com/Leaflet/Leaflet.label
-<script src="{% static "leaflet.label-20150521.js" %}"></script>
-<link rel="stylesheet" href="{% static "leaflet.label-20150521.css" %}" />
-{% endcomment %}
-
 
 <style type="text/css">
 #map { height: 100%; width: 100%; padding: 1;}
@@ -148,6 +133,7 @@ background: #242424;
 <script>
 //'use strict';
 
+/*
 var MyTileLayer = L.TileLayer.extend({
     _loadTile: function (tile, tilePoint) {
         // this is just copied from the superclass
@@ -168,9 +154,10 @@ var MyTileLayer = L.TileLayer.extend({
         });
     }
 });
+*/
 
 // A subclass that switches URL patterns depending on zoom range.
-var ZoomRangeTileLayer = MyTileLayer.extend({
+var ZoomRangeTileLayer = L.TileLayer.extend({ //MyTileLayer.extend({
     options: {
         urlPatterns: [],
     },
@@ -468,8 +455,13 @@ var TileWatcher = L.Evented.extend({
     },
 
     tileLoadStart: function(e) {
-        var tile = e.tile;
-        var key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
+        var coord = e.coords;
+        var x = coord.x;
+        var zoom = coord.z;
+        var maxtile = 1 << zoom;
+        // In leaflet-1.2.0, x can be > 2**zoom
+        x = x % maxtile;
+        var key = '' + zoom + ':' + x + ':' + coord.y;
         //console.log('Tile load start: ' + key);
         if (key in this._visibleTiles) {
             //console.log('tile was already in visible tiles');
@@ -1958,6 +1950,15 @@ var mzlsbasscat4 = new DecalsCatalogLayer(tileWatcher,
                                            'urlTerm': 'sources-dr4'});
 {% endif %}
 
+{% if enable_dr5_overlays %}
+var decalscat5 = new DecalsCatalogLayer(tileWatcher,
+                                        'decals-dr5',
+                                        'DECaLS DR5 Catalog',
+                                        {'url': '{{caturl|safe}}', 
+                                         'minZoom': 12,
+                                         'urlTerm': 'sources-dr5'});
+{% endif %}
+
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
 var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {});
@@ -2016,6 +2017,9 @@ var overlays = [
     {% endif %}
     {% if enable_dr4_overlays %}
     mzlsbasscat4,
+    {% endif %}
+    {% if enable_dr5_overlays %}
+    decalscat5,
     {% endif %}
     {% if enable_dr2_overlays %}
     ccdOverlay2,
