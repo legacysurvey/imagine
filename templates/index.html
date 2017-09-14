@@ -1077,10 +1077,11 @@ inbrickccd.onAdd = function (map) {
 };
 var inbrickccdAdded = false;
 
-var map = L.map('map');
+var map = L.map('map', {zoomsliderControl: false});
 var popup = L.popup();
 
-map.attributionControl.options.prefix += ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
+map.attributionControl.options.prefix = '<a href="http://legacysurvey.org/dr5/viewer-tips">Tips &amp; Tricks | ' +
+     map.attributionControl.options.prefix + ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
 
 // default to 1.
 var tileversions = {
@@ -1407,13 +1408,17 @@ function infoBoxClicked(e) {
 }
 
 var infoBoxActive = true;
-var info = L.control();
+var info = L.control({'position':'topleft'});
 info.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'info');
     this._div.innerHTML = 'RA,Dec = ' + {{ra}}.toFixed(4) + ", " + {{dec}}.toFixed(4) + ", zoom " + {{zoom}};
     return this._div;
 };
 info.addTo(map);
+
+// from static/leaflet-zoomslider -- add the zoom slider manually so it goes *after* the RA,Dec box.
+map.zoomsliderControl = new L.Control.Zoomslider();
+map.addControl(map.zoomsliderControl);
 
 var container = info.getContainer();
 L.DomEvent
@@ -1442,7 +1447,7 @@ upload.onAdd = function (map) {
 upload.addTo(map);
 
 // Named object search field
-var objquery = L.control({'position':'bottomright'});
+var objquery = L.control({'position':'bottomleft'});
 objquery.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'objquery');
     this._div.innerHTML = 'Jump to object: <input type="text" id="objquery" value="NGC 5614" size="25"/> <span id="objquerystatus"></span>';
