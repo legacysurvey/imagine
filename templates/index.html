@@ -575,7 +575,7 @@ var decals_getLayer = function(result, radius, defaultcolor) {
     var circleList = new Array(rdlist.length);
     var clong = map.getCenter().lng;
     var radii = result['radius'];
-    var colors = result['colors'];
+    var colors = result['color'];
     
     for (var i=0, len=rdlist.length; i<len; i++) {
         var r = rdlist[i][0];
@@ -1448,7 +1448,7 @@ query.addTo(map);
 var upload = L.control({'position':'bottomleft'});
 upload.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'upload');
-    this._div.innerHTML = 'Custom catalog upload (FITS table; RA,Dec,[name]): <form action="{{ uploadurl }}" method="POST" enctype="multipart/form-data"><input type="file" name="catalog" /><span id="upload_status"></span><input type="submit" value="Upload"></form>'
+    this._div.innerHTML = 'Custom catalog upload (FITS table; RA,Dec,[name]): <form action="{{ uploadurl }}" method="POST" enctype="multipart/form-data"><input type="file" name="catalog" id="usercat_file" /><span id="upload_status"></span><input type="submit" value="Upload" id="usercat_submit" /></form>'
     return this._div;
 };
 upload.addTo(map);
@@ -1524,6 +1524,13 @@ $(document).ready(function() {
     $('#upload').click(function(event) {
         console.log('upload clicked.');
         return false;
+    });
+
+    $('#usercat_file').click(function(event) {
+        event.stopPropagation();
+    });
+    $('#usercat_submit').click(function(event) {
+        event.stopPropagation();
     });
 
     // set initial hash location

@@ -432,6 +432,8 @@ def cat_user(req, ver):
         D.update(bricknames=list(cat.brickname))
     if 'radius' in cols:
         D.update(radius=list([float(r) for r in cat.radius]))
+    if 'color' in cols:
+        D.update(color=list([c.strip() for c in cat.color]))
 
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
