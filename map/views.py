@@ -401,6 +401,10 @@ class MapLayer(object):
         self.hack_jpeg = True
         self.pixscale = 0.262
 
+        self.basedir = os.path.join(settings.DATA_DIR, self.name)
+        self.tiledir = os.path.join(settings.DATA_DIR, 'tiles', self.name)
+        self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
+
     def get_bricks(self):
         pass
 
@@ -416,9 +420,7 @@ class MapLayer(object):
 
     def get_tile_filename(self, ver, zoom, x, y):
         '''Pre-rendered JPEG tile filename.'''
-        from decals import settings
-        basedir = settings.DATA_DIR
-        tilefn = os.path.join(basedir, 'tiles', self.name,
+        tilefn = os.path.join(self.tiledir,
                               '%i' % ver, '%i' % zoom, '%i' % x, '%i.jpg' % y)
         return tilefn
 
@@ -565,7 +567,6 @@ class MapLayer(object):
         wcs2 = wcs.scale(0.5)
 
         dirnm = os.path.dirname(fn)
-        from decals import settings
         ro = settings.READ_ONLY_BASEDIR
         if ro:
             dirnm = None
@@ -724,7 +725,6 @@ class MapLayer(object):
         *filename*: filename returned in http response
         *wcs*: render into the given WCS rather than zoom/x/y Mercator
         '''
-        from decals import settings
         from map.views import tileversions
         if savecache is None:
             savecache = settings.SAVE_CACHE
@@ -944,6 +944,9 @@ class DecalsLayer(MapLayer):
             drname = name
         self.drname = drname
 
+        self.basedir = os.path.join(settings.DATA_DIR, self.drname)
+        self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.drname)
+
     def get_bricks(self):
         B = self.survey.get_bricks_readonly()
         # drop unnecessary columns.
@@ -964,10 +967,7 @@ class DecalsLayer(MapLayer):
         return bricks[I]
 
     def get_scaled_pattern(self):
-        from decals import settings
-        basedir = settings.DATA_DIR
-        return os.path.join(
-            basedir, 'scaled', self.drname,
+        return os.path.join(self.scaleddir,
             '%(scale)i%(band)s', '%(brickname).3s',
             self.imagetype + '-%(brickname)s-%(band)s.fits')
 
@@ -990,13 +990,9 @@ class RebrickedMixin(object):
         return 1
 
     def get_filename(self, brick, band, scale):
-        from decals import settings
-        brickname = brick.brickname
-        basedir = settings.DATA_DIR
-        brickpre = brickname[:3]
         if scale == 0:
             return super(RebrickedMixin, self).get_filename(brick, band, scale)
-
+        brickname = brick.brickname
         fnargs = dict(band=band, brickname=brickname, scale=scale)
         fn = self.get_scaled_pattern() % fnargs
         if not os.path.exists(fn):
@@ -1073,13 +1069,11 @@ class RebrickedMixin(object):
             return self.get_bricks()
         scale = min(scale, 7)
 
-        from decals import settings
         from astrometry.util.fits import fits_table
         import numpy as np
         from astrometry.libkd.spherematch import match_radec
 
-        basedir = settings.DATA_DIR
-        fn = os.path.join(basedir, self.name, 'survey-bricks-%i.fits.gz' % scale)
+        fn = os.path.join(self.basedir, 'survey-bricks-%i.fits.gz' % scale)
         print('Brick file:', fn, 'exists?', os.path.exists(fn))
         if os.path.exists(fn):
             return fits_table(fn)
@@ -1215,10 +1209,8 @@ class SdssLayer(MapLayer):
     def get_bricks(self):
         if self.bricks is not None:
             return self.bricks
-        from decals import settings
         from astrometry.util.fits import fits_table
-        basedir = settings.DATA_DIR
-        self.bricks = fits_table(os.path.join(basedir, self.name, 'bricks-sdssco.fits'),
+        self.bricks = fits_table(os.path.join(self.basedir, 'bricks-sdssco.fits'),
                                  columns=['brickname', 'ra1', 'ra2',
                                           'dec1', 'dec2', 'ra', 'dec'])
         return self.bricks
@@ -1242,10 +1234,8 @@ class SdssLayer(MapLayer):
 
     def get_filename(self, brick, band, scale):
         brickname = brick.brickname
-        from decals import settings
-        basedir = settings.DATA_DIR
         brickpre = brickname[:3]
-        fn = os.path.join(basedir, 'sdssco', 'coadd', brickpre,
+        fn = os.path.join(self.basedir, 'coadd', brickpre,
                           'sdssco-%s-%s.fits.fz' % (brickname, band))
         if scale == 0:
             return fn
@@ -1254,10 +1244,7 @@ class SdssLayer(MapLayer):
         return fn
     
     def get_scaled_pattern(self):
-        from decals import settings
-        basedir = settings.DATA_DIR
-        return os.path.join(
-            basedir, 'scaled', self.name,
+        return os.path.join(self.scaleddir,
             '%(scale)i%(band)s', '%(brickname).3s',
             'sdssco' + '-%(brickname)s-%(band)s.fits')
 
@@ -1313,21 +1300,6 @@ class DecalsDr3Layer(DecalsLayer):
 
 class ReDecalsLayer(RebrickedMixin, DecalsLayer):
 
-    # # DR5 split directories HACK
-    # def get_base_filename(self, brick, band):
-    #     brickname = brick.brickname
-    #     fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
-    #     if os.path.exists(fn):
-    #         return fn
-    #     print('get_filename:', brickname, band, 'not in', fn)
-    #     from decals import settings
-    #     basedir = settings.DATA_DIR
-    #     brickpre = brickname[:3]
-    #     fn = os.path.join(basedir, self.drname, 'coadd2', brickpre, brickname,
-    #                       'legacysurvey-%s-%s-%s.fits.fz' % (brickname, self.imagetype, band))
-    #     print('try', fn)
-    #     return fn
-
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
         size = 3600
@@ -1337,6 +1309,9 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
         wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
                   float(size), float(size))
         return wcs
+
+class ReDecalsResidLayer(ResidMixin, ReDecalsLayer):
+    pass
     
 class PS1Layer(MapLayer):
     def __init__(self, name):
@@ -1352,7 +1327,6 @@ class PS1Layer(MapLayer):
     def get_bricks(self):
         if self.bricks is not None:
             return self.bricks
-        from decals import settings
         from astrometry.util.fits import fits_table
         basedir = settings.DATA_DIR
         self.bricks = fits_table(os.path.join(basedir, 'ps1skycells-sub.fits'))
@@ -1388,10 +1362,8 @@ class PS1Layer(MapLayer):
 
     def get_filename(self, brick, band, scale):
         brickname = brick.brickname
-        from decals import settings
-        basedir = settings.DATA_DIR
         cell = brickname[:4]
-        fn = os.path.join(basedir, 'ps1', 'skycells', cell,
+        fn = os.path.join(self.basedir, 'skycells', cell,
                           'ps1-%s-%s.fits' % (brickname.replace('.','-'), band))
         if scale == 0:
             return fn
@@ -1501,10 +1473,7 @@ class PS1Layer(MapLayer):
         return wcs
     
     def get_scaled_pattern(self):
-        from decals import settings
-        basedir = settings.DATA_DIR
-        return os.path.join(
-            basedir, 'scaled', self.name,
+        return os.path.join(self.scaleddir,
             '%(scale)i%(band)s', '%(brickname).4s',
             'ps1' + '-%(brickname)s-%(band)s.fits')
 
@@ -1528,7 +1497,6 @@ class UnwiseLayer(MapLayer):
     def get_bricks(self):
         if self.bricks is not None:
             return self.bricks
-        from decals import settings
         from astrometry.util.fits import fits_table
         basedir = settings.DATA_DIR
         self.bricks = fits_table(os.path.join(basedir, 'unwise-bricks.fits'))
@@ -1558,10 +1526,7 @@ class UnwiseLayer(MapLayer):
         return fn
     
     def get_scaled_pattern(self):
-        from decals import settings
-        basedir = settings.DATA_DIR
-        return os.path.join(
-            basedir, 'scaled', self.name,
+        return os.path.join(self.scaleddir,
             '%(scale)iw%(band)s',
             '%(brickname).3s', 'unwise-%(brickname)s-w%(band)s.fits')
 
@@ -1871,7 +1836,6 @@ def _get_survey(name=None):
 
     debug('Creating LegacySurveyData() object for "%s"' % name)
     
-    from decals import settings
     basedir = settings.DATA_DIR
 
     if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5',
@@ -2096,7 +2060,6 @@ exposure_cache = {}
 def exposure_list(req):
     import json
     from astrometry.util.fits import fits_table
-    from decals import settings
     import numpy as np
 
     global exposure_cache
@@ -2139,7 +2102,6 @@ plate_cache = {}
 def sdss_plate_list(req):
     import json
     from astrometry.util.fits import fits_table
-    from decals import settings
     import numpy as np
 
     global plate_cache
@@ -2383,7 +2345,6 @@ def cutouts(req):
     
     from django.shortcuts import render
     from django.core.urlresolvers import reverse
-    from decals import settings
 
     url = req.build_absolute_uri('/') + settings.ROOT_URL + '/cutout_panels/%i/%s/'
     # Deployment: http://{s}.DOMAIN/...
@@ -2409,7 +2370,6 @@ def cat_plot(req):
     import numpy as np
     from astrometry.util.util import Tan
     from legacypipe.sdss import get_sdss_sources
-    from decals import settings
 
     ra = float(req.GET['ra'])
     dec = float(req.GET['dec'])
@@ -2479,7 +2439,6 @@ def _get_ccd(expnum, ccdname, name=None):
     return ccd
 
 def _get_image_filename(ccd):
-    from decals import settings
     basedir = settings.DATA_DIR
     #fn = ccd.cpimage.strip()
     fn = ccd.image_filename.strip()
@@ -2776,10 +2735,15 @@ def get_layer(name, default=None):
         '''
         layer = ReSdssLayer('sdss2')
 
-    elif name == 'decals-dr5':
+    elif name in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid']:
         survey = _get_survey('decals-dr5')
         image = ReDecalsLayer('decals-dr5', 'image', survey)
-        layers[name] = image
+        model = ReDecalsLayer('decals-dr5-model', 'model', survey, drname='decals-dr5')
+        resid = ReDecalsResidLayer(image, model, 'decals-dr5-resid', 'resid', survey,
+                                   drname='decals-dr5')
+        layers['decals-dr5'] = image
+        layers['decals-dr5-model'] = model
+        layers['decals-dr5-resid'] = resid
         layer = layers[name]
         
     elif name == 'ps1':
@@ -2794,17 +2758,6 @@ def get_layer(name, default=None):
         layers['decaps2'] = image
         layers['decaps2-model'] = model
         layers['decaps2-resid'] = resid
-        layer = layers[name]
-
-    elif name in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid']:
-        survey = _get_survey('decals-dr5')
-        image = DecalsLayer('decals-dr5', 'image', survey)
-        model = DecalsLayer('decals-dr5-model', 'model', survey, drname='decals-dr5')
-        resid = DecalsResidLayer(image, model, 'decals-dr5-resid', 'resid', survey,
-                                 drname='decals-dr5')
-        layers['decals-dr5'] = image
-        layers['decals-dr5-model'] = model
-        layers['decals-dr5-resid'] = resid
         layer = layers[name]
 
     elif name in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
@@ -2845,17 +2798,14 @@ def get_layer(name, default=None):
         layer = layers[name]
 
     elif name == 'unwise-w1w2':
-        from decals import settings
         layer = UnwiseLayer('unwise-w1w2',
                             settings.UNWISE_DIR)
     elif name == 'unwise-neo2':
-        from decals import settings
         layer = UnwiseLayer('unwise-neo2',
                             settings.UNWISE_NEO2_DIR)
 
     elif name == 'halpha':
         from tractor.sfd import SFDMap
-        from decals import settings
         halpha = SFDMap(
             ngp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_ngp.fits'),
             sgp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_sgp.fits'))
@@ -2868,7 +2818,6 @@ def get_layer(name, default=None):
 
     elif name == 'sfd':
         from tractor.sfd import SFDMap
-        from decals import settings
         sfd_map = SFDMap(dustdir=settings.DUST_DIR)
         def stretch_sfd(x):
             import numpy as np
