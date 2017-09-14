@@ -2071,6 +2071,7 @@ if ('desi' in qstr) {
             var circleList = [];
             circleList.push(this._circle);
             this._layer = L.layerGroup(circleList);
+            map.on('move', this.move.bind(this));
         },
     
         ready: function() {
@@ -2082,6 +2083,10 @@ if ('desi' in qstr) {
         },
     
         mapBoundsChanged: function() {
+            this.move();
+        },
+
+        move: function() {
             var cen = map.getCenter();
             this._circle.setLatLng(cen);
         },
