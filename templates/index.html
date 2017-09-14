@@ -354,8 +354,7 @@ var CatalogOverlay = L.Evented.extend({
 	        if (showlabels) {
                 var txt = this.getLabel(result, i);
                 if (txt.length > 0) {
-                    circ.bindTooltip(txt, { noHide: true, clickable: true });
-                    circ.showLabel();
+                    circ.bindTooltip(txt, { permanent: true, interactive: true });
                 }
 	        }
             circleList[i] = circ;
@@ -617,8 +616,7 @@ var decals_getLayer = function(result, radius, defaultcolor) {
         } else {
             var txt = labels[i];
             if (txt.length > 0) {
-                circ.bindTooltip(txt, { noHide: true, clickable: true });
-                circ.showLabel();
+                circ.bindTooltip(txt, { permanent: true, interactive: true });
             }
         }
 
@@ -1177,7 +1175,7 @@ var mylayer_B = function (name, pretty, kwargs) {
 {% if enable_dr5 %}
 tiles = mylayer_B('decals-dr5', 'DECaLS DR5 images',
 //tiles = mylayer('decals-dr5', 'DECaLS DR5 images',
-                {'urlPatterns': [ [12, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [13, maxZoom, '{{ tileurl|safe }}'], ],});
 allLayers.push(tiles);
 if (defaultTile == null) {
     defaultTile = tiles;
