@@ -13,6 +13,8 @@ import secrets.database
 
 GAIA_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia_rel1'
 
+CREATE_GALAXY_CATALOG = True
+
 APPEND_SLASH = False
 
 # Enable Virgo Cluster Catalog layer?
