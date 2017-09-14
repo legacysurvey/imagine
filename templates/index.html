@@ -133,6 +133,10 @@ background: #242424;
 <script>
 //'use strict';
 
+function arcsecToMeters(arcsec) {
+    return arcsec * 30.87;
+}
+
 // A subclass that switches URL patterns depending on zoom range.
 var ZoomRangeTileLayer = L.TileLayer.extend({
     options: {
@@ -572,7 +576,8 @@ var decals_getLayer = function(result, radius, defaultcolor) {
     var circleList = new Array(rdlist.length);
     var clong = map.getCenter().lng;
     var radii = result['radius'];
-
+    var colors = result['colors'];
+    
     for (var i=0, len=rdlist.length; i<len; i++) {
         var r = rdlist[i][0];
         var d = rdlist[i][1];
@@ -586,8 +591,9 @@ var decals_getLayer = function(result, radius, defaultcolor) {
             color = defaultcolor;
         }
         var typ = 'nil';
-        if (objtype == undefined) {
-        } else {
+        if (colors !== undefined) {
+            color = colors[i];
+        } else if (objtype !== undefined) {
             typ = objtype[i];
             // PSF
             if (objtype[i] == 'P') {
@@ -604,16 +610,17 @@ var decals_getLayer = function(result, radius, defaultcolor) {
                 color = '#DA81F5'; // magenta
             }
         }
-        if (radii == undefined) {
+        if (radii === undefined) {
             rad = radius;
         } else {
-            // magic: 30.87 arcsec to meters
-            rad = radii[i] * 30.87;
+            // radius is in meters
+            rad = radii[i];
         }
         //console.log('Lat,Long,Radius ' + lat + ', ' + lng + ', ' + rad);
-        var circ = L.circle([lat, lng], rad, {'color':color,
-                                         'fillOpacity':0, 'weight':5});
-        if (labels == undefined) {
+        rad = arcsecToMeters(rad);
+        var circ = L.circle([lat, lng], rad,
+                            {'color':color, 'fillOpacity':0, 'weight':5});
+        if (labels === undefined) {
         } else {
             var txt = labels[i];
             if (txt.length > 0) {
@@ -638,7 +645,7 @@ var decals_getLayer = function(result, radius, defaultcolor) {
 // DECaLS catalog
 var DecalsCatalogLayer = TiledOverlay.extend({
     getLayer: function(result) {
-        return decals_getLayer(result, 30);
+        return decals_getLayer(result, 1);
     },
 });
 
@@ -790,7 +797,7 @@ var UserCatalogLayer = CatalogOverlay.extend({
     },
 
     getLayer: function(result) {
-        return decals_getLayer(result, 300, this.color);
+        return decals_getLayer(result, 10, this.color);
     },
 });
 
