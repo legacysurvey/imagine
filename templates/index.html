@@ -133,6 +133,38 @@ background: #242424;
 <script>
 //'use strict';
 
+// Variables from django.
+var zoom_initial = {{ zoom }};
+var layer_initial = '{{ layer }}';
+var ra_initial = {{ ra }};
+var dec_initial = {{ dec }};
+var galname_initial = '{{ galname }}';
+var smallcat_url = '{{ smallcaturl|safe }}';
+var usercat2_url = '{{ usercatalogurl2|safe }}';
+var usercat_url = '{{ usercatalogurl|safe }}';
+var tile_url = '{{ tileurl|safe }}';
+var maxNativeZoom = {{ maxNativeZoom }};
+
+var abs_url = '{{ absurl }}';
+
+var ccds_url = '{{ ccdsurl|safe }}';
+var exposures_url = '{{ expsurl|safe }}';
+var bricks_url = '{{ bricksurl|safe }}';
+var sdss_plates_url = '{{ platesurl|safe }}';
+var cat_url = '{{ caturl|safe }}';
+var usercat_upload_url = '{{ uploadurl }}';
+var name_query_url = '{{ namequeryurl|safe }}';
+
+var static_tile_url = '{{ static_tile_url|safe }}';
+var subdomains = {{ subdomains|safe }};
+
+var static_tile_url_B = '{{ static_tile_url_B|safe }}';
+var subdomains_B = {{ subdomains_B|safe }};
+
+{% if enable_sql %}
+var sql_url = '{{sqlurl|safe}}';
+{% endif %}
+
 function arcsecToMeters(arcsec) {
     return arcsec * 30.87;
 }
@@ -173,7 +205,7 @@ var CatalogOverlay = L.Evented.extend({
     initialize: function(name, pretty, kwargs) {
         //console.log('CatalogOverlay: ' + name + ',' + pretty);
         this._counter = 1;
-        this._url = kwargs['url'] || '{{ smallcaturl|safe }}'
+        this._url = kwargs['url'] || smallcat_url;
         this._url_term = kwargs['urlTerm'] || name;
         this._checkbox = null;
         this._status = null;
@@ -193,8 +225,7 @@ var CatalogOverlay = L.Evented.extend({
                        'fillOpacity':0,
                        'weight':5,
                       };
-        //this._oldZoom = map.getZoom();
-        this._oldZoom = {{ zoom }};
+        this._oldZoom = zoom_initial;
         map.on('overlayadd',    this.overlayAdded.bind(this));
         map.on('overlayremove', this.overlayRemoved.bind(this));
         map.on('moveend',       this.mapBoundsChanged.bind(this));
@@ -737,7 +768,7 @@ var UserCatalogLayer = CatalogOverlay.extend({
 
       // retrieve next chunk.
 
-      var url = L.Util.template('{{ usercatalogurl2|safe }}', {
+      var url = L.Util.template(usercat2_url, {
         s: subdomains[0],
         cat: this._catname,
         start: this._catoffset,
@@ -773,7 +804,7 @@ var UserCatalogLayer = CatalogOverlay.extend({
       }
 
       // retrieve prev chunk.
-      var url = L.Util.template('{{ usercatalogurl2|safe }}', {
+      var url = L.Util.template(usercat2_url, {
         s: subdomains[0],
         cat: this._catname,
         start: this._catoffset,
@@ -856,8 +887,6 @@ function getkeys(obj) {
     }
     return s;
 }
-
-var subdomains = {{ subdomains|safe }};
 
 function long2ra(lng) {
     var ra = 180. - lng;
@@ -967,9 +996,8 @@ function onMapClick(e) {
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
     var qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
 
-    var cutout = '{{ absurl }}/jpeg-cutout/?' + qstr;
-
-    var linkurl = '{{ absurl }}?' + qstr;
+    var cutout = abs_url + '/jpeg-cutout/?' + qstr;
+    var linkurl = abs_url + '?' + qstr;
 
     for (var i=0,len=overlays.length; i<len; i++) {
         // console.log('Overlay ' + overlays[i]._name + ' shown? ' + overlays[i]._show + ', url term ' + overlays[i]._url_term);
@@ -1125,8 +1153,6 @@ var maxZoom = 16;
 
 var allLayers = [];
 
-var static_tile_url = '{{ static_tile_url|safe }}';
-
 var decals_attrib = '<a href="http://legacysurvey.org">Legacy Survey</a>,' +
     '<a href="https://www.noao.edu/image_gallery/copyright.html">&copy;</a>' +
     ' <a href="http://noao.edu">NOAO</a>/<a href="http://www.aura-astronomy.org/">AURA</a>/<a href="http://www.nsf.gov/">NSF</a>';
@@ -1138,7 +1164,7 @@ var mylayer = function (name, pretty, kwargs) {
     var args = {
         maxZoom: maxZoom,
         minZoom: minZoom,
-        maxNativeZoom: {{maxNativeZoom}},
+        maxNativeZoom: maxNativeZoom,
         attribution: decals_attrib,
         id: name,
         ver: getversion(name),
@@ -1158,13 +1184,11 @@ var tiles;
 
 var defaultTile = null;
 
-var subdomains_B = {{ subdomains_B|safe }};
-
 var mylayer_B = function (name, pretty, kwargs) {
     var args = {
         maxZoom: maxZoom,
         minZoom: minZoom,
-        maxNativeZoom: {{maxNativeZoom}},
+        maxNativeZoom: maxNativeZoom,
         attribution: decals_attrib,
         id: name,
         ver: getversion(name),
@@ -1174,7 +1198,7 @@ var mylayer_B = function (name, pretty, kwargs) {
     for (var key in kwargs) {
         args[key] = kwargs[key];
     }
-    var tiles = new ZoomRangeTileLayer('{{ static_tile_url_B|safe }}', args);
+    var tiles = new ZoomRangeTileLayer(static_tile_url_B, args);
     tiles.name = name;
     tiles.pretty = pretty;
     return tiles;
@@ -1183,7 +1207,7 @@ var mylayer_B = function (name, pretty, kwargs) {
 {% if enable_dr5 %}
 tiles = mylayer_B('decals-dr5', 'DECaLS DR5 images',
 //tiles = mylayer('decals-dr5', 'DECaLS DR5 images',
-                {'urlPatterns': [ [13, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [13, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 if (defaultTile == null) {
     defaultTile = tiles;
@@ -1191,13 +1215,13 @@ if (defaultTile == null) {
 
 {% if enable_dr5_models %}
 tiles = mylayer_B('decals-dr5-model', 'DECaLS DR5 models',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
 {% if enable_dr5_resids %}
 tiles = mylayer_B('decals-dr5-resid', 'DECaLS DR5 residuals',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 {% endif %}
@@ -1205,22 +1229,22 @@ allLayers.push(tiles);
 {% if enable_decaps %}
 tiles = mylayer_B('decaps2', 'DECaPS images',
                   {'maxNativeZoom': 13,
-                   'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+                   'urlPatterns': [ [1, 13, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('decaps2-model', 'DECaPS models',
                   {'maxNativeZoom': 13,
-                   'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+                   'urlPatterns': [ [1, 13, tile_url], ],});
 allLayers.push(tiles);
 tiles = mylayer_B('decaps2-resid', 'DECaPS residuals',
                   {'maxNativeZoom': 13,
-                   'urlPatterns': [ [1, 13, '{{ tileurl|safe }}'], ],});
+                   'urlPatterns': [ [1, 13, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
 {% if enable_dr4 %}
 tiles = mylayer_B('mzls+bass-dr4', 'MzLS+BASS DR4 images',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 if (defaultTile == null) {
     defaultTile = tiles;
@@ -1228,20 +1252,20 @@ if (defaultTile == null) {
 
 {% if enable_dr4_models %}
 tiles = mylayer_B('mzls+bass-dr4-model', 'MzLS+BASS DR4 models',
-                  {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
                                             
 {% if enable_dr4_resids %}
 tiles = mylayer_B('mzls+bass-dr4-resid', 'MzLS+BASS DR4 residuals',
-                  {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 {% endif %}
 
 {% if enable_dr3 %}
 tiles = mylayer_B('decals-dr3', 'DECaLS DR3 images',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 if (defaultTile == null) {
     defaultTile = tiles;
@@ -1249,74 +1273,74 @@ if (defaultTile == null) {
 
 {% if enable_dr3_models %}
 tiles = mylayer_B('decals-dr3-model', 'DECaLS DR3 models',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
 {% if enable_dr3_resids %}
 tiles = mylayer_B('decals-dr3-resid', 'DECaLS DR3 residuals',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 {% endif %}
 
 {% if enable_dr2 %}
 tiles = mylayer_B('decals-dr2', 'DECaLS DR2 images',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 if (defaultTile == null) {
     defaultTile = tiles;
 }
 
 tiles = mylayer_B('decals-dr2-model', 'DECaLS DR2 models',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('decals-dr2-resid', 'DECaLS DR2 residuals',
-                {'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
 // tiles = mylayer_B('sdssco', 'SDSS images',
 //                   {'attribution': sdss_attrib,
-//                   'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+//                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
 // allLayers.push(tiles);
 
 tiles = mylayer_B('sdss2', 'SDSS images',
                   {'attribution': sdss_attrib,
-                   'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 {% if enable_ps1 %}
 tiles = mylayer_B('ps1', 'PS1 images',
                   {'attribution': ps1_attrib,
-                   'urlPatterns': [ [8, maxZoom, '{{ tileurl|safe }}'], ],});
-                  //'urlPatterns': [ [14, maxZoom, '{{ tileurl|safe }}'], ],});
+                   'urlPatterns': [ [8, maxZoom, tile_url], ],});
+                  //'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
 tiles = mylayer_B('unwise-w1w2', 'unWISE W1/W2',
                 {'maxNativeZoom': 12,
-                 'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
+                 'urlPatterns': [ [11, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-neo2', 'unWISE W1/W2 NEO2',
                 {'maxNativeZoom': 12,
-                 'urlPatterns': [ [11, maxZoom, '{{ tileurl|safe }}'], ],});
+                 'urlPatterns': [ [11, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer('sfd', 'SFD dust map',
                 {'maxNativeZoom':10,
-                 'urlPatterns': [ [7, 10, '{{ tileurl|safe }}'],], });
+                 'urlPatterns': [ [7, 10, tile_url],], });
 allLayers.push(tiles);
 
 tiles = mylayer('halpha', 'Halpha map',
                 {'maxNativeZoom':10,
-                 'urlPatterns': [ [7, 10, '{{ tileurl|safe }}'],],});
+                 'urlPatterns': [ [7, 10, tile_url],],});
 allLayers.push(tiles);
 
 {% if enable_wl %}
-tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
+tilesWl = new ZoomRangeTileLayer(tile_url, {
     maxZoom: maxZoom,
     minZoom: minZoom,
     maxNativeZoom: 10,
@@ -1325,13 +1349,13 @@ tilesWl = new ZoomRangeTileLayer('{{ tileurl|safe }}', {
     ver: getversion('decals-wl'),
     unloadInvisibleTiles: true,
     subdomains: subdomains,
-    //urlPatterns: [ [7, 10, '{{ tileurl|safe }}'],],
+    //urlPatterns: [ [7, 10, tile_url],],
 });
 allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing map"});
 {% endif %}
 
 var added = false;
-var idname = '{{ layer }}';
+var idname = layer_initial;
 var baseMaps = {};
 for (var i in allLayers) {
     var layer = allLayers[i];
@@ -1418,7 +1442,7 @@ var infoBoxActive = true;
 var info = L.control({'position':'topleft'});
 info.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'info');
-    this._div.innerHTML = 'RA,Dec = ' + {{ra}}.toFixed(4) + ", " + {{dec}}.toFixed(4) + ", zoom " + {{zoom}};
+    this._div.innerHTML = 'RA,Dec = ' + ra_initial.toFixed(4) + ", " + dec_initial.toFixed(4) + ", zoom " + zoom_initial;
     return this._div;
 };
 info.addTo(map);
@@ -1448,7 +1472,7 @@ query.addTo(map);
 var upload = L.control({'position':'bottomleft'});
 upload.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'upload');
-    this._div.innerHTML = 'Custom catalog upload (FITS table; RA,Dec,[name]): <form action="{{ uploadurl }}" method="POST" enctype="multipart/form-data"><input type="file" name="catalog" id="usercat_file" /><span id="upload_status"></span><input type="submit" value="Upload" id="usercat_submit" /></form>'
+    this._div.innerHTML = 'Custom catalog upload (FITS table; RA,Dec,[name]): <form action="' + usercat_upload_url + '" method="POST" enctype="multipart/form-data"><input type="file" name="catalog" id="usercat_file" /><span id="upload_status"></span><input type="submit" value="Upload" id="usercat_submit" /></form>'
     return this._div;
 };
 upload.addTo(map);
@@ -1504,7 +1528,7 @@ $(document).ready(function() {
         // when Enter is hit in the Object name search box
         if (event.keyCode == 13) {
             var qstring = $('#objquery').val();
-            var url = L.Util.template('{{ namequeryurl|safe }}', L.extend({
+            var url = L.Util.template(name_query_url, L.extend({
                 obj: qstring,
             }));
             if (qstring.length == 0) {
@@ -1537,7 +1561,7 @@ $(document).ready(function() {
     var loc = [map.getCenter().lat, map.getCenter().lng, map.getZoom()];
     //console.log('Initial location:', loc);
     {% if galname %}
-    location.hash = '{{galname}}';
+    location.hash = galname_initial;
     {% endif %}
     hashLocations[location.hash] = loc;
     //console.log('Initial hashLocations:', hashLocations);
@@ -1780,7 +1804,7 @@ var ccd_detail_list = function(ov, objs) {
 {% if enable_dr2_overlays %}
 var ccdOverlay2 = new PolygonOverlay('decals-dr2-ccds',
                                      'DECaLS DR2 CCDs',
-                                    {'url':'{{ ccdsurl|safe }}',
+                                    {'url':ccds_url,
                                      'minZoom': 8,
                                      'labelMinZoom': 100,
                                      'urlTerm': 'ccds2',
@@ -1792,7 +1816,7 @@ var ccdOverlay2 = new PolygonOverlay('decals-dr2-ccds',
 
 var expOverlay2 = new CircleOverlay('decals-dr2-exps',
                                     'DECaLS DR2 Exposures',
-                                    {'url':'{{ expsurl|safe }}',
+                                    {'url':exposures_url,
                                      'labelMinZoom': 100,
                                      'urlTerm': 'exps2',
                                      'detail': exp_detail,
@@ -1805,7 +1829,7 @@ var expOverlay2 = new CircleOverlay('decals-dr2-exps',
 {% if enable_dr3_overlays %}
 var ccdOverlay3 = new PolygonOverlay('decals-dr3-ccds',
                                      'DECaLS DR3 CCDs',
-                                    {'url':'{{ ccdsurl|safe }}',
+                                    {'url':ccds_url,
                                      'minZoom': 8,
                                      'labelMinZoom': 100,
                                      'urlTerm': 'ccds3',
@@ -1816,7 +1840,7 @@ var ccdOverlay3 = new PolygonOverlay('decals-dr3-ccds',
                                     });
 var expOverlay3 = new CircleOverlay('decals-dr3-exps',
                                     'DECaLS DR3 Exposures',
-                                    {'url':'{{ expsurl|safe }}',
+                                    {'url':exposures_url,
                                      'labelMinZoom': 100,
                                      'urlTerm': 'exps3',
                                      'detail': exp_detail,
@@ -1829,7 +1853,7 @@ var expOverlay3 = new CircleOverlay('decals-dr3-exps',
 {% if enable_dr4_overlays %}
 var ccdOverlay4 = new PolygonOverlay('mzls+bass-dr4-ccds',
                                      'MzLS+BASS DR4 CCDs',
-                                    {'url':'{{ ccdsurl|safe }}',
+                                    {'url':ccds_url,
                                      'minZoom': 8,
                                      'labelMinZoom': 100,
                                      'urlTerm': 'ccds4',
@@ -1843,7 +1867,7 @@ var ccdOverlay4 = new PolygonOverlay('mzls+bass-dr4-ccds',
 {% if enable_dr5_overlays %}
 var ccdOverlay5 = new PolygonOverlay('decals-dr5-ccds',
                                      'DECaLS DR5 CCDs',
-                                    {'url':'{{ ccdsurl|safe }}',
+                                    {'url':ccds_url,
                                      'minZoom': 8,
                                      'labelMinZoom': 100,
                                      'urlTerm': 'ccds5',
@@ -1854,7 +1878,7 @@ var ccdOverlay5 = new PolygonOverlay('decals-dr5-ccds',
                                     });
 var expOverlay5 = new CircleOverlay('decals-dr5-exps',
                                     'DECaLS DR5 Exposures',
-                                    {'url':'{{ expsurl|safe }}',
+                                    {'url':exposures_url,
                                      'labelMinZoom': 100,
                                      'urlTerm': 'exps5',
                                      'detail': exp_detail,
@@ -1865,7 +1889,7 @@ var expOverlay5 = new CircleOverlay('decals-dr5-exps',
 {% endif %}
                                                      
 var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
-                                      {'url':'{{ bricksurl|safe }}',
+                                      {'url': bricks_url,
                                        'minZoom': 8,
                                        'labelMinZoom': 100,
                                        'doHighlight': false,
@@ -1909,7 +1933,7 @@ for (var i=0; i<polygonOverlays.length; i++) {
 {% if enable_spectra %}
 var plateOverlay = new CircleOverlay('sdss-plates',
                                      'SDSS Spectro Plates',
-                                    {'url':'{{ platesurl|safe }}',
+                                    {'url': sdss_plates_url,
                                      'labelMinZoom': 100,
                                     });
 {% endif %}
@@ -1918,7 +1942,7 @@ var plateOverlay = new CircleOverlay('sdss-plates',
 var decalscat2 = new DecalsCatalogLayer(tileWatcher,
                                         'decals-dr2',
                                         'DECaLS DR2 Catalog',
-                                        {'url': '{{caturl|safe}}', 
+                                        {'url': cat_url,
                                          'minZoom': 12,});
 {% endif %}
 
@@ -1926,7 +1950,7 @@ var decalscat2 = new DecalsCatalogLayer(tileWatcher,
 var decalscat3 = new DecalsCatalogLayer(tileWatcher,
                                         'decals-dr3',
                                         'DECaLS DR3 Catalog',
-                                        {'url': '{{caturl|safe}}', 
+                                        {'url': cat_url,
                                          'minZoom': 12,
                                          'urlTerm': 'sources-dr3'});
 {% endif %}
@@ -1935,7 +1959,7 @@ var decalscat3 = new DecalsCatalogLayer(tileWatcher,
 var mzlsbasscat4 = new DecalsCatalogLayer(tileWatcher,
                                           'mzls+bass-dr4',
                                           'MzLS+BASS DR4 Catalog',
-                                          {'url': '{{caturl|safe}}', 
+                                          {'url': cat_url,
                                            'minZoom': 12,
                                            'urlTerm': 'sources-dr4'});
 {% endif %}
@@ -1944,7 +1968,7 @@ var mzlsbasscat4 = new DecalsCatalogLayer(tileWatcher,
 var decalscat5 = new DecalsCatalogLayer(tileWatcher,
                                         'decals-dr5',
                                         'DECaLS DR5 Catalog',
-                                        {'url': '{{caturl|safe}}', 
+                                        {'url': cat_url,
                                          'minZoom': 12,
                                          'urlTerm': 'sources-dr5'});
 {% endif %}
@@ -1993,7 +2017,7 @@ var specDeep2 = new Deep2SpectraCatalog('spec-deep2', 'DEEP2 Spectra',
 
 {% if enable_sql %}
 var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
-                                       {'url': '{{sqlurl|safe}}',
+                                       {'url': sql_url,
                                         'radius': 300,
                                        });
 {% endif %}
@@ -2050,7 +2074,7 @@ var overlays = [
 {% if usercatalogs %}
   {% for cat,name,color in usercatalogs %}
     var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{name}}',
-        {'url': '{{usercatalogurl|safe}}', 'url_args': {'cat': '{{cat}}'}});
+        {'url': usercat_url, 'url_args': {'cat': '{{cat}}'}});
     var color = '{{color}}';
     if (color.length > 0) {
       usercat.color = color;
@@ -2163,7 +2187,7 @@ function onMapZoomEnd(e) {
     }
 }
 
-map.setView([ dec2lat({{ dec }}), ra2long_C({{ ra }}, 180.) ], {{ zoom }});
+map.setView([ dec2lat(dec_initial), ra2long_C(ra_initial, 180.) ], zoom_initial);
 var lastLatLng = map.getCenter();
 
 {% if enable_sql %}
