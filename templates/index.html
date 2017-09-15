@@ -2106,15 +2106,62 @@ if ('blink' in qstr) {
 }
 
 if ('desi' in qstr) {
+    // from gfa-corners.fits from Bailey, 2017-09-14
+    var petal_radius = [
+        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479]];
+    var petal_phi = [
+        [ -72.68064188,  -72.65497301,  -76.97939241,  -77.1732807 ],
+        [ -36.68064188,  -36.65497301,  -40.97939241,  -41.1732807 ],
+        [  -0.68064188,   -0.65497301,   -4.97939241,   -5.1732807 ],
+        [  35.31935812,   35.34502699,   31.02060759,   30.8267193 ],
+        [  71.31935812,   71.34502699,   67.02060759,   66.8267193 ],
+        [ 107.31935812,  107.34502699,  103.02060759,  102.8267193 ],
+        [ 143.31935812,  143.34502699,  139.02060759,  138.8267193 ],
+        [ 179.31935812,  179.34502699,  175.02060759,  174.8267193 ],
+        [-144.68064188, -144.65497301, -148.97939241, -149.1732807 ],
+        [-108.68064188, -108.65497301, -112.97939241, -113.1732807 ]];
+
+    var desi_radius = 1.60577;
+    
     var DesiFootprint = CatalogOverlay.extend({
 
         initialize: function(name, pretty, kwargs) {
             CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
-            this._circle = L.circle(L.latLng(0.,0.), 1000. * 30., {'color':'yellow'});
-            var circleList = [];
-            circleList.push(this._circle);
-            this._layer = L.layerGroup(circleList);
-            map.on('move', this.move.bind(this));
+            var group = [];
+            var clong = 180;
+            this._circle = L.circle(L.latLng(dec2lat(0), ra2long_C(0, clong)),
+                                    arcsecToMeters(desi_radius * 3600.),
+                                    {color:'yellow', fill:false}); //fillOpacity:0.01});
+            group.push(this._circle);
+            this._gfa_rds = [];
+            var polys = [];
+            for (var i=0; i<petal_radius.length; i++) {
+                var ll = [];
+                var rd = [];
+                var N = petal_radius[i].length;
+                for (var j=0; j<N+1; j++) {
+                    var phi = petal_phi[i][j%N] * Math.PI / 180.0;
+                    var dec = petal_radius[i][j%N] * Math.cos(phi);
+                    var ra  = petal_radius[i][j%N] * Math.sin(phi);
+                    rd.push([ra, dec]);
+                    ll.push([dec2lat(dec), ra2long_C(ra, clong)]);
+                }
+                this._gfa_rds.push(rd);
+                polys.push(ll);
+            }
+            this._gfa = L.polyline(polys, {color: 'green'});
+            group.push(this._gfa);
+            this._layer = L.layerGroup(group);
+            map.on('mapMoved', this.mapMoved.bind(this));
         },
     
         ready: function() {
@@ -2122,20 +2169,41 @@ if ('desi' in qstr) {
         },
     
         overlayAdded: function(e) {
+            this.moveTo(map.getCenter());
             this._group.addLayer(this._layer);
         },
-    
+
+        moveTo: function(c) {
+            this._circle.setLatLng(c);
+            var clong = c.lng;
+            var polys = [];
+            var d0 = lat2dec(c.lat);
+            var r0 = long2ra(clong);
+            for (var i=0; i<this._gfa_rds.length; i++) {
+                var ll = [];
+                var rd = this._gfa_rds[i];
+                var N = rd.length;
+                for (var j=0; j<N+1; j++) {
+                    ll.push([dec2lat(d0 + rd[j%N][1]),
+                             ra2long_C(r0 + rd[j%N][0], clong)]);
+                }
+                polys.push(ll);
+            }
+            this._gfa.setLatLngs(polys);
+            this._gfa.redraw();
+        },
+        
         mapBoundsChanged: function() {
-            this.move();
+            //this.move();
         },
 
-        move: function() {
-            var cen = map.getCenter();
-            this._circle.setLatLng(cen);
+        mapMoved: function() {
+            //var cen = map.getCenter();
         },
     
     });
     var f = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
+    f._url_term = 'desi';
     overlays.push(f);
 }
 
