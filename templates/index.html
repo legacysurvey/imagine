@@ -2150,10 +2150,10 @@ if ('desi' in qstr) {
                 var N = petal_radius[i].length;
                 for (var j=0; j<N+1; j++) {
                     var phi = petal_phi[i][j%N] * Math.PI / 180.0;
-                    var dec = petal_radius[i][j%N] * Math.cos(phi);
-                    var ra  = petal_radius[i][j%N] * Math.sin(phi);
-                    rd.push([ra, dec]);
-                    ll.push([dec2lat(dec), ra2long_C(ra, clong)]);
+                    var ddec = petal_radius[i][j%N] * Math.cos(phi);
+                    var dra  = petal_radius[i][j%N] * Math.sin(phi);
+                    rd.push([dra, ddec]);
+                    ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
                 }
                 this._gfa_rds.push(rd);
                 polys.push(ll);
@@ -2166,6 +2166,7 @@ if ('desi' in qstr) {
     
         ready: function() {
             console.log(this._name + ' ready function called');
+            this.moveTo(map.getCenter());
         },
     
         overlayAdded: function(e) {
@@ -2179,13 +2180,14 @@ if ('desi' in qstr) {
             var polys = [];
             var d0 = lat2dec(c.lat);
             var r0 = long2ra(clong);
+            var cosdec = Math.cos(d0 * Math.PI / 180.0);
             for (var i=0; i<this._gfa_rds.length; i++) {
                 var ll = [];
                 var rd = this._gfa_rds[i];
                 var N = rd.length;
                 for (var j=0; j<N+1; j++) {
                     ll.push([dec2lat(d0 + rd[j%N][1]),
-                             ra2long_C(r0 + rd[j%N][0], clong)]);
+                             ra2long_C(r0 + rd[j%N][0] / cosdec, clong)]);
                 }
                 polys.push(ll);
             }
