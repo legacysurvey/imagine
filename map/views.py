@@ -2002,7 +2002,8 @@ def ccd_list(req):
         y = np.array([1, c.height, c.height, 1])
         r,d = wcs.pixelxy2radec(x, y)
         ccmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
-        ccds.append(dict(name='%s %i-%s-%s' % (c.camera, c.expnum, c.ccdname, c.filter),
+        ccds.append(dict(name='%s %i-%s-%s' % (c.camera.strip(), c.expnum,
+                                               c.ccdname.strip(), c.filter.strip()),
                          radecs=zip(r, d),
                          color=ccmap[c.filter]))
     return HttpResponse(json.dumps(dict(polys=ccds)), content_type='application/json')
