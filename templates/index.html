@@ -996,7 +996,8 @@ function onMapClick(e) {
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
     var qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
 
-    var cutout = abs_url + '/jpeg-cutout/?' + qstr;
+    //var cutout = abs_url + '/jpeg-cutout/?' + qstr;
+    var cutout = '{% url 'cutout-jpeg' %}?' + qstr;
     var linkurl = abs_url + '?' + qstr;
 
     for (var i=0,len=overlays.length; i<len; i++) {

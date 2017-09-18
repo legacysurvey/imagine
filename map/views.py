@@ -341,6 +341,11 @@ ccds_table_css = '''<style type="text/css">
 .ccds th { border-bottom: 2px solid #6678b1; }
 </style>'''
 
+html_tag = '''<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<link rel="icon" type="image/png" href="%s/favicon.png" />
+<link rel="shortcut icon" href="%s/favicon.ico" />
+''' % (settings.STATIC_URL, settings.STATIC_URL)
+
 def data_for_radec(req):
     import numpy as np
     ra  = float(req.GET['ra'])
@@ -375,7 +380,7 @@ def data_for_radec(req):
                  (by >= ccds.brick_y0) * (by <= ccds.brick_y1))
         print('Cut to', len(ccds), 'CCDs containing RA,Dec point')
 
-        html = ['<html><head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
+        html = [html_tag + '<head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
                 (survey.drname, ra, dec),
                 ccds_table_css + '<body>',
                 '<h1>%s data for RA,Dec = (%.4f, %.4f): CCDs overlapping</h1>' %
@@ -2188,8 +2193,8 @@ def ccd_detail(req, name, ccd):
         cols = c.columns()
         if 'photometric' in cols and 'blacklist_ok' in cols:
             flags = 'Photometric: %s.  Not-blacklisted: %s<br />' % (c.photometric, c.blacklist_ok)
-        about = '''
-<html><body>
+        about = html_tag + '''
+<body>
 CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix
 <br />
 %s
@@ -2248,7 +2253,7 @@ def brick_detail(req, brickname, get_html=False):
     coadd_prefix = 'legacysurvey'
 
     html = [
-        '<html><head><title>%s data for brick %s</title></head>' %
+        html_tag + '<head><title>%s data for brick %s</title></head>' %
         (survey.drname, brickname)
         + ccds_table_css + '<body>',
         '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
@@ -2325,7 +2330,10 @@ def cutouts(req):
     name = req.GET.get('name', None)
 
     # half-size in DECam pixels
-    size = 50
+    size = int(req.GET.get('size', '100'), 10)
+    size = min(200, size)
+    size = size // 2
+
     W,H = size*2, size*2
     
     pixscale = 0.262 / 3600.
@@ -2339,7 +2347,8 @@ def cutouts(req):
     
     print('Survey name:', name)
     survey = _get_survey(name)
-    CCDs = _ccds_touching_box(north, south, east, west, name=name, survey=survey)
+    #CCDs = _ccds_touching_box(north, south, east, west, name=name, survey=survey)
+    CCDs = survey.ccds_touching_wcs(wcs)
     debug(len(CCDs), 'CCDs')
     CCDs = touchup_ccds(CCDs, survey)
 
@@ -2390,15 +2399,15 @@ def cutouts(req):
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
-        theurl = url % (domains[i%len(domains)], int(ccd.expnum), ccd.ccdname.strip()) + '?x=%i&y=%i' % (x,y)
+        theurl = url % (domains[i%len(domains)], int(ccd.expnum), ccd.ccdname.strip()) + '?x=%i&y=%i&size=%i' % (x, y, size*2)
         if name is not None:
             theurl += '&name=' + name
         print('CCD columns:', ccd.columns())
         ccdsx.append(('CCD %s %i %s, %.1f sec (x,y = %i,%i)<br/><small>(%s [%i])</small><br/><small>(observed %s @ %s)</small>' %
                       (ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y, fn, ccd.image_hdu, ccd.date_obs, ccd.ut), theurl))
     return render(req, 'cutouts.html',
-                  dict(ra=ra, dec=dec, ccds=ccdsx, name=name,
-                       brick=brick, brickx=brickx, bricky=bricky))
+                  dict(ra=ra, dec=dec, ccds=ccdsx, name=name, drname=survey.drname,
+                       brick=brick, brickx=brickx, bricky=bricky, size=W))
 
 def cat_plot(req):
     import pylab as plt
@@ -2486,6 +2495,7 @@ def _get_image_slice(fn, hdu, x, y, size=50):
     import fitsio
     img = fitsio.FITS(fn)[hdu]
     H,W = img.get_info()['dims']
+    hdr = img.read_header()
     if x < size:
         xstart = size - x
     else:
@@ -2496,7 +2506,7 @@ def _get_image_slice(fn, hdu, x, y, size=50):
         ystart = 0
     slc = slice(max(y-size, 0), min(y+size, H)), slice(max(x-size, 0), min(x+size, W))
     img = img[slc]
-    return img,slc,xstart,ystart
+    return img,hdr,slc,xstart,ystart
 
 def cutout_panels(req, expnum=None, extname=None, name=None):
     import pylab as plt
@@ -2504,6 +2514,11 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
 
     x = int(req.GET['x'], 10)
     y = int(req.GET['y'], 10)
+
+    # half-size in DECam pixels
+    size = int(req.GET.get('size', '100'), 10)
+    size = min(200, size)
+    size = size // 2
 
     if name is None:
         name = req.GET.get('name', name)
@@ -2513,151 +2528,168 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
     if not os.path.exists(fn):
         return HttpResponse('no such image: ' + fn)
 
-    # half-size in DECam pixels -- must match cutouts():size
-    size = 50
-    img,slc,xstart,ystart = _get_image_slice(fn, ccd.image_hdu, x, y, size=size)
+    print('Getting postage stamp for', fn)
+    img,hdr,slc,xstart,ystart = _get_image_slice(fn, ccd.image_hdu, x, y, size=size)
+
+    sky = hdr.get('AVSKY', None)
+    if sky is None:
+        sky = np.median(img)
+    img -= sky
+
+    # band = ccd.filter.strip()
+    # zpt = ccd.zpt
+    # scales = dict(g = (2, 0.0066),
+    #               r = (1, 0.01),
+    #               z = (0, 0.025),)
+    # scale = scales.get(band, None)
+    # if scale is None or not np.isfinite(zpt):
+    #     mn,mx = np.percentile(img.ravel(), [25, 99])
+    # else:
+    #     mn,mx = 
+
+    h,w = img.shape
+    destimg = np.zeros((max(h, size*2), max(w,size*2)), img.dtype)
+    destimg[ystart:ystart+h, xstart:xstart+w] = img
 
     plt.clf()
     import tempfile
     f,jpegfn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
     mn,mx = np.percentile(img.ravel(), [25, 99])
-    save_jpeg(jpegfn, img, origin='lower', cmap='gray',
+    save_jpeg(jpegfn, destimg, origin='lower', cmap='gray',
               vmin=mn, vmax=mx)
     return send_file(jpegfn, 'image/jpeg', unlink=True)
 
-
-
-    wfn = fn.replace('ooi', 'oow')
-    if not os.path.exists(wfn):
-        return HttpResponse('no such image: ' + wfn)
-
-    from legacypipe.decam import DecamImage
-    from legacypipe.desi_common import read_fits_catalog
-    from tractor import Tractor
-
-    ccd.cpimage = fn
-    D = _get_survey(name=name)
-    im = D.get_image_object(ccd)
-    kwargs = {}
-
-    if name == 'decals-dr2':
-        kwargs.update(pixPsf=True, splinesky=True)
-    else:
-        kwargs.update(const2psf=True)
-    tim = im.get_tractor_image(slc=slc, tiny=1, **kwargs)
-
-    if tim is None:
-        img = np.zeros((0,0))
-
-    mn,mx = -1, 100
-    arcsinh = 1.
-    cmap = 'gray'
-    pad = True
-
-    scales = dict(g = (2, 0.0066),
-                  r = (1, 0.01),
-                  z = (0, 0.025),
-                  )
-    rows,cols = 1,5
-    f = plt.figure(figsize=(cols,rows))
-    f.clf()
-    f.subplots_adjust(left=0.002, bottom=0.02, top=0.995, right=0.998,
-                      wspace=0.02, hspace=0)
-
-    imgs = []
-
-    img = tim.getImage()
-    imgs.append((img,None))
-    
-    M = 10
-    margwcs = tim.subwcs.get_subimage(-M, -M, int(tim.subwcs.get_width())+2*M, int(tim.subwcs.get_height())+2*M)
-    for dr in ['dr1j']:
-        cat,hdr = _get_decals_cat(margwcs, tag='decals-%s' % dr)
-        if cat is None:
-            tcat = []
-        else:
-            cat.shapedev = np.vstack((cat.shapedev_r, cat.shapedev_e1, cat.shapedev_e2)).T
-            cat.shapeexp = np.vstack((cat.shapeexp_r, cat.shapeexp_e1, cat.shapeexp_e2)).T
-            tcat = read_fits_catalog(cat, hdr=hdr)
-        tr = Tractor([tim], tcat)
-        img = tr.getModelImage(0)
-        imgs.append((img,None))
-
-        img = tr.getChiImage(0)
-        imgs.append((img, dict(mn=-5,mx=5, arcsinh = None, scale = 1.)))
-
-    th,tw = tim.shape
-    pp = tim.getPsf().getPointSourcePatch(tw/2., th/2.)
-    img = np.zeros(tim.shape, np.float32)
-    pp.addTo(img)
-    imgs.append((img, dict(scale=0.0001, cmap='hot')))
-    
-    from tractor.psfex import PsfEx
-    from tractor.patch import Patch
-    # HACK hard-coded image sizes.
-    thepsf = PsfEx(im.psffn, 2046, 4096)
-    psfim = thepsf.instantiateAt(x, y)
-    img = np.zeros(tim.shape, np.float32)
-    h,w = tim.shape
-    ph,pw = psfim.shape
-    patch = Patch((w-pw)/2., (h-ph)/2., psfim)
-    patch.addTo(img)
-    imgs.append((img, dict(scale = 0.0001, cmap = 'hot')))
-
-    for i,(img,d) in enumerate(imgs):
-
-        mn,mx = -5, 100
-        arcsinh = 1.
-        cmap = 'gray'
-        nil,scale = scales[ccd.filter]
-        pad = True
-
-        if d is not None:
-            if 'mn' in d:
-                mn = d['mn']
-            if 'mx' in d:
-                mx = d['mx']
-            if 'arcsinh' in d:
-                arcsinh = d['arcsinh']
-            if 'cmap' in d:
-                cmap = d['cmap']
-            if 'scale' in d:
-                scale = d['scale']
-
-        img = img / scale
-        if arcsinh is not None:
-            def nlmap(x):
-                return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
-            img = nlmap(img)
-            mn = nlmap(mn)
-            mx = nlmap(mx)
-
-        img = (img - mn) / (mx - mn)
-        if pad:
-            ih,iw = img.shape
-            padimg = np.zeros((2*size,2*size), img.dtype) + 0.5
-            padimg[ystart:ystart+ih, xstart:xstart+iw] = img
-            img = padimg
-
-        ax = f.add_subplot(rows, cols, i+1, xticks=[], yticks=[])
-        # the chips are turned sideways :)
-        #plt.imshow(np.rot90(np.clip(img, 0, 1), k=3), cmap=cmap,
-        #           interpolation='nearest', origin='lower')
-        ax.imshow(np.rot90(np.clip(img, 0, 1).T, k=2), cmap=cmap,
-                   interpolation='nearest', origin='lower')
-        #ax.xticks([]); ax.yticks([])
-
-    import tempfile
-    ff,tilefn = tempfile.mkstemp(suffix='.jpg')
-    os.close(ff)
-
-    f.savefig(tilefn)
-    f.clf()
-    del f
-    
-    return send_file(tilefn, 'image/jpeg', unlink=True,
-                     expires=3600)
+    # wfn = fn.replace('ooi', 'oow')
+    # if not os.path.exists(wfn):
+    #     return HttpResponse('no such image: ' + wfn)
+    # 
+    # from legacypipe.decam import DecamImage
+    # from legacypipe.desi_common import read_fits_catalog
+    # from tractor import Tractor
+    # 
+    # ccd.cpimage = fn
+    # D = _get_survey(name=name)
+    # im = D.get_image_object(ccd)
+    # kwargs = {}
+    # 
+    # if name == 'decals-dr2':
+    #     kwargs.update(pixPsf=True, splinesky=True)
+    # else:
+    #     kwargs.update(const2psf=True)
+    # tim = im.get_tractor_image(slc=slc, tiny=1, **kwargs)
+    # 
+    # if tim is None:
+    #     img = np.zeros((0,0))
+    # 
+    # mn,mx = -1, 100
+    # arcsinh = 1.
+    # cmap = 'gray'
+    # pad = True
+    # 
+    # scales = dict(g = (2, 0.0066),
+    #               r = (1, 0.01),
+    #               z = (0, 0.025),
+    #               )
+    # rows,cols = 1,5
+    # f = plt.figure(figsize=(cols,rows))
+    # f.clf()
+    # f.subplots_adjust(left=0.002, bottom=0.02, top=0.995, right=0.998,
+    #                   wspace=0.02, hspace=0)
+    # 
+    # imgs = []
+    # 
+    # img = tim.getImage()
+    # imgs.append((img,None))
+    # 
+    # M = 10
+    # margwcs = tim.subwcs.get_subimage(-M, -M, int(tim.subwcs.get_width())+2*M, int(tim.subwcs.get_height())+2*M)
+    # for dr in ['dr1j']:
+    #     cat,hdr = _get_decals_cat(margwcs, tag='decals-%s' % dr)
+    #     if cat is None:
+    #         tcat = []
+    #     else:
+    #         cat.shapedev = np.vstack((cat.shapedev_r, cat.shapedev_e1, cat.shapedev_e2)).T
+    #         cat.shapeexp = np.vstack((cat.shapeexp_r, cat.shapeexp_e1, cat.shapeexp_e2)).T
+    #         tcat = read_fits_catalog(cat, hdr=hdr)
+    #     tr = Tractor([tim], tcat)
+    #     img = tr.getModelImage(0)
+    #     imgs.append((img,None))
+    # 
+    #     img = tr.getChiImage(0)
+    #     imgs.append((img, dict(mn=-5,mx=5, arcsinh = None, scale = 1.)))
+    # 
+    # th,tw = tim.shape
+    # pp = tim.getPsf().getPointSourcePatch(tw/2., th/2.)
+    # img = np.zeros(tim.shape, np.float32)
+    # pp.addTo(img)
+    # imgs.append((img, dict(scale=0.0001, cmap='hot')))
+    # 
+    # from tractor.psfex import PsfEx
+    # from tractor.patch import Patch
+    # # HACK hard-coded image sizes.
+    # thepsf = PsfEx(im.psffn, 2046, 4096)
+    # psfim = thepsf.instantiateAt(x, y)
+    # img = np.zeros(tim.shape, np.float32)
+    # h,w = tim.shape
+    # ph,pw = psfim.shape
+    # patch = Patch((w-pw)/2., (h-ph)/2., psfim)
+    # patch.addTo(img)
+    # imgs.append((img, dict(scale = 0.0001, cmap = 'hot')))
+    # 
+    # for i,(img,d) in enumerate(imgs):
+    # 
+    #     mn,mx = -5, 100
+    #     arcsinh = 1.
+    #     cmap = 'gray'
+    #     nil,scale = scales[ccd.filter]
+    #     pad = True
+    # 
+    #     if d is not None:
+    #         if 'mn' in d:
+    #             mn = d['mn']
+    #         if 'mx' in d:
+    #             mx = d['mx']
+    #         if 'arcsinh' in d:
+    #             arcsinh = d['arcsinh']
+    #         if 'cmap' in d:
+    #             cmap = d['cmap']
+    #         if 'scale' in d:
+    #             scale = d['scale']
+    # 
+    #     img = img / scale
+    #     if arcsinh is not None:
+    #         def nlmap(x):
+    #             return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
+    #         img = nlmap(img)
+    #         mn = nlmap(mn)
+    #         mx = nlmap(mx)
+    # 
+    #     img = (img - mn) / (mx - mn)
+    #     if pad:
+    #         ih,iw = img.shape
+    #         padimg = np.zeros((2*size,2*size), img.dtype) + 0.5
+    #         padimg[ystart:ystart+ih, xstart:xstart+iw] = img
+    #         img = padimg
+    # 
+    #     ax = f.add_subplot(rows, cols, i+1, xticks=[], yticks=[])
+    #     # the chips are turned sideways :)
+    #     #plt.imshow(np.rot90(np.clip(img, 0, 1), k=3), cmap=cmap,
+    #     #           interpolation='nearest', origin='lower')
+    #     ax.imshow(np.rot90(np.clip(img, 0, 1).T, k=2), cmap=cmap,
+    #                interpolation='nearest', origin='lower')
+    #     #ax.xticks([]); ax.yticks([])
+    # 
+    # import tempfile
+    # ff,tilefn = tempfile.mkstemp(suffix='.jpg')
+    # os.close(ff)
+    # 
+    # f.savefig(tilefn)
+    # f.clf()
+    # del f
+    # 
+    # return send_file(tilefn, 'image/jpeg', unlink=True,
+    #                  expires=3600)
 
 
 def image_data(req, survey, ccd):
