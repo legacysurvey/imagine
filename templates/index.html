@@ -2302,7 +2302,13 @@ map.on('baselayerchange', function(e) {
 
 // When space bar is pressed, switch back to previous layer.  This allows a quick "blink" between layers.
 function keyDown(e) {
-    //console.log('keyDown ' + e);
+    console.log('keyDown ' + e + ' keycode ' + e.keyCode + ', char ' + e.char + ' charCode ' + e.charCode);
+    console.log('objquery has focus? ' + $('#objquery').is(":focus"));
+
+    if ($('#objquery').is(":focus")) {
+        return;
+    }
+
     // space bar
     if (e.keyCode == 32) {
         //console.log('space bar!');
@@ -2328,7 +2334,9 @@ function keyDown(e) {
         e.stopPropagation();
     }
 }
-document.addEventListener('keydown', keyDown);
+//document.addEventListener('keydown', keyDown);
+map.getContainer().addEventListener('keydown', keyDown);
+//map.getContainer().addEventListener('keypress', keyDown);
 
 
 // These are from Astrometry.net's stellarium_constellations.c
