@@ -1213,14 +1213,16 @@ if (defaultTile == null) {
 }
 
 {% if enable_dr5_models %}
-tiles = mylayer_B('decals-dr5-model', 'DECaLS DR5 models',
-                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
+//tiles = mylayer_B('decals-dr5-model', 'DECaLS DR5 models',
+tiles = mylayer('decals-dr5-model', 'DECaLS DR5 models',
+                {'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
 {% if enable_dr5_resids %}
-tiles = mylayer_B('decals-dr5-resid', 'DECaLS DR5 residuals',
-                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
+//tiles = mylayer_B('decals-dr5-resid', 'DECaLS DR5 residuals',
+tiles = mylayer('decals-dr5-resid', 'DECaLS DR5 residuals',
+                {'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 {% endif %}

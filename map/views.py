@@ -93,6 +93,8 @@ def index(req,
         enable_dr3_resids = settings.ENABLE_DR3,
         enable_dr4_models = settings.ENABLE_DR4,
         enable_dr4_resids = settings.ENABLE_DR4,
+        enable_dr5_models = settings.ENABLE_DR5,
+        enable_dr5_resids = settings.ENABLE_DR5,
         enable_dr2_overlays = settings.ENABLE_DR2,
         enable_dr3_overlays = settings.ENABLE_DR3,
         enable_dr4_overlays = settings.ENABLE_DR4,
@@ -2265,10 +2267,7 @@ def brick_detail(req, brickname, get_html=False):
     else:
         from astrometry.util.fits import fits_table
         ccds = fits_table(ccdsfn)
-        ccds = survey.cleanup_ccds_table(ccds)
-        if not 'seeing' in ccds.get_columns():
-            ccds.seeing = ccds.fwhm * (3600. * np.sqrt(np.abs(ccds.cd1_1 * ccds.cd2_2 -
-                                                              ccds.cd1_2 * ccds.cd2_1)))
+        ccds = touchup_ccds(ccds, survey)
 
         if len(ccds):
             html.append('CCDs overlapping brick:')
@@ -2283,22 +2282,37 @@ def brick_detail(req, brickname, get_html=False):
 
     return HttpResponse('\n'.join(html))
 
+def touchup_ccds(ccds, survey):
+    import numpy as np
+    ccds = survey.cleanup_ccds_table(ccds)
+    cols = ccds.get_columns()
+    if not 'seeing' in cols:
+        ccds.seeing = ccds.fwhm * (3600. * np.sqrt(np.abs(ccds.cd1_1 * ccds.cd2_2 -
+                                                          ccds.cd1_2 * ccds.cd2_1)))
+    if not ('date_obs' in cols and 'ut' in cols):
+        from astrometry.util.starutil_numpy import mjdtodate
+        dates,uts = [],[]
+        for ccd in ccds:
+            date = mjdtodate(ccd.mjd_obs)
+            #date = date.replace(microsecond = 0)
+            date = date.isoformat()
+            dd = date.split('T')
+            dates.append(dd[0])
+            uts.append(dd[1])
+        ccds.date_obs = np.array(dates)
+        ccds.ut = np.array(uts)
+    return ccds
+
 def ccds_overlapping_html(ccds, layer):
-    from astrometry.util.starutil_numpy import mjdtodate
     html = ['<table class="ccds"><thead><tr><th>name</th><th>exptime</th><th>seeing</th><th>propid</th><th>date</th><th>image</th></tr></thead><tbody>']
     for ccd in ccds:
-        date = mjdtodate(ccd.mjd_obs)
-        date = date.replace(microsecond = 0)
-        date = date.isoformat()
-        date = date.replace('T', ' ')
         ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum, ccd.ccdname.strip(), ccd.filter.strip())
         html.append('<tr><td><a href="%s">%s</a></td><td>%.1f</td><td>%.2f</td><td>%s</td><td>%s</td><td>%s</td>' % (
             reverse(ccd_detail, args=(layer, ccdname.replace(' ','-'))), ccdname,
-            ccd.exptime, ccd.seeing, ccd.propid, date, ccd.image_filename.strip()))
+            ccd.exptime, ccd.seeing, ccd.propid, ccd.date_obs + ' ' + ccd.ut[:8],
+            ccd.image_filename.strip()))
     html.append('</tbody></table>')
     return html
-
-
 
 def cutouts(req):
     from astrometry.util.util import Tan
@@ -2327,6 +2341,8 @@ def cutouts(req):
     survey = _get_survey(name)
     CCDs = _ccds_touching_box(north, south, east, west, name=name, survey=survey)
     debug(len(CCDs), 'CCDs')
+    CCDs = touchup_ccds(CCDs, survey)
+
     print('CCDs:', CCDs.columns())
 
     CCDs = CCDs[np.lexsort((CCDs.ccdname, CCDs.expnum, CCDs.filter))]
@@ -2335,8 +2351,10 @@ def cutouts(req):
     for i in range(len(CCDs)):
         c = CCDs[i]
         try:
-            c.image_filename = _get_image_filename(c)
+            #c.image_filename = _get_image_filename(c)
             dim = survey.get_image_object(c)
+            print('Image object:', dim)
+            print('Filename:', dim.imgfn)
             wcs = dim.get_wcs()
         except:
             import traceback
