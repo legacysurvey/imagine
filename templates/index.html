@@ -628,8 +628,8 @@ var decals_getLayer = function(result, radius, defaultcolor) {
             // PSF
             if (objtype[i] == 'P') {
                 color = '#9AFE2E'; //#D8F781'; //'green';
-            } else if (objtype[i] == 'S') {
-	            // Simple
+            } else if ((objtype[i] == 'S') || (objtype[i] == 'R')) {
+	            // Simple / Rex
                 color = 'orange';
                 //if (objtype[i] == 'S') {
             } else if (objtype[i] == 'D') {
@@ -941,6 +941,7 @@ function cutout_radec_link(ra, dec) {
 }
 
 function onSourceClick(e) {
+    console.log('onSourceClick');
     src = e.target;
     fluxstr = '';
     if ('g' in src.fluxes) {
@@ -964,13 +965,14 @@ function onSourceClick(e) {
     if ('z' in src.nobs) {
 	    nobs_z = src.nobs.z;
     }
-
     txt = 'Source RA,Dec = ' + cutout_radec_link(src.ra, src.dec) +
         '<br/>Source type: ' + src.type +
         '<br/>Mags: ' + fluxstr +
         '<br/>Brick: ' + src.brickname + ', Objid: ' + src.objid +
 	    '<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z;
+    console.log('Popup text: ' + txt);
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
+    e.stopPropagation();
 }
 
 function brick_detail(ovname, name, aparams) {

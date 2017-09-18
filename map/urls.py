@@ -139,7 +139,10 @@ urlpatterns = [
     # Cutouts panel plots
     url(r'^cutout_panels/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', views.cutout_panels, name='cutout_panels'),
     # Scatterplot of nearby sources for cutouts page
-    url(r'^cat_plot/', views.cat_plot, name='cat_plot'),
+    #url(r'^cat_plot/', views.cat_plot, name='cat_plot'),
+
+    # Look up this position, date, observatory in JPL Small Bodies database
+    url(r'^jpl_lookup/', views.jpl_lookup),
 
     # bricks: list of polygons
     url(r'^bricks/', views.brick_list),

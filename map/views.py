@@ -2396,6 +2396,8 @@ def cutouts(req):
     url = url.replace('://', '://%s.')
     domains = settings.SUBDOMAINS
 
+    jpl_url = reverse(jpl_lookup)
+
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
@@ -2403,81 +2405,90 @@ def cutouts(req):
         if name is not None:
             theurl += '&name=' + name
         print('CCD columns:', ccd.columns())
-        ccdsx.append(('CCD %s %i %s, %.1f sec (x,y = %i,%i)<br/><small>(%s [%i])</small><br/><small>(observed %s @ %s)</small>' %
-                      (ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y, fn, ccd.image_hdu, ccd.date_obs, ccd.ut), theurl))
+        ccdsx.append(('<br/>'.join(['CCD %s %i %s, %.1f sec (x,y = %i,%i)' % (ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
+                                    '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
+                                    '<small>(observed %s @ %s)</small>' % (ccd.date_obs, ccd.ut),
+                                    '<small><a href="%s?ra=%.4f&dec=%.4f&date=%s&camera=%s">Look up in JPL Small Bodies database</a></small>' %
+                                    (jpl_url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip())]),
+                      theurl))
     return render(req, 'cutouts.html',
                   dict(ra=ra, dec=dec, ccds=ccdsx, name=name, drname=survey.drname,
                        brick=brick, brickx=brickx, bricky=bricky, size=W))
 
-def cat_plot(req):
-    import pylab as plt
-    import numpy as np
-    from astrometry.util.util import Tan
-    from legacypipe.sdss import get_sdss_sources
 
-    ra = float(req.GET['ra'])
-    dec = float(req.GET['dec'])
-    name = req.GET.get('name', None)
+def jpl_lookup(req):
+    pass
 
-    ver = float(req.GET.get('ver',2))
+# def cat_plot(req):
+#     import pylab as plt
+#     import numpy as np
+#     from astrometry.util.util import Tan
+#     from legacypipe.sdss import get_sdss_sources
+# 
+#     ra = float(req.GET['ra'])
+#     dec = float(req.GET['dec'])
+#     name = req.GET.get('name', None)
+# 
+#     ver = float(req.GET.get('ver',2))
+# 
+#     # half-size in DECam pixels
+#     size = 50
+#     W,H = size*2, size*2
+#     
+#     pixscale = 0.262 / 3600.
+#     wcs = Tan(*[float(x) for x in [
+#         ra, dec, size+0.5, size+0.5, -pixscale, 0., 0., pixscale, W, H]])
+# 
+#     M = 10
+#     margwcs = wcs.get_subimage(-M, -M, W+2*M, H+2*M)
+# 
+#     tag = name
+#     if tag is None:
+#         tag = 'decals-dr1j'
+#     tag = str(tag)
+#     cat,hdr = _get_decals_cat(margwcs, tag=tag)
+# 
+#     # FIXME
+#     nil,sdss = get_sdss_sources('r', margwcs,
+#                                 photoobjdir=os.path.join(settings.DATA_DIR, 'sdss'),
+#                                 local=True)
+#     import tempfile
+#     f,tempfn = tempfile.mkstemp(suffix='.png')
+#     os.close(f)
+# 
+#     f = plt.figure(figsize=(2,2))
+#     f.subplots_adjust(left=0.01, bottom=0.01, top=0.99, right=0.99)
+#     f.clf()
+#     ax = f.add_subplot(111, xticks=[], yticks=[])
+#     if cat is not None:
+#         ok,x,y = wcs.radec2pixelxy(cat.ra, cat.dec)
+#         # matching the plot colors in index.html
+#         # cc = dict(S=(0x9a, 0xfe, 0x2e),
+#         #           D=(0xff, 0, 0),
+#         #           E=(0x58, 0xac, 0xfa),
+#         #           C=(0xda, 0x81, 0xf5))
+#         cc = dict(PSF =(0x9a, 0xfe, 0x2e),
+#                   SIMP=(0xff, 0xa5, 0),
+#                   DEV =(0xff, 0, 0),
+#                   EXP =(0x58, 0xac, 0xfa),
+#                   COMP=(0xda, 0x81, 0xf5))
+#         ax.scatter(x, y, s=50, c=[[float(x)/255. for x in cc[t.strip()]] for t in cat.type])
+#     if sdss is not None:
+#         ok,x,y = wcs.radec2pixelxy(sdss.ra, sdss.dec)
+#         ax.scatter(x, y, s=30, marker='x', c='k')
+#     ax.axis([0, W, 0, H])
+#     f.savefig(tempfn)
+# 
+#     return send_file(tempfn, 'image/png', unlink=True,
+#                      expires=0)
 
-    # half-size in DECam pixels
-    size = 50
-    W,H = size*2, size*2
-    
-    pixscale = 0.262 / 3600.
-    wcs = Tan(*[float(x) for x in [
-        ra, dec, size+0.5, size+0.5, -pixscale, 0., 0., pixscale, W, H]])
 
-    M = 10
-    margwcs = wcs.get_subimage(-M, -M, W+2*M, H+2*M)
-
-    tag = name
-    if tag is None:
-        tag = 'decals-dr1j'
-    tag = str(tag)
-    cat,hdr = _get_decals_cat(margwcs, tag=tag)
-
-    # FIXME
-    nil,sdss = get_sdss_sources('r', margwcs,
-                                photoobjdir=os.path.join(settings.DATA_DIR, 'sdss'),
-                                local=True)
-    import tempfile
-    f,tempfn = tempfile.mkstemp(suffix='.png')
-    os.close(f)
-
-    f = plt.figure(figsize=(2,2))
-    f.subplots_adjust(left=0.01, bottom=0.01, top=0.99, right=0.99)
-    f.clf()
-    ax = f.add_subplot(111, xticks=[], yticks=[])
-    if cat is not None:
-        ok,x,y = wcs.radec2pixelxy(cat.ra, cat.dec)
-        # matching the plot colors in index.html
-        # cc = dict(S=(0x9a, 0xfe, 0x2e),
-        #           D=(0xff, 0, 0),
-        #           E=(0x58, 0xac, 0xfa),
-        #           C=(0xda, 0x81, 0xf5))
-        cc = dict(PSF =(0x9a, 0xfe, 0x2e),
-                  SIMP=(0xff, 0xa5, 0),
-                  DEV =(0xff, 0, 0),
-                  EXP =(0x58, 0xac, 0xfa),
-                  COMP=(0xda, 0x81, 0xf5))
-        ax.scatter(x, y, s=50, c=[[float(x)/255. for x in cc[t.strip()]] for t in cat.type])
-    if sdss is not None:
-        ok,x,y = wcs.radec2pixelxy(sdss.ra, sdss.dec)
-        ax.scatter(x, y, s=30, marker='x', c='k')
-    ax.axis([0, W, 0, H])
-    f.savefig(tempfn)
-
-    return send_file(tempfn, 'image/png', unlink=True,
-                     expires=0)
-
-
-def _get_ccd(expnum, ccdname, name=None):
-    decals = _get_survey(name=name)
+def _get_ccd(expnum, ccdname, name=None, survey=None):
+    if survey is None:
+        survey = _get_survey(name=name)
     expnum = int(expnum, 10)
     ccdname = str(ccdname).strip()
-    CCDs = decals.find_ccds(expnum=expnum, ccdname=ccdname)
+    CCDs = survey.find_ccds(expnum=expnum, ccdname=ccdname)
     assert(len(CCDs) == 1)
     ccd = CCDs[0]
     return ccd
@@ -2522,9 +2533,14 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
 
     if name is None:
         name = req.GET.get('name', name)
-    ccd = _get_ccd(expnum, extname, name=name)
-
-    fn = _get_image_filename(ccd)
+    survey = _get_survey(name=name)
+    ccd = _get_ccd(expnum, extname, survey=survey)
+    print('CCD:', ccd)
+    im = survey.get_image_object(ccd)
+    print('Image object:', im)
+    fn = im.imgfn
+    #fn = _get_image_filename(ccd)
+    print('Filename:', fn)
     if not os.path.exists(fn):
         return HttpResponse('no such image: ' + fn)
 
