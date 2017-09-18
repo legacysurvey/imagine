@@ -333,6 +333,12 @@ def parse_radec_strings(rastr, decstr):
     dec = dmsstring2dec(decstr)
     return ra,dec
 
+ccds_table_css = '''<style type="text/css">
+.ccds { text-align: center; border-bottom: 2px solid #6678b1; margin: 15px; }
+.ccds td { padding: 5px; }
+.ccds th { border-bottom: 2px solid #6678b1; }
+</style>'''
+
 def data_for_radec(req):
     import numpy as np
     ra  = float(req.GET['ra'])
@@ -367,20 +373,13 @@ def data_for_radec(req):
                  (by >= ccds.brick_y0) * (by <= ccds.brick_y1))
         print('Cut to', len(ccds), 'CCDs containing RA,Dec point')
 
-        html = ['<html><head><title>%s data for RA,Dec (%.4f, %.4f)</title></head><body>' %
+        html = ['<html><head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
                 (survey.drname, ra, dec),
+                ccds_table_css + '<body>',
                 '<h1>%s data for RA,Dec = (%.4f, %.4f): CCDs overlapping</h1>' %
-                (survey.drname, ra, dec),
-                '<ul>']
-        for i,ccd in enumerate(ccds):
-            ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum, ccd.ccdname.strip(), ccd.filter.strip())
-            html.append('<li><a href="%s">%s</a></li>' % (
-                    reverse(ccd_detail, args=(name, ccdname.replace(' ','-'))),
-                    ccdname))
-        html.append('</ul>')
-
+                (survey.drname, ra, dec)]
+        html.extend(ccds_overlapping_html(ccds, name))
         html = html + brick_html[1:]
-
 
     return HttpResponse('\n'.join(html))
 
@@ -2247,8 +2246,9 @@ def brick_detail(req, brickname, get_html=False):
     coadd_prefix = 'legacysurvey'
 
     html = [
-        '<html><head><title>%s data for brick %s</title></head><body>' %
-        (survey.drname, brickname),
+        '<html><head><title>%s data for brick %s</title></head>' %
+        (survey.drname, brickname)
+        + ccds_table_css + '<body>',
         '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
         '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
         '<ul>',
@@ -2265,14 +2265,14 @@ def brick_detail(req, brickname, get_html=False):
     else:
         from astrometry.util.fits import fits_table
         ccds = fits_table(ccdsfn)
+        ccds = survey.cleanup_ccds_table(ccds)
+        if not 'seeing' in ccds.get_columns():
+            ccds.seeing = ccds.fwhm * (3600. * np.sqrt(np.abs(ccds.cd1_1 * ccds.cd2_2 -
+                                                              ccds.cd1_2 * ccds.cd2_1)))
+
         if len(ccds):
-            html.extend(['CCDs overlapping brick:', '<ul>'])
-            for ccd in ccds:
-                ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum, ccd.ccdname.strip(), ccd.filter.strip())
-                html.append('<li><a href="%s">%s</a></li>' % (
-                        reverse(ccd_detail, args=(name, ccdname.replace(' ','-'))),
-                        ccdname))
-            html.append('</ul>')
+            html.append('CCDs overlapping brick:')
+            html.extend(ccds_overlapping_html(ccds, name))
 
     html.extend([
             '</body></html>',
@@ -2282,6 +2282,22 @@ def brick_detail(req, brickname, get_html=False):
         return html,ccds
 
     return HttpResponse('\n'.join(html))
+
+def ccds_overlapping_html(ccds, layer):
+    from astrometry.util.starutil_numpy import mjdtodate
+    html = ['<table class="ccds"><thead><tr><th>name</th><th>exptime</th><th>seeing</th><th>propid</th><th>date</th><th>image</th></tr></thead><tbody>']
+    for ccd in ccds:
+        date = mjdtodate(ccd.mjd_obs)
+        date = date.replace(microsecond = 0)
+        date = date.isoformat()
+        date = date.replace('T', ' ')
+        ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum, ccd.ccdname.strip(), ccd.filter.strip())
+        html.append('<tr><td><a href="%s">%s</a></td><td>%.1f</td><td>%.2f</td><td>%s</td><td>%s</td><td>%s</td>' % (
+            reverse(ccd_detail, args=(layer, ccdname.replace(' ','-'))), ccdname,
+            ccd.exptime, ccd.seeing, ccd.propid, date, ccd.image_filename.strip()))
+    html.append('</tbody></table>')
+    return html
+
 
 
 def cutouts(req):

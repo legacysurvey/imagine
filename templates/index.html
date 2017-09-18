@@ -973,9 +973,9 @@ function onSourceClick(e) {
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
 }
 
-function brick_detail(idname, name, aparams) {
+function brick_detail(ovname, name, aparams) {
     return 'Brick: <a href="{% url 'brick_detail_blank' %}' + name
-        + '/">' + name + '</a>';
+        + '/?layer=' + idname + '">' + name + '</a>';
 }
 
 function ccd_detail(idname, name, aparams) {

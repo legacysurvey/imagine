@@ -204,7 +204,7 @@ def top_levels(mp, opt):
 
     if opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid',
                     'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
-                    'decals-dr5',
+                    'decals-dr5', 'decals-dr5-model',
                     'unwise-neo2', 'sdss2']:
         import pylab as plt
         from decals import settings
