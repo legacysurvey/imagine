@@ -2417,7 +2417,53 @@ def cutouts(req):
 
 
 def jpl_lookup(req):
-    pass
+    import sys
+    print('jpl_lookup: sys.version', sys.version)
+
+    import requests
+    from astrometry.util.starutil_numpy import ra2hmsstring, dec2dmsstring
+
+    date = req.GET.get('date')
+    ra = float(req.GET.get('ra'))
+    dec = float(req.GET.get('dec'))
+    camera = req.GET.get('camera')
+
+    latlongargs = dict(decam=dict(lon='70.81489', lon_u='E',
+                                  lat='30.16606', lat_u='S',
+                                  alt='2215.0', alt_u='m'))[camera]
+
+    hms = ra2hmsstring(ra, separator=':')
+    dms = dec2dmsstring(dec)
+    if dms.startswith('+'):
+        dms = dms[1:]
+
+    # '2016-03-01 00:42'
+    s = requests.Session()
+    r = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi')
+    #r2 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_time=1')
+    print('JPL lookup: setting date', date)
+    r3 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(obs_time=date, time_zone='0', check_time='Use Specified Time'))
+    print('Reply code:', r3.status_code)
+    #r4 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_loc=1')
+    print('JPL lookup: setting location', latlongargs)
+    latlongargs.update(s_pos="Use Specified Coordinates")
+    r5 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=latlongargs)
+    print('Reply code:', r5.status_code)
+    #r6 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_region=1')
+    print('JPL lookup: setting RA,Dec', (hms, dms))
+    r7 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(ra_1=hms, dec_1=dms,
+                                                                 ra_2='w0 0 45', dec_2='w0 0 45', sys='J2000', check_region_1="Use Specified R.A./Dec. Region"))
+    print('Reply code:', r7.status_code)
+    #r8 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_constraint=1')
+    print('JPL lookup: clearing mag limit')
+    r9 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(group='all', limit='1000', mag_limit='', mag_required='yes', two_pass='yes', check_constraints="Use Specified Settings"))
+    print('Reply code:', r9.status_code)
+    print('JPL lookup: submitting search')
+    r10 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(search="Find Objects"))
+    txt = r10.text
+    txt = txt.replace('<a href="sbdb.cgi', '<a href="https://ssd.jpl.nasa.gov/sbdb.cgi')
+    return HttpResponse(txt)
+
 
 # def cat_plot(req):
 #     import pylab as plt
@@ -2979,6 +3025,21 @@ def ra_ranges_overlap(ralo, rahi, ra1, ra2):
 
 
 if __name__ == '__main__':
+
+    class duck(object):
+        pass
+
+    req = duck()
+    req.META = dict()
+    req.GET = dict()
+    req.GET['date'] = '2016-03-01 00:42'
+    req.GET['ra'] = '131.3078'
+    req.GET['dec'] = '20.7488'
+    req.GET['camera'] = 'decam'
+    jpl_lookup(req)
+
+    import sys
+    sys.exit(0)
 
     assert(ra_ranges_overlap(359, 1, 0.5, 1.5) == True)
     assert(ra_ranges_overlap(359, 1, 358, 0.)  == True)
