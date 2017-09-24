@@ -75,6 +75,7 @@ galaxycat = None
 def index(req,
           default_layer = 'mzls+bass-dr4',
           default_radec = (None,None),
+          default_zoom = 13,
           rooturl=settings.ROOT_URL,
           **kwargs):
 
@@ -120,7 +121,7 @@ def index(req,
     layer = layer_name_map(layer)
 
     ra, dec = default_radec
-    zoom = 13
+    zoom = default_zoom
 
     try:
         zoom = int(req.GET.get('zoom', zoom))
@@ -225,7 +226,10 @@ def decaps(req):
                  enable_dr3_resids=False,
                  enable_dr4_models=False,
                  enable_dr4_resids=False,
-                 enable_dr5=False,
+                 enable_dr5_models=False,
+                 enable_dr5_resids=False,
+                 enable_dr3=False,
+                 enable_dr5=True,
                  enable_ps1=False,
                  enable_dr3_overlays=False,
                  enable_dr4_overlays=False,
@@ -233,7 +237,8 @@ def decaps(req):
                  enable_desi_targets=False,
                  enable_spectra=False,
                  default_layer='decaps2',
-                 default_radec=(223.481,-59.080),
+                 default_radec=(225.0, -63.2),
+                 default_zoom=10,
                  rooturl=settings.ROOT_URL + '/decaps',
     )
 
