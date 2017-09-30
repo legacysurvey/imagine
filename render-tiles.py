@@ -65,6 +65,12 @@ def _one_tile(X):
         #print('kind', kind, 'zoom', zoom, 'x,y', x,y)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
                               **kwargs)
+
+    elif kind in ['eboss']:
+        v = 1
+        layer = get_layer(kind)
+        return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
+                              **kwargs)
         
     elif kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         v = 2
@@ -204,6 +210,7 @@ def top_levels(mp, opt):
 
     if opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid',
                     'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
+                    'decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
                     'unwise-neo2', 'sdss2']:
         import pylab as plt
         from decals import settings
@@ -723,10 +730,10 @@ def main():
         
         if opt.kind in ['decals-dr3', 'decals-dr3-model',
                         'mzls+bass-dr4', 'mzls+bass-dr4-model',
-                        'decaps2', 'decaps2-model',]:
+                        'decaps2', 'decaps2-model', 'eboss']:
 
             from glob import glob
-            from map.views import _get_survey
+            from map.views import _get_survey, get_layer
 
             surveyname = opt.kind
             # *-model -> *
@@ -1175,8 +1182,8 @@ def main():
                 args.append((opt.kind,zoom,xi,y, opt.ignore, False))
                 #args.append((opt.kind,zoom,xi,y, opt.ignore, True))
             print('Rendering', len(args), 'tiles in row y =', y)
-            #mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
-            mp.map(_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
+            mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
+            #mp.map(_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
             print('Rendered', len(args), 'tiles')
 
         # if opt.grass:

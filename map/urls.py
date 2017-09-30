@@ -9,6 +9,10 @@ survey_regex = r'([\w +-]+)'
 
 urlpatterns = [
 
+    # eboss special DR5+ reduction
+    url(r'^eboss/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('eboss')),
+
     # DR5
     url(r'^decals-dr5/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decals-dr5')),
@@ -139,7 +143,10 @@ urlpatterns = [
     # Cutouts panel plots
     url(r'^cutout_panels/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', views.cutout_panels, name='cutout_panels'),
     # Scatterplot of nearby sources for cutouts page
-    url(r'^cat_plot/', views.cat_plot, name='cat_plot'),
+    #url(r'^cat_plot/', views.cat_plot, name='cat_plot'),
+
+    # Look up this position, date, observatory in JPL Small Bodies database
+    url(r'^jpl_lookup/', views.jpl_lookup),
 
     # bricks: list of polygons
     url(r'^bricks/', views.brick_list),
@@ -169,6 +176,9 @@ urlpatterns = [
 
     # Special DECaPS version of viewer.
     url(r'decaps', views.decaps),
+
+    # DR5 version of the viewer.
+    url(r'dr5', views.dr5),
     
     # fall-through
     url(r'', views.index),

@@ -121,99 +121,16 @@ def get_random_galaxy(layer=None):
         drnum = 3
 
     if galaxycat is None and not os.path.exists(galfn):
-        import astrometry.catalogs
-        from astrometry.util.fits import fits_table, merge_tables
-        import fitsio
-        from astrometry.util.util import Tan
-
-        fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ngc2000.fits')
-        NGC = fits_table(fn)
-        print(len(NGC), 'NGC objects')
-        NGC.name = np.array(['NGC %i' % n for n in NGC.ngcnum])
-        NGC.delete_column('ngcnum')
-        
-        fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ic2000.fits')
-        IC = fits_table(fn)
-        print(len(IC), 'IC objects')
-        IC.name = np.array(['IC %i' % n for n in IC.icnum])
-        IC.delete_column('icnum')
-
-        # fn = os.path.join(settings.DATA_DIR, 'ugc.fits')
-        # UGC = fits_table(fn)
-        # print(len(UGC), 'UGC objects')
-        # UGC.name = np.array(['UGC %i' % n for n in UGC.ugcnum])
-        # UGC.delete_column('ugcnum')
-
-        #T = merge_tables([NGC, IC, UGC])
-        #T.writeto(os.path.join(settings.DATA_DIR, 'galaxy-cats.fits'))
-
-        T = merge_tables([NGC, IC])
-        T.writeto(os.path.join('/tmp/galaxy-cats.fits'))
-        
-        keep = np.zeros(len(T), bool)
-
-        if drnum == 3:
-            bricks = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
-                                             'decals-bricks-in-dr3.fits'))
-            bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
-            print(len(bricks), 'bricks with grz')
-            from map.views import _get_survey
-            survey = _get_survey('decals-dr3')
-        elif drnum == 4:
-            from map.views import _get_survey
-            survey = _get_survey('mzls+bass-dr4')
-
-            bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-in-dr4.fits'))
-
-            # bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-dr4.fits'))
-            # bricks.cut((bricks.nexp_g > 0) *
-            #            (bricks.nexp_r > 0) *
-            #            (bricks.nexp_z > 0))
-            # print(len(bricks), 'bricks with grz')
-            # 
-            # sbricks = survey.get_bricks()
-            # binds = dict([(b,i) for i,b in enumerate(sbricks.brickname)])
-            # I = np.array([binds[b] for b in bricks.brickname])
-            # bricks.ra1  = sbricks.ra1[I]
-            # bricks.ra2  = sbricks.ra2[I]
-            # bricks.dec1 = sbricks.dec1[I]
-            # bricks.dec2 = sbricks.dec2[I]
-            # 
-            # fn = '/tmp/survey-bricks-in-dr4.fits'
-            # bricks.writeto(fn)
-            # print('Wrote', fn)
-
-
-        for brick in bricks:
-            fn = survey.find_file('nexp', brick=brick.brickname, band='r')
-            if not os.path.exists(fn):
-                print('Does not exist:', fn)
-                continue
-
-            I = np.flatnonzero((T.ra  >= brick.ra1 ) * (T.ra  < brick.ra2 ) *
-                               (T.dec >= brick.dec1) * (T.dec < brick.dec2))
-            print('Brick', brick.brickname, 'has', len(I), 'galaxies')
-            if len(I) == 0:
-                continue
-
-            nn,hdr = fitsio.read(fn, header=True)
-            h,w = nn.shape
-            #imgfn = survey.find_file('image', brick=brick.brickname, band='r')
-            #wcs = Tan(imgfn)
-            print('file', fn)
-            wcs = Tan(hdr)
-
-            ok,x,y = wcs.radec2pixelxy(T.ra[I], T.dec[I])
-            x = np.clip((x-1).astype(int), 0, w-1)
-            y = np.clip((y-1).astype(int), 0, h-1)
-            n = nn[y,x]
-            keep[I[n > 0]] = True
-
-        T.cut(keep)
-        fn = '/tmp/galaxies-in-dr%i.fits' % drnum
-        T.writeto(fn)
-        print('Wrote', fn)
-        T.writeto(galfn)
+        if settings.CREATE_GALAXY_CATALOG:
+            try:
+                create_galaxy_catalog(galfn, drnum)
+            except:
+                pass
+        if not os.path.exists(galfn):
+            if drnum == 4:
+                return 147.1744, 44.0812, 'NGC 2998'
+            else:
+                return 18.6595, -1.0210, 'NGC 442'
 
     if galaxycat is None:
         from astrometry.util.fits import fits_table
@@ -225,6 +142,100 @@ def get_random_galaxy(layer=None):
     name = galaxycat.name[i].strip()
     return ra,dec,name
 
+def create_galaxy_catalog(galfn, drnum):
+    import astrometry.catalogs
+    from astrometry.util.fits import fits_table, merge_tables
+    import fitsio
+    from astrometry.util.util import Tan
+
+    fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ngc2000.fits')
+    NGC = fits_table(fn)
+    print(len(NGC), 'NGC objects')
+    NGC.name = np.array(['NGC %i' % n for n in NGC.ngcnum])
+    NGC.delete_column('ngcnum')
+    
+    fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ic2000.fits')
+    IC = fits_table(fn)
+    print(len(IC), 'IC objects')
+    IC.name = np.array(['IC %i' % n for n in IC.icnum])
+    IC.delete_column('icnum')
+
+    # fn = os.path.join(settings.DATA_DIR, 'ugc.fits')
+    # UGC = fits_table(fn)
+    # print(len(UGC), 'UGC objects')
+    # UGC.name = np.array(['UGC %i' % n for n in UGC.ugcnum])
+    # UGC.delete_column('ugcnum')
+
+    #T = merge_tables([NGC, IC, UGC])
+    #T.writeto(os.path.join(settings.DATA_DIR, 'galaxy-cats.fits'))
+
+    T = merge_tables([NGC, IC])
+    T.writeto(os.path.join('/tmp/galaxy-cats.fits'))
+    
+    keep = np.zeros(len(T), bool)
+
+    if drnum == 3:
+        bricks = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
+                                         'decals-bricks-in-dr3.fits'))
+        bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
+        print(len(bricks), 'bricks with grz')
+        from map.views import _get_survey
+        survey = _get_survey('decals-dr3')
+    elif drnum == 4:
+        from map.views import _get_survey
+        survey = _get_survey('mzls+bass-dr4')
+
+        bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-in-dr4.fits'))
+
+        # bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-dr4.fits'))
+        # bricks.cut((bricks.nexp_g > 0) *
+        #            (bricks.nexp_r > 0) *
+        #            (bricks.nexp_z > 0))
+        # print(len(bricks), 'bricks with grz')
+        # 
+        # sbricks = survey.get_bricks()
+        # binds = dict([(b,i) for i,b in enumerate(sbricks.brickname)])
+        # I = np.array([binds[b] for b in bricks.brickname])
+        # bricks.ra1  = sbricks.ra1[I]
+        # bricks.ra2  = sbricks.ra2[I]
+        # bricks.dec1 = sbricks.dec1[I]
+        # bricks.dec2 = sbricks.dec2[I]
+        # 
+        # fn = '/tmp/survey-bricks-in-dr4.fits'
+        # bricks.writeto(fn)
+        # print('Wrote', fn)
+
+
+    for brick in bricks:
+        fn = survey.find_file('nexp', brick=brick.brickname, band='r')
+        if not os.path.exists(fn):
+            print('Does not exist:', fn)
+            continue
+
+        I = np.flatnonzero((T.ra  >= brick.ra1 ) * (T.ra  < brick.ra2 ) *
+                           (T.dec >= brick.dec1) * (T.dec < brick.dec2))
+        print('Brick', brick.brickname, 'has', len(I), 'galaxies')
+        if len(I) == 0:
+            continue
+
+        nn,hdr = fitsio.read(fn, header=True)
+        h,w = nn.shape
+        #imgfn = survey.find_file('image', brick=brick.brickname, band='r')
+        #wcs = Tan(imgfn)
+        print('file', fn)
+        wcs = Tan(hdr)
+
+        ok,x,y = wcs.radec2pixelxy(T.ra[I], T.dec[I])
+        x = np.clip((x-1).astype(int), 0, w-1)
+        y = np.clip((y-1).astype(int), 0, h-1)
+        n = nn[y,x]
+        keep[I[n > 0]] = True
+
+    T.cut(keep)
+    fn = '/tmp/galaxies-in-dr%i.fits' % drnum
+    T.writeto(fn)
+    print('Wrote', fn)
+    T.writeto(galfn)
 
 def cat_targets_dr2(req, ver):
     import json
@@ -421,6 +432,8 @@ def cat_user(req, ver):
         D.update(bricknames=list(cat.brickname))
     if 'radius' in cols:
         D.update(radius=list([float(r) for r in cat.radius]))
+    if 'color' in cols:
+        D.update(color=list([c.strip() for c in cat.color]))
 
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
@@ -517,6 +530,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:
+        print('e:', e)
         return HttpResponse(e.strerror)
     ver = int(ver)
     if not ver in catversions[tag]:
@@ -616,7 +630,7 @@ def _get_decals_cat(wcs, tag='decals'):
     if len(cat) == 0:
         cat = None
     else:
-        cat = merge_tables(cat)
+        cat = merge_tables(cat, columns='fillzero')
 
     return cat,hdr
 

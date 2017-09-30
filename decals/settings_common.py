@@ -13,6 +13,8 @@ import secrets.database
 
 GAIA_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia_rel1'
 
+CREATE_GALAXY_CATALOG = True
+
 APPEND_SLASH = False
 
 # Enable Virgo Cluster Catalog layer?
@@ -22,13 +24,15 @@ ENABLE_WL = False
 ENABLE_CUTOUTS = True
 ENABLE_SQL = False
 
-ENABLE_DR2 = True
+ENABLE_DR2 = False
 ENABLE_DR3 = True
 ENABLE_DR4 = True
 ENABLE_DR5 = False
 
-ENABLE_DECAPS = False
+ENABLE_DECAPS = True
 ENABLE_PS1 = False
+
+ENABLE_EBOSS = False
 
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False
