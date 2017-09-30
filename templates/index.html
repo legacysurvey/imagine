@@ -1286,10 +1286,11 @@ allLayers.push(tiles);
 {% endif %}
 {% endif %}
 
+{% if enable_eboss %}
 tiles = mylayer('eboss', 'special eBOSS region',
                 {'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
-
+{% endif %}
 
 {% if enable_dr2 %}
 tiles = mylayer_B('decals-dr2', 'DECaLS DR2 images',
