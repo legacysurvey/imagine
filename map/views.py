@@ -43,6 +43,8 @@ tileversions = {
 
     'sdss2': [1,],
 
+    'eboss': [1,],
+
     'decaps2': [1, 2],
     'decaps2-model': [1, 2],
     'decaps2-resid': [1, 2],
@@ -129,6 +131,17 @@ def index(req,
         pass
     try:
         ra,dec = parse_radec_strings(req.GET.get('ra'), req.GET.get('dec'))
+    except:
+        pass
+
+    try:
+        brickname = req.GET.get('brick')
+        brick_regex = r'(\d{4}[pm]\d{3})'
+        if re.match(brick_regex, brickname) is not None:
+            ra = 0.1 * int(brickname[:4], 10)
+            dec = 0.1 * int(brickname[-3:], 10)
+            pm = (1. if brickname[4] == 'p' else -1.)
+            dec *= pm
     except:
         pass
 
@@ -544,6 +557,8 @@ class MapLayer(object):
         if os.path.exists(fn):
             return fn
         fn = self.create_scaled_image(brick, band, scale, fn)
+        if fn is None:
+            return None
         if os.path.exists(fn):
             return fn
         return None
@@ -994,6 +1009,13 @@ class DecalsLayer(MapLayer):
         hdr['VERSION'] = self.survey.drname.split(' ')[-1]
         hdr['IMAGETYP'] = self.imagetype
 
+    def get_fits_extension(self, scale, fn):
+        #if scale == 0:
+        #    return 1
+        if fn.endswith('.fz'):
+            return 1
+        return 0
+
 class RebrickedMixin(object):
 
     def get_fits_extension(self, scale, fn):
@@ -1090,7 +1112,7 @@ class RebrickedMixin(object):
             return fits_table(fn)
         bsmall = self.get_bricks_for_scale(scale - 1)
         # Find generic bricks for scale...
-        afn = os.path.join(basedir, 'bricks-%i.fits' % scale)
+        afn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % scale)
         print('Generic brick file:', afn)
         assert(os.path.exists(afn))
         allbricks = fits_table(afn)
@@ -1850,7 +1872,7 @@ def _get_survey(name=None):
     basedir = settings.DATA_DIR
 
     if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5',
-                 'mzls+bass-dr4', 'decaps2']:
+                 'mzls+bass-dr4', 'decaps2', 'eboss']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
@@ -1873,8 +1895,11 @@ def _get_survey(name=None):
         elif name == 'decals-dr5':
             d.drname = 'DECaLS DR5'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'
-        elif name in 'decaps2':
+        elif name == 'decaps2':
             d.drname = 'DECaPS'
+            d.drurl = 'http://legacysurvey.org/'
+        elif name == 'eboss':
+            d.drname = 'eBOSS'
             d.drurl = 'http://legacysurvey.org/'
 
         print('Caching survey', name)
@@ -2868,6 +2893,10 @@ def get_layer(name, default=None):
         (all on sanjaya)
         '''
         layer = ReSdssLayer('sdss2')
+
+    elif name == 'eboss':
+        survey = _get_survey('eboss')
+        layer = DecalsLayer('eboss', 'image', survey)
 
     elif name in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid']:
         survey = _get_survey('decals-dr5')

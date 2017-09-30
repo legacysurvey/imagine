@@ -65,6 +65,12 @@ def _one_tile(X):
         #print('kind', kind, 'zoom', zoom, 'x,y', x,y)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
                               **kwargs)
+
+    elif kind in ['eboss']:
+        v = 1
+        layer = get_layer(kind)
+        return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
+                              **kwargs)
         
     elif kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         v = 2
@@ -724,10 +730,10 @@ def main():
         
         if opt.kind in ['decals-dr3', 'decals-dr3-model',
                         'mzls+bass-dr4', 'mzls+bass-dr4-model',
-                        'decaps2', 'decaps2-model',]:
+                        'decaps2', 'decaps2-model', 'eboss']:
 
             from glob import glob
-            from map.views import _get_survey
+            from map.views import _get_survey, get_layer
 
             surveyname = opt.kind
             # *-model -> *
