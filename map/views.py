@@ -74,13 +74,19 @@ tileversions = {
 
 galaxycat = None
 
-def index(req,
-          default_layer = 'mzls+bass-dr4',
-          default_radec = (None,None),
-          default_zoom = 13,
-          rooturl=settings.ROOT_URL,
-          **kwargs):
+def index(req, **kwargs):
+    host = req.META.get('HTTP_HOST', None)
+    #print('Host:', host)
+    if host == 'decaps.legacysurvey.org':
+        return decaps(req)
+    return _index(req, **kwargs)
 
+def _index(req,
+           default_layer = 'mzls+bass-dr4',
+           default_radec = (None,None),
+           default_zoom = 13,
+           rooturl=settings.ROOT_URL,
+           **kwargs):
     kwkeys = dict(
         enable_sql = settings.ENABLE_SQL,
         enable_vcc = settings.ENABLE_VCC,
@@ -235,7 +241,7 @@ def index(req,
 
 
 def decaps(req):
-    return index(req, enable_decaps=True,
+    return _index(req, enable_decaps=True,
                  enable_dr3_models=False,
                  enable_dr3_resids=False,
                  enable_dr4_models=False,
@@ -257,7 +263,7 @@ def decaps(req):
     )
 
 def dr5(req):
-    return index(req, enable_decaps=True,
+    return _index(req, enable_decaps=True,
                  enable_ps1=False,
                  enable_desi_targets=False,
                  default_layer='decals-dr5',
