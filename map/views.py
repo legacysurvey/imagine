@@ -2171,7 +2171,7 @@ def sdss_plate_list(req):
 
     plates = []
     for t in T:
-        plates.append(dict(name='plate%i' % t.plate,
+        plates.append(dict(name='%i' % t.plate,
                            ra=t.ra, dec=t.dec, radius=radius,
                            color='#ffffff'))
 

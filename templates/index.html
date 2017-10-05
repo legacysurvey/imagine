@@ -991,6 +991,11 @@ function exp_detail(idname, name, aparams) {
         name.replace(' ','-') + '/"' + aparams + '>' + name + '</a>';
 }
 
+function plate_detail(idname, name, aparams) {
+    //console.log('Plate_detail: ' + idname + ', ' + name + ', ' + aparams);
+    return '<a href="https://dr14.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
+}
+
 function onMapClick(e) {
     var ra  = long2ra(e.latlng.lng);
     var dec = lat2dec(e.latlng.lat);
@@ -1084,6 +1089,7 @@ function overlayAdded(e) {
         if (polygonOverlays[i]._show) {
             inbrickccdAdded = true;
             inbrickccd.addTo(map);
+            break;
         }
     }
 }
@@ -1093,14 +1099,12 @@ function overlayRemoved(e) {
     if (!inbrickccdAdded) {
         return;
     }
-
     var show = false;
     for (var i=0; i<polygonOverlays.length; i++) {
         if (polygonOverlays[i]._show) {
             show = true;
         }
     }
-
     if (!show) {
         map.removeControl(inbrickccd);
         inbrickccdAdded = false;
@@ -1809,6 +1813,20 @@ var ccd_detail_list = function(ov, objs) {
     return txt;
 };
 
+var plate_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In SDSS Spectro Plates: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + plate_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
 {% if enable_dr2_overlays %}
 var ccdOverlay2 = new PolygonOverlay('decals-dr2-ccds',
                                      'DECaLS DR2 CCDs',
@@ -1914,6 +1932,16 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
     
                                       });
 
+{% if enable_spectra %}
+var plateOverlay = new CircleOverlay('sdss-plates',
+                                     'SDSS Spectro Plates',
+                                    {'url': sdss_plates_url,
+                                     'labelMinZoom': 100,
+                                     'detail': plate_detail,
+                                     'detail_list': plate_detail_list,
+                                    });
+{% endif %}
+
 {% comment %}
 These are overlays that have entries when you click on the map,
 and entries in the "in brick/ccd" panel.
@@ -1932,19 +1960,15 @@ var polygonOverlays = [
     {% if enable_dr5_overlays %}
     ccdOverlay5, expOverlay5,
     {% endif %}
-    brickOverlay ];
+    brickOverlay,
+    {% if enable_spectra %}
+    plateOverlay,
+    {% endif %}
+];
 
 for (var i=0; i<polygonOverlays.length; i++) {
     polygonOverlays[i].on('loaded', function() { inbrickccdUpdate(); });
 }
-
-{% if enable_spectra %}
-var plateOverlay = new CircleOverlay('sdss-plates',
-                                     'SDSS Spectro Plates',
-                                    {'url': sdss_plates_url,
-                                     'labelMinZoom': 100,
-                                    });
-{% endif %}
 
 {% if enable_dr2_overlays %}
 var decalscat2 = new DecalsCatalogLayer(tileWatcher,
