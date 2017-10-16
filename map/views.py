@@ -2183,8 +2183,12 @@ def parse_ccd_name(name):
     #print('Words:', words)
     #assert(len(words) == 3)
     if len(words) == 4:
-        # "decam-EXPNUM-CCD-BAND"
+        # "decam-EXPNUM-CCD-BAND", mabye
         words = words[1:]
+    elif len(words) == 3:
+        # "decam-EXPNUM-CCD", maybe
+        words = words[1:]
+
     expnum = words[0]
     expnum = int(expnum, 10)
     ccdname = words[1]
@@ -2226,7 +2230,7 @@ def ccd_detail(req, name, ccd):
             flags = 'Photometric: %s.  Not-blacklisted: %s<br />' % (c.photometric, c.blacklist_ok)
         about = html_tag + '''
 <body>
-CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix
+CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix, band %s, RA,Dec <a href="%s/?ra=%.4f&dec=%.4f">%.4f, %.4f</a>
 <br />
 %s
 Observed MJD %.3f, %s %s UT
@@ -2238,10 +2242,12 @@ Observed MJD %.3f, %s %s UT
 <img src="%s" />
 </body></html>
 '''
-        about = about % (ccd, c.image_filename, c.image_hdu, c.exptime, c.seeing, c.fwhm,
-                         flags,
-                         c.mjd_obs, c.date_obs, c.ut,
-                         imgurl, ccd, ivurl, ccd, dqurl, ccd, imgstamp)
+        args = (ccd, c.image_filename.strip(), c.image_hdu, c.exptime, c.seeing, c.fwhm,
+                c.filter, settings.ROOT_URL, c.ra, c.dec, c.ra, c.dec,
+                flags,
+                c.mjd_obs, c.date_obs, c.ut,
+                imgurl, ccd, ivurl, ccd, dqurl, ccd, imgstamp)
+        about = about % args
 
     else:
         about = ('CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' %
