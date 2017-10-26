@@ -2235,9 +2235,9 @@ CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix, b
 %s
 Observed MJD %.3f, %s %s UT
 <ul>
-<li>image <a href="%s">%s</a>
-<li>weight or inverse-variance<a href="%s">%s</a>
-<li>data quality (flags) <a href="%s">%s</a>
+<li>image: <a href="%s">%s</a>
+<li>weight or inverse-variance: <a href="%s">%s</a>
+<li>data quality (flags): <a href="%s">%s</a>
 </ul>
 <img src="%s" />
 </body></html>
