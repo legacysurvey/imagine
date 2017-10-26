@@ -2465,9 +2465,12 @@ def jpl_lookup(req):
     dec = float(req.GET.get('dec'))
     camera = req.GET.get('camera')
 
-    latlongargs = dict(decam=dict(lon='70.81489', lon_u='E',
+    latlongargs = dict(decam=dict(lon='70.81489', lon_u='E',  # not W?
                                   lat='30.16606', lat_u='S',
-                                  alt='2215.0', alt_u='m'))[camera]
+                                  alt='2215.0', alt_u='m'),
+                       mosaic=dict(lon='111.6003', lon_u='E', # W?
+                                   lat = '31.9634', lat_u='N',
+                                   alt='2120.0', alt_u='m'))[camera]
 
     hms = ra2hmsstring(ra, separator=':')
     dms = dec2dmsstring(dec)
