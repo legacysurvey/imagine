@@ -44,7 +44,7 @@ def fits_cutout(req):
     layer = get_layer(name)
     if layer is not None:
         tempfiles = []
-        rtn = layer.get_cutout(req, fits=True)
+        rtn = layer.get_cutout(req, fits=True, tempfiles=tempfiles)
         for fn in tempfiles:
             print('Deleting temp file', fn)
             os.unlink(fn)
