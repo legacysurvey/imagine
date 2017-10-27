@@ -82,7 +82,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'mzls+bass-dr4',
+           default_layer = 'decals-dr5', #'mzls+bass-dr4',
            default_radec = (None,None),
            default_zoom = 13,
            rooturl=settings.ROOT_URL,
