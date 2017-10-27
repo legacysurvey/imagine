@@ -986,6 +986,19 @@ function ccd_detail(idname, name, aparams) {
                      + '/"' + aparams + '>' + name + '</a>';
 }
 
+function sdss_ccd_detail(idname, name, aparams) {
+    //var obj = ccdOverlaySdss._current[name];
+    // HACK -- name is 'SDSS R/C/F ##/##/##' -- parse!
+    var words = name.split(' ');
+    var rcf = words[2].split('/');
+    var run = rcf[0];
+    var camcol = rcf[1];
+    var field = rcf[2];
+    return 'CCD: <a href="https://dr12.sdss.org/fields/runCamcolField?run='
+          + run + '&camcol=' + camcol + '&field=' + field
+          + '"' + aparams + '>' + name + '</a>';
+}
+
 function exp_detail(idname, name, aparams) {
     return 'Exposure: <a href="{% url 'exp_detail_blank' %}' + idname + '/' +
         name.replace(' ','-') + '/"' + aparams + '>' + name + '</a>';
@@ -1813,6 +1826,20 @@ var ccd_detail_list = function(ov, objs) {
     return txt;
 };
 
+var sdss_ccd_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In ' + ov._dr_name + ' CCDs: <ul>'
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + sdss_ccd_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
 var plate_detail_list = function(ov, objs) {
     if (objs.length == 0) { return ''; }
     txt = 'In SDSS Spectro Plates: <ul>';
@@ -1932,6 +1959,21 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
     
                                       });
 
+
+var ccdOverlaySdss = new PolygonOverlay('sdss-ccds',
+                                 'SDSS CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccdssdss',
+                                     'detail': sdss_ccd_detail,
+                                     'detail_list': sdss_ccd_detail_list,
+                                     'url_name': 'sdss',
+                                     'dr_name': 'SDSS',
+                                    });
+
+
+
 {% if enable_spectra %}
 var plateOverlay = new CircleOverlay('sdss-plates',
                                      'SDSS Spectro Plates',
@@ -1961,6 +2003,7 @@ var polygonOverlays = [
     ccdOverlay5, expOverlay5,
     {% endif %}
     brickOverlay,
+    ccdOverlaySdss,
     {% if enable_spectra %}
     plateOverlay,
     {% endif %}
@@ -2090,6 +2133,7 @@ var overlays = [
     {% endif %}
 
     brickOverlay,
+    ccdOverlaySdss,
     gals, bright, tycho2,
     {% if enable_ps1 %}
     ps1cat,

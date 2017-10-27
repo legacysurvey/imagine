@@ -2024,6 +2024,39 @@ def ccd_list(req):
     print('Name:', name)
     name = layer_name_map(name)
     print('Mapped name:', name)
+
+    if name == 'sdss':
+        '''
+        DR8 window_flist, processed...
+        T.ra1,T.dec1 = munu_to_radec_deg(T.mu_start, T.nu_start, T.node, T.incl)
+        T.ra2,T.dec2 = munu_to_radec_deg(T.mu_end, T.nu_start, T.node, T.incl)
+        T.ra3,T.dec3 = munu_to_radec_deg(T.mu_end, T.nu_end, T.node, T.incl)
+        T.ra4,T.dec4 = munu_to_radec_deg(T.mu_start, T.nu_end, T.node, T.incl)
+        '''
+        from astrometry.libkd.spherematch import tree_open, tree_search_radec
+        from astrometry.util.starutil import radectoxyz, xyztoradec, degrees_between
+        from astrometry.util.fits import fits_table
+        x1,y1,z1 = radectoxyz(east, north)
+        x2,y2,z2 = radectoxyz(west, south)
+        rc,dc = xyztoradec((x1+x2)/2., (y1+y2)/2., (z1+z2)/2.)
+        # 0.15: SDSS field radius is ~ 0.13
+        radius = 0.15 + degrees_between(east, north, west, south)/2.
+        fn = os.path.join(settings.DATA_DIR, 'sdss', 'sdss-fields-trimmed.kd.fits')
+        kd = tree_open(fn, 'ccds')
+        I = tree_search_radec(kd, rc, dc, radius)
+        print(len(I), 'CCDs within', radius, 'deg of RA,Dec (%.3f, %.3f)' % (rc,dc))
+        if len(I) == 0:
+            return HttpResponse(json.dumps(dict(polys=[])),
+                                content_type='application/json')
+        # Read only the CCD-table rows within range.
+        T = fits_table(fn, rows=I)
+        ccds = [dict(name='SDSS R/C/F %i/%i/%i' % (t.run, t.camcol, t.field),
+                     radecs=[[t.ra1,t.dec1],[t.ra2,t.dec2],
+                             [t.ra3,t.dec3],[t.ra4,t.dec4]],)
+                     #run=int(t.run), camcol=int(t.camcol), field=int(t.field))
+                for t in T]
+        return HttpResponse(json.dumps(dict(polys=ccds)), content_type='application/json')
+
     CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
     print('CCDs in box for', name, ':', len(CCDS))
     if 'good_ccd' in CCDS.columns():
