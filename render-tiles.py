@@ -782,8 +782,9 @@ def main():
                     if not has[band][ibrick]:
                         print('Brick', brick.brickname, 'does not have', band)
                         continue
-                    fn = layer.get_filename(brick, band, 7)
-                    print(fn)
+                    for scale in range(1,8):
+                        fn = layer.get_filename(brick, band, scale)
+                        print(fn)
 
             sys.exit(0)
 
