@@ -1046,14 +1046,15 @@ class RebrickedMixin(object):
         # Original and scaled images are in ext 1.
         return 1
 
-    def get_filename(self, brick, band, scale):
+    def get_filename(self, brick, band, scale, tempfiles=None):
         if scale == 0:
-            return super(RebrickedMixin, self).get_filename(brick, band, scale)
+            return super(RebrickedMixin, self).get_filename(brick, band, scale,
+                                                            tempfiles=tempfiles)
         brickname = brick.brickname
         fnargs = dict(band=band, brickname=brickname, scale=scale)
         fn = self.get_scaled_pattern() % fnargs
         if not os.path.exists(fn):
-            self.create_scaled_image(brick, band, scale, fn)
+            self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
         if not os.path.exists(fn):
             return None
         return fn
@@ -1067,7 +1068,7 @@ class RebrickedMixin(object):
     def get_scaled_wcs(self, brick, band, scale):
         pass
     
-    def create_scaled_image(self, brick, band, scale, fn):
+    def create_scaled_image(self, brick, band, scale, fn, tempfiles=None):
         import numpy as np
         from scipy.ndimage.filters import gaussian_filter
         import fitsio
@@ -1083,7 +1084,8 @@ class RebrickedMixin(object):
         wcs = finalwcs.scale(2.)
         print('Double-size WCS:', wcs)
         
-        imgs = self.render_into_wcs(wcs, None, 0, 0, bands=[band], scale=scale-1)
+        imgs = self.render_into_wcs(wcs, None, 0, 0, bands=[band], scale=scale-1,
+                                    tempfiles=tempfiles)
         if imgs is None:
             return None
         img = imgs[0]
@@ -1289,7 +1291,7 @@ class SdssLayer(MapLayer):
             return None
         return bricks[I]
 
-    def get_filename(self, brick, band, scale):
+    def get_filename(self, brick, band, scale, tempfiles=None):
         brickname = brick.brickname
         brickpre = brickname[:3]
         fn = os.path.join(self.basedir, 'coadd', brickpre,
@@ -1417,7 +1419,7 @@ class PS1Layer(MapLayer):
             return None
         return bricks[I]
 
-    def get_filename(self, brick, band, scale):
+    def get_filename(self, brick, band, scale, tempfiles=None):
         brickname = brick.brickname
         cell = brickname[:4]
         fn = os.path.join(self.basedir, 'skycells', cell,
@@ -1626,7 +1628,7 @@ class ZeaLayer(MapLayer):
         self.vmin = vmin
         self.vmax = vmax
 
-    def render_into_wcs(self, wcs, zoom, x, y, bands=None):
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, tempfiles=None):
         import numpy as np
         xx,yy = np.meshgrid(np.arange(wcs.get_width()), np.arange(wcs.get_height()))
         rr,dd = wcs.pixelxy2radec(1. + xx.ravel(), 1. + yy.ravel())[-2:]
