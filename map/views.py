@@ -551,20 +551,20 @@ class MapLayer(object):
                 continue
         '''
 
-    def get_filename(self, brick, band, scale):
+    def get_filename(self, brick, band, scale, tempfiles=None):
         if scale == 0:
             return self.get_base_filename(brick, band)
         fn = self.get_scaled_filename(brick, band, scale)
         if os.path.exists(fn):
             return fn
-        fn = self.create_scaled_image(brick, band, scale, fn)
+        fn = self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
         if fn is None:
             return None
         if os.path.exists(fn):
             return fn
         return None
 
-    def create_scaled_image(self, brick, band, scale, fn):
+    def create_scaled_image(self, brick, band, scale, fn, tempfiles=None):
         from scipy.ndimage.filters import gaussian_filter
         import fitsio
         import tempfile
@@ -609,6 +609,8 @@ class MapLayer(object):
             debug('Wrote', fn)
         else:
             print('Leaving temp file for get_scaled:', fn, '->', tmpfn)
+            if tempfiles is not None:
+                tempfiles.append(tmpfn)
             fn = tmpfn
         return fn
         
@@ -645,7 +647,7 @@ class MapLayer(object):
         return read_tan_wcs(fn, ext)
 
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
-                        scale=None):
+                        scale=None, tempfiles=None):
         import numpy as np
         from astrometry.util.resample import resample_with_wcs, OverlapError
 
@@ -678,6 +680,9 @@ class MapLayer(object):
             bricknames = self.bricknames_for_band(bricks, band)
             for brick,brickname in zip(bricks,bricknames):
                 print('Reading', brickname, 'band', band, 'scale', scale)
+                # call get_filename to possibly generate scaled version
+                self.get_filename(brick, band, scale, tempfiles=tempfiles)
+
                 try:
                     bwcs = self.read_wcs(brick, band, scale)
                     if bwcs is None:
@@ -747,6 +752,7 @@ class MapLayer(object):
                  ignoreCached=False,
                  filename=None,
                  bands=None,
+                 tempfiles=None,
                 ):
         '''
         *filename*: filename returned in http response
@@ -791,7 +797,7 @@ class MapLayer(object):
         #                            [1, 1, 1, H/2, H, H, H, H/2])
         # print('WCS range: RA', ra.min(), ra.max(), 'Dec', dec.min(), dec.max())
             
-        rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands)
+        rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, tempfiles=tempfiles)
         #print('rimgs:', rimgs)
         if rimgs is None:
             if get_images:
@@ -854,7 +860,7 @@ class MapLayer(object):
                 return None
         return bb
 
-    def get_cutout(self, req, fits=False, jpeg=False, outtag=None):
+    def get_cutout(self, req, fits=False, jpeg=False, outtag=None, tempfiles=None):
         hdr = None
         if fits:
             import fitsio
@@ -908,7 +914,7 @@ class MapLayer(object):
         zoom = max(0, min(zoom, 16))
 
         rtn = self.get_tile(req, None, zoom, 0, 0, wcs=wcs, get_images=fits,
-                             savecache=False, bands=bands)
+                             savecache=False, bands=bands, tempfiles=tempfiles)
         if jpeg:
             return rtn
         ims = rtn
@@ -943,14 +949,25 @@ class MapLayer(object):
             fn = 'cutout_%s_%.4f_%.4f.fits' % (outtag, ra,dec)
         return send_file(tmpfn, 'image/fits', unlink=True, filename=fn)
 
+    # Note, see cutouts.py : jpeg_cutout, which calls get_cutout directly!
     def get_jpeg_cutout_view(self):
         def view(request, ver, zoom, x, y):
-            return self.get_cutout(request, jpeg=True)
+            tempfiles = []
+            rtn = self.get_cutout(request, jpeg=True, tempfiles=tempfiles)
+            for fn in tempfiles:
+                print('Deleting temp file', fn)
+                os.unlink(fn)
+            return rtn
         return view
 
     def get_fits_cutout_view(self):
         def view(request, ver, zoom, x, y):
-            return self.get_cutout(request, fits=True)
+            tempfiles = []
+            rtn = self.get_cutout(request, fits=True, tempfiles=tempfiles)
+            for fn in tempfiles:
+                print('Deleting temp file', fn)
+                os.unlink(fn)
+            return rtn
         return view
 
         
