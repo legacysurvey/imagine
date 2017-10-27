@@ -749,6 +749,14 @@ def main():
             B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
             print(len(B), 'in RA range')
 
+            if opt.near_ccds:
+                C = survey.get_ccds_readonly()
+                keep = np.zeros(len(B), bool)
+                I,J,d = match_radec(B.ra, B.dec, C.ra, C.dec, 1., nearest=True)
+                keep[I] = True
+                B.cut(keep)
+                print('Cut to', len(B), 'bricks near CCDs')
+                
             # find all image files
             filetype = 'image'
             model = False
