@@ -581,8 +581,8 @@ class MapLayer(object):
         if sourcefn is None or not os.path.exists(sourcefn):
             print('Image source file', sourcefn, 'not found')
             return None
-        img = self.read_image(brick, band, scale-1, None)
-        wcs = self.read_wcs(brick, band, scale-1)
+        img = self.read_image(brick, band, scale-1, None, fn=sourcefn)
+        wcs = self.read_wcs(brick, band, scale-1, fn=sourcefn)
 
         H,W = img.shape
         # make even size; smooth down
@@ -615,6 +615,9 @@ class MapLayer(object):
             debug('Wrote', fn)
         else:
             print('Leaving temp file for get_scaled:', fn, '->', tmpfn)
+            # import traceback
+            # for line in traceback.format_stack():
+            #     print(line.strip())
             if tempfiles is not None:
                 tempfiles.append(tmpfn)
             fn = tmpfn
@@ -633,9 +636,10 @@ class MapLayer(object):
     def get_fits_extension(self, scale, fn):
         return 0
     
-    def read_image(self, brick, band, scale, slc):
+    def read_image(self, brick, band, scale, slc, fn=None):
         import fitsio
-        fn = self.get_filename(brick, band, scale)
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
         print('Reading image from', fn)
         ext = self.get_fits_extension(scale, fn)
         f = fitsio.FITS(fn)[ext]
@@ -644,9 +648,10 @@ class MapLayer(object):
         img = f[slc]
         return img
 
-    def read_wcs(self, brick, band, scale):
+    def read_wcs(self, brick, band, scale, fn=None):
         from map.coadds import read_tan_wcs
-        fn = self.get_filename(brick, band, scale)
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
         if fn is None:
             return None
         ext = self.get_fits_extension(scale, fn)
@@ -687,20 +692,15 @@ class MapLayer(object):
             for brick,brickname in zip(bricks,bricknames):
                 print('Reading', brickname, 'band', band, 'scale', scale)
                 # call get_filename to possibly generate scaled version
-                self.get_filename(brick, band, scale, tempfiles=tempfiles)
+                fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
 
                 try:
-                    bwcs = self.read_wcs(brick, band, scale)
+                    bwcs = self.read_wcs(brick, band, scale, fn=fn)
                     if bwcs is None:
-                        print('No such file:', brickname, band, scale)
-                        try:
-                            fn = self.get_filename(brick, band, scale)
-                            print(' (filename', fn, ')')
-                        except:
-                            pass
+                        print('No such file:', brickname, band, scale, 'fn', fn)
                         continue
                 except:
-                    print('Failed to read WCS:', brickname, band, scale)
+                    print('Failed to read WCS:', brickname, band, scale, 'fn', fn)
                     savecache = False
                     import traceback
                     import sys
@@ -728,9 +728,9 @@ class MapLayer(object):
                 subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
                 slc = slice(ylo,yhi), slice(xlo,xhi)
                 try:
-                    img = self.read_image(brick, band, scale, slc)
+                    img = self.read_image(brick, band, scale, slc, fn=fn)
                 except:
-                    print('Failed to read image:', brickname, band, scale)
+                    print('Failed to read image:', brickname, band, scale, 'fn', fn)
                     savecache = False
                     import traceback
                     import sys
@@ -1201,9 +1201,9 @@ class RebrickedMixin(object):
 class Decaps2Layer(DecalsLayer):
 
     # Some of the DECaPS2 images do not have WCS headers, so create them based on the brick center.
-    def read_wcs(self, brick, band, scale):
+    def read_wcs(self, brick, band, scale, fn=None):
         if scale > 0:
-            return super(Decaps2Layer, self).read_wcs(brick, band, scale)
+            return super(Decaps2Layer, self).read_wcs(brick, band, scale, fn=fn)
         from legacypipe.survey import wcs_for_brick
         return wcs_for_brick(brick)
 
@@ -1222,7 +1222,7 @@ class ResidMixin(object):
         self.model_layer = model_layer
         self.rgbkwargs = dict(mnmx=(-5,5))
 
-    def read_image(self, brick, band, scale, slc):
+    def read_image(self, brick, band, scale, slc, fn=None):
         img = self.image_layer.read_image(brick, band, scale, slc)
         if img is None:
             return None
@@ -1231,8 +1231,8 @@ class ResidMixin(object):
             return None
         return img - mod
 
-    def read_wcs(self, brick, band, scale):
-        return self.image_layer.read_wcs(brick, band, scale)
+    def read_wcs(self, brick, band, scale, fn=None):
+        return self.image_layer.read_wcs(brick, band, scale, fn=fn)
 
 class DecalsResidLayer(ResidMixin, DecalsLayer):
     pass
@@ -1439,7 +1439,7 @@ class PS1Layer(MapLayer):
         #print('get_scaled: fn', fn)
         return fn
 
-    def read_image(self, brick, band, scale, slc, header=False):
+    def read_image(self, brick, band, scale, slc, header=False, fn=None):
         #print('read_image for', brickname, 'band', band, 'scale', scale)
         #if scale > 0:
         #    return super(PS1Layer, self).read_image(brickname, band, scale, slc)
@@ -1447,7 +1447,8 @@ class PS1Layer(MapLayer):
         # HDU = 1
         import fitsio
         #print('-> get_filename')
-        fn = self.get_filename(brick, band, scale)
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
         #print('-> got filename', fn)
 
         if scale == 0:
@@ -1496,13 +1497,14 @@ class PS1Layer(MapLayer):
     PC002001=                   0.
     PC002002=                   1.
     '''
-    def read_wcs(self, brick, band, scale):
+    def read_wcs(self, brick, band, scale, fn=None):
         #if scale > 0:
         #    return super(PS1Layer, self).read_wcs(brickname, band, scale)
         #print('read_wcs for', brickname, 'band', band, 'scale', scale)
 
         from map.coadds import read_tan_wcs
-        fn = self.get_filename(brick, band, scale)
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
         if fn is None:
             #print('read_wcs: filename is None')
             return None
