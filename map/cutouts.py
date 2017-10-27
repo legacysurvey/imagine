@@ -28,7 +28,13 @@ def jpeg_cutout(req):
     layer = get_layer(name)
     #print('layer:', layer)
     if layer is not None:
-        return layer.get_cutout(req, jpeg=True)
+        tempfiles = []
+        rtn = layer.get_cutout(req, jpeg=True, tempfiles=tempfiles)
+        for fn in tempfiles:
+            print('Deleting temp file', fn)
+            os.unlink(fn)
+        return rtn
+
     if name == 'decals-dr1j':
         return jpeg_cutout_decals_dr1j(req)
 
@@ -37,7 +43,12 @@ def fits_cutout(req):
     from views import get_layer
     layer = get_layer(name)
     if layer is not None:
-        return layer.get_cutout(req, fits=True)
+        tempfiles = []
+        rtn = layer.get_cutout(req, fits=True)
+        for fn in tempfiles:
+            print('Deleting temp file', fn)
+            os.unlink(fn)
+        return rtn
     if name == 'decals-dr1j':
         return fits_cutout_decals_dr1j(req)
 
