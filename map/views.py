@@ -1034,6 +1034,32 @@ class DecalsLayer(MapLayer):
             return 1
         return 0
 
+class DecalsDr3Layer(DecalsLayer):
+    '''The data model changed (added .fz compression) as of DR5; this
+    class retrofits pre-DR5 filenames.
+    '''
+    def get_base_filename(self, brick, band):
+        brickname = brick.brickname
+        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
+        if fn is not None:
+            if self.imagetype == 'image':
+                fn = fn.replace('.fits.fz', '.fits')
+            elif self.imagetype == 'model':
+                fn = fn.replace('.fits.fz', '.fits.gz')
+        return fn
+
+    # Allow fpacked (or not) scaled images.
+    def get_scaled_filename(self, brick, band, scale):
+        fn = super(DecalsDr3Layer, self).get_scaled_filename(brick, band, scale)
+        if not os.path.exists(fn) and os.path.exists(fn + '.fz'):
+            return fn + '.fz'
+        return fn
+
+    def get_fits_extension(self, scale, fn):
+        if fn.endswith('.fz'):
+            return 1
+        return super(DecalsDr3Layer, self).get_fits_extension(scale, fn)
+
 class RebrickedMixin(object):
 
     def get_fits_extension(self, scale, fn):
@@ -1192,7 +1218,7 @@ class RebrickedMixin(object):
 
 
         
-class Decaps2Layer(DecalsLayer):
+class Decaps2Layer(DecalsDr3Layer):
 
     # Some of the DECaPS2 images do not have WCS headers, so create them based on the brick center.
     def read_wcs(self, brick, band, scale, fn=None):
@@ -1217,6 +1243,7 @@ class ResidMixin(object):
         self.rgbkwargs = dict(mnmx=(-5,5))
 
     def read_image(self, brick, band, scale, slc, fn=None):
+        # Note, we drop the fn arg.
         img = self.image_layer.read_image(brick, band, scale, slc)
         if img is None:
             return None
@@ -1227,6 +1254,11 @@ class ResidMixin(object):
 
     def read_wcs(self, brick, band, scale, fn=None):
         return self.image_layer.read_wcs(brick, band, scale, fn=fn)
+
+    def get_filename(self, brick, band, scale, tempfiles=None):
+        mfn = self.model_layer.get_filename(brick, band, scale, tempfiles=tempfiles)
+        ifn = self.image_layer.get_filename(brick, band, scale, tempfiles=tempfiles)
+        return ifn
 
 class DecalsResidLayer(ResidMixin, DecalsLayer):
     pass
@@ -1324,32 +1356,6 @@ class ReSdssLayer(RebrickedMixin, SdssLayer):
         wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
                   float(size), float(size))
         return wcs
-
-class DecalsDr3Layer(DecalsLayer):
-    '''The data model changed (added .fz compression) as of DR5; this
-    class retrofits pre-DR5 filenames.
-    '''
-    def get_base_filename(self, brick, band):
-        brickname = brick.brickname
-        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
-        if fn is not None:
-            if self.imagetype == 'image':
-                fn = fn.replace('.fits.fz', '.fits')
-            elif self.imagetype == 'model':
-                fn = fn.replace('.fits.fz', '.fits.gz')
-        return fn
-
-    # Allow fpacked (or not) scaled images.
-    def get_scaled_filename(self, brick, band, scale):
-        fn = super(DecalsDr3Layer, self).get_scaled_filename(brick, band, scale)
-        if not os.path.exists(fn) and os.path.exists(fn + '.fz'):
-            return fn + '.fz'
-        return fn
-
-    def get_fits_extension(self, scale, fn):
-        if fn.endswith('.fz'):
-            return 1
-        return super(DecalsDr3Layer, self).get_fits_extension(scale, fn)
 
 class ReDecalsLayer(RebrickedMixin, DecalsLayer):
 

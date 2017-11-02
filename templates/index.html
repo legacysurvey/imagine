@@ -1247,16 +1247,16 @@ allLayers.push(tiles);
 
 {% if enable_decaps %}
 tiles = mylayer_B('decaps2', 'DECaPS images',
-                  {'maxNativeZoom': 13,
+                  {//'maxNativeZoom': 13,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('decaps2-model', 'DECaPS models',
-                  {'maxNativeZoom': 13,
+                  {//'maxNativeZoom': 13,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 tiles = mylayer_B('decaps2-resid', 'DECaPS residuals',
-                  {'maxNativeZoom': 13,
+                  {//'maxNativeZoom': 13,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
