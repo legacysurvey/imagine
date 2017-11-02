@@ -1228,6 +1228,22 @@ allLayers.push(tiles);
 {% endif %}
 {% endif %}
 
+{% if enable_decaps %}
+tiles = mylayer_B('decaps2', 'DECaPS images',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('decaps2-model', 'DECaPS models',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('decaps2-resid', 'DECaPS residuals',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
 {% if enable_dr4 %}
 tiles = mylayer_B('mzls+bass-dr4', 'MzLS+BASS DR4 images',
                 {'urlPatterns': [ [14, maxZoom, tile_url], ],});
