@@ -16,6 +16,8 @@ SUBDOMAINS = ['a','b','c','d']
 STATIC_URL = 'http://%s%s/static/' % (HOSTNAME, ROOT_URL)
 
 TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+# For dynamic (zoomed-in) tiles for data not on sanjaya (NERSC)
+TILE_URL_B = 'http://legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
 
 CAT_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
 

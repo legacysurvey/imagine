@@ -161,8 +161,6 @@ def _index(req,
 
     smallcaturl = settings.ROOT_URL + '/{id}/{ver}/cat.json?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
 
-    tileurl = settings.TILE_URL
-
     subdomains = settings.SUBDOMAINS
     # convert to javascript
     subdomains = '[' + ','.join(["'%s'" % s for s in subdomains]) + '];'
@@ -212,7 +210,9 @@ def _index(req,
 
     args = dict(ra=ra, dec=dec, zoom=zoom,
                 galname=galname,
-                layer=layer, tileurl=tileurl,
+                layer=layer,
+                tileurl=settings.TILE_URL,
+                tileurl_B=settings.TILE_URL_B,
                 absurl=absurl,
                 sqlurl=sqlurl,
                 uploadurl=uploadurl,

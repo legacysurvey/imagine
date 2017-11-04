@@ -143,6 +143,7 @@ var smallcat_url = '{{ smallcaturl|safe }}';
 var usercat2_url = '{{ usercatalogurl2|safe }}';
 var usercat_url = '{{ usercatalogurl|safe }}';
 var tile_url = '{{ tileurl|safe }}';
+var tile_url_B = '{{ tileurl_B|safe }}';
 var maxNativeZoom = {{ maxNativeZoom }};
 
 var abs_url = '{{ absurl }}';
@@ -1230,17 +1231,14 @@ allLayers.push(tiles);
 
 {% if enable_decaps %}
 tiles = mylayer_B('decaps2', 'DECaPS images',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [14, maxZoom, tile_url_B], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('decaps2-model', 'DECaPS models',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [14, maxZoom, tile_url_B], ],});
 allLayers.push(tiles);
 tiles = mylayer_B('decaps2-resid', 'DECaPS residuals',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [14, maxZoom, tile_url_B], ],});
 allLayers.push(tiles);
 {% endif %}
 
@@ -1284,22 +1282,6 @@ tiles = mylayer_B('decals-dr3-resid', 'DECaLS DR3 residuals',
                 {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
-{% endif %}
-
-{% if enable_decaps %}
-tiles = mylayer_B('decaps2', 'DECaPS images',
-                  {'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('decaps2-model', 'DECaPS models',
-                  {'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('decaps2-resid', 'DECaPS residuals',
-                  {'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
 {% endif %}
 
 {% if enable_eboss %}
