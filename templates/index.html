@@ -2070,7 +2070,7 @@ var gaia = new CatalogOverlay('gaia-dr1', 'Gaia DR1 sources',
                               'radius': 300, });
 
 {% if enable_desi_targets %}
-var targets_dr2 = new CatalogOverlay('targets-dr2', 'DESI Targets (DR2)',
+var desi_targets = new CatalogOverlay('targets-dr45', 'DESI Targets (DR4/DR5)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
@@ -2143,7 +2143,7 @@ var overlays = [
     spec, plateOverlay, specDeep2,
     {% endif %}
     {% if enable_desi_targets %}
-    targets_dr2
+    desi_targets
     {% endif %}
 ];
 

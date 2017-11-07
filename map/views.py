@@ -259,7 +259,7 @@ def decaps(req):
 def dr5(req):
     return index(req, enable_decaps=True,
                  enable_ps1=False,
-                 enable_desi_targets=False,
+                 enable_desi_targets=True,
                  default_layer='decals-dr5',
                  default_radec=(234.7, 13.6),
                  rooturl=settings.ROOT_URL + '/dr5',

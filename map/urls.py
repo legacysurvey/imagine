@@ -50,10 +50,13 @@ urlpatterns = [
         views.get_tile_view('decals-dr2-model')),
     url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decals-dr2-resid')),
+
     # DR2 catalog
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr2),
-
     url(r'^targets-dr2/(\d+)/cat.json', cats.cat_targets_dr2),
+
+    # DR4/5 catalog
+    url(r'^targets-dr45/(\d+)/cat.json', cats.cat_targets_dr45),
 
     # DECaPS2 tiles
     url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
