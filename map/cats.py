@@ -322,6 +322,7 @@ def cat_targets_dr45(req, ver):
     T = merge_tables(TT)
 
     names = []
+    colors = []
     for t in T:
         desibits = []
         bgsbits = []
@@ -378,10 +379,31 @@ def cat_targets_dr45(req, ver):
         bitnames = [n for n in desinames + bgsnames + mwsnames if n is not None]
 
         names.append(', '.join(bitnames))
-        
+
+        nn = ' '.join(bitnames)
+        cc = 'white'
+        if 'QSO' in nn:
+            cc = 'cyan'
+        elif 'LRG' in nn:
+            cc = 'red'
+        elif 'ELG' in nn:
+            cc = 'gray'
+        elif 'BGS' in nn:
+            cc = 'orange'
+        colors.append(cc)
 
     return HttpResponse(json.dumps(dict(rd=[(t.ra, t.dec) for t in T],
-                                        name=names)),
+                                        name=names,
+                                        targetid=[int(t) for t in T.targetid],
+                                        fluxes=[dict(g=float(g), r=float(r), z=float(z),
+                                                     W1=float(W1), W2=float(W2))
+                                                for (g,r,z,W1,W2)
+                                                in zip(T.flux_g, T.flux_r, T.flux_z,
+                                                       T.flux_w1, T.flux_w2)],
+                                        nobs=[dict(g=int(g), r=int(r), z=int(z)) for g,r,z
+                                              in zip(T.nobs_g, T.nobs_r, T.nobs_z)],
+                                        color=colors,
+                                    )),
                         content_type='application/json')
 
 def cat_spec(req, ver):
