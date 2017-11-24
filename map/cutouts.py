@@ -12,7 +12,7 @@ import numpy as np
 
 from map.utils import send_file
 
-from map.views import dr2_rgb
+from map.views import dr2_rgb, layer_name_map
 
 from decals import settings
 

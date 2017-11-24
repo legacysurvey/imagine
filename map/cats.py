@@ -691,7 +691,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         objids = []
         nobs = []
     else:
-        rd = zip(cat.ra, cat.dec)
+        rd = list(zip(cat.ra, cat.dec))
         types = list([t[0] for t in cat.get('type')])
 
         if 'decam_flux' in cat.get_columns():

@@ -115,7 +115,7 @@ def index(req,
         if not k in kwargs:
             kwargs[k] = v
     
-    from cats import cat_user
+    from map.cats import cat_user
 
     layer = req.GET.get('layer', default_layer)
     # Nice spiral galaxy
@@ -2101,7 +2101,7 @@ def ccd_list(req):
         ccmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
         ccds.append(dict(name='%s %i-%s-%s' % (c.camera.strip(), c.expnum,
                                                c.ccdname.strip(), c.filter.strip()),
-                         radecs=zip(r, d),
+                         radecs=list(zip(r, d)),
                          color=ccmap[c.filter]))
     return HttpResponse(json.dumps(dict(polys=ccds)), content_type='application/json')
 
@@ -3136,6 +3136,14 @@ if __name__ == '__main__':
     req = duck()
     req.META = dict()
     req.GET = dict()
+
+    from map import views
+    view = views.get_tile_view('halpha')
+    view(req, 1, 7, 44, 58)
+    # http://c.legacysurvey.org/viewer-dev/halpha/1/7/44/58.jpg
+    import sys
+    sys.exit(0)
+
     req.GET['date'] = '2016-03-01 00:42'
     req.GET['ra'] = '131.3078'
     req.GET['dec'] = '20.7488'
