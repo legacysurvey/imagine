@@ -211,6 +211,7 @@ def top_levels(mp, opt):
     if opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid',
                     'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
                     'decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
+                    'eboss',
                     'unwise-neo2', 'sdss2']:
         import pylab as plt
         from decals import settings
@@ -702,7 +703,7 @@ def main():
 
     if opt.scale:
         # Rebricked
-        if opt.kind in ['decals-dr5', 'decals-dr5-model',]:
+        if opt.kind in ['decals-dr5', 'decals-dr5-model', 'eboss']:
             from map.views import get_layer
 
             layer = get_layer(opt.kind)

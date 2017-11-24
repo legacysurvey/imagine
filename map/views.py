@@ -1707,6 +1707,8 @@ def layer_name_map(name):
 
             'mzls bass-dr4': 'mzls+bass-dr4',
 
+            'decaps2': 'decaps',
+
     }.get(name, name)
 
 # z-band only B&W images
@@ -2966,7 +2968,7 @@ def get_layer(name, default=None):
 
     elif name == 'eboss':
         survey = _get_survey('eboss')
-        layer = DecalsLayer('eboss', 'image', survey)
+        layer = ReDecalsLayer('eboss', 'image', survey)
 
     elif name in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid']:
         survey = _get_survey('decals-dr5')

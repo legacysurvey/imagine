@@ -23,6 +23,7 @@ if not settings.DEBUG_LOGGING:
 
 def jpeg_cutout(req):
     name = req.GET.get('layer', 'decals-dr3')
+    name = layer_name_map(name)
     #print('jpeg_cutout: name', name)
     from map.views import get_layer
     layer = get_layer(name)
@@ -40,6 +41,7 @@ def jpeg_cutout(req):
 
 def fits_cutout(req):
     name = req.GET.get('layer', 'decals-dr3')
+    name = layer_name_map(name)
     from views import get_layer
     layer = get_layer(name)
     if layer is not None:
