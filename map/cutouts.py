@@ -42,7 +42,7 @@ def jpeg_cutout(req):
 def fits_cutout(req):
     name = req.GET.get('layer', 'decals-dr3')
     name = layer_name_map(name)
-    from views import get_layer
+    from map.views import get_layer
     layer = get_layer(name)
     if layer is not None:
         tempfiles = []
