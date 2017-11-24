@@ -18,12 +18,14 @@ pip install django
 pip install numpy  
 pip install scipy  
 pip install matplotlib 
-pip install fitsio 
+#pip install fitsio 
 pip install psycopg2
 pip install astropy
 pip install pillow
 pip install uwsgi
 conda install swig 
+
+pip install --no-deps --upgrade git+https://github.com/esheldon/fitsio.git#egg=fitsio
 
 wget ftp://ftp.atnf.csiro.au/pub/software/wcslib/wcslib.tar.bz2
 tar xjf wcslib.tar.bz2
@@ -32,6 +34,7 @@ cd wcslib
 ./configure --prefix=$CONDA_PREFIX
 make
 make install
+cd ..
 
 export PKG_CONFIG_PATH=$CONDA_PREFIX/lib/pkgconfig
 
@@ -40,7 +43,7 @@ mv astrometry.net/ astrometry
 cd astrometry/ 
 make -k
 make -k py
-cd libkd && make py
+cd ..
 
 git clone https://github.com/dstndstn/tractor.git  
 mv tractor tractor-git 
