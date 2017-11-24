@@ -126,6 +126,7 @@ ALLOWED_HOSTS = [
     'b.imagine.legacysurvey.org',
     'c.imagine.legacysurvey.org',
     'd.imagine.legacysurvey.org',
+    'testserver',
 ]
 
 # Application definition
