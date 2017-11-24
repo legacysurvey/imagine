@@ -5,36 +5,54 @@
 
 -- Environment created like:
 
-cd
-conda create -p viewer-dev-miniconda python                                                                            
-source activate /home/dstn/viewer-dev-miniconda                                                                        
 
-pip install django                                                                                                     
-pip install numpy                                                                                                      
-pip install scipy                                                                                                      
-pip install matplotlib                                                                                                 
-pip install fitsio                                                                                                     
+on sgn04:
+
+export PATH=~/miniconda3b/bin
+unset PYTHONPATH
+cd /tmp
+conda create -p viewer-dev-conda-2 python
+source activate /tmp/viewer-dev-conda-2
+
+pip install django 
+pip install numpy  
+pip install scipy  
+pip install matplotlib 
+pip install fitsio 
 pip install psycopg2
 pip install astropy
 pip install pillow
-conda install swig                                                                                                     
-conda install uwsgi
+pip install uwsgi
+conda install swig 
 
-git clone https://github.com/dstndstn/astrometry.net.git                                                               
-mv astrometry.net/ astrometry                                                                                          
-cd astrometry/                                                                                                         
-make                                                                                                                   
-make -k                                                                                                                
-make py                                                                                                                
+wget ftp://ftp.atnf.csiro.au/pub/software/wcslib/wcslib.tar.bz2
+tar xjf wcslib.tar.bz2
+mv wcslib-*/ wcslib
+cd wcslib
+./configure --prefix=$CONDA_PREFIX
+make
+make install
+
+export PKG_CONFIG_PATH=$CONDA_PREFIX/lib/pkgconfig
+
+git clone https://github.com/dstndstn/astrometry.net.git   
+mv astrometry.net/ astrometry  
+cd astrometry/ 
+make -k
+make -k py
 cd libkd && make py
 
-git clone https://github.com/dstndstn/tractor.git                                                                      
-mv tractor tractor-git                                                                                                 
-cd tractor-git && make
+git clone https://github.com/dstndstn/tractor.git  
+mv tractor tractor-git 
+(cd tractor-git && make)
 ln -s tractor-git/tractor .
 
 git clone https://github.com/legacysurvey/legacypipe.git
 mv legacypipe/ legacypipe-git
 ln -s legacypipe-git/py/legacypipe/ .
+ln -s legacypipe-git/py/legacyanalysis/ .
 
+
+cd /tmp
+rsync -arv viewer-dev-conda-2 cori:cosmo/webapp/viewer-dev/
 
