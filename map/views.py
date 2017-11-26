@@ -16,6 +16,7 @@ if __name__ == '__main__':
 
 
 import os
+import sys
 import re
 from django.http import HttpResponse, StreamingHttpResponse
 from django.core.urlresolvers import reverse
@@ -29,6 +30,9 @@ from map.cats import get_random_galaxy
 
 import matplotlib
 matplotlib.use('Agg')
+
+py3 = (sys.version_info[0] >= 3)
+
 
 # We add a version number to each layer, to allow long cache times
 # for the tile JPEGs.  Increment this version to invalidate
@@ -278,8 +282,15 @@ def dr5(req):
 
 def name_query(req):
     import json
-    import urllib
-    import urllib2
+
+    try:
+        # py2
+        from urllib2 import urlopen
+        from urllib import urlencode
+    except:
+        # py3
+        from urllib.request import urlopen
+        from urllib.parse import urlencode
 
     obj = req.GET.get('obj')
     #print('Name query: "%s"' % obj)
@@ -310,8 +321,8 @@ def name_query(req):
             # traceback.print_exc()
             pass
 
-    url = 'http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame//NSV?'
-    url += urllib.urlencode(dict(q=obj)).replace('q=','')
+    url = 'http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/NSV?'
+    url += urlencode(dict(q=obj)).replace('q=','')
     print('URL', url)
 
     '''
@@ -332,10 +343,12 @@ def name_query(req):
 
     '''
     try:
-        f = urllib2.urlopen(url)
+        f = urlopen(url)
         code = f.getcode()
         print('Code', code)
         for line in f.readlines():
+            if py3:
+                line = line.decode()
             words = line.split()
             if len(words) == 0:
                 continue
