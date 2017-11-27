@@ -34,6 +34,7 @@ def jpeg_cutout(req):
     name = req.GET.get('layer', 'decals-dr3')
     name = layer_name_map(name)
 
+    # Sanjaya : redirect to NERSC
     if name in ['decaps', 'decaps-model', 'decaps-resid']:
         from django.http import HttpResponseRedirect
         return HttpResponseRedirect('http://legacysurvey.org/viewer' + req.path + '?' + urlencode(req.GET))
@@ -56,6 +57,12 @@ def jpeg_cutout(req):
 def fits_cutout(req):
     name = req.GET.get('layer', 'decals-dr3')
     name = layer_name_map(name)
+
+    # Sanjaya : redirect to NERSC
+    if name in ['decaps', 'decaps-model', 'decaps-resid']:
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect('http://legacysurvey.org/viewer' + req.path + '?' + urlencode(req.GET))
+
     from map.views import get_layer
     layer = get_layer(name)
     if layer is not None:
