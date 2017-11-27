@@ -27,7 +27,7 @@ def jpeg_cutout(req):
     #print('jpeg_cutout: name', name)
     from map.views import get_layer
     layer = get_layer(name)
-    #print('layer:', layer)
+    print('layer:', layer)
     if layer is not None:
         tempfiles = []
         rtn = layer.get_cutout(req, jpeg=True, tempfiles=tempfiles)

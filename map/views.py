@@ -49,9 +49,9 @@ tileversions = {
 
     'eboss': [1,],
 
-    'decaps2': [1, 2],
-    'decaps2-model': [1, 2],
-    'decaps2-resid': [1, 2],
+    'decaps': [1, 2],
+    'decaps-model': [1, 2],
+    'decaps-resid': [1, 2],
 
     'decals-dr5': [1],
     'decals-dr5-model': [1],
@@ -260,7 +260,7 @@ def decaps(req):
                  enable_dr5_overlays=False,
                  enable_desi_targets=False,
                  enable_spectra=False,
-                 default_layer='decaps2',
+                 default_layer='decaps',
                  default_radec=(225.0, -63.2),
                  default_zoom=10,
                  rooturl=settings.ROOT_URL + '/decaps',
@@ -1921,13 +1921,13 @@ def _get_survey(name=None):
     basedir = settings.DATA_DIR
 
     if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5',
-                 'mzls+bass-dr4', 'decaps2', 'eboss']:
+                 'mzls+bass-dr4', 'decaps', 'eboss']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
         if name == 'decals-dr2':
             d = MyLegacySurveyData(survey_dir=dirnm, version='dr2')
-        elif name == 'decaps2':
+        elif name == 'decaps':
             d = Decaps2LegacySurveyData(survey_dir=dirnm)
         else:
             d = MyLegacySurveyData(survey_dir=dirnm)
@@ -1944,7 +1944,7 @@ def _get_survey(name=None):
         elif name == 'decals-dr5':
             d.drname = 'DECaLS DR5'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'
-        elif name == 'decaps2':
+        elif name == 'decaps':
             d.drname = 'DECaPS'
             d.drurl = 'http://legacysurvey.org/'
         elif name == 'eboss':
@@ -2976,6 +2976,8 @@ def get_layer(name, default=None):
 
     layer = None
 
+    print('get_layer: name "%s"' % name)
+
     if name in ['sdss2', 'sdssco', 'sdss']:
         '''
         "Rebricked" SDSS images.
@@ -3003,15 +3005,15 @@ def get_layer(name, default=None):
     elif name == 'ps1':
         layer = PS1Layer('ps1')
 
-    elif name in ['decaps2', 'decaps2-model', 'decaps2-resid']:
-        survey = _get_survey('decaps2')
-        image = Decaps2Layer('decaps2', 'image', survey)
-        model = Decaps2Layer('decaps2-model', 'model', survey)
+    elif name in ['decaps', 'decaps-model', 'decaps-resid']:
+        survey = _get_survey('decaps')
+        image = Decaps2Layer('decaps', 'image', survey)
+        model = Decaps2Layer('decaps-model', 'model', survey)
         resid = Decaps2ResidLayer(image, model,
-                                  'decaps2-resid', 'resid', survey, drname='decaps2')
-        layers['decaps2'] = image
-        layers['decaps2-model'] = model
-        layers['decaps2-resid'] = resid
+                                  'decaps-resid', 'resid', survey, drname='decaps')
+        layers['decaps'] = image
+        layers['decaps-model'] = model
+        layers['decaps-resid'] = resid
         layer = layers[name]
 
     elif name in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
