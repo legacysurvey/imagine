@@ -1255,6 +1255,20 @@ class Decaps2Layer(DecalsDr3Layer):
         if scale == 0:
             return 1
         return 0
+
+    # For zoom layers above 13, optionally redirect to NERSC
+    def get_tile(self, req, ver, zoom, x, y, **kwargs):
+        zoom = int(zoom)
+        if (settings.REDIRECT_CUTOUTS_DECAPS and
+            zoom > 13):
+            from django.http import HttpResponseRedirect
+            host = req.META.get('HTTP_HOST')
+            #print('Host:', host)
+            if host is None:
+                host = 'legacysurvey.org'
+            else:
+                host = host.replace('imagine.legacysurvey.org', 'legacysurvey.org')
+            return HttpResponseRedirect('http://' + host + '/viewer' + req.path)
         
 class ResidMixin(object):
     def __init__(self, image_layer, model_layer, *args, **kwargs):
