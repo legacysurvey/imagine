@@ -65,6 +65,13 @@ urlpatterns = [
         views.get_tile_view('decaps2-model')),
     url(r'^decaps2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decaps2-resid')),
+    # aka DECaPS
+    url(r'^decaps/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps2')),
+    url(r'^decaps-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps2-model')),
+    url(r'^decaps-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps2-resid')),
     
     # Gaia catalog
     url(r'^gaia-dr1/(\d+)/cat.json', cats.cat_gaia_dr1),

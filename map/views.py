@@ -1727,6 +1727,8 @@ def layer_name_map(name):
             'mzls bass-dr4': 'mzls+bass-dr4',
 
             'decaps2': 'decaps',
+            'decaps2-model': 'decaps-model',
+            'decaps2-resid': 'decaps-resid',
 
     }.get(name, name)
 
@@ -3086,6 +3088,7 @@ def get_layer(name, default=None):
     return layer
 
 def get_tile_view(name):
+    name = layer_name_map(name)
     def view(request, ver, zoom, x, y, **kwargs):
         layer = get_layer(name)
         return layer.get_tile(request, ver, zoom, x, y, **kwargs)
