@@ -1269,6 +1269,7 @@ class Decaps2Layer(DecalsDr3Layer):
             else:
                 host = host.replace('imagine.legacysurvey.org', 'legacysurvey.org')
             return HttpResponseRedirect('http://' + host + '/viewer' + req.path)
+        return super(Decaps2Layer, self).get_tile(req, ver, zoom, x, y, **kwargs)
         
 class ResidMixin(object):
     def __init__(self, image_layer, model_layer, *args, **kwargs):
