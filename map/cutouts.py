@@ -16,6 +16,15 @@ from map.views import dr2_rgb, layer_name_map
 
 from decals import settings
 
+try:
+    # py2
+    #from urllib2 import urlopen
+    from urllib import urlencode
+except:
+    # py3
+    #from urllib.request import urlopen
+    from urllib.parse import urlencode
+
 debug = print
 if not settings.DEBUG_LOGGING:
     def debug(*args, **kwargs):
@@ -24,6 +33,13 @@ if not settings.DEBUG_LOGGING:
 def jpeg_cutout(req):
     name = req.GET.get('layer', 'decals-dr3')
     name = layer_name_map(name)
+
+    # Sanjaya : redirect to NERSC
+    if (settings.REDIRECT_CUTOUTS_DECAPS and
+        name in ['decaps', 'decaps-model', 'decaps-resid']):
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect('http://legacysurvey.org/viewer' + req.path + '?' + urlencode(req.GET))
+
     #print('jpeg_cutout: name', name)
     from map.views import get_layer
     layer = get_layer(name)
@@ -42,6 +58,12 @@ def jpeg_cutout(req):
 def fits_cutout(req):
     name = req.GET.get('layer', 'decals-dr3')
     name = layer_name_map(name)
+
+    # Sanjaya : redirect to NERSC
+    if name in ['decaps', 'decaps-model', 'decaps-resid']:
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect('http://legacysurvey.org/viewer' + req.path + '?' + urlencode(req.GET))
+
     from map.views import get_layer
     layer = get_layer(name)
     if layer is not None:
