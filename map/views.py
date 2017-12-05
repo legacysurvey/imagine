@@ -7,8 +7,13 @@ if __name__ == '__main__':
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
     import django
+    django.setup()
     #print('Django:', django.__file__)
     #print('Version:', django.get_version())
+
+    #from decals import settings
+    #settings.ALLOWED_HOSTS += 'testserver'
+
 
 import os
 import sys
@@ -1250,6 +1255,21 @@ class Decaps2Layer(DecalsDr3Layer):
         if scale == 0:
             return 1
         return 0
+
+    # For zoom layers above 13, optionally redirect to NERSC
+    def get_tile(self, req, ver, zoom, x, y, **kwargs):
+        zoom = int(zoom)
+        if (settings.REDIRECT_CUTOUTS_DECAPS and
+            zoom > 13):
+            from django.http import HttpResponseRedirect
+            host = req.META.get('HTTP_HOST')
+            #print('Host:', host)
+            if host is None:
+                host = 'legacysurvey.org'
+            else:
+                host = host.replace('imagine.legacysurvey.org', 'legacysurvey.org')
+            return HttpResponseRedirect('http://' + host + '/viewer' + req.path)
+        return super(Decaps2Layer, self).get_tile(req, ver, zoom, x, y, **kwargs)
         
 class ResidMixin(object):
     def __init__(self, image_layer, model_layer, *args, **kwargs):
@@ -3155,6 +3175,16 @@ def ra_ranges_overlap(ralo, rahi, ra1, ra2):
 
 
 if __name__ == '__main__':
+    import sys
+
+    from django.test import Client
+    c = Client()
+    #response = c.get('/viewer/image-data/decals-dr5/decam-335137-N24-g')
+    response = c.get('/image-data/decals-dr5/decam-335137-N24-g')
+    print('Got:', response.status_code)
+    print('Content:', response.content)
+    sys.exit(0)
+
 
     class duck(object):
         pass
