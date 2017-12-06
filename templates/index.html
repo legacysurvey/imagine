@@ -615,9 +615,14 @@ var TiledOverlay = CatalogOverlay.extend({
             return;
         }
         var tile = e.tile;
+        //console.log('tileVisible: tile ' + tile);
+        if (tile.z === undefined) {
+            return;
+        }
         if (tile.z < this._minZoom) {
             return;
         }
+        //console.log('tileVisible: z ' + tile.z + ', x,y ' + tile.tilex + ',' + tile.tiley);
         this.load(tile.z, tile.tilex, tile.tiley);
     },
 
