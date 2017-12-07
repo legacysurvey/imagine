@@ -543,7 +543,7 @@ def cat_user(req, ver):
     elif havei:
         cat = cat[start:start+N]
 
-    rd = zip(cat.ra.astype(float), cat.dec.astype(float))
+    rd = list(zip(cat.ra.astype(float), cat.dec.astype(float)))
 
     D = dict(rd=rd)
     cols = cat.columns()
