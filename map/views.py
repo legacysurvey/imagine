@@ -54,6 +54,8 @@ tileversions = {
 
     'eboss': [1,],
 
+    'phat': [1,],
+
     'decaps': [1, 2],
     'decaps-model': [1, 2],
     'decaps-resid': [1, 2],
@@ -459,7 +461,7 @@ class MapLayer(object):
 
     def get_bands(self):
         pass
-    
+
     def get_rgb(self, imgs, bands, **kwargs):
         pass
 
@@ -597,7 +599,7 @@ class MapLayer(object):
         # Read scale-1 image and scale it
         sourcefn = self.get_filename(brick, band, scale-1)
         if sourcefn is None or not os.path.exists(sourcefn):
-            print('Image source file', sourcefn, 'not found')
+            print('create_scaled_image: brick', brick, 'band', band, 'scale', scale, ': Image source file', sourcefn, 'not found')
             return None
         img = self.read_image(brick, band, scale-1, None, fn=sourcefn)
         wcs = self.read_wcs(brick, band, scale-1, fn=sourcefn)
@@ -994,7 +996,128 @@ class MapLayer(object):
             return rtn
         return view
 
+     
+class PhatLayer(MapLayer):
+    def __init__(self, name, **kwargs):
+        import fitsio
+        from astrometry.util.util import Tan
+        #from astrometry.util.util import anwcs_open_wcslib
+        super(PhatLayer, self).__init__(name, **kwargs)
+        self.nativescale = 17
+        self.pixscale = 0.05
+        fn = os.path.join(settings.DATA_DIR, 'm31_full.fits')
+        self.fits = fitsio.FITS(fn)[0]
+        #self.wcs = anwcs_open_wcslib(fn, 0)
+        self.wcs = Tan(fn, 0)
+        print('WCS:', self.wcs)
+
+    def read_image(self, brick, band, scale, slc, fn=None):
+        import numpy as np
+        img = super(PhatLayer,self).read_image(brick, band, scale, slc, fn=fn)
+        return img.astype(np.float32)
+
+    def get_bands(self):
+        ### FIXME
+        return 'BGR'
+
+    def get_base_filename(self, brick, band):
+        #return os.path.join(settings.DATA_DIR, 'm31_full.fits')
+        return os.path.join(settings.DATA_DIR, 'm31_full_%s.fits' % band)
+
+    def get_scaled_filename(self, brick, band, scale):
+        #return os.path.join(settings.DATA_DIR, 'm31_full_scale%i.fits' % scale)
+        return os.path.join(settings.DATA_DIR, 'm31_full_%s_scale%i.fits' % (band, scale))
+
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
+                        scale=None, tempfiles=None):
+        import numpy as np
+        from astrometry.util.resample import resample_with_wcs, OverlapError
+
+        if scale is None:
+            scale = self.get_scale(zoom, x, y, wcs)
+
+        #if bricks is None or len(bricks) == 0:
+        #    print('No bricks touching WCS')
+        #    return None
+
+        if bands is None:
+            bands = self.get_bands()
+
+        W = int(wcs.get_width())
+        H = int(wcs.get_height())
+        r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
+                                [1,H/2,H,H,H,H/2,1,1])[-2:]
+        rimgs = []
+        # scaled down.....
+        # call get_filename to possibly generate scaled version
+        for band in bands:
+            brick = None
+            fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
+            print('scale', scale, 'band', band, 'fn', fn)
+
+            try:
+                bwcs = self.read_wcs(brick, band, scale, fn=fn)
+                if bwcs is None:
+                    print('No such file:', brickname, band, scale, 'fn', fn)
+                    continue
+            except:
+                print('Failed to read WCS:', brickname, band, scale, 'fn', fn)
+                savecache = False
+                import traceback
+                import sys
+                traceback.print_exc(None, sys.stdout)
+                continue
+
+            # Check for pixel overlap area
+            ok,xx,yy = bwcs.radec2pixelxy(r, d)
+            xx = xx.astype(np.int)
+            yy = yy.astype(np.int)
+            imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
+            M = 10
+            xlo = np.clip(xx.min() - M, 0, imW)
+            xhi = np.clip(xx.max() + M, 0, imW)
+            ylo = np.clip(yy.min() - M, 0, imH)
+            yhi = np.clip(yy.max() + M, 0, imH)
+            if xlo >= xhi or ylo >= yhi:
+                print('No pixel overlap')
+                return
+
+            subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
+            slc = slice(ylo,yhi), slice(xlo,xhi)
+
+            try:
+                img = self.read_image(brick, band, scale, slc, fn=fn)
+            except:
+                print('Failed to read image:', brickname, band, scale, 'fn', fn)
+                savecache = False
+                import traceback
+                import sys
+                traceback.print_exc(None, sys.stdout)
+                continue
+
+            print('Read image slice', img.shape)
         
+            try:
+                Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
+            except OverlapError:
+                #debug('Resampling exception')
+                return
+
+            rimg = np.zeros((H,W), np.float32)
+            rimg[Yo,Xo] = img[Yi,Xi]
+            rimgs.append(rimg)
+
+        return rimgs
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        print('get_rgb: bands', bands, 'imgs', imgs)
+        sz = imgs[0].shape
+        rgb = np.zeros((sz[0],sz[1],3), np.uint8)
+        for i,img in zip([2,1,0], imgs):
+            rgb[:,:,i] = img
+        return rgb
+   
 class DecalsLayer(MapLayer):
     def __init__(self, name, imagetype, survey, bands='grz', drname=None):
         '''
@@ -3009,6 +3132,9 @@ def get_layer(name, default=None):
         '''
         layer = ReSdssLayer('sdss2')
 
+    elif name == 'phat':
+        layer = PhatLayer('phat')
+
     elif name == 'eboss':
         survey = _get_survey('eboss')
         layer = ReDecalsLayer('eboss', 'image', survey)
@@ -3177,10 +3303,14 @@ def ra_ranges_overlap(ralo, rahi, ra1, ra2):
 if __name__ == '__main__':
     import sys
 
+    settings.READ_ONLY_BASEDIR = False
+
     from django.test import Client
     c = Client()
     #response = c.get('/viewer/image-data/decals-dr5/decam-335137-N24-g')
-    response = c.get('/image-data/decals-dr5/decam-335137-N24-g')
+    #response = c.get('/image-data/decals-dr5/decam-335137-N24-g')
+    #response = c.get('/phat/1/13/7934/3050.jpg')
+    response = c.get('/phat/1/8/248/95.jpg')
     print('Got:', response.status_code)
     print('Content:', response.content)
     sys.exit(0)

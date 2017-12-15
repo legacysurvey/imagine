@@ -1419,6 +1419,12 @@ tiles = mylayer('eboss', 'special eBOSS region',
 allLayers.push(tiles);
 {% endif %}
 
+tiles = mylayer('phat', 'PHAT images',
+                  {'attribution': 'PHAT collaboration',
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],
+                   'maxNativeZoom': maxZoom,});
+allLayers.push(tiles);
+
 {% if enable_dr2 %}
 tiles = mylayer_B('decals-dr2', 'DECaLS DR2 images',
                 {'urlPatterns': [ [14, maxZoom, tile_url], ],});
@@ -2291,7 +2297,12 @@ if ('blink' in qstr) {
     lastidname = qstr['blink'];
 }
 
+for (k in qstr) {
+    console.log('qstring key: ' + k);
+}
+
 if ('desi' in qstr) {
+    console.log('DESI footprint');
     // from gfa-corners.fits from Bailey, 2017-09-14
     var petal_radius = [
         [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
