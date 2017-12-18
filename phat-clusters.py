@@ -53,3 +53,10 @@ convert(f, 'phat-clusters-young')
 
 f = open('old_phat_clusters', 'rb')
 convert(f, 'phat-clusters-old')
+
+T1 = fits_table('phat-clusters-young.fits')
+T1.young = np.ones(len(T1), bool)
+T2 = fits_table('phat-clusters-old.fits')
+T2.young = np.zeros(len(T2), bool)
+T = merge_tables([T1,T2])
+T.writeto('phat-clusters.fits')
