@@ -42,7 +42,7 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
     modsince: If-Modified-Since header string from the client.
     '''
     st = os.stat(fn)
-    f = open(fn)
+    f = open(fn, 'rb')
     if unlink:
         os.unlink(fn)
     # file was last modified...

@@ -1,13 +1,15 @@
 import os
 from settings_common import *
 
+REDIRECT_CUTOUTS_DECAPS = True
+
 MAX_NATIVE_ZOOM = 15
 SAVE_CACHE = False
 
 ENABLE_NEXP = False
 ENABLE_VCC  = False
 ENABLE_WL   = False
-ENABLE_DR2  = True
+#ENABLE_DR2  = True
 
 HOSTNAME = 'imagine.legacysurvey.org'
 ROOT_URL = ''

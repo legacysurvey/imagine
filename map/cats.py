@@ -23,6 +23,7 @@ catversions = {
     'bright': [1,],
     'tycho2': [1,],
     'targets-dr2': [1,],
+    'targets-dr45': [1,],
     'gaia-dr1': [1,],
     'ps1': [1,],
 }
@@ -277,6 +278,138 @@ def cat_targets_dr2(req, ver):
                 )),
                         content_type='application/json')
 
+def cat_targets_dr45(req, ver):
+    import json
+    tag = 'targets-dr45'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    import numpy as np
+    from decals import settings
+    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
+
+    xyz1 = radectoxyz(ralo, declo)
+    xyz2 = radectoxyz(rahi, dechi)
+    xyz = (xyz1 + xyz2)/2.
+    xyz /= np.sqrt(np.sum(xyz**2))
+    rc,dc = xyztoradec(xyz)
+    rc = rc[0]
+    dc = dc[0]
+    rad = degrees_between(rc, dc, ralo, declo)
+
+    '''
+    startree -i /project/projectdirs/desi/target/catalogs/targets-dr5-0.16.2.fits -o /tmp/kd.fits -P -k
+    fitsgetext -i /tmp/kd.fits -o targets-dr5-0.16.2.kd.fits -e 0 -e 6 -e 1 -e 2 -e 3 -e 4 -e 5
+    '''
+    TT = []
+    for fn in [os.path.join(settings.DATA_DIR, 'targets-dr5-0.16.2.kd.fits'),
+               os.path.join(settings.DATA_DIR, 'targets-dr4-0.16.0.kd.fits'),
+               ]:
+        kd = tree_open(fn)
+        I = tree_search_radec(kd, rc, dc, rad)
+        print('Matched', len(I), 'from', fn)
+        if len(I) == 0:
+            continue
+        T = fits_table(fn, rows=I)
+        TT.append(T)
+    if len(TT) == 0:
+        return HttpResponse(json.dumps(dict(rd=[], name=[])),
+                            content_type='application/json')
+    T = merge_tables(TT)
+
+    names = []
+    colors = []
+    for t in T:
+        desibits = []
+        bgsbits = []
+        mwsbits = []
+        for bit in range(64):
+            if (1 << bit) & int(t.desi_target):
+                desibits.append(bit)
+            if (1 << bit) & int(t.bgs_target):
+                bgsbits.append(bit)
+            if (1 << bit) & int(t.mws_target):
+                mwsbits.append(bit)
+        # https://github.com/desihub/desitarget/blob/master/py/desitarget/data/targetmask.yaml
+        desinames = [{
+            0:  'LRG',
+            1:  'ELG',
+            2:  'QSO',
+            # 8:  'LRG_NORTH',
+            # 9:  'ELG_NORTH',
+            # 10: 'QSO_NORTH',
+            # 16: 'LRG_SOUTH',
+            # 17: 'ELG_SOUTH',
+            # 18: 'QSO_SOUTH',
+            32: 'SKY',
+            33: 'STD_FSTAR',
+            34: 'STD_WD',
+            35: 'STD_BRIGHT',
+            36: 'BADSKY',
+            50: 'BRIGHT_OBJECT',
+            51: 'IN_BRIGHT_OBJECT',
+            52: 'NEAR_BRIGHT_OBJECT',
+            # 60: 'BGS_ANY',
+            # 61: 'MWS_ANY',
+            62: 'ANCILLARY_ANY',
+        }.get(b) for b in desibits]
+        bgsnames = [{
+            0:  'BGS_FAINT',
+            1:  'BGS_BRIGHT',
+            # 8:  'BGS_FAINT_NORTH',
+            # 9:  'BGS_BRIGHT_NORTH',
+            # 16: 'BGS_FAINT_SOUTH',
+            # 17: 'BGS_BRIGHT_SOUTH',
+            40: 'BGS_KNOWN_ANY',
+            41: 'BGS_KNOWN_COLLIDED',
+            42: 'BGS_KNOWN_SDSS',
+            43: 'BGS_KNOWN_BOSS',
+        }.get(b) for b in bgsbits]
+        mwsnames = [{
+            0:  'MWS_MAIN',
+            1:  'MWS_WD',
+            2:  'MWS_NEARBY',
+            16: 'MWS_MAIN_VERY_FAINT',
+        }.get(b) for b in mwsbits]
+
+        bitnames = [n for n in desinames + bgsnames + mwsnames if n is not None]
+
+        names.append(', '.join(bitnames))
+
+        nn = ' '.join(bitnames)
+        cc = 'white'
+        if 'QSO' in nn:
+            cc = 'cyan'
+        elif 'LRG' in nn:
+            cc = 'red'
+        elif 'ELG' in nn:
+            cc = 'gray'
+        elif 'BGS' in nn:
+            cc = 'orange'
+        colors.append(cc)
+
+    return HttpResponse(json.dumps(dict(rd=[(t.ra, t.dec) for t in T],
+                                        name=names,
+                                        targetid=[int(t) for t in T.targetid],
+                                        fluxes=[dict(g=float(g), r=float(r), z=float(z),
+                                                     W1=float(W1), W2=float(W2))
+                                                for (g,r,z,W1,W2)
+                                                in zip(T.flux_g, T.flux_r, T.flux_z,
+                                                       T.flux_w1, T.flux_w2)],
+                                        nobs=[dict(g=int(g), r=int(r), z=int(z)) for g,r,z
+                                              in zip(T.nobs_g, T.nobs_r, T.nobs_z)],
+                                        color=colors,
+                                    )),
+                        content_type='application/json')
+
 def cat_spec(req, ver):
     import json
     tag = 'spec'
@@ -410,7 +543,7 @@ def cat_user(req, ver):
     elif havei:
         cat = cat[start:start+N]
 
-    rd = zip(cat.ra.astype(float), cat.dec.astype(float))
+    rd = list(zip(cat.ra.astype(float), cat.dec.astype(float)))
 
     D = dict(rd=rd)
     cols = cat.columns()
@@ -562,7 +695,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         objids = []
         nobs = []
     else:
-        rd = zip(cat.ra, cat.dec)
+        rd = list(zip(cat.ra, cat.dec))
         types = list([t[0] for t in cat.get('type')])
 
         if 'decam_flux' in cat.get_columns():

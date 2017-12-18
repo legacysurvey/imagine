@@ -4,10 +4,14 @@ cd /project/projectdirs/cosmo/webapp/viewer-dev
 
 unset PYTHONPATH
 
-export PATH=~/miniconda2/bin:${PATH}
-source activate viewer-dev-conda
+#export PATH=~/miniconda2/bin:${PATH}
+#source activate viewer-dev-conda
+#export PYTHONPATH=${PYTHONPATH}:$(pwd)/viewer-dev-conda
 
-export PYTHONPATH=${PYTHONPATH}:$(pwd)/viewer-dev-conda
+export PATH=~/miniconda3b/bin:${PATH}
+source activate viewer-dev-conda-2
+export PYTHONPATH=${PYTHONPATH}:$(pwd)/viewer-dev-conda-2
+export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
 
 # echo "PYTHONPATH:"
 # echo $PYTHONPATH | tr : '\n'

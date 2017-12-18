@@ -146,6 +146,7 @@ var tile_url = '{{ tileurl|safe }}';
 var maxNativeZoom = {{ maxNativeZoom }};
 
 var abs_url = '{{ absurl }}';
+var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
 
 var ccds_url = '{{ ccdsurl|safe }}';
 var exposures_url = '{{ expsurl|safe }}';
@@ -443,6 +444,108 @@ var Deep2SpectraCatalog = CatalogOverlay.extend({
     },
 });
 
+var DesiTargetCatalog = CatalogOverlay.extend({
+    getLayer: function(result) {
+        var targetids = result['targetid'];
+        var rdlist = result['rd'];
+        var fluxes = result['fluxes'];
+        var nobs = result['nobs'];
+        var labels = result['name'];
+        var colors = result['color'];
+
+        var circleList = new Array(rdlist.length);
+        var clong = map.getCenter().lng;
+
+        var radii = result['radius'];
+
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            var color = 'blue';
+            if (typeof(defaultcolor) != 'undefined') {
+                color = defaultcolor;
+            }
+            if (colors !== undefined) {
+                color = colors[i];
+            }
+            if (radii === undefined) {
+                rad = this._radius;
+            } else {
+                // radius is in meters
+                rad = radii[i];
+                rad = arcsecToMeters(rad);
+            }
+
+            var circ = L.circle([lat, lng], rad,
+                                {'color':color, 'fillOpacity':0, 'weight':5});
+            if (labels === undefined) {
+            } else {
+                var txt = labels[i];
+                if (txt.length > 0) {
+                    circ.bindTooltip(txt, { permanent: true, interactive: true });
+                }
+            }
+    
+            circ.ra = r;
+            circ.dec = d;
+            //circ.type = typ;
+            circ.fluxes = (fluxes     ? fluxes[i] : {});
+            circ.nobs   = (nobs       ? nobs  [i] : {});
+            circ.targetid = targetids ? targetids[i] : '';
+            circ.on('click', onTargetClick);
+            circleList[i] = circ;
+        }
+        return L.layerGroup(circleList);
+
+    },
+});
+
+function onTargetClick(e) {
+    console.log('onTargetClick');
+    src = e.target;
+    fluxstr = '';
+    if ('g' in src.fluxes) {
+        fluxstr += 'g=' + fluxToMag(src.fluxes.g).toFixed(2);
+    }
+    if ('r' in src.fluxes) {
+        fluxstr += ', r=' + fluxToMag(src.fluxes.r).toFixed(2);
+    }
+    if ('z' in src.fluxes) {
+        fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
+    }
+    if ('W1' in src.fluxes) {
+        fluxstr += ', W1=' + fluxToMag(src.fluxes.W1).toFixed(2);
+    }
+    if ('W2' in src.fluxes) {
+        fluxstr += ', W2=' + fluxToMag(src.fluxes.W2).toFixed(2);
+    }
+    nobs_g = 0
+    if ('g' in src.nobs) {
+	    nobs_g = src.nobs.g;
+    }
+    nobs_r = 0
+    if ('r' in src.nobs) {
+	    nobs_r = src.nobs.r;
+    }
+    nobs_z = 0
+    if ('z' in src.nobs) {
+	    nobs_z = src.nobs.z;
+    }
+    txt = 'Target RA,Dec = ' + src.ra.toFixed(4) + ', ' + src.dec.toFixed(4) +
+        //cutout_radec_link(src.ra, src.dec) +
+        '<br/>Mags: ' + fluxstr +
+	    '<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z +
+        '<br/>Targetid: ' + src.targetid;
+    console.log('Popup text: ' + txt);
+    popup.setLatLng(e.latlng).setContent(txt).openOn(map);
+    e.stopPropagation();
+}
+
+
+
+
 {% if enable_ps1 %}
 var Ps1CatalogOverlay = CatalogOverlay.extend({
     getLabel: function(json, i) {
@@ -513,9 +616,14 @@ var TiledOverlay = CatalogOverlay.extend({
             return;
         }
         var tile = e.tile;
+        //console.log('tileVisible: tile ' + tile);
+        if (tile.z === undefined) {
+            return;
+        }
         if (tile.z < this._minZoom) {
             return;
         }
+        //console.log('tileVisible: z ' + tile.z + ', x,y ' + tile.tilex + ',' + tile.tiley);
         this.load(tile.z, tile.tilex, tile.tiley);
     },
 
@@ -986,9 +1094,27 @@ function ccd_detail(idname, name, aparams) {
                      + '/"' + aparams + '>' + name + '</a>';
 }
 
+function sdss_ccd_detail(idname, name, aparams) {
+    //var obj = ccdOverlaySdss._current[name];
+    // HACK -- name is 'SDSS R/C/F ##/##/##' -- parse!
+    var words = name.split(' ');
+    var rcf = words[2].split('/');
+    var run = rcf[0];
+    var camcol = rcf[1];
+    var field = rcf[2];
+    return 'CCD: <a href="https://dr12.sdss.org/fields/runCamcolField?run='
+          + run + '&camcol=' + camcol + '&field=' + field
+          + '"' + aparams + '>' + name + '</a>';
+}
+
 function exp_detail(idname, name, aparams) {
     return 'Exposure: <a href="{% url 'exp_detail_blank' %}' + idname + '/' +
         name.replace(' ','-') + '/"' + aparams + '>' + name + '</a>';
+}
+
+function plate_detail(idname, name, aparams) {
+    //console.log('Plate_detail: ' + idname + ', ' + name + ', ' + aparams);
+    return '<a href="https://dr14.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
 }
 
 function onMapClick(e) {
@@ -998,8 +1124,7 @@ function onMapClick(e) {
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
     var qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
 
-    //var cutout = abs_url + '/jpeg-cutout/?' + qstr;
-    var cutout = '{% url 'cutout-jpeg' %}?' + qstr;
+    var cutout = hostname_url + '{% url 'cutout-jpeg' %}?' + qstr;
     var linkurl = abs_url + '?' + qstr;
 
     for (var i=0,len=overlays.length; i<len; i++) {
@@ -1084,6 +1209,7 @@ function overlayAdded(e) {
         if (polygonOverlays[i]._show) {
             inbrickccdAdded = true;
             inbrickccd.addTo(map);
+            break;
         }
     }
 }
@@ -1093,14 +1219,12 @@ function overlayRemoved(e) {
     if (!inbrickccdAdded) {
         return;
     }
-
     var show = false;
     for (var i=0; i<polygonOverlays.length; i++) {
         if (polygonOverlays[i]._show) {
             show = true;
         }
     }
-
     if (!show) {
         map.removeControl(inbrickccd);
         inbrickccdAdded = false;
@@ -1132,6 +1256,9 @@ var tileversions = {
     'decaps2': 2,
     'decaps2-model': 2,
     'decaps2-resid': 2,
+    'decaps': 2,
+    'decaps-model': 2,
+    'decaps-resid': 2,
 };
 var catversions  = {
     'decals-dr2': 2,
@@ -1229,17 +1356,17 @@ allLayers.push(tiles);
 {% endif %}
 
 {% if enable_decaps %}
-tiles = mylayer_B('decaps2', 'DECaPS images',
-                  {'maxNativeZoom': 13,
+tiles = mylayer_B('decaps', 'DECaPS images',
+                  {//'maxNativeZoom': 13,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
-tiles = mylayer_B('decaps2-model', 'DECaPS models',
-                  {'maxNativeZoom': 13,
+tiles = mylayer_B('decaps-model', 'DECaPS models',
+                  {//'maxNativeZoom': 13,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
-tiles = mylayer_B('decaps2-resid', 'DECaPS residuals',
-                  {'maxNativeZoom': 13,
+tiles = mylayer_B('decaps-resid', 'DECaPS residuals',
+                  {//'maxNativeZoom': 13,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
@@ -1291,6 +1418,12 @@ tiles = mylayer('eboss', 'special eBOSS region',
                 {'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
+
+tiles = mylayer('phat', 'PHAT images',
+                  {'attribution': 'PHAT collaboration',
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],
+                   'maxNativeZoom': maxZoom,});
+allLayers.push(tiles);
 
 {% if enable_dr2 %}
 tiles = mylayer_B('decals-dr2', 'DECaLS DR2 images',
@@ -1809,6 +1942,34 @@ var ccd_detail_list = function(ov, objs) {
     return txt;
 };
 
+var sdss_ccd_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In ' + ov._dr_name + ' CCDs: <ul>'
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + sdss_ccd_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
+var plate_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In SDSS Spectro Plates: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + plate_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
 {% if enable_dr2_overlays %}
 var ccdOverlay2 = new PolygonOverlay('decals-dr2-ccds',
                                      'DECaLS DR2 CCDs',
@@ -1914,6 +2075,31 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
     
                                       });
 
+
+var ccdOverlaySdss = new PolygonOverlay('sdss-ccds',
+                                 'SDSS CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccdssdss',
+                                     'detail': sdss_ccd_detail,
+                                     'detail_list': sdss_ccd_detail_list,
+                                     'url_name': 'sdss',
+                                     'dr_name': 'SDSS',
+                                    });
+
+
+
+{% if enable_spectra %}
+var plateOverlay = new CircleOverlay('sdss-plates',
+                                     'SDSS Spectro Plates',
+                                    {'url': sdss_plates_url,
+                                     'labelMinZoom': 100,
+                                     'detail': plate_detail,
+                                     'detail_list': plate_detail_list,
+                                    });
+{% endif %}
+
 {% comment %}
 These are overlays that have entries when you click on the map,
 and entries in the "in brick/ccd" panel.
@@ -1932,19 +2118,16 @@ var polygonOverlays = [
     {% if enable_dr5_overlays %}
     ccdOverlay5, expOverlay5,
     {% endif %}
-    brickOverlay ];
+    brickOverlay,
+    ccdOverlaySdss,
+    {% if enable_spectra %}
+    plateOverlay,
+    {% endif %}
+];
 
 for (var i=0; i<polygonOverlays.length; i++) {
     polygonOverlays[i].on('loaded', function() { inbrickccdUpdate(); });
 }
-
-{% if enable_spectra %}
-var plateOverlay = new CircleOverlay('sdss-plates',
-                                     'SDSS Spectro Plates',
-                                    {'url': sdss_plates_url,
-                                     'labelMinZoom': 100,
-                                    });
-{% endif %}
 
 {% if enable_dr2_overlays %}
 var decalscat2 = new DecalsCatalogLayer(tileWatcher,
@@ -2003,7 +2186,7 @@ var gaia = new CatalogOverlay('gaia-dr1', 'Gaia DR1 sources',
                               'radius': 300, });
 
 {% if enable_desi_targets %}
-var targets_dr2 = new CatalogOverlay('targets-dr2', 'DESI Targets (DR2)',
+var desi_targets = new DesiTargetCatalog('targets-dr45', 'DESI Targets (DR4/DR5)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
@@ -2066,6 +2249,7 @@ var overlays = [
     {% endif %}
 
     brickOverlay,
+    ccdOverlaySdss,
     gals, bright, tycho2,
     {% if enable_ps1 %}
     ps1cat,
@@ -2075,7 +2259,7 @@ var overlays = [
     spec, plateOverlay, specDeep2,
     {% endif %}
     {% if enable_desi_targets %}
-    targets_dr2
+    desi_targets
     {% endif %}
 ];
 
@@ -2113,7 +2297,12 @@ if ('blink' in qstr) {
     lastidname = qstr['blink'];
 }
 
+for (k in qstr) {
+    console.log('qstring key: ' + k);
+}
+
 if ('desi' in qstr) {
+    console.log('DESI footprint');
     // from gfa-corners.fits from Bailey, 2017-09-14
     var petal_radius = [
         [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],

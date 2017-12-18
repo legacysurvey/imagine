@@ -15,7 +15,7 @@ from django.core.urlresolvers import reverse
 
 from django.views.generic import ListView, DetailView
 
-from models import Bricks, Tractor
+from cat.models import Bricks, Tractor
 
 from map.views import index, send_file
 

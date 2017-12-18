@@ -9,6 +9,10 @@ survey_regex = r'([\w +-]+)'
 
 urlpatterns = [
 
+    # PHAT M31
+    url(r'^phat/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('phat')),
+
     # eboss special DR5+ reduction
     url(r'^eboss/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('eboss')),
@@ -50,10 +54,13 @@ urlpatterns = [
         views.get_tile_view('decals-dr2-model')),
     url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decals-dr2-resid')),
+
     # DR2 catalog
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr2),
-
     url(r'^targets-dr2/(\d+)/cat.json', cats.cat_targets_dr2),
+
+    # DR4/5 catalog
+    url(r'^targets-dr45/(\d+)/cat.json', cats.cat_targets_dr45),
 
     # DECaPS2 tiles
     url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
@@ -61,6 +68,13 @@ urlpatterns = [
     url(r'^decaps2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decaps2-model')),
     url(r'^decaps2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps2-resid')),
+    # aka DECaPS
+    url(r'^decaps/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps2')),
+    url(r'^decaps-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decaps2-model')),
+    url(r'^decaps-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decaps2-resid')),
     
     # Gaia catalog

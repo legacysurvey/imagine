@@ -24,7 +24,7 @@ class Router(object):
 #   python manage.py inspectdb --database dr2 > /tmp/schema.py
 #   # edit /tmp/schema.py to change model names.
 
-from models_dr2 import *
+from cat.models_dr2 import *
 
 
 #########################################
