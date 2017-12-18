@@ -220,11 +220,13 @@ def _index(req,
 
     
     absurl = req.build_absolute_uri(rooturl)
+    hostname_url = req.build_absolute_uri('/')
 
     args = dict(ra=ra, dec=dec, zoom=zoom,
                 galname=galname,
                 layer=layer, tileurl=tileurl,
                 absurl=absurl,
+                hostname_url=hostname_url,
                 sqlurl=sqlurl,
                 uploadurl=uploadurl,
                 caturl=caturl, bricksurl=bricksurl,
