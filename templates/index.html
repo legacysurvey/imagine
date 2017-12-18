@@ -146,6 +146,7 @@ var tile_url = '{{ tileurl|safe }}';
 var maxNativeZoom = {{ maxNativeZoom }};
 
 var abs_url = '{{ absurl }}';
+var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
 
 var ccds_url = '{{ ccdsurl|safe }}';
 var exposures_url = '{{ expsurl|safe }}';
@@ -1123,8 +1124,7 @@ function onMapClick(e) {
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
     var qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
 
-    //var cutout = abs_url + '/jpeg-cutout/?' + qstr;
-    var cutout = '{% url 'cutout-jpeg' %}?' + qstr;
+    var cutout = hostname_url + '{% url 'cutout-jpeg' %}?' + qstr;
     var linkurl = abs_url + '?' + qstr;
 
     for (var i=0,len=overlays.length; i<len; i++) {
