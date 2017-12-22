@@ -25,8 +25,38 @@ catversions = {
     'targets-dr2': [1,],
     'targets-dr45': [1,],
     'gaia-dr1': [1,],
+    'phat-clusters': [1,],
     'ps1': [1,],
 }
+
+def cat_phat_clusters(req, ver):
+    import json
+    from astrometry.util.fits import fits_table, merge_tables
+
+    tag = 'phat-clusters'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    cat = fits_table(os.path.join(settings.DATA_DIR, 'phat-clusters.fits'))
+    cat.cut((cat.ra  >= ralo ) * (cat.ra  <= rahi) *
+            (cat.dec >= declo) * (cat.dec <= dechi))
+
+    return HttpResponse(json.dumps(dict(
+        name=[str(s.strip()) for s in cat.name],
+        rd=[(float(o.ra),float(o.dec)) for o in cat],
+        mag=[float(o.mag) for o in cat],
+        young=[bool(o.young) for o in cat],
+        velocity=[float(o.velocity) for o in cat],
+        metallicity=[float(o.metallicity) for o in cat],
+    )),
+                        content_type='application/json')
+
 
 def cat_gaia_dr1(req, ver):
     import json

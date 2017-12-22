@@ -13,6 +13,9 @@ urlpatterns = [
     url(r'^phat/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('phat')),
 
+    # PHAT cluster catalog
+    url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
+
     # eboss special DR5+ reduction
     url(r'^eboss/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('eboss')),
@@ -193,6 +196,9 @@ urlpatterns = [
 
     # DR5 version of the viewer.
     url(r'dr5', views.dr5),
+
+    # PHAT version of the viewer.
+    url(r'^phat/?$', views.phat),
     
     # fall-through
     url(r'', views.index),

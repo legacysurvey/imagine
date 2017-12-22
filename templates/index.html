@@ -162,6 +162,9 @@ var subdomains = {{ subdomains|safe }};
 var static_tile_url_B = '{{ static_tile_url_B|safe }}';
 var subdomains_B = {{ subdomains_B|safe }};
 
+var minZoom = 1;
+var maxZoom = {{ maxZoom }};
+
 {% if enable_sql %}
 var sql_url = '{{sqlurl|safe}}';
 {% endif %}
@@ -544,6 +547,62 @@ function onTargetClick(e) {
 }
 
 
+{% if enable_phat %}
+var PhatClusterCatalog = CatalogOverlay.extend({
+    getLayer: function(result) {
+        var rdlist = result['rd'];
+        var names = result['name'];
+        var mags = result['mag'];
+        var vs = result['velocity'];
+        var zs = result['metallicity'];
+        var youngs = result['young'];
+
+        var circleList = new Array(rdlist.length);
+        var clong = map.getCenter().lng;
+
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            var color = 'cyan';
+            if (!youngs[i]) {
+                color = 'red';
+            }
+            rad = this._radius;
+            var circ = L.circle([lat, lng], rad,
+                                {'color':color, 'fillOpacity':0, 'weight':5});
+
+            circ.bindTooltip(names[i], { permanent: true, interactive: true });
+    
+            circ.ra = r;
+            circ.dec = d;
+            circ.name = names[i];
+            circ.mag = mags[i];
+            circ.velocity = vs[i];
+            circ.metallicity = zs[i];
+            circ.on('click', function(e) {
+                src = e.target;
+                var text = src.name;
+                text += '<br>Mag: ' + src.mag.toFixed(3);
+                //var text = names[i];
+                //if (vs[i] != 0.0) {
+                if (src.velocity != 0.0) {
+                    text += '<br>Velocity: ' + src.velocity.toFixed(1) + ' km/s';
+                }
+                z = src.metallicity;
+                if (z != 0.0) {
+                    text += '<br>Metallicity: ' + z.toFixed(3);
+                }
+                popup.setLatLng(e.latlng).setContent(text).openOn(map);
+                e.stopPropagation();
+            });
+            circleList[i] = circ;
+        }
+        return L.layerGroup(circleList);
+    },
+});
+{% endif %}
 
 
 {% if enable_ps1 %}
@@ -1278,9 +1337,6 @@ function getcatversion(layer) {
     return 1;
 }
 
-var minZoom = 1;
-var maxZoom = 16;
-
 var allLayers = [];
 
 var decals_attrib = '<a href="http://legacysurvey.org">Legacy Survey</a>,' +
@@ -1419,11 +1475,13 @@ tiles = mylayer('eboss', 'special eBOSS region',
 allLayers.push(tiles);
 {% endif %}
 
+{% if enable_phat %}
 tiles = mylayer('phat', 'PHAT images',
                   {'attribution': 'PHAT collaboration',
                    'urlPatterns': [ [1, maxZoom, tile_url], ],
                    'maxNativeZoom': maxZoom,});
 allLayers.push(tiles);
+{% endif %}
 
 {% if enable_dr2 %}
 tiles = mylayer_B('decals-dr2', 'DECaLS DR2 images',
@@ -2185,6 +2243,15 @@ var gaia = new CatalogOverlay('gaia-dr1', 'Gaia DR1 sources',
                               'urlTerm': 'gaia-dr1',
                               'radius': 300, });
 
+{% if enable_phat %}
+var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
+                             {'url_name': 'phat-clusters',
+                              'minZoom': 11,
+                              'labelsMinZoom': 99,
+                              'urlTerm': 'phat-clusters',
+                              'radius': 150, });
+{% endif %}
+
 {% if enable_desi_targets %}
 var desi_targets = new DesiTargetCatalog('targets-dr45', 'DESI Targets (DR4/DR5)',
                                   {'radius': 200,
@@ -2214,6 +2281,9 @@ var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
 {% endif %}
 
 var overlays = [
+    {% if enable_phat %}
+    phat_clusters,
+    {% endif %}    
     {% if enable_dr2_overlays %}
     decalscat2, 
     {% endif %}

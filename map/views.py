@@ -97,6 +97,7 @@ def _index(req,
            default_radec = (None,None),
            default_zoom = 13,
            rooturl=settings.ROOT_URL,
+           maxZoom = 16,
            **kwargs):
     kwkeys = dict(
         enable_sql = settings.ENABLE_SQL,
@@ -123,6 +124,7 @@ def _index(req,
         enable_desi_targets = True,
         enable_spectra = True,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
+        enable_phat = False,
     )
 
     for k in kwargs.keys():
@@ -214,7 +216,7 @@ def _index(req,
         usercats = keepcats
         if len(usercats) == 0:
             usercats = None
-    print('User catalogs:', usercats)
+    #print('User catalogs:', usercats)
     usercatalogurl = reverse(cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
     usercatalogurl2 = reverse(cat_user, args=(1,)) + '?start={start}&N={N}&cat={cat}'
 
@@ -223,6 +225,7 @@ def _index(req,
     hostname_url = req.build_absolute_uri('/')
 
     args = dict(ra=ra, dec=dec, zoom=zoom,
+                maxZoom=maxZoom,
                 galname=galname,
                 layer=layer, tileurl=tileurl,
                 absurl=absurl,
@@ -282,6 +285,16 @@ def dr5(req):
                  default_layer='decals-dr5',
                  default_radec=(234.7, 13.6),
                  rooturl=settings.ROOT_URL + '/dr5',
+    )
+
+def phat(req):
+    return _index(req,
+                  enable_ps1=False,
+                  enable_phat=True,
+                  default_layer='phat',
+                  default_radec=(11.04, 41.48),
+                  rooturl=settings.ROOT_URL + '/phat',
+                  maxZoom=18,
     )
 
 def name_query(req):
@@ -1113,11 +1126,13 @@ class PhatLayer(MapLayer):
 
     def get_rgb(self, imgs, bands, **kwargs):
         import numpy as np
-        print('get_rgb: bands', bands, 'imgs', imgs)
         sz = imgs[0].shape
+        #mapping = np.zeros(256, np.uint8)
+        lo,hi = 0.15, 0.8
+        mapping = np.clip(np.round((np.arange(256) - lo*255) / (hi - lo)), 0, 255).astype(np.uint8)
         rgb = np.zeros((sz[0],sz[1],3), np.uint8)
         for i,img in zip([2,1,0], imgs):
-            rgb[:,:,i] = img
+            rgb[:,:,i] = mapping[img.astype(int)]
         return rgb
    
 class DecalsLayer(MapLayer):
