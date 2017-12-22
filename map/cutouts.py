@@ -60,7 +60,9 @@ def fits_cutout(req):
     name = layer_name_map(name)
 
     # Sanjaya : redirect to NERSC
-    if name in ['decaps', 'decaps-model', 'decaps-resid']:
+    # Sanjaya : redirect to NERSC
+    if (settings.REDIRECT_CUTOUTS_DECAPS and
+        name in ['decaps', 'decaps-model', 'decaps-resid']):
         from django.http import HttpResponseRedirect
         return HttpResponseRedirect('http://legacysurvey.org/viewer' + req.path + '?' + urlencode(req.GET))
 
