@@ -61,7 +61,6 @@ def cat_phat_clusters(req, ver):
 def cat_gaia_dr1(req, ver):
     import json
     from legacyanalysis.gaiacat import GaiaCatalog
-    from decals import settings
 
     tag = 'gaia-dr1'
     ralo = float(req.GET['ralo'])
@@ -85,7 +84,6 @@ def cat_gaia_dr1(req, ver):
 
 def upload_cat(req):
     import tempfile
-    from decals import settings
     from astrometry.util.fits import fits_table
     from django.http import HttpResponseRedirect
     from map.views import index
@@ -282,7 +280,6 @@ def cat_targets_dr2(req, ver):
 
     from astrometry.util.fits import fits_table, merge_tables
     import numpy as np
-    from decals import settings
     from cat.models import DR2_Target as Target
 
     from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
@@ -323,7 +320,6 @@ def cat_targets_dr45(req, ver):
     from astrometry.util.fits import fits_table, merge_tables
     from astrometry.libkd.spherematch import tree_open, tree_search_radec
     import numpy as np
-    from decals import settings
     from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
 
     xyz1 = radectoxyz(ralo, declo)
@@ -454,7 +450,6 @@ def cat_spec(req, ver):
 
     from astrometry.util.fits import fits_table, merge_tables
     import numpy as np
-    from decals import settings
 
     TT = []
     T = fits_table(os.path.join(settings.DATA_DIR, 'specObj-dr12-trim-2.fits'))
@@ -493,7 +488,6 @@ def cat_spec_deep2(req, ver):
 
     from astrometry.util.fits import fits_table, merge_tables
     import numpy as np
-    from decals import settings
 
     TT = []
     T = fits_table(os.path.join(settings.DATA_DIR, 'deep2-zcat-dr4-uniq.fits'))
@@ -529,7 +523,6 @@ def cat_spec_deep2(req, ver):
                         content_type='application/json')
 
 def cat_user(req, ver):
-    from decals import settings
     from astrometry.util.fits import fits_table
     import json
     import re
@@ -638,7 +631,6 @@ def cat(req, ver, tag, fn):
 
     from astrometry.util.fits import fits_table
     import numpy as np
-    from decals import settings
 
     TT = []
     T = fits_table(fn)
@@ -756,7 +748,6 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     return send_file(cachefn, 'application/json', **sendfile_kwargs)
 
 def _get_decals_cat(wcs, tag='decals'):
-    from decals import settings
     from astrometry.util.fits import fits_table, merge_tables
     from map.views import _get_survey
 
