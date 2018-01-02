@@ -310,8 +310,8 @@ def cat_targets_dr45(req, ver):
     fitsgetext -i /tmp/kd.fits -o targets-dr5-0.16.2.kd.fits -e 0 -e 6 -e 1 -e 2 -e 3 -e 4 -e 5
     '''
     TT = []
-    for fn in [os.path.join(settings.DATA_DIR, 'targets-dr5-0.16.2.kd.fits'),
-               os.path.join(settings.DATA_DIR, 'targets-dr4-0.16.0.kd.fits'),
+    for fn in [os.path.join(settings.DATA_DIR, 'targets-dr5-0.17.1.kd.fits'),
+               os.path.join(settings.DATA_DIR, 'targets-dr4-0.17.1.kd.fits'),
                ]:
         kd = tree_open(fn)
         I = tree_search_radec(kd, rc, dc, rad)
