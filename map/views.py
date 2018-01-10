@@ -2609,13 +2609,21 @@ def touchup_ccds(ccds, survey):
     return ccds
 
 def ccds_overlapping_html(ccds, layer):
-    html = ['<table class="ccds"><thead><tr><th>name</th><th>exptime</th><th>seeing</th><th>propid</th><th>date</th><th>image</th></tr></thead><tbody>']
+    html = ['<table class="ccds"><thead><tr><th>name</th><th>exptime</th><th>seeing</th><th>propid</th><th>date</th><th>image</th><th>image (ooi)</th></tr></thead><tbody>']
     for ccd in ccds:
-        ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum, ccd.ccdname.strip(), ccd.filter.strip())
-        html.append('<tr><td><a href="%s">%s</a></td><td>%.1f</td><td>%.2f</td><td>%s</td><td>%s</td><td>%s</td>' % (
-            reverse(ccd_detail, args=(layer, ccdname.replace(' ','-'))), ccdname,
+        ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum,
+                                   ccd.ccdname.strip(), ccd.filter.strip())
+        ccdtag = ccdname.replace(' ','-')
+        imgurl = reverse('image_data', args=(layer, ccdtag))
+        imgooiurl = imgurl + '?type=ooi'
+        ooitext = ''
+        if '_oki_' in ccd.image_filename:
+            ooitext = '<a href="%s">ooi</a>' % imgooiurl
+        html.append(('<tr><td><a href="%s">%s</a></td><td>%.1f</td><td>%.2f</td>' +
+                     '<td>%s</td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td>') % (
+            reverse(ccd_detail, args=(layer, ccdtag)), ccdname,
             ccd.exptime, ccd.seeing, ccd.propid, ccd.date_obs + ' ' + ccd.ut[:8],
-            ccd.image_filename.strip()))
+            imgurl, ccd.image_filename.strip(), ooitext))
     html.append('</tbody></table>')
     return html
 
