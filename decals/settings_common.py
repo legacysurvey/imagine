@@ -30,6 +30,7 @@ ENABLE_DR2 = False
 ENABLE_DR3 = True
 ENABLE_DR4 = True
 ENABLE_DR5 = False
+ENABLE_DR6 = False
 
 ENABLE_DECAPS = True
 ENABLE_PS1 = False

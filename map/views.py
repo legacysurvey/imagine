@@ -56,6 +56,10 @@ tileversions = {
 
     'phat': [1,],
 
+    'mzls+bass-dr6': [1],
+    'mzls+bass-dr6-model': [1],
+    'mzls+bass-dr6-resid': [1],
+
     'decaps': [1, 2],
     'decaps-model': [1, 2],
     'decaps-resid': [1, 2],
@@ -108,6 +112,7 @@ def _index(req,
         enable_dr3 = settings.ENABLE_DR3,
         enable_dr4 = settings.ENABLE_DR4,
         enable_dr5 = settings.ENABLE_DR5,
+        enable_dr6 = settings.ENABLE_DR6,
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         enable_dr3_models = settings.ENABLE_DR3,
@@ -116,10 +121,13 @@ def _index(req,
         enable_dr4_resids = settings.ENABLE_DR4,
         enable_dr5_models = settings.ENABLE_DR5,
         enable_dr5_resids = settings.ENABLE_DR5,
+        enable_dr6_models = settings.ENABLE_DR6,
+        enable_dr6_resids = settings.ENABLE_DR6,
         enable_dr2_overlays = settings.ENABLE_DR2,
         enable_dr3_overlays = settings.ENABLE_DR3,
         enable_dr4_overlays = settings.ENABLE_DR4,
         enable_dr5_overlays = settings.ENABLE_DR5,
+        enable_dr6_overlays = settings.ENABLE_DR6,
         enable_eboss = settings.ENABLE_EBOSS,
         enable_desi_targets = True,
         enable_spectra = True,
@@ -1886,6 +1894,8 @@ def layer_name_map(name):
 
             'mzls bass-dr4': 'mzls+bass-dr4',
 
+            'mzls bass-dr6': 'mzls+bass-dr6',
+
             'decaps2': 'decaps',
             'decaps2-model': 'decaps-model',
             'decaps2-resid': 'decaps-resid',
@@ -2083,7 +2093,7 @@ def _get_survey(name=None):
     basedir = settings.DATA_DIR
 
     if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5',
-                 'mzls+bass-dr4', 'decaps', 'eboss']:
+                 'mzls+bass-dr4', 'mzls+bass-dr6', 'decaps', 'eboss']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
@@ -2106,6 +2116,9 @@ def _get_survey(name=None):
         elif name == 'decals-dr5':
             d.drname = 'DECaLS DR5'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'
+        elif name == 'mzls+bass-dr6':
+            d.drname = 'MzLS+BASS DR6'
+            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr6/'
         elif name == 'decaps':
             d.drname = 'DECaPS'
             d.drurl = 'http://legacysurvey.org/'
@@ -2462,7 +2475,8 @@ def get_ccd_object(survey, ccd):
 def ccd_detail(req, name, ccd):
     survey, c = get_ccd_object(name, ccd)
 
-    if name in ['decals-dr2', 'decals-dr3', 'mzls+bass-dr4', 'decals-dr5']:
+    if name in ['decals-dr2', 'decals-dr3', 'mzls+bass-dr4', 'decals-dr5',
+                'mzls+bass-dr6', ]:
         imgurl = reverse('image_data', args=[name, ccd])
         dqurl  = reverse('dq_data', args=[name, ccd])
         ivurl  = reverse('iv_data', args=[name, ccd])
@@ -3156,6 +3170,17 @@ def get_layer(name, default=None):
         survey = _get_survey('eboss')
         layer = ReDecalsLayer('eboss', 'image', survey)
 
+    elif name in ['mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
+        survey = _get_survey('mzls+bass-dr6')
+        image = ReDecalsLayer('mzls+bass-dr6', 'image', survey)
+        model = ReDecalsLayer('mzls+bass-dr6-model', 'model', survey, drname='mzls+bass-dr6')
+        resid = ReDecalsResidLayer(image, model, 'mzls+bass-dr6-resid', 'resid', survey,
+                                   drname='mzls+bass-dr6')
+        layers['mzls+bass-dr6'] = image
+        layers['mzls+bass-dr6-model'] = model
+        layers['mzls+bass-dr6-resid'] = resid
+        layer = layers[name]
+
     elif name in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid']:
         survey = _get_survey('decals-dr5')
         image = ReDecalsLayer('decals-dr5', 'image', survey)
@@ -3327,7 +3352,8 @@ if __name__ == '__main__':
     #response = c.get('/viewer/image-data/decals-dr5/decam-335137-N24-g')
     #response = c.get('/image-data/decals-dr5/decam-335137-N24-g')
     #response = c.get('/phat/1/13/7934/3050.jpg')
-    response = c.get('/phat/1/8/248/95.jpg')
+    #response = c.get('/phat/1/8/248/95.jpg')
+    response = c.get('/mzls+bass-dr6/1/13/8180/4095.jpg')
     print('Got:', response.status_code)
     print('Content:', response.content)
     sys.exit(0)

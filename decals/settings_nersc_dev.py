@@ -31,6 +31,7 @@ ENABLE_DR2  = False
 ENABLE_DECAPS = True
 ENABLE_PS1 = True
 ENABLE_DR5 = True
+ENABLE_DR6 = True
 
 ENABLE_EBOSS = True
 

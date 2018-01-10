@@ -20,6 +20,16 @@ urlpatterns = [
     url(r'^eboss/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('eboss')),
 
+    # MzLS+BASS DR6 tiles
+    url(r'^mzls\+bass-dr6/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('mzls+bass-dr6')),
+    url(r'^mzls\+bass-dr6-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('mzls+bass-dr6-model')),
+    url(r'^mzls\+bass-dr6-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('mzls+bass-dr6-resid')),
+    # DR6 catalog
+    url(r'^mzls\+bass-dr6/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr6),
+
     # DR5
     url(r'^decals-dr5/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decals-dr5')),

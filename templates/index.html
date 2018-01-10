@@ -1390,6 +1390,27 @@ var mylayer_B = function (name, pretty, kwargs) {
     return tiles;
 };
 
+{% if enable_dr6 %}
+tiles = mylayer_B('mzls+bass-dr6', 'MzLS+BASS DR6 images',
+                {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+if (defaultTile == null) {
+    defaultTile = tiles;
+}
+
+{% if enable_dr6_models %}
+tiles = mylayer_B('mzls+bass-dr6-model', 'MzLS+BASS DR6 models',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+                                            
+{% if enable_dr6_resids %}
+tiles = mylayer_B('mzls+bass-dr6-resid', 'MzLS+BASS DR6 residuals',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
 {% if enable_dr5 %}
 tiles = mylayer_B('decals-dr5', 'DECaLS DR5 images',
                   {'urlPatterns': [ [14, maxZoom, tile_url], ],});
@@ -2114,6 +2135,20 @@ var expOverlay5 = new CircleOverlay('decals-dr5-exps',
                                      'dr_name': 'DR5',
                                     });
 {% endif %}
+
+{% if enable_dr6_overlays %}
+var ccdOverlay6 = new PolygonOverlay('mzls+bass-dr6-ccds',
+                                     'MzLS+BASS DR6 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds6',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'mzls+bass-dr6',
+                                     'dr_name': 'DR6',
+                                    });
+{% endif %}
                                                      
 var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
                                       {'url': bricks_url,
@@ -2176,6 +2211,9 @@ var polygonOverlays = [
     {% if enable_dr5_overlays %}
     ccdOverlay5, expOverlay5,
     {% endif %}
+    {% if enable_dr6_overlays %}
+    ccdOverlay6,
+    {% endif %}
     brickOverlay,
     ccdOverlaySdss,
     {% if enable_spectra %}
@@ -2220,6 +2258,15 @@ var decalscat5 = new DecalsCatalogLayer(tileWatcher,
                                         {'url': cat_url,
                                          'minZoom': 12,
                                          'urlTerm': 'sources-dr5'});
+{% endif %}
+
+{% if enable_dr6_overlays %}
+var mzlsbasscat6 = new DecalsCatalogLayer(tileWatcher,
+                                          'mzls+bass-dr6',
+                                          'MzLS+BASS DR6 Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr6'});
 {% endif %}
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
@@ -2296,6 +2343,9 @@ var overlays = [
     {% if enable_dr5_overlays %}
     decalscat5,
     {% endif %}
+    {% if enable_dr6_overlays %}
+    mzlsbasscat6,
+    {% endif %}
     {% if enable_dr2_overlays %}
     ccdOverlay2,
     {% endif %}
@@ -2307,6 +2357,9 @@ var overlays = [
     {% endif %}
     {% if enable_dr5_overlays %}
     ccdOverlay5,
+    {% endif %}
+    {% if enable_dr6_overlays %}
+    ccdOverlay6,
     {% endif %}
     {% if enable_dr2_overlays %}
     expOverlay2,

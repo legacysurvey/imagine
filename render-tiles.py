@@ -59,10 +59,10 @@ def _one_tile(X):
         get_tile(req, version, zoom, x, y, savecache=True,
                  return_if_not_found=True)
 
-    elif kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid']:
+    elif kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
+                  'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
         v = 1
         layer = get_layer(kind)
-        #print('kind', kind, 'zoom', zoom, 'x,y', x,y)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
                               **kwargs)
 
@@ -211,6 +211,7 @@ def top_levels(mp, opt):
     if opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid',
                     'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
                     'decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
+                    'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
                     'eboss',
                     'unwise-neo2', 'sdss2']:
         import pylab as plt
