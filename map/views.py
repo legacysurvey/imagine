@@ -2485,6 +2485,10 @@ def ccd_detail(req, name, ccd):
         cols = c.columns()
         if 'photometric' in cols and 'blacklist_ok' in cols:
             flags = 'Photometric: %s.  Not-blacklisted: %s<br />' % (c.photometric, c.blacklist_ok)
+        ooitext = ''
+        if '_oki_' in c.image_filename:
+            imgooiurl = imgurl + '?type=ooi'
+            ooitext = '<li>image (ooi): <a href="%s">%s</a>' % (imgooiurl, ccd)
         about = html_tag + '''
 <body>
 CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix, band %s, RA,Dec <a href="%s/?ra=%.4f&dec=%.4f">%.4f, %.4f</a>
@@ -2493,6 +2497,7 @@ CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix, b
 Observed MJD %.3f, %s %s UT
 <ul>
 <li>image: <a href="%s">%s</a>
+%s
 <li>weight or inverse-variance: <a href="%s">%s</a>
 <li>data quality (flags): <a href="%s">%s</a>
 </ul>
@@ -2503,7 +2508,8 @@ Observed MJD %.3f, %s %s UT
                 c.filter, settings.ROOT_URL, c.ra, c.dec, c.ra, c.dec,
                 flags,
                 c.mjd_obs, c.date_obs, c.ut,
-                imgurl, ccd, ivurl, ccd, dqurl, ccd, imgstamp)
+                imgurl, ccd,
+                ooitext, ivurl, ccd, dqurl, ccd, imgstamp)
         about = about % args
 
     else:
@@ -3056,6 +3062,12 @@ def image_data(req, survey, ccd):
     survey, c = get_ccd_object(survey, ccd)
     im = survey.get_image_object(c) #, makeNewWeightMap=False)
     fn = im.imgfn
+
+    imgtype = req.GET.get('type', None)
+    print('imgtype: "%s"' % imgtype)
+    if imgtype == 'ooi':
+        fn = fn.replace('_oki_', '_ooi_')
+
     #dirnm = survey.get_image_dir()
     #fn = os.path.join(dirnm, c.image_filename)
     print('Opening', fn)
