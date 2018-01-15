@@ -591,14 +591,10 @@ class MapLayer(object):
         pass
 
     def bricknames_for_band(self, bricks, band):
+        has = getattr(bricks, 'has_%s' % band, None)
+        if has is not None:
+            return bricks.brickname[has]
         return bricks.brickname
-        '''
-            has = getattr(B, 'has_%s' % band, None)
-            if has is not None and not has[i]:
-                # No coverage for band in this brick.
-                debug('Brick', brickname, 'has no', band, 'band')
-                continue
-        '''
 
     def get_filename(self, brick, band, scale, tempfiles=None):
         if scale == 0:
@@ -786,11 +782,27 @@ class MapLayer(object):
                 except OverlapError:
                     #debug('Resampling exception')
                     continue
+
+                bmask = self.get_brick_mask(bwcs, brick)
+                if bmask is not None:
+                    # Assume bmask is a binary mask as large as the bwcs.
+                    # Shift the Xi,Yi coords
+                    I = np.flatnonzero(bmask[Yi+ylo, Xi+xlo])
+                    if len(I) == 0:
+                        continue
+                    Yo = Yo[I]
+                    Xo = Xo[I]
+                    Yi = Yi[I]
+                    Xi = Xi[I]
+
                 rimg[Yo,Xo] += img[Yi,Xi]
                 rn  [Yo,Xo] += 1
             rimg /= np.maximum(rn, 1)
             rimgs.append(rimg)
         return rimgs
+
+    def get_brick_mask(self, bwcs, brick):
+        return None
 
     def get_tile(self, req, ver, zoom, x, y,
                  wcs=None,
@@ -1345,21 +1357,50 @@ class RebrickedMixin(object):
 
         inds = match_radec(allbricks.ra, allbricks.dec, bsmall.ra, bsmall.dec, radius,
                            indexlist=True)
+
+        haves = np.all(['has_%s' % band in bsmall.get_columns() for band in self.bands])
+        print('Does bsmall have has_<band> columns:', haves)
+        if haves:
+            for b in self.bands:
+                allbricks.set('has_%s' % b, np.zeros(len(allbricks), bool))
+
         keep = []
         for ia,I in enumerate(inds):
             #if (allbricks.dec[ia] > 80):
             #    print('Brick', allbricks.brickname[ia], ': matches', I)
             if I is None:
                 continue
+
             # Check for actual RA,Dec box overlap, not spherematch possible overlap
-            good = np.any((bsmall.dec2[I] >= allbricks.dec1[ia]) *
-                          (bsmall.dec1[I] <= allbricks.dec2[ia]) *
-                          (bsmall.ra2[I] >= allbricks.ra1[ia]) *
-                          (bsmall.ra1[I] <= allbricks.ra2[ia]))
-            if (allbricks.dec[ia] > 80):
-                print('Keep?', good)
-            if good:
+            if haves:
+                Igood = np.array(I)[(bsmall.dec2[I] >= allbricks.dec1[ia]) *
+                                    (bsmall.dec1[I] <= allbricks.dec2[ia]) *
+                                    (bsmall.ra2[I] >= allbricks.ra1[ia]) *
+                                    (bsmall.ra1[I] <= allbricks.ra2[ia])]
+                print('Brick', allbricks.brickname[ia], ':', len(I), 'spherematches', len(Igood), 'in box')
+                if len(Igood) == 0:
+                    continue
+                hasany = False
+                for b in self.bands:
+                    hasband = np.any(bsmall.get('has_%s' % b)[Igood])
+                    print('  has', b, '?', hasband)
+                    if not hasband:
+                        continue
+                    hasany = True
+                    allbricks.get('has_%s' % b)[ia] = True
+                if not hasany:
+                    continue
                 keep.append(ia)
+
+            else:
+                good = np.any((bsmall.dec2[I] >= allbricks.dec1[ia]) *
+                              (bsmall.dec1[I] <= allbricks.dec2[ia]) *
+                              (bsmall.ra2[I] >= allbricks.ra1[ia]) *
+                              (bsmall.ra1[I] <= allbricks.ra2[ia]))
+                if (allbricks.dec[ia] > 80):
+                    print('Keep?', good)
+                if good:
+                    keep.append(ia)
         keep = np.array(keep)
         allbricks.cut(keep)
         print('Cut generic bricks to', len(allbricks))
@@ -1446,6 +1487,17 @@ class ResidMixin(object):
         mfn = self.model_layer.get_filename(brick, band, scale, tempfiles=tempfiles)
         ifn = self.image_layer.get_filename(brick, band, scale, tempfiles=tempfiles)
         return ifn
+
+class UniqueBrickMixin(object):
+    '''For model and resid layers where only blobs within the brick's unique area
+    are fit -- thus bricks should be masked to their unique area before coadding.
+    '''
+    def get_brick_mask(self, bwcs, brick):
+        from legacypipe.utils import find_unique_pixels
+        H,W = bwcs.shape
+        U = find_unique_pixels(bwcs, W, H, None, 
+                               brick.ra1, brick.ra2, brick.dec1, brick.dec2)
+        return U
 
 class DecalsResidLayer(ResidMixin, DecalsLayer):
     pass
@@ -1556,7 +1608,10 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
                   float(size), float(size))
         return wcs
 
-class ReDecalsResidLayer(ResidMixin, ReDecalsLayer):
+class ReDecalsResidLayer(UniqueBrickMixin, ResidMixin, ReDecalsLayer):
+    pass
+
+class ReDecalsModelLayer(UniqueBrickMixin, ReDecalsLayer):
     pass
     
 class PS1Layer(MapLayer):
@@ -3195,7 +3250,7 @@ def get_layer(name, default=None):
     elif name in ['mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
         survey = _get_survey('mzls+bass-dr6')
         image = ReDecalsLayer('mzls+bass-dr6', 'image', survey)
-        model = ReDecalsLayer('mzls+bass-dr6-model', 'model', survey, drname='mzls+bass-dr6')
+        model = ReDecalsModelLayer('mzls+bass-dr6-model', 'model', survey, drname='mzls+bass-dr6')
         resid = ReDecalsResidLayer(image, model, 'mzls+bass-dr6-resid', 'resid', survey,
                                    drname='mzls+bass-dr6')
         layers['mzls+bass-dr6'] = image
@@ -3375,7 +3430,8 @@ if __name__ == '__main__':
     #response = c.get('/image-data/decals-dr5/decam-335137-N24-g')
     #response = c.get('/phat/1/13/7934/3050.jpg')
     #response = c.get('/phat/1/8/248/95.jpg')
-    response = c.get('/mzls+bass-dr6/1/13/8180/4095.jpg')
+    response = c.get('/mzls+bass-dr6-model/1/12/4008/2040.jpg')
+    # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
     print('Got:', response.status_code)
     print('Content:', response.content)
     sys.exit(0)
