@@ -2584,6 +2584,31 @@ var lastLatLng = map.getCenter();
 map.addLayer(sqlOverlay.getGroup());
 {% endif %}
 
+if ('mark' in qstr) {
+    var coords = qstr['mark'];
+    coords = coords.split(',');
+    var clong = map.getCenter().lng;
+    //var rr = [];
+    //var dd = [];
+    var circleList = new Array(coords.length / 2);
+    for (var i=0; i<coords.length/2; i++) {
+        var r = Number.parseFloat(coords[2*i]);
+        var d = Number.parseFloat(coords[2*i+1]);
+
+        var lat = dec2lat(d);
+        var lng = ra2long_C(r, clong);
+
+        var rad = arcsecToMeters(5.);
+        var color = 'yellow';
+        var circ = L.circle([lat, lng], rad,
+                            {'color':color, 'fillOpacity':0, 'weight':5});
+        circleList[i] = circ;
+        // rr.push_back(Number.parseFloat(coords[i]));
+        // dd.push_back(Number.parseFloat(coords[i+1]));
+    }
+    var lg = L.layerGroup(circleList);
+    map.addLayer(lg);
+}
 
 for (var i=0,len=overlays.length; i<len; i++) {
     if (overlays[i]._url_term in qstr) {
