@@ -130,6 +130,7 @@ ALLOWED_HOSTS = [
     'c.imagine.legacysurvey.org',
     'd.imagine.legacysurvey.org',
     'testserver',
+    'localhost',
 ]
 
 # Application definition
