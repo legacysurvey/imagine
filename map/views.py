@@ -2322,6 +2322,7 @@ def get_ccd_object(survey, ccd):
     return survey, c
 
 def ccd_detail(req, name, ccd):
+    name = layer_name_map(name)
     survey, c = get_ccd_object(name, ccd)
 
     if name in ['decals-dr2', 'decals-dr3', 'mzls+bass-dr4', 'decals-dr5']:
