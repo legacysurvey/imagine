@@ -939,7 +939,6 @@ class MapLayer(object):
         width  = min(int(req.GET.get('width',  size)), maxsize)
         height = min(int(req.GET.get('height', size)), maxsize)
         bands = req.GET.get('bands', None)
-        #print('get_cutout: GET bands=', bands)
 
         # For retrieving a single-CCD cutout, not coadd
         #ccd = req.GET.get('ccd', None)

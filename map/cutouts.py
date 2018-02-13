@@ -52,14 +52,10 @@ def jpeg_cutout(req):
             os.unlink(fn)
         return rtn
 
-    if name == 'decals-dr1j':
-        return jpeg_cutout_decals_dr1j(req)
-
 def fits_cutout(req):
     name = req.GET.get('layer', 'decals-dr3')
     name = layer_name_map(name)
 
-    # Sanjaya : redirect to NERSC
     # Sanjaya : redirect to NERSC
     if (settings.REDIRECT_CUTOUTS_DECAPS and
         name in ['decaps', 'decaps-model', 'decaps-resid']):
@@ -75,8 +71,6 @@ def fits_cutout(req):
             print('Deleting temp file', fn)
             os.unlink(fn)
         return rtn
-    if name == 'decals-dr1j':
-        return fits_cutout_decals_dr1j(req)
 
 if __name__ == '__main__':
     import os
