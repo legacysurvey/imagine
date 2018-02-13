@@ -2286,6 +2286,8 @@ def _ccds_touching_box(north, south, east, west, Nmax=None, name=None, survey=No
 
     J = _objects_touching_box(tree, north, south, east, west, Nmax=Nmax,
                               radius=radius)
+    if len(J) == 0:
+        return []
     #return CCDs[J]
     return readrows(readrows_arg, J)
 
@@ -2336,6 +2338,9 @@ def ccd_list(req):
 
     CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
     print('CCDs in box for', name, ':', len(CCDS))
+    if len(CCDS) == 0:
+        return HttpResponse(json.dumps(dict(polys=[])), content_type='application/json')
+        
     if 'good_ccd' in CCDS.columns():
         CCDS.cut(CCDS.good_ccd)
         print('Good CCDs in box for', name, ':', len(CCDS))
@@ -2947,6 +2952,7 @@ def cutout_panels(req, expnum=None, extname=None, name=None):
 
     if name is None:
         name = req.GET.get('name', name)
+    name = layer_name_map(name)
     survey = _get_survey(name=name)
     ccd = _get_ccd(expnum, extname, survey=survey)
     print('CCD:', ccd)
