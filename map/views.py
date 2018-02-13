@@ -662,7 +662,7 @@ class MapLayer(object):
             fn = tmpfn
         return fn
         
-    def get_base_filename(self, brick, band):
+    def get_base_filename(self, brick, band, **kwargs):
         pass
 
     def get_scaled_filename(self, brick, band, scale):
@@ -951,11 +951,64 @@ class MapLayer(object):
 
         if bands is not None:
             bands = self.parse_bands(bands)
-            #print('parsed bands:', bands)
         if bands is None:
             bands = self.get_bands()
 
-        #print('get_cutout: bands=', bands)
+
+        if 'subimage' in req.GET:
+            from astrometry.libkd.spherematch import match_radec
+            import tempfile
+            import numpy as np
+            bricks = self.get_bricks()
+            # HACK
+            #brickrad = 3600. * 0.262 / 2 * np.sqrt(2.) / 3600.
+            I,J,d = match_radec(ra, dec, bricks.ra, bricks.dec, 1., nearest=True)
+            if len(I) == 0:
+                return HttpResponse('no overlap')
+            brick = bricks[J[0]]
+            print('RA,Dec', ra,dec, 'in brick', brick.brickname)
+            scale = 0
+            f,outfn = tempfile.mkstemp(suffix='.fits')
+            os.close(f)
+            os.unlink(outfn)
+            fitsio.write(outfn, None, header=hdr, clobber=True)
+            for band in bands:
+                fn = self.get_filename(brick, band, scale)
+                print('Image filename', fn)
+                wcs = self.read_wcs(brick, band, scale, fn=fn)
+                if wcs is None:
+                    continue
+                ok,xx,yy = wcs.radec2pixelxy(ra, dec)
+                print('x,y', xx,yy)
+                H,W = wcs.shape
+                xx = int(np.round(xx - width/2)) - 1
+                x0 = max(0, xx)
+                x1 = min(x0 + width, W)
+                yy = int(np.round(yy - height/2)) - 1
+                y0 = max(0, yy)
+                y1 = min(y0 + height, H)
+                slc = (slice(y0, y1), slice(x0, x1))
+                subwcs = wcs.get_subimage(x0, y0, x1-x0, y1-y0)
+                try:
+                    img = self.read_image(brick, band, 0, slc, fn=fn)
+                except Exception as e:
+                    print('Failed to read image:', e)
+                    continue
+                ivfn = self.get_base_filename(brick, band, invvar=True)
+                print('Invvar filename', ivfn)
+                iv = self.read_image(brick, band, 0, slc, fn=ivfn)
+                hdr = fitsio.FITSHDR()
+                self.populate_fits_cutout_header(hdr)
+                hdr['BAND'] = band
+                subwcs.add_to_header(hdr)
+                # Append image to FITS file
+                fitsio.write(outfn, img, header=hdr)
+                # Add invvar
+                hdr['IMAGETYP'] = 'invvar'
+                fitsio.write(outfn, iv, header=hdr)
+            fn = 'cutout_%.4f_%.4f.fits' % (ra,dec)
+            return send_file(outfn, 'image/fits', unlink=True, filename=fn)
+
 
         from astrometry.util.util import Tan
         import numpy as np
@@ -1054,7 +1107,7 @@ class PhatLayer(MapLayer):
         ### FIXME
         return 'BGR'
 
-    def get_base_filename(self, brick, band):
+    def get_base_filename(self, brick, band, **kwargs):
         #return os.path.join(settings.DATA_DIR, 'm31_full.fits')
         return os.path.join(settings.DATA_DIR, 'm31_full_%s.fits' % band)
 
@@ -1198,8 +1251,10 @@ class DecalsLayer(MapLayer):
             '%(scale)i%(band)s', '%(brickname).3s',
             self.imagetype + '-%(brickname)s-%(band)s.fits')
 
-    def get_base_filename(self, brick, band):
+    def get_base_filename(self, brick, band, invvar=False, **kwargs):
         brickname = brick.brickname
+        if invvar:
+            return self.survey.find_file('invvar', brick=brickname, band=band)
         return self.survey.find_file(self.imagetype, brick=brickname, band=band)
     
     def get_rgb(self, imgs, bands, **kwargs):
@@ -1221,7 +1276,7 @@ class DecalsDr3Layer(DecalsLayer):
     '''The data model changed (added .fz compression) as of DR5; this
     class retrofits pre-DR5 filenames.
     '''
-    def get_base_filename(self, brick, band):
+    def get_base_filename(self, brick, band, **kwargs):
         brickname = brick.brickname
         fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
         if fn is not None:
@@ -1820,7 +1875,7 @@ class UnwiseLayer(MapLayer):
             return None
         return bricks[I]
 
-    def get_base_filename(self, brick, band):
+    def get_base_filename(self, brick, band, **kwargs):
         brickname = brick.brickname
         brickpre = brickname[:3]
         fn = os.path.join(self.dir, brickpre, brickname,
