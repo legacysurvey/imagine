@@ -718,7 +718,9 @@ def main():
 
     if opt.scale:
         # Rebricked
-        if opt.kind in ['decals-dr5', 'decals-dr5-model', 'eboss']:
+        if opt.kind in ['decals-dr5', 'decals-dr5-model', 'eboss',
+                        'mzls+bass-dr6', 'mzls+bass-dr6-model',
+                    ]:
             from map.views import get_layer
 
             layer = get_layer(opt.kind)
