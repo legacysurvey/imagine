@@ -615,6 +615,11 @@ def top_levels(mp, opt):
 
 
 
+def _layer_get_filename(args):
+    layer,brick,band,scale = args
+    fn = layer.get_filename(brick, band, scale)
+    print(fn)
+
 def main():
     import optparse
 
@@ -722,10 +727,22 @@ def main():
 
                 bands = opt.bands
 
+                has = {}
+                for band in bands:
+                    if 'has_%s' % band in B.get_columns():
+                        has[band] = B.get('has_%s' % band)
+                    else:
+                        # assume yes
+                        has[band] = np.ones(len(B), bool)
+
+                # Run one scale at a time, to avoid too much duplicate work?
+                args = []
                 for ibrick,brick in enumerate(B):
                     for band in bands:
-                        fn = layer.get_filename(brick, band, scale)
-                        print(fn)
+                        if has[band][ibrick]:
+                            args.append((layer, brick, band, scale))
+                print(len(args), 'bricks for scale', scale)
+                mp.map(_layer_get_filename, args)
 
             sys.exit(0)
                 
