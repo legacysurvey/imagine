@@ -590,18 +590,27 @@ class MapLayer(object):
     def bricks_touching_radec_box(self, rlo, rhi, dlo, dhi, scale=None):
         pass
 
-    def bricknames_for_band(self, bricks, band):
+    def bricks_for_band(self, bricks, band):
         has = getattr(bricks, 'has_%s' % band, None)
         if has is not None:
-            return bricks.brickname[has]
-        return bricks.brickname
+            rtn = bricks[has]
+            # print('bricknames for band', band, ':', len(bricks), 'bricks; returning',
+            #       len(rtn))
+            # print('has:', has)
+            # print('All bricks:', bricks.brickname)
+            # print('Returning :', bricks.brickname[has])
+            return rtn
+        #print('bricknames for band', band, ':', len(bricks), 'bricks; no has_%s column' % band)
+        return bricks
 
     def get_filename(self, brick, band, scale, tempfiles=None):
         if scale == 0:
             return self.get_base_filename(brick, band)
         fn = self.get_scaled_filename(brick, band, scale)
+        #print('Filename:', fn)
         if os.path.exists(fn):
             return fn
+        #print('Creating', fn)
         fn = self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
         if fn is None:
             return None
@@ -727,8 +736,9 @@ class MapLayer(object):
         for band in bands:
             rimg = np.zeros((H,W), np.float32)
             rn   = np.zeros((H,W), np.uint8)
-            bricknames = self.bricknames_for_band(bricks, band)
-            for brick,brickname in zip(bricks,bricknames):
+            bandbricks = self.bricks_for_band(bricks, band)
+            for brick in bandbricks:
+                brickname = brick.brickname
                 print('Reading', brickname, 'band', band, 'scale', scale)
                 # call get_filename to possibly generate scaled version
                 fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
@@ -1312,6 +1322,7 @@ class RebrickedMixin(object):
         fnargs = dict(band=band, brickname=brickname, scale=scale)
         fn = self.get_scaled_pattern() % fnargs
         if not os.path.exists(fn):
+            print('Creating', fn)
             self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
         if not os.path.exists(fn):
             return None
@@ -1451,8 +1462,8 @@ class RebrickedMixin(object):
                               (bsmall.dec1[I] <= allbricks.dec2[ia]) *
                               (bsmall.ra2[I] >= allbricks.ra1[ia]) *
                               (bsmall.ra1[I] <= allbricks.ra2[ia]))
-                if (allbricks.dec[ia] > 80):
-                    print('Keep?', good)
+                #if (allbricks.dec[ia] > 80):
+                #    print('Keep?', good)
                 if good:
                     keep.append(ia)
         keep = np.array(keep)
@@ -3491,7 +3502,9 @@ if __name__ == '__main__':
     #response = c.get('/image-data/decals-dr5/decam-335137-N24-g')
     #response = c.get('/phat/1/13/7934/3050.jpg')
     #response = c.get('/phat/1/8/248/95.jpg')
-    response = c.get('/mzls+bass-dr6-model/1/12/4008/2040.jpg')
+    #response = c.get('/mzls+bass-dr6-model/1/12/4008/2040.jpg')
+    response = c.get('/mzls+bass-dr6/1/10/451/230.jpg')
+    response = c.get('/mzls+bass-dr6/1/11/902/461.jpg')
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
     print('Got:', response.status_code)
     print('Content:', response.content)
