@@ -58,6 +58,8 @@ min/max ra/decs.
 14. Run scaling models
 
     qdo launch mscale 128 --cores_per_worker=1 --keep_env --batchqueue debug --walltime 30:00
+    or, eg,
+    qdo launch mscale 32 --cores_per_worker=1 --keep_env --batchqueue regular --walltime 1:00:00 --batchopts "-a 0-31"
 
 15. Produce top-level models & resids
 

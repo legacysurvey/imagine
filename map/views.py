@@ -761,8 +761,8 @@ class MapLayer(object):
                 xx = xx.astype(np.int)
                 yy = yy.astype(np.int)
 
-                #print('Brick', brickname, 'band', band, 'shape', bwcs.shape,
-                #      'pixel coords', xx, yy)
+                print('Brick', brickname, 'band', band, 'shape', bwcs.shape,
+                      'pixel coords', xx, yy)
 
                 imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
                 M = 10
@@ -770,6 +770,7 @@ class MapLayer(object):
                 xhi = np.clip(xx.max() + M, 0, imW)
                 ylo = np.clip(yy.min() - M, 0, imH)
                 yhi = np.clip(yy.max() + M, 0, imH)
+                print('x range', xlo,xhi, 'y range', ylo,yhi)
                 if xlo >= xhi or ylo >= yhi:
                     #print('No pixel overlap')
                     continue
@@ -793,7 +794,8 @@ class MapLayer(object):
                     #debug('Resampling exception')
                     continue
 
-                bmask = self.get_brick_mask(bwcs, brick)
+
+                bmask = self.get_brick_mask(scale, bwcs, brick)
                 if bmask is not None:
                     # Assume bmask is a binary mask as large as the bwcs.
                     # Shift the Xi,Yi coords
@@ -807,11 +809,49 @@ class MapLayer(object):
 
                 rimg[Yo,Xo] += img[Yi,Xi]
                 rn  [Yo,Xo] += 1
+
+                if False:
+                    import pylab as plt
+                    dest = np.zeros(wcs.shape, bool)
+                    dest[Yo,Xo] = True
+                    source = np.zeros(bwcs.shape, bool)
+                    source[Yi + ylo, Xi + xlo] = True
+                    subsource = np.zeros(subwcs.shape, bool)
+                    subsource[Yi, Xi] = True
+                    destval = np.zeros(wcs.shape, float)
+                    destval[Yo,Xo] = img[Yi,Xi]
+                    plt.clf()
+                    plt.subplot(2,3,1)
+                    plt.imshow(dest, interpolation='nearest', origin='lower')
+                    plt.title('dest')
+                    plt.subplot(2,3,2)
+                    plt.imshow(source, interpolation='nearest', origin='lower')
+                    plt.title('source')
+                    plt.subplot(2,3,4)
+                    plt.imshow(subsource, interpolation='nearest', origin='lower')
+                    plt.title('sub-source')
+                    plt.subplot(2,3,5)
+                    plt.imshow(destval, interpolation='nearest', origin='lower',
+                               vmin=-0.001, vmax=0.01)
+                    plt.title('dest')
+
+                    plt.subplot(2,3,3)
+                    plt.imshow(rimg / np.maximum(rn,1),
+                               interpolation='nearest', origin='lower',
+                               vmin=-0.001, vmax=0.01)
+                    plt.title('rimg')
+                    plt.subplot(2,3,6)
+                    plt.imshow(rn, interpolation='nearest', origin='lower')
+                    plt.title('rn')
+                    plt.savefig('render-%s-%s.png' % (brickname, band))
+
+
+
             rimg /= np.maximum(rn, 1)
             rimgs.append(rimg)
         return rimgs
 
-    def get_brick_mask(self, bwcs, brick):
+    def get_brick_mask(self, scale, bwcs, brick):
         return None
 
     def get_tile(self, req, ver, zoom, x, y,
@@ -1557,7 +1597,9 @@ class UniqueBrickMixin(object):
     '''For model and resid layers where only blobs within the brick's unique area
     are fit -- thus bricks should be masked to their unique area before coadding.
     '''
-    def get_brick_mask(self, bwcs, brick):
+    def get_brick_mask(self, scale, bwcs, brick):
+        if scale > 0:
+            return None
         from legacypipe.utils import find_unique_pixels
         H,W = bwcs.shape
         U = find_unique_pixels(bwcs, W, H, None, 
@@ -3503,8 +3545,9 @@ if __name__ == '__main__':
     #response = c.get('/phat/1/13/7934/3050.jpg')
     #response = c.get('/phat/1/8/248/95.jpg')
     #response = c.get('/mzls+bass-dr6-model/1/12/4008/2040.jpg')
-    response = c.get('/mzls+bass-dr6/1/10/451/230.jpg')
-    response = c.get('/mzls+bass-dr6/1/11/902/461.jpg')
+    #response = c.get('/mzls+bass-dr6/1/10/451/230.jpg')
+    #response = c.get('/mzls+bass-dr6/1/11/902/461.jpg')
+    response = c.get('/mzls+bass-dr6-model/1/6/37/20.jpg')
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
     print('Got:', response.status_code)
     print('Content:', response.content)

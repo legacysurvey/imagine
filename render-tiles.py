@@ -726,16 +726,13 @@ def main():
             if opt.queue:
                 if len(opt.zoom) == 0:
                     opt.zoom = [1,2,3,4,5,6,7]
-                step = 1.
+                step = 0.1
                 ras = np.arange(opt.minra, opt.maxra+step, step)
                 for zoom in opt.zoom:
                     for ralo,rahi in zip(ras, np.clip(ras[1:], opt.minra, opt.maxra)):
                         cmd = 'python render-tiles.py --kind %s --scale --minra %f --maxra %f -z %i' % (opt.kind, ralo, rahi, zoom)
                         print(cmd)
                 sys.exit(0)
-
-            ### HACK!
-            #mp = multiproc(1)
 
             layer = get_layer(opt.kind)
 
