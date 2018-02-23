@@ -319,9 +319,7 @@ def phat(req):
                   maxZoom=18,
     )
 
-def name_query(req):
-    import json
-
+def query_ned(q):
     try:
         # py2
         from urllib2 import urlopen
@@ -330,6 +328,47 @@ def name_query(req):
         # py3
         from urllib.request import urlopen
         from urllib.parse import urlencode
+
+    url = 'http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/NSV?'
+    url += urlencode(dict(q=q)).replace('q=','')
+    print('URL', url)
+    '''
+    # IC 1200#Q2671982
+    #=N=NED:    1     0ms (from cache)
+    %C G     
+    %J 241.1217083 +69.6657778 = 16:04:29.20 +69:39:56.8
+    %J.E [1250.00 1250.00 0] 20032MASX.C.......:
+    %V v 7449.84363 [38.07365] 2003AJ....126.2268W
+    %T E                   
+    %MAG 13.74
+    %I.0 NGC 6079 =[G]
+    #B 17
+
+    # IC 12000#Q2672097
+    #! *** Nothing found *** 
+    #====Done (2016-Mar-04,17:43:13z)====
+
+    '''
+    f = urlopen(url)
+    code = f.getcode()
+    print('Code', code)
+    for line in f.readlines():
+        if py3:
+            line = line.decode()
+        words = line.split()
+        if len(words) == 0:
+            continue
+        if words[0] == '%J':
+            ra = float(words[1])
+            dec = float(words[2])
+            return True,(ra,dec)
+        if words[0] == '#!':
+            error = ' '.join(words[1:])
+            return False,error
+    return False,'Failed to parse answer from NED'
+
+def name_query(req):
+    import json
 
     obj = req.GET.get('obj')
     #print('Name query: "%s"' % obj)
@@ -353,46 +392,16 @@ def name_query(req):
         except:
             pass
 
-    url = 'http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/NSV?'
-    url += urlencode(dict(q=obj)).replace('q=','')
-    print('URL', url)
-
-    '''
-    # IC 1200#Q2671982
-    #=N=NED:    1     0ms (from cache)
-    %C G     
-    %J 241.1217083 +69.6657778 = 16:04:29.20 +69:39:56.8
-    %J.E [1250.00 1250.00 0] 20032MASX.C.......:
-    %V v 7449.84363 [38.07365] 2003AJ....126.2268W
-    %T E                   
-    %MAG 13.74
-    %I.0 NGC 6079 =[G]
-    #B 17
-
-    # IC 12000#Q2672097
-    #! *** Nothing found *** 
-    #====Done (2016-Mar-04,17:43:13z)====
-
-    '''
     try:
-        f = urlopen(url)
-        code = f.getcode()
-        print('Code', code)
-        for line in f.readlines():
-            if py3:
-                line = line.decode()
-            words = line.split()
-            if len(words) == 0:
-                continue
-            if words[0] == '%J':
-                ra = float(words[1])
-                dec = float(words[2])
-                return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=obj)),
-                                    content_type='application/json')
-            if words[0] == '#!':
-                return HttpResponse(json.dumps(dict(error=' '.join(words[1:]))),
-                                    content_type='application/json')
-
+        result,val = query_ned(obj)
+        if result:
+            ra,dec = val
+            return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=obj)),
+                                content_type='application/json')
+        else:
+            error = val
+            return HttpResponse(json.dumps(dict(error=error)),
+                                content_type='application/json')
     except Exception as e:
         return HttpResponse(json.dumps(dict(error=str(e))),
                             content_type='application/json')
@@ -2662,13 +2671,11 @@ def ccd_detail(req, layer, ccd):
         if '_oki_' in c.image_filename:
             imgooiurl = imgurl + '?type=ooi'
             ooitext = '<li>image (ooi): <a href="%s">%s</a>' % (imgooiurl, ccd)
-
         if not 'seeing' in cols:
             pixscale = {'decam':   0.262,
                         'mosaic':  0.262,
                         '90prime': 0.454}.get(c.camera.strip(), 0.262)
             c.seeing = pixscale * c.fwhm
-
         if not 'date_obs' in cols:
             from astrometry.util.starutil_numpy import mjdtodate
             # c.mjd_obs -> c.date_obs, c.ut
@@ -2706,7 +2713,6 @@ Observed MJD %.3f, %s %s UT
                  (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262))
 
     return HttpResponse(about)
-
 
 def exposure_detail(req, name, exp):
     import numpy as np
