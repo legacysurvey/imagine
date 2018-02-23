@@ -42,9 +42,6 @@ READ_ONLY_BASEDIR = False
 
 DEBUG_LOGGING = False
 
-SDSS_PHOTOOBJS = None
-SDSS_RESOLVE = None
-
 MAX_NATIVE_ZOOM = 15
 
 
@@ -75,11 +72,6 @@ UNWISE_DIR = os.path.join(DATA_DIR, 'unwise-coadds')
 UNWISE_NEO1_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo1')
 UNWISE_NEO2_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo2')
 SDSS_DIR   = os.path.join(DATA_DIR, 'sdss')
-
-#DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
-#UNWISE_DIR = '/project/projectdirs/cosmo/data/unwise/unwise-coadds'
-
-#os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-dr1/'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/

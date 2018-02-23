@@ -19,8 +19,7 @@ ENABLE_CUTOUTS = False
 ENABLE_VCC  = False
 ENABLE_WL   = False
 ENABLE_DR2  = False
+ENABLE_DR3  = False
 ENABLE_DR5  = True
-
-SDSS_PHOTOOBJS = '/project/projectdirs/cosmo/data/sdss/dr10/boss/photoObj'
-SDSS_RESOLVE = '/project/projectdirs/cosmo/data/sdss/pre13/eboss/resolve/2013-07-29'
+ENABLE_DR6  = True
 
