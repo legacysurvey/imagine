@@ -2671,13 +2671,11 @@ def ccd_detail(req, layer, ccd):
         if '_oki_' in c.image_filename:
             imgooiurl = imgurl + '?type=ooi'
             ooitext = '<li>image (ooi): <a href="%s">%s</a>' % (imgooiurl, ccd)
-
         if not 'seeing' in cols:
             pixscale = {'decam':   0.262,
                         'mosaic':  0.262,
                         '90prime': 0.454}.get(c.camera.strip(), 0.262)
             c.seeing = pixscale * c.fwhm
-
         if not 'date_obs' in cols:
             from astrometry.util.starutil_numpy import mjdtodate
             # c.mjd_obs -> c.date_obs, c.ut
@@ -2715,7 +2713,6 @@ Observed MJD %.3f, %s %s UT
                  (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262))
 
     return HttpResponse(about)
-
 
 def exposure_detail(req, name, exp):
     import numpy as np
