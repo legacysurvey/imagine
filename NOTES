@@ -1,5 +1,88 @@
+---------------------------------
+Rendering tiles for DR6 at NERSC.
+---------------------------------
 
+1. Add mzls+bass-dr6 to map/views.py : _get_survey, get_layer
+
+2. Create data/mzls+bass-dr6 directory
+
+    mkdir data/mzls+bass-dr6
+
+3. Create symlinks:
+
+    ln -s /global/projecta/projectdirs/cosmo/work/legacysurvey/dr6/coadd data/mzls+bass-dr6
+    ln -s /global/projecta/projectdirs/cosmo/work/legacysurvey/dr6/tractor data/mzls+bass-dr6
+
+4. Find bricks in survey
+
+    python render-tiles.py --kind mzls+bass-dr6 --bricks-exist
+    cp bricks-exist-mzls+bass-dr6.fits data/mzls+bass-dr6/survey-bricks.fits
+    gzip data/mzls+bass-dr6/survey-bricks.fits
+
+4b -- FIXME -- make sure survey-bricks-#.fits.gz get created (once)?
+
+5. Add mzls+bass-dr6 to render-tiles.py in the opt.scale section.
+Also add mzls+bass-dr6 to the code section that sets the default
+min/max ra/decs.
+
+6. Create scaled images.  To avoid duplicating work, this is best done in slices of RA, one scale at a time.  To create qdo queue entries:
+
+    python render-tiles.py --scale --queue --kind mzls+bass-dr6 | qdo load scale -
+
+7. Run these.  You want all of the -z 1 ones to finish before the -z 2 ones begin, to avoid possible duplicate work.
+
+    qdo launch scale 128 --cores_per_worker=1 --keep_env --batchqueue debug --walltime 30:00
+
+8. Queue tiles.
+
+    python render-tiles.py --kind mzls+bass-dr6 --queue -z 6 -z 7 -z 8 -z 9 -z 10 -z 11 -z 12 -z 13 | grep python | qdo load tiles -
+
+9. Add code to _one_tile(X).
+
+10. Run these.  Check how many threads they want.
+
+    qdo launch tiles 8 --cores_per_worker=32 --keep_env --batchqueue debug --walltime 30:00
+
+11. Add code to render-tiles.py : top_levels.
+
+12. Render the top levels (zoom levels 1-5).  This can be run on the login node.
+
+    python render-tiles.py --kind mzls+bass-dr6 --top
+
+
+
+13. Queue scaling models.
+
+    python render-tiles.py --scale --queue --kind mzls+bass-dr6-model | qdo load mscale -
+
+14. Run scaling models
+
+    qdo launch mscale 128 --cores_per_worker=1 --keep_env --batchqueue debug --walltime 30:00
+    or, eg,
+    qdo launch mscale 32 --cores_per_worker=1 --keep_env --batchqueue regular --walltime 1:00:00 --batchopts "-a 0-31"
+
+15. Produce top-level models & resids
+
+    python render-tiles.py --kind mzls+bass-dr6-model --top
+    python render-tiles.py --kind mzls+bass-dr6-resid --top
+
+16. Queue model & resid tiles.
+
+    python render-tiles.py --kind mzls+bass-dr6-model --queue -z 6 -z 7 -z 8 -z 9 -z 10 -z 11 -z 12 -z 13 | grep python | qdo load mtiles -
+    python render-tiles.py --kind mzls+bass-dr6-resid --queue -z 6 -z 7 -z 8 -z 9 -z 10 -z 11 -z 12 -z 13 | grep python | qdo load mtiles -
+
+17. Run model & resid tiles.
+
+    qdo launch mtiles 8 --cores_per_worker=32 --keep_env --batchqueue debug --walltime 30:00
+
+
+
+
+
+---------------------------------
+Old notes on
 Rendering tiles for DR1 at NERSC.
+---------------------------------
 
 
 unWISE W1/W2 images:

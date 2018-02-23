@@ -615,6 +615,11 @@ def top_levels(mp, opt):
 
 
 
+def _layer_get_filename(args):
+    layer,brick,band,scale = args
+    fn = layer.get_filename(brick, band, scale)
+    print(fn)
+
 def main():
     import optparse
 
@@ -683,6 +688,15 @@ def main():
             opt.maxra = 54
         if opt.minra is None:
             opt.minra = 301
+    elif opt.kind in ['mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = -20
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
     elif opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
         if opt.maxdec is None:
             opt.maxdec = -20
@@ -704,8 +718,21 @@ def main():
 
     if opt.scale:
         # Rebricked
-        if opt.kind in ['decals-dr5', 'decals-dr5-model', 'eboss']:
+        if opt.kind in ['decals-dr5', 'decals-dr5-model', 'eboss',
+                        'mzls+bass-dr6', 'mzls+bass-dr6-model',
+                    ]:
             from map.views import get_layer
+
+            if opt.queue:
+                if len(opt.zoom) == 0:
+                    opt.zoom = [1,2,3,4,5,6,7]
+                step = 0.1
+                ras = np.arange(opt.minra, opt.maxra+step, step)
+                for zoom in opt.zoom:
+                    for ralo,rahi in zip(ras, np.clip(ras[1:], opt.minra, opt.maxra)):
+                        cmd = 'python render-tiles.py --kind %s --scale --minra %f --maxra %f -z %i' % (opt.kind, ralo, rahi, zoom)
+                        print(cmd)
+                sys.exit(0)
 
             layer = get_layer(opt.kind)
 
@@ -722,10 +749,22 @@ def main():
 
                 bands = opt.bands
 
+                has = {}
+                for band in bands:
+                    if 'has_%s' % band in B.get_columns():
+                        has[band] = B.get('has_%s' % band)
+                    else:
+                        # assume yes
+                        has[band] = np.ones(len(B), bool)
+
+                # Run one scale at a time, to avoid too much duplicate work?
+                args = []
                 for ibrick,brick in enumerate(B):
                     for band in bands:
-                        fn = layer.get_filename(brick, band, scale)
-                        print(fn)
+                        if has[band][ibrick]:
+                            args.append((layer, brick, band, scale))
+                print(len(args), 'bricks for scale', scale)
+                mp.map(_layer_get_filename, args)
 
             sys.exit(0)
                 
@@ -735,14 +774,14 @@ def main():
                         'decaps2', 'decaps2-model', 'eboss']:
 
             from glob import glob
-            from map.views import _get_survey, get_layer
+            from map.views import get_survey, get_layer
 
             surveyname = opt.kind
             # *-model -> *
             for prefix in ['decals-dr3', 'mzls+bass-dr4', 'decaps2', 'decals-dr5']:
                 if prefix in surveyname:
                     surveyname = prefix
-            survey = _get_survey(surveyname)
+            survey = get_survey(surveyname)
 
             B = survey.get_bricks()
             print(len(B), 'bricks')
@@ -820,12 +859,12 @@ def main():
 
 
     if opt.bricks_exist:
-        from map.views import _get_survey
+        from map.views import get_survey
 
         surveyname = opt.kind
         filetype = 'image'
 
-        survey = _get_survey(surveyname)
+        survey = get_survey(surveyname)
 
         B = survey.get_bricks()
         print(len(B), 'bricks')
@@ -858,13 +897,13 @@ def main():
         B.writeto('bricks-exist-%s.fits' % opt.kind)
         sys.exit(0)
 
-    from map.views import _get_survey
+    from map.views import get_survey
     surveyname = opt.kind
     if surveyname.endswith('-model'):
         surveyname = surveyname.replace('-model','')
     if surveyname.endswith('-resid'):
         surveyname = surveyname.replace('-resid','')
-    survey = _get_survey(surveyname)
+    survey = get_survey(surveyname)
 
     if len(opt.zoom) == 0:
         opt.zoom = [13]
