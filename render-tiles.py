@@ -774,14 +774,14 @@ def main():
                         'decaps2', 'decaps2-model', 'eboss']:
 
             from glob import glob
-            from map.views import _get_survey, get_layer
+            from map.views import get_survey, get_layer
 
             surveyname = opt.kind
             # *-model -> *
             for prefix in ['decals-dr3', 'mzls+bass-dr4', 'decaps2', 'decals-dr5']:
                 if prefix in surveyname:
                     surveyname = prefix
-            survey = _get_survey(surveyname)
+            survey = get_survey(surveyname)
 
             B = survey.get_bricks()
             print(len(B), 'bricks')
@@ -859,12 +859,12 @@ def main():
 
 
     if opt.bricks_exist:
-        from map.views import _get_survey
+        from map.views import get_survey
 
         surveyname = opt.kind
         filetype = 'image'
 
-        survey = _get_survey(surveyname)
+        survey = get_survey(surveyname)
 
         B = survey.get_bricks()
         print(len(B), 'bricks')
@@ -897,13 +897,13 @@ def main():
         B.writeto('bricks-exist-%s.fits' % opt.kind)
         sys.exit(0)
 
-    from map.views import _get_survey
+    from map.views import get_survey
     surveyname = opt.kind
     if surveyname.endswith('-model'):
         surveyname = surveyname.replace('-model','')
     if surveyname.endswith('-resid'):
         surveyname = surveyname.replace('-resid','')
-    survey = _get_survey(surveyname)
+    survey = get_survey(surveyname)
 
     if len(opt.zoom) == 0:
         opt.zoom = [13]

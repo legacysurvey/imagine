@@ -168,8 +168,7 @@ urlpatterns = [
     # Cutouts html
     url(r'^cutouts/', views.cutouts, name='cutouts'),
     # Cutouts panel plots
-    #url(r'^cutout_panels/(?P<expnum>\d+)/(?P<extname>[NS]\d{1,2})/', views.cutout_panels, name='cutout_panels'),
-    url(r'^cutout_panels/(?P<expnum>\d+)/(?P<extname>\w+)/', views.cutout_panels, name='cutout_panels'),
+    url(r'^cutout_panels/(?P<layer>.*)/(?P<expnum>\d+)/(?P<extname>\w+)/', views.cutout_panels, name='cutout_panels'),
     # Scatterplot of nearby sources for cutouts page
     #url(r'^cat_plot/', views.cat_plot, name='cat_plot'),
 

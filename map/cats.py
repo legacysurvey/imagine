@@ -774,7 +774,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
 
 def _get_decals_cat(wcs, tag='decals'):
     from astrometry.util.fits import fits_table, merge_tables
-    from map.views import _get_survey
+    from map.views import get_survey
 
     basedir = settings.DATA_DIR
     H,W = wcs.shape
@@ -785,7 +785,7 @@ def _get_decals_cat(wcs, tag='decals'):
     #catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
     #                      'tractor-%(brickname)s.fits')
 
-    survey = _get_survey(name=tag)
+    survey = get_survey(tag)
     B = survey.get_bricks_readonly()
     I = survey.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
     #print(len(I), 'bricks touching RA,Dec box', r.min(),r.max(), d.min(),d.max())
