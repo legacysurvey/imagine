@@ -1390,9 +1390,13 @@ var mylayer_B = function (name, pretty, kwargs) {
     return tiles;
 };
 
+{% comment %}
+DR6: moved zooms 1-10 to sanjaya
+{% endcomment %}
+
 {% if enable_dr6 %}
 tiles = mylayer_B('mzls+bass-dr6', 'MzLS+BASS DR6 images',
-                {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                {'urlPatterns': [ [11, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 if (defaultTile == null) {
     defaultTile = tiles;
@@ -1400,13 +1404,13 @@ if (defaultTile == null) {
 
 {% if enable_dr6_models %}
 tiles = mylayer_B('mzls+bass-dr6-model', 'MzLS+BASS DR6 models',
-                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [11, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
                                             
 {% if enable_dr6_resids %}
 tiles = mylayer_B('mzls+bass-dr6-resid', 'MzLS+BASS DR6 residuals',
-                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [11, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 {% endif %}
@@ -1577,9 +1581,11 @@ allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing
 var added = false;
 var idname = layer_initial;
 var baseMaps = {};
+//console.log('Requested layer: "' + idname + '"');
 for (var i in allLayers) {
     var layer = allLayers[i];
     baseMaps[layer.pretty] = layer;
+    //console.log('vs layer name "' + layer.name + '"');
     if (idname == layer.name) {
         layer.addTo(map);
         added = true;

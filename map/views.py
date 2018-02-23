@@ -2060,8 +2060,12 @@ def layer_name_map(name):
             'decals-dr3-exps': 'decals-dr3',
 
             'mzls bass-dr4': 'mzls+bass-dr4',
+            'mzls bass-dr4-model': 'mzls+bass-dr4-model',
+            'mzls bass-dr4-resid': 'mzls+bass-dr4-resid',
 
             'mzls bass-dr6': 'mzls+bass-dr6',
+            'mzls bass-dr6-model': 'mzls+bass-dr6-model',
+            'mzls bass-dr6-resid': 'mzls+bass-dr6-resid',
 
             'decaps2': 'decaps',
             'decaps2-model': 'decaps-model',
@@ -2263,6 +2267,9 @@ def get_survey(name):
             d = MyLegacySurveyData(survey_dir=dirnm, version='dr2')
         elif name == 'decaps':
             d = Decaps2LegacySurveyData(survey_dir=dirnm)
+        elif name in ['mzls+bass-dr6']:
+            # CCDs table has no 'photometric' etc columns.
+            d = LegacySurveyData(survey_dir=dirnm)
         else:
             d = MyLegacySurveyData(survey_dir=dirnm)
 
@@ -2655,6 +2662,22 @@ def ccd_detail(req, layer, ccd):
         if '_oki_' in c.image_filename:
             imgooiurl = imgurl + '?type=ooi'
             ooitext = '<li>image (ooi): <a href="%s">%s</a>' % (imgooiurl, ccd)
+
+        if not 'seeing' in cols:
+            pixscale = {'decam':   0.262,
+                        'mosaic':  0.262,
+                        '90prime': 0.454}.get(c.camera.strip(), 0.262)
+            c.seeing = pixscale * c.fwhm
+
+        if not 'date_obs' in cols:
+            from astrometry.util.starutil_numpy import mjdtodate
+            # c.mjd_obs -> c.date_obs, c.ut
+            date = mjdtodate(c.mjd_obs)
+            iso = date.isoformat()
+            date,time = iso.split('T')
+            c.date_obs = date
+            c.ut = time[:12]
+
         about = html_tag + '''
 <body>
 CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix, band %s, RA,Dec <a href="%s/?ra=%.4f&dec=%.4f">%.4f, %.4f</a>
