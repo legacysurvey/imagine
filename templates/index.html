@@ -537,7 +537,6 @@ function onTargetClick(e) {
 	    nobs_z = src.nobs.z;
     }
     txt = 'Target RA,Dec = ' + src.ra.toFixed(4) + ', ' + src.dec.toFixed(4) +
-        //cutout_radec_link(src.ra, src.dec) +
         '<br/>Mags: ' + fluxstr +
 	    '<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z +
         '<br/>Targetid: ' + src.targetid;
@@ -1099,7 +1098,7 @@ function fluxToMag(f) {
 
 function cutout_radec_link(ra, dec) {
     {% if enable_cutouts %}
-    return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&name=' + idname + '">' +
+    return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + idname + '">' +
         ra.toFixed(4) + ', ' + dec.toFixed(4) + '</a>';
     {% else %}
     return ra.toFixed(4) + ', ' + dec.toFixed(4);

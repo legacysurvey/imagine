@@ -2883,7 +2883,7 @@ def cutouts(req):
     from django.shortcuts import render
     from django.core.urlresolvers import reverse
 
-    url = req.build_absolute_uri('/') + settings.ROOT_URL + '/cutout_panels/%i/%s/'
+    url = req.build_absolute_uri('/') + settings.ROOT_URL + '/cutout_panels/%s/%i/%s/'
     # Deployment: http://{s}.DOMAIN/...
     url = url.replace('://www.', '://')
     url = url.replace('://', '://%s.')
@@ -2894,9 +2894,7 @@ def cutouts(req):
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
-        theurl = url % (domains[i%len(domains)], int(ccd.expnum), ccd.ccdname.strip()) + '?x=%i&y=%i&size=%i' % (x, y, size*2)
-        if name is not None:
-            theurl += '&name=' + name
+        theurl = url % (domains[i%len(domains)], layer, int(ccd.expnum), ccd.ccdname.strip()) + '?x=%i&y=%i&size=%i' % (x, y, size*2)
         print('CCD columns:', ccd.columns())
         ccdsx.append(('<br/>'.join(['CCD %s %i %s, %.1f sec (x,y = %i,%i)' % (ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
@@ -2905,7 +2903,7 @@ def cutouts(req):
                                     (jpl_url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip())]),
                       theurl))
     return render(req, 'cutouts.html',
-                  dict(ra=ra, dec=dec, ccds=ccdsx, name=name, drname=survey.drname,
+                  dict(ra=ra, dec=dec, ccds=ccdsx, name=layer, drname=survey.drname,
                        brick=brick, brickx=brickx, bricky=bricky, size=W))
 
 
@@ -3061,7 +3059,7 @@ def _get_image_slice(fn, hdu, x, y, size=50):
     img = img[slc]
     return img,hdr,slc,xstart,ystart
 
-def cutout_panels(req, expnum=None, extname=None, name=None):
+def cutout_panels(req, layer=None, expnum=None, extname=None):
     import pylab as plt
     import numpy as np
 
