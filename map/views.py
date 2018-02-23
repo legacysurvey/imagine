@@ -426,7 +426,7 @@ def data_for_radec(req):
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
     layer = request_layer_name(req)
-
+    layer = layer_to_survey_name(layer)
     ## FIXME -- could point to unWISE data!
     #if 'unwise' in name or name == 'sdssco':
     #    name = 'decals-dr3'
@@ -457,7 +457,7 @@ def data_for_radec(req):
                 ccds_table_css + '<body>',
                 '<h1>%s data for RA,Dec = (%.4f, %.4f): CCDs overlapping</h1>' %
                 (survey.drname, ra, dec)]
-        html.extend(ccds_overlapping_html(ccds, name))
+        html.extend(ccds_overlapping_html(ccds, layer))
         html = html + brick_html[1:]
 
     return HttpResponse('\n'.join(html))
@@ -2729,6 +2729,7 @@ def brick_detail(req, brickname, get_html=False):
 
     brickname = str(brickname)
     layer = request_layer_name(req)
+    layer = layer_to_survey_name(layer)
     survey = get_survey(layer)
     bricks = survey.get_bricks()
     I = np.flatnonzero(brickname == bricks.brickname)
@@ -2758,10 +2759,9 @@ def brick_detail(req, brickname, get_html=False):
         from astrometry.util.fits import fits_table
         ccds = fits_table(ccdsfn)
         ccds = touchup_ccds(ccds, survey)
-
         if len(ccds):
             html.append('CCDs overlapping brick:')
-            html.extend(ccds_overlapping_html(ccds, name))
+            html.extend(ccds_overlapping_html(ccds, layer))
 
     html.extend([
             '</body></html>',
