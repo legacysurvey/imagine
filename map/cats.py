@@ -1,6 +1,15 @@
 from __future__ import print_function
 import os
 import fitsio
+
+if __name__ == '__main__':
+    import sys
+    sys.path.insert(0, 'django-1.9')
+    import os
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    import django
+    django.setup()
+
 from django.http import HttpResponse, StreamingHttpResponse
 from decals import settings
 from django.core.urlresolvers import reverse
@@ -142,9 +151,11 @@ def get_random_galaxy(layer=None):
     from map.views import galaxycat
 
     global galaxycat
-    #galfn = os.path.join(settings.DATA_DIR, 'galaxy-cats-in-dr2.fits')
     if layer == 'mzls+bass-dr4':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr4.fits')
+        drnum = 4
+    elif layer == 'mzls+bass-dr6':
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr6.fits')
         drnum = 4
     else:
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr3.fits')
@@ -177,6 +188,8 @@ def create_galaxy_catalog(galfn, drnum):
     from astrometry.util.fits import fits_table, merge_tables
     import fitsio
     from astrometry.util.util import Tan
+    from astrometry.libkd.spherematch import match_radec
+    import numpy as np
 
     fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ngc2000.fits')
     NGC = fits_table(fn)
@@ -204,18 +217,26 @@ def create_galaxy_catalog(galfn, drnum):
     
     keep = np.zeros(len(T), bool)
 
+    from map.views import get_survey
+
     if drnum == 3:
         bricks = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
                                          'decals-bricks-in-dr3.fits'))
         bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
         print(len(bricks), 'bricks with grz')
-        from map.views import _get_survey
-        survey = _get_survey('decals-dr3')
+        survey = get_survey('decals-dr3')
     elif drnum == 4:
-        from map.views import _get_survey
-        survey = _get_survey('mzls+bass-dr4')
-
+        survey = get_survey('mzls+bass-dr4')
         bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-in-dr4.fits'))
+
+    elif drnum == 6:
+        survey = get_survey('mzls+bass-dr6')
+        bricks = survey.get_bricks()
+        bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
+
+        I,J,d = match_radec(bricks.ra, bricks.dec, T.ra, T.dec, 0.25, nearest=True)
+        print('Matched', len(I), 'bricks near NGC objects')
+        bricks.cut(I)
 
         # bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-dr4.fits'))
         # bricks.cut((bricks.nexp_g > 0) *
@@ -795,4 +816,5 @@ def _get_decals_cat(wcs, tag='decals'):
 
 
 if __name__ == '__main__':
-    print('Random galaxy:', get_random_galaxy(layer='mzls+bass-dr4'))
+    #print('Random galaxy:', get_random_galaxy(layer='mzls+bass-dr4'))
+    create_galaxy_catalog('/tmp/dr6.fits', 6)
