@@ -114,7 +114,7 @@ def index(req, **kwargs):
 def _index(req,
            default_layer = 'mzls+bass-dr6',
            default_radec = (None,None),
-           default_zoom = 13,
+           default_zoom = 12,
            rooturl=settings.ROOT_URL,
            maxZoom = 16,
            **kwargs):
