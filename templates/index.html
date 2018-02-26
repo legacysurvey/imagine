@@ -1391,7 +1391,7 @@ var mylayer_B = function (name, pretty, kwargs) {
 
 {% if enable_dr6 %}
 tiles = mylayer_B('mzls+bass-dr6', 'MzLS+BASS DR6 images',
-                {'urlPatterns': [ [12, maxZoom, tile_url], ],});
+                {'urlPatterns': [ [13, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 if (defaultTile == null) {
     defaultTile = tiles;
@@ -1399,13 +1399,13 @@ if (defaultTile == null) {
 
 {% if enable_dr6_models %}
 tiles = mylayer_B('mzls+bass-dr6-model', 'MzLS+BASS DR6 models',
-                  {'urlPatterns': [ [12, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [13, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
                                             
 {% if enable_dr6_resids %}
 tiles = mylayer_B('mzls+bass-dr6-resid', 'MzLS+BASS DR6 residuals',
-                  {'urlPatterns': [ [12, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [13, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 {% endif %}
