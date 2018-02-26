@@ -2229,6 +2229,35 @@ class MyLegacySurveyData(LegacySurveyData):
         C.camera  = np.array([c.strip() for c in C.camera ])
         return C
 
+    def find_ccds(self, expnum=None, ccdname=None, camera=None):
+        '''
+        Returns a table of CCDs matching the given *expnum* (exposure
+        number, integer), *ccdname* (string), and *camera* (string),
+        if given.
+        '''
+        if expnum is not None and self.ccds is None:
+            dirnm = self.survey_dir
+            # fitscopy data/decals-dr5/ccds-cut.fits"[col expnum]" data/decals-dr5/ccds-cut-expnum.fits
+            efn = os.path.join(dirnm, 'ccds-cut-expnum.fits')
+            if os.path.exists(efn):
+                from astrometry.util.fits import fits_table
+                import numpy as np
+                E = fits_table(efn)
+                I = np.flatnonzero(E.expnum == expnum)
+                print('Found', len(I), 'rows with expnum ==', expnum)
+
+                cfn = os.path.join(dirnm, 'ccds-cut.fits')
+                C = fits_table(cfn, rows=I)
+                C = self.cleanup_ccds_table(C)
+                if ccdname is not None:
+                    C = C[C.ccdname == ccdname]
+                if camera is not None:
+                    C = C[C.camera == camera]
+                return C
+
+        return super(MyLegacySurveyData, self).find_ccds(expnum=expnum, ccdname=ccdname,
+                                                         camera=camera)
+
 class Decaps2LegacySurveyData(MyLegacySurveyData):
     def find_file(self, filetype, brick=None, brickpre=None, band='%(band)s',
                   output=False):
