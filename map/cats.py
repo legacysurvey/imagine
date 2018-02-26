@@ -148,7 +148,10 @@ def upload_cat(req):
 
 def get_random_galaxy(layer=None):
     import numpy as np
-    from map.views import galaxycat
+    from map.views import galaxycat, layer_to_survey_name
+
+    if layer is not None:
+        layer = layer_to_survey_name(layer)
 
     global galaxycat
     if layer == 'mzls+bass-dr4':
