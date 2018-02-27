@@ -447,14 +447,15 @@ def data_for_radec(req):
     if len(I) == 0:
         return HttpResponse('No DECaLS data overlaps RA,Dec = %.4f, %.4f for version %s' % (ra, dec, name))
     I = I[0]
-    brickname = bricks.brickname[I]
+    brick = bricks[I]
+    brickname = brick.brickname
 
-    brick_html,ccds = brick_detail(req, brickname, get_html=True)
+    brick_html,ccds = brick_detail(req, brickname, get_html=True, brick=brick)
     html = brick_html
 
     if ccds is not None and len(ccds):
         from legacypipe.survey import wcs_for_brick
-        brickwcs = wcs_for_brick(bricks[I])
+        brickwcs = wcs_for_brick(brick)
         ok,bx,by = brickwcs.radec2pixelxy(ra, dec)
         print('Brick x,y:', bx,by)
         ccds.cut((bx >= ccds.brick_x0) * (bx <= ccds.brick_x1) *
@@ -466,7 +467,7 @@ def data_for_radec(req):
                 ccds_table_css + '<body>',
                 '<h1>%s data for RA,Dec = (%.4f, %.4f): CCDs overlapping</h1>' %
                 (survey.drname, ra, dec)]
-        html.extend(ccds_overlapping_html(ccds, layer))
+        html.extend(ccds_overlapping_html(ccds, layer, ra=ra, dec=dec))
         html = html + brick_html[1:]
 
     return HttpResponse('\n'.join(html))
@@ -2759,17 +2760,18 @@ def exposure_detail(req, name, exp):
 def nil(req):
     pass
 
-def brick_detail(req, brickname, get_html=False):
+def brick_detail(req, brickname, get_html=False, brick=None):
     import numpy as np
 
     brickname = str(brickname)
     layer = request_layer_name(req)
     layer = layer_to_survey_name(layer)
     survey = get_survey(layer)
-    bricks = survey.get_bricks()
-    I = np.flatnonzero(brickname == bricks.brickname)
-    assert(len(I) == 1)
-    brick = bricks[I[0]]
+    if brick is None:
+        bricks = survey.get_bricks()
+        I = np.flatnonzero(brickname == bricks.brickname)
+        assert(len(I) == 1)
+        brick = bricks[I[0]]
 
     coadd_prefix = 'legacysurvey'
 
@@ -2828,8 +2830,17 @@ def touchup_ccds(ccds, survey):
         ccds.ut = np.array(uts)
     return ccds
 
-def ccds_overlapping_html(ccds, layer):
-    html = ['<table class="ccds"><thead><tr><th>name</th><th>exptime</th><th>seeing</th><th>propid</th><th>date</th><th>image</th><th>image (ooi)</th><th>weight map</th><th>data quality map</th></tr></thead><tbody>']
+def format_jpl_url(ra, dec, ccd):
+    jpl_url = reverse(jpl_lookup)
+    return ('%s?ra=%.4f&dec=%.4f&date=%s&camera=%s' %
+            (jpl_url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip()))
+
+
+def ccds_overlapping_html(ccds, layer, ra=None, dec=None):
+    jplstr = ''
+    if ra is not None:
+        jplstr = '<th>JPL</th>'
+    html = ['<table class="ccds"><thead><tr><th>name</th><th>exptime</th><th>seeing</th><th>propid</th><th>date</th><th>image</th><th>image (ooi)</th><th>weight map</th><th>data quality map</th>%s</tr></thead><tbody>' % jplstr]
     for ccd in ccds:
         ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum,
                                    ccd.ccdname.strip(), ccd.filter.strip())
@@ -2841,11 +2852,15 @@ def ccds_overlapping_html(ccds, layer):
         ooitext = ''
         if '_oki_' in ccd.image_filename:
             ooitext = '<a href="%s">ooi</a>' % imgooiurl
+        jplstr = ''
+        if ra is not None:
+            jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(ra, dec, ccd)
         html.append(('<tr><td><a href="%s">%s</a></td><td>%.1f</td><td>%.2f</td>' +
-                     '<td>%s</td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td><a href="%s">oow</a></td><td><a href="%s">ood</a></td></tr>') % (
+                     '<td>%s</td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td><a href="%s">oow</a></td><td><a href="%s">ood</a></td>%s</tr>') % (
                          reverse(ccd_detail, args=(layer, ccdtag)), ccdname,
                          ccd.exptime, ccd.seeing, ccd.propid, ccd.date_obs + ' ' + ccd.ut[:8],
-                         imgurl, ccd.image_filename.strip(), ooitext, ivurl, dqurl))
+                         imgurl, ccd.image_filename.strip(), ooitext, ivurl, dqurl,
+                         jplstr))
     html.append('</tbody></table>')
     return html
 
@@ -2924,8 +2939,6 @@ def cutouts(req):
     url = url.replace('://', '://%s.')
     domains = settings.SUBDOMAINS
 
-    jpl_url = reverse(jpl_lookup)
-
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
@@ -2934,8 +2947,7 @@ def cutouts(req):
         ccdsx.append(('<br/>'.join(['CCD %s %i %s, %.1f sec (x,y = %i,%i)' % (ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
                                     '<small>(observed %s @ %s)</small>' % (ccd.date_obs, ccd.ut),
-                                    '<small><a href="%s?ra=%.4f&dec=%.4f&date=%s&camera=%s">Look up in JPL Small Bodies database</a></small>' %
-                                    (jpl_url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip())]),
+                                    '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % format_jpl_url(ra, dec, ccd),]),
                       theurl))
     return render(req, 'cutouts.html',
                   dict(ra=ra, dec=dec, ccds=ccdsx, name=layer, drname=survey.drname,
@@ -2954,12 +2966,17 @@ def jpl_lookup(req):
     dec = float(req.GET.get('dec'))
     camera = req.GET.get('camera')
 
-    latlongargs = dict(decam=dict(lon='70.81489', lon_u='E',  # not W?
-                                  lat='30.16606', lat_u='S',
-                                  alt='2215.0', alt_u='m'),
-                       mosaic=dict(lon='111.6003', lon_u='E', # W?
-                                   lat = '31.9634', lat_u='N',
-                                   alt='2120.0', alt_u='m'))[camera]
+    latlongs = dict(decam=dict(lon='70.81489', lon_u='E',  # not W?
+                               lat='30.16606', lat_u='S',
+                               alt='2215.0', alt_u='m'),
+                    mosaic=dict(lon='111.6003', lon_u='E', # W?
+                                lat = '31.9634', lat_u='N',
+                                alt='2120.0', alt_u='m'))
+    latlongs.update({'90prime': dict(lon='111.6', lon_u='E',
+                                     lat='31.98', lat_u='N',
+                                     alt='2120.0', alt_u='m')})
+
+    latlongargs = latlongs[camera]
 
     hms = ra2hmsstring(ra, separator=':')
     dms = dec2dmsstring(dec)
