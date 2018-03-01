@@ -104,10 +104,13 @@ def layer_to_survey_name(layer):
 
 galaxycat = None
 
-def index(req, **kwargs):
+def is_decaps(req):
     host = req.META.get('HTTP_HOST', None)
     #print('Host:', host)
-    if host == 'decaps.legacysurvey.org':
+    return (host == 'decaps.legacysurvey.org')
+
+def index(req, **kwargs):
+    if is_decaps(req):
         return decaps(req)
     return _index(req, **kwargs)
 
@@ -191,10 +194,20 @@ def _index(req,
     if ra is None or dec is None:
         ra,dec,galname = get_random_galaxy(layer=layer)
 
-    url = req.build_absolute_uri(settings.ROOT_URL) + '/{id}/{ver}/{z}/{x}/{y}.jpg'
-    caturl = settings.CAT_URL
+    # Can't do this simple thing because CORS prevents
+    #decaps.legacysurvey.org from reading from legacysurvey.org.
+    #baseurl = 'http://%s%s' % (settings.HOSTNAME, settings.ROOT_URL)
+    path = settings.ROOT_URL
+    if is_decaps(req):
+        path = '/'
+    baseurl = req.build_absolute_uri(path)
+    if baseurl.endswith('/'):
+        baseurl = baseurl[:-1]
+    print('Base URL:', baseurl)
 
-    smallcaturl = settings.ROOT_URL + '/{id}/{ver}/cat.json?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
+    caturl = baseurl + '/{id}/{ver}/{z}/{x}/{y}.cat.json'
+
+    smallcaturl = baseurl + '/{id}/{ver}/cat.json?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
 
     tileurl = settings.TILE_URL
 
@@ -208,14 +221,14 @@ def _index(req,
     subdomains_B = settings.SUBDOMAINS_B
     subdomains_B = '[' + ','.join(["'%s'" % s for s in subdomains_B]) + '];'
 
-    ccdsurl = settings.ROOT_URL + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
-    bricksurl = settings.ROOT_URL + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
-    expsurl = settings.ROOT_URL + '/exps/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
-    platesurl = settings.ROOT_URL + '/sdss-plates/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
-    sqlurl = settings.ROOT_URL + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
-    namequeryurl = settings.ROOT_URL + '/namequery/?obj={obj}'
+    ccdsurl = baseurl + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    bricksurl = baseurl + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    expsurl = baseurl + '/exps/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    platesurl = baseurl + '/sdss-plates/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
+    sqlurl = baseurl + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
+    namequeryurl = baseurl + '/namequery/?obj={obj}'
 
-    uploadurl = settings.ROOT_URL + '/upload-cat/'
+    uploadurl = baseurl + '/upload-cat/'
 
     usercatalog = req.GET.get('catalog', None)
     usercats = None
@@ -3611,7 +3624,8 @@ if __name__ == '__main__':
     #response = c.get('/mzls+bass-dr6-model/1/12/4008/2040.jpg')
     #response = c.get('/mzls+bass-dr6/1/10/451/230.jpg')
     #response = c.get('/mzls+bass-dr6/1/11/902/461.jpg')
-    response = c.get('/mzls+bass-dr6-model/1/6/37/20.jpg')
+    #response = c.get('/mzls+bass-dr6-model/1/6/37/20.jpg')
+    c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
     print('Got:', response.status_code)
     print('Content:', response.content)
