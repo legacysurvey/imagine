@@ -170,6 +170,17 @@ def _index(req,
     ra, dec = default_radec
     zoom = default_zoom
 
+    plate = req.GET.get('plate', None)
+    if plate is not None:
+        from astrometry.util.fits import fits_table
+        plate = int(plate, 10)
+        T = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
+                                    'plates-dr12.fits'))
+        T.cut(T.plate == plate)
+        ra,dec = float(T.racen), float(T.deccen)
+        zoom = 8
+        layer = 'sdss2'
+
     try:
         zoom = int(req.GET.get('zoom', zoom))
     except:
@@ -2629,6 +2640,7 @@ def sdss_plate_list(req):
     east  = float(req.GET['ralo'])
     west  = float(req.GET['rahi'])
     name = 'sdss'
+    plate = req.GET.get('plate', None)
 
     if not name in plate_cache:
         from astrometry.libkd.spherematch import tree_build_radec
@@ -2650,6 +2662,11 @@ def sdss_plate_list(req):
     T = T[I]
 
     plates = []
+    if plate is not None:
+        plate = int(plate, 10)
+        # don't use T.cut -- it's in the shared cache
+        T = T[T.plate == plate]
+
     for t in T:
         plates.append(dict(name='%i' % t.plate,
                            ra=t.ra, dec=t.dec, radius=radius,

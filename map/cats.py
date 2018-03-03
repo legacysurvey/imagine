@@ -479,6 +479,7 @@ def cat_spec(req, ver):
     rahi = float(req.GET['rahi'])
     declo = float(req.GET['declo'])
     dechi = float(req.GET['dechi'])
+    plate = req.GET.get('plate', None)
 
     ver = int(ver)
     if not ver in catversions[tag]:
@@ -496,6 +497,10 @@ def cat_spec(req, ver):
     else:
         T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
     debug(len(T), 'in cut')
+
+    if plate is not None:
+        plate = int(plate, 10)
+        T.cut(T.plate == plate)
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.label]

@@ -169,6 +169,22 @@ var maxZoom = {{ maxZoom }};
 var sql_url = '{{sqlurl|safe}}';
 {% endif %}
 
+// Function to search the current page URL's GET query portion URL?x=y
+var QueryItems = function() {
+    var terms = window.location.search.substr(1).split('&');
+    var items = {};
+    for (var i = 0; i < terms.length; ++i) {
+        var words = terms[i].split('=');
+        if (words.length == 1) {
+            items[words[0]] = true;
+        } else if (words.length == 2) {
+            items[words[0]] = decodeURIComponent(words[1].replace(/\+/g, ' '));
+        }
+    }
+    return items;
+};
+var qstr = QueryItems();
+
 function arcsecToMeters(arcsec) {
     return arcsec * 30.87;
 }
@@ -1180,10 +1196,13 @@ function onMapClick(e) {
     var dec = lat2dec(e.latlng.lat);
 
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
-    var qstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
+    var linkqstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
 
-    var cutout = hostname_url + '{% url 'cutout-jpeg' %}?' + qstr;
-    var linkurl = abs_url + '?' + qstr;
+    var cutout = hostname_url + '{% url 'cutout-jpeg' %}?' + linkqstr;
+    var linkurl = abs_url + '?' + linkqstr;
+    if ('plate' in qstr) {
+        linkurl += '&plate=' + qstr['plate'];
+    }
 
     for (var i=0,len=overlays.length; i<len; i++) {
         // console.log('Overlay ' + overlays[i]._name + ' shown? ' + overlays[i]._show + ', url term ' + overlays[i]._url_term);
@@ -2185,9 +2204,13 @@ var ccdOverlaySdss = new PolygonOverlay('sdss-ccds',
 
 
 {% if enable_spectra %}
+url = sdss_plates_url;
+if ('plate' in qstr) {
+    url += '&plate=' + qstr['plate'];
+}
 var plateOverlay = new CircleOverlay('sdss-plates',
                                      'SDSS Spectro Plates',
-                                    {'url': sdss_plates_url,
+                                    {'url': url,
                                      'labelMinZoom': 100,
                                      'detail': plate_detail,
                                      'detail_list': plate_detail_list,
@@ -2313,10 +2336,15 @@ var desi_targets56 = new DesiTargetCatalog('targets-dr56', 'DESI Targets (DR5/DR
 {% endif %}
 
 {% if enable_spectra %}
+url = smallcat_url;
+if ('plate' in qstr) {
+    url += '&plate=' + qstr['plate'];
+}
 var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
-                                  {'radius': 300,
+                                  {'url': url,
+                                   'radius': 300,
                                    'labelsMinZoom': 11,
-                                   'minZoom': 9,
+                                   'minZoom': 8,
                                    'urlTerm': 'spectra'});
 
 var specDeep2 = new Deep2SpectraCatalog('spec-deep2', 'DEEP2 Spectra',
@@ -2406,22 +2434,6 @@ var overlays = [
   {% endfor %}
 {% endif %}
 
-// Function to search the current page URL's GET query portion URL?x=y
-var QueryItems = function() {
-    var terms = window.location.search.substr(1).split('&');
-    var items = {};
-    for (var i = 0; i < terms.length; ++i) {
-        var words = terms[i].split('=');
-        if (words.length == 1) {
-            items[words[0]] = true;
-        } else if (words.length == 2) {
-            items[words[0]] = decodeURIComponent(words[1].replace(/\+/g, ' '));
-        }
-    }
-    return items;
-};
-
-var qstr = QueryItems();
 
 if ('blink' in qstr) {
     lastidname = qstr['blink'];
