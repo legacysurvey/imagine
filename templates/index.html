@@ -2305,6 +2305,11 @@ var desi_targets = new DesiTargetCatalog('targets-dr45', 'DESI Targets (DR4/DR5)
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
+
+var desi_targets56 = new DesiTargetCatalog('targets-dr56', 'DESI Targets (DR5/DR6)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
 {% endif %}
 
 {% if enable_spectra %}
@@ -2383,7 +2388,8 @@ var overlays = [
     spec, plateOverlay, specDeep2,
     {% endif %}
     {% if enable_desi_targets %}
-    desi_targets
+    desi_targets,
+    desi_targets56,
     {% endif %}
 ];
 

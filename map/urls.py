@@ -74,6 +74,8 @@ urlpatterns = [
 
     # DR4/5 catalog
     url(r'^targets-dr45/(\d+)/cat.json', cats.cat_targets_dr45),
+    # DR5/6 catalog
+    url(r'^targets-dr56/(\d+)/cat.json', cats.cat_targets_dr56),
 
     # DECaPS2 tiles
     url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
