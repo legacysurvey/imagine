@@ -29,7 +29,7 @@
 <style type="text/css">
 #map { height: 100%; width: 100%; padding: 1;}
 
-#thebody { margin:1; }
+#thebody { margin:0; }
 
 .info {
     padding: 6px 8px;
@@ -120,6 +120,14 @@ background: #242424;
 }
 #gotocancel {
     font-size: 100%;
+}
+
+// https://gis.stackexchange.com/questions/212820/overriding-leaflet-tooltip-style
+.leaflet-tooltip-left.spectrumTooltip {
+  margin-left: -15px;
+}
+.leaflet-tooltip-right.spectrumTooltip {
+  margin-left: 15px;
 }
 
 </style>
@@ -409,7 +417,7 @@ var CatalogOverlay = L.Evented.extend({
 	        if (showlabels) {
                 var txt = this.getLabel(result, i);
                 if (txt.length > 0) {
-                    circ.bindTooltip(txt, { permanent: true, interactive: true });
+                    circ.bindTooltip(txt, { permanent: true, interactive: true, className: 'spectrumTooltip' });
                 }
 	        }
             circleList[i] = circ;
