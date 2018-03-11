@@ -418,6 +418,7 @@ var CatalogOverlay = L.Evented.extend({
                 var txt = this.getLabel(result, i);
                 if (txt.length > 0) {
                     circ.bindTooltip(txt, { permanent: true, interactive: true, className: 'spectrumTooltip' });
+
                 }
 	        }
             circleList[i] = circ;
@@ -1573,6 +1574,12 @@ allLayers.push(tiles);
 tiles = mylayer_B('unwise-neo2', 'unWISE W1/W2 NEO2',
                 {'maxNativeZoom': 12,
                  'urlPatterns': [ [11, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('unwise-neo3', 'unWISE W1/W2 NEO3',
+                {'maxNativeZoom': 12,
+                 //'urlPatterns': [ [11, maxZoom, tile_url], ],});
+                 'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer('sfd', 'SFD dust map',

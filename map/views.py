@@ -82,6 +82,7 @@ tileversions = {
 
     'unwise-w1w2': [1],
     'unwise-neo2': [1],
+    'unwise-neo3': [1],
     #'unwise-w3w4': [1],
 
     'cutouts': [1],
@@ -503,7 +504,7 @@ class MapLayer(object):
     resid), SDSSco, unWISE.
     '''
     def __init__(self, name,
-                 nativescale=14, maxscale=8):
+                 nativescale=14, maxscale=7):
         ''' name: like 'decals-dr2-model'
         '''
         self.name = name
@@ -564,7 +565,7 @@ class MapLayer(object):
         native_pixscale = self.pixscale
         scale = int(np.floor(np.log2(tilescale / native_pixscale)))
         debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', tilescale, 'Scale:',scale)
-        scale = np.clip(scale, 0, 7)
+        scale = np.clip(scale, 0, self.maxscale)
         #print('Old scale', oldscale, 'scale', scale)
         return scale
 
@@ -578,7 +579,7 @@ class MapLayer(object):
         r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
         dlo = min(d1, d2)
         dhi = max(d1, d2)
-        #print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
+        print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
         return self.bricks_touching_radec_box(rlo, rhi, dlo, dhi, scale=scale)
 
     def bricks_touching_general_wcs(self, wcs, scale=None):
@@ -748,6 +749,8 @@ class MapLayer(object):
         import numpy as np
         from astrometry.util.resample import resample_with_wcs, OverlapError
 
+        #print('render_into_wcs: wcs', wcs, 'zoom,x,y', zoom,x,y, 'general wcs?', general_wcs)
+
         if scale is None:
             scale = self.get_scale(zoom, x, y, wcs)
         if not general_wcs:
@@ -761,7 +764,6 @@ class MapLayer(object):
 
         if bands is None:
             bands = self.get_bands()
-        #print('render_into_wcs: scale', scale, 'N bricks:', len(bricks))
 
         W = int(wcs.get_width())
         H = int(wcs.get_height())
@@ -769,6 +771,13 @@ class MapLayer(object):
                                 [1,H/2,H,H,H,H/2,1,1])[-2:]
 
         #print('Render into wcs: RA,Dec points', r, d)
+
+        #print('render_into_wcs: scale', scale, 'N bricks:', len(bricks))
+        # for band in bands:
+        #     bandbricks = self.bricks_for_band(bricks, band)
+        #     for brick in bandbricks:
+        #         brickname = brick.brickname
+        #         print('Will read', brickname, 'for band', band, 'scale', scale)
 
         rimgs = []
         for band in bands:
@@ -1936,11 +1945,13 @@ class PS1Layer(MapLayer):
         hdr['SURVEY'] = 'PS1'
 
 
+
 class UnwiseLayer(MapLayer):
     def __init__(self, name, unwise_dir):
         super(UnwiseLayer, self).__init__(name, nativescale=13)
         self.bricks = None
         self.dir = unwise_dir
+        self.pixscale = 2.75
 
     def get_bricks(self):
         if self.bricks is not None:
@@ -1957,11 +1968,11 @@ class UnwiseLayer(MapLayer):
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
         bricks = self.get_bricks()
-        #print('Unwise bricks touching RA,Dec box', ralo, rahi, declo, dechi)
+        print('Unwise bricks touching RA,Dec box', ralo, rahi, declo, dechi)
         I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
         ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
         I = I[ok]
-        #print('-> bricks', bricks.brickname[I])
+        print('-> bricks', bricks.brickname[I])
         if len(I) == 0:
             return None
         return bricks[I]
@@ -1978,30 +1989,69 @@ class UnwiseLayer(MapLayer):
             '%(scale)iw%(band)s',
             '%(brickname).3s', 'unwise-%(brickname)s-w%(band)s.fits')
 
-    def get_scale(self, zoom, x, y, wcs):
-        import numpy as np
-        from astrometry.util.starutil_numpy import arcsec_between
-
-        '''Integer scale step (1=binned 2x2, 2=binned 4x4, ...)'''
-        if zoom >= self.nativescale:
-            return 0
-
-        # Get *actual* pixel scales at the top & bottom
-        W,H = wcs.get_width(), wcs.get_height()
-        r1,d1 = wcs.pixelxy2radec(W/2., H)[-2:]
-        r2,d2 = wcs.pixelxy2radec(W/2., H-1.)[-2:]
-        r3,d3 = wcs.pixelxy2radec(W/2., 1.)[-2:]
-        r4,d4 = wcs.pixelxy2radec(W/2., 2.)[-2:]
-        # Take the min = most zoomed-in
-        tilescale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
-        native_pixscale = 2.75
-        scale = int(np.floor(np.log2(tilescale / native_pixscale)))
-        debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', tilescale, 'Scale:',scale)
-        scale = np.clip(scale, 0, 7)
-        return scale
-
     def get_rgb(self, imgs, bands, **kwargs):
         return _unwise_to_rgb(imgs, **kwargs)
+
+
+'''
+unWISE atlas: 18,240 tiles
+desiutil.brick.Brick:
+#B = Bricks(1.5)
+#B.to_table().write('unwise-bricks-0.fits', format='fits')  # (18690 bricks)
+Bricks(3.).to_table().write('unwise-bricks-1.fits', format='fits')  # (4750 bricks)
+Bricks(6.).to_table().write('unwise-bricks-2.fits', format='fits')  # (1226)
+Bricks(12.).to_table().write('unwise-bricks-3.fits', format='fits')  # (326)
+Bricks(24.).to_table().write('unwise-bricks-4.fits', format='fits')  # (93)
+'''
+
+class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
+
+    def __init__(self, name, unwise_dir):
+        super(RebrickedUnwise, self).__init__(name, unwise_dir)
+        self.maxscale = 4
+
+    def get_fits_extension(self, scale, fn):
+        if scale == 0:
+            return 0
+        return 1
+
+    def get_scaled_wcs(self, brick, band, scale):
+        #print('RebrickedUnwise: get_scaled_wcs')
+        from astrometry.util.util import Tan
+        size = 2048
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+
+    def get_bricks_for_scale(self, scale):
+        if scale in [0, None]:
+            return self.get_bricks()
+        scale = min(scale, 4)
+        from astrometry.util.fits import fits_table
+        fn = os.path.join(settings.DATA_DIR, 'unwise-bricks-%i.fits' % scale)
+        print('Unwise bricks for scale', scale, '->', fn)
+        b = fits_table(fn)
+        return b
+
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
+        '''
+        Both RebrickedMixin and UnwiseLayer override this function -- here we have
+        to merge the capabilities.
+        '''
+        import numpy as np
+        bricks = self.get_bricks_for_scale(scale)
+        print('Unwise bricks touching RA,Dec box', ralo, rahi, declo, dechi)
+        I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
+        I = I[ok]
+        print('-> bricks', bricks.brickname[I])
+        if len(I) == 0:
+            return None
+        return bricks[I]
+
 
 class ZeaLayer(MapLayer):
     def __init__(self, name, zeamap, stretch=None, vmin=0., vmax=1.,
@@ -3534,6 +3584,9 @@ def get_layer(name, default=None):
     elif name == 'unwise-neo2':
         layer = UnwiseLayer('unwise-neo2',
                             settings.UNWISE_NEO2_DIR)
+    elif name == 'unwise-neo3':
+        layer = RebrickedUnwise('unwise-neo3',
+                                settings.UNWISE_NEO3_DIR)
 
     elif name == 'halpha':
         from tractor.sfd import SFDMap
@@ -3568,8 +3621,6 @@ def get_tile_view(name):
     return view
 
 def sdss_wcs(req):
-    return HttpResponse('sorry, offline for now')
-
     from astrometry.util.util import Tan
     import numpy as np
     args = []
@@ -3642,7 +3693,15 @@ if __name__ == '__main__':
     #response = c.get('/mzls+bass-dr6/1/10/451/230.jpg')
     #response = c.get('/mzls+bass-dr6/1/11/902/461.jpg')
     #response = c.get('/mzls+bass-dr6-model/1/6/37/20.jpg')
-    c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
+    #c.get('/unwise-neo3/1/9/255/255.jpg')
+    #c.get('/unwise-neo3/1/8/127/127.jpg')
+    #c.get('/unwise-neo3/1/7/63/63.jpg')
+    #c.get('/unwise-neo3/1/6/31/31.jpg')
+    #c.get('/unwise-neo3/1/11/0/1023.jpg')
+    c.get('/unwise-neo3/1/5/0/14.jpg')
+    sys.exit(0)
+
+    #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
     print('Got:', response.status_code)
     print('Content:', response.content)

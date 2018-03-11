@@ -74,6 +74,7 @@ HALPHA_DIR = os.path.join(DATA_DIR, 'halpha')
 UNWISE_DIR = os.path.join(DATA_DIR, 'unwise-coadds')
 UNWISE_NEO1_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo1')
 UNWISE_NEO2_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo2')
+UNWISE_NEO3_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo3')
 SDSS_DIR   = os.path.join(DATA_DIR, 'sdss')
 
 #DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'

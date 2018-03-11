@@ -116,7 +116,7 @@ def _one_tile(X):
                         ignoreCached=ignore)
         print('unWISE zoom', zoom, 'x,y', x,y)
 
-    elif kind == 'unwise-neo2':
+    elif kind in ['unwise-neo2', 'unwise-neo3']:
         from map import views
         view = views.get_tile_view(kind)
         return view(req, version, zoom, x, y, savecache=True, **kwargs)
@@ -213,7 +213,8 @@ def top_levels(mp, opt):
                     'decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
                     'eboss',
-                    'unwise-neo2', 'sdss2']:
+                    'unwise-neo2', 'unwise-neo3',
+                    'sdss2']:
         import pylab as plt
         from decals import settings
         from legacypipe.survey import get_rgb
@@ -224,7 +225,7 @@ def top_levels(mp, opt):
         tag = opt.kind
 
         rgbkwargs = {}
-        if opt.kind == 'unwise-neo2':
+        if opt.kind in ['unwise-neo2', 'unwise-neo3']:
             bands = [1, 2]
             get_rgb = _unwise_to_rgb
         elif opt.kind == 'sdss2':
@@ -674,7 +675,7 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -25
-    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2']:
+    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3']:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
@@ -719,7 +720,7 @@ def main():
     if opt.scale:
         # Rebricked
         if opt.kind in ['decals-dr5', 'decals-dr5-model', 'eboss',
-                        'mzls+bass-dr6', 'mzls+bass-dr6-model',
+                        'mzls+bass-dr6', 'mzls+bass-dr6-model', 'unwise-neo3',
                     ]:
             from map.views import get_layer
 
@@ -742,9 +743,9 @@ def main():
             for scale in opt.zoom:
                 B = layer.get_bricks_for_scale(scale)
                 print(len(B), 'bricks for scale', scale)
-                B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
+                B.cut((B.dec >= opt.mindec) * (B.dec <= opt.maxdec))
                 print(len(B), 'in Dec range')
-                B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
+                B.cut((B.ra  >= opt.minra)  * (B.ra  <= opt.maxra))
                 print(len(B), 'in RA range')
 
                 bands = opt.bands
