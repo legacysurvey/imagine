@@ -464,6 +464,34 @@ def data_for_radec(req):
     ## FIXME -- could point to unWISE data!
     #if 'unwise' in name or name == 'sdssco':
     #    name = 'decals-dr3'
+
+    print('Layer', layer)
+    if layer in ['sdss2']:
+        # from ccd_list...
+        # 0.15: SDSS field radius is ~ 0.13
+        radius = 0.15
+        T = sdss_ccds_near(ra, dec, radius)
+        if T is None:
+            return HttpResponse('No SDSS data near RA,Dec = (%.3f, %.3f)' % (ra,dec))
+
+        
+        html = [html_tag + '<head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
+                ('SDSS', ra, dec),
+                ccds_table_css + '<body>',
+                '<h1>%s data for RA,Dec = (%.4f, %.4f): CCDs overlapping</h1>' %
+                ('SDSS', ra, dec)]
+        html.append('<table class="ccds"><thead><tr><th>Details</th><th>Jpeg</th><th>Run</th><th>Camcol</th><th>Field</th></thead><tbody>')
+        T.cut(np.lexsort((T.field, T.camcol, T.run)))
+        for t in T:
+            url = 'https://dr12.sdss.org/fields/runCamcolField?run=%i&camcol=%i&field=%i' % (t.run, t.camcol, t.field)
+            #
+            jpeg_url = 'https://dr12.sdss.org/sas/dr12/boss/photoObj/frames/301/%i/%i/frame-irg-%06i-%i-%04i.jpg' % (t.run, t.camcol, t.run, t.camcol, t.field)
+            html.append('<tr><td><a href="%s">details</a></td><td><a href="%s">jpeg</a></td><td>%i</td><td>%i</td><td>%i</td>' % (url, jpeg_url, t.run, t.camcol, t.field))
+
+        html.append('</tbody></table>')
+        html.append('</body></html>')
+        return HttpResponse('\n'.join(html))
+
     survey = get_survey(layer)
 
     bricks = survey.get_bricks()
@@ -2538,23 +2566,16 @@ def ccd_list(req):
         T.ra3,T.dec3 = munu_to_radec_deg(T.mu_end, T.nu_end, T.node, T.incl)
         T.ra4,T.dec4 = munu_to_radec_deg(T.mu_start, T.nu_end, T.node, T.incl)
         '''
-        from astrometry.libkd.spherematch import tree_open, tree_search_radec
         from astrometry.util.starutil import radectoxyz, xyztoradec, degrees_between
-        from astrometry.util.fits import fits_table
         x1,y1,z1 = radectoxyz(east, north)
         x2,y2,z2 = radectoxyz(west, south)
         rc,dc = xyztoradec((x1+x2)/2., (y1+y2)/2., (z1+z2)/2.)
         # 0.15: SDSS field radius is ~ 0.13
         radius = 0.15 + degrees_between(east, north, west, south)/2.
-        fn = os.path.join(settings.DATA_DIR, 'sdss', 'sdss-fields-trimmed.kd.fits')
-        kd = tree_open(fn, 'ccds')
-        I = tree_search_radec(kd, rc, dc, radius)
-        print(len(I), 'CCDs within', radius, 'deg of RA,Dec (%.3f, %.3f)' % (rc,dc))
-        if len(I) == 0:
+        T = sdss_ccds_near(rc, dc, radius)
+        if T is None:
             return HttpResponse(json.dumps(dict(polys=[])),
                                 content_type='application/json')
-        # Read only the CCD-table rows within range.
-        T = fits_table(fn, rows=I)
         ccds = [dict(name='SDSS R/C/F %i/%i/%i' % (t.run, t.camcol, t.field),
                      radecs=[[t.ra1,t.dec1],[t.ra2,t.dec2],
                              [t.ra3,t.dec3],[t.ra4,t.dec4]],)
@@ -2585,6 +2606,19 @@ def ccd_list(req):
                          radecs=list(zip(r, d)),
                          color=ccmap[c.filter]))
     return HttpResponse(json.dumps(dict(polys=ccds)), content_type='application/json')
+
+def sdss_ccds_near(rc, dc, radius):
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    from astrometry.util.fits import fits_table
+    fn = os.path.join(settings.DATA_DIR, 'sdss', 'sdss-fields-trimmed.kd.fits')
+    kd = tree_open(fn, 'ccds')
+    I = tree_search_radec(kd, rc, dc, radius)
+    print(len(I), 'CCDs within', radius, 'deg of RA,Dec (%.3f, %.3f)' % (rc,dc))
+    if len(I) == 0:
+        return None
+    # Read only the CCD-table rows within range.
+    T = fits_table(fn, rows=I)
+    return T
 
 def get_exposure_table(name):
     from astrometry.util.fits import fits_table
