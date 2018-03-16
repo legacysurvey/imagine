@@ -2302,18 +2302,16 @@ class MyLegacySurveyData(LegacySurveyData):
         else:
             C = super(MyLegacySurveyData,self).get_ccds()
             # HACK -- cut to photometric & not-blacklisted CCDs.
-            C.photometric = np.zeros(len(C), bool)
-            I = self.photometric_ccds(C)
-            C.photometric[I] = True
+            # (not necessary when reading from kd.fits files, which are pre-cut)
+            # C.photometric = np.zeros(len(C), bool)
+            # I = self.photometric_ccds(C)
+            # C.photometric[I] = True
+            # C.ccd_cuts = self.ccd_cuts(C)
+            # from legacypipe.survey import LegacySurveyData
+            # bits = LegacySurveyData.ccd_cut_bits
+            # C.blacklist_ok = ((C.ccd_cuts & bits['BLACKLIST']) == 0)
+            # C.good_ccd = C.photometric * (C.ccd_cuts == 0)
 
-            C.ccd_cuts = self.ccd_cuts(C)
-
-            from legacypipe.survey import LegacySurveyData
-            bits = LegacySurveyData.ccd_cut_bits
-
-            C.blacklist_ok = ((C.ccd_cuts & bits['BLACKLIST']) == 0)
-
-            C.good_ccd = C.photometric * (C.ccd_cuts == 0)
             #debug('Cut to', len(C), 'photometric CCDs')
             #C.cut(self.apply_blacklist(C))
             #debug('Cut to', len(C), 'not-blacklisted CCDs')
@@ -2327,9 +2325,7 @@ class MyLegacySurveyData(LegacySurveyData):
             fn = '/tmp/cut-ccds-%s.fits' % os.path.basename(self.survey_dir)
             C.writeto(fn)
             print('Wrote', fn)
-        # Remove trailing spaces...
-        C.ccdname = np.array([s.strip() for s in C.ccdname])
-        C.camera  = np.array([c.strip() for c in C.camera ])
+        C = self.cleanup_ccds_table(C)
         return C
 
     def find_ccds(self, expnum=None, ccdname=None, camera=None):
@@ -3732,7 +3728,12 @@ if __name__ == '__main__':
     #c.get('/unwise-neo3/1/7/63/63.jpg')
     #c.get('/unwise-neo3/1/6/31/31.jpg')
     #c.get('/unwise-neo3/1/11/0/1023.jpg')
-    c.get('/unwise-neo3/1/5/0/14.jpg')
+    #c.get('/unwise-neo3/1/5/0/14.jpg')
+    #c.get('/decals-dr5/1/14/5702/7566.jpg')
+    #c.get('/ccds/?ralo=234.6575&rahi=234.7425&declo=13.5630&dechi=13.6370&id=decals-dr5')
+    c.get('/data-for-radec/?ra=234.7048&dec=13.5972&layer=decals-dr5')
+    c.get('/cutouts/?ra=234.7048&dec=13.5972&layer=decals-dr5')
+    c.get('/ccd/decals-dr5/decam-431280-S13-z')
     sys.exit(0)
 
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
