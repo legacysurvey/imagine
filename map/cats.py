@@ -34,6 +34,7 @@ catversions = {
     'tycho2': [1,],
     'targets-dr2': [1,],
     'targets-dr45': [1,],
+    'targets-dr56': [1,],
     'gaia-dr1': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
@@ -331,8 +332,20 @@ def cat_targets_dr2(req, ver):
                         content_type='application/json')
 
 def cat_targets_dr45(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr5-0.19.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr4-0.19.0.kd.fits'),
+    ], tag = 'targets-dr45')
+
+
+def cat_targets_dr56(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr5-0.19.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr6-0.19.0.kd.fits'),
+    ], tag = 'targets-dr56')
+
+def cat_targets_drAB(req, ver, cats=[], tag=''):
     import json
-    tag = 'targets-dr45'
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
     declo = float(req.GET['declo'])
@@ -361,9 +374,7 @@ def cat_targets_dr45(req, ver):
     fitsgetext -i /tmp/kd.fits -o targets-dr5-0.16.2.kd.fits -e 0 -e 6 -e 1 -e 2 -e 3 -e 4 -e 5
     '''
     TT = []
-    for fn in [os.path.join(settings.DATA_DIR, 'targets-dr5-0.17.1.kd.fits'),
-               os.path.join(settings.DATA_DIR, 'targets-dr4-0.17.1.kd.fits'),
-               ]:
+    for fn in cats:
         kd = tree_open(fn)
         I = tree_search_radec(kd, rc, dc, rad)
         print('Matched', len(I), 'from', fn)
@@ -468,6 +479,7 @@ def cat_spec(req, ver):
     rahi = float(req.GET['rahi'])
     declo = float(req.GET['declo'])
     dechi = float(req.GET['dechi'])
+    plate = req.GET.get('plate', None)
 
     ver = int(ver)
     if not ver in catversions[tag]:
@@ -485,6 +497,10 @@ def cat_spec(req, ver):
     else:
         T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
     debug(len(T), 'in cut')
+
+    if plate is not None:
+        plate = int(plate, 10)
+        T.cut(T.plate == plate)
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.label]

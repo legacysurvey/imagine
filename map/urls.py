@@ -74,6 +74,8 @@ urlpatterns = [
 
     # DR4/5 catalog
     url(r'^targets-dr45/(\d+)/cat.json', cats.cat_targets_dr45),
+    # DR5/6 catalog
+    url(r'^targets-dr56/(\d+)/cat.json', cats.cat_targets_dr56),
 
     # DECaPS2 tiles
     url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
@@ -162,6 +164,10 @@ urlpatterns = [
     # NEO2
     url(r'^unwise-neo2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-neo2')),
+
+    # NEO3
+    url(r'^unwise-neo3/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('unwise-neo3')),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
 
