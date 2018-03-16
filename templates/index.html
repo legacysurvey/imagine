@@ -345,6 +345,7 @@ var CatalogOverlay = L.Evented.extend({
 	        declo: lat2dec(b.getSouth()).toFixed(4),
 	        dechi: lat2dec(b.getNorth()).toFixed(4),
             id: this._url_name,
+            layer: layer_name,
             ver: getcatversion(this._name),
         }, this._url_args));
         this._counter += 1;
@@ -1123,7 +1124,7 @@ function fluxToMag(f) {
 
 function cutout_radec_link(ra, dec) {
     {% if enable_cutouts %}
-    return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + idname + '">' +
+    return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + layer_name + '">' +
         ra.toFixed(4) + ', ' + dec.toFixed(4) + '</a>';
     {% else %}
     return ra.toFixed(4) + ', ' + dec.toFixed(4);
@@ -1168,16 +1169,16 @@ function onSourceClick(e) {
 
 function brick_detail(ovname, name, aparams) {
     return 'Brick: <a href="{% url 'brick_detail_blank' %}' + name
-        + '/?layer=' + idname + '">' + name + '</a>';
+        + '/?layer=' + layer_name + '">' + name + '</a>';
 }
 
-function ccd_detail(idname, name, aparams) {
-    return 'CCD: <a href="{% url 'ccd_detail_blank' %}' + idname + '/'
+function ccd_detail(layer_name, name, aparams) {
+    return 'CCD: <a href="{% url 'ccd_detail_blank' %}' + layer_name + '/'
                      + name.replace(' ','-')
                      + '/"' + aparams + '>' + name + '</a>';
 }
 
-function sdss_ccd_detail(idname, name, aparams) {
+function sdss_ccd_detail(layer_name, name, aparams) {
     //var obj = ccdOverlaySdss._current[name];
     // HACK -- name is 'SDSS R/C/F ##/##/##' -- parse!
     var words = name.split(' ');
@@ -1190,13 +1191,13 @@ function sdss_ccd_detail(idname, name, aparams) {
           + '"' + aparams + '>' + name + '</a>';
 }
 
-function exp_detail(idname, name, aparams) {
-    return 'Exposure: <a href="{% url 'exp_detail_blank' %}' + idname + '/' +
+function exp_detail(layer_name, name, aparams) {
+    return 'Exposure: <a href="{% url 'exp_detail_blank' %}' + layer_name + '/' +
         name.replace(' ','-') + '/"' + aparams + '>' + name + '</a>';
 }
 
-function plate_detail(idname, name, aparams) {
-    //console.log('Plate_detail: ' + idname + ', ' + name + ', ' + aparams);
+function plate_detail(layer_name, name, aparams) {
+    //console.log('Plate_detail: ' + layer_name + ', ' + name + ', ' + aparams);
     return '<a href="https://dr14.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
 }
 
@@ -1205,7 +1206,7 @@ function onMapClick(e) {
     var dec = lat2dec(e.latlng.lat);
 
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
-    var linkqstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + idname;
+    var linkqstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + layer_name;
 
     var cutout = hostname_url + '{% url 'cutout-jpeg' %}?' + linkqstr;
     var linkurl = abs_url + '?' + linkqstr;
@@ -1226,7 +1227,7 @@ function onMapClick(e) {
         encodeURIComponent(linkurl) +
         '&category=Interesting+things';
 
-    var datalink = '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + idname;
+    var datalink = '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + layer_name;
     var spacer = ' &nbsp;|&nbsp; ';
 
     var txt =
@@ -1607,14 +1608,14 @@ allLayers.push({name:'decals-wl', tiles:tilesWl, pretty:"DECaLS DR1 Weak Lensing
 {% endif %}
 
 var added = false;
-var idname = layer_initial;
+var layer_name = layer_initial;
 var baseMaps = {};
-//console.log('Requested layer: "' + idname + '"');
+//console.log('Requested layer: "' + layer_name + '"');
 for (var i in allLayers) {
     var layer = allLayers[i];
     baseMaps[layer.pretty] = layer;
     //console.log('vs layer name "' + layer.name + '"');
-    if (idname == layer.name) {
+    if (layer_name == layer.name) {
         layer.addTo(map);
         added = true;
     }
@@ -1623,7 +1624,7 @@ if (!added) {
     defaultTile.addTo(map);
 }
 // may be overridden by 'qstr' below.
-var lastidname = idname;
+var last_layer_name = layer_name;
 
 function doGoto() {
     ra  = $('#gotora').val();
@@ -1786,7 +1787,7 @@ $(document).ready(function() {
                 obj: qstring,
             }));
             if (qstring.length == 0) {
-                url += '&layer=' + idname;
+                url += '&layer=' + layer_name;
             }
             $.getJSON(url, objQueryLoaded);
             $('#objquerystatus').html('Searching...');
@@ -2450,7 +2451,7 @@ var overlays = [
 
 
 if ('blink' in qstr) {
-    lastidname = qstr['blink'];
+    last_layer_name = qstr['blink'];
 }
 
 for (k in qstr) {
@@ -2664,10 +2665,10 @@ map.on('moveend', function(e) {
 map.on('baselayerchange', function(e) {
     console.log('baselayerchange: ' + e);
     console.log('layer: ' + e.layer);
-    console.log('idname: ' + e.layer.name);
-    lastidname = idname;
-    idname = e.layer.name;
-    console.log('new idname: ' + idname + ', new lastidname: ' + lastidname);
+    console.log('layer_name: ' + e.layer.name);
+    last_layer_name = layer_name;
+    layer_name = e.layer.name;
+    console.log('new layer_name: ' + layer_name + ', new last_layer_name: ' + last_layer_name);
 });
 
 // When space bar is pressed, switch back to previous layer.  This allows a quick "blink" between layers.
@@ -2682,16 +2683,16 @@ function keyDown(e) {
     // space bar
     if (e.keyCode == 32) {
         //console.log('space bar!');
-        //console.log('idname ' + idname + ', lastidname ' + lastidname);
-        if (lastidname != idname) {
-            console.log('Switching from layer ' + idname + ' back to previous layer ' + lastidname);
+        //console.log('layer_name ' + layer_name + ', last_layer_name ' + last_layer_name);
+        if (last_layer_name != layer_name) {
+            console.log('Switching from layer ' + layer_name + ' back to previous layer ' + last_layer_name);
             var toadd = false;
             var torm  = false;
             for (i in allLayers) {
                 layer = allLayers[i];
-                if (idname == layer.name) {
+                if (layer_name == layer.name) {
                     torm = layer;
-                } else if (lastidname == layer.name) {
+                } else if (last_layer_name == layer.name) {
                     toadd = layer;
                 }
             }

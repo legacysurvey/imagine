@@ -234,7 +234,7 @@ def _index(req,
     subdomains_B = '[' + ','.join(["'%s'" % s for s in subdomains_B]) + '];'
 
     ccdsurl = baseurl + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
-    bricksurl = baseurl + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    bricksurl = baseurl + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&layer={layer}'
     expsurl = baseurl + '/exps/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
     platesurl = baseurl + '/sdss-plates/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
     sqlurl = baseurl + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
