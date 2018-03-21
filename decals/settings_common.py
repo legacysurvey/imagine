@@ -13,7 +13,8 @@ import secrets.database
 
 REDIRECT_CUTOUTS_DECAPS = False
 
-GAIA_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia_rel1'
+#GAIA_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia_rel1'
+GAIA_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr1-astrom'
 
 CREATE_GALAXY_CATALOG = True
 
