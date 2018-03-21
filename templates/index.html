@@ -1122,9 +1122,14 @@ function fluxToMag(f) {
     return -2.5 * (Math.log(f)/Math.log(10.) - 9);
 }
 
+function cutout_radec_url(ra, dec) {
+    return '{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + layer_name;
+}
+
 function cutout_radec_link(ra, dec) {
     {% if enable_cutouts %}
-    return '<a href="{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + layer_name + '">' +
+    url = cutout_radec_url(ra, dec);
+    return '<a href="' + url + '">' +
         ra.toFixed(4) + ', ' + dec.toFixed(4) + '</a>';
     {% else %}
     return ra.toFixed(4) + ', ' + dec.toFixed(4);
@@ -1236,6 +1241,9 @@ function onMapClick(e) {
         '">Link Here</a>' + spacer +
         '<a href="' + datalink + '">Data</a>' + spacer +
         '<a href="' + cutout + '">Cutout</a>' + spacer +
+    {% if enable_cutouts %}
+        '<a href="' + cutout_radec_url(ra,dec) + '">Single Image Cutouts</a>' + spacer +
+    {% endif %}
         '<a href="' + discuss + '">Discuss This Object</a>';
 
     for (var i=0; i<polygonOverlays.length; i++) {
