@@ -85,6 +85,8 @@ tileversions = {
     'unwise-neo3': [1],
     #'unwise-w3w4': [1],
 
+    '2mass': [1],
+
     'cutouts': [1],
     }
 
@@ -882,6 +884,12 @@ class MapLayer(object):
                     Yi = Yi[I]
                     Xi = Xi[I]
 
+                if not np.all(np.isfinite(img[Yi,Xi])):
+                    ok, = np.nonzero(np.isfinite(img[Yi,Xi]))
+                    Yo = Yo[ok]
+                    Xo = Xo[ok]
+                    Yi = Yi[ok]
+                    Xi = Xi[ok]
                 rimg[Yo,Xo] += img[Yi,Xi]
                 rn  [Yo,Xo] += 1
 
@@ -2080,6 +2088,125 @@ class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
             return None
         return bricks[I]
 
+
+
+class TwoMassLayer(MapLayer):
+    def __init__(self, name):
+        super(TwoMassLayer, self).__init__(name, nativescale=12)
+        self.bricks = None
+        self.pixscale = 1.0
+
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        from astrometry.util.fits import fits_table
+        basedir = settings.DATA_DIR
+        self.bricks = fits_table(os.path.join(basedir, '2mass', '2mass-bricks.fits'))
+        return self.bricks
+
+    def get_bands(self):
+        return ['j','h','k']
+
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
+        import numpy as np
+        bricks = self.get_bricks()
+        print('2MASS bricks touching RA,Dec box', ralo, rahi, declo, dechi)
+        I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
+        I = I[ok]
+        print('-> bricks', bricks.brickname[I])
+        if len(I) == 0:
+            return None
+        return bricks[I]
+
+    def get_base_filename(self, brick, band, **kwargs):
+        brickname = brick.brickname
+        basedir = settings.DATA_DIR
+        fn = os.path.join(basedir, '2mass', '%si%s.fits' % (band, brickname))
+        return fn
+    
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+            '%(scale)i%(band)s',
+            '%(brickname).3s', '2mass-%(brickname)s-%(band)s.fits')
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        rgb = sdss_rgb(imgs, bands,
+                       scales=dict(j=0.0015,
+                                   h=0.0009, #23,
+                                   k=0.0009,))
+        return rgb
+
+    def read_image(self, brick, band, scale, slc, fn=None):
+        import fitsio
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        print('Reading image from', fn)
+        ext = self.get_fits_extension(scale, fn)
+        f = fitsio.FITS(fn)[ext]
+
+        if band in ['h','k'] and scale == 0:
+            import numpy as np
+            from tractor.splinesky import SplineSky
+            from scipy.ndimage.filters import uniform_filter
+            from scipy.ndimage.morphology import binary_dilation
+
+            # re-estimate sky
+            img = f.read()
+            hdr = f.read_header()
+            sky = hdr['SKYVAL']
+            zpscale = 10.**((hdr['MAGZP'] - 22.5) / 2.5)
+            img = (img - sky) / zpscale
+            skysig = hdr['SKYSIG']
+            skysig /= zpscale
+
+            boxsize = 128
+            good = (np.abs(img) < 5.*skysig) * np.isfinite(img)
+            skyobj = SplineSky.BlantonMethod(img, good, boxsize)
+            skymod = np.zeros_like(img)
+            skyobj.addTo(skymod)
+
+            # Now mask bright objects in a boxcar-smoothed (image - initial sky model)
+            # Smooth by a boxcar filter before cutting pixels above threshold --
+            boxcar = 5
+            # Sigma of boxcar-smoothed image
+            bsig1 = skysig / boxcar
+            masked = np.abs(uniform_filter(img-skymod, size=boxcar, mode='constant')
+                            > (3.*bsig1))
+            masked = binary_dilation(masked, iterations=3)
+            good[masked] = False
+            # Now find the final sky model using that more extensive mask
+            skyobj = SplineSky.BlantonMethod(img, good, boxsize)
+            skymod[:,:] = 0.
+            skyobj.addTo(skymod)
+            img -= skymod
+            if slc is not None:
+                img = img[slc]
+            return img
+
+        if slc is None:
+            img = f.read()
+        else:
+            img = f[slc]
+        if scale == 0:
+            import numpy as np
+            hdr = f.read_header()
+            sky = hdr['SKYVAL']
+            zpscale = 10.**((hdr['MAGZP'] - 22.5) / 2.5)
+            img = (img - sky) / zpscale
+            #img[np.logical_not(np.isfinite)] = 0.
+        return img
+
+    def read_wcs(self, brick, band, scale, fn=None):
+        if scale != 0:
+            return super(TwoMassLayer,self).read_wcs(brick, band, scale, fn=fn)
+        #print('read_wcs: brick is', brick)
+        from astrometry.util.util import Tan
+        wcs = Tan(*[float(f) for f in
+                    [brick.crval1, brick.crval2, brick.crpix1, brick.crpix2,
+                     brick.cd11, brick.cd12, brick.cd21, brick.cd22, brick.width, brick.height]])
+        wcs.sin = True
+        return wcs
 
 class ZeaLayer(MapLayer):
     def __init__(self, name, zeamap, stretch=None, vmin=0., vmax=1.,
@@ -3618,6 +3745,9 @@ def get_layer(name, default=None):
         layer = RebrickedUnwise('unwise-neo3',
                                 settings.UNWISE_NEO3_DIR)
 
+    elif name == '2mass':
+        layer = TwoMassLayer('2mass')
+
     elif name == 'halpha':
         from tractor.sfd import SFDMap
         halpha = SFDMap(
@@ -3731,9 +3861,13 @@ if __name__ == '__main__':
     #c.get('/unwise-neo3/1/5/0/14.jpg')
     #c.get('/decals-dr5/1/14/5702/7566.jpg')
     #c.get('/ccds/?ralo=234.6575&rahi=234.7425&declo=13.5630&dechi=13.6370&id=decals-dr5')
-    c.get('/data-for-radec/?ra=234.7048&dec=13.5972&layer=decals-dr5')
-    c.get('/cutouts/?ra=234.7048&dec=13.5972&layer=decals-dr5')
-    c.get('/ccd/decals-dr5/decam-431280-S13-z')
+    #c.get('/data-for-radec/?ra=234.7048&dec=13.5972&layer=decals-dr5')
+    #c.get('/cutouts/?ra=234.7048&dec=13.5972&layer=decals-dr5')
+    #c.get('/ccd/decals-dr5/decam-431280-S13-z')
+    #c.get('/2mass/1/12/2331/1504.jpg')
+    #c.get('/2mass/1/11/1167/754.jpg')
+    #c.get('/2mass/1/11/1164/755.jpg')
+    c.get('/jpeg-cutout?ra=155.0034&dec=42.4534&zoom=11&layer=2mass')
     sys.exit(0)
 
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')

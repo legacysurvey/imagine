@@ -9,6 +9,10 @@ survey_regex = r'([\w +-]+)'
 
 urlpatterns = [
 
+    # 2MASS
+    url(r'^2mass/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('2mass')),
+
     # PHAT M31
     url(r'^phat/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('phat')),
