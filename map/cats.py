@@ -485,11 +485,28 @@ def cat_spec(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    from astrometry.util.fits import fits_table, merge_tables
     import numpy as np
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
 
-    TT = []
-    T = fits_table(os.path.join(settings.DATA_DIR, 'specObj-dr12-trim-2.fits'))
+    xyz1 = radectoxyz(ralo, declo)
+    xyz2 = radectoxyz(rahi, dechi)
+    xyz = (xyz1 + xyz2)/2.
+    xyz /= np.sqrt(np.sum(xyz**2))
+    rc,dc = xyztoradec(xyz)
+    rc = rc[0]
+    dc = dc[0]
+    rad = degrees_between(rc, dc, ralo, declo)
+    #T = fits_table(os.path.join(settings.DATA_DIR, 'specObj-dr12-trim-2.fits'))
+    fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr14-trimmed.kd.fits')
+    kd = tree_open(fn)
+    I = tree_search_radec(kd, rc, dc, rad)
+    print('Matched', len(I), 'from', fn)
+    if len(I) == 0:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],plate=[])),
+                            content_type='application/json')
+    T = fits_table(fn, rows=I)
     debug(len(T), 'spectra')
     if ralo > rahi:
         # RA wrap
@@ -836,4 +853,26 @@ def _get_decals_cat(wcs, tag='decals'):
 
 if __name__ == '__main__':
     #print('Random galaxy:', get_random_galaxy(layer='mzls+bass-dr4'))
-    create_galaxy_catalog('/tmp/dr6.fits', 6)
+    #create_galaxy_catalog('/tmp/dr6.fits', 6)
+    #specObj-dr14.fits
+    #T = fits_table('/project/projectdirs/cosmo/data/sdss/dr14/sdss/spectro/redux/specObj-dr14.fits')
+    T=fits_table('/project/projectdirs/cosmo/data/sdss/dr14/sdss/spectro/redux/specObj-dr14.fits',
+                 columns=['plate','mjd','fiberid','plug_ra','plug_dec','class','subclass','z','zwarning'])
+    T.rename('plug_ra', 'ra')
+    T.rename('plug_dec','dec')
+    labels = []
+    for t in T:
+        sub = t.subclass
+        sub = sub.split()
+        sub = ' '.join([s for s in sub if s[0] != '('])
+        cla = t.get('class').strip()
+        txt = cla
+        if len(sub):
+            txt += ' (' + sub + ')'
+        if cla in ['GALAXY', 'QSO']:
+            txt += ' z=%.3f' % t.z
+        labels.append(txt)
+    T.label = np.array(labels)
+    T.writeto('specObj-dr14-trimmed.fits', columns=['ra','dec','plate','mjd','fiberid','z','zwarning','label'])
+
+    # startree -i data/specObj-dr14-trimmed.fits -o data/specObj-dr14-trimmed.kd.fits -T -k -P

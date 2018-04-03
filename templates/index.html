@@ -459,7 +459,7 @@ var GalaxyCatalog = CatalogOverlay.extend({
 
 var SdssSpectraCatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
-        var label = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' +
+        var label = '<a href="https://dr14.sdss.org/optical/spectrum/view?mjd=' +
             json['mjd'][i] + '&fiber=' + json['fiber'][i] + '&plateid=' +
             json['plate'][i] + '">' + json.name[i] + '</a>';
         return label;
