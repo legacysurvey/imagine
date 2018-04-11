@@ -13,6 +13,10 @@ urlpatterns = [
     url(r'^2mass/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('2mass')),
 
+    # Galex
+    url(r'^galex/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('galex')),
+
     # PHAT M31
     url(r'^phat/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('phat')),

@@ -86,6 +86,7 @@ tileversions = {
     #'unwise-w3w4': [1],
 
     '2mass': [1],
+    'galex': [1],
 
     'cutouts': [1],
     }
@@ -2089,6 +2090,108 @@ class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
         return bricks[I]
 
 
+class GalexLayer(MapLayer):
+    def __init__(self, name):
+        super(GalexLayer, self).__init__(name, nativescale=12)
+        self.bricks = None
+        self.pixscale = 1.5
+
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        import numpy as np
+        from astrometry.util.fits import fits_table
+        basedir = settings.DATA_DIR
+        self.bricks = fits_table(os.path.join(basedir, 'galex', 'galex-images.fits'))
+        self.bricks.rename('ra_cent', 'ra')
+        self.bricks.rename('dec_cent', 'dec')
+        cosd = np.cos(np.deg2rad(self.bricks.dec))
+        self.bricks.ra1 = self.bricks.ra - 3840*1.5/3600./2./cosd
+        self.bricks.ra2 = self.bricks.ra + 3840*1.5/3600./2./cosd
+        self.bricks.dec1 = self.bricks.dec - 3840*1.5/3600./2.
+        self.bricks.dec2 = self.bricks.dec + 3840*1.5/3600./2.
+
+        self.bricks.brickname = np.array(['%s_sg%02i' % (t.strip(), s) for t,s in zip(self.bricks.tilename, self.bricks.subvis)])
+
+        return self.bricks
+
+
+        #'                                             GR6/pipe/02-vsn/50164-AIS_164/d/01-main/0001-img/07-try/AIS_164_sg08-xd-mcat.fits.gz'
+
+
+    def get_bands(self):
+        return ['n','f']
+
+    # def get_brick_mask(self, scale, bwcs, brick):
+    #     if scale > 0:
+    #         return None
+    #     H,W = bwcs.shape
+    #     U = find_unique_pixels(bwcs, W, H, None, 
+    #                            brick.ra1, brick.ra2, brick.dec1, brick.dec2)
+    #     return U
+
+    def read_wcs(self, brick, band, scale, fn=None):
+        if scale != 0:
+            return super(GalexLayer,self).read_wcs(brick, band, scale, fn=fn)
+        #print('read_wcs: brick is', brick)
+        from astrometry.util.util import Tan
+        wcs = Tan(*[float(f) for f in
+                    [brick.crval1, brick.crval2, brick.crpix1, brick.crpix2,
+                     brick.cdelt1, 0., 0., brick.cdelt2, 3840., 3840.]])
+        return wcs
+
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
+        import numpy as np
+        bricks = self.get_bricks()
+        print('GALEX images touching RA,Dec box', ralo, rahi, declo, dechi)
+        I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
+        I = I[ok]
+        print('-> "bricks"', bricks.filenpath[I])
+
+        if len(I) == 0:
+            return None
+        return bricks[I]
+
+    def get_base_filename(self, brick, band, **kwargs):
+        #brickname = brick.brickname
+        basedir = settings.DATA_DIR
+        fn = os.path.join(basedir, 'galex', brick.tilename.strip(), '%s_sg%02i-%sd-intbgsub.fits.gz' % (brick.tilename.strip(), brick.subvis, band))
+        return fn
+    
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+            '%(scale)i%(band)s',
+            '%(brickname).3s', 'galex-%(brickname)s-%(band)s.fits')
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        nuv,fuv = imgs
+        h,w = nuv.shape
+        import numpy as np
+        myrgb = np.zeros((h,w,3), np.float32)
+        lo,hi = -0.005, 0.05
+        myrgb[:,:,0] = np.clip((nuv - lo) / (hi - lo), 0., 1.)
+        lo,hi = -0.0005, 0.005
+        myrgb[:,:,2] = np.clip((fuv - lo) / (hi - lo), 0., 1.)
+        myrgb[:,:,1] = np.clip((myrgb[:,:,0] + myrgb[:,:,2]*0.2), 0., 1.)
+        return myrgb
+
+    def read_image(self, brick, band, scale, slc, fn=None):
+        import fitsio
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        print('Reading image from', fn)
+        ext = self.get_fits_extension(scale, fn)
+        f = fitsio.FITS(fn)[ext]
+        if slc is None:
+            img = f.read()
+        else:
+            img = f[slc]
+        if scale == 0:
+            # mask out pixels with value 0.0 ?
+            pass
+        return img
+
 
 class TwoMassLayer(MapLayer):
     def __init__(self, name):
@@ -3748,6 +3851,9 @@ def get_layer(name, default=None):
     elif name == '2mass':
         layer = TwoMassLayer('2mass')
 
+    elif name == 'galex':
+        layer = GalexLayer('galex')
+
     elif name == 'halpha':
         from tractor.sfd import SFDMap
         halpha = SFDMap(
@@ -3867,9 +3973,9 @@ if __name__ == '__main__':
     #c.get('/2mass/1/12/2331/1504.jpg')
     #c.get('/2mass/1/11/1167/754.jpg')
     #c.get('/2mass/1/11/1164/755.jpg')
-    c.get('/jpeg-cutout?ra=155.0034&dec=42.4534&zoom=11&layer=2mass')
+    #c.get('/jpeg-cutout?ra=155.0034&dec=42.4534&zoom=11&layer=2mass')
+    c.get('/galex/1/11/0/1024.jpg')
     sys.exit(0)
-
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
     print('Got:', response.status_code)

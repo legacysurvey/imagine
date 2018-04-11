@@ -1590,7 +1590,14 @@ tiles = mylayer_B('unwise-neo3', 'unWISE W1/W2 NEO3',
                  'urlPatterns': [ [8, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+{% comment %}
 tiles = mylayer('2mass', '2MASS',
+                {'maxNativeZoom': 12,
+                 'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endcomment %}
+
+tiles = mylayer('galex', 'GALEX',
                 {'maxNativeZoom': 12,
                  'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
