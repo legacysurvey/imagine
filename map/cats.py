@@ -333,15 +333,15 @@ def cat_targets_dr2(req, ver):
 
 def cat_targets_dr45(req, ver):
     return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-dr5-0.19.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr4-0.19.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr4-0.20.0.kd.fits'),
     ], tag = 'targets-dr45')
 
 
 def cat_targets_dr56(req, ver):
     return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-dr5-0.19.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr6-0.19.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr6-0.20.0.kd.fits'),
     ], tag = 'targets-dr56')
 
 def cat_targets_drAB(req, ver, cats=[], tag=''):
@@ -370,8 +370,7 @@ def cat_targets_drAB(req, ver, cats=[], tag=''):
     rad = degrees_between(rc, dc, ralo, declo)
 
     '''
-    startree -i /project/projectdirs/desi/target/catalogs/targets-dr5-0.16.2.fits -o /tmp/kd.fits -P -k
-    fitsgetext -i /tmp/kd.fits -o targets-dr5-0.16.2.kd.fits -e 0 -e 6 -e 1 -e 2 -e 3 -e 4 -e 5
+    startree -i /project/projectdirs/desi/target/catalogs/targets-dr4-0.20.0.fits -o data/targets-dr4-0.20.0.kd.fits -P -k -T
     '''
     TT = []
     for fn in cats:
