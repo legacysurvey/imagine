@@ -2115,10 +2115,6 @@ class GalexLayer(MapLayer):
 
         return self.bricks
 
-
-        #'                                             GR6/pipe/02-vsn/50164-AIS_164/d/01-main/0001-img/07-try/AIS_164_sg08-xd-mcat.fits.gz'
-
-
     def get_bands(self):
         return ['n','f']
 
@@ -2168,13 +2164,37 @@ class GalexLayer(MapLayer):
         nuv,fuv = imgs
         h,w = nuv.shape
         import numpy as np
-        myrgb = np.zeros((h,w,3), np.float32)
-        lo,hi = -0.005, 0.05
-        myrgb[:,:,0] = np.clip((nuv - lo) / (hi - lo), 0., 1.)
-        lo,hi = -0.0005, 0.005
-        myrgb[:,:,2] = np.clip((fuv - lo) / (hi - lo), 0., 1.)
-        myrgb[:,:,1] = np.clip((myrgb[:,:,0] + myrgb[:,:,2]*0.2), 0., 1.)
-        return myrgb
+        from scipy.ndimage.filters import uniform_filter, gaussian_filter
+        red = nuv * 0.206 * 2297
+        blue = fuv * 1.4 * 1525
+        #blue = uniform_filter(blue, 3)
+        blue = gaussian_filter(blue, 1.)
+        green = (0.2*blue + 0.8*red)
+
+        red   *= 0.085
+        green *= 0.095
+        blue  *= 0.08
+        nonlinearity = 2.5
+        radius = red + green + blue
+        val = np.arcsinh(radius * nonlinearity) / nonlinearity
+        with np.errstate(divide='ignore', invalid='ignore'):
+            red   = red   * val / radius
+            green = green * val / radius
+            blue  = blue  * val / radius
+        mx = np.maximum(red, np.maximum(green, blue))
+        mx = np.maximum(1., mx)
+        red   /= mx
+        green /= mx
+        blue  /= mx
+        rgb = np.clip(np.dstack((red, green, blue)), 0., 1.)
+        return rgb
+        # myrgb = np.zeros((h,w,3), np.float32)
+        # lo,hi = -0.005, 0.05
+        # myrgb[:,:,0] = np.clip((nuv - lo) / (hi - lo), 0., 1.)
+        # lo,hi = -0.0005, 0.005
+        # myrgb[:,:,2] = np.clip((fuv - lo) / (hi - lo), 0., 1.)
+        # myrgb[:,:,1] = np.clip((myrgb[:,:,0] + myrgb[:,:,2]*0.2), 0., 1.)
+        # return myrgb
 
     def read_image(self, brick, band, scale, slc, fn=None):
         import fitsio
