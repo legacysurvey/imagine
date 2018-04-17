@@ -911,7 +911,7 @@ var UserCatalogLayer = CatalogOverlay.extend({
         nxt.after('&nbsp;');
         // find it with jQuery
         this._index = $('#' + indxid);
-        this._index.html('[0]');
+        this._index.html('[' + (this._catoffset + this._catindex) + ']');
 
         // prev catalog entry
         var prevbutton = L.DomUtil.create('a', 'layer-prev');
@@ -946,7 +946,6 @@ var UserCatalogLayer = CatalogOverlay.extend({
           this._catoffset += this._catdata.length;
           this._catindex = -1;
         } else {
-          
           this._index.html('[' + (this._catoffset + this._catindex) + ']');
           ra  = this._catdata[this._catindex][0];
           dec = this._catdata[this._catindex][1];
@@ -2466,6 +2465,8 @@ var overlays = [
     }
     overlays = [usercat].concat(overlays);
     map.addLayer(usercat.getGroup());
+    map.on('baselayerchange', function(e) {
+        usercat.ready(); });
   {% endfor %}
 {% endif %}
 
