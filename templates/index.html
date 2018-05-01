@@ -403,18 +403,25 @@ var CatalogOverlay = L.Evented.extend({
         var circleList = new Array(rdlist.length);
         var clong = map.getCenter().lng;
         var radii = result['radiusArcsec'];
+        var colors = result['color'];
         for (var i=0, len=rdlist.length; i<len; i++) {
             var r = rdlist[i][0];
             var d = rdlist[i][1];
             var lat = dec2lat(d);
             var lng = ra2long_C(r, clong);
+            var style = this._style;
+            //var color = this.getColor(result, i);
+            if (colors !== undefined) {
+                color = colors[i];
+                style = Object.assign(style, {'color':color});
+            }
+            var radius = this_radius;
             if (radii) {
 	            // arcsec to meters:
 	            var meters = (radii[i] * 30.87) || 30;
-                var circ = L.circle([lat, lng], meters, this._style);
-            } else {
-                var circ = L.circle([lat, lng], this._radius, this._style);
+                radius = meters;
             }
+            var circ = L.circle([lat, lng], radius, style);
 	        if (showlabels) {
                 var txt = this.getLabel(result, i);
                 if (txt.length > 0) {
@@ -464,6 +471,7 @@ var SdssSpectraCatalog = CatalogOverlay.extend({
             json['plate'][i] + '">' + json.name[i] + '</a>';
         return label;
     },
+
 });
 
 var Deep2SpectraCatalog = CatalogOverlay.extend({
