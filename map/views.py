@@ -872,7 +872,6 @@ class MapLayer(object):
                     #debug('Resampling exception')
                     continue
 
-
                 bmask = self.get_brick_mask(scale, bwcs, brick)
                 if bmask is not None:
                     # Assume bmask is a binary mask as large as the bwcs.
@@ -891,6 +890,14 @@ class MapLayer(object):
                     Xo = Xo[ok]
                     Yi = Yi[ok]
                     Xi = Xi[ok]
+
+                ok = self.filter_pixels(img, wcs, subwcs, Yo,Xo,Yi,Xi)
+                if ok is not None:
+                    Yo = Yo[ok]
+                    Xo = Xo[ok]
+                    Yi = Yi[ok]
+                    Xi = Xi[ok]
+
                 rimg[Yo,Xo] += img[Yi,Xi]
                 rn  [Yo,Xo] += 1
 
@@ -936,6 +943,9 @@ class MapLayer(object):
         return rimgs
 
     def get_brick_mask(self, scale, bwcs, brick):
+        return None
+
+    def filter_pixels(self, img, wcs, sub_brick_wcs, Yo,Xo,Yi,Xi):
         return None
 
     def get_tile(self, req, ver, zoom, x, y,
@@ -2118,13 +2128,8 @@ class GalexLayer(MapLayer):
     def get_bands(self):
         return ['n','f']
 
-    # def get_brick_mask(self, scale, bwcs, brick):
-    #     if scale > 0:
-    #         return None
-    #     H,W = bwcs.shape
-    #     U = find_unique_pixels(bwcs, W, H, None, 
-    #                            brick.ra1, brick.ra2, brick.dec1, brick.dec2)
-    #     return U
+    def filter_pixels(self, img, wcs, sub_brick_wcs, Yo,Xo,Yi,Xi):
+        return (img[Yi,Xi] != 0.)
 
     def read_wcs(self, brick, band, scale, fn=None):
         if scale != 0:
