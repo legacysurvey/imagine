@@ -36,10 +36,13 @@ if __name__ == '__main__':
     #T = fits_table('data/galex/galex_dstn.fit')
     T = fits_table('data/galex/galex-images.fits')
     args = []
-    for tile,sv,path in zip(T.tilename, T.subvis, T.filenpath):
+    for tile,sv,path,nt,ft in zip(T.tilename, T.subvis, T.filenpath,
+                                  T.nexptime, T.fexptime):
         tile = tile.strip()
-        for band in ['n','f']:
-            args.append((tile, sv, path, band))
+        if nt > 0:
+            args.append((tile, sv, path, 'n'))
+        if ft > 0:
+            args.append((tile, sv, path, 'f'))
 
     mp = multiproc(8)
     mp.map(_get_one, args)

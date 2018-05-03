@@ -11,7 +11,7 @@ if False:
     sdssps = PlotSequence('sdss')
 
 from map.views import tileversions, sdss_rgb
-from map.coadds import get_scaled, read_sip_wcs, sdss_rgb, 
+from map.coadds import get_scaled, read_sip_wcs
 from map.utils import save_jpeg
 
 tileversions.update(dict(sdss=[1,]))
@@ -23,6 +23,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
              forcecache=False,
              forcescale=None,
              bestOnly=False,
+             bands = 'gri',
              **kwargs):
     from decals import settings
 
@@ -72,7 +73,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     from astrometry.util.util import Tan, Sip
     import fitsio
 
-    print 'Tile wcs: center', wcs.radec_center(), 'pixel scale', wcs.pixel_scale()
+    print('Tile wcs: center', wcs.radec_center(), 'pixel scale', wcs.pixel_scale())
 
     global w_flist
     global w_flist_tree
@@ -80,9 +81,9 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         w_flist = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
                                           'window_flist.fits'),
                              columns=['run','rerun','camcol','field','ra','dec','score'])
-        print 'Read', len(w_flist), 'window_flist entries'
+        print('Read', len(w_flist), 'window_flist entries')
         w_flist.cut(w_flist.rerun == '301')
-        print 'Cut to', len(w_flist), 'in rerun 301'
+        print('Cut to', len(w_flist), 'in rerun 301')
         w_flist_tree = tree_build_radec(w_flist.ra, w_flist.dec)
 
     # SDSS field size
@@ -96,7 +97,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
 
     J = tree_search_radec(w_flist_tree, ra, dec, radius)
 
-    print len(J), 'overlapping SDSS fields found'
+    print(len(J), 'overlapping SDSS fields found')
     if len(J) == 0:
         if get_images:
             return None
@@ -107,7 +108,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
             if os.path.exists(tilefn):
                 os.unlink(tilefn)
             os.symlink(src, tilefn)
-            print 'Symlinked', tilefn, '->', src
+            print('Symlinked', tilefn, '->', src)
         from django.http import HttpResponseRedirect
         return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
     
@@ -133,7 +134,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
         
         native_scale = 0.396
         scaled = int(np.floor(np.log2(scale / native_scale)))
-        print 'Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled
+        print('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', scale, 'Scale step:', scaled)
         scaled = np.clip(scaled, 1, 7)
         dirnm = os.path.join(basedir, 'scaled', scaledir)
         scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(rerun)s', '%(run)i', '%(camcol)i', 'sdss-%(run)i-%(camcol)i-%(field)i-%(band)s.fits')
@@ -141,7 +142,6 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     if forcescale is not None:
         scaled = forcescale
 
-    bands = 'gri'
     rimgs = [np.zeros((H,W), np.float32) for band in bands]
     rns   = [np.zeros((H,W), np.float32)   for band in bands]
 
@@ -154,7 +154,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                           resolve=settings.SDSS_RESOLVE)
 
     for jnum,j in enumerate(J):
-        print 'SDSS field', jnum, 'of', len(J), 'for zoom', zoom, 'x', x, 'y', y
+        print('SDSS field', jnum, 'of', len(J), 'for zoom', zoom, 'x', x, 'y', y)
         im = w_flist[j]
 
         if im.score >= 0.5:
@@ -174,7 +174,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
                               camcol=im.camcol, field=im.field)
                 fn = get_scaled(scalepat, fnargs, scaled, basefn,
                                 read_base_wcs=read_astrans, read_wcs=read_sip_wcs)
-                print 'get_scaled:', fn
+                print('get_scaled:', fn)
             else:
                 fn = basefn
             frame = None
@@ -271,7 +271,7 @@ def map_sdss(req, ver, zoom, x, y, savecache=None, tag='sdss',
     rgb = sdss_rgb(rimgs, bands)
     trymakedirs(tilefn)
     save_jpeg(tilefn, rgb)
-    print 'Wrote', tilefn
+    print('Wrote', tilefn)
 
     return send_file(tilefn, 'image/jpeg', unlink=(not savecache))
 
@@ -302,7 +302,7 @@ def map_decam_depth(req, ver, zoom, x, y, savecache=False, band=None,
     tilefn = os.path.join(basedir, 'tiles', tag,
                           '%i/%i/%i/%i.jpg' % (ver, zoom, x, y))
     if os.path.exists(tilefn) and not ignoreCached:
-        print 'Cached:', tilefn
+        print('Cached:', tilefn)
         return send_file(tilefn, 'image/jpeg', expires=oneyear,
                          modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'))
     from astrometry.util.util import Tan
@@ -345,7 +345,7 @@ def map_decam_depth(req, ver, zoom, x, y, savecache=False, band=None,
 
     #I,J,d = match_radec(T.ra, T.dec, r, d, rad + 0.2)
     I = tree_search_radec(Tkd, r, d, rad + 0.2)
-    print len(I), 'CCDs in range'
+    print(len(I), 'CCDs in range')
     if len(I) == 0:
         from django.http import HttpResponseRedirect
         return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
@@ -1072,7 +1072,7 @@ if __name__ == '__main__':
                    bestOnly=True)
     #print 'Got', gri
     g,r,i = gri
-    print 'g', g.shape
+    print('g', g.shape)
 
     hdr = fitsio.FITSHDR()
     wcs.add_to_header(hdr)

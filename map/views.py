@@ -813,13 +813,17 @@ class MapLayer(object):
         rimgs = []
         for band in bands:
             rimg = np.zeros((H,W), np.float32)
-            rn   = np.zeros((H,W), np.uint8)
+            #rn   = np.zeros((H,W), np.uint8)
+            rw   = np.zeros((H,W), np.float32)
             bandbricks = self.bricks_for_band(bricks, band)
             for brick in bandbricks:
                 brickname = brick.brickname
                 print('Reading', brickname, 'band', band, 'scale', scale)
                 # call get_filename to possibly generate scaled version
                 fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
+                print('Reading', brickname, 'band', band, 'scale', scale, '-> fn', fn)
+                if fn is None:
+                    continue
 
                 try:
                     bwcs = self.read_wcs(brick, band, scale, fn=fn)
@@ -850,7 +854,7 @@ class MapLayer(object):
                 yhi = np.clip(yy.max() + M, 0, imH)
                 #print('x range', xlo,xhi, 'y range', ylo,yhi)
                 if xlo >= xhi or ylo >= yhi:
-                    #print('No pixel overlap')
+                    print('No pixel overlap')
                     continue
     
                 subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
@@ -891,15 +895,17 @@ class MapLayer(object):
                     Yi = Yi[ok]
                     Xi = Xi[ok]
 
-                ok = self.filter_pixels(img, wcs, subwcs, Yo,Xo,Yi,Xi)
+                ok = self.filter_pixels(scale, img, wcs, subwcs, Yo,Xo,Yi,Xi)
                 if ok is not None:
                     Yo = Yo[ok]
                     Xo = Xo[ok]
                     Yi = Yi[ok]
                     Xi = Xi[ok]
 
-                rimg[Yo,Xo] += img[Yi,Xi]
-                rn  [Yo,Xo] += 1
+                wt = self.get_pixel_weights(band, brick, scale)
+
+                rimg[Yo,Xo] += img[Yi,Xi] * wt
+                rw  [Yo,Xo] += wt
 
                 if False:
                     import pylab as plt
@@ -927,7 +933,7 @@ class MapLayer(object):
                     plt.title('dest')
 
                     plt.subplot(2,3,3)
-                    plt.imshow(rimg / np.maximum(rn,1),
+                    plt.imshow(rimg / np.maximum(rw, 1e-18),
                                interpolation='nearest', origin='lower',
                                vmin=-0.001, vmax=0.01)
                     plt.title('rimg')
@@ -936,17 +942,20 @@ class MapLayer(object):
                     plt.title('rn')
                     plt.savefig('render-%s-%s.png' % (brickname, band))
 
-
-
-            rimg /= np.maximum(rn, 1)
+            print('Median image weight:', np.median(rw.ravel()))
+            rimg /= np.maximum(rw, 1e-18)
+            print('Median image value:', np.median(rimg.ravel()))
             rimgs.append(rimg)
         return rimgs
 
     def get_brick_mask(self, scale, bwcs, brick):
         return None
 
-    def filter_pixels(self, img, wcs, sub_brick_wcs, Yo,Xo,Yi,Xi):
+    def filter_pixels(self, scale, img, wcs, sub_brick_wcs, Yo,Xo,Yi,Xi):
         return None
+
+    def get_pixel_weights(self, band, brick, scale, **kwargs):
+        return 1.
 
     def get_tile(self, req, ver, zoom, x, y,
                  wcs=None,
@@ -1458,6 +1467,7 @@ class RebrickedMixin(object):
         if not os.path.exists(fn):
             print('Creating', fn)
             self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
+            print('Created', fn)
         if not os.path.exists(fn):
             return None
         return fn
@@ -1525,6 +1535,20 @@ class RebrickedMixin(object):
         fitsio.write(tmpfn + compress, img, header=hdr, clobber=True)
         os.rename(tmpfn, fn)
         print('Wrote', fn)
+
+    def get_filename(self, brick, band, scale, tempfiles=None):
+        if scale == 0:
+            return self.get_base_filename(brick, band)
+        fn = self.get_scaled_filename(brick, band, scale)
+        #print('Filename:', fn)
+        if os.path.exists(fn):
+            return fn
+        fn = self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
+        if fn is None:
+            return None
+        if os.path.exists(fn):
+            return fn
+        return None
 
     def get_bricks_for_scale(self, scale):
         if scale in [0, None]:
@@ -2056,6 +2080,7 @@ class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
     def __init__(self, name, unwise_dir):
         super(RebrickedUnwise, self).__init__(name, unwise_dir)
         self.maxscale = 4
+        self.pixelsize = 2048
 
     def get_fits_extension(self, scale, fn):
         if scale == 0:
@@ -2065,7 +2090,7 @@ class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
     def get_scaled_wcs(self, brick, band, scale):
         #print('RebrickedUnwise: get_scaled_wcs')
         from astrometry.util.util import Tan
-        size = 2048
+        size = self.pixelsize
         pixscale = self.pixscale * 2**scale
         cd = pixscale / 3600.
         crpix = size/2. + 0.5
@@ -2090,7 +2115,7 @@ class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
         '''
         import numpy as np
         bricks = self.get_bricks_for_scale(scale)
-        print('Unwise bricks touching RA,Dec box', ralo, rahi, declo, dechi)
+        print('(unwise) scale', scale, 'bricks touching RA,Dec box', ralo, rahi, declo, dechi)
         I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
         ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
         I = I[ok]
@@ -2100,39 +2125,146 @@ class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
         return bricks[I]
 
 
-class GalexLayer(MapLayer):
+class GalexLayer(RebrickedUnwise):
     def __init__(self, name):
-        super(GalexLayer, self).__init__(name, nativescale=12)
+        super(GalexLayer, self).__init__(name, None)
+        self.nativescale=12
         self.bricks = None
         self.pixscale = 1.5
+
+    def create_coadd_image(self, brick, band, scale, fn, tempfiles=None):
+        import numpy as np
+        import fitsio
+        import tempfile
+        wcs = self.get_scaled_wcs(brick, band, scale)
+        imgs = self.render_into_wcs(wcs, None, 0, 0, bands=[band], scale=scale-1,
+                                    tempfiles=tempfiles)
+        if imgs is None:
+            return None
+        img = imgs[0]
+        img = img.astype(np.float32)
+        hdr = fitsio.FITSHDR()
+        wcs.add_to_header(hdr)
+        trymakedirs(fn)
+        dirnm = os.path.dirname(fn)
+        f,tmpfn = tempfile.mkstemp(suffix='.fits.fz.tmp', dir=dirnm)
+        os.close(f)
+        os.unlink(tmpfn)
+        compress = '[compress R 100,100; qz 4]'
+        fitsio.write(tmpfn + compress, img, header=hdr, clobber=True)
+        os.rename(tmpfn, fn)
+        print('Wrote', fn)
+
+    def create_scaled_image(self, brick, band, scale, fn, tempfiles=None):
+        if scale == 0:
+            print('Galex: create_scaled_image, scale', scale, '-> create_coadd')
+            return self.create_coadd_image(brick, band, scale, fn, tempfiles=tempfiles)
+        print('Galex: create_scaled_image, scale', scale, 'brick', brick.brickname)
+        return super(GalexLayer).create_scaled_image(brick, band, scale, fn,
+                                                     tempfiles=tempfiles)
+
+    def get_galex_images(self):
+        import numpy as np
+        from astrometry.util.fits import fits_table
+        basedir = settings.DATA_DIR
+        bricks = fits_table(os.path.join(basedir, 'galex', 'galex-images.fits'))
+        bricks.rename('ra_cent', 'ra')
+        bricks.rename('dec_cent', 'dec')
+        bricks.rename('have_n', 'has_n')
+        bricks.rename('have_f', 'has_f')
+        cosd = np.cos(np.deg2rad(bricks.dec))
+        bricks.ra1 = bricks.ra - 3840*1.5/3600./2./cosd
+        bricks.ra2 = bricks.ra + 3840*1.5/3600./2./cosd
+        bricks.dec1 = bricks.dec - 3840*1.5/3600./2.
+        bricks.dec2 = bricks.dec + 3840*1.5/3600./2.
+        bricknames = []
+        for tile,subvis in zip(bricks.tilename, bricks.subvis):
+            if subvis == -999:
+                bricknames.append(tile.strip())
+            else:
+                bricknames.append('%s_sg%02i' % (tile.strip(), subvis))
+        bricks.brickname = np.array(bricknames)
+        return bricks
+
+    def get_filename(self, brick, band, scale, tempfiles=None):
+        #print('galex get_filename: scale', scale, 'band', band, 'brick', brick.brickname)
+        if scale == -1:
+            return self.get_base_filename(brick, band)
+        brickname = brick.brickname
+        fnargs = dict(band=band, brickname=brickname, scale=scale)
+        fn = self.get_scaled_pattern() % fnargs
+        if not os.path.exists(fn):
+            print('Creating', fn)
+            self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
+            print('Created', fn)
+        if not os.path.exists(fn):
+            return None
+        return fn
 
     def get_bricks(self):
         if self.bricks is not None:
             return self.bricks
-        import numpy as np
         from astrometry.util.fits import fits_table
         basedir = settings.DATA_DIR
-        self.bricks = fits_table(os.path.join(basedir, 'galex', 'galex-images.fits'))
-        self.bricks.rename('ra_cent', 'ra')
-        self.bricks.rename('dec_cent', 'dec')
-        cosd = np.cos(np.deg2rad(self.bricks.dec))
-        self.bricks.ra1 = self.bricks.ra - 3840*1.5/3600./2./cosd
-        self.bricks.ra2 = self.bricks.ra + 3840*1.5/3600./2./cosd
-        self.bricks.dec1 = self.bricks.dec - 3840*1.5/3600./2.
-        self.bricks.dec2 = self.bricks.dec + 3840*1.5/3600./2.
-
-        self.bricks.brickname = np.array(['%s_sg%02i' % (t.strip(), s) for t,s in zip(self.bricks.tilename, self.bricks.subvis)])
-
+        # really just unwise-bricks-minus1.fits, if such a thing existed
+        self.bricks = fits_table(os.path.join(basedir, 'galex-bricks.fits'))
         return self.bricks
+
+    def get_bricks_for_scale(self, scale):
+        if scale == -1:
+            return self.get_galex_images()
+        if scale in [0, None]:
+            return self.get_bricks()
+        scale = min(scale, 4)
+        from astrometry.util.fits import fits_table
+        ## Since GALEX has roughly twice the pixel resolution as WISE
+        ## (1.5 vs 2.75), we'll just use the unwise bricks from scale-1.
+        fn = os.path.join(settings.DATA_DIR, 'unwise-bricks-%i.fits' % (scale-1))
+        print('Galex bricks for scale', scale, '->', fn)
+        b = fits_table(fn)
+        return b
+
+    ###### hack
+    # def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
+    #     '''
+    #     Both RebrickedMixin and UnwiseLayer override this function -- here we have
+    #     to merge the capabilities.
+    #     '''
+    #     import numpy as np
+    #     bricks = self.get_bricks_for_scale(scale)
+    #     print('Galex bricks scale', scale, 'touching RA,Dec box', ralo, rahi, declo, dechi)
+    #     I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+    #     ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
+    #     I = I[ok]
+    #     print('-> bricks', bricks.brickname[I])
+    #     if len(I) == 0:
+    #         return None
+    #     return bricks[I]
+
+    def get_fits_extension(self, scale, fn):
+        if scale == -1:
+            return 0
+        return 1
 
     def get_bands(self):
         return ['n','f']
 
-    def filter_pixels(self, img, wcs, sub_brick_wcs, Yo,Xo,Yi,Xi):
+    def filter_pixels(self, scale, img, wcs, sub_brick_wcs, Yo,Xo,Yi,Xi):
+        #if scale > 0:
+        if scale > -1:
+            return None
         return (img[Yi,Xi] != 0.)
 
+    def get_pixel_weights(self, band, brick, scale, **kwargs):
+        #if scale == 0:
+        if scale == -1:
+            print('Image', brick.brickname, 'exptime', brick.nexptime, 'NUV', brick.fexptime, 'FUV')
+            return brick.get(band + 'exptime')
+        return 1.
+
     def read_wcs(self, brick, band, scale, fn=None):
-        if scale != 0:
+        #if scale != 0:
+        if scale != -1:
             return super(GalexLayer,self).read_wcs(brick, band, scale, fn=fn)
         #print('read_wcs: brick is', brick)
         from astrometry.util.util import Tan
@@ -2141,23 +2273,10 @@ class GalexLayer(MapLayer):
                      brick.cdelt1, 0., 0., brick.cdelt2, 3840., 3840.]])
         return wcs
 
-    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
-        import numpy as np
-        bricks = self.get_bricks()
-        print('GALEX images touching RA,Dec box', ralo, rahi, declo, dechi)
-        I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-        ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
-        I = I[ok]
-        print('-> "bricks"', bricks.filenpath[I])
-
-        if len(I) == 0:
-            return None
-        return bricks[I]
-
     def get_base_filename(self, brick, band, **kwargs):
-        #brickname = brick.brickname
         basedir = settings.DATA_DIR
-        fn = os.path.join(basedir, 'galex', brick.tilename.strip(), '%s_sg%02i-%sd-intbgsub.fits.gz' % (brick.tilename.strip(), brick.subvis, band))
+        fn = os.path.join(basedir, 'galex', brick.tilename.strip(),
+                          '%s-%sd-intbgsub.fits.gz' % (brick.brickname, band))
         return fn
     
     def get_scaled_pattern(self):
@@ -2166,33 +2285,7 @@ class GalexLayer(MapLayer):
             '%(brickname).3s', 'galex-%(brickname)s-%(band)s.fits')
 
     def get_rgb(self, imgs, bands, **kwargs):
-        nuv,fuv = imgs
-        h,w = nuv.shape
-        import numpy as np
-        from scipy.ndimage.filters import uniform_filter, gaussian_filter
-        red = nuv * 0.206 * 2297
-        blue = fuv * 1.4 * 1525
-        #blue = uniform_filter(blue, 3)
-        blue = gaussian_filter(blue, 1.)
-        green = (0.2*blue + 0.8*red)
-
-        red   *= 0.085
-        green *= 0.095
-        blue  *= 0.08
-        nonlinearity = 2.5
-        radius = red + green + blue
-        val = np.arcsinh(radius * nonlinearity) / nonlinearity
-        with np.errstate(divide='ignore', invalid='ignore'):
-            red   = red   * val / radius
-            green = green * val / radius
-            blue  = blue  * val / radius
-        mx = np.maximum(red, np.maximum(green, blue))
-        mx = np.maximum(1., mx)
-        red   /= mx
-        green /= mx
-        blue  /= mx
-        rgb = np.clip(np.dstack((red, green, blue)), 0., 1.)
-        return rgb
+        return galex_rgb(imgs, bands, **kwargs)
         # myrgb = np.zeros((h,w,3), np.float32)
         # lo,hi = -0.005, 0.05
         # myrgb[:,:,0] = np.clip((nuv - lo) / (hi - lo), 0., 1.)
@@ -2212,11 +2305,36 @@ class GalexLayer(MapLayer):
             img = f.read()
         else:
             img = f[slc]
-        if scale == 0:
-            # mask out pixels with value 0.0 ?
-            pass
         return img
 
+def galex_rgb(imgs, bands, **kwargs):
+    import numpy as np
+    from scipy.ndimage.filters import uniform_filter, gaussian_filter
+    nuv,fuv = imgs
+    h,w = nuv.shape
+    red = nuv * 0.206 * 2297
+    blue = fuv * 1.4 * 1525
+    #blue = uniform_filter(blue, 3)
+    blue = gaussian_filter(blue, 1.)
+    green = (0.2*blue + 0.8*red)
+
+    red   *= 0.085
+    green *= 0.095
+    blue  *= 0.08
+    nonlinearity = 2.5
+    radius = red + green + blue
+    val = np.arcsinh(radius * nonlinearity) / nonlinearity
+    with np.errstate(divide='ignore', invalid='ignore'):
+        red   = red   * val / radius
+        green = green * val / radius
+        blue  = blue  * val / radius
+    mx = np.maximum(red, np.maximum(green, blue))
+    mx = np.maximum(1., mx)
+    red   /= mx
+    green /= mx
+    blue  /= mx
+    rgb = np.clip(np.dstack((red, green, blue)), 0., 1.)
+    return rgb
 
 class TwoMassLayer(MapLayer):
     def __init__(self, name):

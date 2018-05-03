@@ -33,10 +33,16 @@ req.META = dict(HTTP_IF_MODIFIED_SINCE=None)
 
 version = 1
 
+def get_version(kind):
+    return 1
+
 def _one_tile(X):
     (kind, zoom, x, y, ignore, get_images) = X
     kwargs = dict(ignoreCached=ignore,
                   get_images=get_images)
+
+    print()
+    print('one_tile: zoom', zoom, 'x,y', x,y)
 
     # forcecache=False, return_if_not_found=True)
     if kind == 'sdss':
@@ -117,6 +123,11 @@ def _one_tile(X):
         print('unWISE zoom', zoom, 'x,y', x,y)
 
     elif kind in ['unwise-neo2', 'unwise-neo3']:
+        from map import views
+        view = views.get_tile_view(kind)
+        return view(req, version, zoom, x, y, savecache=True, **kwargs)
+
+    else:
         from map import views
         view = views.get_tile_view(kind)
         return view(req, version, zoom, x, y, savecache=True, **kwargs)
@@ -213,7 +224,7 @@ def top_levels(mp, opt):
                     'decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
                     'eboss',
-                    'unwise-neo2', 'unwise-neo3',
+                    'unwise-neo2', 'unwise-neo3', 'galex',
                     'sdss2']:
         import pylab as plt
         from decals import settings
@@ -222,6 +233,7 @@ def top_levels(mp, opt):
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
         from map.views import _unwise_to_rgb
+        from map.views import galex_rgb
         tag = opt.kind
 
         rgbkwargs = {}
@@ -231,6 +243,9 @@ def top_levels(mp, opt):
         elif opt.kind == 'sdss2':
             bands = 'gri'
             get_rgb = sdss_rgb
+        elif opt.kind == 'galex':
+            bands = ['n','f']
+            get_rgb = galex_rgb
         else:
             bands = 'grz'
             get_rgb = dr2_rgb
@@ -664,7 +679,7 @@ def main():
     parser.add_option('--coadd', action='store_true', help='Create SDSS coadd images?')
     parser.add_option('--grass', action='store_true', help='progress plot')
 
-    parser.add_option('--bands', default='grz')
+    parser.add_option('--bands', default=None)
 
     opt,args = parser.parse_args()
 
@@ -675,11 +690,16 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -25
-    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3']:
+    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
+                      'galex']:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -90
+
+        if opt.kind == 'galex' and opt.bands is None:
+            opt.bands = 'nf'
+
     elif opt.kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         if opt.maxdec is None:
             opt.maxdec = 90
@@ -713,6 +733,9 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
 
+    if opt.bands is None:
+        opt.bands = 'grz'
+
     if opt.top:
         top_levels(mp, opt)
         sys.exit(0)
@@ -721,6 +744,7 @@ def main():
         # Rebricked
         if opt.kind in ['decals-dr5', 'decals-dr5-model', 'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model', 'unwise-neo3',
+                        'galex',
                     ]:
             from map.views import get_layer
 
@@ -943,11 +967,33 @@ def main():
         opt.y0 = opt.y
         opt.y1 = opt.y + 1
 
+    if opt.coadd and opt.kind == 'galex':
+        layer = GalexLayer('galex')
+        
+        # base-level (coadd) bricks
+        B = layer.get_bricks()
+        print(len(B), 'bricks')
+        B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
+        print(len(B), 'in Dec range')
+        B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
+        print(len(B), 'in RA range')
+
+        pat = layer.get_scaled_pattern()
+        tempfiles = []
+        for b in B:
+            for band in ['n','f']:
+                fn = pat % dict(scale=0, band=band, brickname=b.brickname)
+                layer.create_coadd_image(b, band, 0, fn, tempfiles=tempfiles)
+            for fn in tempfiles:
+                os.unlink(fn)
+        sys.exit(0)
+
     if opt.coadd and opt.kind == 'sdss':
         from legacypipe.survey import wcs_for_brick
         from map.views import trymakedirs
 
-        B = survey.get_bricks()
+        #B = survey.get_bricks()
+        B = fits_table(os.path.join(settings.DATA_DIR, 'sdss2', 'bricks-sdssco.fits'))
         print(len(B), 'bricks')
         B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
         print(len(B), 'in Dec range')
@@ -997,7 +1043,9 @@ def main():
         for b in B:
             print('Brick', b.brickname)
             wcs = wcs_for_brick(b, W=2400, H=2400, pixscale=0.396)
-            bands = 'gri'
+            #bands = 'gri'
+            bands = 'z'
+
             dirnm = os.path.join(codir, b.brickname[:3])
             fns = [os.path.join(dirnm, 'sdssco-%s-%s.fits' % (b.brickname, band))
                    for band in bands]
@@ -1009,8 +1057,11 @@ def main():
             if all([os.path.exists(fn) for fn in fns]):
                 print('Already exist')
                 continue
+
+            from map.oldviews import map_sdss
+
             ims = map_sdss(req, 1, 0, 0, 0, get_images=True, wcs=wcs, ignoreCached=True,
-                           forcescale=0)
+                           forcescale=0, bands=bands)
             if ims is None:
                 print('No overlap')
                 continue
@@ -1020,15 +1071,15 @@ def main():
                 print('Wrote', fn)
 
             # Also write scaled versions
-            dirnm = os.path.join(basedir, 'scaled', 'sdssco')
-            scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', 'sdssco-%(brickname)s-%(band)s.fits')
-            for im,band in zip(ims,bands):
-                scalekwargs = dict(band=band, brick=b.brickid, brickname=b.brickname)
-                imwcs = wcs
-                for scale in range(1, 7):
-                    print('Writing scale level', scale)
-                    im,imwcs,sfn = get_scaled(scalepat, scalekwargs, scale, None,
-                                              wcs=imwcs, img=im, return_data=True)
+            # dirnm = os.path.join(basedir, 'scaled', 'sdssco')
+            # scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', 'sdssco-%(brickname)s-%(band)s.fits')
+            # for im,band in zip(ims,bands):
+            #     scalekwargs = dict(band=band, brick=b.brickid, brickname=b.brickname)
+            #     imwcs = wcs
+            #     for scale in range(1, 7):
+            #         print('Writing scale level', scale)
+            #         im,imwcs,sfn = get_scaled(scalepat, scalekwargs, scale, None,
+            #                                   wcs=imwcs, img=im, return_data=True)
         sys.exit(0)
 
 
