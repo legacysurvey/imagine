@@ -249,8 +249,8 @@ var CatalogOverlay = L.Evented.extend({
         this._radius = kwargs['radius'] || 3000;
         this._minZoom = kwargs['minZoom'] || 3;
         this._labelsMinZoom = kwargs['labelsMinZoom'] || 6;
-        this._style = {'color':'#ffffff',
-                       'fillOpacity':0,
+        this._color = kwargs['color'] || '#ffffff';
+        this._style = {'fillOpacity':0,
                        'weight':5,
                       };
         this._oldZoom = zoom_initial;
@@ -403,6 +403,7 @@ var CatalogOverlay = L.Evented.extend({
         var circleList = new Array(rdlist.length);
         var clong = map.getCenter().lng;
         var radii = result['radiusArcsec'];
+        var tooltipStyle = this.getTooltipStyle();
         for (var i=0, len=rdlist.length; i<len; i++) {
             var r = rdlist[i][0];
             var d = rdlist[i][1];
@@ -423,12 +424,17 @@ var CatalogOverlay = L.Evented.extend({
 	        if (showlabels) {
                 var txt = this.getLabel(result, i);
                 if (txt.length > 0) {
-                    circ.bindTooltip(txt, { permanent: true, interactive: true, className: 'spectrumTooltip' });
+                    circ.bindTooltip(txt, tooltipStyle);
                 }
 	        }
             circleList[i] = circ;
         }
         return L.layerGroup(circleList);
+    },
+
+    getTooltipStyle() {
+        return { permanent: true, interactive: true,
+                 className: 'spectrumTooltip' };
     },
 
     getLabel: function(json, i) {
@@ -437,7 +443,8 @@ var CatalogOverlay = L.Evented.extend({
     
     getColor: function(json, i) {
         if (!('color' in json)) {
-            return undefined;
+            //return undefined;
+            return self._color;
         }
         return json['color'][i];
     },
@@ -2365,12 +2372,55 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
                               'labelsMinZoom': 7,
                              'urlTerm': 'ngc',});
 
-var gaia = new CatalogOverlay('gaia-dr1', 'Gaia DR1 sources',
+var GaiaDr1Catalog = CatalogOverlay.extend({
+    getColor: function(json, i) {
+        return '#bbbbff';
+    }
+});
+
+//var gaia = new CatalogOverlay('gaia-dr1', 'Gaia DR1 sources',
+var gaia = new GaiaDr1Catalog('gaia-dr1', 'Gaia DR1 sources',
                              {'url_name': 'gaia-dr1',
                               'minZoom': 11,
                               'labelsMinZoom': 99,
                               'urlTerm': 'gaia-dr1',
-                              'radius': 300, });
+                              //'color': '#ffffff',
+                              'radius': 260, });
+
+var GaiaDr2Catalog = CatalogOverlay.extend({
+    getColor: function(json, i) {
+        return '#8888ff';
+    },
+
+    getLabel(json, i) {
+        var ra = json['rd'][i][0];
+        var dec = json['rd'][i][1];
+        var txt = 'RA,Dec ' + ra.toFixed(4) + ', ' + dec.toFixed(4);
+        var pmra = json['pmra'][i];
+        var pmdec = json['pmdec'][i];
+        var parallax = json['parallax'][i];
+        if (pmra != 0.0) {
+            txt = txt + '<br>pmRA,Dec ' + pmra.toFixed(0) + ', ' + pmdec.toFixed(0) + ', parallax ' + parallax.toFixed(0);
+        }
+        txt = txt + '<br>G ' + json['gmag'][i].toFixed(2) + ', BP ' + json['bpmag'][i].toFixed(2) + ', RP ' + json['rpmag'][i].toFixed(2);
+        txt = txt + '<br>Source id: ' + json['sourceid'][i];
+        return txt;
+    },
+
+    getTooltipStyle() {
+        return { permanent: false, interactive: true, };
+    },
+
+});
+
+var gaia2 = new GaiaDr2Catalog('gaia-dr2', 'Gaia DR2 sources',
+                             {'url_name': 'gaia-dr2',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'gaia-dr2',
+                              'radius': 220,
+                              //'color': '#ddddff'
+                              });
 
 {% if enable_phat %}
 var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
@@ -2470,6 +2520,7 @@ var overlays = [
     ps1cat,
     {% endif %}
     gaia,
+    gaia2,
     {% if enable_spectra %}
     spec, plateOverlay, specDeep2,
     {% endif %}

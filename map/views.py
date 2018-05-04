@@ -2160,8 +2160,8 @@ class GalexLayer(RebrickedUnwise):
             print('Galex: create_scaled_image, scale', scale, '-> create_coadd')
             return self.create_coadd_image(brick, band, scale, fn, tempfiles=tempfiles)
         print('Galex: create_scaled_image, scale', scale, 'brick', brick.brickname)
-        return super(GalexLayer).create_scaled_image(brick, band, scale, fn,
-                                                     tempfiles=tempfiles)
+        return super(GalexLayer, self).create_scaled_image(brick, band, scale, fn,
+                                                           tempfiles=tempfiles)
 
     def get_galex_images(self):
         import numpy as np

@@ -36,6 +36,7 @@ catversions = {
     'targets-dr45': [1,],
     'targets-dr56': [1,],
     'gaia-dr1': [1,],
+    'gaia-dr2': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
 }
@@ -83,7 +84,7 @@ def cat_gaia_dr1(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    os.environ['GAIA_CAT_DIR'] = settings.GAIA_CAT_DIR
+    os.environ['GAIA_CAT_DIR'] = settings.GAIA_DR1_CAT_DIR
     gaia = GaiaCatalog()
     cat = gaia.get_catalog_radec_box(ralo, rahi, declo, dechi)
 
@@ -91,6 +92,43 @@ def cat_gaia_dr1(req, ver):
                 rd=[(float(o.ra),float(o.dec)) for o in cat],
                 gmag=[float(o.phot_g_mean_mag) for o in cat],
                 )),
+                        content_type='application/json')
+
+def cat_gaia_dr2(req, ver):
+    import json
+    from legacyanalysis.gaiacat import GaiaCatalog
+    import numpy as np
+
+    tag = 'gaia-dr2'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    os.environ['GAIA_CAT_DIR'] = settings.GAIA_DR2_CAT_DIR
+    gaia = GaiaCatalog()
+    cat = gaia.get_catalog_radec_box(ralo, rahi, declo, dechi)
+
+    for c in ['ra','dec','phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag',
+              'pmra','pmdec','parallax']:
+        val = cat.get(c)
+        val[np.logical_not(np.isfinite(val))] = 0.
+        cat.set(c, val)
+
+    return HttpResponse(json.dumps(dict(
+        rd=[(float(o.ra),float(o.dec)) for o in cat],
+        sourceid=[int(o.source_id) for o in cat],
+        gmag=[float(o.phot_g_mean_mag) for o in cat],
+        bpmag=[float(o.phot_bp_mean_mag) for o in cat],
+        rpmag=[float(o.phot_rp_mean_mag) for o in cat],
+        pmra=[float(o.pmra) for o in cat],
+        pmdec=[float(o.pmdec) for o in cat],
+        parallax=[float(o.parallax) for o in cat],
+    )),
                         content_type='application/json')
 
 def upload_cat(req):
