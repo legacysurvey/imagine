@@ -1457,21 +1457,6 @@ class RebrickedMixin(object):
         # Original and scaled images are in ext 1.
         return 1
 
-    def get_filename(self, brick, band, scale, tempfiles=None):
-        if scale == 0:
-            return super(RebrickedMixin, self).get_filename(brick, band, scale,
-                                                            tempfiles=tempfiles)
-        brickname = brick.brickname
-        fnargs = dict(band=band, brickname=brickname, scale=scale)
-        fn = self.get_scaled_pattern() % fnargs
-        if not os.path.exists(fn):
-            print('Creating', fn)
-            self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
-            print('Created', fn)
-        if not os.path.exists(fn):
-            return None
-        return fn
-
     def get_scaled_pattern(self):
         fn = super(RebrickedMixin, self).get_scaled_pattern()
         if fn.endswith('.fits'):
@@ -1537,8 +1522,11 @@ class RebrickedMixin(object):
         print('Wrote', fn)
 
     def get_filename(self, brick, band, scale, tempfiles=None):
+        #print('RebrickedMixin.get_filename: brick', brick, 'band', band, 'scale', scale)
         if scale == 0:
-            return self.get_base_filename(brick, band)
+            #return self.get_base_filename(brick, band)
+            return super(RebrickedMixin, self).get_filename(brick, band, scale,
+                                                            tempfiles=tempfiles)
         fn = self.get_scaled_filename(brick, band, scale)
         #print('Filename:', fn)
         if os.path.exists(fn):
@@ -1786,6 +1774,7 @@ class SdssLayer(MapLayer):
         brickpre = brickname[:3]
         fn = os.path.join(self.basedir, 'coadd', brickpre,
                           'sdssco-%s-%s.fits.fz' % (brickname, band))
+        print('SdssLayer.get_filename: brick', brickname, 'band', band, 'scale', scale, 'fn', fn)
         if scale == 0:
             return fn
         fnargs = dict(band=band, brickname=brickname)
@@ -4117,7 +4106,8 @@ if __name__ == '__main__':
     #c.get('/2mass/1/11/1167/754.jpg')
     #c.get('/2mass/1/11/1164/755.jpg')
     #c.get('/jpeg-cutout?ra=155.0034&dec=42.4534&zoom=11&layer=2mass')
-    c.get('/galex/1/11/0/1024.jpg')
+    #c.get('/galex/1/11/0/1024.jpg')
+    c.get('/sdss2/1/14/7716/6485.jpg')
     sys.exit(0)
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
