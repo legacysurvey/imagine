@@ -2215,7 +2215,7 @@ class GalexLayer(RebrickedUnwise):
             return self.get_galex_images()
         if scale in [0, None]:
             return self.get_bricks()
-        scale = min(scale, 4)
+        scale = min(scale, 5)
         from astrometry.util.fits import fits_table
         ## Since GALEX has roughly twice the pixel resolution as WISE
         ## (1.5 vs 2.75), we'll just use the unwise bricks from scale-1.
