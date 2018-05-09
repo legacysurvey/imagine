@@ -161,6 +161,10 @@ urlpatterns = [
     url(r'^sfd/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('sfd')),
 
+    # WSSA WISE 12-micron dust map
+    url(r'^wssa/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('wssa')),
+
     # Halpha map
     url(r'^halpha/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('halpha')),

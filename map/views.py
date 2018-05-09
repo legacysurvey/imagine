@@ -46,6 +46,7 @@ if not settings.DEBUG_LOGGING:
 tileversions = {
     'sfd': [1, 2],
     'halpha': [1,],
+    'wssa': [1,],
     'sdss': [1,],
     'sdssco': [1,],
     'ps1': [1],
@@ -150,6 +151,7 @@ def _index(req,
         enable_dr4_overlays = settings.ENABLE_DR4,
         enable_dr5_overlays = settings.ENABLE_DR5,
         enable_dr6_overlays = settings.ENABLE_DR6,
+        enable_dr7_overlays = settings.ENABLE_DR7,
         enable_eboss = settings.ENABLE_EBOSS,
         enable_desi_targets = True,
         enable_spectra = True,
@@ -1836,8 +1838,8 @@ class PS1Layer(MapLayer):
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
     def get_bands(self):
-        return 'grz'
-        #return 'gri'
+        #return 'grz'
+        return 'gri'
 
     def get_bricks(self):
         if self.bricks is not None:
@@ -1995,8 +1997,8 @@ class PS1Layer(MapLayer):
             'ps1' + '-%(brickname)s-%(band)s.fits')
 
     def get_rgb(self, imgs, bands, **kwargs):
-        return dr2_rgb(imgs, bands, **self.rgbkwargs)
-        #return sdss_rgb(imgs, bands)
+        #return dr2_rgb(imgs, bands, **self.rgbkwargs)
+        return sdss_rgb(imgs, bands)
 
     #def get_rgb(self, imgs, bands, **kwargs):
     #    return sdss_rgb(imgs, bands)
@@ -2113,6 +2115,54 @@ class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
             return None
         return bricks[I]
 
+class WssaLayer(RebrickedUnwise):
+    def __init__(self, name):
+        super(RebrickedUnwise, self).__init__(name, None)
+        self.maxscale = 2
+        self.pixelsize = 8000
+        self.pixscale = 5.625
+
+    def get_fits_extension(self, scale, fn):
+        if scale == 0:
+            return 0
+        return 1
+
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        from astrometry.util.fits import fits_table
+        basedir = settings.DATA_DIR
+        self.bricks = fits_table(os.path.join(basedir, 'wssa', 'tiles',
+                                              'wisetile-index-allsky.fits.gz'))
+        return self.bricks
+
+    def get_bricks_for_scale(self, scale):
+        if scale in [0, None]:
+            return self.get_bricks()
+        scale = min(scale, 2)
+        from astrometry.util.fits import fits_table
+        fn = os.path.join(settings.DATA_DIR, 'wssa', 'wssa-bricks-%.fits' % scale)
+        return fits_table(fn)
+
+    def get_bands(self):
+        return ['x']
+
+    def get_base_filename(self, brick, band, **kwargs):
+        basedir = settings.DATA_DIR
+        fn = os.path.join(basedir, 'wssa', 'tiles', brick.fname + '.gz')
+        return fn
+    
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+                            '%(scale)i', '%(brickname).3s', 'wssa-%(brickname)s.fits')
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        img = imgs[0]
+        print('Img pcts', np.percentile(img.ravel(), [25,50,75,90,95,99]))
+        val = np.log10(np.maximum(img, 1.)) / 4.
+        import matplotlib.cm
+        rgb = matplotlib.cm.hot(val)
+        return rgb
 
 class GalexLayer(RebrickedUnwise):
     def __init__(self, name):
@@ -2324,6 +2374,7 @@ def galex_rgb(imgs, bands, **kwargs):
     blue  /= mx
     rgb = np.clip(np.dstack((red, green, blue)), 0., 1.)
     return rgb
+
 
 class TwoMassLayer(MapLayer):
     def __init__(self, name):
@@ -2757,8 +2808,9 @@ def get_survey(name):
     
     basedir = settings.DATA_DIR
 
-    if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5',
-                 'mzls+bass-dr4', 'mzls+bass-dr6', 'decaps', 'eboss']:
+    if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5', 'decals-dr7',
+                 'mzls+bass-dr4', 'mzls+bass-dr6',
+                 'decaps', 'eboss', ]:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
@@ -2787,6 +2839,9 @@ def get_survey(name):
         elif name == 'mzls+bass-dr6':
             d.drname = 'MzLS+BASS DR6'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr6/'
+        elif name == 'decals-dr7':
+            d.drname = 'DECaLS DR7'
+            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr7/'
         elif name == 'decaps':
             d.drname = 'DECaPS'
             d.drurl = 'http://legacysurvey.org/'
@@ -2999,7 +3054,7 @@ def get_exposure_table(name):
         '''
         T = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
                                     'decals-exposures.fits'))
-    elif name == 'decals-dr5':
+    elif name in ['decals-dr5', 'decals-dr7']:
         fn = os.path.join(settings.DATA_DIR, name, 'exposures.fits')
         if not os.path.exists(fn):
             import numpy as np
@@ -3007,6 +3062,7 @@ def get_exposure_table(name):
             ccds = survey.get_ccds_readonly()
             e,I = np.unique(ccds.expnum, return_index=True)
             exps = ccds[I]
+            exps = touchup_ccds(exps, survey)
             exps.ra  = exps.ra_bore
             exps.dec = exps.dec_bore
             ## hack -- should average
@@ -3897,6 +3953,17 @@ def get_layer(name, default=None):
         survey = get_survey('eboss')
         layer = ReDecalsLayer('eboss', 'image', survey)
 
+    elif name in ['decals-dr7', 'decals-dr7-model', 'decals-dr7-resid']:
+        survey = get_survey('decals-dr7')
+        image = ReDecalsLayer('decals-dr7', 'image', survey)
+        model = ReDecalsLayer('decals-dr7-model', 'model', survey, drname='decals-dr7')
+        resid = ReDecalsResidLayer(image, model, 'decals-dr7-resid', 'resid', survey,
+                                   drname='decals-dr7')
+        layers['decals-dr7'] = image
+        layers['decals-dr7-model'] = model
+        layers['decals-dr7-resid'] = resid
+        layer = layers[name]
+
     elif name in ['mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
         survey = get_survey('mzls+bass-dr6')
         image = ReDecalsLayer('mzls+bass-dr6', 'image', survey)
@@ -3985,6 +4052,9 @@ def get_layer(name, default=None):
 
     elif name == 'galex':
         layer = GalexLayer('galex')
+
+    elif name == 'wssa':
+        layer = WssaLayer('wssa')
 
     elif name == 'halpha':
         from tractor.sfd import SFDMap
@@ -4107,7 +4177,9 @@ if __name__ == '__main__':
     #c.get('/2mass/1/11/1164/755.jpg')
     #c.get('/jpeg-cutout?ra=155.0034&dec=42.4534&zoom=11&layer=2mass')
     #c.get('/galex/1/11/0/1024.jpg')
-    c.get('/sdss2/1/14/7716/6485.jpg')
+    #c.get('/sdss2/1/14/7716/6485.jpg')
+    #c.get('/exps/?ralo=234.6278&rahi=234.7722&declo=13.5357&dechi=13.6643&id=decals-dr7')
+    c.get('/wssa/1/10/358/474.jpg')
     sys.exit(0)
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg

@@ -1637,6 +1637,11 @@ tiles = mylayer('sfd', 'SFD dust map',
                  'urlPatterns': [ [7, 10, tile_url],], });
 allLayers.push(tiles);
 
+tiles = mylayer('wssa', 'WISE 12-micron dust map',
+                {'maxNativeZoom':10,
+                 'urlPatterns': [ [1, 10, tile_url],], });
+allLayers.push(tiles);
+
 tiles = mylayer('halpha', 'Halpha map',
                 {'maxNativeZoom':10,
                  'urlPatterns': [ [7, 10, tile_url],],});
@@ -2234,6 +2239,30 @@ var ccdOverlay6 = new PolygonOverlay('mzls+bass-dr6-ccds',
                                      'dr_name': 'DR6',
                                     });
 {% endif %}
+
+{% if enable_dr7_overlays %}
+var ccdOverlay7 = new PolygonOverlay('decals-dr7-ccds',
+                                     'DECaLS DR7 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds7',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'decals-dr7',
+                                     'dr_name': 'DR7',
+                                    });
+var expOverlay7 = new CircleOverlay('decals-dr7-exps',
+                                    'DECaLS DR7 Exposures',
+                                    {'url':exposures_url,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'exps7',
+                                     'detail': exp_detail,
+                                     'detail_list': exp_detail_list,
+                                     'url_name': 'decals-dr7',
+                                     'dr_name': 'DR7',
+                                    });
+{% endif %}
                                                      
 var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
                                       {'url': bricks_url,
@@ -2302,6 +2331,9 @@ var polygonOverlays = [
     {% endif %}
     {% if enable_dr6_overlays %}
     ccdOverlay6,
+    {% endif %}
+    {% if enable_dr7_overlays %}
+    ccdOverlay7, expOverlay7,
     {% endif %}
     brickOverlay,
     ccdOverlaySdss,
@@ -2503,6 +2535,9 @@ var overlays = [
     {% if enable_dr6_overlays %}
     ccdOverlay6,
     {% endif %}
+    {% if enable_dr7_overlays %}
+    ccdOverlay7,
+    {% endif %}
     {% if enable_dr2_overlays %}
     expOverlay2,
     {% endif %}
@@ -2511,6 +2546,9 @@ var overlays = [
     {% endif %}
     {% if enable_dr5_overlays %}
     expOverlay5,
+    {% endif %}
+    {% if enable_dr7_overlays %}
+    expOverlay7,
     {% endif %}
 
     brickOverlay,

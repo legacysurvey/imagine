@@ -9,10 +9,11 @@ parser.add_argument('-r', dest='radius', type=float, help='Search radius in degr
                     default=1)
 parser.add_argument('--all', '-a', action='store_true', help='Retrieve all within range; default: nearest',
                     default=False)
+parser.add_argument('--bands', default='grz', help='Bands to retrieve')
 parser.add_argument('radec', nargs=2, type=float, help='RA,Dec coords to search')
 args = parser.parse_args()
 
-bands = 'grz'
+bands = args.bands
 T = fits_table('data/ps1skycells.fits')
 T.cut(np.array([b in bands for b in T.filter]))
 
@@ -28,7 +29,11 @@ print('Matched', len(J), 'sky cells')
 T.cut(J)
 
 for cell,subcell,fn,band in zip(T.projcell, T.subcell, T.filename, T.filter):
-    url = 'ps1images.stsci.edu' + fn.strip()
+    #url = 'http://ps1images.stsci.edu' + fn.strip()
+    #http://ps1images.stsci.edu/rings.v3.skycell/1333/015/rings.v3.skycell.1333.015.stk.g.unconv.fits
+
+    url = 'http://ps1images.stsci.edu/rings.v3.skycell/%04i/%03i/rings.v3.skycell.%04i.%03i.stk.%s.unconv.fits' % (cell, subcell, cell, subcell, band)
+
     outdir = os.path.join('data', 'ps1', 'skycells', '%04i'%cell)
     if not os.path.exists(outdir):
         os.makedirs(outdir)
