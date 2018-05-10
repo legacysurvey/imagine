@@ -113,6 +113,9 @@ urlpatterns = [
     # DEEP2 Spectroscopy catalog
     url(r'^spec-deep2/(\d+)/cat.json', cats.cat_spec_deep2),
 
+    # SDSS Catalog
+    url(r'^sdss-cat/(\d+)/cat.json', cats.cat_sdss),
+
     # SDSS tiled coadd
     url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('sdssco')),

@@ -37,6 +37,7 @@ catversions = {
     'targets-dr56': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
+    'sdss-cat': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
 }
@@ -130,6 +131,65 @@ def cat_gaia_dr2(req, ver):
         parallax=[float(o.parallax) for o in cat],
     )),
                         content_type='application/json')
+
+
+def cat_sdss(req, ver):
+    import json
+    import numpy as np
+    from astrometry.util.starutil_numpy import degrees_between, radectoxyz, xyztoradec
+    from map.views import sdss_ccds_near
+    from astrometry.util.fits import fits_table, merge_tables
+
+    tag = 'sdss-cat'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    rad = degrees_between(ralo, declo, rahi, dechi) / 2.
+    xyz1 = radectoxyz(ralo, declo)
+    xyz2 = radectoxyz(rahi, dechi)
+    xyz = (xyz1 + xyz2)
+    xyz /= np.sqrt(np.sum(xyz**2))
+    rc,dc = xyztoradec(xyz)
+    rad = rad + np.hypot(10.,14.)/2./60.
+    ccds = sdss_ccds_near(rc[0], dc[0], rad)
+    if ccds is None:
+        print('No SDSS CCDs nearby')
+        return HttpResponse(json.dumps(dict(rd=[])),
+                            content_type='application/json')
+    print(len(ccds), 'SDSS CCDs')
+
+    T = []
+    for ccd in ccds:
+        # env/BOSS_PHOTOOBJ/301/2073/3/photoObj-002073-3-0088.fits
+        fn = os.path.join(settings.SDSS_BASEDIR, 'env', 'BOSS_PHOTOOBJ',
+                          str(ccd.rerun), str(ccd.run), str(ccd.camcol),
+                          'photoObj-%06i-%i-%04i.fits' % (ccd.run, ccd.camcol, ccd.field))
+        print('Reading', fn)
+        T.append(fits_table(fn, columns='ra dec objid mode objc_type objc_flags objc_flags nchild tai expflux devflux psfflux cmodelflux fracdev mjd'.split()))
+    T = merge_tables(T)
+    T.cut((T.dec >= declo) * (T.dec <= dechi))
+    # FIXME
+    T.cut((T.ra  >= ralo) * (T.ra <= rahi))
+    
+    # primary
+    T.cut(T.mode == 1)
+    types = ['P' if t == 6 else 'C' for t in T.objc_type]
+    fluxes = [p if t == 6 else c for t,p,c in zip(T.objc_type, T.psfflux, T.cmodelflux)]
+
+    return HttpResponse(json.dumps(dict(
+        rd=[(float(o.ra),float(o.dec)) for o in T],
+        sourcetype=types,
+        fluxes = [dict(u=float(f[0]), g=float(f[1]), r=float(f[2]),
+                       i=float(f[3]), z=float(f[4])) for f in fluxes],
+    )),
+                        content_type='application/json')
+
 
 def upload_cat(req):
     import tempfile

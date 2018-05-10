@@ -427,6 +427,16 @@ var CatalogOverlay = L.Evented.extend({
                     circ.bindTooltip(txt, tooltipStyle);
                 }
 	        }
+            var txt = this.getPopupText(result, i);
+            if (txt.length > 0) {
+                circ.popupText = txt;
+                circ.on('click', function(e) {
+                    popup.setLatLng(e.latlng)
+                         .setContent(e.target.popupText)
+                         .openOn(map);
+                    e.stopPropagation();
+                });
+            }
             circleList[i] = circ;
         }
         return L.layerGroup(circleList);
@@ -439,6 +449,10 @@ var CatalogOverlay = L.Evented.extend({
 
     getLabel: function(json, i) {
         return json['name'][i];
+    },
+
+    getPopupText: function(json, i) {
+        return '';
     },
     
     getColor: function(json, i) {
@@ -2454,6 +2468,53 @@ var gaia2 = new GaiaDr2Catalog('gaia-dr2', 'Gaia DR2 sources',
                               //'color': '#ddddff'
                               });
 
+
+var SdssCatalog = CatalogOverlay.extend({
+
+    getColor: function(json, i) {
+        if (json['sourcetype'][i] == 'P') {
+            return '#9AFE2E';
+        }
+        return '#888888';
+    },
+
+    getLabel(json, i) {
+        return '';
+    },
+
+    getPopupText(json, i) {
+        var ra = json['rd'][i][0];
+        var dec = json['rd'][i][1];
+        var txt = 'RA,Dec ' + ra.toFixed(4) + ', ' + dec.toFixed(4);
+        if (json['sourcetype'][i] == 'P') {
+            var tt = 'PSF';
+        } else {
+            var tt = 'CModel';
+        }
+        txt = txt + '<br>' + tt + ' mags: ';
+        txt += 'u=' + fluxToMag(json['fluxes'][i]['u']).toFixed(2) + ', ';
+        txt += 'g=' + fluxToMag(json['fluxes'][i]['g']).toFixed(2) + ', ';
+        txt += 'r=' + fluxToMag(json['fluxes'][i]['r']).toFixed(2) + ', ';
+        txt += 'i=' + fluxToMag(json['fluxes'][i]['i']).toFixed(2) + ', ';
+        txt += 'z=' + fluxToMag(json['fluxes'][i]['z']).toFixed(2);
+        //txt = txt + '<br>Source id: ' + json['sourceid'][i];
+        return txt;
+    },
+
+    getTooltipStyle() {
+        return { permanent: false, interactive: true, };
+    },
+    
+});
+
+var sdsscat = new SdssCatalog('sdss-cat', 'SDSS sources',
+                             {'url_name': 'sdss-cat',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'sdss-cat',
+                              'radius': 100,
+                              });
+
 {% if enable_phat %}
 var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
                              {'url_name': 'phat-clusters',
@@ -2559,6 +2620,7 @@ var overlays = [
     {% endif %}
     gaia,
     gaia2,
+    sdsscat,
     {% if enable_spectra %}
     spec, plateOverlay, specDeep2,
     {% endif %}
