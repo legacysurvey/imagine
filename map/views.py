@@ -2132,8 +2132,9 @@ class WssaLayer(RebrickedUnwise):
             return self.bricks
         from astrometry.util.fits import fits_table
         basedir = settings.DATA_DIR
-        self.bricks = fits_table(os.path.join(basedir, 'wssa', 'tiles',
-                                              'wisetile-index-allsky.fits.gz'))
+        self.bricks = fits_table(os.path.join(basedir, 'wssa', 'wssa-bricks.fits'))
+        #'tiles','wisetile-index-allsky.fits.gz'))
+        self.bricks.rename('fname','brickname')
         return self.bricks
 
     def get_bricks_for_scale(self, scale):
@@ -2141,7 +2142,7 @@ class WssaLayer(RebrickedUnwise):
             return self.get_bricks()
         scale = min(scale, 2)
         from astrometry.util.fits import fits_table
-        fn = os.path.join(settings.DATA_DIR, 'wssa', 'wssa-bricks-%.fits' % scale)
+        fn = os.path.join(settings.DATA_DIR, 'wssa', 'wssa-bricks-%i.fits' % scale)
         return fits_table(fn)
 
     def get_bands(self):
@@ -2149,7 +2150,8 @@ class WssaLayer(RebrickedUnwise):
 
     def get_base_filename(self, brick, band, **kwargs):
         basedir = settings.DATA_DIR
-        fn = os.path.join(basedir, 'wssa', 'tiles', brick.fname + '.gz')
+        #fn = os.path.join(basedir, 'wssa', 'tiles', brick.brickname + '.gz')
+        fn = os.path.join(basedir, 'wssa', brick.brickname)
         return fn
     
     def get_scaled_pattern(self):
@@ -2157,12 +2159,16 @@ class WssaLayer(RebrickedUnwise):
                             '%(scale)i', '%(brickname).3s', 'wssa-%(brickname)s.fits')
 
     def get_rgb(self, imgs, bands, **kwargs):
-        img = imgs[0]
-        print('Img pcts', np.percentile(img.ravel(), [25,50,75,90,95,99]))
-        val = np.log10(np.maximum(img, 1.)) / 4.
-        import matplotlib.cm
-        rgb = matplotlib.cm.hot(val)
-        return rgb
+        return wssa_rgb(imgs, bands, **kwargs)
+
+def wssa_rgb(imgs, bands, **kwargs):
+    import numpy as np
+    img = imgs[0]
+    #print('Img pcts', np.percentile(img.ravel(), [25,50,75,90,95,99]))
+    val = np.log10(np.maximum(img, 1.)) / 4.
+    import matplotlib.cm
+    rgb = matplotlib.cm.hot(val)
+    return rgb
 
 class GalexLayer(RebrickedUnwise):
     def __init__(self, name):
@@ -2704,16 +2710,16 @@ def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
 
 from legacypipe.survey import LegacySurveyData
 class MyLegacySurveyData(LegacySurveyData):
-    def get_ccds(self):
+    def get_ccds(self, **kwargs):
         import numpy as np
         dirnm = self.survey_dir
         # plug in a cut version of the CCDs table, if it exists
         cutfn = os.path.join(dirnm, 'ccds-cut.fits')
         if os.path.exists(cutfn):
             from astrometry.util.fits import fits_table
-            C = fits_table(cutfn)
+            C = fits_table(cutfn, **kwargs)
         else:
-            C = super(MyLegacySurveyData,self).get_ccds()
+            C = super(MyLegacySurveyData,self).get_ccds(**kwargs)
             # HACK -- cut to photometric & not-blacklisted CCDs.
             # (not necessary when reading from kd.fits files, which are pre-cut)
             # C.photometric = np.zeros(len(C), bool)
@@ -2820,6 +2826,9 @@ def get_survey(name):
             d = Decaps2LegacySurveyData(survey_dir=dirnm)
         elif name in ['mzls+bass-dr6']:
             # CCDs table has no 'photometric' etc columns.
+            d = LegacySurveyData(survey_dir=dirnm)
+        elif name == 'decals-dr7':
+            # testing 1 2 3
             d = LegacySurveyData(survey_dir=dirnm)
         else:
             d = MyLegacySurveyData(survey_dir=dirnm)
@@ -4179,7 +4188,8 @@ if __name__ == '__main__':
     #c.get('/galex/1/11/0/1024.jpg')
     #c.get('/sdss2/1/14/7716/6485.jpg')
     #c.get('/exps/?ralo=234.6278&rahi=234.7722&declo=13.5357&dechi=13.6643&id=decals-dr7')
-    c.get('/wssa/1/10/358/474.jpg')
+    #c.get('/wssa/1/10/358/474.jpg')
+    c.get('/cutout_panels/decals-dr7/722712/N13/?x=1123&y=3636&size=100')
     sys.exit(0)
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg

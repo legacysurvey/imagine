@@ -225,7 +225,7 @@ def top_levels(mp, opt):
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
                     'eboss',
                     'unwise-neo2', 'unwise-neo3', 'galex',
-                    'sdss2']:
+                    'sdss2', 'wssa']:
         import pylab as plt
         from decals import settings
         from legacypipe.survey import get_rgb
@@ -233,7 +233,7 @@ def top_levels(mp, opt):
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
         from map.views import _unwise_to_rgb
-        from map.views import galex_rgb
+        from map.views import galex_rgb, wssa_rgb
         tag = opt.kind
 
         rgbkwargs = {}
@@ -246,6 +246,9 @@ def top_levels(mp, opt):
         elif opt.kind == 'galex':
             bands = ['n','f']
             get_rgb = galex_rgb
+        elif opt.kind == 'wssa':
+            bands = ['x']
+            get_rgb = wssa_rgb
         else:
             bands = 'grz'
             get_rgb = dr2_rgb
@@ -691,7 +694,7 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
     elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
-                      'galex']:
+                      'galex', 'wssa']:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
@@ -744,7 +747,7 @@ def main():
         # Rebricked
         if opt.kind in ['decals-dr5', 'decals-dr5-model', 'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model', 'unwise-neo3',
-                        'galex',
+                        'galex', 'wssa'
                     ]:
             from map.views import get_layer
 
