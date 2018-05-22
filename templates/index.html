@@ -1470,6 +1470,24 @@ var mylayer_B = function (name, pretty, kwargs) {
     return tiles;
 };
 
+{% if enable_dr7 %}
+tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% if enable_dr7_models %}
+tiles = mylayer_B('decals-dr7-model', 'DECaLS DR7 models',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+{% if enable_dr7_resids %}
+tiles = mylayer_B('decals-dr7-resid', 'DECaLS DR7 residuals',
+                {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+{% endif %}
+
 {% if enable_dr6 %}
 tiles = mylayer_B('mzls+bass-dr6', 'MzLS+BASS DR6 images',
                 {'urlPatterns': [ [13, maxZoom, tile_url], ],});
@@ -2404,6 +2422,15 @@ var mzlsbasscat6 = new DecalsCatalogLayer(tileWatcher,
                                            'urlTerm': 'sources-dr6'});
 {% endif %}
 
+{% if enable_dr7_overlays %}
+var decalscat7 = new DecalsCatalogLayer(tileWatcher,
+                                        'decals-dr7',
+                                        'DECaLS DR7 Catalog',
+                                        {'url': cat_url,
+                                         'minZoom': 12,
+                                         'urlTerm': 'sources-dr7'});
+{% endif %}
+
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
 var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {});
@@ -2567,7 +2594,7 @@ var overlays = [
     phat_clusters,
     {% endif %}    
     {% if enable_dr2_overlays %}
-    decalscat2, 
+    decalcat2, 
     {% endif %}
     {% if enable_dr3_overlays %}
     decalscat3,
@@ -2580,6 +2607,9 @@ var overlays = [
     {% endif %}
     {% if enable_dr6_overlays %}
     mzlsbasscat6,
+    {% endif %}
+    {% if enable_dr7_overlays %}
+    decalscat7,
     {% endif %}
     {% if enable_dr2_overlays %}
     ccdOverlay2,

@@ -28,6 +28,16 @@ urlpatterns = [
     url(r'^eboss/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('eboss')),
 
+    # DR7
+    url(r'^decals-dr7/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr7')),
+    url(r'^decals-dr7-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr7-model')),
+    url(r'^decals-dr7-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr7-resid')),
+    # DR7 catalog
+    url(r'^decals-dr7/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr7),
+
     # MzLS+BASS DR6 tiles
     url(r'^mzls\+bass-dr6/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('mzls+bass-dr6')),

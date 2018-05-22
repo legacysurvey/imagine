@@ -745,7 +745,8 @@ def main():
 
     if opt.scale:
         # Rebricked
-        if opt.kind in ['decals-dr5', 'decals-dr5-model', 'eboss',
+        if opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
+                        'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model', 'unwise-neo3',
                         'galex', 'wssa'
                     ]:
