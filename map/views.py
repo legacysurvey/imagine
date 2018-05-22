@@ -3080,13 +3080,13 @@ def jpl_lookup(req):
     dec = float(req.GET.get('dec'))
     camera = req.GET.get('camera')
 
-    latlongs = dict(decam=dict(lon='70.81489', lon_u='E',  # not W?
+    latlongs = dict(decam=dict(lon='70.81489', lon_u='W',
                                lat='30.16606', lat_u='S',
                                alt='2215.0', alt_u='m'),
-                    mosaic=dict(lon='111.6003', lon_u='E', # W?
+                    mosaic=dict(lon='111.6003', lon_u='W',
                                 lat = '31.9634', lat_u='N',
                                 alt='2120.0', alt_u='m'))
-    latlongs.update({'90prime': dict(lon='111.6', lon_u='E',
+    latlongs.update({'90prime': dict(lon='111.6', lon_u='W',
                                      lat='31.98', lat_u='N',
                                      alt='2120.0', alt_u='m')})
 
