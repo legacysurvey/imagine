@@ -4167,6 +4167,21 @@ if __name__ == '__main__':
 
     settings.READ_ONLY_BASEDIR = False
 
+    from astrometry.util.util import Sip
+    import matplotlib
+    matplotlib.use('Agg')
+    import pylab as plt
+    #layer = get_layer('galex')
+    #layer = get_layer('unwise-neo3')
+    layer = get_layer('wssa')
+    wcs = Sip('tess.wcs')
+    imgs = layer.render_into_wcs(wcs, 8, None, None, general_wcs=True)
+    rgb = layer.get_rgb(imgs, layer.get_bands())
+    #plt.imsave('tess-galex.png', rgb)
+    #plt.imsave('tess-unwise.png', rgb)
+    plt.imsave('tess-wssa.png', rgb)
+    sys.exit(0)
+
     from django.test import Client
     c = Client()
     #response = c.get('/viewer/image-data/decals-dr5/decam-335137-N24-g')
@@ -4196,7 +4211,13 @@ if __name__ == '__main__':
     #c.get('/sdss2/1/14/7716/6485.jpg')
     #c.get('/exps/?ralo=234.6278&rahi=234.7722&declo=13.5357&dechi=13.6643&id=decals-dr7')
     #c.get('/wssa/1/10/358/474.jpg')
-    c.get('/cutout_panels/decals-dr7/722712/N13/?x=1123&y=3636&size=100')
+    #c.get('/cutout_panels/decals-dr7/722712/N13/?x=1123&y=3636&size=100')
+    #c.get('/decals-dr7/1/13/4150/4129.jpg')
+    #c.get('/decals-dr7/1/13/4159/4119.jpg')
+    #c.get('/decals-dr7/1/12/2074/2064.jpg')
+    #c.get('/decals-dr7/1/11/1037/1032.jpg')
+    #c.get('/decals-dr7/1/8/129/128.jpg')
+    c.get('/decals-dr5/1/6/31/32.jpg')
     sys.exit(0)
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
