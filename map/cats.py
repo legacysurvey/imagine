@@ -36,6 +36,7 @@ catversions = {
     'targets-dr2': [1,],
     'targets-dr45': [1,],
     'targets-dr56': [1,],
+    'targets-bgs-dr56': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
@@ -443,7 +444,13 @@ def cat_targets_dr56(req, ver):
         os.path.join(settings.DATA_DIR, 'targets-dr6-0.20.0.kd.fits'),
     ], tag = 'targets-dr56')
 
-def cat_targets_drAB(req, ver, cats=[], tag=''):
+def cat_targets_bgs_dr56(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr6-0.20.0.kd.fits'),
+    ], tag = 'targets-bgs-dr56', bgs=True)
+
+def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False):
     import json
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
@@ -484,6 +491,9 @@ def cat_targets_drAB(req, ver, cats=[], tag=''):
         return HttpResponse(json.dumps(dict(rd=[], name=[])),
                             content_type='application/json')
     T = merge_tables(TT)
+
+    if bgs:
+        T.cut(T.bgs_target > 0)
 
     names = []
     colors = []

@@ -2561,6 +2561,11 @@ var desi_targets56 = new DesiTargetCatalog('targets-dr56', 'DESI Targets (DR5/DR
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
+
+var desi_bgs_targets56 = new DesiTargetCatalog('targets-bgs-dr56', 'DESI BGS Targets (DR5/DR6)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
 {% endif %}
 
 {% if enable_spectra %}
@@ -2657,6 +2662,7 @@ var overlays = [
     {% if enable_desi_targets %}
     desi_targets,
     desi_targets56,
+    desi_bgs_targets56,
     {% endif %}
 ];
 

@@ -90,10 +90,13 @@ urlpatterns = [
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr2),
     url(r'^targets-dr2/(\d+)/cat.json', cats.cat_targets_dr2),
 
-    # DR4/5 catalog
+    # DR4/5 DESI targets
     url(r'^targets-dr45/(\d+)/cat.json', cats.cat_targets_dr45),
-    # DR5/6 catalog
+    # DR5/6 DESI targets
     url(r'^targets-dr56/(\d+)/cat.json', cats.cat_targets_dr56),
+
+    # DR5/6 DESI targets, BGS survey only
+    url(r'^targets-bgs-dr56/(\d+)/cat.json', cats.cat_targets_bgs_dr56),
 
     # DECaPS2 tiles
     url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
