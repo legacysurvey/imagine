@@ -748,7 +748,7 @@ def main():
         if opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model', 'unwise-neo3',
-                        'galex', 'wssa'
+                        'galex', 'wssa', 'des-dr1',
                     ]:
             from map.views import get_layer
 

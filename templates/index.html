@@ -1470,6 +1470,10 @@ var mylayer_B = function (name, pretty, kwargs) {
     return tiles;
 };
 
+tiles = mylayer_B('des-dr1', 'DES DR1',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 {% if enable_dr7 %}
 tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
                   {'urlPatterns': [ [1, maxZoom, tile_url], ],});

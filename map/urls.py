@@ -28,6 +28,10 @@ urlpatterns = [
     url(r'^eboss/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('eboss')),
 
+    # DES DR1
+    url(r'^des-dr1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('des-dr1')),
+
     # DR7
     url(r'^decals-dr7/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decals-dr7')),

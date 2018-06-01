@@ -93,6 +93,8 @@ tileversions = {
     '2mass': [1],
     'galex': [1],
 
+    'des-dr1': [1],
+
     'cutouts': [1],
     }
 
@@ -1569,8 +1571,8 @@ class RebrickedMixin(object):
         print('Generic bricks:', len(allbricks))
         
         # Brick side lengths
-        brickside = 0.25 * 2**scale
-        brickside_small = 0.25 * 2**(scale-1)
+        brickside = self.get_brick_size_for_scale(scale)
+        brickside_small = self.get_brick_size_for_scale(scale-1)
 
         # Spherematch from smaller scale to larger scale bricks
         radius = (brickside + brickside_small) * np.sqrt(2.) / 2. * 1.01
@@ -1627,6 +1629,9 @@ class RebrickedMixin(object):
         allbricks.writeto(fn)
         print('Wrote', fn)
         return allbricks
+
+    def get_brick_size_for_scale(self, scale):
+        return 0.25 * 2**scale
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
@@ -1836,6 +1841,69 @@ class ReDecalsResidLayer(UniqueBrickMixin, ResidMixin, ReDecalsLayer):
 
 class ReDecalsModelLayer(UniqueBrickMixin, ReDecalsLayer):
     pass
+
+class DesLayer(ReDecalsLayer):
+
+    def __init__(self, name):
+        super(DesLayer, self).__init__(name, 'image', None)
+        self.bricks = None
+        self.dir = os.path.join(settings.DATA_DIR, name)
+
+    def get_base_filename(self, brick, band, **kwargs):
+        from glob import glob
+        brickname = brick.brickname
+        # DES filenames have a weird-ass string in them so glob
+        # eg, "DES0000+0209_r2590p01_g.fits.fz"
+        pat = os.path.join(self.dir, 'dr1_tiles', brickname,
+                           '%s_*_%s.fits.fz' % (brickname, band))
+        fns = glob(pat)
+        print('Glob:', pat, '->', fns)
+        assert(len(fns) <= 1)
+        if len(fns) == 0:
+            return None
+        return fns[0]
+
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        from astrometry.util.fits import fits_table
+        basedir = settings.DATA_DIR
+        self.bricks = fits_table(os.path.join(basedir, self.name, 'des-dr1-tiles.fits'))
+        self.bricks.rename('uramin', 'ra1')
+        self.bricks.rename('uramax', 'ra2')
+        self.bricks.rename('udecmin', 'dec1')
+        self.bricks.rename('udecmax', 'dec2')
+        self.bricks.rename('ra_cent', 'ra')
+        self.bricks.rename('dec_cent', 'dec')
+        self.bricks.rename('tilename', 'brickname')
+        return self.bricks
+
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
+        import numpy as np
+        bricks = self.get_bricks()
+        I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
+        I = I[ok]
+        if len(I) == 0:
+            return None
+        return bricks[I]
+
+    def get_brick_size_for_scale(self, scale):
+        if scale == 0:
+            return 10000 * 0.263 / 3600.
+        return 0.25 * 2**scale
+
+    def populate_fits_cutout_header(self, hdr):
+        hdr['SURVEY'] = 'DES'
+        hdr['VERSION'] = 'DR1'
+        hdr['IMAGETYP'] = 'image'
+
+    def read_image(self, brick, band, scale, slc, fn=None):
+        img = super(DesLayer,self).read_image(brick, band, scale, slc, fn=fn)
+        if scale == 0:
+            img /= 10.**((30. - 22.5) / 2.5)
+        return img
+
     
 class PS1Layer(MapLayer):
     def __init__(self, name):
@@ -3968,6 +4036,9 @@ def get_layer(name, default=None):
     elif name == 'eboss':
         survey = get_survey('eboss')
         layer = ReDecalsLayer('eboss', 'image', survey)
+
+    elif name == 'des-dr1':
+        layer = DesLayer('des-dr1')
 
     elif name in ['decals-dr7', 'decals-dr7-model', 'decals-dr7-resid']:
         survey = get_survey('decals-dr7')
