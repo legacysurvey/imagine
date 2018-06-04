@@ -717,6 +717,7 @@ def cat_user(req, ver):
     
     fn = os.path.join(settings.USER_QUERY_DIR, cat+'.fits')
     if not os.path.exists(fn):
+        print('Does not exist:', fn)
         return
     cat = fits_table(fn)
     if haverd:
@@ -739,7 +740,14 @@ def cat_user(req, ver):
     if 'name' in cols:
         D.update(names=list(cat.name))
     if 'type' in cols:
-        D.update(sourcetype=list([t[0] for t in cat.get('type')]))
+        try:
+            v = list([t[0] for t in cat.get('type')])
+            json.dumps(v)
+            D.update(sourcetype=v)
+        except:
+            print('failed to convert column "type".  Traceback:')
+            import traceback
+            traceback.print_exc()
     if 'g' in cols and 'r' in cols and 'z' in cols:
         D.update(fluxes=[dict(g=float(g), r=float(r), z=float(z))
                          for g,r,z in zip(10.**((cat.g - 22.5)/-2.5),
@@ -756,6 +764,9 @@ def cat_user(req, ver):
         D.update(radius=list([float(r) for r in cat.radius]))
     if 'color' in cols:
         D.update(color=list([c.strip() for c in cat.color]))
+
+    #for k,v in D.items():
+    #    print('Cat', k, v)
 
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
@@ -967,6 +978,14 @@ if __name__ == '__main__':
     #create_galaxy_catalog('/tmp/dr6.fits', 6)
     #specObj-dr14.fits
     #T = fits_table('/project/projectdirs/cosmo/data/sdss/dr14/sdss/spectro/redux/specObj-dr14.fits')
+
+    from django.test import Client
+    c = Client()
+    c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
+
+    import sys
+    sys.exit(0)
+
     T=fits_table('/project/projectdirs/cosmo/data/sdss/dr14/sdss/spectro/redux/specObj-dr14.fits',
                  columns=['plate','mjd','fiberid','plug_ra','plug_dec','class','subclass','z','zwarning'])
     T.rename('plug_ra', 'ra')
