@@ -19,8 +19,8 @@ for b in B:
     #rr,dd = wcs.pixelxy2radec([1., 1., 1.,   mid,  size, size, size, mid],
     #                          [1, mid, size, size, size, mid,  1.,    1.])
     #print('rr', rr, 'dd', dd, 'vs', b.ra1,b.ra2, b.dec1,b.dec2)
-    ok,xx,yy = wcs.radec2pixelxy([b.ra1, b.ra1, b.ra2, b.ra2],
-                                 [b.dec1,b.dec2,b.dec2,b.dec1])
+    ok,xx,yy = wcs.radec2pixelxy([b.ra,  b.ra1, b.ra1,b.ra1, b.ra2, b.ra2,b.ra2, b.ra],
+                                 [b.dec1,b.dec1,b.dec,b.dec2,b.dec2,b.dec,b.dec1,b.dec2])
     #print('RA,Dec', b.ra, b.dec, 'x', xx.min(), xx.max(), 'y', yy.min(), yy.max())
     assert(np.all(xx > 1.))
     assert(np.all(yy > 1.))
