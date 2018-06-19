@@ -635,7 +635,13 @@ def top_levels(mp, opt):
 
 
 def _layer_get_filename(args):
-    layer,brick,band,scale = args
+    layer,brick,band,scale,force = args
+
+    if force:
+        fn = layer.get_scaled_filename(brick, band, scale)
+        if os.path.exists(fn):
+            os.remove(fn)
+
     fn = layer.get_filename(brick, band, scale)
     print(fn)
 
@@ -791,7 +797,7 @@ def main():
                 for ibrick,brick in enumerate(B):
                     for band in bands:
                         if has[band][ibrick]:
-                            args.append((layer, brick, band, scale))
+                            args.append((layer, brick, band, scale, opt.ignore))
                 print(len(args), 'bricks for scale', scale)
                 mp.map(_layer_get_filename, args)
 

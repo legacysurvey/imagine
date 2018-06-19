@@ -4043,7 +4043,7 @@ def get_layer(name, default=None):
     elif name in ['decals-dr7', 'decals-dr7-model', 'decals-dr7-resid']:
         survey = get_survey('decals-dr7')
         image = ReDecalsLayer('decals-dr7', 'image', survey)
-        model = ReDecalsLayer('decals-dr7-model', 'model', survey, drname='decals-dr7')
+        model = ReDecalsModelLayer('decals-dr7-model', 'model', survey, drname='decals-dr7')
         resid = ReDecalsResidLayer(image, model, 'decals-dr7-resid', 'resid', survey,
                                    drname='decals-dr7')
         layers['decals-dr7'] = image
