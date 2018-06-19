@@ -12,12 +12,15 @@
   ga('send', 'pageview');
 </script> 
 
-<link rel="stylesheet" href="{% static "leaflet-1.2.0.css" %}" />
-<script src="{% static "leaflet-src-1.2.0.js" %}"></script>
+<link rel="stylesheet" href="{% static "leaflet-1.3.1.css" %}" />
+<script src="{% static "leaflet-src-1.3.1.js" %}"></script>
+{# From https://github.com/mapbox/leaflet-pip #}
 <script src="{% static "leaflet-pip-20170913.js" %}"></script>
+{# From https://github.com/jjimenezshaw/Leaflet.Control.Layers.Tree #}
 <script src="{% static "L.Control.Layers.Tree.js" %}"></script>
 <link rel="stylesheet" href="{% static "L.Control.Layers.Tree.css" %}" />
 <script src="{% static "jquery-2.1.1.min.js" %}"></script>
+{# From http://kartena.github.io/Leaflet.zoomslider #}
 <script src="{% static "leaflet-zoomslider-0.6.1.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet-zoomslider-0.6.1.css" %}" />
 {% comment %}
