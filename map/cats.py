@@ -6,12 +6,12 @@ if __name__ == '__main__':
     import sys
     sys.path.insert(0, 'django-1.9')
     import os
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
     django.setup()
 
 from django.http import HttpResponse, StreamingHttpResponse
-from decals import settings
+from viewer import settings
 from django.core.urlresolvers import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 

@@ -3,7 +3,7 @@ if __name__ == '__main__':
     import sys
     sys.path.insert(0, 'django-1.9')
     import os
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
 
 import os
@@ -14,7 +14,7 @@ from map.utils import send_file
 
 from map.views import dr2_rgb, layer_name_map
 
-from decals import settings
+from viewer import settings
 
 try:
     # py2
@@ -74,7 +74,7 @@ def fits_cutout(req):
 
 if __name__ == '__main__':
     import os
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
 
     class duck(object):
         pass

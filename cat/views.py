@@ -2,7 +2,7 @@ from __future__ import print_function
 
 if __name__ == '__main__':
     import os
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
     django.setup()
     import cat
@@ -350,7 +350,7 @@ class CatalogSearchList(ListView):
         print('get_context_data called')
         t0 = Time()
 
-        from decals import settings
+        from viewer import settings
 
         print('Using query description:', self.querydesc)
 
@@ -424,7 +424,7 @@ def fits_results(req):
 
 def viewer_results(req):
     import tempfile
-    from decals import settings
+    from viewer import settings
 
     search = CatalogSearchList()
     search.request = req
@@ -461,7 +461,7 @@ def viewer_results(req):
 if __name__ == '__main__':
     import os
     import sys
-    #os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    #os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     #django.setup()
 
     class duck(object):

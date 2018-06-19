@@ -4,7 +4,7 @@ import fitsio
 
 from map.utils import save_jpeg, send_file, trymakedirs, oneyear, get_tile_wcs
 
-from decals import settings
+from viewer import settings
 debug = print
 if not settings.DEBUG_LOGGING:
     def debug(*args, **kwargs):
@@ -144,7 +144,7 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
 
     dirnm = os.path.dirname(fn)
 
-    from decals import settings
+    from viewer import settings
     ro = settings.READ_ONLY_BASEDIR
     if ro:
         dirnm = None

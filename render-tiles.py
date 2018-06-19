@@ -9,9 +9,9 @@ sys.path.insert(0, 'django-1.9')
 import django
 #django.setup()
 import os
-os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
 
-from decals import settings
+from viewer import settings
 settings.READ_ONLY_BASEDIR = False
 #settings.DEBUG_LOGGING = True
 
@@ -166,7 +166,7 @@ def _bounce_sdssco(X):
         save = True
 
     # Save jpeg
-    from decals import settings
+    from viewer import settings
     #tag = 'sdss'
     tag = 'sdssco'
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
@@ -227,7 +227,7 @@ def top_levels(mp, opt):
                     'unwise-neo2', 'unwise-neo3', 'galex',
                     'sdss2', 'wssa']:
         import pylab as plt
-        from decals import settings
+        from viewer import settings
         from legacypipe.survey import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
@@ -329,7 +329,7 @@ def top_levels(mp, opt):
 
     elif opt.kind in ['unwise', 'unwise-neo1', 'unwise-w3w4',]:
         import pylab as plt
-        from decals import settings
+        from viewer import settings
         from map.views import _unwise_to_rgb, save_jpeg, trymakedirs
         import fitsio
 
@@ -468,7 +468,7 @@ def top_levels(mp, opt):
 
     if opt.kind in ['depth-g', 'depth-r', 'depth-z']:
         import pylab as plt
-        from decals import settings
+        from viewer import settings
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
 
@@ -526,7 +526,7 @@ def top_levels(mp, opt):
                     'decals-dr3', 'decals-dr3-model', 'decals-dr3-resid',
                     ]:
         import pylab as plt
-        from decals import settings
+        from viewer import settings
         from legacypipe.survey import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter

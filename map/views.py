@@ -5,13 +5,13 @@ if __name__ == '__main__':
     import sys
     sys.path.insert(0, 'django-1.9')
     import os
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
     django.setup()
     #print('Django:', django.__file__)
     #print('Version:', django.get_version())
 
-    #from decals import settings
+    #from viewer import settings
     #settings.ALLOWED_HOSTS += 'testserver'
 
 
@@ -22,7 +22,7 @@ from django.http import HttpResponse, StreamingHttpResponse
 from django.core.urlresolvers import reverse
 from django import forms
 
-from decals import settings
+from viewer import settings
 from map.utils import (get_tile_wcs, trymakedirs, save_jpeg, ra2long, ra2long_B,
                        send_file, oneyear)
 from map.coadds import get_scaled
@@ -4362,7 +4362,7 @@ if __name__ == '__main__':
 
 
     import os
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
 
     class duck(object):

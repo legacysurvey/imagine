@@ -1,5 +1,5 @@
 """
-Django settings for decals project.
+Django settings for Legacy Survey viewer project.
 
 For more information on this file, see
 https://docs.djangoproject.com/en/1.6/topics/settings/
@@ -161,7 +161,7 @@ MIDDLEWARE_CLASSES = (
 #    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-ROOT_URLCONF = 'decals.urls'
+ROOT_URLCONF = 'viewer.urls'
 
 WSGI_APPLICATION = 'wsgi.application'
 
