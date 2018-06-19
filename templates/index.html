@@ -236,6 +236,9 @@ var CatalogOverlay = L.Evented.extend({
 
     initialize: function(name, pretty, kwargs) {
         //console.log('CatalogOverlay: ' + name + ',' + pretty);
+        //console.log('CatalogOverlay: ' + name + ': options');
+        //console.log('    ' + this.options);
+        this.options = {};
         this._counter = 1;
         this._url = kwargs['url'] || smallcat_url;
         this._url_term = kwargs['urlTerm'] || name;
@@ -2804,35 +2807,62 @@ if ('desi' in qstr) {
 }
 
 
-var baseTree = //{
-    //label: 'Layers',
-    //children:
-    [
-        {
-            label: 'DECaLS DR7',
-            children: [
-                { label: 'DR7 images', layer: baseMaps['DECaLS DR7 images']},
-                { label: 'DR7 models', layer: baseMaps['DECaLS DR7 models']},
-                { label: 'DR7 residuals', layer: baseMaps['DECaLS DR7 residuals']},
-            ]
-        },
-    ];
-//};
-
- namedOverlays = [];
- for (var i=0,len=overlays.length; i<len; i++) {
-     namedOverlays[overlays[i]._name] = overlays[i];
+ var namedLayers = {};
+ for (var i in allLayers) {
+     var layer = allLayers[i];
+     namedLayers[layer.name] = layer;
  }
+ 
+var baseTree = [
+    {
+        label: 'DECaLS DR7',
+        children: [
+            { label: 'DR7 images', layer: namedLayers['decals-dr7']},
+            { label: 'DR7 models', layer: namedLayers['decals-dr7-model']},
+            { label: 'DR7 residuals', layer: namedLayers['decals-dr7-resid']},
+        ]
+    },
+    {
+        label: 'unWISE',
+        children: [
+            { label: 'unWISE W1/W2 Original', layer: namedLayers['unwise-w1w2']},
+            { label: 'unWISE W1/W2 NEO2', layer: namedLayers['unwise-neo2']},
+            { label: 'unWISE W1/W2 NEO3', layer: namedLayers['unwise-neo3']},
+        ]
+    },
+];
+
+namedOverlays = [];
+for (var i=0,len=overlays.length; i<len; i++) {
+    namedOverlays[overlays[i]._name] = overlays[i].getGroup();
+}
  
  var overlayTree = [
      { label: 'CCD outlines',
        children: [
+           {% if enable_dr3_overlays %}
            { label: 'DECaLS DR3 CCDs',
              layer: namedOverlays['decals-dr3-ccds'] },
+           {% endif %}
+           {% if enable_dr4_overlays %}
            { label: 'MzLS+BASS DR4 CCDs',
              layer: namedOverlays['mzls+bass-dr4-ccds'] },
+           {% endif %}
        ],
      },
+     { label: 'DECam exposure outlines',
+       children: [
+           {% if enable_dr5_overlays %}
+           { label: 'DR5 Exposures',
+             layer: namedOverlays['decals-dr5-exps'] },
+           {% endif %}
+           {% if enable_dr7_overlays %}
+           { label: 'DR7 Exposures',
+             layer: namedOverlays['decals-dr7-exps'] },
+           {% endif %}
+       ]
+     },
+     
  ];
 
 // Constellations
