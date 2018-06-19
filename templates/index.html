@@ -2804,16 +2804,51 @@ if ('desi' in qstr) {
 }
 
 
+var baseTree = //{
+    //label: 'Layers',
+    //children:
+    [
+        {
+            label: 'DECaLS DR7',
+            children: [
+                { label: 'DR7 images', layer: baseMaps['DECaLS DR7 images']},
+                { label: 'DR7 models', layer: baseMaps['DECaLS DR7 models']},
+                { label: 'DR7 residuals', layer: baseMaps['DECaLS DR7 residuals']},
+            ]
+        },
+    ];
+//};
+
+ namedOverlays = [];
+ for (var i=0,len=overlays.length; i<len; i++) {
+     namedOverlays[overlays[i]._name] = overlays[i];
+ }
+ 
+ var overlayTree = [
+     { label: 'CCD outlines',
+       children: [
+           { label: 'DECaLS DR3 CCDs',
+             layer: namedOverlays['decals-dr3-ccds'] },
+           { label: 'MzLS+BASS DR4 CCDs',
+             layer: namedOverlays['mzls+bass-dr4-ccds'] },
+       ],
+     },
+ ];
+
+// Constellations
+var conGroup = L.layerGroup([]);
+
+ /*
 var layerControl = new L.control.layers(baseMaps, {}, { collapsed: false })
 for (var i=0,len=overlays.length; i<len; i++) {
     layerControl._addLayer(overlays[i].getGroup(), overlays[i]._pretty, true);
 }
-
-var conGroup = L.layerGroup([]);
 layerControl._addLayer(conGroup, 'Constellations', true);
-
 layerControl.addTo(map);
+*/
 
+L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
+                                         
 /*
   The overlays DOM looks like this:
 
