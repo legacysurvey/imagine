@@ -2951,11 +2951,13 @@ for (var i=0,len=overlays.length; i<len; i++) {
            {% endif %}
        ]
      },
-     { label: 'Legacy Survey catalogs',
+     { label: 'DECaLS DR7 catalog',
+       // label: 'Legacy Survey catalogs',
+       layer: namedOverlays['decals-dr7'].getGroup(),
        children: [
-           {% if enable_dr7_overlays %}
-           findoverlay('decals-dr7'),
-           {% endif %}
+           //{% if enable_dr7_overlays %}
+           //findoverlay('decals-dr7'),
+           //{% endif %}
            {% if enable_dr6_overlays %}
            findoverlay('mzls+bass-dr6'),
            {% endif %}
@@ -3029,20 +3031,33 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
      //console.log(sel);
      sel.trigger('click');
 
-     txt = 'MzLS+BASS DR4';
-     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
-     txt = 'MzLS+BASS DR6';
-     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
-     txt = 'CCD outlines';
-     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
-     txt = 'DECam exposure outlines';
-     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
-     txt = 'Other catalogs';
-     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
-     txt = 'Spectroscopy';
-     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
-     txt = 'DESI targets';
-     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
+     var sel = $(".leaflet-layerstree-opened").parent().parent();
+     console.log('Parents:');
+     console.log(sel);
+     
+     txts = ['MzLS+BASS DR4',
+             'MzLS+BASS DR6',
+             'DECaLS DR7 catalog',
+             'CCD outlines',
+             'DECam exposure outlines',
+             'Other catalogs',
+             'Spectroscopy',
+             'DESI targets',
+            ];
+     for (var i=0,len=txts.length; i<len; i++) {
+         var txt = txts[i];
+         //$(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
+         //$(".leaflet-layerstree-header-name:contains('" + txt + "')").trigger('click');
+         //var sel = $(".leaflet-layerstree-opened:parent:parent:contains('" + txt + "')");
+         //var sel = $(".leaflet-layerstree-opened").parent().parent().filter(":contains('" + txt + "')");
+         var sel = $(".leaflet-layerstree-header").filter(":contains('" + txt + "')");
+         console.log('Selecting: ' + txt);
+         console.log(sel);
+         sel = sel.children().children().filter(".leaflet-layerstree-opened");
+         console.log(sel);
+         sel.trigger('click');
+     }
+     //$(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
      
  });
  
