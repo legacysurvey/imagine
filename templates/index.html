@@ -2609,11 +2609,110 @@ var specDeep2 = new Deep2SpectraCatalog('spec-deep2', 'DEEP2 Spectra',
 
 {% if enable_sql %}
 var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
-                                       {'url': sql_url,
-                                        'radius': 300,
-                                       });
+                                       {'url': sql_url, 'radius': 300,});
 {% endif %}
 
+ // Constellations
+var conGroup = L.layerGroup([]);
+ var constellations = {
+     _name: 'constellations',
+     _pretty: 'Constellations',
+     getGroup: function() { return conGroup; },
+ };
+
+ // DESI Footprint
+ // from gfa-corners.fits from Bailey, 2017-09-14
+ var petal_radius = [
+     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479]];
+ var petal_phi = [
+     [ -72.68064188,  -72.65497301,  -76.97939241,  -77.1732807 ],
+     [ -36.68064188,  -36.65497301,  -40.97939241,  -41.1732807 ],
+     [  -0.68064188,   -0.65497301,   -4.97939241,   -5.1732807 ],
+     [  35.31935812,   35.34502699,   31.02060759,   30.8267193 ],
+     [  71.31935812,   71.34502699,   67.02060759,   66.8267193 ],
+     [ 107.31935812,  107.34502699,  103.02060759,  102.8267193 ],
+     [ 143.31935812,  143.34502699,  139.02060759,  138.8267193 ],
+     [ 179.31935812,  179.34502699,  175.02060759,  174.8267193 ],
+     [-144.68064188, -144.65497301, -148.97939241, -149.1732807 ],
+     [-108.68064188, -108.65497301, -112.97939241, -113.1732807 ]];
+ var desi_radius = 1.60577;
+ var DesiFootprint = CatalogOverlay.extend({
+     initialize: function(name, pretty, kwargs) {
+         CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+         var group = [];
+         var clong = 180;
+         this._circle = L.circle(L.latLng(dec2lat(0), ra2long_C(0, clong)),
+                                 arcsecToMeters(desi_radius * 3600.),
+                                 {color:'yellow', fill:false}); //fillOpacity:0.01});
+         group.push(this._circle);
+         this._gfa_rds = [];
+         var polys = [];
+         for (var i=0; i<petal_radius.length; i++) {
+             var ll = [];
+             var rd = [];
+             var N = petal_radius[i].length;
+             for (var j=0; j<N+1; j++) {
+                 var phi = petal_phi[i][j%N] * Math.PI / 180.0;
+                 var ddec = petal_radius[i][j%N] * Math.cos(phi);
+                 var dra  = petal_radius[i][j%N] * Math.sin(phi);
+                 rd.push([dra, ddec]);
+                 ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
+             }
+             this._gfa_rds.push(rd);
+             polys.push(ll);
+         }
+         this._gfa = L.polyline(polys, {color: 'green'});
+         group.push(this._gfa);
+         this._layer = L.layerGroup(group);
+         map.on('mapMoved', this.mapMoved.bind(this));
+     },
+     ready: function() {
+         console.log(this._name + ' ready function called');
+         this.moveTo(map.getCenter());
+     },
+     overlayAdded: function(e) {
+         this.moveTo(map.getCenter());
+         this._group.addLayer(this._layer);
+     },
+     moveTo: function(c) {
+         this._circle.setLatLng(c);
+         var clong = c.lng;
+         var polys = [];
+         var d0 = lat2dec(c.lat);
+         var r0 = long2ra(clong);
+         var cosdec = Math.cos(d0 * Math.PI / 180.0);
+         for (var i=0; i<this._gfa_rds.length; i++) {
+             var ll = [];
+             var rd = this._gfa_rds[i];
+             var N = rd.length;
+             for (var j=0; j<N+1; j++) {
+                 ll.push([dec2lat(d0 + rd[j%N][1]),
+                          ra2long_C(r0 + rd[j%N][0] / cosdec, clong)]);
+             }
+             polys.push(ll);
+         }
+         this._gfa.setLatLngs(polys);
+         this._gfa.redraw();
+     },
+     mapBoundsChanged: function() {
+         //this.move();
+     },
+     mapMoved: function() {
+         //var cen = map.getCenter();
+     },
+ });
+ var desifoot = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
+ desifoot._url_term = 'desi';
+ 
 var overlays = [
     {% if enable_phat %}
     phat_clusters,
@@ -2684,26 +2783,10 @@ var overlays = [
     desi_targets56,
     desi_bgs_targets56,
     {% endif %}
+    constellations,
+    desifoot,
 ];
 
-/*
- var overlays = [
-    {% if enable_dr3_overlays %}
-    ccdOverlay3,
-    {% endif %}
-    {% if enable_dr4_overlays %}
-    ccdOverlay4,
-    {% endif %}
-    {% if enable_dr5_overlays %}
-    expOverlay5,
-    {% endif %}
-    {% if enable_dr7_overlays %}
-    expOverlay7,
-    {% endif %}
-     brickOverlay,
-];
-*/
- 
 {% if usercatalogs %}
   {% for cat,name,color in usercatalogs %}
     var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{name}}',
@@ -2728,197 +2811,200 @@ for (k in qstr) {
     console.log('qstring key: ' + k);
 }
 
-if ('desi' in qstr) {
-    console.log('DESI footprint');
-    // from gfa-corners.fits from Bailey, 2017-09-14
-    var petal_radius = [
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479]];
-    var petal_phi = [
-        [ -72.68064188,  -72.65497301,  -76.97939241,  -77.1732807 ],
-        [ -36.68064188,  -36.65497301,  -40.97939241,  -41.1732807 ],
-        [  -0.68064188,   -0.65497301,   -4.97939241,   -5.1732807 ],
-        [  35.31935812,   35.34502699,   31.02060759,   30.8267193 ],
-        [  71.31935812,   71.34502699,   67.02060759,   66.8267193 ],
-        [ 107.31935812,  107.34502699,  103.02060759,  102.8267193 ],
-        [ 143.31935812,  143.34502699,  139.02060759,  138.8267193 ],
-        [ 179.31935812,  179.34502699,  175.02060759,  174.8267193 ],
-        [-144.68064188, -144.65497301, -148.97939241, -149.1732807 ],
-        [-108.68064188, -108.65497301, -112.97939241, -113.1732807 ]];
-
-    var desi_radius = 1.60577;
-    
-    var DesiFootprint = CatalogOverlay.extend({
-
-        initialize: function(name, pretty, kwargs) {
-            CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
-            var group = [];
-            var clong = 180;
-            this._circle = L.circle(L.latLng(dec2lat(0), ra2long_C(0, clong)),
-                                    arcsecToMeters(desi_radius * 3600.),
-                                    {color:'yellow', fill:false}); //fillOpacity:0.01});
-            group.push(this._circle);
-            this._gfa_rds = [];
-            var polys = [];
-            for (var i=0; i<petal_radius.length; i++) {
-                var ll = [];
-                var rd = [];
-                var N = petal_radius[i].length;
-                for (var j=0; j<N+1; j++) {
-                    var phi = petal_phi[i][j%N] * Math.PI / 180.0;
-                    var ddec = petal_radius[i][j%N] * Math.cos(phi);
-                    var dra  = petal_radius[i][j%N] * Math.sin(phi);
-                    rd.push([dra, ddec]);
-                    ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
-                }
-                this._gfa_rds.push(rd);
-                polys.push(ll);
-            }
-            this._gfa = L.polyline(polys, {color: 'green'});
-            group.push(this._gfa);
-            this._layer = L.layerGroup(group);
-            map.on('mapMoved', this.mapMoved.bind(this));
-        },
-    
-        ready: function() {
-            console.log(this._name + ' ready function called');
-            this.moveTo(map.getCenter());
-        },
-    
-        overlayAdded: function(e) {
-            this.moveTo(map.getCenter());
-            this._group.addLayer(this._layer);
-        },
-
-        moveTo: function(c) {
-            this._circle.setLatLng(c);
-            var clong = c.lng;
-            var polys = [];
-            var d0 = lat2dec(c.lat);
-            var r0 = long2ra(clong);
-            var cosdec = Math.cos(d0 * Math.PI / 180.0);
-            for (var i=0; i<this._gfa_rds.length; i++) {
-                var ll = [];
-                var rd = this._gfa_rds[i];
-                var N = rd.length;
-                for (var j=0; j<N+1; j++) {
-                    ll.push([dec2lat(d0 + rd[j%N][1]),
-                             ra2long_C(r0 + rd[j%N][0] / cosdec, clong)]);
-                }
-                polys.push(ll);
-            }
-            this._gfa.setLatLngs(polys);
-            this._gfa.redraw();
-        },
-        
-        mapBoundsChanged: function() {
-            //this.move();
-        },
-
-        mapMoved: function() {
-            //var cen = map.getCenter();
-        },
-    
-    });
-    var f = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
-    f._url_term = 'desi';
-    overlays.push(f);
-}
 
 
  var namedLayers = {};
  for (var i in allLayers) {
      var layer = allLayers[i];
+     console.log('layer.name ' + layer.name + ' pretty ' + layer.pretty);
      namedLayers[layer.name] = layer;
  }
 
  var findlayer = function(name) {
-     return { label: namedLayers[name]._pretty, layer: namedLayers[name] };
+     return { label: namedLayers[name].pretty, layer: namedLayers[name] };
  }
  
 var baseTree = [
+    {% if enable_dr7 %}
     {
         label: 'DECaLS DR7',
         children: [
             findlayer('decals-dr7'),
             findlayer('decals-dr7-model'),
             findlayer('decals-dr7-resid'),
-            //{ label: 'DR7 images', layer: namedLayers['decals-dr7']},
-            //{ label: 'DR7 models', layer: namedLayers['decals-dr7-model']},
-            //{ label: 'DR7 residuals', layer: namedLayers['decals-dr7-resid']},
         ]
     },
+    {% endif %}
+    {% if enable_dr6 %}
+    {
+        label: 'MzLS+BASS DR6',
+        children: [
+            findlayer('mzls+bass-dr6'),
+            findlayer('mzls+bass-dr6-model'),
+            findlayer('mzls+bass-dr6-resid'),
+        ]
+    },
+    {% endif %}
+    {% if enable_dr5 %}
+    {
+        label: 'DECaLS DR5',
+        children: [
+            findlayer('decals-dr5'),
+            findlayer('decals-dr5-model'),
+            findlayer('decals-dr5-resid'),
+        ]
+    },
+    {% endif %}
+    {% if enable_dr4 %}
+    {
+        label: 'MzLS+BASS DR4',
+        children: [
+            findlayer('mzls+bass-dr4'),
+            findlayer('mzls+bass-dr4-model'),
+            findlayer('mzls+bass-dr4-resid'),
+        ]
+    },
+    {% endif %}
+    {% if enable_decaps %}
+    {
+        label: 'DECaPS',
+        children: [
+            findlayer('decaps'),
+            findlayer('decaps-model'),
+            findlayer('decaps-resid'),
+        ]
+    },
+    {% endif %}
     {
         label: 'unWISE',
         children: [
-            { label: 'unWISE W1/W2 Original', layer: namedLayers['unwise-w1w2']},
-            { label: 'unWISE W1/W2 NEO2', layer: namedLayers['unwise-neo2']},
-            { label: 'unWISE W1/W2 NEO3', layer: namedLayers['unwise-neo3']},
+            findlayer('unwise-w1w2'),
+            findlayer('unwise-neo2'),
+            findlayer('unwise-neo3'),
         ]
+    },
+    {
+        label: 'More surveys',
+        children: [
+            findlayer('sdss2'),
+            {% if enable_des_dr1 %}
+            findlayer('des-dr1'),
+            {% endif %}
+            {% if enable_ps1 %}
+            findlayer('ps1'),
+            {% endif %}
+            {% comment %}
+            findlayer('2mass'),
+            {% endcomment %}
+            findlayer('galex'),
+            findlayer('wssa'),
+            findlayer('sfd'),
+            findlayer('halpha'),
+        ],
     },
 ];
 
  var namedOverlays = {};
 for (var i=0,len=overlays.length; i<len; i++) {
-    //namedOverlays[overlays[i]._name] = overlays[i].getGroup();
     namedOverlays[overlays[i]._name] = overlays[i];
+    // The '.getGroup()' object is the one passed into the overlay tree, so
+    // tag a name onto it.
     group = overlays[i].getGroup();
     group._name = overlays[i]._name;
-    //overlays[i].myname = overlays[i].name;
 }
 
+ 
   var findoverlay = function(name) {
-      //: pretty ' +
-      //            namedOverlays[name]._pretty);
-      //ov = namedOverlays[name];
-      //group = ov.getGroup();
-      //group.name = ov.name;
       return { label: namedOverlays[name]._pretty,
                layer: namedOverlays[name].getGroup() };
  }
 
  var overlayTree = [
      findoverlay('decals-bricks'),
-     //{ label: 'Brick outlines',
-     //  layer: namedOverlays['decals-bricks'] },
      { label: 'CCD outlines',
        children: [
-           {% if enable_dr3_overlays %}
-           //{ label: 'DECaLS DR3 CCDs',
-           //  layer: namedOverlays['decals-dr3-ccds'] },
-           findoverlay('decals-dr3-ccds'),
+           {% if enable_dr7_overlays %}
+           findoverlay('decals-dr7-ccds'),
+           {% endif %}
+           {% if enable_dr6_overlays %}
+           findoverlay('mzls+bass-dr6-ccds'),
+           {% endif %}
+           {% if enable_dr5_overlays %}
+           findoverlay('decals-dr5-ccds'),
            {% endif %}
            {% if enable_dr4_overlays %}
-           { label: 'MzLS+BASS DR4 CCDs',
-             layer: namedOverlays['mzls+bass-dr4-ccds'] },
+           findoverlay('mzls+bass-dr4-ccds'),
            {% endif %}
+           {% if enable_dr3_overlays %}
+           findoverlay('decals-dr3-ccds'),
+           {% endif %}
+           findoverlay('sdss-ccds'),
        ],
      },
      { label: 'DECam exposure outlines',
        children: [
-           {% if enable_dr5_overlays %}
-           { label: 'DR5 Exposures',
-             layer: namedOverlays['decals-dr5-exps'] },
-           {% endif %}
            {% if enable_dr7_overlays %}
-           { label: 'DR7 Exposures',
-             layer: namedOverlays['decals-dr7-exps'] },
+           findoverlay('decals-dr7-exps'),
+           {% endif %}
+           {% if enable_dr5_overlays %}
+           findoverlay('decals-dr5-exps'),
            {% endif %}
        ]
      },
-     
+     { label: 'Legacy Survey catalogs',
+       children: [
+           {% if enable_dr7_overlays %}
+           findoverlay('decals-dr7'),
+           {% endif %}
+           {% if enable_dr6_overlays %}
+           findoverlay('mzls+bass-dr6'),
+           {% endif %}
+           {% if enable_dr5_overlays %}
+           findoverlay('decals-dr5'),
+           {% endif %}
+           {% if enable_dr4_overlays %}
+           findoverlay('mzls+bass-dr4'),
+           {% endif %}
+           {% if enable_dr3_overlays %}
+           findoverlay('decals-dr3'),
+           {% endif %}
+           {% if enable_dr2_overlays %}
+           findoverlay('decals-dr2'),
+           {% endif %}
+       ],
+     },
+     { label: 'Other catalogs',
+       children: [
+           {% if enable_ps1 %}
+           findoverlay('ps1cat'),
+           {% endif %}
+           findoverlay('gaia-dr1'),
+           findoverlay('gaia-dr2'),
+           findoverlay('sdss-cat'),
+       ],
+     },
+     { label: 'Spectroscopy',
+       children: [
+           findoverlay('spec'),
+           findoverlay('sdss-plates'),
+           findoverlay('spec-deep2'),
+       ],
+     },
+     {% if enable_desi_targets %}
+     { label: 'DESI targets',
+       children: [
+           findoverlay('targets-bgs-dr56'),
+           findoverlay('targets-dr56'),
+           findoverlay('targets-dr45'),
+       ],
+     },
+     {% endif %}
+     findoverlay('bright'),
+     findoverlay('tycho2'),
+     findoverlay('gals'),
+     findoverlay('constellations'),
+     findoverlay('desi-footprint'),
  ];
-
-// Constellations
-var conGroup = L.layerGroup([]);
 
  /*
 var layerControl = new L.control.layers(baseMaps, {}, { collapsed: false })
