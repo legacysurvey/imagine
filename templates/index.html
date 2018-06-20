@@ -273,7 +273,11 @@ var CatalogOverlay = L.Evented.extend({
         console.log(this._name + ' ready function called');
         this._checkbox = getOverlayCheckbox(this._pretty);
         // _checkbox is a jQuery node
-        //console.log('checkbox:', this._checkbox);
+        console.log('checkbox:', this._checkbox);
+        if (!this._checkbox) {
+            console.log('BUG line 278');
+            return;
+        }
         // add status span after the layer name span
         var nxt = this._checkbox.next();
         var stat = L.DomUtil.create('span', 'layer-status');
@@ -290,10 +294,15 @@ var CatalogOverlay = L.Evented.extend({
     },
 
     overlayAdded: function(e) {
-        console.log(this._name + ': overlayAdded, zoom ' + map.getZoom() + ', my min ' + this._minZoom);
-        if (e.name == this._pretty) {
+        console.log(this._name + ': overlayAdded (name ' + e.name + '), zoom '
+                    + map.getZoom() + ', my min ' + this._minZoom);
+        console.log('e.layer: ', e.layer);
+        console.log('e.layer._name: ', e.layer._name);
+        //if (e.name == this._pretty) {
+        if (e.layer._name == this._name) {
             this._show = true;
 	        if (map.getZoom() >= this._minZoom) {
+                console.log(this._name + ': LOADING!')
 	            this.load();
 	        }
         }
@@ -2677,6 +2686,24 @@ var overlays = [
     {% endif %}
 ];
 
+/*
+ var overlays = [
+    {% if enable_dr3_overlays %}
+    ccdOverlay3,
+    {% endif %}
+    {% if enable_dr4_overlays %}
+    ccdOverlay4,
+    {% endif %}
+    {% if enable_dr5_overlays %}
+    expOverlay5,
+    {% endif %}
+    {% if enable_dr7_overlays %}
+    expOverlay7,
+    {% endif %}
+     brickOverlay,
+];
+*/
+ 
 {% if usercatalogs %}
   {% for cat,name,color in usercatalogs %}
     var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{name}}',
@@ -2812,14 +2839,21 @@ if ('desi' in qstr) {
      var layer = allLayers[i];
      namedLayers[layer.name] = layer;
  }
+
+ var findlayer = function(name) {
+     return { label: namedLayers[name]._pretty, layer: namedLayers[name] };
+ }
  
 var baseTree = [
     {
         label: 'DECaLS DR7',
         children: [
-            { label: 'DR7 images', layer: namedLayers['decals-dr7']},
-            { label: 'DR7 models', layer: namedLayers['decals-dr7-model']},
-            { label: 'DR7 residuals', layer: namedLayers['decals-dr7-resid']},
+            findlayer('decals-dr7'),
+            findlayer('decals-dr7-model'),
+            findlayer('decals-dr7-resid'),
+            //{ label: 'DR7 images', layer: namedLayers['decals-dr7']},
+            //{ label: 'DR7 models', layer: namedLayers['decals-dr7-model']},
+            //{ label: 'DR7 residuals', layer: namedLayers['decals-dr7-resid']},
         ]
     },
     {
@@ -2832,17 +2866,35 @@ var baseTree = [
     },
 ];
 
-namedOverlays = [];
+ var namedOverlays = {};
 for (var i=0,len=overlays.length; i<len; i++) {
-    namedOverlays[overlays[i]._name] = overlays[i].getGroup();
+    //namedOverlays[overlays[i]._name] = overlays[i].getGroup();
+    namedOverlays[overlays[i]._name] = overlays[i];
+    group = overlays[i].getGroup();
+    group._name = overlays[i]._name;
+    //overlays[i].myname = overlays[i].name;
 }
- 
+
+  var findoverlay = function(name) {
+      //: pretty ' +
+      //            namedOverlays[name]._pretty);
+      //ov = namedOverlays[name];
+      //group = ov.getGroup();
+      //group.name = ov.name;
+      return { label: namedOverlays[name]._pretty,
+               layer: namedOverlays[name].getGroup() };
+ }
+
  var overlayTree = [
+     findoverlay('decals-bricks'),
+     //{ label: 'Brick outlines',
+     //  layer: namedOverlays['decals-bricks'] },
      { label: 'CCD outlines',
        children: [
            {% if enable_dr3_overlays %}
-           { label: 'DECaLS DR3 CCDs',
-             layer: namedOverlays['decals-dr3-ccds'] },
+           //{ label: 'DECaLS DR3 CCDs',
+           //  layer: namedOverlays['decals-dr3-ccds'] },
+           findoverlay('decals-dr3-ccds'),
            {% endif %}
            {% if enable_dr4_overlays %}
            { label: 'MzLS+BASS DR4 CCDs',
