@@ -3016,7 +3016,36 @@ layerControl.addTo(map);
 */
 
 L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
-                                         
+
+ $(document).ready(function() {
+     //var sel = $('.leaflet-layerstree-header-name');
+     //var sel = $('.leaflet-layerstree-header-name:first-child');
+     var sel = $(".leaflet-layerstree-header-name:first-child:contains('DECaPS')");
+     //console.log('headers:');
+     //console.log(sel);
+     //sel = sel.contents('DECaPS');
+     //sel = sel(":contains('DECaPS')");
+     //console.log('DECaPS node:');
+     //console.log(sel);
+     sel.trigger('click');
+
+     txt = 'MzLS+BASS DR4';
+     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
+     txt = 'MzLS+BASS DR6';
+     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
+     txt = 'CCD outlines';
+     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
+     txt = 'DECam exposure outlines';
+     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
+     txt = 'Other catalogs';
+     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
+     txt = 'Spectroscopy';
+     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
+     txt = 'DESI targets';
+     $(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
+     
+ });
+ 
 /*
   The overlays DOM looks like this:
 
