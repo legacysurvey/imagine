@@ -2820,69 +2820,62 @@ for (k in qstr) {
      namedLayers[layer.name] = layer;
  }
 
- var findlayer = function(name) {
-     return { label: namedLayers[name].pretty, layer: namedLayers[name] };
+ // var findlayer = function(name, children=undefined) {
+ function findlayer(name, children=[]) {
+     rtn = { label: namedLayers[name].pretty, layer: namedLayers[name] };
+     if (children.length) {
+         rtn['children'] = children;
+     }
+     return rtn;
  }
  
 var baseTree = [
     {% if enable_dr7 %}
-    {
+    //{
+        /*
         label: 'DECaLS DR7',
         children: [
             findlayer('decals-dr7'),
             findlayer('decals-dr7-model'),
             findlayer('decals-dr7-resid'),
         ]
-    },
+        */
+    findlayer('decals-dr7', [
+        findlayer('decals-dr7-model'),
+        findlayer('decals-dr7-resid'),
+    ]),
+    //},
     {% endif %}
     {% if enable_dr6 %}
-    {
-        label: 'MzLS+BASS DR6',
-        children: [
-            findlayer('mzls+bass-dr6'),
-            findlayer('mzls+bass-dr6-model'),
-            findlayer('mzls+bass-dr6-resid'),
-        ]
-    },
+    //{
+    findlayer('mzls+bass-dr6', [
+        findlayer('mzls+bass-dr6-model'),
+        findlayer('mzls+bass-dr6-resid'),
+    ]),
     {% endif %}
     {% if enable_dr5 %}
-    {
-        label: 'DECaLS DR5',
-        children: [
-            findlayer('decals-dr5'),
-            findlayer('decals-dr5-model'),
-            findlayer('decals-dr5-resid'),
-        ]
-    },
+    findlayer('decals-dr5', [
+        findlayer('decals-dr5-model'),
+        findlayer('decals-dr5-resid'),
+    ]),
     {% endif %}
     {% if enable_dr4 %}
-    {
-        label: 'MzLS+BASS DR4',
-        children: [
-            findlayer('mzls+bass-dr4'),
-            findlayer('mzls+bass-dr4-model'),
-            findlayer('mzls+bass-dr4-resid'),
-        ]
-    },
+    findlayer('mzls+bass-dr4', [
+        findlayer('mzls+bass-dr4-model'),
+        findlayer('mzls+bass-dr4-resid'),
+    ]),
     {% endif %}
     {% if enable_decaps %}
-    {
-        label: 'DECaPS',
-        children: [
-            findlayer('decaps'),
-            findlayer('decaps-model'),
-            findlayer('decaps-resid'),
-        ]
-    },
+    findlayer('decaps', [
+        findlayer('decaps-model'),
+        findlayer('decaps-resid'),
+    ]),
     {% endif %}
-    {
-        label: 'unWISE',
-        children: [
-            findlayer('unwise-w1w2'),
-            findlayer('unwise-neo2'),
-            findlayer('unwise-neo3'),
-        ]
-    },
+    //label: 'unWISE',
+    findlayer('unwise-neo3', [
+        findlayer('unwise-neo2'),
+        findlayer('unwise-w1w2'),
+    ]),
     {
         label: 'More surveys',
         children: [
@@ -2913,44 +2906,49 @@ for (var i=0,len=overlays.length; i<len; i++) {
     group._name = overlays[i]._name;
 }
 
- 
-  var findoverlay = function(name) {
-      return { label: namedOverlays[name]._pretty,
-               layer: namedOverlays[name].getGroup() };
+ function findoverlay(name, children=[]) {
+     rtn =  { label: namedOverlays[name]._pretty,
+              layer: namedOverlays[name].getGroup() };
+     if (children.length) {
+         rtn['children'] = children;
+     }
+     return rtn;
  }
 
  var overlayTree = [
      findoverlay('decals-bricks'),
-     { label: 'CCD outlines',
-       children: [
-           {% if enable_dr7_overlays %}
-           findoverlay('decals-dr7-ccds'),
-           {% endif %}
-           {% if enable_dr6_overlays %}
-           findoverlay('mzls+bass-dr6-ccds'),
-           {% endif %}
-           {% if enable_dr5_overlays %}
-           findoverlay('decals-dr5-ccds'),
-           {% endif %}
-           {% if enable_dr4_overlays %}
-           findoverlay('mzls+bass-dr4-ccds'),
-           {% endif %}
-           {% if enable_dr3_overlays %}
-           findoverlay('decals-dr3-ccds'),
-           {% endif %}
-           findoverlay('sdss-ccds'),
-       ],
-     },
-     { label: 'DECam exposure outlines',
-       children: [
-           {% if enable_dr7_overlays %}
-           findoverlay('decals-dr7-exps'),
-           {% endif %}
-           {% if enable_dr5_overlays %}
-           findoverlay('decals-dr5-exps'),
-           {% endif %}
-       ]
-     },
+
+     findoverlay('decals-dr7-ccds', [
+         {% if enable_dr6_overlays %}
+         findoverlay('mzls+bass-dr6-ccds'),
+         {% endif %}
+         {% if enable_dr5_overlays %}
+         findoverlay('decals-dr5-ccds'),
+         {% endif %}
+         {% if enable_dr4_overlays %}
+         findoverlay('mzls+bass-dr4-ccds'),
+         {% endif %}
+         {% if enable_dr3_overlays %}
+         findoverlay('decals-dr3-ccds'),
+         {% endif %}
+     ]),
+     //{ label: 'CCD outlines',
+     //children: [
+     //{% if enable_dr7_overlays %}
+     //findoverlay('decals-dr7-ccds'),
+     //{% endif %}
+     findoverlay('sdss-ccds'),
+     //],
+     //},
+     //{ label: 'DECam exposure outlines',
+     //children: [
+     //{% if enable_dr7_overlays %}
+     findoverlay('decals-dr7-exps', [
+         //{% endif %}
+         {% if enable_dr5_overlays %}
+         findoverlay('decals-dr5-exps'),
+         {% endif %}
+     ]),
      { label: 'DECaLS DR7 catalog',
        // label: 'Legacy Survey catalogs',
        layer: namedOverlays['decals-dr7'].getGroup(),
@@ -3022,43 +3020,42 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
  $(document).ready(function() {
      //var sel = $('.leaflet-layerstree-header-name');
      //var sel = $('.leaflet-layerstree-header-name:first-child');
-     var sel = $(".leaflet-layerstree-header-name:first-child:contains('DECaPS')");
      //console.log('headers:');
      //console.log(sel);
      //sel = sel.contents('DECaPS');
      //sel = sel(":contains('DECaPS')");
      //console.log('DECaPS node:');
      //console.log(sel);
-     sel.trigger('click');
+     //var sel = $(".leaflet-layerstree-header-name:first-child:contains('DECaPS')");
+     //sel.trigger('click');
 
      var sel = $(".leaflet-layerstree-opened").parent().parent();
      console.log('Parents:');
      console.log(sel);
      
-     txts = ['MzLS+BASS DR4',
-             'MzLS+BASS DR6',
-             'DECaLS DR7 catalog',
-             'CCD outlines',
-             'DECam exposure outlines',
-             'Other catalogs',
-             'Spectroscopy',
-             'DESI targets',
+     txts = [
+         'MzLS+BASS DR4 images',
+         'DECaLS DR5 images',
+         'DECaPS images',
+         'unWISE W1/W2 NEO3',
+         'DECaLS DR7 catalog',
+         'DECaLS DR7 CCDs',
+         //'DECam exposure outlines',
+         'DECaLS DR7 Exposures',
+         'Other catalogs',
+         'Spectroscopy',
+         'DESI targets',
             ];
      for (var i=0,len=txts.length; i<len; i++) {
          var txt = txts[i];
-         //$(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
-         //$(".leaflet-layerstree-header-name:contains('" + txt + "')").trigger('click');
-         //var sel = $(".leaflet-layerstree-opened:parent:parent:contains('" + txt + "')");
          //var sel = $(".leaflet-layerstree-opened").parent().parent().filter(":contains('" + txt + "')");
          var sel = $(".leaflet-layerstree-header").filter(":contains('" + txt + "')");
-         console.log('Selecting: ' + txt);
-         console.log(sel);
+         //console.log('Selecting: ' + txt);
+         //console.log(sel);
          sel = sel.children().children().filter(".leaflet-layerstree-opened");
-         console.log(sel);
+         //console.log(sel);
          sel.trigger('click');
      }
-     //$(".leaflet-layerstree-header-name:first-child:contains('" + txt + "')").trigger('click');
-     
  });
  
 /*
