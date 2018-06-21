@@ -270,10 +270,10 @@ var CatalogOverlay = L.Evented.extend({
     },
 
     ready: function() {
-        console.log(this._name + ' ready function called');
+        //console.log(this._name + ' ready function called');
         this._checkbox = getOverlayCheckbox(this._pretty);
         // _checkbox is a jQuery node
-        console.log('checkbox:', this._checkbox);
+        //console.log('checkbox:', this._checkbox);
         if (!this._checkbox) {
             console.log('BUG line 278');
             return;
@@ -294,12 +294,8 @@ var CatalogOverlay = L.Evented.extend({
     },
 
     overlayAdded: function(e) {
-        console.log(this._name + ': overlayAdded (name ' + e.name + '), zoom '
-                    + map.getZoom() + ', my min ' + this._minZoom);
-        console.log('e.layer: ', e.layer);
-        console.log('e.layer._name: ', e.layer._name);
-        //if (e.name == this._pretty) {
-        if (e.layer._name == this._name) {
+        if (layerMatchesEvent(this, e)) {
+            console.log('overlayAdded: ' + this._name);
             this._show = true;
 	        if (map.getZoom() >= this._minZoom) {
                 console.log(this._name + ': LOADING!')
@@ -309,7 +305,7 @@ var CatalogOverlay = L.Evented.extend({
     },
 
     overlayRemoved: function(e) {
-        if (e.name == this._pretty) {
+        if (layerMatchesEvent(this, e)) {
 	        this._show = false;
             this.removeAllLayers();
         }
@@ -344,8 +340,8 @@ var CatalogOverlay = L.Evented.extend({
             if (this._checkbox) {
                 this._checkbox.removeAttr('disabled');
                 if (this._checkbox.prop('checked')) {
-                    //console.log('Re-adding ' + this._name);
-                    this.overlayAdded({name:this._pretty});
+                    // SEE layerMatchesEvent()
+                    this.overlayAdded({layer:{_name:this._name}});
                 }
             }
         }
@@ -701,6 +697,10 @@ var Ps1CatalogOverlay = CatalogOverlay.extend({
 });
 {% endif %}
 
+function layerMatchesEvent(layer, event) {
+    return (layer._name == event.layer._name);
+}
+
 var TileWatcher = L.Evented.extend({
 
     initialize: function() {
@@ -760,6 +760,7 @@ var TiledOverlay = CatalogOverlay.extend({
         if (!this._show) {
             return;
         }
+        console.log('Layer ' + this._name + ': tile visible');
         var tile = e.tile;
         //console.log('tileVisible: tile ' + tile);
         if (tile.z === undefined) {
@@ -812,9 +813,10 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 
     overlayAdded: function(e) {
-        if (e.name != this._pretty) {
+        if (!layerMatchesEvent(this, e)) {
             return;
         }
+        console.log('overlayAdded: ' + this._name);
         this._show = true;
 	    if (map.getZoom() < this._minZoom) {
             return;
@@ -946,7 +948,7 @@ var UserCatalogLayer = CatalogOverlay.extend({
     },
 
     ready: function() {
-        console.log(this._name + ' ready function called (UserCatalogLayer)');
+        //console.log(this._name + ' ready function called (UserCatalogLayer)');
         this._checkbox = getOverlayCheckbox(this._pretty);
         // _checkbox is a jQuery node
         //console.log('checkbox:', this._checkbox);
@@ -1356,7 +1358,8 @@ function inbrickccdUpdate(props) {
 
 // "Bricks", "CCDs", etc button checked
 function overlayAdded(e) {
-    console.log('OverlayAdded:', e);
+    //console.log('OverlayAdded:', e);
+    //console.log('  overlay name: ' + e.layer._name);
     if (inbrickccdAdded) {
         return;
     }
@@ -2456,7 +2459,7 @@ var bright = new BrightCatalog('bright', 'Bright stars', {});
 var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {});
 
 {% if enable_ps1 %}
-var ps1cat = new Ps1CatalogOverlay('ps1', 'PS1 catalog', {'radius':150});
+var ps1cat = new Ps1CatalogOverlay('ps1-cat', 'PS1 catalog', {'radius':150});
 {% endif %}
 
 var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
@@ -2816,7 +2819,7 @@ for (k in qstr) {
  var namedLayers = {};
  for (var i in allLayers) {
      var layer = allLayers[i];
-     console.log('layer.name ' + layer.name + ' pretty ' + layer.pretty);
+     //console.log('layer.name ' + layer.name + ' pretty ' + layer.pretty);
      namedLayers[layer.name] = layer;
  }
 
@@ -2831,20 +2834,20 @@ for (k in qstr) {
  
 var baseTree = [
     {% if enable_dr7 %}
-    //{
-        /*
+    /*
+    {
         label: 'DECaLS DR7',
         children: [
             findlayer('decals-dr7'),
             findlayer('decals-dr7-model'),
             findlayer('decals-dr7-resid'),
         ]
-        */
+    },
+    */
     findlayer('decals-dr7', [
         findlayer('decals-dr7-model'),
         findlayer('decals-dr7-resid'),
     ]),
-    //},
     {% endif %}
     {% if enable_dr6 %}
     //{
@@ -2976,7 +2979,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      { label: 'Other catalogs',
        children: [
            {% if enable_ps1 %}
-           findoverlay('ps1cat'),
+           findoverlay('ps1-cat'),
            {% endif %}
            findoverlay('gaia-dr1'),
            findoverlay('gaia-dr2'),
@@ -3018,20 +3021,10 @@ layerControl.addTo(map);
 L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
 
  $(document).ready(function() {
-     //var sel = $('.leaflet-layerstree-header-name');
-     //var sel = $('.leaflet-layerstree-header-name:first-child');
-     //console.log('headers:');
-     //console.log(sel);
-     //sel = sel.contents('DECaPS');
-     //sel = sel(":contains('DECaPS')");
-     //console.log('DECaPS node:');
-     //console.log(sel);
-     //var sel = $(".leaflet-layerstree-header-name:first-child:contains('DECaPS')");
-     //sel.trigger('click');
-
+     // This is fragile wrt the DOM structure of the tree layer control widget.
      var sel = $(".leaflet-layerstree-opened").parent().parent();
-     console.log('Parents:');
-     console.log(sel);
+     //console.log('Parents:');
+     //console.log(sel);
      
      txts = [
          'MzLS+BASS DR4 images',
@@ -3040,7 +3033,6 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
          'unWISE W1/W2 NEO3',
          'DECaLS DR7 catalog',
          'DECaLS DR7 CCDs',
-         //'DECam exposure outlines',
          'DECaLS DR7 Exposures',
          'Other catalogs',
          'Spectroscopy',
@@ -3048,12 +3040,8 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
             ];
      for (var i=0,len=txts.length; i<len; i++) {
          var txt = txts[i];
-         //var sel = $(".leaflet-layerstree-opened").parent().parent().filter(":contains('" + txt + "')");
          var sel = $(".leaflet-layerstree-header").filter(":contains('" + txt + "')");
-         //console.log('Selecting: ' + txt);
-         //console.log(sel);
          sel = sel.children().children().filter(".leaflet-layerstree-opened");
-         //console.log(sel);
          sel.trigger('click');
      }
  });
@@ -3157,8 +3145,8 @@ map.on('baselayerchange', function(e) {
 
 // When space bar is pressed, switch back to previous layer.  This allows a quick "blink" between layers.
 function keyDown(e) {
-    console.log('keyDown ' + e + ' keycode ' + e.keyCode + ', char ' + e.char + ' charCode ' + e.charCode);
-    console.log('objquery has focus? ' + $('#objquery').is(":focus"));
+    //console.log('keyDown ' + e + ' keycode ' + e.keyCode + ', char ' + e.char + ' charCode ' + e.charCode);
+    //console.log('objquery has focus? ' + $('#objquery').is(":focus"));
 
     if ($('#objquery').is(":focus")) {
         return;
