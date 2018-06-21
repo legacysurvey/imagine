@@ -9,6 +9,8 @@ survey_regex = r'([\w +-]+)'
 
 urlpatterns = [
 
+    url(r'^gfas', views.gfas),
+
     # 2MASS
     url(r'^2mass/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('2mass')),

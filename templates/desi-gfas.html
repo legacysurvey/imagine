@@ -1,8 +1,9 @@
-<html>
-<head>
-<script src="static/jquery-2.1.1.min.js"></script>
-<script>
-  
+{% extends "base.html" %}
+{% load static %}
+
+{% block header %}
+<script src="{% static "jquery-2.1.1.min.js" %}"></script>
+<script>  
 var petal_radius = [
     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
@@ -98,9 +99,15 @@ function moveTo(ra, dec) {
             '&imageh=' + sh;
         console.log('url: ' + url);
         urls[i] = url;
+
+        $("#image_" + i).attr('src', url);
+
+        $("#gfa_center_" + i).html('(' + crval[0].toFixed(4) + ', ' +
+                        crval[1].toFixed(4) + ')');
     }
 }
 
+/*
 function updateImages() {
     for (var i in urls) {
         var sel = $("#image_" + i);
@@ -110,13 +117,14 @@ function updateImages() {
         //console.log('src: ' + $("#image_"+i).attr('src'));
     }
 }
+*/
 
 var r0 = 213.9;
 var d0 = 37.4;
 
 $(document).ready(function() {
     moveTo(r0, d0);
-    updateImages();
+    //updateImages();
 });
 
 function submitRadec(e) {
@@ -126,7 +134,7 @@ function submitRadec(e) {
     dec = parseFloat(dec);
     console.log('RA,Dec: ' + ra + ', ' + dec);
     moveTo(ra, dec);
-    updateImages();
+    //updateImages();
 }
 
 function keyRadec(e) {
@@ -146,7 +154,11 @@ $(document).ready(function() {
 
 // id="radec-form" action="submitForm();">
 </script>
+{% endblock %}
+
+{% block body %}
 <body>
+
     <center>
     <h1>DESI GFA viewer</h1>
 
@@ -159,46 +171,46 @@ $(document).ready(function() {
     </form>
 
     <div id="image-holder" />
-    GFA 0:
+    GFA 0: Center <span id="gfa_center_0"></span>
     <br/>
     <img id="image_0" src="" width="512" height="233" />
     <br/>
-    GFA 1:
+    GFA 1: Center <span id="gfa_center_1"></span>
     <br/>
     <img id="image_1" src="" width="512" height="233" />
     <br/>
-    GFA 2:
+    GFA 2: Center <span id="gfa_center_2"></span>
     <br/>
     <img id="image_2" src="" width="512" height="233" />
     <br/>
-    GFA 3:
+    GFA 3: Center <span id="gfa_center_3"></span>
     <br/>
     <img id="image_3" src="" width="512" height="233" />
     <br/>
-    GFA 4:
+    GFA 4: Center <span id="gfa_center_4"></span>
     <br/>
     <img id="image_4" src="" width="512" height="233" />
     <br/>
-    GFA 5:
+    GFA 5: Center <span id="gfa_center_5"></span>
     <br/>
     <img id="image_5" src="" width="512" height="233" />
     <br/>
-    GFA 6:
+    GFA 6: Center <span id="gfa_center_6"></span>
     <br/>
     <img id="image_6" src="" width="512" height="233" />
     <br/>
-    GFA 7:
+    GFA 7: Center <span id="gfa_center_7"></span>
     <br/>
     <img id="image_7" src="" width="512" height="233" />
     <br/>
-    GFA 8:
+    GFA 8: Center <span id="gfa_center_8"></span>
     <br/>
     <img id="image_8" src="" width="512" height="233" />
     <br/>
-    GFA 9:
+    GFA 9: Center <span id="gfa_center_9"></span>
     <br/>
     <img id="image_9" src="" width="512" height="233" />
 </center>
 </body>
-    </html>
+{% endblock %}
     
