@@ -1,0 +1,204 @@
+<html>
+<head>
+<script src="static/jquery-2.1.1.min.js"></script>
+<script>
+  
+var petal_radius = [
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+];
+var petal_phi = [
+    [ -72.68064188,  -72.65497301,  -76.97939241,  -77.1732807 ],
+    [ -36.68064188,  -36.65497301,  -40.97939241,  -41.1732807 ],
+    [  -0.68064188,   -0.65497301,   -4.97939241,   -5.1732807 ],
+    [  35.31935812,   35.34502699,   31.02060759,   30.8267193 ],
+    [  71.31935812,   71.34502699,   67.02060759,   66.8267193 ],
+    [ 107.31935812,  107.34502699,  103.02060759,  102.8267193 ],
+    [ 143.31935812,  143.34502699,  139.02060759,  138.8267193 ],
+    [ 179.31935812,  179.34502699,  175.02060759,  174.8267193 ],
+    [-144.68064188, -144.65497301, -148.97939241, -149.1732807 ],
+    [-108.68064188, -108.65497301, -112.97939241, -113.1732807 ],
+];
+
+function phirad_to_radec(rc, dc, phi, radius) {
+    var cosdec = Math.cos(dc * Math.PI / 180.0);
+    var p = phi * Math.PI / 180.0;
+    var ddec = radius * Math.cos(p);
+    var dra  = radius * Math.sin(p);
+    return [ rc + dra / cosdec, dc + ddec ];
+}
+
+var urls = [];
+
+function moveTo(ra, dec) {
+    for (var i=0; i<petal_radius.length; i++) {
+        var N = petal_radius[i].length;
+
+        var avg_phi = 0.0;
+        var avg_radius = 0.0;
+        for (var j=0; j<N; j++) {
+            avg_phi += petal_phi[i][j];
+            avg_radius += petal_radius[i][j];
+        }
+        avg_phi /= N;
+        avg_radius /= N;
+        console.log('Avg phi ' + avg_phi + ', radius ' + avg_radius);
+    
+        crval = phirad_to_radec(ra, dec, avg_phi, avg_radius);
+        //console.log('CRVAL:', crval);
+        /*
+        corner1 = phirad_to_radec(r0, d0, petal_phi[i][0], petal_radius[i][0]);
+        corner2 = phirad_to_radec(r0, d0, petal_phi[i][1], petal_radius[i][1]);
+        corner3 = phirad_to_radec(r0, d0, petal_phi[i][2], petal_radius[i][2]);
+        console.log('Corner 1', corner1);
+        console.log('Corner 2', corner2);
+        console.log('Corner 3', corner3);
+        */
+        // 200 arcsec between corners 1-2
+        // 435 arcsec between corners 2-3
+
+        // Nominal GFA chip: e2v CCD230-42, 50% illuminated
+        // 2048x2048, 15um/pixel
+        // DESI pixel scale at edge is ~70um/arcsec
+        // -> GFA pixel scale ~0.214"/pixel
+        // 435" / 0.214"/pix -> 2032 pix
+        // 200" / 0.214"/pix ->  934 pix
+        pixscale = 0.214;
+        W = 2048;
+        H =  934;
+
+        scale = 4.;
+    
+        cd = scale * pixscale / 3600.;
+        sw = Math.round(W / scale);
+        sh = Math.round(H / scale);
+        crpix = [sw/2. + 0.5, sh/2. + 0.5];
+        var p = avg_phi * Math.PI / 180.0;
+        var c = Math.cos(p);
+        var s = Math.sin(p);
+
+        url = 'http://legacysurvey.org/viewer-dev/sdss-wcs/?' +
+            'crval1=' + crval[0].toFixed(5) +
+            '&crval2=' + crval[1].toFixed(5) +
+            '&crpix1=' + crpix[0].toFixed(1) +
+            '&crpix2=' + crpix[1].toFixed(1) +
+            '&cd11=' + ( c * cd).toExponential(4) +
+            '&cd12=' + ( s * cd).toExponential(4) +
+            '&cd21=' + (-s * cd).toExponential(4) +
+            '&cd22=' + ( c * cd).toExponential(4) +
+            '&imagew=' + sw +
+            '&imageh=' + sh;
+        console.log('url: ' + url);
+        urls[i] = url;
+    }
+}
+
+function updateImages() {
+    for (var i in urls) {
+        var sel = $("#image_" + i);
+        //console.log('selector:');
+        //console.log(sel);
+        $("#image_" + i).attr('src', urls[i]);
+        //console.log('src: ' + $("#image_"+i).attr('src'));
+    }
+}
+
+var r0 = 213.9;
+var d0 = 37.4;
+
+$(document).ready(function() {
+    moveTo(r0, d0);
+    updateImages();
+});
+
+function submitRadec(e) {
+    ra  = $('#ra_input').val();
+    dec = $('#dec_input').val();
+    ra = parseFloat(ra);
+    dec = parseFloat(dec);
+    console.log('RA,Dec: ' + ra + ', ' + dec);
+    moveTo(ra, dec);
+    updateImages();
+}
+
+function keyRadec(e) {
+    if (e.which == 13) {
+       submitRadec(e);
+    }
+}
+
+$(document).ready(function() {
+    $("#ra_input").attr('value', r0); //html(r0);
+    $("#dec_input").attr('value', d0); //html(d0);
+    $("#ra_input").keypress(keyRadec);
+    $("#dec_input").keypress(keyRadec);
+    $("#radec_submit").click(submitRadec);
+});
+
+
+// id="radec-form" action="submitForm();">
+</script>
+<body>
+    <center>
+    <h1>DESI GFA viewer</h1>
+
+    <div>
+    DESI center:
+    <form>
+    <input id="ra_input" name="name" size="6">
+    <input id="dec_input" name="name" size="6">
+    <input id="radec_submit" type="button" value="Go">
+    </form>
+
+    <div id="image-holder" />
+    GFA 0:
+    <br/>
+    <img id="image_0" src="" width="512" height="233" />
+    <br/>
+    GFA 1:
+    <br/>
+    <img id="image_1" src="" width="512" height="233" />
+    <br/>
+    GFA 2:
+    <br/>
+    <img id="image_2" src="" width="512" height="233" />
+    <br/>
+    GFA 3:
+    <br/>
+    <img id="image_3" src="" width="512" height="233" />
+    <br/>
+    GFA 4:
+    <br/>
+    <img id="image_4" src="" width="512" height="233" />
+    <br/>
+    GFA 5:
+    <br/>
+    <img id="image_5" src="" width="512" height="233" />
+    <br/>
+    GFA 6:
+    <br/>
+    <img id="image_6" src="" width="512" height="233" />
+    <br/>
+    GFA 7:
+    <br/>
+    <img id="image_7" src="" width="512" height="233" />
+    <br/>
+    GFA 8:
+    <br/>
+    <img id="image_8" src="" width="512" height="233" />
+    <br/>
+    GFA 9:
+    <br/>
+    <img id="image_9" src="" width="512" height="233" />
+</center>
+</body>
+    </html>
+    
