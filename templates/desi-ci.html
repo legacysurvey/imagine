@@ -30,7 +30,8 @@ function moveTo(ra, dec) {
     for (k in ci_wcs) {
         vals = ci_wcs[k];
 
-        crval1 = ra  + vals['CRVAL1'];
+        cosdec = Math.cos(dec * Math.PI/180.);
+        crval1 = ra  + vals['CRVAL1'] / cosdec;
         crval2 = dec + vals['CRVAL2'];
 
         W = 3072;
