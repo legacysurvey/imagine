@@ -15,9 +15,23 @@ var ci_wcs = {
     'CIE': {'CD1_2': -3.555e-05, 'CD1_1': 0.0, 'CRVAL2': -0.0, 'CRPIX1': 1536.0, 'CRPIX2': 1024.0, 'CRVAL1': 1.57, 'CD2_1': -3.2775e-05, 'CD2_2': 0.0},
 }
 
-//var ci_order = ['CIC','CIN','CIE','CIS','CIW'];
+// Function to search the current page URL's GET query portion URL?x=y
+var QueryItems = function() {
+    var terms = window.location.search.substr(1).split('&');
+    var items = {};
+    for (var i = 0; i < terms.length; ++i) {
+        var words = terms[i].split('=');
+        if (words.length == 1) {
+            items[words[0]] = true;
+        } else if (words.length == 2) {
+            items[words[0]] = decodeURIComponent(words[1].replace(/\+/g, ' '));
+        }
+    }
+    return items;
+};
+var qstr = QueryItems();
 
-var urls = [];
+//var urls = [];
 
 function toExp(f) {
     if (f == 0.0) {
@@ -57,7 +71,7 @@ function moveTo(ra, dec) {
             '&imagew=' + sw +
             '&imageh=' + sh;
         console.log('url: ' + url);
-        urls[k] = url;
+        //urls[k] = url;
 
         $("#image_" + k).attr('src', url);
 
@@ -68,6 +82,12 @@ function moveTo(ra, dec) {
 
 var r0 = 213.9;
 var d0 = 37.4;
+if ('ra' in qstr) {
+    r0 = parseFloat(qstr['ra']);
+}
+if ('dec' in qstr) {
+    d0 = parseFloat(qstr['dec']);
+}
 
 $(document).ready(function() {
     moveTo(r0, d0);

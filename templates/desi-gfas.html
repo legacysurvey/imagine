@@ -194,7 +194,7 @@ function phirad_to_radec(rc, dc, phi, radius) {
     return [ rc + dra / cosdec, dc + ddec ];
 }
 
-var urls = [];
+//var urls = [];
 
 function moveTo(ra, dec) {
     for (var i=0; i<petal_radius.length; i++) {
@@ -255,7 +255,7 @@ function moveTo(ra, dec) {
             '&imagew=' + sw +
             '&imageh=' + sh;
         console.log('url: ' + url);
-        urls[i] = url;
+        //urls[i] = url;
 
         $("#image_" + i).attr('src', url);
 
@@ -264,24 +264,33 @@ function moveTo(ra, dec) {
     }
 }
 
-/*
-function updateImages() {
-    for (var i in urls) {
-        var sel = $("#image_" + i);
-        //console.log('selector:');
-        //console.log(sel);
-        $("#image_" + i).attr('src', urls[i]);
-        //console.log('src: ' + $("#image_"+i).attr('src'));
+// Function to search the current page URL's GET query portion URL?x=y
+var QueryItems = function() {
+    var terms = window.location.search.substr(1).split('&');
+    var items = {};
+    for (var i = 0; i < terms.length; ++i) {
+        var words = terms[i].split('=');
+        if (words.length == 1) {
+            items[words[0]] = true;
+        } else if (words.length == 2) {
+            items[words[0]] = decodeURIComponent(words[1].replace(/\+/g, ' '));
+        }
     }
-}
-*/
+    return items;
+};
+var qstr = QueryItems();
 
 var r0 = 213.9;
 var d0 = 37.4;
+if ('ra' in qstr) {
+    r0 = parseFloat(qstr['ra']);
+}
+if ('dec' in qstr) {
+    d0 = parseFloat(qstr['dec']);
+}
 
 $(document).ready(function() {
     moveTo(r0, d0);
-    //updateImages();
 });
 
 function submitRadec(e) {
@@ -291,7 +300,6 @@ function submitRadec(e) {
     dec = parseFloat(dec);
     console.log('RA,Dec: ' + ra + ', ' + dec);
     moveTo(ra, dec);
-    //updateImages();
 }
 
 function keyRadec(e) {
