@@ -714,11 +714,15 @@ class MapLayer(object):
         import fitsio
         import tempfile
         import numpy as np
-        
+
         # Read scale-1 image and scale it
         sourcefn = self.get_filename(brick, band, scale-1)
         if sourcefn is None or not os.path.exists(sourcefn):
             print('create_scaled_image: brick', brick, 'band', band, 'scale', scale, ': Image source file', sourcefn, 'not found')
+            return None
+        ro = settings.READ_ONLY_BASEDIR
+        if ro:
+            print('Read-only; not creating scaled', brick, band, scale)
             return None
         img = self.read_image(brick, band, scale-1, None, fn=sourcefn)
         wcs = self.read_wcs(brick, band, scale-1, fn=sourcefn)
@@ -739,7 +743,6 @@ class MapLayer(object):
         wcs2 = wcs.scale(0.5)
 
         dirnm = os.path.dirname(fn)
-        ro = settings.READ_ONLY_BASEDIR
         if ro:
             dirnm = None
         hdr = fitsio.FITSHDR()
@@ -1492,6 +1495,11 @@ class RebrickedMixin(object):
         from scipy.ndimage.filters import gaussian_filter
         import fitsio
         import tempfile
+
+        ro = settings.READ_ONLY_BASEDIR
+        if ro:
+            print('Read-only; not creating scaled', brick, band, scale)
+            return None
         
         # Create scaled-down image (recursively).
         #print('Creating scaled-down image for', brick.brickname, band, 'scale', scale)
