@@ -88,6 +88,7 @@ tileversions = {
     'unwise-w1w2': [1],
     'unwise-neo2': [1],
     'unwise-neo3': [1],
+    'unwise-neo4': [1],
     #'unwise-w3w4': [1],
 
     '2mass': [1],
@@ -4142,6 +4143,9 @@ def get_layer(name, default=None):
     elif name == 'unwise-neo3':
         layer = RebrickedUnwise('unwise-neo3',
                                 settings.UNWISE_NEO3_DIR)
+    elif name == 'unwise-neo4':
+        layer = RebrickedUnwise('unwise-neo4',
+                                settings.UNWISE_NEO4_DIR)
 
     elif name == '2mass':
         layer = TwoMassLayer('2mass')
