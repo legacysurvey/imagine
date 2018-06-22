@@ -100,8 +100,11 @@ tileversions = {
 
 def gfas(req):
     from django.shortcuts import render
-    # (it's not supposed to be **args, trust me)
     return render(req, 'desi-gfas.html')
+
+def ci(req):
+    from django.shortcuts import render
+    return render(req, 'desi-ci.html')
 
 def request_layer_name(req, default_layer = 'mzls+bass-dr6'):
     name = req.GET.get('layer', default_layer)

@@ -10,6 +10,7 @@ survey_regex = r'([\w +-]+)'
 urlpatterns = [
 
     url(r'^gfas', views.gfas),
+    url(r'^ci', views.ci),
 
     # 2MASS
     url(r'^2mass/(\d+)/(\d+)/(\d+)/(\d+).jpg',

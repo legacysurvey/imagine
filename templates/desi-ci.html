@@ -1,287 +1,75 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% comment %}
-
-From Ashley in email 2018-06-22:
-
-WCS = {
-'CIW’: {
-'CD1_2': 3.555e-05,
-'CD1_1': 0.0,
-'CRVAL2': 0.0,
-'CRPIX1': 1536.0,
-'CRPIX2': 1024.0,
-'CRVAL1': -1.57,
-'CD2_1': 3.2775e-05,
-'CD2_2': 0.0},
-
-‘CIS’: {
-'CD1_2': 0.0,
-'CD1_1': -3.556335e-05,
-'CRVAL2': -1.57,
-'CRPIX1': 1536.0,
-'CRPIX2': 1024.0,
-'CRVAL1': 0,
-'CD2_1': 0.0,
-'CD2_2': 3.2775e-05},
-
-‘CIC’: {
-'CD1_2': 0.0,
-'CD1_1': 3.7025e-05,
-'CRVAL2': 0,
-'CRPIX1': 1536.0,
-'CRPIX2': 1024.0,
-'CRVAL1': 0,
-'CD2_1': 0.0,
-'CD2_2': -3.7025e-05},
-
-‘CIN’, {
-'CD1_2': 0.0,
-'CD1_1': 3.556335e-05,
-'CRVAL2': 1.57,
-'CRPIX1': 1536.0,
-'CRPIX2': 1024.0,
-'CRVAL1': 0,
-'CD2_1': 0.0,
-'CD2_2': -3.2775e-05},
-
-‘CIE’,{
-'CD1_2': -3.555e-05,
-'CD1_1': 0.0,
-'CRVAL2': -0.0,
-'CRPIX1': 1536.0,
-'CRPIX2': 1024.0,
-'CRVAL1': 1.57,
-'CD2_1': -3.2775e-05,
-'CD2_2': 0.0}
-}
-
-
-From Klaus in email 2018-06-21:
-
-WCS = {'GFA0': {'CD1_1': -3.2280804219438e-05,
-                    'CD1_2': -4.5597439990055e-05,
-                    'CD2_1': -4.9648547108039e-05,
-                    'CD2_2': 2.96490518259101e-05,
-                    'CRPIX1': 1024.5,
-                    'CRPIX2': 512.5,
-                    'CRVAL1': 178.656446953016,
-                    'CRVAL2': 10.8554302777271},
-            'GFA1': {'CD1_1': -5.5295004394268e-05,
-                    'CD1_2': -1.9461809626988e-05,
-                    'CD2_1': -2.119074648712e-05,
-                    'CD2_2': 5.07873021650826e-05,
-                    'CRPIX1': 1024.5,
-                    'CRPIX2': 512.5,
-                    'CRVAL1': 179.425468569256,
-                    'CRVAL2': 11.4693931983636},
-            'GFA2': {'CD1_1': -5.7189078125097e-05,
-                    'CD1_2': 1.41057886746422e-05,
-                    'CD2_1': 1.53589397165404e-05,
-                    'CD2_2': 5.25268510470128e-05,
-                    'CRPIX1': 1024.5,
-                    'CRPIX2': 512.5,
-                    'CRVAL1': 180.416496081338,
-                    'CRVAL2': 11.5199773422313},
-            'GFA3': {'CD1_1': -3.7240370380484e-05,
-                    'CD1_2': 4.22857382391185e-05,
-                    'CD2_1': 4.60428466598764e-05,
-                    'CD2_2': 3.42040595027103e-05,
-                    'CRPIX1': 1024.5,
-                    'CRPIX2': 512.5,
-                    'CRVAL1': 181.246500044579,
-                    'CRVAL2': 10.9876488269647},
-            'GFA4': {'CD1_1': -3.0659393822694e-06,
-                    'CD1_2': 5.43156641724498e-05,
-                    'CD2_1': 5.91424912203024e-05,
-                    'CD2_2': 2.81589734528497e-06,
-                    'CRPIX1': 1024.5,
-                    'CRPIX2': 512.5,
-                    'CRVAL1': 181.596655850951,
-                    'CRVAL2': 10.0777324551346},
-            'GFA5': {'CD1_1': 3.22832107461902e-05,
-                    'CD1_2': 4.55993489108354e-05,
-                    'CD2_1': 4.96522483950395e-05,
-                    'CD2_2': -2.9650293083339e-05,
-                    'CRPIX1': 1024.5,
-                    'CRPIX2': 512.5,
-                    'CRVAL1': 181.336586747815,
-                    'CRVAL2': 9.13920974740141},
-            'GFA6': {'CD1_1': 5.53037606962955e-05,
-                    'CD1_2': 1.94639821998025e-05,
-                    'CD2_1': 2.11941021707419e-05,
-                    'CD2_2': -5.0792971692164e-05,
-                    'CRPIX1': 1024.5,
-                    'CRPIX2': 512.5,
-                    'CRVAL1': 180.569457269682,
-                    'CRVAL2': 8.52946115907527},
-            'GFA7': {'CD1_1': 5.71994679386344e-05,
-                    'CD1_2': -1.4107746010999e-05,
-                    'CD2_1': -1.5361730049254e-05,
-                    'CD2_2': -5.2534139730557e-05,
-                    'CRPIX1': 1024.5,
-                    'CRPIX2': 512.5,
-                    'CRVAL1': 179.58732057906,
-                    'CRVAL2': 8.47929707080254},
-            'GFA8': {'CD1_1': 3.7245419983872e-05,
-                    'CD1_2': -4.2290511650872e-05,
-                    'CD2_1': -4.6049089834901e-05,
-                    'CD2_2': -3.420792060987e-05,
-                    'CRPIX1': 1024.5,
-                    'CRPIX2': 512.5,
-                    'CRVAL1': 178.760915900567,
-                    'CRVAL2': 9.00767078737059},
-            'GFA9': {'CD1_1': 3.06605504323942e-06,
-                    'CD1_2': -5.4318048104436e-05,
-                    'CD2_1': -5.9144722351726e-05,
-                    'CD2_2': -2.8160209375372e-06,
-                    'CRPIX1': 1024.5,
-                    'CRPIX2': 512.5,
-                    'CRVAL1': 178.404096089872,
-                    'CRVAL2': 9.91472317644592},
-
-And in case you need this, here is the mapping of GFA to guide and
-focus function:
-
-    GFA_MAPPING = {'GUIDE0' : 'GFA0',
-                   'FOCUS1' : 'GFA1',
-                   'GUIDE2' : 'GFA2',
-                   'FOCUS3' : 'GFA3',
-                   'GUIDE4' : 'GFA4',
-                   'GUIDE5' : 'GFA5',
-                   'FOCUS6' : 'GFA6',
-                   'GUIDE7' : 'GFA7',
-                   'FOCUS8' : 'GFA8',
-                   'GUIDE9' : 'GFA9'}
-
-{% endcomment %}
-
-
 {% block header %}
 <script src="{% static "jquery-2.1.1.min.js" %}"></script>
 <script>  
-var petal_radius = [
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-];
-var petal_phi = [
-    [ -72.68064188,  -72.65497301,  -76.97939241,  -77.1732807 ],
-    [ -36.68064188,  -36.65497301,  -40.97939241,  -41.1732807 ],
-    [  -0.68064188,   -0.65497301,   -4.97939241,   -5.1732807 ],
-    [  35.31935812,   35.34502699,   31.02060759,   30.8267193 ],
-    [  71.31935812,   71.34502699,   67.02060759,   66.8267193 ],
-    [ 107.31935812,  107.34502699,  103.02060759,  102.8267193 ],
-    [ 143.31935812,  143.34502699,  139.02060759,  138.8267193 ],
-    [ 179.31935812,  179.34502699,  175.02060759,  174.8267193 ],
-    [-144.68064188, -144.65497301, -148.97939241, -149.1732807 ],
-    [-108.68064188, -108.65497301, -112.97939241, -113.1732807 ],
-];
 
-function phirad_to_radec(rc, dc, phi, radius) {
-    var cosdec = Math.cos(dc * Math.PI / 180.0);
-    var p = phi * Math.PI / 180.0;
-    var ddec = radius * Math.cos(p);
-    var dra  = radius * Math.sin(p);
-    return [ rc + dra / cosdec, dc + ddec ];
+// From Ashley in email 2018-06-22:
+
+var ci_wcs = {
+    'CIW': {'CD1_2': 3.555e-05, 'CD1_1': 0.0, 'CRVAL2': 0.0, 'CRPIX1': 1536.0, 'CRPIX2': 1024.0, 'CRVAL1': -1.57, 'CD2_1': 3.2775e-05, 'CD2_2': 0.0},
+    'CIS': {'CD1_2': 0.0, 'CD1_1': -3.556335e-05, 'CRVAL2': -1.57, 'CRPIX1': 1536.0, 'CRPIX2': 1024.0, 'CRVAL1': 0, 'CD2_1': 0.0, 'CD2_2': 3.2775e-05},
+    'CIC': {'CD1_2': 0.0, 'CD1_1': 3.7025e-05, 'CRVAL2': 0, 'CRPIX1': 1536.0, 'CRPIX2': 1024.0, 'CRVAL1': 0, 'CD2_1': 0.0, 'CD2_2': -3.7025e-05},
+    'CIN': {'CD1_2': 0.0, 'CD1_1': 3.556335e-05, 'CRVAL2': 1.57, 'CRPIX1': 1536.0, 'CRPIX2': 1024.0, 'CRVAL1': 0, 'CD2_1': 0.0, 'CD2_2': -3.2775e-05},
+    'CIE': {'CD1_2': -3.555e-05, 'CD1_1': 0.0, 'CRVAL2': -0.0, 'CRPIX1': 1536.0, 'CRPIX2': 1024.0, 'CRVAL1': 1.57, 'CD2_1': -3.2775e-05, 'CD2_2': 0.0},
 }
+
+//var ci_order = ['CIC','CIN','CIE','CIS','CIW'];
 
 var urls = [];
 
+function toExp(f) {
+    if (f == 0.0) {
+        return '0';
+    }
+    return f.toExponential(4);
+}
+
 function moveTo(ra, dec) {
-    for (var i=0; i<petal_radius.length; i++) {
-        var N = petal_radius[i].length;
+    for (k in ci_wcs) {
+        vals = ci_wcs[k];
 
-        var avg_phi = 0.0;
-        var avg_radius = 0.0;
-        for (var j=0; j<N; j++) {
-            avg_phi += petal_phi[i][j];
-            avg_radius += petal_radius[i][j];
-        }
-        avg_phi /= N;
-        avg_radius /= N;
-        console.log('Avg phi ' + avg_phi + ', radius ' + avg_radius);
-    
-        crval = phirad_to_radec(ra, dec, avg_phi, avg_radius);
-        //console.log('CRVAL:', crval);
-        /*
-        corner1 = phirad_to_radec(r0, d0, petal_phi[i][0], petal_radius[i][0]);
-        corner2 = phirad_to_radec(r0, d0, petal_phi[i][1], petal_radius[i][1]);
-        corner3 = phirad_to_radec(r0, d0, petal_phi[i][2], petal_radius[i][2]);
-        console.log('Corner 1', corner1);
-        console.log('Corner 2', corner2);
-        console.log('Corner 3', corner3);
-        */
-        // 200 arcsec between corners 1-2
-        // 435 arcsec between corners 2-3
+        crval1 = ra  + vals['CRVAL1'];
+        crval2 = dec + vals['CRVAL2'];
 
-        // Nominal GFA chip: e2v CCD230-42, 50% illuminated
-        // 2048x2048, 15um/pixel
-        // DESI pixel scale at edge is ~70um/arcsec
-        // -> GFA pixel scale ~0.214"/pixel
-        // 435" / 0.214"/pix -> 2032 pix
-        // 200" / 0.214"/pix ->  934 pix
-        pixscale = 0.214;
-        W = 2048;
-        H =  934;
+        W = 3072;
+        H = 2048;
 
         scale = 4.;
     
-        cd = scale * pixscale / 3600.;
         sw = Math.round(W / scale);
         sh = Math.round(H / scale);
-        crpix = [sw/2. + 0.5, sh/2. + 0.5];
-        var p = avg_phi * Math.PI / 180.0;
-        var c = Math.cos(p);
-        var s = Math.sin(p);
+
+        crpix1 = (vals['CRPIX1'] - 0.5) / scale + 0.5;
+        crpix2 = (vals['CRPIX2'] - 0.5) / scale + 0.5;
 
         url = 'http://legacysurvey.org/viewer-dev/sdss-wcs/?' +
-            'crval1=' + crval[0].toFixed(5) +
-            '&crval2=' + crval[1].toFixed(5) +
-            '&crpix1=' + crpix[0].toFixed(1) +
-            '&crpix2=' + crpix[1].toFixed(1) +
-            '&cd11=' + ( c * cd).toExponential(4) +
-            '&cd12=' + ( s * cd).toExponential(4) +
-            '&cd21=' + (-s * cd).toExponential(4) +
-            '&cd22=' + ( c * cd).toExponential(4) +
+            'crval1=' + crval1.toFixed(5) +
+            '&crval2=' + crval2.toFixed(5) +
+            '&crpix1=' + crpix1.toFixed(1) +
+            '&crpix2=' + crpix2.toFixed(1) +
+            '&cd11=' + toExp(vals['CD1_1'] * scale) +
+            '&cd12=' + toExp(vals['CD1_2'] * scale) +
+            '&cd21=' + toExp(vals['CD2_1'] * scale) +
+            '&cd22=' + toExp(vals['CD2_2'] * scale) +
             '&imagew=' + sw +
             '&imageh=' + sh;
         console.log('url: ' + url);
-        urls[i] = url;
+        urls[k] = url;
 
-        $("#image_" + i).attr('src', url);
+        $("#image_" + k).attr('src', url);
 
-        $("#gfa_center_" + i).html('(' + crval[0].toFixed(4) + ', ' +
-                        crval[1].toFixed(4) + ')');
+        //$("#gfa_center_" + i).html('(' + crval[0].toFixed(4) + ', ' +
+        //                crval[1].toFixed(4) + ')');
     }
 }
-
-/*
-function updateImages() {
-    for (var i in urls) {
-        var sel = $("#image_" + i);
-        //console.log('selector:');
-        //console.log(sel);
-        $("#image_" + i).attr('src', urls[i]);
-        //console.log('src: ' + $("#image_"+i).attr('src'));
-    }
-}
-*/
 
 var r0 = 213.9;
 var d0 = 37.4;
 
 $(document).ready(function() {
     moveTo(r0, d0);
-    //updateImages();
 });
 
 function submitRadec(e) {
@@ -291,7 +79,6 @@ function submitRadec(e) {
     dec = parseFloat(dec);
     console.log('RA,Dec: ' + ra + ', ' + dec);
     moveTo(ra, dec);
-    //updateImages();
 }
 
 function keyRadec(e) {
@@ -308,8 +95,6 @@ $(document).ready(function() {
     $("#radec_submit").click(submitRadec);
 });
 
-
-// id="radec-form" action="submitForm();">
 </script>
 {% endblock %}
 
@@ -317,7 +102,7 @@ $(document).ready(function() {
 <body>
 
     <center>
-    <h1>DESI GFA viewer</h1>
+    <h1>DESI Commissioning Instrument viewer</h1>
 
     <div>
     DESI center:
@@ -328,45 +113,26 @@ $(document).ready(function() {
     </form>
 
     <div id="image-holder" />
-    GFA 0: Center <span id="gfa_center_0"></span>
+    CIC:
     <br/>
-    <img id="image_0" src="" width="512" height="233" />
+    <img id="image_CIC" src="" width="768" height="512" />
     <br/>
-    GFA 1: Center <span id="gfa_center_1"></span>
+    CIN:
     <br/>
-    <img id="image_1" src="" width="512" height="233" />
+    <img id="image_CIN" src="" width="768" height="512" />
     <br/>
-    GFA 2: Center <span id="gfa_center_2"></span>
+    CIE:
     <br/>
-    <img id="image_2" src="" width="512" height="233" />
+    <img id="image_CIE" src="" width="768" height="512" />
     <br/>
-    GFA 3: Center <span id="gfa_center_3"></span>
+    CIS:
     <br/>
-    <img id="image_3" src="" width="512" height="233" />
+    <img id="image_CIS" src="" width="768" height="512" />
     <br/>
-    GFA 4: Center <span id="gfa_center_4"></span>
+    CIW:
     <br/>
-    <img id="image_4" src="" width="512" height="233" />
+    <img id="image_CIW" src="" width="768" height="512" />
     <br/>
-    GFA 5: Center <span id="gfa_center_5"></span>
-    <br/>
-    <img id="image_5" src="" width="512" height="233" />
-    <br/>
-    GFA 6: Center <span id="gfa_center_6"></span>
-    <br/>
-    <img id="image_6" src="" width="512" height="233" />
-    <br/>
-    GFA 7: Center <span id="gfa_center_7"></span>
-    <br/>
-    <img id="image_7" src="" width="512" height="233" />
-    <br/>
-    GFA 8: Center <span id="gfa_center_8"></span>
-    <br/>
-    <img id="image_8" src="" width="512" height="233" />
-    <br/>
-    GFA 9: Center <span id="gfa_center_9"></span>
-    <br/>
-    <img id="image_9" src="" width="512" height="233" />
 </center>
 </body>
 {% endblock %}
