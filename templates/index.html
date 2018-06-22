@@ -2658,6 +2658,26 @@ var conGroup = L.layerGroup([]);
      [-144.68064188, -144.65497301, -148.97939241, -149.1732807 ],
      [-108.68064188, -108.65497301, -112.97939241, -113.1732807 ]];
  var desi_radius = 1.60577;
+
+ // Commissioning instrument CCDs
+//CIW: RA,Dec boundaries relative to boresight (0,0):
+ var ci_radecs = {'CIW':
+                  [[-1.60636765, -1.5335968 , -1.5335968 , -1.60636765],
+                   [-0.0503096, -0.0503096,  0.0488675,  0.0488675]],
+                  'CIS':
+                  [[5.46111024e-02, 5.46093498e-02, -5.30440012e-02, -5.30457037e-02],
+                   [-1.60352809, -1.53643771, -1.53643775, -1.60352813]],
+                  'CIC':
+                  [[-5.68333564e-02, -5.68333564e-02, 5.52042579e-02, 5.52042579e-02],
+                   [ 0.03787655, -0.03791358, -0.03791358,  0.03787655]],
+                  'CIN':
+                  [[-5.46111024e-02, -5.46093498e-02,5.30440012e-02, 5.30457037e-02],
+                   [1.60352809, 1.53643771, 1.53643775, 1.60352813]],
+                  'CIE':
+                  [[1.60636765, 1.5335968 , 1.5335968 , 1.60636765],
+                   [ 0.0503096,  0.0503096, -0.0488675, -0.0488675]],
+                 };
+
  var DesiFootprint = CatalogOverlay.extend({
      initialize: function(name, pretty, kwargs) {
          CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
@@ -2686,6 +2706,26 @@ var conGroup = L.layerGroup([]);
          }
          this._gfa = L.polyline(polys, {color: 'green'});
          group.push(this._gfa);
+
+         this._ci_rds = [];
+         polys = [];
+         for (var k in ci_radecs) {
+             var rrdd = ci_radecs[k];
+             var ll = [];
+             var rd = [];
+             var N = rrdd[0].length;
+             for (var j=0; j<N+1; j++) {
+                 var dra  = rrdd[0][j%N];
+                 var ddec = rrdd[1][j%N];
+                 rd.push([dra, ddec]);
+                 ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
+             }
+             this._ci_rds.push(rd);
+             polys.push(ll);
+         }
+         this._ci = L.polyline(polys, {color: 'magenta'});
+         group.push(this._ci);
+
          this._layer = L.layerGroup(group);
          //map.on('mapMoved', this.mapMoved.bind(this));
      },
@@ -2710,24 +2750,38 @@ var conGroup = L.layerGroup([]);
      moveTo: function(c) {
          this._circle.setLatLng(c);
          var clong = c.lng;
-         var polys = [];
          var d0 = lat2dec(c.lat);
          var r0 = long2ra(clong);
          this.ra = r0;
          this.dec = d0;
          var cosdec = Math.cos(d0 * Math.PI / 180.0);
+         var polys = [];
          for (var i=0; i<this._gfa_rds.length; i++) {
              var ll = [];
              var rd = this._gfa_rds[i];
              var N = rd.length;
-             for (var j=0; j<N+1; j++) {
-                 ll.push([dec2lat(d0 + rd[j%N][1]),
-                          ra2long_C(r0 + rd[j%N][0] / cosdec, clong)]);
+             for (var j=0; j<N; j++) {
+                 ll.push([dec2lat(d0 + rd[j][1]),
+                          ra2long_C(r0 + rd[j][0] / cosdec, clong)]);
              }
              polys.push(ll);
          }
          this._gfa.setLatLngs(polys);
          this._gfa.redraw();
+
+         var polys = [];
+         for (var i=0; i<this._ci_rds.length; i++) {
+             var ll = [];
+             var rd = this._ci_rds[i];
+             var N = rd.length;
+             for (var j=0; j<N; j++) {
+                 ll.push([dec2lat(d0 + rd[j][1]),
+                          ra2long_C(r0 + rd[j][0] / cosdec, clong)]);
+             }
+             polys.push(ll);
+         }
+         this._ci.setLatLngs(polys);
+         this._ci.redraw();
      },
      /*
      mapMoved: function() {
