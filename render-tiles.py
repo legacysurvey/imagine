@@ -224,8 +224,8 @@ def top_levels(mp, opt):
                     'decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
                     'eboss',
-                    'unwise-neo2', 'unwise-neo3', 'galex',
-                    'sdss2', 'wssa']:
+                    'unwise-neo2', 'unwise-neo3', 'unwise-neo4',
+                    'galex', 'sdss2', 'wssa']:
         import pylab as plt
         from viewer import settings
         from legacypipe.survey import get_rgb
@@ -237,7 +237,7 @@ def top_levels(mp, opt):
         tag = opt.kind
 
         rgbkwargs = {}
-        if opt.kind in ['unwise-neo2', 'unwise-neo3']:
+        if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4']:
             bands = [1, 2]
             get_rgb = _unwise_to_rgb
         elif opt.kind == 'sdss2':
@@ -699,7 +699,7 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -25
-    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
+    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3', 'unwise-neo4',
                       'galex', 'wssa']:
         if opt.maxdec is None:
             opt.maxdec = 90
@@ -708,6 +708,8 @@ def main():
 
         if opt.kind == 'galex' and opt.bands is None:
             opt.bands = 'nf'
+        if 'unwise' in opt.kind and opt.bands is None:
+            opt.bands = '12'
 
     elif opt.kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         if opt.maxdec is None:
@@ -753,7 +755,8 @@ def main():
         # Rebricked
         if opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
                         'eboss',
-                        'mzls+bass-dr6', 'mzls+bass-dr6-model', 'unwise-neo3',
+                        'mzls+bass-dr6', 'mzls+bass-dr6-model',
+                        'unwise-neo3', 'unwise-neo4',
                         'galex', 'wssa', 'des-dr1',
                     ]:
             from map.views import get_layer
