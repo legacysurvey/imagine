@@ -204,6 +204,9 @@ urlpatterns = [
     # NEO3
     url(r'^unwise-neo3/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-neo3')),
+    # NEO4
+    url(r'^unwise-neo4/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('unwise-neo4')),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
 
