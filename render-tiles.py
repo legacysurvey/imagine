@@ -711,6 +711,16 @@ def main():
         if 'unwise' in opt.kind and opt.bands is None:
             opt.bands = '12'
 
+    elif opt.kind in ['des-dr1']:
+        if opt.maxdec is None:
+            opt.maxdec = 6
+        if opt.mindec is None:
+            opt.mindec = -68
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
+
     elif opt.kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         if opt.maxdec is None:
             opt.maxdec = 90
