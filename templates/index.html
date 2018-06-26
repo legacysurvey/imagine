@@ -1695,22 +1695,22 @@ tiles = mylayer('2mass', '2MASS',
 allLayers.push(tiles);
 {% endcomment %}
 
-tiles = mylayer('galex', 'GALEX',
+tiles = mylayer_B('galex', 'GALEX',
                 {'maxNativeZoom': 12,
                  'urlPatterns': [ [10, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
-tiles = mylayer('sfd', 'SFD dust map',
+tiles = mylayer_B('sfd', 'SFD dust map',
                 {'maxNativeZoom':10,
                  'urlPatterns': [ [7, 10, tile_url],], });
 allLayers.push(tiles);
 
-tiles = mylayer('wssa', 'WISE 12-micron dust map',
+tiles = mylayer_B('wssa', 'WISE 12-micron dust map',
                 {'maxNativeZoom':10,
                  'urlPatterns': [ [9, 10, tile_url],], });
 allLayers.push(tiles);
 
-tiles = mylayer('halpha', 'Halpha map',
+tiles = mylayer_B('halpha', 'Halpha map',
                 {'maxNativeZoom':10,
                  'urlPatterns': [ [7, 10, tile_url],],});
 allLayers.push(tiles);
