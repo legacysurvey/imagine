@@ -1680,12 +1680,12 @@ allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-neo3', 'unWISE W1/W2 NEO3',
                 {'maxNativeZoom': 12,
-                 'urlPatterns': [ [8, maxZoom, tile_url], ],});
+                 'urlPatterns': [ [10, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
                 {'maxNativeZoom': 12,
-                 'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                 'urlPatterns': [ [9, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 {% comment %}
@@ -1697,7 +1697,7 @@ allLayers.push(tiles);
 
 tiles = mylayer('galex', 'GALEX',
                 {'maxNativeZoom': 12,
-                 'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                 'urlPatterns': [ [10, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer('sfd', 'SFD dust map',
@@ -1707,7 +1707,7 @@ allLayers.push(tiles);
 
 tiles = mylayer('wssa', 'WISE 12-micron dust map',
                 {'maxNativeZoom':10,
-                 'urlPatterns': [ [1, 10, tile_url],], });
+                 'urlPatterns': [ [9, 10, tile_url],], });
 allLayers.push(tiles);
 
 tiles = mylayer('halpha', 'Halpha map',
