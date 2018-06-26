@@ -3494,7 +3494,13 @@ def ccds_overlapping_html(ccds, layer, ra=None, dec=None):
     html.append('</tbody></table>')
     return html
 
+def cutouts_tgz(req):
+    return cutouts_common(req, True)
+
 def cutouts(req):
+    return cutouts_common(req, False)
+
+def cutouts_common(req, tgz):
     from astrometry.util.util import Tan
     from astrometry.util.starutil_numpy import degrees_between
     import numpy as np
@@ -3529,6 +3535,95 @@ def cutouts(req):
     print('CCDs:', CCDs.columns())
 
     CCDs = CCDs[np.lexsort((CCDs.ccdname, CCDs.expnum, CCDs.filter))]
+
+    if tgz:
+        import tempfile
+        tempdir = tempfile.TemporaryDirectory()
+        datadir = 'data_%.4f_%.4f' % (ra, dec)
+        subdir = os.path.join(tempdir.name, datadir)
+        os.mkdir(subdir)
+        print('Writing to', subdir)
+
+        CCDs.ccd_x0 = np.zeros(len(CCDs), np.int16)
+        CCDs.ccd_x1 = np.zeros(len(CCDs), np.int16)
+        CCDs.ccd_y0 = np.zeros(len(CCDs), np.int16)
+        CCDs.ccd_y1 = np.zeros(len(CCDs), np.int16)
+        imgfns = []
+        keepccds = np.zeros(len(CCDs), bool)
+
+        print('North south', north, south)
+        print('East west', east, west)
+
+        for iccd,ccd in enumerate(CCDs):
+            im = survey.get_image_object(ccd)
+            print('Got', im)
+            imwcs = im.get_wcs()
+            ok,cx,cy = imwcs.radec2pixelxy([east,  west,  west,  east ],
+                                           [north, north, south, south])
+            print('cx', 'cy', cx, cy)
+            H,W = im.shape
+            x0 = int(np.clip(np.floor(min(cx)), 0, W-1))
+            x1 = int(np.clip(np.ceil (max(cx)), 0, W-1))
+            y0 = int(np.clip(np.floor(min(cy)), 0, H-1))
+            y1 = int(np.clip(np.ceil (max(cy)), 0, H-1))
+            print('x', x0,x1, 'y', y0,y1)
+            if x0 == x1 or y0 == y1:
+                continue
+            keepccds[iccd] = True
+            CCDs.ccd_x0[iccd] = x0
+            CCDs.ccd_y0[iccd] = y0
+            CCDs.ccd_x1[iccd] = x1+1
+            CCDs.ccd_y1[iccd] = y1+1
+
+            slc = (slice(y0, y1+1), slice(x0, x1+1))
+            tim = im.get_tractor_image(slc, pixPsf=True, splinesky=True,
+                                       subsky=True, nanomaggies=False)
+            psf = tim.getPsf()
+            print('PSF:', psf)
+            psfex = psf.psfex
+            print('PsfEx:', psfex)
+
+            imgdata = tim.getImage()
+            ivdata = tim.getInvvar()
+            dqdata = tim.dq
+            # Adjust the header WCS by x0,y0
+            crpix1 = tim.hdr['CRPIX1']
+            crpix2 = tim.hdr['CRPIX2']
+            tim.hdr['CRPIX1'] = crpix1 - ccd.ccd_x0
+            tim.hdr['CRPIX2'] = crpix2 - ccd.ccd_y0
+
+            outfn = '%s-%08i-%s-image.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
+            imgfns.append(outfn)
+            ofn = os.path.join(subdir, outfn)
+            fitsio.write(ofn, None, header=tim.primhdr, clobber=True)
+            fitsio.write(ofn, imgdata, header=tim.hdr, extname=ccd.ccdname)
+
+            outfn = '%s-%08i-%s-weight.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
+            ofn = os.path.join(subdir, outfn)
+            fitsio.write(ofn, None, header=tim.primhdr, clobber=True)
+            fitsio.write(ofn, ivdata, header=tim.hdr, extname=ccd.ccdname)
+
+            outfn = '%s-%08i-%s-dq.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
+            ofn = os.path.join(subdir, outfn)
+            fitsio.write(ofn, None, header=tim.primhdr, clobber=True)
+            fitsio.write(ofn, dqdata, header=tim.hdr, extname=ccd.ccdname)
+
+            outfn = '%s-%08i-%s-psfex.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
+            ofn = os.path.join(subdir, outfn)
+            psfex.fwhm = tim.psf_fwhm
+            psfex.writeto(ofn)
+            
+        CCDs.cut(keepccds)
+        CCDs.image_filename = np.array(imgfns)
+        ccdfn = os.path.join(subdir, 'ccds.fits')
+        CCDs.writeto(ccdfn)
+
+        cmd = ('cd %s && tar czf %s.tgz %s' % (tempdir.name, datadir, datadir))
+        print(cmd)
+        os.system(cmd)
+        fn = os.path.join(tempdir.name, '%s.tgz' % datadir)
+
+        return send_file(fn, 'application/gzip', filename='%s.tgz' % datadir)
 
     ccds = []
     for i in range(len(CCDs)):

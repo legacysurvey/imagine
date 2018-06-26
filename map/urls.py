@@ -217,6 +217,8 @@ urlpatterns = [
     # Scatterplot of nearby sources for cutouts page
     #url(r'^cat_plot/', views.cat_plot, name='cat_plot'),
 
+    url(r'^cutouts-tgz/', views.cutouts_tgz, name='cutouts_tgz'),
+
     # Look up this position, date, observatory in JPL Small Bodies database
     url(r'^jpl_lookup/', views.jpl_lookup),
 
