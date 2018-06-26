@@ -3538,6 +3538,8 @@ def cutouts_common(req, tgz):
 
     if tgz:
         import tempfile
+        import fitsio
+
         tempdir = tempfile.TemporaryDirectory()
         datadir = 'data_%.4f_%.4f' % (ra, dec)
         subdir = os.path.join(tempdir.name, datadir)
@@ -3550,23 +3552,21 @@ def cutouts_common(req, tgz):
         CCDs.ccd_y1 = np.zeros(len(CCDs), np.int16)
         imgfns = []
         keepccds = np.zeros(len(CCDs), bool)
-
-        print('North south', north, south)
-        print('East west', east, west)
-
+        #print('North south', north, south)
+        #print('East west', east, west)
         for iccd,ccd in enumerate(CCDs):
             im = survey.get_image_object(ccd)
             print('Got', im)
             imwcs = im.get_wcs()
             ok,cx,cy = imwcs.radec2pixelxy([east,  west,  west,  east ],
                                            [north, north, south, south])
-            print('cx', 'cy', cx, cy)
+            #print('cx', 'cy', cx, cy)
             H,W = im.shape
             x0 = int(np.clip(np.floor(min(cx)), 0, W-1))
             x1 = int(np.clip(np.ceil (max(cx)), 0, W-1))
             y0 = int(np.clip(np.floor(min(cy)), 0, H-1))
             y1 = int(np.clip(np.ceil (max(cy)), 0, H-1))
-            print('x', x0,x1, 'y', y0,y1)
+            #print('x', x0,x1, 'y', y0,y1)
             if x0 == x1 or y0 == y1:
                 continue
             keepccds[iccd] = True
@@ -3579,9 +3579,12 @@ def cutouts_common(req, tgz):
             tim = im.get_tractor_image(slc, pixPsf=True, splinesky=True,
                                        subsky=True, nanomaggies=False)
             psf = tim.getPsf()
-            print('PSF:', psf)
+            #print('PSF:', psf)
             psfex = psf.psfex
-            print('PsfEx:', psfex)
+            #print('PsfEx:', psfex)
+
+            th,tw = tim.shape
+            psfimg = psf.getImage(tw/2, th/2)
 
             imgdata = tim.getImage()
             ivdata = tim.getInvvar()
@@ -3589,8 +3592,8 @@ def cutouts_common(req, tgz):
             # Adjust the header WCS by x0,y0
             crpix1 = tim.hdr['CRPIX1']
             crpix2 = tim.hdr['CRPIX2']
-            tim.hdr['CRPIX1'] = crpix1 - ccd.ccd_x0
-            tim.hdr['CRPIX2'] = crpix2 - ccd.ccd_y0
+            tim.hdr['CRPIX1'] = crpix1 - x0
+            tim.hdr['CRPIX2'] = crpix2 - y0
 
             outfn = '%s-%08i-%s-image.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
             imgfns.append(outfn)
@@ -3612,6 +3615,10 @@ def cutouts_common(req, tgz):
             ofn = os.path.join(subdir, outfn)
             psfex.fwhm = tim.psf_fwhm
             psfex.writeto(ofn)
+
+            outfn = '%s-%08i-%s-psfimg.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
+            ofn = os.path.join(subdir, outfn)
+            fitsio.write(ofn, psfimg, header=tim.primhdr, clobber=True)
             
         CCDs.cut(keepccds)
         CCDs.image_filename = np.array(imgfns)
@@ -3675,7 +3682,8 @@ def cutouts_common(req, tgz):
                                     '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % format_jpl_url(ra, dec, ccd),]),
                       theurl))
     return render(req, 'cutouts.html',
-                  dict(ra=ra, dec=dec, ccds=ccdsx, name=layer, drname=survey.drname,
+                  dict(ra=ra, dec=dec, ccds=ccdsx, name=layer, layer=layer,
+                       drname=survey.drname,
                        brick=brick, brickx=brickx, bricky=bricky, size=W))
 
 
@@ -3855,6 +3863,34 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     print('CCD:', ccd)
     im = survey.get_image_object(ccd)
     print('Image object:', im)
+
+
+    H,W = im.shape
+    slc = (slice(max(0, y-size), min(H, y+size+1)),
+           slice(max(0, x-size), min(W, x+size+1)))
+    tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
+                               dq=False, invvar=False)
+    #thelayer = get_layer(layer)
+    #rgb = thelayer.get_rgb([tim.data], [tim.band])
+    from legacypipe.survey import get_rgb
+    rgb = get_rgb([tim.data], [tim.band], mnmx=(-1,100.), arcsinh=1.)
+
+    index = dict(g=2, r=1, z=0)[tim.band]
+    bw = rgb[:,:,index]
+    print('BW', bw.shape, bw.dtype)
+
+    import tempfile
+    f,jpegfn = tempfile.mkstemp(suffix='.jpg')
+    os.close(f)
+    plt.imsave(jpegfn, bw, vmin=0, vmax=1, cmap='gray', origin='lower')
+    #mn,mx = np.percentile(img.ravel(), [25, 99])
+    #save_jpeg(jpegfn, destimg, origin='lower', cmap='gray',
+    #          vmin=mn, vmax=mx)
+    return send_file(jpegfn, 'image/jpeg', unlink=True)
+
+
+    ############################
+
     fn = im.imgfn
     #fn = _get_image_filename(ccd)
     print('Filename:', fn)
