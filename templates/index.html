@@ -1501,6 +1501,10 @@ tiles = mylayer_B('des-dr1', 'DES DR1',
                   {'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+tiles = mylayer_B('ls-dr56', 'LegacySurvey DR5+DR6 images',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 {% if enable_dr7 %}
 tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
                   {'urlPatterns': [ [1, maxZoom, tile_url], ],});

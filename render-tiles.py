@@ -223,6 +223,7 @@ def top_levels(mp, opt):
                     'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
                     'decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
+                    'des-dr1',
                     'eboss',
                     'unwise-neo2', 'unwise-neo3', 'unwise-neo4',
                     'galex', 'sdss2', 'wssa']:

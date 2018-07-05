@@ -97,6 +97,8 @@ tileversions = {
     'des-dr1': [1],
 
     'cutouts': [1],
+
+    'ls-dr56': [1],
     }
 
 def gfas(req):
@@ -1860,6 +1862,108 @@ class ReDecalsResidLayer(UniqueBrickMixin, ResidMixin, ReDecalsLayer):
 class ReDecalsModelLayer(UniqueBrickMixin, ReDecalsLayer):
     pass
 
+
+
+class LegacySurveySplitLayer(MapLayer):
+    def __init__(self, name, top, bottom, decsplit):
+        super(LegacySurveySplitLayer, self).__init__(name)
+        self.layers = [top, bottom]
+        self.top = top
+        self.bottom = bottom
+        self.decsplit = decsplit
+
+        self.tilesplits = {}
+
+        import numpy as np
+        dec = decsplit
+        fy = 1. - (np.log(np.tan(np.deg2rad(dec + 90)/2.)) - -np.pi) / (2.*np.pi)
+        for zoom in range(0, 18):
+            n = 2**zoom
+            y = int(fy * n)
+            print('Zoom', zoom, '-> y', y)
+            X = get_tile_wcs(zoom, 0, y)
+            wcs = X[0]
+            ok,rr,dd = wcs.pixelxy2radec([1,1], [1,256])
+            #print('Decs', dd)
+            self.tilesplits[zoom] = y
+
+    def get_bricks(self):
+        BB = merge_tables([l.get_bricks() for l in self.layers])
+        return BB
+
+    def bricks_touching_radec_box(self, *args, **kwargs):
+        BB = merge_tables([l.bricks_touching_radec_box(*args, **kwargs)
+                           for l in self.layers])
+        return BB
+
+    # def get_filename(self, brick, band, scale, tempfiles=None):
+    #     pass
+    # 
+    # def get_base_filename(self, brick, band, **kwargs):
+    #     pass
+
+    def render_into_wcs(self, wcs, zoom, x, y, general_wcs=False, **kwargs):
+        
+        ## FIXME -- generic WCS
+
+        split = self.tilesplits[zoom]
+        if y < split:
+            return self.top.render_into_wcs(wcs, zoom, x, y,
+                                            general_wcs=general_wcs, **kwargs)
+        if y > split:
+            return self.bottom.render_into_wcs(wcs, zoom, x, y,
+                                               general_wcs=general_wcs, **kwargs)
+
+        # both!
+        topims = self.top.render_into_wcs(wcs, zoom, x, y,
+                                          general_wcs=general_wcs, **kwargs)
+        botims = self.bottom.render_into_wcs(wcs, zoom, x, y,
+                                             general_wcs=general_wcs, **kwargs)
+
+        if topims is None:
+            return botims
+        if botims is None:
+            return topims
+
+        import numpy as np
+        x = np.empty(256)
+        x[:] = 128.5
+        y = np.arange(1, 256+1)
+        ok,rr,dd = wcs.pixelxy2radec(x, y)
+        I = np.flatnonzero(dd >= self.decsplit)
+        for b,t in zip(botims, topims):
+            b[I,:] = t[I,:]
+        return botims
+
+    def get_bands(self):
+        return self.top.get_bands()
+    def get_rgb(self, *args, **kwargs):
+        return self.top.get_rgb(*args, **kwargs)
+    def get_scale(self, *args):
+        return self.top.get_scale(*args)
+
+    def get_tile_filename(self, ver, zoom, x, y):
+        '''Pre-rendered JPEG tile filename.'''
+        print('SplitLayer.get_tile_filename: zoom', zoom, 'y', y)
+        split = self.tilesplits[zoom]
+        if y < split:
+            fn = self.top.get_tile_filename(ver, zoom, x, y)
+            print('Top fn', fn)
+            return fn
+            #return self.top.get_tile_filename(ver, zoom, x, y)
+        if y > split:
+            #return self.bottom.get_tile_filename(ver, zoom, x, y)
+            fn = self.bottom.get_tile_filename(ver, zoom, x, y)
+            print('Bottom fn', fn)
+            return fn
+            
+        tilefn = os.path.join(self.tiledir,
+                              '%i' % ver, '%i' % zoom, '%i' % x, '%i.jpg' % y)
+        print('Middle:', tilefn)
+        return tilefn
+
+
+
 class DesLayer(ReDecalsLayer):
 
     def __init__(self, name):
@@ -1898,7 +2002,7 @@ class DesLayer(ReDecalsLayer):
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
-        bricks = self.get_bricks()
+        bricks = self.get_bricks_for_scale(scale)
         I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
         ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
         I = I[ok]
@@ -4179,6 +4283,11 @@ def get_layer(name, default=None):
         '''
         layer = ReSdssLayer('sdss2')
 
+    elif name == 'ls-dr56':
+        dr5 = get_layer('decals-dr5')
+        dr6 = get_layer('mzls+bass-dr6')
+        layer = LegacySurveySplitLayer(name, dr6, dr5, 32.)
+
     elif name == 'phat':
         layer = PhatLayer('phat')
 
@@ -4394,16 +4503,22 @@ if __name__ == '__main__':
     import matplotlib
     matplotlib.use('Agg')
     import pylab as plt
-    #layer = get_layer('galex')
-    #layer = get_layer('unwise-neo3')
-    layer = get_layer('wssa')
-    wcs = Sip('tess.wcs')
-    imgs = layer.render_into_wcs(wcs, 8, None, None, general_wcs=True)
-    rgb = layer.get_rgb(imgs, layer.get_bands())
-    #plt.imsave('tess-galex.png', rgb)
-    #plt.imsave('tess-unwise.png', rgb)
-    plt.imsave('tess-wssa.png', rgb)
-    sys.exit(0)
+
+    # dr5 = get_layer('decals-dr5')
+    # dr6 = get_layer('mzls+bass-dr6')
+    # split = LegacySurveySplitLayer('ls56', dr5, dr6, 32.)
+    # sys.exit(0)
+    # 
+    # #layer = get_layer('galex')
+    # #layer = get_layer('unwise-neo3')
+    # layer = get_layer('wssa')
+    # wcs = Sip('tess.wcs')
+    # imgs = layer.render_into_wcs(wcs, 8, None, None, general_wcs=True)
+    # rgb = layer.get_rgb(imgs, layer.get_bands())
+    # #plt.imsave('tess-galex.png', rgb)
+    # #plt.imsave('tess-unwise.png', rgb)
+    # plt.imsave('tess-wssa.png', rgb)
+    # sys.exit(0)
 
     from django.test import Client
     c = Client()
@@ -4440,7 +4555,10 @@ if __name__ == '__main__':
     #c.get('/decals-dr7/1/12/2074/2064.jpg')
     #c.get('/decals-dr7/1/11/1037/1032.jpg')
     #c.get('/decals-dr7/1/8/129/128.jpg')
-    c.get('/decals-dr5/1/6/31/32.jpg')
+    #c.get('/decals-dr5/1/6/31/32.jpg')
+    #c.get('/ls-dr56/1/13/3861/3126.jpg')
+    #c.get('/des-dr1/1/13/7399/5035.jpg')
+    c.get('/des-dr1/1/12/3699/2517.jpg')
     sys.exit(0)
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
