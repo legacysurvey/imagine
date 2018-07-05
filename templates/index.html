@@ -2895,20 +2895,6 @@ var overlays = [
     desifoot,
 ];
 
-{% if usercatalogs %}
-  {% for cat,name,color in usercatalogs %}
-    var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{name}}',
-        {'url': usercat_url, 'url_args': {'cat': '{{cat}}'}});
-    var color = '{{color}}';
-    if (color.length > 0) {
-      usercat.color = color;
-    }
-    overlays = [usercat].concat(overlays);
-    map.addLayer(usercat.getGroup());
-    map.on('baselayerchange', function(e) {
-        usercat.ready(); });
-  {% endfor %}
-{% endif %}
 
 
 if ('blink' in qstr) {
@@ -2938,17 +2924,8 @@ for (k in qstr) {
  }
  
 var baseTree = [
+    findlayer('ls-dr56'),
     {% if enable_dr7 %}
-    /*
-    {
-        label: 'DECaLS DR7',
-        children: [
-            findlayer('decals-dr7'),
-            findlayer('decals-dr7-model'),
-            findlayer('decals-dr7-resid'),
-        ]
-    },
-    */
     findlayer('decals-dr7', [
         findlayer('decals-dr7-model'),
         findlayer('decals-dr7-resid'),
@@ -3023,7 +3000,30 @@ for (var i=0,len=overlays.length; i<len; i++) {
      return rtn;
  }
 
- var overlayTree = [
+ var overlayTree = [];
+
+{% if usercatalogs %}
+  {% for cat,name,color in usercatalogs %}
+    var name = 'usercatalog-' + '{{name}}';
+    var pretty = 'User Catalog {{name}}';
+    var usercat = new UserCatalogLayer(name, pretty,
+        {'url': usercat_url, 'url_args': {'cat': '{{cat}}'}});
+    var color = '{{color}}';
+    if (color.length > 0) {
+      usercat.color = color;
+    }
+    var group = usercat.getGroup();
+    group._name = name;
+    overlayTree.push({ label: pretty,
+                       layer: group });
+    map.addLayer(group);
+    map.on('baselayerchange', function(e) {
+        usercat.ready(); });
+  {% endfor %}
+{% endif %}
+
+
+ overlayTree = overlayTree.concat([
      findoverlay('decals-bricks'),
 
      findoverlay('decals-dr7-ccds', [
@@ -3112,7 +3112,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('tycho2'),
      findoverlay('gals'),
      findoverlay('constellations'),
- ];
+ ]);
 
  /*
 var layerControl = new L.control.layers(baseMaps, {}, { collapsed: false })
