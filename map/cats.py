@@ -738,7 +738,7 @@ def cat_user(req, ver):
     D = dict(rd=rd)
     cols = cat.columns()
     if 'name' in cols:
-        D.update(names=list(cat.name))
+        D.update(names=cat.name.tolist())
     if 'type' in cols:
         try:
             v = list([t[0] for t in cat.get('type')])
@@ -759,7 +759,7 @@ def cat_user(req, ver):
     if 'objids' in cols:
         D.update(objids=[int(x) for x in cat.objid])
     if 'brickname' in cols:
-        D.update(bricknames=list(cat.brickname))
+        D.update(bricknames=cat.brickname.tolist())
     if 'radius' in cols:
         D.update(radius=list([float(r) for r in cat.radius]))
     if 'color' in cols:
