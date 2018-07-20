@@ -220,7 +220,13 @@ urlpatterns = [
     # Scatterplot of nearby sources for cutouts page
     #url(r'^cat_plot/', views.cat_plot, name='cat_plot'),
 
+    # PSF for a single expnum/ccdname -- half-finished.
+    #url(r'^cutout_psf/(?P<layer>.*)/(?P<expnum>\d+)/(?P<extname>\w+)/', views.cutout_psf,
+    #name='cutout_psf'),
+
     url(r'^cutouts-tgz/', views.cutouts_tgz, name='cutouts_tgz'),
+
+    url(r'^coadd-psf/', views.cutouts_coadd_psf, name='coadd_psf'),
 
     # Look up this position, date, observatory in JPL Small Bodies database
     url(r'^jpl_lookup/', views.jpl_lookup),

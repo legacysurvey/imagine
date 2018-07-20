@@ -19,7 +19,12 @@ import os
 import sys
 import re
 from django.http import HttpResponse, StreamingHttpResponse
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except:
+    # django 2.0
+    from django.urls import reverse
+
 from django import forms
 
 from viewer import settings
@@ -60,6 +65,7 @@ tileversions = {
     'decals-dr7': [1],
     'decals-dr7-model': [1],
     'decals-dr7-resid': [1],
+    'decals-dr7-invvar': [1],
 
     'mzls+bass-dr6': [1],
     'mzls+bass-dr6-model': [1],
@@ -839,7 +845,6 @@ class MapLayer(object):
         rimgs = []
         for band in bands:
             rimg = np.zeros((H,W), np.float32)
-            #rn   = np.zeros((H,W), np.uint8)
             rw   = np.zeros((H,W), np.float32)
             bandbricks = self.bricks_for_band(bricks, band)
             for brick in bandbricks:
@@ -964,8 +969,8 @@ class MapLayer(object):
                                vmin=-0.001, vmax=0.01)
                     plt.title('rimg')
                     plt.subplot(2,3,6)
-                    plt.imshow(rn, interpolation='nearest', origin='lower')
-                    plt.title('rn')
+                    plt.imshow(rw, interpolation='nearest', origin='lower')
+                    plt.title('rw')
                     plt.savefig('render-%s-%s.png' % (brickname, band))
 
             print('Median image weight:', np.median(rw.ravel()))
@@ -1385,7 +1390,7 @@ class PhatLayer(MapLayer):
         for i,img in zip([2,1,0], imgs):
             rgb[:,:,i] = mapping[img.astype(int)]
         return rgb
-   
+
 class DecalsLayer(MapLayer):
     def __init__(self, name, imagetype, survey, bands='grz', drname=None):
         '''
@@ -1450,6 +1455,15 @@ class DecalsLayer(MapLayer):
         if fn.endswith('.fz'):
             return 1
         return 0
+
+class DecalsInvvarLayer(DecalsLayer):
+    def get_scale(self, zoom, x, y, wcs):
+        return 0
+    def create_scaled_image(self, *args, **kwargs):
+        return None
+    def get_scaled_filename(self, brick, band, scale):
+        return None
+
 
 class DecalsDr3Layer(DecalsLayer):
     '''The data model changed (added .fz compression) as of DR5; this
@@ -3026,7 +3040,8 @@ def get_survey(name):
             d = LegacySurveyData(survey_dir=dirnm)
         elif name == 'decals-dr7':
             # testing 1 2 3
-            d = LegacySurveyData(survey_dir=dirnm)
+            d = LegacySurveyData(survey_dir=dirnm,
+                                 cache_dir=os.path.join(dirnm, 'dr7images'))
         else:
             d = MyLegacySurveyData(survey_dir=dirnm)
 
@@ -3598,13 +3613,16 @@ def ccds_overlapping_html(ccds, layer, ra=None, dec=None):
     html.append('</tbody></table>')
     return html
 
+def cutouts_coadd_psf(req):
+    return cutouts_common(req, False, True)
+
 def cutouts_tgz(req):
-    return cutouts_common(req, True)
+    return cutouts_common(req, True, False)
 
 def cutouts(req):
-    return cutouts_common(req, False)
+    return cutouts_common(req, False, False)
 
-def cutouts_common(req, tgz):
+def cutouts_common(req, tgz, copsf):
     from astrometry.util.util import Tan
     from astrometry.util.starutil_numpy import degrees_between
     import numpy as np
@@ -3614,9 +3632,14 @@ def cutouts_common(req, tgz):
     dec = float(req.GET['dec'])
 
     # half-size in DECam pixels
-    size = int(req.GET.get('size', '100'), 10)
-    size = min(200, size)
-    size = size // 2
+    if copsf:
+        size = 32
+        bands = req.GET.get('bands', 'grz')
+        bands = ''.join([b for b in bands if b in 'grz'])
+    else:
+        size = int(req.GET.get('size', '100'), 10)
+        size = min(200, size)
+        size = size // 2
 
     W,H = size*2, size*2
     
@@ -3640,58 +3663,65 @@ def cutouts_common(req, tgz):
 
     CCDs = CCDs[np.lexsort((CCDs.ccdname, CCDs.expnum, CCDs.filter))]
 
-    if tgz:
-        import tempfile
-        import fitsio
+    if tgz or copsf:
+        if tgz:
+            import tempfile
+            import fitsio
+            tempdir = tempfile.TemporaryDirectory()
+            datadir = 'data_%.4f_%.4f' % (ra, dec)
+            subdir = os.path.join(tempdir.name, datadir)
+            os.mkdir(subdir)
+            print('Writing to', subdir)
+            CCDs.ccd_x0 = np.zeros(len(CCDs), np.int16)
+            CCDs.ccd_x1 = np.zeros(len(CCDs), np.int16)
+            CCDs.ccd_y0 = np.zeros(len(CCDs), np.int16)
+            CCDs.ccd_y1 = np.zeros(len(CCDs), np.int16)
+            imgfns = []
+            keepccds = np.zeros(len(CCDs), bool)
+        else:
+            sumpsf = dict([(b,0.) for b in bands])
+            sumiv  = dict([(b,0.) for b in bands])
+            CCDs = CCDs[np.array([f in bands for f in CCDs.filter])]
 
-        tempdir = tempfile.TemporaryDirectory()
-        datadir = 'data_%.4f_%.4f' % (ra, dec)
-        subdir = os.path.join(tempdir.name, datadir)
-        os.mkdir(subdir)
-        print('Writing to', subdir)
-
-        CCDs.ccd_x0 = np.zeros(len(CCDs), np.int16)
-        CCDs.ccd_x1 = np.zeros(len(CCDs), np.int16)
-        CCDs.ccd_y0 = np.zeros(len(CCDs), np.int16)
-        CCDs.ccd_y1 = np.zeros(len(CCDs), np.int16)
-        imgfns = []
-        keepccds = np.zeros(len(CCDs), bool)
-        #print('North south', north, south)
-        #print('East west', east, west)
         for iccd,ccd in enumerate(CCDs):
             im = survey.get_image_object(ccd)
             print('Got', im)
             imwcs = im.get_wcs()
             ok,cx,cy = imwcs.radec2pixelxy([east,  west,  west,  east ],
                                            [north, north, south, south])
-            #print('cx', 'cy', cx, cy)
             H,W = im.shape
             x0 = int(np.clip(np.floor(min(cx)), 0, W-1))
             x1 = int(np.clip(np.ceil (max(cx)), 0, W-1))
             y0 = int(np.clip(np.floor(min(cy)), 0, H-1))
             y1 = int(np.clip(np.ceil (max(cy)), 0, H-1))
-            #print('x', x0,x1, 'y', y0,y1)
             if x0 == x1 or y0 == y1:
                 continue
+
+            slc = (slice(y0, y1+1), slice(x0, x1+1))
+            tim = im.get_tractor_image(slc, pixPsf=True, splinesky=True,
+                                       subsky=True, nanomaggies=False,
+                                       pixels=tgz, dq=tgz, normalizePsf=copsf)
+            psf = tim.getPsf()
+            th,tw = tim.shape
+            psfimg = psf.getImage(tw/2, th/2)
+            ivdata = tim.getInvvar()
+
+            if copsf:
+                if np.all(ivdata == 0):
+                    continue
+                iv = np.median(ivdata[ivdata > 0])
+                sumpsf[tim.band] += psfimg * iv
+                sumiv [tim.band] += iv
+                continue
+
             keepccds[iccd] = True
             CCDs.ccd_x0[iccd] = x0
             CCDs.ccd_y0[iccd] = y0
             CCDs.ccd_x1[iccd] = x1+1
             CCDs.ccd_y1[iccd] = y1+1
 
-            slc = (slice(y0, y1+1), slice(x0, x1+1))
-            tim = im.get_tractor_image(slc, pixPsf=True, splinesky=True,
-                                       subsky=True, nanomaggies=False)
-            psf = tim.getPsf()
-            #print('PSF:', psf)
             psfex = psf.psfex
-            #print('PsfEx:', psfex)
-
-            th,tw = tim.shape
-            psfimg = psf.getImage(tw/2, th/2)
-
             imgdata = tim.getImage()
-            ivdata = tim.getInvvar()
             dqdata = tim.dq
             # Adjust the header WCS by x0,y0
             crpix1 = tim.hdr['CRPIX1']
@@ -3723,6 +3753,38 @@ def cutouts_common(req, tgz):
             outfn = '%s-%08i-%s-psfimg.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
             ofn = os.path.join(subdir, outfn)
             fitsio.write(ofn, psfimg, header=tim.primhdr, clobber=True)
+
+
+        if copsf:
+            keepbands = []
+            psf = []
+            for b in bands:
+                if sumiv[b] == 0:
+                    continue
+                keepbands.append(b)
+                psf.append(sumpsf[b] / sumiv[b])
+            bands = keepbands
+            if len(bands) == 0:
+                return HttpResponse('no CCDs overlapping')
+
+            if len(bands) == 1:
+                cube = psf[0]
+            else:
+                h,w = psf[0].shape
+                cube = np.empty((len(bands), h, w), np.float32)
+                for i,im in enumerate(psf):
+                    cube[i,:,:] = im
+            import tempfile
+            import fitsio
+            f,fn = tempfile.mkstemp(suffix='.fits')
+            os.close(f)
+            hdr = fitsio.FITSHDR()
+            hdr['BANDS'] = ''.join(keepbands)
+            for i,b in enumerate(keepbands):
+                hdr['BAND%i' % i] = b
+            fitsio.write(fn, cube, clobber=True, header=hdr)
+            return send_file(fn, 'image/fits', unlink=True,
+                             filename='copsf_%.4f_%.4f.fits' % (ra,dec))
             
         CCDs.cut(keepccds)
         CCDs.image_filename = np.array(imgfns)
@@ -3947,6 +4009,30 @@ def _get_image_slice(fn, hdu, x, y, size=50):
     slc = slice(max(y-size, 0), min(y+size, H)), slice(max(x-size, 0), min(x+size, W))
     img = img[slc]
     return img,hdr,slc,xstart,ystart
+
+def cutout_psf(req, layer=None, expnum=None, extname=None):
+    x = int(req.GET['x'], 10)
+    y = int(req.GET['y'], 10)
+    # half-size in DECam pixels
+    size = int(req.GET.get('size', '100'), 10)
+    size = min(200, size)
+    size = size // 2
+
+    layer = clean_layer_name(layer)
+    layer = layer_to_survey_name(layer)
+    survey = get_survey(layer)
+    ccd = _get_ccd(expnum, extname, survey=survey)
+    print('CCD:', ccd)
+    im = survey.get_image_object(ccd)
+    print('Image object:', im)
+
+    psf = read_psf_model(0, 0, pixPsf=True)
+    print('Got PSF', psf)
+    psfimg = psf.getImage(x, y)
+    print('PSF img', psfimg.shape)
+    ### FIXME
+
+
 
 def cutout_panels(req, layer=None, expnum=None, extname=None):
     import pylab as plt
@@ -4308,6 +4394,10 @@ def get_layer(name, default=None):
         layers['decals-dr7-model'] = model
         layers['decals-dr7-resid'] = resid
         layer = layers[name]
+
+    elif name == 'decals-dr7-invvar':
+        survey = get_survey('decals-dr7')
+        layer = DecalsInvvarLayer(name, 'invvar', survey)
 
     elif name in ['mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
         survey = get_survey('mzls+bass-dr6')

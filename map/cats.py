@@ -12,7 +12,11 @@ if __name__ == '__main__':
 
 from django.http import HttpResponse, StreamingHttpResponse
 from viewer import settings
-from django.core.urlresolvers import reverse
+try:
+    from django.core.urlresolvers import reverse
+except:
+    # django 2.0
+    from django.urls import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 
 

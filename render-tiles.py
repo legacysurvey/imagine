@@ -222,6 +222,7 @@ def top_levels(mp, opt):
     if opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid',
                     'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
                     'decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
+                    'decals-dr7', 'decals-dr7-model', 'decals-dr7-resid',
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
                     'des-dr1',
                     'eboss',
@@ -775,12 +776,17 @@ def main():
             if opt.queue:
                 if len(opt.zoom) == 0:
                     opt.zoom = [1,2,3,4,5,6,7]
-                step = 0.1
+                #step = 0.1
+                #ras = np.arange(opt.minra, opt.maxra+step, step)
+                step = 5.
                 ras = np.arange(opt.minra, opt.maxra+step, step)
+                decs = np.arange(opt.mindec, opt.maxdec+step, step)
                 for zoom in opt.zoom:
                     for ralo,rahi in zip(ras, np.clip(ras[1:], opt.minra, opt.maxra)):
-                        cmd = 'python render-tiles.py --kind %s --scale --minra %f --maxra %f -z %i' % (opt.kind, ralo, rahi, zoom)
-                        print(cmd)
+                        for declo,dechi in zip(decs, np.clip(decs[1:], opt.mindec, opt.maxdec)):
+                            cmd = ('python render-tiles.py --kind %s --scale --minra %f --maxra %f --mindec %f --maxdec %f -z %i' %
+                                   (opt.kind, ralo, rahi, declo, dechi, zoom))
+                            print(cmd)
                 sys.exit(0)
 
             layer = get_layer(opt.kind)
