@@ -2913,11 +2913,8 @@ var DesiFootprint = CatalogOverlay.extend({
         this._ci.setLatLngs(polys);
         this._ci.redraw();
     },
-    /*
-    mapMoved: function() {
-        //var cen = map.getCenter();
+    load: function() {
     },
-    */
     getLinkHere: function() {
         return 'desifoot=' + this.ra.toFixed(4) + ',' + this.dec.toFixed(4);
     },
