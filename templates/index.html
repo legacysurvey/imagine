@@ -1608,9 +1608,9 @@ tiles = split_layer('ls-dr67', 'LegacySurvey DR6+DR7 images',
                     // North
                     'mzls+bass-dr6', [ [13, maxZoom, tile_url], ],
                     // Mid
-                    'ls-dr67', [ [1, maxZoom, tile_url], ],
+                    'ls-dr67', [ [14, maxZoom, tile_url], ],
                     // South
-                    'decals-dr7', [ [1, maxZoom, tile_url], ]
+                    'decals-dr7', [ [11, maxZoom, tile_url], ]
                    );
 allLayers.push(tiles);
 {% endif %}
@@ -1620,26 +1620,25 @@ tiles = split_layer('ls-dr56', 'LegacySurvey DR5+DR6 images',
                     // North
                     'mzls+bass-dr6', [ [13, maxZoom, tile_url], ],
                     // Mid
-                    'ls-dr56', [ [1, maxZoom, tile_url], ],
+                    'ls-dr56', [ [13, maxZoom, tile_url], ],
                     // South
-                    'decals-dr5', [ [1, maxZoom, tile_url], ]
+                    'decals-dr5', [ [14, maxZoom, tile_url], ]
                    );
 //{'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 {% if enable_dr7 %}
 tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
-                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [11, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% if enable_dr7_models %}
 tiles = mylayer_B('decals-dr7-model', 'DECaLS DR7 models',
-                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [9, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
-
 {% if enable_dr7_resids %}
 tiles = mylayer_B('decals-dr7-resid', 'DECaLS DR7 residuals',
-                {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                {'urlPatterns': [ [9, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 

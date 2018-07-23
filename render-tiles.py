@@ -227,7 +227,8 @@ def top_levels(mp, opt):
                     'des-dr1',
                     'eboss',
                     'unwise-neo2', 'unwise-neo3', 'unwise-neo4',
-                    'galex', 'sdss2', 'wssa']:
+                    'galex', 'sdss2', 'wssa',
+                    'ls-dr56', 'ls-dr67']:
         import pylab as plt
         from viewer import settings
         from legacypipe.survey import get_rgb
@@ -683,6 +684,8 @@ def main():
 
     parser.add_option('--top', action='store_true', help='Top levels of the pyramid')
 
+    parser.add_option('--split', action='store_true', help='For split layers (DR6+DR7), only compute one y strip per zoom level')
+
     parser.add_option('--bricks-exist', action='store_true', help='Create table of bricks that exist')
 
     parser.add_option('--kind', default='image')
@@ -1125,6 +1128,13 @@ def main():
         x1 = opt.x1
         if x1 is None:
             x1 = N
+
+        if opt.split:
+            decsplit = 32.
+            y = 2.**zoom/(2.*np.pi) * (np.pi - np.log(np.tan(np.pi/4. + np.deg2rad(decsplit)/2.)))
+            y = int(y)
+            opt.y0 = y
+            y1 = y+1
 
         # Find grid of Ra,Dec tile centers and select the ones near DECaLS bricks.
         rr,dd = [],[]
