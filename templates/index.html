@@ -3067,14 +3067,22 @@ var baseTree = [
     {% endif %}
     {% if enable_dr5 %}
     findlayer('decals-dr5', [
+        {% if enable_dr5_model %}
         findlayer('decals-dr5-model'),
+        {% endif %}
+        {% if enable_dr5_resid %}
         findlayer('decals-dr5-resid'),
+        {% endif %}
     ]),
     {% endif %}
     {% if enable_dr4 %}
     findlayer('mzls+bass-dr4', [
+        {% if enable_dr4_model %}
         findlayer('mzls+bass-dr4-model'),
+        {% endif %}
+        {% if enable_dr4_resid %}
         findlayer('mzls+bass-dr4-resid'),
+        {% endif %}
     ]),
     {% endif %}
     {% if enable_decaps %}
@@ -3218,6 +3226,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
            findoverlay('sdss-cat'),
        ],
      },
+     {% if enable_spectra %}
      { label: 'Spectroscopy',
        children: [
            findoverlay('spec'),
@@ -3225,6 +3234,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
            findoverlay('spec-deep2'),
        ],
      },
+     {% endif %}
      {% if enable_desi_targets %}
      { label: 'DESI targets',
        children: [

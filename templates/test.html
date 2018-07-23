@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+<body>
+
+<h1>Viewer URLs test</h1>
+
+<a href="gfas">DESI GFA view</a>
+<br>
+
+<a href="ci">DESI CI view</a>
+<br>
+
+Legacy Survey DR5+DR6
+<br>
+<img src="ls-dr56/1/14/8191/6653.jpg">
+<br>
+
+Legacy Survey DR6+DR7
+<br>
+<img src="ls-dr67/1/14/8191/6653.jpg">
+<br>
+
+GALEX
+<br>
+<img src="galex/1/12/2054/1659.jpg">
+<br>
+
+DES DR1
+<br>
+<img src="des-dr1/1/11/1819/1232.jpg">
+<br>
+
+DECaLS DR7
+<br>
+<img src="decals-dr7/1/13/4070/3626.jpg">
+<img src="decals-dr7-model/1/13/4070/3626.jpg">
+<img src="decals-dr7-resid/1/13/4070/3626.jpg">
+<br>
+
+DECaLS DR7 <a href="decals-dr7/1/13/4070/3626.cat.json">catalog</a>
+<br>
+
+DECaLS DR5
+<br>
+<img src="decals-dr5/1/13/4070/3626.jpg">
+<img src="decals-dr5-model/1/13/4070/3626.jpg">
+<img src="decals-dr5-resid/1/13/4070/3626.jpg">
+<br>
+
+DECaLS DR5 <a href="decals-dr5/1/13/4070/3626.cat.json">catalog</a>
+<br>
+
+MzLS+BASS DR6
+<br>
+<img src="mzls+bass-dr6/1/13/3632/3144.jpg">
+<img src="mzls+bass-dr6-model/1/13/3632/3144.jpg">
+<img src="mzls+bass-dr6-resid/1/13/3632/3144.jpg">
+<br>
+
+MzLS+BASS DR6 <a href="mzls+bass-dr6/1/13/3632/3144.cat.json">catalog</a>
+<br>
+
+MzLS+BASS DR4
+<br>
+<img src="mzls+bass-dr4/1/13/3632/3144.jpg">
+<img src="mzls+bass-dr4-model/1/13/3632/3144.jpg">
+<img src="mzls+bass-dr4-resid/1/13/3632/3144.jpg">
+<br>
+
+MzLS+BASS DR4 <a href="mzls+bass-dr4/1/13/3632/3144.cat.json">catalog</a>
+<br>
+
+DESI <a href="targets-dr45/1/cat.json?ralo=180.0&rahi=180.1&declo=31.9&dechi=32">DR4/5 targets</a>
+<br>
+<a href="./?ra=180.0167&dec=32.0056&zoom=13&layer=mzls+bass-dr6&targets-dr45">demo</a>
+<br>
+
+DESI <a href="targets-dr56/1/cat.json?ralo=180.0&rahi=180.1&declo=31.9&dechi=32">DR5/6 targets</a>
+<br>
+<a href="./?ra=180.0167&dec=32.0056&zoom=13&layer=mzls+bass-dr6&targets-dr56">demo</a>
+<br>
+
+DESI <a href="targets-bgs-dr56/1/cat.json?ralo=180.0&rahi=180.1&declo=31.9&dechi=32">DR5/6 BGS targets</a>
+<br>
+<a href="./?ra=180.0167&dec=32.0056&zoom=13&layer=mzls+bass-dr6&targets-bgs-dr56">demo</a>
+<br>
+
+DECaPS2 tiles
+<br>
+<img src="decaps/2/13/3132/5969.jpg">
+<img src="decaps-model/2/13/3132/5969.jpg">
+<img src="decaps-resid/2/13/3132/5969.jpg">
+<br>
+
+<a href="decaps/">DECaPS shortcut</a>
+<br>
+
+Gaia catalogs
+<br>
+<a href="gaia-dr1/1/cat.json?ralo=234.6328&rahi=234.7674&declo=13.5357&dechi=13.6643">DR1</a>
+<br>
+<a href="gaia-dr2/1/cat.json?ralo=234.6328&rahi=234.7674&declo=13.5357&dechi=13.6643">DR2</a>
+<br>
+
+DEEP2 <a href="spec-deep2/1/cat.json?ralo=352.4916&rahi=352.5084&declo=-0.0083&dechi=0.0083">spectra</a>
+<br>
+
+SDSS <a href="sdss-cat/1/cat.json?ralo=352.4916&rahi=352.5084&declo=-0.0083&dechi=0.0083">catalog</a>
+<br>
+
+SDSS<br>
+<img src="sdss2/1/13/169/4096.jpg">
+<br>
+
+
+
+
+<br>
+<br>
+<br>
+
+</body>
+{% endblock %}
