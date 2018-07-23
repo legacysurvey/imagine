@@ -1633,12 +1633,12 @@ tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
 allLayers.push(tiles);
 {% if enable_dr7_models %}
 tiles = mylayer_B('decals-dr7-model', 'DECaLS DR7 models',
-                  {'urlPatterns': [ [9, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [10, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 {% if enable_dr7_resids %}
 tiles = mylayer_B('decals-dr7-resid', 'DECaLS DR7 residuals',
-                {'urlPatterns': [ [9, maxZoom, tile_url], ],});
+                {'urlPatterns': [ [10, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
