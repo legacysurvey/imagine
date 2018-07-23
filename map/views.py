@@ -3701,6 +3701,8 @@ def cutouts_common(req, tgz, copsf):
             tim = im.get_tractor_image(slc, pixPsf=True, splinesky=True,
                                        subsky=True, nanomaggies=False,
                                        pixels=tgz, dq=tgz, normalizePsf=copsf)
+            if tim is None:
+                continue
             psf = tim.getPsf()
             th,tw = tim.shape
             psfimg = psf.getImage(tw/2, th/2)
