@@ -3778,22 +3778,30 @@ def cutouts_common(req, tgz, copsf):
             if len(bands) == 0:
                 return HttpResponse('no CCDs overlapping')
 
-            if len(bands) == 1:
-                cube = psf[0]
-            else:
-                h,w = psf[0].shape
-                cube = np.empty((len(bands), h, w), np.float32)
-                for i,im in enumerate(psf):
-                    cube[i,:,:] = im
+            # if len(bands) == 1:
+            #     cube = psf[0]
+            # else:
+            #     h,w = psf[0].shape
+            #     cube = np.empty((len(bands), h, w), np.float32)
+            #     for i,im in enumerate(psf):
+            #         cube[i,:,:] = im
             import tempfile
             import fitsio
             f,fn = tempfile.mkstemp(suffix='.fits')
             os.close(f)
             hdr = fitsio.FITSHDR()
-            hdr['BANDS'] = ''.join(keepbands)
-            for i,b in enumerate(keepbands):
+            # Primary header
+            hdr['BANDS'] = ''.join(bands)
+            for i,b in enumerate(bands):
                 hdr['BAND%i' % i] = b
-            fitsio.write(fn, cube, clobber=True, header=hdr)
+            # Clobber first hdu; append subsequent ones
+            clobber = True
+            for i,(band,bandpsf) in enumerate(zip(bands, psf)):
+                hdr['BAND'] = band
+                fitsio.write(fn, bandpsf, header=hdr, clobber=clobber)
+                clobber=False
+                hdr = fitsio.FITSHDR()
+
             return send_file(fn, 'image/fits', unlink=True,
                              filename='copsf_%.4f_%.4f.fits' % (ra,dec))
             
