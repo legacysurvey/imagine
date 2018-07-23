@@ -105,6 +105,7 @@ tileversions = {
     'cutouts': [1],
 
     'ls-dr56': [1],
+    'ls-dr67': [1],
     }
 
 def gfas(req):
@@ -4373,6 +4374,11 @@ def get_layer(name, default=None):
         dr5 = get_layer('decals-dr5')
         dr6 = get_layer('mzls+bass-dr6')
         layer = LegacySurveySplitLayer(name, dr6, dr5, 32.)
+
+    elif name == 'ls-dr67':
+        dr7 = get_layer('decals-dr7')
+        dr6 = get_layer('mzls+bass-dr6')
+        layer = LegacySurveySplitLayer(name, dr6, dr7, 32.)
 
     elif name == 'phat':
         layer = PhatLayer('phat')

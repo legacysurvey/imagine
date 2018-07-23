@@ -11,8 +11,12 @@ import os
 from django.shortcuts import render
 from django.http import HttpResponse, StreamingHttpResponse, HttpResponseRedirect, HttpResponseBadRequest, QueryDict
 from django import forms
-from django.core.urlresolvers import reverse
-
+try:
+    from django.core.urlresolvers import reverse
+except:
+    # django-2.0
+    from django.urls import reverse
+    
 from django.views.generic import ListView, DetailView
 
 from cat.models import Bricks, Tractor

@@ -14,6 +14,8 @@ urlpatterns = [
 
     url(r'^ls-dr56/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('ls-dr56')),
+    url(r'^ls-dr67/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('ls-dr67')),
 
     # 2MASS
     url(r'^2mass/(\d+)/(\d+)/(\d+)/(\d+).jpg',
