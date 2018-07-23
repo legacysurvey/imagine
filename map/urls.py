@@ -202,12 +202,10 @@ urlpatterns = [
     # Original unWISE W1/W2
     url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-w1w2')),
-
     # Aaron's NEOx unWISE W1/W2
     # NEO2
     url(r'^unwise-neo2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-neo2')),
-
     # NEO3
     url(r'^unwise-neo3/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-neo3')),
