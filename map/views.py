@@ -2270,6 +2270,10 @@ class UnwiseLayer(MapLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         return _unwise_to_rgb(imgs, **kwargs)
 
+    def populate_fits_cutout_header(self, hdr):
+        print('unWISE populate FITS cutout header')
+        hdr['SURVEY'] = 'unWISE'
+        hdr['VERSION'] = self.name
 
 '''
 unWISE atlas: 18,240 tiles
@@ -4660,7 +4664,9 @@ if __name__ == '__main__':
     #c.get('/decals-dr5/1/6/31/32.jpg')
     #c.get('/ls-dr56/1/13/3861/3126.jpg')
     #c.get('/des-dr1/1/13/7399/5035.jpg')
-    c.get('/des-dr1/1/12/3699/2517.jpg')
+    #c.get('/des-dr1/1/12/3699/2517.jpg')
+    r = c.get('/fits-cutout?ra=175.8650&dec=52.7103&pixscale=0.5&layer=unwise-neo4')
+    print('r:', type(r))
     sys.exit(0)
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
