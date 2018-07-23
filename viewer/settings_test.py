@@ -13,7 +13,7 @@ ALLOWED_HOSTS.append('localhost')
 CREATE_GALAXY_CATALOG = False
 
 STATIC_TILE_URL_B = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
-SUBDOMAINS_B = SUBDOMAINS
+SUBDOMAINS_B = ['a','b','c','d']
 
 # > ssh cori -L 5432:scidb2.nersc.gov:5432
 
@@ -30,8 +30,8 @@ HOSTNAME = 'localhost'
 
 ROOT_URL = ''
 #SUBDOMAINS = ['i']
-SUBDOMAINS = ['a']
-
+#SUBDOMAINS = ['a']
+SUBDOMAINS = []
 
 #STATIC_URL = 'http://%s%s/static/' % (HOSTNAME, ROOT_URL)
 #STATIC_URL = 'http://legacysurvey.org/viewer-dev/static/'
@@ -40,7 +40,9 @@ STATIC_URL = '/static/'
 #STATICFILES_DIRS = []
 STATIC_ROOT = None
 
-TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+#TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+#TILE_URL = 'http://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % ('legacysurvey.org', '/viewer-dev')
 
 #CAT_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
 
