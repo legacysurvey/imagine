@@ -18,7 +18,6 @@ GAIA_DR2_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr2-astrom'
 
 SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
-
 SDSS_BASEDIR = '/global/project/projectdirs/cosmo/data/sdss/dr14/'
 
 CREATE_GALAXY_CATALOG = True
@@ -33,10 +32,11 @@ ENABLE_CUTOUTS = True
 ENABLE_SQL = False
 
 ENABLE_DR2 = False
-ENABLE_DR3 = True
+ENABLE_DR3 = False
 ENABLE_DR4 = True
-ENABLE_DR5 = False
-ENABLE_DR6 = False
+ENABLE_DR5 = True
+ENABLE_DR6 = True
+ENABLE_DR7 = True
 
 ENABLE_DECAPS = True
 ENABLE_PS1 = False
