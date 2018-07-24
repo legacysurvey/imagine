@@ -3005,6 +3005,20 @@ class MyLegacySurveyData(LegacySurveyData):
         return super(MyLegacySurveyData, self).find_ccds(expnum=expnum, ccdname=ccdname,
                                                          camera=camera)
 
+class SplitSurveyData(MyLegacySurveyData):
+    def __init__(self, north, south):
+        super(SplitSurveyData, self).__init__()
+        self.north = north
+        self.south = south
+
+    def get_bricks_readonly(self):
+        if self.bricks is None:
+            from astrometry.util.fits import merge_tables
+            self.bricks = merge_tables([self.north.get_bricks_readonly(),
+                                        self.south.get_bricks_readonly()])
+        return self.bricks
+
+
 class Decaps2LegacySurveyData(MyLegacySurveyData):
     def find_file(self, filetype, brick=None, brickpre=None, band='%(band)s',
                   output=False):
@@ -3045,7 +3059,7 @@ def get_survey(name):
 
     if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5', 'decals-dr7',
                  'mzls+bass-dr4', 'mzls+bass-dr6',
-                 'decaps', 'eboss', ]:
+                 'decaps', 'eboss', 'ls-dr56', 'ls-dr67']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
@@ -3060,6 +3074,14 @@ def get_survey(name):
             # testing 1 2 3
             d = LegacySurveyData(survey_dir=dirnm,
                                  cache_dir=os.path.join(dirnm, 'dr7images'))
+        elif name == 'ls-dr56':
+            north = get_survey('mzls+bass-dr6')
+            south = get_survey('decals-dr5')
+            d = SplitSurveyData(north, south)
+        elif name == 'ls-dr67':
+            north = get_survey('mzls+bass-dr6')
+            south = get_survey('decals-dr7')
+            d = SplitSurveyData(north, south)
         else:
             d = MyLegacySurveyData(survey_dir=dirnm)
 
@@ -3091,6 +3113,7 @@ def get_survey(name):
         print('Caching survey', name)
         surveys[name] = d
         return d
+    
 
     return None
 
@@ -3455,7 +3478,7 @@ def ccd_detail(req, layer, ccd):
     survey, c = get_ccd_object(layer, ccd)
 
     if layer in ['decals-dr2', 'decals-dr3', 'decals-dr5',
-                 'mzls+bass-dr4', 'mzls+bass-dr6', ]:
+                 'mzls+bass-dr4', 'mzls+bass-dr6', 'decals-dr7']:
         imgurl = reverse('image_data', args=[layer, ccd])
         dqurl  = reverse('dq_data', args=[layer, ccd])
         ivurl  = reverse('iv_data', args=[layer, ccd])
