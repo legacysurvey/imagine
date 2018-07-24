@@ -108,9 +108,9 @@ tileversions = {
     'ls-dr67': [1],
     }
 
-def test(req):
+def urls(req):
     from django.shortcuts import render
-    return render(req, 'test.html')
+    return render(req, 'urls.html')
 
 def gfas(req):
     from django.shortcuts import render

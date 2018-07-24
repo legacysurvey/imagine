@@ -9,7 +9,7 @@ survey_regex = r'([\w +-]+)'
 
 urlpatterns = [
 
-    url(r'^test', views.test),
+    url(r'^urls', views.urls),
 
     url(r'^gfas', views.gfas),
     url(r'^ci', views.ci),
