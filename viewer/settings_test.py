@@ -10,7 +10,7 @@ ENABLE_DR7 = True
 ALLOWED_HOSTS.append('127.0.0.1')
 ALLOWED_HOSTS.append('localhost')
 
-CREATE_GALAXY_CATALOG = False
+CREATE_GALAXY_CATALOG = True
 
 STATIC_TILE_URL_B = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 SUBDOMAINS_B = ['a','b','c','d']

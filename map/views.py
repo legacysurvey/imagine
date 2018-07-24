@@ -148,7 +148,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'mzls+bass-dr6',
+           default_layer = 'decals-dr7',
            default_radec = (None,None),
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
@@ -369,6 +369,15 @@ def dr5(req):
                  default_layer='decals-dr5',
                  default_radec=(234.7, 13.6),
                  rooturl=settings.ROOT_URL + '/dr5',
+    )
+
+def dr6(req):
+    return _index(req, enable_decaps=True,
+                 enable_ps1=False,
+                 enable_desi_targets=True,
+                 default_layer='mzls+bass-dr6',
+                 default_radec=(175.32, 47.69),
+                 rooturl=settings.ROOT_URL + '/dr6',
     )
 
 def phat(req):

@@ -264,6 +264,8 @@ urlpatterns = [
 
     # DR5 version of the viewer.
     url(r'dr5', views.dr5),
+    # DR6 version of the viewer.
+    url(r'dr6', views.dr6),
 
     # PHAT version of the viewer.
     url(r'^phat/?$', views.phat),

@@ -265,6 +265,12 @@ def get_random_galaxy(layer=None):
     elif layer == 'mzls+bass-dr6':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr6.fits')
         drnum = 4
+    elif layer == 'decals-dr7':
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr7.fits')
+        drnum = 7
+    elif layer == 'decals-dr5':
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr5.fits')
+        drnum = 5
     else:
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr3.fits')
         drnum = 3
@@ -274,6 +280,8 @@ def get_random_galaxy(layer=None):
             try:
                 create_galaxy_catalog(galfn, drnum)
             except:
+                import traceback
+                traceback.print_exc()
                 pass
         if not os.path.exists(galfn):
             if drnum == 4:
@@ -327,6 +335,7 @@ def create_galaxy_catalog(galfn, drnum):
 
     from map.views import get_survey
 
+    bricks = None
     if drnum == 3:
         bricks = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
                                          'decals-bricks-in-dr3.fits'))
@@ -336,15 +345,21 @@ def create_galaxy_catalog(galfn, drnum):
     elif drnum == 4:
         survey = get_survey('mzls+bass-dr4')
         bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-in-dr4.fits'))
-
     elif drnum == 6:
         survey = get_survey('mzls+bass-dr6')
         bricks = survey.get_bricks()
         bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
+    elif drnum == 5:
+        survey = get_survey('decals-dr5')
+    elif drnum == 7:
+        survey = get_survey('decals-dr7')
 
-        I,J,d = match_radec(bricks.ra, bricks.dec, T.ra, T.dec, 0.25, nearest=True)
-        print('Matched', len(I), 'bricks near NGC objects')
-        bricks.cut(I)
+    if bricks is None:
+        bricks = survey.get_bricks()
+        
+    I,J,d = match_radec(bricks.ra, bricks.dec, T.ra, T.dec, 0.25, nearest=True)
+    print('Matched', len(I), 'bricks near NGC objects')
+    bricks.cut(I)
 
         # bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-dr4.fits'))
         # bricks.cut((bricks.nexp_g > 0) *
