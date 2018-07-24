@@ -1362,7 +1362,7 @@ function onMapClick(e) {
     var spacer = ' &nbsp;|&nbsp; ';
 
     var txt =
-        'RA,Dec = ' + cutout_radec_link(ra, dec) +
+        'RA,Dec = ' + ra.toFixed(4) + ', ' + dec.toFixed(4) +
         '<br/><a href="' + linkurl +
         '">Link Here</a>' + spacer +
         '<a href="' + datalink + '">Data</a>' + spacer +
