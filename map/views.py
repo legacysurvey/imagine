@@ -150,7 +150,7 @@ def index(req, **kwargs):
 def _index(req,
            default_layer = 'mzls+bass-dr6',
            default_radec = (None,None),
-           default_zoom = 13,
+           default_zoom = 12,
            rooturl=settings.ROOT_URL,
            maxZoom = 16,
            **kwargs):
@@ -4644,6 +4644,7 @@ if __name__ == '__main__':
     #response = c.get('/mzls+bass-dr6/1/10/451/230.jpg')
     #response = c.get('/mzls+bass-dr6/1/11/902/461.jpg')
     #response = c.get('/mzls+bass-dr6-model/1/6/37/20.jpg')
+    #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     #c.get('/unwise-neo3/1/9/255/255.jpg')
     #c.get('/unwise-neo3/1/8/127/127.jpg')
     #c.get('/unwise-neo3/1/7/63/63.jpg')
@@ -4675,8 +4676,8 @@ if __name__ == '__main__':
     #c.get('/des-dr1/1/12/3699/2517.jpg')
     r = c.get('/fits-cutout?ra=175.8650&dec=52.7103&pixscale=0.5&layer=unwise-neo4')
     print('r:', type(r))
-    sys.exit(0)
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
+    sys.exit(0)
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
     print('Got:', response.status_code)
     print('Content:', response.content)

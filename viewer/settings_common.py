@@ -13,9 +13,6 @@ import secrets.database
 
 REDIRECT_CUTOUTS_DECAPS = False
 
-#GAIA_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia_rel1'
-GAIA_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr1-astrom'
-
 GAIA_DR1_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr1-astrom'
 GAIA_DR2_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr2-astrom'
 
@@ -84,11 +81,6 @@ UNWISE_NEO2_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo2')
 UNWISE_NEO3_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo3')
 UNWISE_NEO4_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo4')
 SDSS_DIR   = os.path.join(DATA_DIR, 'sdss')
-
-#DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
-#UNWISE_DIR = '/project/projectdirs/cosmo/data/unwise/unwise-coadds'
-
-#os.environ['DECALS_DIR'] = '/project/projectdirs/cosmo/webapp/viewer/decals-dr1/'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
