@@ -9,9 +9,9 @@ sys.path.insert(0, 'django-1.9')
 import django
 #django.setup()
 import os
-os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
 
-from decals import settings
+from viewer import settings
 settings.READ_ONLY_BASEDIR = False
 #settings.DEBUG_LOGGING = True
 
@@ -33,10 +33,16 @@ req.META = dict(HTTP_IF_MODIFIED_SINCE=None)
 
 version = 1
 
+def get_version(kind):
+    return 1
+
 def _one_tile(X):
     (kind, zoom, x, y, ignore, get_images) = X
     kwargs = dict(ignoreCached=ignore,
                   get_images=get_images)
+
+    print()
+    print('one_tile: zoom', zoom, 'x,y', x,y)
 
     # forcecache=False, return_if_not_found=True)
     if kind == 'sdss':
@@ -121,6 +127,11 @@ def _one_tile(X):
         view = views.get_tile_view(kind)
         return view(req, version, zoom, x, y, savecache=True, **kwargs)
 
+    else:
+        from map import views
+        view = views.get_tile_view(kind)
+        return view(req, version, zoom, x, y, savecache=True, **kwargs)
+
 def _bounce_one_tile(*args):
     try:
         _one_tile(*args)
@@ -155,7 +166,7 @@ def _bounce_sdssco(X):
         save = True
 
     # Save jpeg
-    from decals import settings
+    from viewer import settings
     #tag = 'sdss'
     tag = 'sdssco'
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
@@ -211,26 +222,36 @@ def top_levels(mp, opt):
     if opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid',
                     'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
                     'decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
+                    'decals-dr7', 'decals-dr7-model', 'decals-dr7-resid',
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
+                    'des-dr1',
                     'eboss',
-                    'unwise-neo2', 'unwise-neo3',
-                    'sdss2']:
+                    'unwise-neo2', 'unwise-neo3', 'unwise-neo4',
+                    'galex', 'sdss2', 'wssa',
+                    'ls-dr56', 'ls-dr67']:
         import pylab as plt
-        from decals import settings
+        from viewer import settings
         from legacypipe.survey import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
         from map.views import _unwise_to_rgb
+        from map.views import galex_rgb, wssa_rgb
         tag = opt.kind
 
         rgbkwargs = {}
-        if opt.kind in ['unwise-neo2', 'unwise-neo3']:
+        if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4']:
             bands = [1, 2]
             get_rgb = _unwise_to_rgb
         elif opt.kind == 'sdss2':
             bands = 'gri'
             get_rgb = sdss_rgb
+        elif opt.kind == 'galex':
+            bands = ['n','f']
+            get_rgb = galex_rgb
+        elif opt.kind == 'wssa':
+            bands = ['x']
+            get_rgb = wssa_rgb
         else:
             bands = 'grz'
             get_rgb = dr2_rgb
@@ -311,7 +332,7 @@ def top_levels(mp, opt):
 
     elif opt.kind in ['unwise', 'unwise-neo1', 'unwise-w3w4',]:
         import pylab as plt
-        from decals import settings
+        from viewer import settings
         from map.views import _unwise_to_rgb, save_jpeg, trymakedirs
         import fitsio
 
@@ -450,7 +471,7 @@ def top_levels(mp, opt):
 
     if opt.kind in ['depth-g', 'depth-r', 'depth-z']:
         import pylab as plt
-        from decals import settings
+        from viewer import settings
         from scipy.ndimage.filters import gaussian_filter
         from map.views import trymakedirs
 
@@ -508,7 +529,7 @@ def top_levels(mp, opt):
                     'decals-dr3', 'decals-dr3-model', 'decals-dr3-resid',
                     ]:
         import pylab as plt
-        from decals import settings
+        from viewer import settings
         from legacypipe.survey import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
@@ -617,7 +638,13 @@ def top_levels(mp, opt):
 
 
 def _layer_get_filename(args):
-    layer,brick,band,scale = args
+    layer,brick,band,scale,force = args
+
+    if force:
+        fn = layer.get_scaled_filename(brick, band, scale)
+        if os.path.exists(fn):
+            os.remove(fn)
+
     fn = layer.get_filename(brick, band, scale)
     print(fn)
 
@@ -657,6 +684,8 @@ def main():
 
     parser.add_option('--top', action='store_true', help='Top levels of the pyramid')
 
+    parser.add_option('--split', action='store_true', help='For split layers (DR6+DR7), only compute one y strip per zoom level')
+
     parser.add_option('--bricks-exist', action='store_true', help='Create table of bricks that exist')
 
     parser.add_option('--kind', default='image')
@@ -664,7 +693,7 @@ def main():
     parser.add_option('--coadd', action='store_true', help='Create SDSS coadd images?')
     parser.add_option('--grass', action='store_true', help='progress plot')
 
-    parser.add_option('--bands', default='grz')
+    parser.add_option('--bands', default=None)
 
     opt,args = parser.parse_args()
 
@@ -675,11 +704,28 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -25
-    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3']:
+    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3', 'unwise-neo4',
+                      'galex', 'wssa']:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -90
+
+        if opt.kind == 'galex' and opt.bands is None:
+            opt.bands = 'nf'
+        if 'unwise' in opt.kind and opt.bands is None:
+            opt.bands = '12'
+
+    elif opt.kind in ['des-dr1']:
+        if opt.maxdec is None:
+            opt.maxdec = 6
+        if opt.mindec is None:
+            opt.mindec = -68
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
+
     elif opt.kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
         if opt.maxdec is None:
             opt.maxdec = 90
@@ -713,26 +759,37 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
 
+    if opt.bands is None:
+        opt.bands = 'grz'
+
     if opt.top:
         top_levels(mp, opt)
         sys.exit(0)
 
     if opt.scale:
         # Rebricked
-        if opt.kind in ['decals-dr5', 'decals-dr5-model', 'eboss',
-                        'mzls+bass-dr6', 'mzls+bass-dr6-model', 'unwise-neo3',
+        if opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
+                        'eboss',
+                        'mzls+bass-dr6', 'mzls+bass-dr6-model',
+                        'unwise-neo3', 'unwise-neo4',
+                        'galex', 'wssa', 'des-dr1',
                     ]:
             from map.views import get_layer
 
             if opt.queue:
                 if len(opt.zoom) == 0:
                     opt.zoom = [1,2,3,4,5,6,7]
-                step = 0.1
+                #step = 0.1
+                #ras = np.arange(opt.minra, opt.maxra+step, step)
+                step = 5.
                 ras = np.arange(opt.minra, opt.maxra+step, step)
+                decs = np.arange(opt.mindec, opt.maxdec+step, step)
                 for zoom in opt.zoom:
                     for ralo,rahi in zip(ras, np.clip(ras[1:], opt.minra, opt.maxra)):
-                        cmd = 'python render-tiles.py --kind %s --scale --minra %f --maxra %f -z %i' % (opt.kind, ralo, rahi, zoom)
-                        print(cmd)
+                        for declo,dechi in zip(decs, np.clip(decs[1:], opt.mindec, opt.maxdec)):
+                            cmd = ('python render-tiles.py --kind %s --scale --minra %f --maxra %f --mindec %f --maxdec %f -z %i' %
+                                   (opt.kind, ralo, rahi, declo, dechi, zoom))
+                            print(cmd)
                 sys.exit(0)
 
             layer = get_layer(opt.kind)
@@ -763,7 +820,7 @@ def main():
                 for ibrick,brick in enumerate(B):
                     for band in bands:
                         if has[band][ibrick]:
-                            args.append((layer, brick, band, scale))
+                            args.append((layer, brick, band, scale, opt.ignore))
                 print(len(args), 'bricks for scale', scale)
                 mp.map(_layer_get_filename, args)
 
@@ -943,11 +1000,33 @@ def main():
         opt.y0 = opt.y
         opt.y1 = opt.y + 1
 
+    if opt.coadd and opt.kind == 'galex':
+        layer = GalexLayer('galex')
+        
+        # base-level (coadd) bricks
+        B = layer.get_bricks()
+        print(len(B), 'bricks')
+        B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
+        print(len(B), 'in Dec range')
+        B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
+        print(len(B), 'in RA range')
+
+        pat = layer.get_scaled_pattern()
+        tempfiles = []
+        for b in B:
+            for band in ['n','f']:
+                fn = pat % dict(scale=0, band=band, brickname=b.brickname)
+                layer.create_coadd_image(b, band, 0, fn, tempfiles=tempfiles)
+            for fn in tempfiles:
+                os.unlink(fn)
+        sys.exit(0)
+
     if opt.coadd and opt.kind == 'sdss':
         from legacypipe.survey import wcs_for_brick
         from map.views import trymakedirs
 
-        B = survey.get_bricks()
+        #B = survey.get_bricks()
+        B = fits_table(os.path.join(settings.DATA_DIR, 'sdss2', 'bricks-sdssco.fits'))
         print(len(B), 'bricks')
         B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
         print(len(B), 'in Dec range')
@@ -997,7 +1076,9 @@ def main():
         for b in B:
             print('Brick', b.brickname)
             wcs = wcs_for_brick(b, W=2400, H=2400, pixscale=0.396)
-            bands = 'gri'
+            #bands = 'gri'
+            bands = 'z'
+
             dirnm = os.path.join(codir, b.brickname[:3])
             fns = [os.path.join(dirnm, 'sdssco-%s-%s.fits' % (b.brickname, band))
                    for band in bands]
@@ -1009,8 +1090,11 @@ def main():
             if all([os.path.exists(fn) for fn in fns]):
                 print('Already exist')
                 continue
+
+            from map.oldviews import map_sdss
+
             ims = map_sdss(req, 1, 0, 0, 0, get_images=True, wcs=wcs, ignoreCached=True,
-                           forcescale=0)
+                           forcescale=0, bands=bands)
             if ims is None:
                 print('No overlap')
                 continue
@@ -1020,15 +1104,15 @@ def main():
                 print('Wrote', fn)
 
             # Also write scaled versions
-            dirnm = os.path.join(basedir, 'scaled', 'sdssco')
-            scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', 'sdssco-%(brickname)s-%(band)s.fits')
-            for im,band in zip(ims,bands):
-                scalekwargs = dict(band=band, brick=b.brickid, brickname=b.brickname)
-                imwcs = wcs
-                for scale in range(1, 7):
-                    print('Writing scale level', scale)
-                    im,imwcs,sfn = get_scaled(scalepat, scalekwargs, scale, None,
-                                              wcs=imwcs, img=im, return_data=True)
+            # dirnm = os.path.join(basedir, 'scaled', 'sdssco')
+            # scalepat = os.path.join(dirnm, '%(scale)i%(band)s', '%(brickname).3s', 'sdssco-%(brickname)s-%(band)s.fits')
+            # for im,band in zip(ims,bands):
+            #     scalekwargs = dict(band=band, brick=b.brickid, brickname=b.brickname)
+            #     imwcs = wcs
+            #     for scale in range(1, 7):
+            #         print('Writing scale level', scale)
+            #         im,imwcs,sfn = get_scaled(scalepat, scalekwargs, scale, None,
+            #                                   wcs=imwcs, img=im, return_data=True)
         sys.exit(0)
 
 
@@ -1044,6 +1128,13 @@ def main():
         x1 = opt.x1
         if x1 is None:
             x1 = N
+
+        if opt.split:
+            decsplit = 32.
+            y = 2.**zoom/(2.*np.pi) * (np.pi - np.log(np.tan(np.pi/4. + np.deg2rad(decsplit)/2.)))
+            y = int(y)
+            opt.y0 = y
+            y1 = y+1
 
         # Find grid of Ra,Dec tile centers and select the ones near DECaLS bricks.
         rr,dd = [],[]

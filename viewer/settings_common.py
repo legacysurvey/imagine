@@ -1,5 +1,5 @@
 """
-Django settings for decals project.
+Django settings for Legacy Survey viewer project.
 
 For more information on this file, see
 https://docs.djangoproject.com/en/1.6/topics/settings/
@@ -13,8 +13,13 @@ import secrets.database
 
 REDIRECT_CUTOUTS_DECAPS = False
 
-#GAIA_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia_rel1'
-GAIA_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr1-astrom'
+GAIA_DR1_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr1-astrom'
+GAIA_DR2_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr2-astrom'
+
+SDSS_PHOTOOBJS = None
+SDSS_RESOLVE = None
+
+SDSS_BASEDIR = '/global/project/projectdirs/cosmo/data/sdss/dr14/'
 
 CREATE_GALAXY_CATALOG = True
 
@@ -35,6 +40,7 @@ ENABLE_DR6 = False
 
 ENABLE_DECAPS = True
 ENABLE_PS1 = False
+ENABLE_DES_DR1 = False
 
 ENABLE_EBOSS = False
 
@@ -73,6 +79,7 @@ UNWISE_DIR = os.path.join(DATA_DIR, 'unwise-coadds')
 UNWISE_NEO1_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo1')
 UNWISE_NEO2_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo2')
 UNWISE_NEO3_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo3')
+UNWISE_NEO4_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo4')
 SDSS_DIR   = os.path.join(DATA_DIR, 'sdss')
 
 # Quick-start development settings - unsuitable for production
@@ -148,7 +155,7 @@ MIDDLEWARE_CLASSES = (
 #    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-ROOT_URLCONF = 'decals.urls'
+ROOT_URLCONF = 'viewer.urls'
 
 WSGI_APPLICATION = 'wsgi.application'
 

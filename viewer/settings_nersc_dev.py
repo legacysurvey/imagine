@@ -1,4 +1,4 @@
-from decals.settings_common import *
+from viewer.settings_common import *
 
 #ENABLE_SQL = True
 
@@ -33,4 +33,6 @@ ENABLE_EBOSS = True
 ENABLE_PS1 = True
 ENABLE_DR5 = True
 ENABLE_DR6 = True
+ENABLE_DR7 = True
+ENABLE_DES_DR1 = True
 

@@ -6,13 +6,17 @@ if __name__ == '__main__':
     import sys
     sys.path.insert(0, 'django-1.9')
     import os
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
     django.setup()
 
 from django.http import HttpResponse, StreamingHttpResponse
-from decals import settings
-from django.core.urlresolvers import reverse
+from viewer import settings
+try:
+    from django.core.urlresolvers import reverse
+except:
+    # django 2.0
+    from django.urls import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 
 
@@ -22,6 +26,7 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
+    'decals-dr7': [1,],
     'mzls+bass-dr6': [1,],
     'decals-dr5': [1,],
     'mzls+bass-dr4': [1,],
@@ -35,7 +40,10 @@ catversions = {
     'targets-dr2': [1,],
     'targets-dr45': [1,],
     'targets-dr56': [1,],
+    'targets-bgs-dr56': [1,],
     'gaia-dr1': [1,],
+    'gaia-dr2': [1,],
+    'sdss-cat': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
 }
@@ -83,7 +91,7 @@ def cat_gaia_dr1(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    os.environ['GAIA_CAT_DIR'] = settings.GAIA_CAT_DIR
+    os.environ['GAIA_CAT_DIR'] = settings.GAIA_DR1_CAT_DIR
     gaia = GaiaCatalog()
     cat = gaia.get_catalog_radec_box(ralo, rahi, declo, dechi)
 
@@ -92,6 +100,102 @@ def cat_gaia_dr1(req, ver):
                 gmag=[float(o.phot_g_mean_mag) for o in cat],
                 )),
                         content_type='application/json')
+
+def cat_gaia_dr2(req, ver):
+    import json
+    from legacyanalysis.gaiacat import GaiaCatalog
+    import numpy as np
+
+    tag = 'gaia-dr2'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    os.environ['GAIA_CAT_DIR'] = settings.GAIA_DR2_CAT_DIR
+    gaia = GaiaCatalog()
+    cat = gaia.get_catalog_radec_box(ralo, rahi, declo, dechi)
+
+    for c in ['ra','dec','phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag',
+              'pmra','pmdec','parallax']:
+        val = cat.get(c)
+        val[np.logical_not(np.isfinite(val))] = 0.
+        cat.set(c, val)
+
+    return HttpResponse(json.dumps(dict(
+        rd=[(float(o.ra),float(o.dec)) for o in cat],
+        sourceid=[int(o.source_id) for o in cat],
+        gmag=[float(o.phot_g_mean_mag) for o in cat],
+        bpmag=[float(o.phot_bp_mean_mag) for o in cat],
+        rpmag=[float(o.phot_rp_mean_mag) for o in cat],
+        pmra=[float(o.pmra) for o in cat],
+        pmdec=[float(o.pmdec) for o in cat],
+        parallax=[float(o.parallax) for o in cat],
+    )),
+                        content_type='application/json')
+
+
+def cat_sdss(req, ver):
+    import json
+    import numpy as np
+    from astrometry.util.starutil_numpy import degrees_between, radectoxyz, xyztoradec
+    from map.views import sdss_ccds_near
+    from astrometry.util.fits import fits_table, merge_tables
+
+    tag = 'sdss-cat'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    rad = degrees_between(ralo, declo, rahi, dechi) / 2.
+    xyz1 = radectoxyz(ralo, declo)
+    xyz2 = radectoxyz(rahi, dechi)
+    xyz = (xyz1 + xyz2)
+    xyz /= np.sqrt(np.sum(xyz**2))
+    rc,dc = xyztoradec(xyz)
+    rad = rad + np.hypot(10.,14.)/2./60.
+    ccds = sdss_ccds_near(rc[0], dc[0], rad)
+    if ccds is None:
+        print('No SDSS CCDs nearby')
+        return HttpResponse(json.dumps(dict(rd=[])),
+                            content_type='application/json')
+    print(len(ccds), 'SDSS CCDs')
+
+    T = []
+    for ccd in ccds:
+        # env/BOSS_PHOTOOBJ/301/2073/3/photoObj-002073-3-0088.fits
+        fn = os.path.join(settings.SDSS_BASEDIR, 'env', 'BOSS_PHOTOOBJ',
+                          str(ccd.rerun), str(ccd.run), str(ccd.camcol),
+                          'photoObj-%06i-%i-%04i.fits' % (ccd.run, ccd.camcol, ccd.field))
+        print('Reading', fn)
+        T.append(fits_table(fn, columns='ra dec objid mode objc_type objc_flags objc_flags nchild tai expflux devflux psfflux cmodelflux fracdev mjd'.split()))
+    T = merge_tables(T)
+    T.cut((T.dec >= declo) * (T.dec <= dechi))
+    # FIXME
+    T.cut((T.ra  >= ralo) * (T.ra <= rahi))
+    
+    # primary
+    T.cut(T.mode == 1)
+    types = ['P' if t == 6 else 'C' for t in T.objc_type]
+    fluxes = [p if t == 6 else c for t,p,c in zip(T.objc_type, T.psfflux, T.cmodelflux)]
+
+    return HttpResponse(json.dumps(dict(
+        rd=[(float(o.ra),float(o.dec)) for o in T],
+        sourcetype=types,
+        fluxes = [dict(u=float(f[0]), g=float(f[1]), r=float(f[2]),
+                       i=float(f[3]), z=float(f[4])) for f in fluxes],
+    )),
+                        content_type='application/json')
+
 
 def upload_cat(req):
     import tempfile
@@ -333,18 +437,24 @@ def cat_targets_dr2(req, ver):
 
 def cat_targets_dr45(req, ver):
     return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-dr5-0.19.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr4-0.19.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr4-0.20.0.kd.fits'),
     ], tag = 'targets-dr45')
 
 
 def cat_targets_dr56(req, ver):
     return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-dr5-0.19.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr6-0.19.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr6-0.20.0.kd.fits'),
     ], tag = 'targets-dr56')
 
-def cat_targets_drAB(req, ver, cats=[], tag=''):
+def cat_targets_bgs_dr56(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr6-0.20.0.kd.fits'),
+    ], tag = 'targets-bgs-dr56', bgs=True)
+
+def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False):
     import json
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
@@ -370,8 +480,7 @@ def cat_targets_drAB(req, ver, cats=[], tag=''):
     rad = degrees_between(rc, dc, ralo, declo)
 
     '''
-    startree -i /project/projectdirs/desi/target/catalogs/targets-dr5-0.16.2.fits -o /tmp/kd.fits -P -k
-    fitsgetext -i /tmp/kd.fits -o targets-dr5-0.16.2.kd.fits -e 0 -e 6 -e 1 -e 2 -e 3 -e 4 -e 5
+    startree -i /project/projectdirs/desi/target/catalogs/targets-dr4-0.20.0.fits -o data/targets-dr4-0.20.0.kd.fits -P -k -T
     '''
     TT = []
     for fn in cats:
@@ -386,6 +495,9 @@ def cat_targets_drAB(req, ver, cats=[], tag=''):
         return HttpResponse(json.dumps(dict(rd=[], name=[])),
                             content_type='application/json')
     T = merge_tables(TT)
+
+    if bgs:
+        T.cut(T.bgs_target > 0)
 
     names = []
     colors = []
@@ -485,11 +597,28 @@ def cat_spec(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    from astrometry.util.fits import fits_table, merge_tables
     import numpy as np
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
 
-    TT = []
-    T = fits_table(os.path.join(settings.DATA_DIR, 'specObj-dr12-trim-2.fits'))
+    xyz1 = radectoxyz(ralo, declo)
+    xyz2 = radectoxyz(rahi, dechi)
+    xyz = (xyz1 + xyz2)/2.
+    xyz /= np.sqrt(np.sum(xyz**2))
+    rc,dc = xyztoradec(xyz)
+    rc = rc[0]
+    dc = dc[0]
+    rad = degrees_between(rc, dc, ralo, declo)
+    #T = fits_table(os.path.join(settings.DATA_DIR, 'specObj-dr12-trim-2.fits'))
+    fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr14-trimmed.kd.fits')
+    kd = tree_open(fn)
+    I = tree_search_radec(kd, rc, dc, rad)
+    print('Matched', len(I), 'from', fn)
+    if len(I) == 0:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],plate=[])),
+                            content_type='application/json')
+    T = fits_table(fn, rows=I)
     debug(len(T), 'spectra')
     if ralo > rahi:
         # RA wrap
@@ -592,6 +721,7 @@ def cat_user(req, ver):
     
     fn = os.path.join(settings.USER_QUERY_DIR, cat+'.fits')
     if not os.path.exists(fn):
+        print('Does not exist:', fn)
         return
     cat = fits_table(fn)
     if haverd:
@@ -614,7 +744,14 @@ def cat_user(req, ver):
     if 'name' in cols:
         D.update(names=cat.name.tolist())
     if 'type' in cols:
-        D.update(sourcetype=list([t[0] for t in cat.get('type')]))
+        try:
+            v = list([t[0] for t in cat.get('type')])
+            json.dumps(v)
+            D.update(sourcetype=v)
+        except:
+            print('failed to convert column "type".  Traceback:')
+            import traceback
+            traceback.print_exc()
     if 'g' in cols and 'r' in cols and 'z' in cols:
         D.update(fluxes=[dict(g=float(g), r=float(r), z=float(z))
                          for g,r,z in zip(10.**((cat.g - 22.5)/-2.5),
@@ -631,6 +768,9 @@ def cat_user(req, ver):
         D.update(radius=list([float(r) for r in cat.radius]))
     if 'color' in cols:
         D.update(color=list([c.strip() for c in cat.color]))
+
+    #for k,v in D.items():
+    #    print('Cat', k, v)
 
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
@@ -714,6 +854,9 @@ def cat_decals_dr5(req, ver, zoom, x, y, tag='decals-dr5'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_mobo_dr6(req, ver, zoom, x, y, tag='mzls+bass-dr6'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def cat_decals_dr7(req, ver, zoom, x, y, tag='decals-dr7'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
@@ -836,4 +979,34 @@ def _get_decals_cat(wcs, tag='decals'):
 
 if __name__ == '__main__':
     #print('Random galaxy:', get_random_galaxy(layer='mzls+bass-dr4'))
-    create_galaxy_catalog('/tmp/dr6.fits', 6)
+    #create_galaxy_catalog('/tmp/dr6.fits', 6)
+    #specObj-dr14.fits
+    #T = fits_table('/project/projectdirs/cosmo/data/sdss/dr14/sdss/spectro/redux/specObj-dr14.fits')
+
+    from django.test import Client
+    c = Client()
+    c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
+
+    import sys
+    sys.exit(0)
+
+    T=fits_table('/project/projectdirs/cosmo/data/sdss/dr14/sdss/spectro/redux/specObj-dr14.fits',
+                 columns=['plate','mjd','fiberid','plug_ra','plug_dec','class','subclass','z','zwarning'])
+    T.rename('plug_ra', 'ra')
+    T.rename('plug_dec','dec')
+    labels = []
+    for t in T:
+        sub = t.subclass
+        sub = sub.split()
+        sub = ' '.join([s for s in sub if s[0] != '('])
+        cla = t.get('class').strip()
+        txt = cla
+        if len(sub):
+            txt += ' (' + sub + ')'
+        if cla in ['GALAXY', 'QSO']:
+            txt += ' z=%.3f' % t.z
+        labels.append(txt)
+    T.label = np.array(labels)
+    T.writeto('specObj-dr14-trimmed.fits', columns=['ra','dec','plate','mjd','fiberid','z','zwarning','label'])
+
+    # startree -i data/specObj-dr14-trimmed.fits -o data/specObj-dr14-trimmed.kd.fits -T -k -P

@@ -4,6 +4,10 @@
 <h1>{{ drname }} cutouts around RA,Dec = {{ ra }}, {{ dec }}</h1>
 
 <p>
+<a href="{% url 'cutouts_tgz' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}">Download a tarball of data</a>
+</p>
+
+<p>
 Brick {{ brick.brickname }} with RA,Dec center {{ brick.ra|floatformat:4 }}, {{ brick.dec|floatformat:4 }}.  Brick pixel coords: {{ brickx|floatformat:1 }}, {{ bricky|floatformat:1 }}
 </p>
 

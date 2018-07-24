@@ -1,6 +1,6 @@
 from __future__ import print_function
 """
-WSGI config for decals project.
+WSGI config for Legacy Survey viewers project.
 
 It exposes the WSGI callable as a module-level variable named ``application``.
 
@@ -13,7 +13,7 @@ import os
 # os.environ.setdefault('BOSS_PHOTOOBJ', '/project/projectdirs/cosmo/data/sdss/pre13/eboss/photoObj.v5b')
 # os.environ.setdefault('PHOTO_RESOLVE', '/project/projectdirs/cosmo/data/sdss/pre13/eboss/resolve/2013-07-29')
 os.environ.setdefault('PHOTO_REDUX', '')
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "decals.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "viewer.settings")
 
 #import sys
 #print 'sys.path:', sys.path

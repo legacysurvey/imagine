@@ -11,12 +11,15 @@
   ga('create', 'UA-5565065-29', 'auto');
   ga('send', 'pageview');
 </script> 
-
-<link rel="stylesheet" href="{% static "leaflet-1.2.0.css" %}" />
-<script src="{% static "leaflet-src-1.2.0.js" %}"></script>
+<link rel="stylesheet" href="{% static "leaflet-1.3.1.css" %}" />
+<script src="{% static "leaflet-src-1.3.1.js" %}"></script>
+{# From https://github.com/mapbox/leaflet-pip #}
 <script src="{% static "leaflet-pip-20170913.js" %}"></script>
-
+{# From https://github.com/jjimenezshaw/Leaflet.Control.Layers.Tree #}
+<script src="{% static "L.Control.Layers.Tree.js" %}"></script>
+<link rel="stylesheet" href="{% static "L.Control.Layers.Tree.css" %}" />
 <script src="{% static "jquery-2.1.1.min.js" %}"></script>
+{# From http://kartena.github.io/Leaflet.zoomslider #}
 <script src="{% static "leaflet-zoomslider-0.6.1.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet-zoomslider-0.6.1.css" %}" />
 {% comment %}
@@ -26,7 +29,7 @@
 <link rel="stylesheet" href="{% static "leaflet.measurecontrol-20150626.css" %}" />
 {% endcomment %}
 
-<style type="text/css">
+ <style type="text/css">
 #map { height: 100%; width: 100%; padding: 1;}
 
 #thebody { margin:0; }
@@ -141,6 +144,10 @@ background: #242424;
 <script>
 //'use strict';
 
+ // this is just to reset the indendent level for emacs javascript-mode;
+ // the "{#" is a django template comment.
+ {# }}} #}
+
 // Variables from django.
 var zoom_initial = {{ zoom }};
 var layer_initial = '{{ layer }}';
@@ -225,6 +232,59 @@ var ZoomRangeTileLayer = L.TileLayer.extend({
     },
 });
 
+var SplitTileLayer = L.TileLayer.extend({
+
+    // new SplitTileLayer(static_tile_url_B, ysplits,
+    //                    north_args, mid_args, south_args);
+    initialize: function(url, ysplits, north_args, mid_args, south_args) {
+        this._url = url;
+        this._ysplits = ysplits;
+        this._north_args = north_args;
+        this._mid_args = mid_args;
+        this._south_args = south_args;
+    },
+    
+	getTileUrl: function (tile) {
+        var ysplit = this._ysplits[tile.z];
+        // y=0 is the top!
+        var urlpat;
+        var opts;
+        if (tile.y < ysplit) {
+            opts = this._north_args;
+            console.log('y', tile.y, 'zoom', tile.z, '<', ysplit, '-> north');
+        } else if (tile.y > ysplit) {
+            opts = this._south_args;
+            console.log('y', tile.y, 'zoom', tile.z, '>', ysplit, '-> south');
+        } else {
+            opts = this._mid_args;
+            console.log('y', tile.y, 'zoom', tile.z, '=', ysplit, '-> mid');
+        }
+        urlpat = this._getUrlPattern(tile.z, opts['urlPatterns']);
+        //console.log('URL pattern:', urlpat);
+        //console.log('opts:', opts);
+		var url = L.Util.template(urlpat, L.extend({
+			s: this._getSubdomain(tile),
+			z: tile.z,
+			x: tile.x,
+			y: tile.y
+		}, opts));
+        console.log('-> ', url);
+        return url;
+	},
+
+    _getUrlPattern: function (zoom, patterns) {
+        for (var i=0; i<patterns.length; i++) {
+            var zlo  = patterns[i][0];
+            var zhi  = patterns[i][1];
+            if ((zoom >= zlo) && (zoom <= zhi)) {
+                return patterns[i][2];
+            }
+        }
+        return this._url;
+    },
+});
+
+ 
 // for attaching leaflet.Labels to circles
 L.Circle.include(L.BaseMarkerMethods);
 
@@ -232,6 +292,9 @@ var CatalogOverlay = L.Evented.extend({
 
     initialize: function(name, pretty, kwargs) {
         //console.log('CatalogOverlay: ' + name + ',' + pretty);
+        //console.log('CatalogOverlay: ' + name + ': options');
+        //console.log('    ' + this.options);
+        this.options = {};
         this._counter = 1;
         this._url = kwargs['url'] || smallcat_url;
         this._url_term = kwargs['urlTerm'] || name;
@@ -249,8 +312,8 @@ var CatalogOverlay = L.Evented.extend({
         this._radius = kwargs['radius'] || 3000;
         this._minZoom = kwargs['minZoom'] || 3;
         this._labelsMinZoom = kwargs['labelsMinZoom'] || 6;
-        this._style = {'color':'#ffffff',
-                       'fillOpacity':0,
+        this._color = kwargs['color'] || '#ffffff';
+        this._style = {'fillOpacity':0,
                        'weight':5,
                       };
         this._oldZoom = zoom_initial;
@@ -263,10 +326,14 @@ var CatalogOverlay = L.Evented.extend({
     },
 
     ready: function() {
-        console.log(this._name + ' ready function called');
+        //console.log(this._name + ' ready function called');
         this._checkbox = getOverlayCheckbox(this._pretty);
         // _checkbox is a jQuery node
         //console.log('checkbox:', this._checkbox);
+        if (!this._checkbox) {
+            console.log('BUG line 278');
+            return;
+        }
         // add status span after the layer name span
         var nxt = this._checkbox.next();
         var stat = L.DomUtil.create('span', 'layer-status');
@@ -283,17 +350,18 @@ var CatalogOverlay = L.Evented.extend({
     },
 
     overlayAdded: function(e) {
-        console.log(this._name + ': overlayAdded, zoom ' + map.getZoom() + ', my min ' + this._minZoom);
-        if (e.name == this._pretty) {
+        if (layerMatchesEvent(this, e)) {
+            console.log('overlayAdded: ' + this._name);
             this._show = true;
 	        if (map.getZoom() >= this._minZoom) {
+                console.log(this._name + ': LOADING!')
 	            this.load();
 	        }
         }
     },
 
     overlayRemoved: function(e) {
-        if (e.name == this._pretty) {
+        if (layerMatchesEvent(this, e)) {
 	        this._show = false;
             this.removeAllLayers();
         }
@@ -328,8 +396,8 @@ var CatalogOverlay = L.Evented.extend({
             if (this._checkbox) {
                 this._checkbox.removeAttr('disabled');
                 if (this._checkbox.prop('checked')) {
-                    //console.log('Re-adding ' + this._name);
-                    this.overlayAdded({name:this._pretty});
+                    // SEE layerMatchesEvent()
+                    this.overlayAdded({layer:{_name:this._name}});
                 }
             }
         }
@@ -356,7 +424,7 @@ var CatalogOverlay = L.Evented.extend({
     },
 
     loaded: function(counter, result) {
-        console.log('Loaded catalog');
+        console.log('Loaded catalog for ' + this._name);
         if (counter != this._counter) {
             console.log(this._name + ': loaded counter ' + counter + ' but ' +
                         this._counter + ' is current.');
@@ -367,7 +435,7 @@ var CatalogOverlay = L.Evented.extend({
             return;
         }
         var circles = this.getLayer(result);
-        console.log('Got marker layer ' + circles);
+        //console.log('Got marker layer ' + circles);
         // remove old layers
         for (var k in this._layers) {
 	        if (k < counter) {
@@ -403,34 +471,73 @@ var CatalogOverlay = L.Evented.extend({
         var circleList = new Array(rdlist.length);
         var clong = map.getCenter().lng;
         var radii = result['radiusArcsec'];
+        var tooltipStyle = this.getTooltipStyle();
         for (var i=0, len=rdlist.length; i<len; i++) {
             var r = rdlist[i][0];
             var d = rdlist[i][1];
             var lat = dec2lat(d);
             var lng = ra2long_C(r, clong);
+            var style = this._style;
+            var color = this.getColor(result, i);
+            if (color !== undefined) {
+                style = Object.assign(style, {'color':color});
+            }
+            var radius = this._radius;
             if (radii) {
 	            // arcsec to meters:
 	            var meters = (radii[i] * 30.87) || 30;
-                var circ = L.circle([lat, lng], meters, this._style);
-            } else {
-                var circ = L.circle([lat, lng], this._radius, this._style);
+                radius = meters;
             }
+            var circ = L.circle([lat, lng], radius, style);
 	        if (showlabels) {
                 var txt = this.getLabel(result, i);
                 if (txt.length > 0) {
-                    circ.bindTooltip(txt, { permanent: true, interactive: true, className: 'spectrumTooltip' });
-
+                    circ.bindTooltip(txt, tooltipStyle);
                 }
 	        }
+            var txt = this.getPopupText(result, i);
+            if (txt.length > 0) {
+                circ.popupText = txt;
+                circ.on('click', function(e) {
+                    popup.setLatLng(e.latlng)
+                         .setContent(e.target.popupText)
+                         .openOn(map);
+                    e.stopPropagation();
+                });
+            }
             circleList[i] = circ;
         }
         return L.layerGroup(circleList);
     },
 
+    getTooltipStyle() {
+        return { permanent: true, interactive: true,
+                 className: 'spectrumTooltip' };
+    },
+
     getLabel: function(json, i) {
         return json['name'][i];
     },
+
+    getPopupText: function(json, i) {
+        return '';
+    },
     
+    getColor: function(json, i) {
+        if (!('color' in json)) {
+            //return undefined;
+            return self._color;
+        }
+        return json['color'][i];
+    },
+
+    getLinkHere: function() {
+        return this._url_term;
+    },
+
+    initLinkHere: function(val) {
+    },
+
 });
 
 var BrightCatalog = CatalogOverlay.extend({
@@ -459,10 +566,23 @@ var GalaxyCatalog = CatalogOverlay.extend({
 
 var SdssSpectraCatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
-        var label = '<a href="http://dr12.sdss3.org/spectrumDetail?mjd=' +
-            json['mjd'][i] + '&fiber=' + json['fiber'][i] + '&plateid=' +
+        var label = '<a href="https://dr14.sdss.org/optical/spectrum/view?mjd=' +
+            json['mjd'][i] + '&fiberid=' + json['fiber'][i] + '&plateid=' +
             json['plate'][i] + '">' + json.name[i] + '</a>';
         return label;
+    },
+
+    getColor: function(json, i) {
+        var label = json.name[i];
+        if (label.startsWith("QSO")) {
+            return "#4444ff";
+        } else if (label.startsWith("GALAXY")) {
+            return "#ffffff";
+        } else if (label.startsWith("STAR")) {
+            return "#ff4444";
+        } else {
+            return "#888888";
+        }
     },
 });
 
@@ -640,6 +760,10 @@ var Ps1CatalogOverlay = CatalogOverlay.extend({
 });
 {% endif %}
 
+function layerMatchesEvent(layer, event) {
+    return (layer._name == event.layer._name);
+}
+
 var TileWatcher = L.Evented.extend({
 
     initialize: function() {
@@ -699,6 +823,7 @@ var TiledOverlay = CatalogOverlay.extend({
         if (!this._show) {
             return;
         }
+        console.log('Layer ' + this._name + ': tile visible');
         var tile = e.tile;
         //console.log('tileVisible: tile ' + tile);
         if (tile.z === undefined) {
@@ -751,9 +876,10 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 
     overlayAdded: function(e) {
-        if (e.name != this._pretty) {
+        if (!layerMatchesEvent(this, e)) {
             return;
         }
+        console.log('overlayAdded: ' + this._name);
         this._show = true;
 	    if (map.getZoom() < this._minZoom) {
             return;
@@ -885,7 +1011,7 @@ var UserCatalogLayer = CatalogOverlay.extend({
     },
 
     ready: function() {
-        console.log(this._name + ' ready function called (UserCatalogLayer)');
+        //console.log(this._name + ' ready function called (UserCatalogLayer)');
         this._checkbox = getOverlayCheckbox(this._pretty);
         // _checkbox is a jQuery node
         //console.log('checkbox:', this._checkbox);
@@ -911,7 +1037,7 @@ var UserCatalogLayer = CatalogOverlay.extend({
         nxt.after('&nbsp;');
         // find it with jQuery
         this._index = $('#' + indxid);
-        this._index.html('[0]');
+        this._index.html('[' + (this._catoffset + this._catindex) + ']');
 
         // prev catalog entry
         var prevbutton = L.DomUtil.create('a', 'layer-prev');
@@ -946,7 +1072,6 @@ var UserCatalogLayer = CatalogOverlay.extend({
           this._catoffset += this._catdata.length;
           this._catindex = -1;
         } else {
-          
           this._index.html('[' + (this._catoffset + this._catindex) + ']');
           ra  = this._catdata[this._catindex][0];
           dec = this._catdata[this._catindex][1];
@@ -1220,9 +1345,10 @@ function onMapClick(e) {
     }
 
     for (var i=0,len=overlays.length; i<len; i++) {
-        // console.log('Overlay ' + overlays[i]._name + ' shown? ' + overlays[i]._show + ', url term ' + overlays[i]._url_term);
+        console.log('Overlay ' + overlays[i]._name + ' shown? ' + overlays[i]._show);
+        console.log('   link: ' + overlays[i].getLinkHere());
         if (overlays[i]._show) {
-            linkurl += '&' + overlays[i]._url_term;
+            linkurl += '&' + overlays[i].getLinkHere()
         }
     }
 
@@ -1296,7 +1422,8 @@ function inbrickccdUpdate(props) {
 
 // "Bricks", "CCDs", etc button checked
 function overlayAdded(e) {
-    console.log('OverlayAdded:', e);
+    //console.log('OverlayAdded:', e);
+    //console.log('  overlay name: ' + e.layer._name);
     if (inbrickccdAdded) {
         return;
     }
@@ -1425,6 +1552,97 @@ var mylayer_B = function (name, pretty, kwargs) {
     tiles.pretty = pretty;
     return tiles;
 };
+
+function split_layer(name, pretty, decsplit,
+                     north_name, north_urls,
+                     mid_name,   mid_urls,
+                     south_name, south_urls) {
+    var args = {
+        maxZoom: maxZoom,
+        minZoom: minZoom,
+        maxNativeZoom: maxNativeZoom,
+        attribution: decals_attrib,
+        unloadInvisibleTiles: true,
+        subdomains: subdomains_B,
+    };
+    var north_args = Object.assign(
+        {},
+        args,
+        { id: north_name, ver: getversion(north_name) },
+        { urlPatterns: north_urls});
+    var mid_args = Object.assign(
+        {},
+        args,
+        { id: mid_name, ver: getversion(mid_name) },
+        { urlPatterns: mid_urls});
+    var south_args = Object.assign(
+        {},
+        args,
+        { id: south_name, ver: getversion(south_name) },
+        { urlPatterns: south_urls});
+
+    //console.log('split_layer: north', north_args, 'mid', mid_args, 'south', south_args);
+    
+    var ysplits = {};
+    for (var zoom=0; zoom<20; zoom++) {
+        // Thanks, https://en.wikipedia.org/wiki/Web_Mercator
+        y = Math.pow(2, zoom) / (2. * Math.PI) *
+            (Math.PI - Math.log(Math.tan(Math.PI/4. + (Math.PI / 180. * decsplit) / 2.)));
+        ysplits[zoom] = Math.floor(y);
+        console.log('Dec split', decsplit, 'zoom', zoom, '-> y', ysplits[zoom]);
+    }
+    var tiles = new SplitTileLayer(static_tile_url_B, ysplits,
+                                   north_args, mid_args, south_args);
+    tiles.name = name;
+    tiles.pretty = pretty;
+    return tiles;
+};
+                                            
+tiles = mylayer_B('des-dr1', 'DES DR1',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+{% if enable_dr7 %}
+tiles = split_layer('ls-dr67', 'LegacySurvey DR6+DR7 images',
+                    32.,
+                    // North
+                    'mzls+bass-dr6', [ [13, maxZoom, tile_url], ],
+                    // Mid
+                    'ls-dr67', [ [14, maxZoom, tile_url], ],
+                    // South
+                    'decals-dr7', [ [11, maxZoom, tile_url], ]
+                   );
+allLayers.push(tiles);
+{% endif %}
+
+tiles = split_layer('ls-dr56', 'LegacySurvey DR5+DR6 images',
+                    32.,
+                    // North
+                    'mzls+bass-dr6', [ [13, maxZoom, tile_url], ],
+                    // Mid
+                    'ls-dr56', [ [13, maxZoom, tile_url], ],
+                    // South
+                    'decals-dr5', [ [14, maxZoom, tile_url], ]
+                   );
+//{'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+{% if enable_dr7 %}
+tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
+                  {'urlPatterns': [ [11, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% if enable_dr7_models %}
+tiles = mylayer_B('decals-dr7-model', 'DECaLS DR7 models',
+                  {'urlPatterns': [ [10, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr7_resids %}
+tiles = mylayer_B('decals-dr7-resid', 'DECaLS DR7 residuals',
+                {'urlPatterns': [ [10, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+{% endif %}
 
 {% if enable_dr6 %}
 tiles = mylayer_B('mzls+bass-dr6', 'MzLS+BASS DR6 images',
@@ -1587,16 +1805,37 @@ allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-neo3', 'unWISE W1/W2 NEO3',
                 {'maxNativeZoom': 12,
-                 //'urlPatterns': [ [11, maxZoom, tile_url], ],});
-                 'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                 'urlPatterns': [ [10, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
-tiles = mylayer('sfd', 'SFD dust map',
+tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
+                {'maxNativeZoom': 12,
+                 'urlPatterns': [ [9, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+{% comment %}
+tiles = mylayer('2mass', '2MASS',
+                {'maxNativeZoom': 12,
+                 'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endcomment %}
+
+tiles = mylayer_B('galex', 'GALEX',
+                {'maxNativeZoom': 12,
+                 'urlPatterns': [ [10, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('sfd', 'SFD dust map',
                 {'maxNativeZoom':10,
                  'urlPatterns': [ [7, 10, tile_url],], });
 allLayers.push(tiles);
 
-tiles = mylayer('halpha', 'Halpha map',
+tiles = mylayer_B('wssa', 'WISE 12-micron dust map',
+                {'maxNativeZoom':10,
+                 'urlPatterns': [ [9, 10, tile_url],], });
+allLayers.push(tiles);
+
+tiles = mylayer_B('halpha', 'Halpha map',
                 {'maxNativeZoom':10,
                  'urlPatterns': [ [7, 10, tile_url],],});
 allLayers.push(tiles);
@@ -2193,6 +2432,30 @@ var ccdOverlay6 = new PolygonOverlay('mzls+bass-dr6-ccds',
                                      'dr_name': 'DR6',
                                     });
 {% endif %}
+
+{% if enable_dr7_overlays %}
+var ccdOverlay7 = new PolygonOverlay('decals-dr7-ccds',
+                                     'DECaLS DR7 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds7',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'decals-dr7',
+                                     'dr_name': 'DR7',
+                                    });
+var expOverlay7 = new CircleOverlay('decals-dr7-exps',
+                                    'DECaLS DR7 Exposures',
+                                    {'url':exposures_url,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'exps7',
+                                     'detail': exp_detail,
+                                     'detail_list': exp_detail_list,
+                                     'url_name': 'decals-dr7',
+                                     'dr_name': 'DR7',
+                                    });
+{% endif %}
                                                      
 var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
                                       {'url': bricks_url,
@@ -2262,6 +2525,9 @@ var polygonOverlays = [
     {% if enable_dr6_overlays %}
     ccdOverlay6,
     {% endif %}
+    {% if enable_dr7_overlays %}
+    ccdOverlay7, expOverlay7,
+    {% endif %}
     brickOverlay,
     ccdOverlaySdss,
     {% if enable_spectra %}
@@ -2317,12 +2583,21 @@ var mzlsbasscat6 = new DecalsCatalogLayer(tileWatcher,
                                            'urlTerm': 'sources-dr6'});
 {% endif %}
 
+{% if enable_dr7_overlays %}
+var decalscat7 = new DecalsCatalogLayer(tileWatcher,
+                                        'decals-dr7',
+                                        'DECaLS DR7 Catalog',
+                                        {'url': cat_url,
+                                         'minZoom': 12,
+                                         'urlTerm': 'sources-dr7'});
+{% endif %}
+
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
 var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {});
 
 {% if enable_ps1 %}
-var ps1cat = new Ps1CatalogOverlay('ps1', 'PS1 catalog', {'radius':150});
+var ps1cat = new Ps1CatalogOverlay('ps1-cat', 'PS1 catalog', {'radius':150});
 {% endif %}
 
 var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
@@ -2331,12 +2606,102 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
                               'labelsMinZoom': 7,
                              'urlTerm': 'ngc',});
 
-var gaia = new CatalogOverlay('gaia-dr1', 'Gaia DR1 sources',
+var GaiaDr1Catalog = CatalogOverlay.extend({
+    getColor: function(json, i) {
+        return '#bbbbff';
+    }
+});
+
+//var gaia = new CatalogOverlay('gaia-dr1', 'Gaia DR1 sources',
+var gaia = new GaiaDr1Catalog('gaia-dr1', 'Gaia DR1 sources',
                              {'url_name': 'gaia-dr1',
                               'minZoom': 11,
                               'labelsMinZoom': 99,
                               'urlTerm': 'gaia-dr1',
-                              'radius': 300, });
+                              //'color': '#ffffff',
+                              'radius': 260, });
+
+var GaiaDr2Catalog = CatalogOverlay.extend({
+    getColor: function(json, i) {
+        return '#8888ff';
+    },
+
+    getLabel(json, i) {
+        var ra = json['rd'][i][0];
+        var dec = json['rd'][i][1];
+        var txt = 'RA,Dec ' + ra.toFixed(4) + ', ' + dec.toFixed(4);
+        var pmra = json['pmra'][i];
+        var pmdec = json['pmdec'][i];
+        var parallax = json['parallax'][i];
+        if (pmra != 0.0) {
+            txt = txt + '<br>pmRA,Dec ' + pmra.toFixed(0) + ', ' + pmdec.toFixed(0) + ', parallax ' + parallax.toFixed(0);
+        }
+        txt = txt + '<br>G ' + json['gmag'][i].toFixed(2) + ', BP ' + json['bpmag'][i].toFixed(2) + ', RP ' + json['rpmag'][i].toFixed(2);
+        txt = txt + '<br>Source id: ' + json['sourceid'][i];
+        return txt;
+    },
+
+    getTooltipStyle() {
+        return { permanent: false, interactive: true, };
+    },
+
+});
+
+var gaia2 = new GaiaDr2Catalog('gaia-dr2', 'Gaia DR2 sources',
+                             {'url_name': 'gaia-dr2',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'gaia-dr2',
+                              'radius': 220,
+                              //'color': '#ddddff'
+                              });
+
+
+var SdssCatalog = CatalogOverlay.extend({
+
+    getColor: function(json, i) {
+        if (json['sourcetype'][i] == 'P') {
+            return '#9AFE2E';
+        }
+        return '#888888';
+    },
+
+    getLabel(json, i) {
+        return '';
+    },
+
+    getPopupText(json, i) {
+        var ra = json['rd'][i][0];
+        var dec = json['rd'][i][1];
+        var txt = 'RA,Dec ' + ra.toFixed(4) + ', ' + dec.toFixed(4);
+        if (json['sourcetype'][i] == 'P') {
+            var tt = 'PSF';
+        } else {
+            var tt = 'CModel';
+        }
+        txt = txt + '<br>' + tt + ' mags: ';
+        txt += 'u=' + fluxToMag(json['fluxes'][i]['u']).toFixed(2) + ', ';
+        txt += 'g=' + fluxToMag(json['fluxes'][i]['g']).toFixed(2) + ', ';
+        txt += 'r=' + fluxToMag(json['fluxes'][i]['r']).toFixed(2) + ', ';
+        txt += 'i=' + fluxToMag(json['fluxes'][i]['i']).toFixed(2) + ', ';
+        txt += 'z=' + fluxToMag(json['fluxes'][i]['z']).toFixed(2);
+        //txt = txt + '<br>Source id: ' + json['sourceid'][i];
+        return txt;
+    },
+
+    getTooltipStyle() {
+        return { permanent: false, interactive: true, };
+    },
+    
+});
+
+var sdsscat = new SdssCatalog('sdss-cat', 'SDSS sources',
+                             {'url_name': 'sdss-cat',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'sdss-cat',
+                              'radius': 100,
+                              });
 
 {% if enable_phat %}
 var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
@@ -2354,6 +2719,11 @@ var desi_targets = new DesiTargetCatalog('targets-dr45', 'DESI Targets (DR4/DR5)
                                    'minZoom': 11, });
 
 var desi_targets56 = new DesiTargetCatalog('targets-dr56', 'DESI Targets (DR5/DR6)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+var desi_bgs_targets56 = new DesiTargetCatalog('targets-bgs-dr56', 'DESI BGS Targets (DR5/DR6)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
@@ -2380,17 +2750,201 @@ var specDeep2 = new Deep2SpectraCatalog('spec-deep2', 'DEEP2 Spectra',
 
 {% if enable_sql %}
 var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
-                                       {'url': sql_url,
-                                        'radius': 300,
-                                       });
+                                       {'url': sql_url, 'radius': 300,});
 {% endif %}
+
+// Constellations
+var conGroup = L.layerGroup([]);
+var constellations = {
+    _name: 'constellations',
+    _pretty: 'Constellations',
+    getGroup: function() { return conGroup; },
+    getLinkHere: function() { return 'constellations'; },
+    initLinkHere: function(val) {},
+};
+
+// DESI Footprint
+// from gfa-corners.fits from Bailey, 2017-09-14
+var petal_radius = [
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
+    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479]];
+var petal_phi = [
+    [ -72.68064188,  -72.65497301,  -76.97939241,  -77.1732807 ],
+    [ -36.68064188,  -36.65497301,  -40.97939241,  -41.1732807 ],
+    [  -0.68064188,   -0.65497301,   -4.97939241,   -5.1732807 ],
+    [  35.31935812,   35.34502699,   31.02060759,   30.8267193 ],
+    [  71.31935812,   71.34502699,   67.02060759,   66.8267193 ],
+    [ 107.31935812,  107.34502699,  103.02060759,  102.8267193 ],
+    [ 143.31935812,  143.34502699,  139.02060759,  138.8267193 ],
+    [ 179.31935812,  179.34502699,  175.02060759,  174.8267193 ],
+    [-144.68064188, -144.65497301, -148.97939241, -149.1732807 ],
+    [-108.68064188, -108.65497301, -112.97939241, -113.1732807 ]];
+var desi_radius = 1.60577;
+
+// Commissioning instrument CCDs
+//CIW: RA,Dec boundaries relative to boresight (0,0):
+var ci_radecs = {'CIW':
+                 [[-1.60636765, -1.5335968 , -1.5335968 , -1.60636765],
+                  [-0.0503096, -0.0503096,  0.0488675,  0.0488675]],
+                 'CIS':
+                 [[5.46111024e-02, 5.46093498e-02, -5.30440012e-02, -5.30457037e-02],
+                  [-1.60352809, -1.53643771, -1.53643775, -1.60352813]],
+                 'CIC':
+                 [[-5.68333564e-02, -5.68333564e-02, 5.52042579e-02, 5.52042579e-02],
+                  [ 0.03787655, -0.03791358, -0.03791358,  0.03787655]],
+                 'CIN':
+                 [[-5.46111024e-02, -5.46093498e-02,5.30440012e-02, 5.30457037e-02],
+                  [1.60352809, 1.53643771, 1.53643775, 1.60352813]],
+                 'CIE':
+                 [[1.60636765, 1.5335968 , 1.5335968 , 1.60636765],
+                  [ 0.0503096,  0.0503096, -0.0488675, -0.0488675]],
+                };
+
+var DesiFootprint = CatalogOverlay.extend({
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this._got_initial_position = false;
+        var group = [];
+        var clong = 180;
+        this._circle = L.circle(L.latLng(dec2lat(0), ra2long_C(0, clong)),
+                                arcsecToMeters(desi_radius * 3600.),
+                                {color:'yellow', fill:false}); //fillOpacity:0.01});
+        group.push(this._circle);
+        this._gfa_rds = [];
+        var polys = [];
+        for (var i=0; i<petal_radius.length; i++) {
+            var ll = [];
+            var rd = [];
+            var N = petal_radius[i].length;
+            for (var j=0; j<N+1; j++) {
+                var phi = petal_phi[i][j%N] * Math.PI / 180.0;
+                var ddec = petal_radius[i][j%N] * Math.cos(phi);
+                var dra  = petal_radius[i][j%N] * Math.sin(phi);
+                rd.push([dra, ddec]);
+                ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
+            }
+            this._gfa_rds.push(rd);
+            polys.push(ll);
+        }
+        this._gfa = L.polyline(polys, {color: 'green'});
+        group.push(this._gfa);
+
+        this._ci_rds = [];
+        polys = [];
+        for (var k in ci_radecs) {
+            var rrdd = ci_radecs[k];
+            var ll = [];
+            var rd = [];
+            var N = rrdd[0].length;
+            for (var j=0; j<N+1; j++) {
+                var dra  = rrdd[0][j%N];
+                var ddec = rrdd[1][j%N];
+                rd.push([dra, ddec]);
+                ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
+            }
+            this._ci_rds.push(rd);
+            polys.push(ll);
+        }
+        this._ci = L.polyline(polys, {color: 'magenta'});
+        group.push(this._ci);
+
+        this._layer = L.layerGroup(group);
+        //map.on('mapMoved', this.mapMoved.bind(this));
+    },
+    ready: function() {
+        console.log(this._name + ' ready function called');
+        if (!this._got_initial_position) {
+            this.moveTo(map.getCenter());
+        }
+        this._gfa.redraw();
+    },
+    overlayAdded: function(e) {
+        console.log('DESIFootprint.overlayAdded');
+        this._show = true;
+        if (!this._got_initial_position) {
+            this.moveTo(map.getCenter());
+        }
+        this._group.addLayer(this._layer);
+    },
+    overlayRemoved: function(e) {
+        this._show = false;
+    },
+    moveTo: function(c) {
+        this._circle.setLatLng(c);
+        var clong = c.lng;
+        var d0 = lat2dec(c.lat);
+        var r0 = long2ra(clong);
+        this.ra = r0;
+        this.dec = d0;
+        var cosdec = Math.cos(d0 * Math.PI / 180.0);
+        var polys = [];
+        for (var i=0; i<this._gfa_rds.length; i++) {
+            var ll = [];
+            var rd = this._gfa_rds[i];
+            var N = rd.length;
+            for (var j=0; j<N; j++) {
+                ll.push([dec2lat(d0 + rd[j][1]),
+                         ra2long_C(r0 + rd[j][0] / cosdec, clong)]);
+            }
+            polys.push(ll);
+        }
+        this._gfa.setLatLngs(polys);
+        this._gfa.redraw();
+
+        var polys = [];
+        for (var i=0; i<this._ci_rds.length; i++) {
+            var ll = [];
+            var rd = this._ci_rds[i];
+            var N = rd.length;
+            for (var j=0; j<N; j++) {
+                ll.push([dec2lat(d0 + rd[j][1]),
+                         ra2long_C(r0 + rd[j][0] / cosdec, clong)]);
+            }
+            polys.push(ll);
+        }
+        this._ci.setLatLngs(polys);
+        this._ci.redraw();
+    },
+    load: function() {
+    },
+    getLinkHere: function() {
+        return 'desifoot=' + this.ra.toFixed(4) + ',' + this.dec.toFixed(4);
+    },
+    initLinkHere: function(val) {
+        if (val === undefined) {
+            return;
+        }
+        words = val.split(',');
+        if (words.length != 2) {
+            return;
+        }
+        var r = Number.parseFloat(words[0]);
+        var d = Number.parseFloat(words[1]);
+        this.ra = r;
+        this.dec = d;
+        this.moveTo(L.latLng(dec2lat(d), ra2long_C(r, 180)));
+        this._got_initial_position = true;
+        console.log('Set initial position for DESI footprint: ' + r + ', ' + d);
+    },
+
+});
+var desifoot = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
+desifoot._url_term = 'desifoot';
 
 var overlays = [
     {% if enable_phat %}
     phat_clusters,
     {% endif %}    
     {% if enable_dr2_overlays %}
-    decalscat2, 
+    decalscat2,
     {% endif %}
     {% if enable_dr3_overlays %}
     decalscat3,
@@ -2403,6 +2957,9 @@ var overlays = [
     {% endif %}
     {% if enable_dr6_overlays %}
     mzlsbasscat6,
+    {% endif %}
+    {% if enable_dr7_overlays %}
+    decalscat7,
     {% endif %}
     {% if enable_dr2_overlays %}
     ccdOverlay2,
@@ -2419,6 +2976,9 @@ var overlays = [
     {% if enable_dr6_overlays %}
     ccdOverlay6,
     {% endif %}
+    {% if enable_dr7_overlays %}
+    ccdOverlay7,
+    {% endif %}
     {% if enable_dr2_overlays %}
     expOverlay2,
     {% endif %}
@@ -2428,6 +2988,9 @@ var overlays = [
     {% if enable_dr5_overlays %}
     expOverlay5,
     {% endif %}
+    {% if enable_dr7_overlays %}
+    expOverlay7,
+    {% endif %}
 
     brickOverlay,
     ccdOverlaySdss,
@@ -2436,27 +2999,20 @@ var overlays = [
     ps1cat,
     {% endif %}
     gaia,
+    gaia2,
+    sdsscat,
     {% if enable_spectra %}
     spec, plateOverlay, specDeep2,
     {% endif %}
     {% if enable_desi_targets %}
     desi_targets,
     desi_targets56,
+    desi_bgs_targets56,
     {% endif %}
+    constellations,
+    desifoot,
 ];
 
-{% if usercatalogs %}
-  {% for cat,name,color in usercatalogs %}
-    var usercat = new UserCatalogLayer('usercatalog', 'User Catalog {{name}}',
-        {'url': usercat_url, 'url_args': {'cat': '{{cat}}'}});
-    var color = '{{color}}';
-    if (color.length > 0) {
-      usercat.color = color;
-    }
-    overlays = [usercat].concat(overlays);
-    map.addLayer(usercat.getGroup());
-  {% endfor %}
-{% endif %}
 
 
 if ('blink' in qstr) {
@@ -2467,122 +3023,272 @@ for (k in qstr) {
     console.log('qstring key: ' + k);
 }
 
-if ('desi' in qstr) {
-    console.log('DESI footprint');
-    // from gfa-corners.fits from Bailey, 2017-09-14
-    var petal_radius = [
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-        [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479]];
-    var petal_phi = [
-        [ -72.68064188,  -72.65497301,  -76.97939241,  -77.1732807 ],
-        [ -36.68064188,  -36.65497301,  -40.97939241,  -41.1732807 ],
-        [  -0.68064188,   -0.65497301,   -4.97939241,   -5.1732807 ],
-        [  35.31935812,   35.34502699,   31.02060759,   30.8267193 ],
-        [  71.31935812,   71.34502699,   67.02060759,   66.8267193 ],
-        [ 107.31935812,  107.34502699,  103.02060759,  102.8267193 ],
-        [ 143.31935812,  143.34502699,  139.02060759,  138.8267193 ],
-        [ 179.31935812,  179.34502699,  175.02060759,  174.8267193 ],
-        [-144.68064188, -144.65497301, -148.97939241, -149.1732807 ],
-        [-108.68064188, -108.65497301, -112.97939241, -113.1732807 ]];
 
-    var desi_radius = 1.60577;
-    
-    var DesiFootprint = CatalogOverlay.extend({
 
-        initialize: function(name, pretty, kwargs) {
-            CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
-            var group = [];
-            var clong = 180;
-            this._circle = L.circle(L.latLng(dec2lat(0), ra2long_C(0, clong)),
-                                    arcsecToMeters(desi_radius * 3600.),
-                                    {color:'yellow', fill:false}); //fillOpacity:0.01});
-            group.push(this._circle);
-            this._gfa_rds = [];
-            var polys = [];
-            for (var i=0; i<petal_radius.length; i++) {
-                var ll = [];
-                var rd = [];
-                var N = petal_radius[i].length;
-                for (var j=0; j<N+1; j++) {
-                    var phi = petal_phi[i][j%N] * Math.PI / 180.0;
-                    var ddec = petal_radius[i][j%N] * Math.cos(phi);
-                    var dra  = petal_radius[i][j%N] * Math.sin(phi);
-                    rd.push([dra, ddec]);
-                    ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
-                }
-                this._gfa_rds.push(rd);
-                polys.push(ll);
-            }
-            this._gfa = L.polyline(polys, {color: 'green'});
-            group.push(this._gfa);
-            this._layer = L.layerGroup(group);
-            map.on('mapMoved', this.mapMoved.bind(this));
-        },
-    
-        ready: function() {
-            console.log(this._name + ' ready function called');
-            this.moveTo(map.getCenter());
-        },
-    
-        overlayAdded: function(e) {
-            this.moveTo(map.getCenter());
-            this._group.addLayer(this._layer);
-        },
-
-        moveTo: function(c) {
-            this._circle.setLatLng(c);
-            var clong = c.lng;
-            var polys = [];
-            var d0 = lat2dec(c.lat);
-            var r0 = long2ra(clong);
-            var cosdec = Math.cos(d0 * Math.PI / 180.0);
-            for (var i=0; i<this._gfa_rds.length; i++) {
-                var ll = [];
-                var rd = this._gfa_rds[i];
-                var N = rd.length;
-                for (var j=0; j<N+1; j++) {
-                    ll.push([dec2lat(d0 + rd[j%N][1]),
-                             ra2long_C(r0 + rd[j%N][0] / cosdec, clong)]);
-                }
-                polys.push(ll);
-            }
-            this._gfa.setLatLngs(polys);
-            this._gfa.redraw();
-        },
-        
-        mapBoundsChanged: function() {
-            //this.move();
-        },
-
-        mapMoved: function() {
-            //var cen = map.getCenter();
-        },
-    
-    });
-    var f = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
-    f._url_term = 'desi';
-    overlays.push(f);
+var namedLayers = {};
+for (var i in allLayers) {
+    var layer = allLayers[i];
+    //console.log('layer.name ' + layer.name + ' pretty ' + layer.pretty);
+    namedLayers[layer.name] = layer;
 }
 
+ // var findlayer = function(name, children=undefined) {
+function findlayer(name, children=[]) {
+    rtn = { label: namedLayers[name].pretty, layer: namedLayers[name] };
+    if (children.length) {
+        rtn['children'] = children;
+    }
+    return rtn;
+}
+ 
+var baseTree = [
+    {% if enable_dr7 %}
+    findlayer('ls-dr67', [
+        findlayer('ls-dr56'),
+    ]),
+    {% else %}
+    findlayer('ls-dr56'),
+    {% endif %}
+    {% if enable_dr7 %}
+    findlayer('decals-dr7', [
+        findlayer('decals-dr7-model'),
+        findlayer('decals-dr7-resid'),
+    ]),
+    {% endif %}
+    {% if enable_dr6 %}
+    //{
+    findlayer('mzls+bass-dr6', [
+        findlayer('mzls+bass-dr6-model'),
+        findlayer('mzls+bass-dr6-resid'),
+    ]),
+    {% endif %}
+    {% if enable_dr5 %}
+    findlayer('decals-dr5', [
+        {% if enable_dr5_model %}
+        findlayer('decals-dr5-model'),
+        {% endif %}
+        {% if enable_dr5_resid %}
+        findlayer('decals-dr5-resid'),
+        {% endif %}
+    ]),
+    {% endif %}
+    {% if enable_dr4 %}
+    findlayer('mzls+bass-dr4', [
+        {% if enable_dr4_model %}
+        findlayer('mzls+bass-dr4-model'),
+        {% endif %}
+        {% if enable_dr4_resid %}
+        findlayer('mzls+bass-dr4-resid'),
+        {% endif %}
+    ]),
+    {% endif %}
+    {% if enable_decaps %}
+    findlayer('decaps', [
+        findlayer('decaps-model'),
+        findlayer('decaps-resid'),
+    ]),
+    {% endif %}
+    findlayer('unwise-neo4', [
+        findlayer('unwise-neo3'),
+        findlayer('unwise-neo2'),
+        findlayer('unwise-w1w2'),
+    ]),
+    {
+        label: 'More surveys',
+        children: [
+            findlayer('sdss2'),
+            {% if enable_des_dr1 %}
+            findlayer('des-dr1'),
+            {% endif %}
+            {% if enable_ps1 %}
+            findlayer('ps1'),
+            {% endif %}
+            {% comment %}
+            findlayer('2mass'),
+            {% endcomment %}
+            findlayer('galex'),
+            findlayer('wssa'),
+            findlayer('sfd'),
+            findlayer('halpha'),
+        ],
+    },
+];
 
+ var namedOverlays = {};
+for (var i=0,len=overlays.length; i<len; i++) {
+    namedOverlays[overlays[i]._name] = overlays[i];
+    // The '.getGroup()' object is the one passed into the overlay tree, so
+    // tag a name onto it.
+    group = overlays[i].getGroup();
+    group._name = overlays[i]._name;
+}
+
+ function findoverlay(name, children=[]) {
+     rtn =  { label: namedOverlays[name]._pretty,
+              layer: namedOverlays[name].getGroup() };
+     if (children.length) {
+         rtn['children'] = children;
+     }
+     return rtn;
+ }
+
+ var overlayTree = [];
+
+{% if usercatalogs %}
+  {% for cat,name,color in usercatalogs %}
+    var name = 'usercatalog-' + '{{name}}';
+    var pretty = 'User Catalog {{name}}';
+    var usercat = new UserCatalogLayer(name, pretty,
+        {'url': usercat_url, 'url_args': {'cat': '{{cat}}'}});
+    var color = '{{color}}';
+    if (color.length > 0) {
+      usercat.color = color;
+    }
+    var group = usercat.getGroup();
+    group._name = name;
+    overlayTree.push({ label: pretty,
+                       layer: group });
+    map.addLayer(group);
+    map.on('baselayerchange', function(e) {
+        usercat.ready(); });
+  {% endfor %}
+{% endif %}
+
+
+ overlayTree = overlayTree.concat([
+     findoverlay('decals-bricks'),
+
+     findoverlay('decals-dr7-ccds', [
+         {% if enable_dr6_overlays %}
+         findoverlay('mzls+bass-dr6-ccds'),
+         {% endif %}
+         {% if enable_dr5_overlays %}
+         findoverlay('decals-dr5-ccds'),
+         {% endif %}
+         {% if enable_dr4_overlays %}
+         findoverlay('mzls+bass-dr4-ccds'),
+         {% endif %}
+         {% if enable_dr3_overlays %}
+         findoverlay('decals-dr3-ccds'),
+         {% endif %}
+     ]),
+     //{ label: 'CCD outlines',
+     //children: [
+     //{% if enable_dr7_overlays %}
+     //findoverlay('decals-dr7-ccds'),
+     //{% endif %}
+     findoverlay('sdss-ccds'),
+     //],
+     //},
+     //{ label: 'DECam exposure outlines',
+     //children: [
+     //{% if enable_dr7_overlays %}
+     findoverlay('decals-dr7-exps', [
+         //{% endif %}
+         {% if enable_dr5_overlays %}
+         findoverlay('decals-dr5-exps'),
+         {% endif %}
+     ]),
+     { label: 'DECaLS DR7 catalog',
+       // label: 'Legacy Survey catalogs',
+       layer: namedOverlays['decals-dr7'].getGroup(),
+       children: [
+           //{% if enable_dr7_overlays %}
+           //findoverlay('decals-dr7'),
+           //{% endif %}
+           {% if enable_dr6_overlays %}
+           findoverlay('mzls+bass-dr6'),
+           {% endif %}
+           {% if enable_dr5_overlays %}
+           findoverlay('decals-dr5'),
+           {% endif %}
+           {% if enable_dr4_overlays %}
+           findoverlay('mzls+bass-dr4'),
+           {% endif %}
+           {% if enable_dr3_overlays %}
+           findoverlay('decals-dr3'),
+           {% endif %}
+           {% if enable_dr2_overlays %}
+           findoverlay('decals-dr2'),
+           {% endif %}
+       ],
+     },
+     { label: 'Other catalogs',
+       children: [
+           {% if enable_ps1 %}
+           findoverlay('ps1-cat'),
+           {% endif %}
+           findoverlay('gaia-dr1'),
+           findoverlay('gaia-dr2'),
+           findoverlay('sdss-cat'),
+       ],
+     },
+     {% if enable_spectra %}
+     { label: 'Spectroscopy',
+       children: [
+           findoverlay('spec'),
+           findoverlay('sdss-plates'),
+           findoverlay('spec-deep2'),
+       ],
+     },
+     {% endif %}
+     {% if enable_desi_targets %}
+     { label: 'DESI targets',
+       children: [
+           findoverlay('targets-bgs-dr56'),
+           findoverlay('targets-dr56'),
+           findoverlay('targets-dr45'),
+       ],
+     },
+     {% endif %}
+     findoverlay('desi-footprint'),
+     findoverlay('bright'),
+     findoverlay('tycho2'),
+     findoverlay('gals'),
+     findoverlay('constellations'),
+ ]);
+
+ /*
 var layerControl = new L.control.layers(baseMaps, {}, { collapsed: false })
 for (var i=0,len=overlays.length; i<len; i++) {
     layerControl._addLayer(overlays[i].getGroup(), overlays[i]._pretty, true);
 }
-
-var conGroup = L.layerGroup([]);
 layerControl._addLayer(conGroup, 'Constellations', true);
-
 layerControl.addTo(map);
+*/
 
+L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
+
+ $(document).ready(function() {
+     // This is fragile wrt the DOM structure of the tree layer control widget.
+     var sel = $(".leaflet-layerstree-opened").parent().parent();
+     //console.log('Parents:');
+     //console.log(sel);
+     
+     txts = [
+         {% if enable_dr7 %}
+         'LegacySurvey DR6+DR7 images',
+         {% endif %}
+         'MzLS+BASS DR4 images',
+         'DECaLS DR5 images',
+         'DECaPS images',
+         'unWISE W1/W2 NEO4',
+         'DECaLS DR7 catalog',
+         'DECaLS DR7 CCDs',
+         'DECaLS DR7 Exposures',
+         'Other catalogs',
+         'Spectroscopy',
+         'DESI targets',
+            ];
+
+     for (var i=0,len=txts.length; i<len; i++) {
+         var txt = txts[i];
+         var sel = $(".leaflet-layerstree-header").filter(":contains('" + txt + "')");
+         sel = sel.children().children().filter(".leaflet-layerstree-opened");
+         sel.trigger('click');
+     }
+ });
+ 
 /*
   The overlays DOM looks like this:
 
@@ -2650,8 +3356,10 @@ if ('mark' in qstr) {
 }
 
 for (var i=0,len=overlays.length; i<len; i++) {
-    if (overlays[i]._url_term in qstr) {
-        map.addLayer(overlays[i].getGroup());
+    ov = overlays[i]
+    if (ov._url_term in qstr) {
+        ov.initLinkHere(qstr[ov._url_term]);
+        map.addLayer(ov.getGroup());
     }
 }
 
@@ -2682,8 +3390,8 @@ map.on('baselayerchange', function(e) {
 
 // When space bar is pressed, switch back to previous layer.  This allows a quick "blink" between layers.
 function keyDown(e) {
-    console.log('keyDown ' + e + ' keycode ' + e.keyCode + ', char ' + e.char + ' charCode ' + e.charCode);
-    console.log('objquery has focus? ' + $('#objquery').is(":focus"));
+    //console.log('keyDown ' + e + ' keycode ' + e.keyCode + ', char ' + e.char + ' charCode ' + e.charCode);
+    //console.log('objquery has focus? ' + $('#objquery').is(":focus"));
 
     if ($('#objquery').is(":focus")) {
         return;

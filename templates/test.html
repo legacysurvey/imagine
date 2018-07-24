@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+<body>
+
+<h1>Viewer URLs test</h1>
+
+<a href="gfas">DESI GFA view</a>
+<br>
+
+<a href="ci">DESI CI view</a>
+<br>
+
+Legacy Survey DR5+DR6
+<br>
+<img src="ls-dr56/1/14/8191/6653.jpg">
+<br>
+
+Legacy Survey DR6+DR7
+<br>
+<img src="ls-dr67/1/14/8191/6653.jpg">
+<br>
+
+GALEX
+<br>
+<img src="galex/1/12/2054/1659.jpg">
+<br>
+
+DES DR1
+<br>
+<img src="des-dr1/1/11/1819/1232.jpg">
+<br>
+
+DECaLS DR7
+<br>
+<img src="decals-dr7/1/13/4070/3626.jpg">
+<img src="decals-dr7-model/1/13/4070/3626.jpg">
+<img src="decals-dr7-resid/1/13/4070/3626.jpg">
+<br>
+
+DECaLS DR7 <a href="decals-dr7/1/13/4070/3626.cat.json">catalog</a>
+<br>
+
+DECaLS DR5
+<br>
+<img src="decals-dr5/1/13/4070/3626.jpg">
+<img src="decals-dr5-model/1/13/4070/3626.jpg">
+<img src="decals-dr5-resid/1/13/4070/3626.jpg">
+<br>
+
+DECaLS DR5 <a href="decals-dr5/1/13/4070/3626.cat.json">catalog</a>
+<br>
+
+MzLS+BASS DR6
+<br>
+<img src="mzls+bass-dr6/1/13/3632/3144.jpg">
+<img src="mzls+bass-dr6-model/1/13/3632/3144.jpg">
+<img src="mzls+bass-dr6-resid/1/13/3632/3144.jpg">
+<br>
+
+MzLS+BASS DR6 <a href="mzls+bass-dr6/1/13/3632/3144.cat.json">catalog</a>
+<br>
+
+MzLS+BASS DR4
+<br>
+<img src="mzls+bass-dr4/1/13/3632/3144.jpg">
+<img src="mzls+bass-dr4-model/1/13/3632/3144.jpg">
+<img src="mzls+bass-dr4-resid/1/13/3632/3144.jpg">
+<br>
+
+MzLS+BASS DR4 <a href="mzls+bass-dr4/1/13/3632/3144.cat.json">catalog</a>
+<br>
+
+DESI <a href="targets-dr45/1/cat.json?ralo=180.0&rahi=180.1&declo=31.9&dechi=32">DR4/5 targets</a>
+<br>
+<a href="./?ra=180.0167&dec=32.0056&zoom=13&layer=mzls+bass-dr6&targets-dr45">demo</a>
+<br>
+
+DESI <a href="targets-dr56/1/cat.json?ralo=180.0&rahi=180.1&declo=31.9&dechi=32">DR5/6 targets</a>
+<br>
+<a href="./?ra=180.0167&dec=32.0056&zoom=13&layer=mzls+bass-dr6&targets-dr56">demo</a>
+<br>
+
+DESI <a href="targets-bgs-dr56/1/cat.json?ralo=180.0&rahi=180.1&declo=31.9&dechi=32">DR5/6 BGS targets</a>
+<br>
+<a href="./?ra=180.0167&dec=32.0056&zoom=13&layer=mzls+bass-dr6&targets-bgs-dr56">demo</a>
+<br>
+
+DECaPS2 tiles
+<br>
+<img src="decaps/2/13/3132/5969.jpg">
+<img src="decaps-model/2/13/3132/5969.jpg">
+<img src="decaps-resid/2/13/3132/5969.jpg">
+<br>
+
+<a href="decaps/">DECaPS shortcut</a>
+<br>
+
+Gaia catalogs
+<br>
+<a href="gaia-dr1/1/cat.json?ralo=234.6328&rahi=234.7674&declo=13.5357&dechi=13.6643">DR1</a>
+<br>
+<a href="gaia-dr2/1/cat.json?ralo=234.6328&rahi=234.7674&declo=13.5357&dechi=13.6643">DR2</a>
+<br>
+
+DEEP2 <a href="spec-deep2/1/cat.json?ralo=352.4916&rahi=352.5084&declo=-0.0083&dechi=0.0083">spectra</a>
+<br>
+
+SDSS <a href="sdss-cat/1/cat.json?ralo=352.4916&rahi=352.5084&declo=-0.0083&dechi=0.0083">catalog</a>
+<br>
+
+SDSS<br>
+<img src="sdss2/1/13/169/4096.jpg">
+<br>
+
+Data for RA,Dec:<br>
+<a href="data-for-radec/?ra=352.4991&dec=-0.1140&layer=decals-dr5">DR5</a>
+<br>
+<a href="data-for-radec/?ra=173.7148&dec=49.0834&layer=mzls+bass-dr6">DR6</a>
+<br>
+<a href="data-for-radec/?ra=352.4991&dec=-0.1140&layer=decals-dr7">DR7</a>
+<br>
+
+CCDs lists:<br>
+<a href="ccds/?ralo=234.6328&rahi=234.7674&declo=13.5357&dechi=13.6643&id=decals-dr7">DR7</a><br>
+<a href="ccds/?ralo=173.6377&rahi=173.7723&declo=49.0342&dechi=49.1208&id=mzls+bass-dr6">DR6</a><br>
+<a href="ccds/?ralo=234.6328&rahi=234.7674&declo=13.5357&dechi=13.6643&id=decals-dr5">DR5</a><br>
+<a href="ccds/?ralo=173.6377&rahi=173.7723&declo=49.0342&dechi=49.1208&id=mzls+bass-dr4">DR4</a><br>
+
+Exposure lists:<br>
+<a href="exps/?ralo=234.6328&rahi=234.7674&declo=13.5357&dechi=13.6643&id=decals-dr7">DR7</a><br>
+<a href="exps/?ralo=234.6328&rahi=234.7674&declo=13.5357&dechi=13.6643&id=decals-dr5">DR5</a><br>
+
+Tycho-2 <a href="tycho2/1/cat.json?ralo=234.1612&rahi=235.2379&declo=13.0848&dechi=14.1139">stars</a><br>
+
+NGC/IC <a href="ngc/1/cat.json?ralo=119.4090&rahi=119.9474&declo=24.8590&dechi=25.3384">galaxies</a><br>
+
+SDSS <a href="spec/1/cat.json?ralo=119.5436&rahi=119.8128&declo=24.9792&dechi=25.2189">spectroscopy</a><br>
+
+Bright <a href="bright/1/cat.json?ralo=119.1248&rahi=121.2781&declo=24.2995&dechi=26.2146">stars</a><br>
+
+SFD<br>
+<img src="sfd/1/6/20/36.jpg">
+<br>
+
+WSSA<br>
+<img src="wssa/1/6/20/36.jpg">
+<br>
+
+Halpha<br>
+<img src="halpha/1/6/20/36.jpg">
+<br>
+
+unWISE NEO4<br>
+<img src="unwise-neo4/1/8/248/95.jpg">
+<br>
+
+unWISE NEO3<br>
+<img src="unwise-neo3/1/8/248/95.jpg">
+<br>
+
+unWISE NEO2<br>
+<img src="unwise-neo2/1/8/248/95.jpg">
+<br>
+
+unWISE Orig<br>
+<img src="unwise-w1w2/1/8/248/95.jpg">
+<br>
+
+<a href="bricks/?ralo=234.4311&rahi=234.9694&declo=13.3429&dechi=13.8574&layer=decals-dr5">Bricks</a>
+<br>
+
+SDSS <a href="sdss-plates/?ralo=234.4311&rahi=234.9694&declo=13.3429&dechi=13.8574">plates</a>
+<br>
+
+JPEG Cutouts<br>
+DR7
+<br>
+<img src="jpeg-cutout?ra=57.8554&dec=-15.4054&zoom=14&layer=decals-dr7">
+<img src="jpeg-cutout?ra=57.8554&dec=-15.4054&zoom=14&layer=decals-dr7-model">
+<img src="jpeg-cutout?ra=57.8554&dec=-15.4054&zoom=14&layer=decals-dr7-resid">
+<br>
+<img src="jpeg-cutout?ra=57.8554&dec=-15.4054&pixscale=2&width=400&height=200&layer=decals-dr7">
+<br>
+DR7 invvar<br>
+<img src="jpeg-cutout?ra=57.8554&dec=-15.4054&zoom=14&layer=decals-dr7-invvar">
+<br>
+DR5
+<br>
+<img src="jpeg-cutout?ra=57.8554&dec=-15.4054&zoom=14&layer=decals-dr5">
+<img src="jpeg-cutout?ra=57.8554&dec=-15.4054&zoom=14&layer=decals-dr5-model">
+<img src="jpeg-cutout?ra=57.8554&dec=-15.4054&zoom=14&layer=decals-dr5-resid">
+<br>
+<img src="jpeg-cutout?ra=57.8554&dec=-15.4054&pixscale=2&width=400&height=200&layer=decals-dr5">
+<br>
+DR6
+<br>
+<img src="jpeg-cutout?ra=175.8650&dec=52.7103&zoom=13&layer=mzls+bass-dr6">
+<img src="jpeg-cutout?ra=175.8650&dec=52.7103&zoom=13&layer=mzls+bass-dr6-model">
+<img src="jpeg-cutout?ra=175.8650&dec=52.7103&zoom=13&layer=mzls+bass-dr6-resid">
+<br>
+<img src="jpeg-cutout?ra=175.8650&dec=52.7103&pixscale=2&width=400&height=200&layer=mzls+bass-dr6">
+<br>
+SDSS<br>
+<img src="jpeg-cutout?ra=175.8650&dec=52.7103&pixscale=2&width=400&height=200&layer=sdss">
+<br>
+GALEX<br>
+<img src="jpeg-cutout?ra=175.8650&dec=52.7103&pixscale=2&width=400&height=200&layer=galex">
+<br>
+DES-DR1<br>
+<img src="jpeg-cutout?ra=57.8554&dec=-15.4054&pixscale=2&width=400&height=200&layer=des-dr1">
+<br>
+
+
+FITS Cutouts<br>
+DR7
+<br>
+<a href="fits-cutout?ra=57.8554&dec=-15.4054&pixscale=0.5&layer=decals-dr7&size=300">grz</a><br>
+<a href="fits-cutout?ra=57.8554&dec=-15.4054&pixscale=0.5&layer=decals-dr7&size=300&bands=r">one band only</a><br>
+<a href="fits-cutout?ra=57.8554&dec=-15.4054&pixscale=0.5&layer=decals-dr7&width=300&height=400&bands=rz">r,z bands only</a><br>
+<a href="fits-cutout?ra=57.8554&dec=-15.4054&pixscale=0.5&layer=decals-dr7-invvar&width=300&height=400&bands=rz">coadd invvar; r,z bands only</a><br>
+<a href="fits-cutout?ra=57.8554&dec=-15.4054&pixscale=0.5&layer=decals-dr7&size=300&subimage">subimage (no resampling; subimage from Data Release coadd image; includes invvar map)</a><br>
+DR6
+<br>
+<a href="fits-cutout?ra=175.8650&dec=52.7103&pixscale=0.5&layer=mzls+bass-dr6">grz</a>
+<br>
+DES-DR1
+<br>
+<a href="fits-cutout?ra=57.8554&dec=-15.4054&pixscale=0.5&layer=des-dr1">grz</a>
+<br>
+SDSS
+<br>
+<a href="fits-cutout?ra=175.8650&dec=52.7103&pixscale=0.5&layer=sdss">gri</a>
+<br>
+unWISE-NEO4
+<br>
+<a href="fits-cutout?ra=175.8650&dec=52.7103&pixscale=0.5&layer=unwise-neo4">W1W2</a>
+<br>
+<a href="fits-cutout?ra=175.8650&dec=52.7103&pixscale=0.5&layer=unwise-neo4&bands=1">W1</a>
+<br>
+
+
+<br>
+Single image cutouts<br>
+<a href="cutouts/?ra=57.8589&dec=-15.4102&layer=decals-dr5">DR5</a>
+<br>
+<a href="cutouts/?ra=57.8589&dec=-15.4102&layer=decals-dr7">DR7</a>
+<br>
+<a href="cutouts/?ra=175.8645&dec=52.7112&layer=mzls+bass-dr6">DR6</a>
+<br>
+DR5<br>
+<img src="cutout_panels/decals-dr5/356224/S4/?x=2008&y=2672&size=100">
+<br>
+DR7<br>
+<img src="cutout_panels/decals-dr7/356224/S4/?x=2008&y=2672&size=100">
+<br>
+DR6<br>
+<img src="cutout_panels/mzls+bass-dr6/74610126/CCD4/?x=2235&y=1401&size=100">
+<br>
+<img src="cutout_panels/mzls+bass-dr6/87926/CCD2/?x=40&y=2447&size=100">
+<br>
+
+<br>
+Tarball of single-image cutouts<br>
+<a href="cutouts-tgz/?ra=57.8589&dec=-15.4102&size=100&layer=decals-dr7">DR7</a><br>
+<a href="cutouts-tgz/?ra=57.8589&dec=-15.4102&size=100&layer=decals-dr5">DR5</a><br>
+<a href="cutouts-tgz/?ra=175.8645&dec=52.7112&size=100&layer=mzls+bass-dr6">DR6</a><br>
+
+<br>
+PSF model for coadd
+<br>
+<a href="coadd-psf/?ra=57.8589&dec=-15.4102&layer=decals-dr7">DR7</a><br>
+<a href="coadd-psf/?ra=57.8589&dec=-15.4102&layer=decals-dr5">DR5</a><br>
+<a href="coadd-psf/?ra=175.8645&dec=52.7112&layer=mzls+bass-dr6">DR6</a><br>
+
+
+<br>
+<br>
+<br>
+
+</body>
+{% endblock %}

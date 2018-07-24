@@ -2,7 +2,7 @@ from __future__ import print_function
 
 if __name__ == '__main__':
     import os
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
     django.setup()
     import cat
@@ -11,8 +11,12 @@ import os
 from django.shortcuts import render
 from django.http import HttpResponse, StreamingHttpResponse, HttpResponseRedirect, HttpResponseBadRequest, QueryDict
 from django import forms
-from django.core.urlresolvers import reverse
-
+try:
+    from django.core.urlresolvers import reverse
+except:
+    # django-2.0
+    from django.urls import reverse
+    
 from django.views.generic import ListView, DetailView
 
 from cat.models import Bricks, Tractor
@@ -350,7 +354,7 @@ class CatalogSearchList(ListView):
         print('get_context_data called')
         t0 = Time()
 
-        from decals import settings
+        from viewer import settings
 
         print('Using query description:', self.querydesc)
 
@@ -424,7 +428,7 @@ def fits_results(req):
 
 def viewer_results(req):
     import tempfile
-    from decals import settings
+    from viewer import settings
 
     search = CatalogSearchList()
     search.request = req
@@ -461,7 +465,7 @@ def viewer_results(req):
 if __name__ == '__main__':
     import os
     import sys
-    #os.environ['DJANGO_SETTINGS_MODULE'] = 'decals.settings'
+    #os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     #django.setup()
 
     class duck(object):

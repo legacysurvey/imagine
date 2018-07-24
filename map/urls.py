@@ -9,6 +9,24 @@ survey_regex = r'([\w +-]+)'
 
 urlpatterns = [
 
+    url(r'^test', views.test),
+
+    url(r'^gfas', views.gfas),
+    url(r'^ci', views.ci),
+
+    url(r'^ls-dr56/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('ls-dr56')),
+    url(r'^ls-dr67/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('ls-dr67')),
+
+    # 2MASS
+    url(r'^2mass/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('2mass')),
+
+    # Galex
+    url(r'^galex/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('galex')),
+
     # PHAT M31
     url(r'^phat/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('phat')),
@@ -19,6 +37,20 @@ urlpatterns = [
     # eboss special DR5+ reduction
     url(r'^eboss/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('eboss')),
+
+    # DES DR1
+    url(r'^des-dr1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('des-dr1')),
+
+    # DR7
+    url(r'^decals-dr7/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr7')),
+    url(r'^decals-dr7-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr7-model')),
+    url(r'^decals-dr7-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('decals-dr7-resid')),
+    # DR7 catalog
+    url(r'^decals-dr7/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr7),
 
     # MzLS+BASS DR6 tiles
     url(r'^mzls\+bass-dr6/(\d+)/(\d+)/(\d+)/(\d+).jpg',
@@ -72,10 +104,13 @@ urlpatterns = [
     url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr2),
     url(r'^targets-dr2/(\d+)/cat.json', cats.cat_targets_dr2),
 
-    # DR4/5 catalog
+    # DR4/5 DESI targets
     url(r'^targets-dr45/(\d+)/cat.json', cats.cat_targets_dr45),
-    # DR5/6 catalog
+    # DR5/6 DESI targets
     url(r'^targets-dr56/(\d+)/cat.json', cats.cat_targets_dr56),
+
+    # DR5/6 DESI targets, BGS survey only
+    url(r'^targets-bgs-dr56/(\d+)/cat.json', cats.cat_targets_bgs_dr56),
 
     # DECaPS2 tiles
     url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
@@ -94,6 +129,7 @@ urlpatterns = [
     
     # Gaia catalog
     url(r'^gaia-dr1/(\d+)/cat.json', cats.cat_gaia_dr1),
+    url(r'^gaia-dr2/(\d+)/cat.json', cats.cat_gaia_dr2),
 
     # Upload user catalog
     url(r'^upload-cat/', cats.upload_cat),
@@ -103,6 +139,9 @@ urlpatterns = [
 
     # DEEP2 Spectroscopy catalog
     url(r'^spec-deep2/(\d+)/cat.json', cats.cat_spec_deep2),
+
+    # SDSS Catalog
+    url(r'^sdss-cat/(\d+)/cat.json', cats.cat_sdss),
 
     # SDSS tiled coadd
     url(r'^sdssco/(\d+)/(\d+)/(\d+)/(\d+).jpg',
@@ -152,6 +191,10 @@ urlpatterns = [
     url(r'^sfd/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('sfd')),
 
+    # WSSA WISE 12-micron dust map
+    url(r'^wssa/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('wssa')),
+
     # Halpha map
     url(r'^halpha/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('halpha')),
@@ -159,15 +202,16 @@ urlpatterns = [
     # Original unWISE W1/W2
     url(r'^unwise-w1w2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-w1w2')),
-
     # Aaron's NEOx unWISE W1/W2
     # NEO2
     url(r'^unwise-neo2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-neo2')),
-
     # NEO3
     url(r'^unwise-neo3/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-neo3')),
+    # NEO4
+    url(r'^unwise-neo4/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('unwise-neo4')),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
 
@@ -177,6 +221,14 @@ urlpatterns = [
     url(r'^cutout_panels/(?P<layer>.*)/(?P<expnum>\d+)/(?P<extname>\w+)/', views.cutout_panels, name='cutout_panels'),
     # Scatterplot of nearby sources for cutouts page
     #url(r'^cat_plot/', views.cat_plot, name='cat_plot'),
+
+    # PSF for a single expnum/ccdname -- half-finished.
+    #url(r'^cutout_psf/(?P<layer>.*)/(?P<expnum>\d+)/(?P<extname>\w+)/', views.cutout_psf,
+    #name='cutout_psf'),
+
+    url(r'^cutouts-tgz/', views.cutouts_tgz, name='cutouts_tgz'),
+
+    url(r'^coadd-psf/', views.cutouts_coadd_psf, name='coadd_psf'),
 
     # Look up this position, date, observatory in JPL Small Bodies database
     url(r'^jpl_lookup/', views.jpl_lookup),

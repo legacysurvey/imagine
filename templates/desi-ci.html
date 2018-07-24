@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block header %}
+<script src="{% static "jquery-2.1.1.min.js" %}"></script>
+<script>  
+
+// From Ashley in email 2018-06-22:
+
+var ci_wcs = {
+    'CIW': {'CD1_2': 3.555e-05, 'CD1_1': 0.0, 'CRVAL2': 0.0, 'CRPIX1': 1536.0, 'CRPIX2': 1024.0, 'CRVAL1': -1.57, 'CD2_1': 3.2775e-05, 'CD2_2': 0.0},
+    'CIS': {'CD1_2': 0.0, 'CD1_1': -3.556335e-05, 'CRVAL2': -1.57, 'CRPIX1': 1536.0, 'CRPIX2': 1024.0, 'CRVAL1': 0, 'CD2_1': 0.0, 'CD2_2': 3.2775e-05},
+    'CIC': {'CD1_2': 0.0, 'CD1_1': 3.7025e-05, 'CRVAL2': 0, 'CRPIX1': 1536.0, 'CRPIX2': 1024.0, 'CRVAL1': 0, 'CD2_1': 0.0, 'CD2_2': -3.7025e-05},
+    'CIN': {'CD1_2': 0.0, 'CD1_1': 3.556335e-05, 'CRVAL2': 1.57, 'CRPIX1': 1536.0, 'CRPIX2': 1024.0, 'CRVAL1': 0, 'CD2_1': 0.0, 'CD2_2': -3.2775e-05},
+    'CIE': {'CD1_2': -3.555e-05, 'CD1_1': 0.0, 'CRVAL2': -0.0, 'CRPIX1': 1536.0, 'CRPIX2': 1024.0, 'CRVAL1': 1.57, 'CD2_1': -3.2775e-05, 'CD2_2': 0.0},
+}
+
+// Function to search the current page URL's GET query portion URL?x=y
+var QueryItems = function() {
+    var terms = window.location.search.substr(1).split('&');
+    var items = {};
+    for (var i = 0; i < terms.length; ++i) {
+        var words = terms[i].split('=');
+        if (words.length == 1) {
+            items[words[0]] = true;
+        } else if (words.length == 2) {
+            items[words[0]] = decodeURIComponent(words[1].replace(/\+/g, ' '));
+        }
+    }
+    return items;
+};
+var qstr = QueryItems();
+
+//var urls = [];
+
+function toExp(f) {
+    if (f == 0.0) {
+        return '0';
+    }
+    return f.toExponential(4);
+}
+
+function moveTo(ra, dec) {
+    for (k in ci_wcs) {
+        vals = ci_wcs[k];
+
+        cosdec = Math.cos(dec * Math.PI/180.);
+        crval1 = ra  + vals['CRVAL1'] / cosdec;
+        crval2 = dec + vals['CRVAL2'];
+
+        W = 3072;
+        H = 2048;
+
+        scale = 4.;
+    
+        sw = Math.round(W / scale);
+        sh = Math.round(H / scale);
+
+        crpix1 = (vals['CRPIX1'] - 0.5) / scale + 0.5;
+        crpix2 = (vals['CRPIX2'] - 0.5) / scale + 0.5;
+
+        url = 'http://legacysurvey.org/viewer-dev/sdss-wcs/?' +
+            'crval1=' + crval1.toFixed(5) +
+            '&crval2=' + crval2.toFixed(5) +
+            '&crpix1=' + crpix1.toFixed(1) +
+            '&crpix2=' + crpix2.toFixed(1) +
+            '&cd11=' + toExp(vals['CD1_1'] * scale) +
+            '&cd12=' + toExp(vals['CD1_2'] * scale) +
+            '&cd21=' + toExp(vals['CD2_1'] * scale) +
+            '&cd22=' + toExp(vals['CD2_2'] * scale) +
+            '&imagew=' + sw +
+            '&imageh=' + sh;
+        console.log('url: ' + url);
+        //urls[k] = url;
+
+        $("#image_" + k).attr('src', url);
+
+        //$("#gfa_center_" + i).html('(' + crval[0].toFixed(4) + ', ' +
+        //                crval[1].toFixed(4) + ')');
+    }
+}
+
+var r0 = 213.9;
+var d0 = 37.4;
+if ('ra' in qstr) {
+    r0 = parseFloat(qstr['ra']);
+}
+if ('dec' in qstr) {
+    d0 = parseFloat(qstr['dec']);
+}
+
+$(document).ready(function() {
+    moveTo(r0, d0);
+});
+
+function submitRadec(e) {
+    ra  = $('#ra_input').val();
+    dec = $('#dec_input').val();
+    ra = parseFloat(ra);
+    dec = parseFloat(dec);
+    console.log('RA,Dec: ' + ra + ', ' + dec);
+    moveTo(ra, dec);
+}
+
+function keyRadec(e) {
+    if (e.which == 13) {
+       submitRadec(e);
+    }
+}
+
+$(document).ready(function() {
+    $("#ra_input").attr('value', r0); //html(r0);
+    $("#dec_input").attr('value', d0); //html(d0);
+    $("#ra_input").keypress(keyRadec);
+    $("#dec_input").keypress(keyRadec);
+    $("#radec_submit").click(submitRadec);
+});
+
+</script>
+{% endblock %}
+
+{% block body %}
+<body>
+
+    <center>
+    <h1>DESI Commissioning Instrument viewer</h1>
+
+    <div>
+    DESI center:
+    <form>
+    <input id="ra_input" name="name" size="6">
+    <input id="dec_input" name="name" size="6">
+    <input id="radec_submit" type="button" value="Go">
+    </form>
+
+    <div id="image-holder" />
+    CIC:
+    <br/>
+    <img id="image_CIC" src="" width="768" height="512" />
+    <br/>
+    CIN:
+    <br/>
+    <img id="image_CIN" src="" width="768" height="512" />
+    <br/>
+    CIE:
+    <br/>
+    <img id="image_CIE" src="" width="768" height="512" />
+    <br/>
+    CIS:
+    <br/>
+    <img id="image_CIS" src="" width="768" height="512" />
+    <br/>
+    CIW:
+    <br/>
+    <img id="image_CIW" src="" width="768" height="512" />
+    <br/>
+</center>
+</body>
+{% endblock %}
+    
