@@ -3018,6 +3018,38 @@ class SplitSurveyData(MyLegacySurveyData):
                                         self.south.get_bricks_readonly()])
         return self.bricks
 
+    def get_ccds(self, **kwargs):
+        from astrometry.util.fits import merge_tables
+        import numpy as np
+        n = self.north.get_ccds(**kwargs)
+        n.is_north = np.ones(len(n), bool)
+        s = self.south.get_ccds(**kwargs)
+        s.is_north = np.zeros(len(s), bool)
+        ccds = merge_tables([n, s], columns='fillzero')
+        return ccds
+
+    def ccds_touching_wcs(self, wcs, **kwargs):
+        from astrometry.util.fits import merge_tables
+        import numpy as np
+        ns = []
+        n = self.north.ccds_touching_wcs(wcs, **kwargs)
+        print('ccds_touching_wcs: north', n)
+        if n is not None:
+            n.is_north = np.ones(len(n), bool)
+            ns.append(n)
+        s = self.south.ccds_touching_wcs(wcs, **kwargs)
+        print('ccds_touching_wcs: south', s)
+        if s is not None:
+            s.is_north = np.zeros(len(s), bool)
+            ns.append(s)
+        if len(ns) == 0:
+            return None
+        return merge_tables(ns, columns='fillzero')
+
+    def get_image_object(self, ccd, **kwargs):
+        if ccd.is_north:
+            return self.north.get_image_object(ccd, **kwargs)
+        return self.south.get_image_object(ccd, **kwargs)
 
 class Decaps2LegacySurveyData(MyLegacySurveyData):
     def find_file(self, filetype, brick=None, brickpre=None, band='%(band)s',
@@ -3078,10 +3110,12 @@ def get_survey(name):
             north = get_survey('mzls+bass-dr6')
             south = get_survey('decals-dr5')
             d = SplitSurveyData(north, south)
+            d.drname = 'LegacySurvey DR5+DR6'
         elif name == 'ls-dr67':
             north = get_survey('mzls+bass-dr6')
             south = get_survey('decals-dr7')
             d = SplitSurveyData(north, south)
+            d.drname = 'LegacySurvey DR6+DR7'
         else:
             d = MyLegacySurveyData(survey_dir=dirnm)
 
@@ -4706,7 +4740,9 @@ if __name__ == '__main__':
     #c.get('/ls-dr56/1/13/3861/3126.jpg')
     #c.get('/des-dr1/1/13/7399/5035.jpg')
     #c.get('/des-dr1/1/12/3699/2517.jpg')
-    r = c.get('/fits-cutout?ra=175.8650&dec=52.7103&pixscale=0.5&layer=unwise-neo4')
+    #r = c.get('/fits-cutout?ra=175.8650&dec=52.7103&pixscale=0.5&layer=unwise-neo4')
+    #r = c.get('/cutouts/?ra=43.9347&dec=-14.2082&layer=ls-dr67')
+    r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
     print('r:', type(r))
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     sys.exit(0)
