@@ -41,6 +41,9 @@ catversions = {
     'targets-dr45': [1,],
     'targets-dr56': [1,],
     'targets-bgs-dr56': [1,],
+    'targets-dr67': [1,],
+    'targets-bgs-dr67': [1,],
+    'targets-sky-dr67': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
@@ -460,16 +463,34 @@ def cat_targets_dr45(req, ver):
 def cat_targets_dr56(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr6-0.20.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
     ], tag = 'targets-dr56')
 
 def cat_targets_bgs_dr56(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr6-0.20.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
     ], tag = 'targets-bgs-dr56', bgs=True)
 
-def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False):
+def cat_targets_dr67(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+    ], tag = 'targets-dr67')
+
+def cat_targets_bgs_dr67(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+    ], tag = 'targets-bgs-dr67', bgs=True)
+
+def cat_targets_sky_dr67(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'skies-dr6-0.22.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'skies-dr7.1-0.22.0.kd.fits'),
+    ], tag = 'targets-sky-dr67', sky=True)
+
+def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False):
     import json
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
@@ -585,18 +606,27 @@ def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False):
             cc = 'orange'
         colors.append(cc)
 
-    return HttpResponse(json.dumps(dict(rd=[(t.ra, t.dec) for t in T],
-                                        name=names,
-                                        targetid=[int(t) for t in T.targetid],
-                                        fluxes=[dict(g=float(g), r=float(r), z=float(z),
-                                                     W1=float(W1), W2=float(W2))
-                                                for (g,r,z,W1,W2)
-                                                in zip(T.flux_g, T.flux_r, T.flux_z,
-                                                       T.flux_w1, T.flux_w2)],
-                                        nobs=[dict(g=int(g), r=int(r), z=int(z)) for g,r,z
-                                              in zip(T.nobs_g, T.nobs_r, T.nobs_z)],
-                                        color=colors,
-                                    )),
+    if sky:
+        fluxes = [dict(g=float(g), r=float(r), z=float(z))
+                  for (g,r,z) in zip(T.apflux_g[:,0], T.apflux_r[:,0], T.apflux_z[:,0])]
+        nobs = None
+    else:
+        fluxes = [dict(g=float(g), r=float(r), z=float(z),
+                       W1=float(W1), W2=float(W2))
+                  for (g,r,z,W1,W2)
+                  in zip(T.flux_g, T.flux_r, T.flux_z, T.flux_w1, T.flux_w2)]
+        nobs=[dict(g=int(g), r=int(r), z=int(z)) for g,r,z
+              in zip(T.nobs_g, T.nobs_r, T.nobs_z)],
+
+    rtn = dict(rd=[(t.ra, t.dec) for t in T],
+               name=names,
+               targetid=[int(t) for t in T.targetid],
+               fluxes=fluxes,
+               color=colors,
+    )
+    if nobs is not None:
+        rtn.update(nobs=nobs)
+    return HttpResponse(json.dumps(rtn),
                         content_type='application/json')
 
 def cat_spec(req, ver):

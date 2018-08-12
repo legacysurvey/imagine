@@ -108,9 +108,16 @@ urlpatterns = [
     url(r'^targets-dr45/(\d+)/cat.json', cats.cat_targets_dr45),
     # DR5/6 DESI targets
     url(r'^targets-dr56/(\d+)/cat.json', cats.cat_targets_dr56),
+    # DR6/7 DESI targets
+    url(r'^targets-dr67/(\d+)/cat.json', cats.cat_targets_dr67),
 
     # DR5/6 DESI targets, BGS survey only
     url(r'^targets-bgs-dr56/(\d+)/cat.json', cats.cat_targets_bgs_dr56),
+    # DR6/7 DESI targets, BGS survey only
+    url(r'^targets-bgs-dr67/(\d+)/cat.json', cats.cat_targets_bgs_dr67),
+
+    # DR6/7 DESI sky fibers
+    url(r'^targets-sky-dr67/(\d+)/cat.json', cats.cat_targets_sky_dr67),
 
     # DECaPS2 tiles
     url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
