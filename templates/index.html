@@ -2713,7 +2713,7 @@ var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
 {% endif %}
 
 {% if enable_desi_targets %}
-var desi_targets = new DesiTargetCatalog('targets-dr45', 'DESI Targets (DR4/DR5)',
+var desi_targets45 = new DesiTargetCatalog('targets-dr45', 'DESI Targets (DR4/DR5)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
@@ -2723,7 +2723,22 @@ var desi_targets56 = new DesiTargetCatalog('targets-dr56', 'DESI Targets (DR5/DR
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
 
+var desi_targets67 = new DesiTargetCatalog('targets-dr67', 'DESI Targets (DR6/DR7)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
 var desi_bgs_targets56 = new DesiTargetCatalog('targets-bgs-dr56', 'DESI BGS Targets (DR5/DR6)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+var desi_bgs_targets67 = new DesiTargetCatalog('targets-bgs-dr67', 'DESI BGS Targets (DR6/DR7)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+var desi_sky_targets67 = new DesiTargetCatalog('targets-sky-dr67', 'DESI Sky Targets (DR6/DR7)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
@@ -3005,9 +3020,12 @@ var overlays = [
     spec, plateOverlay, specDeep2,
     {% endif %}
     {% if enable_desi_targets %}
-    desi_targets,
+    desi_targets45,
     desi_targets56,
+    desi_targets67,
     desi_bgs_targets56,
+    desi_bgs_targets67,
+    desi_sky_targets67,
     {% endif %}
     constellations,
     desifoot,
@@ -3235,8 +3253,11 @@ for (var i=0,len=overlays.length; i<len; i++) {
      {% if enable_desi_targets %}
      { label: 'DESI targets',
        children: [
-           findoverlay('targets-bgs-dr56'),
+           findoverlay('targets-dr67'),
+           findoverlay('targets-bgs-dr67'),
+           findoverlay('targets-sky-dr67'),
            findoverlay('targets-dr56'),
+           findoverlay('targets-bgs-dr56'),
            findoverlay('targets-dr45'),
        ],
      },
