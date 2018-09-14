@@ -84,7 +84,7 @@ def cat_phat_clusters(req, ver):
 
 def cat_gaia_dr1(req, ver):
     import json
-    from legacyanalysis.gaiacat import GaiaCatalog
+    from legacypipe.gaiacat import GaiaCatalog
 
     tag = 'gaia-dr1'
     ralo = float(req.GET['ralo'])
@@ -108,7 +108,7 @@ def cat_gaia_dr1(req, ver):
 
 def cat_gaia_dr2(req, ver):
     import json
-    from legacyanalysis.gaiacat import GaiaCatalog
+    from legacypipe.gaiacat import GaiaCatalog
     import numpy as np
 
     tag = 'gaia-dr2'
