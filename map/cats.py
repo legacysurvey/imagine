@@ -44,6 +44,8 @@ catversions = {
     'targets-dr67': [1,],
     'targets-bgs-dr67': [1,],
     'targets-sky-dr67': [1,],
+    'targets-bright-dr67': [1,],
+    'targets-dark-dr67': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
@@ -490,7 +492,19 @@ def cat_targets_sky_dr67(req, ver):
         os.path.join(settings.DATA_DIR, 'skies-dr7.1-0.22.0.kd.fits'),
     ], tag = 'targets-sky-dr67', sky=True)
 
-def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False):
+def cat_targets_bright_dr67(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+    ], tag = 'targets-bright-dr67', bright=True)
+
+def cat_targets_dark_dr67(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+    ], tag = 'targets-dark-dr67', dark=True)
+
+def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=False, dark=False):
     import json
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
@@ -534,6 +548,12 @@ def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False):
 
     if bgs:
         T.cut(T.bgs_target > 0)
+
+    if bright:
+        T.cut(np.logical_or(T.bgs_target > 0, T.mws_target > 0))
+
+    if dark:
+        T.cut(T.desi_target > 0)
 
     names = []
     colors = []

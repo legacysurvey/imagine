@@ -2738,6 +2738,16 @@ var desi_bgs_targets67 = new DesiTargetCatalog('targets-bgs-dr67', 'DESI BGS Tar
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
 
+var desi_bright_targets67 = new DesiTargetCatalog('targets-bright-dr67', 'DESI Bright-time Targets (DR6/DR7)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+var desi_dark_targets67 = new DesiTargetCatalog('targets-dark-dr67', 'DESI Dark-time Targets (DR6/DR7)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
 var desi_sky_targets67 = new DesiTargetCatalog('targets-sky-dr67', 'DESI Sky Targets (DR6/DR7)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
@@ -3026,6 +3036,8 @@ var overlays = [
     desi_bgs_targets56,
     desi_bgs_targets67,
     desi_sky_targets67,
+    desi_dark_targets67,
+    desi_bright_targets67,
     {% endif %}
     constellations,
     desifoot,
@@ -3256,6 +3268,8 @@ for (var i=0,len=overlays.length; i<len; i++) {
            findoverlay('targets-dr67'),
            findoverlay('targets-bgs-dr67'),
            findoverlay('targets-sky-dr67'),
+           findoverlay('targets-bright-dr67'),
+           findoverlay('targets-dark-dr67'),
            findoverlay('targets-dr56'),
            findoverlay('targets-bgs-dr56'),
            findoverlay('targets-dr45'),

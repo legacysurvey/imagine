@@ -119,6 +119,10 @@ urlpatterns = [
     # DR6/7 DESI sky fibers
     url(r'^targets-sky-dr67/(\d+)/cat.json', cats.cat_targets_sky_dr67),
 
+    url(r'^targets-dark-dr67/(\d+)/cat.json', cats.cat_targets_dark_dr67),
+    url(r'^targets-bright-dr67/(\d+)/cat.json', cats.cat_targets_bright_dr67),
+
+
     # DECaPS2 tiles
     url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decaps2')),
