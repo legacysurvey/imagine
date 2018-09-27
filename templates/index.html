@@ -1615,6 +1615,14 @@ tiles = split_layer('ls-dr67', 'LegacySurvey DR6+DR7 images',
 allLayers.push(tiles);
 {% endif %}
 
+testLayers = [];
+{% for name,pretty in test_layers %}
+  tiles = mylayer_B('{{name}}', '{{pretty}}',
+                    {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+  allLayers.push(tiles);
+  testLayers.push(tiles);
+{% endfor %}
+
 tiles = split_layer('ls-dr56', 'LegacySurvey DR5+DR6 images',
                     32.,
                     // North
@@ -1641,6 +1649,8 @@ tiles = mylayer_B('decals-dr7-resid', 'DECaLS DR7 residuals',
                 {'urlPatterns': [ [10, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
+
+
 
 {% endif %}
 
@@ -2459,7 +2469,7 @@ var expOverlay7 = new CircleOverlay('decals-dr7-exps',
                                                      
 var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
                                       {'url': bricks_url,
-                                       'minZoom': 8,
+                                       'minZoom': 1,
                                        'labelMinZoom': 100,
                                        'doHighlight': false,
                                        'urlTerm': 'bricks',
@@ -3071,7 +3081,14 @@ function findlayer(name, children=[]) {
     return rtn;
 }
  
-var baseTree = [
+var testTree = [];
+{% for name,pretty in test_layers %}
+  testTree.push(findlayer('{{name}}'));
+{% endfor %}
+
+console.log('testTree:', testTree);
+
+var baseTree1 = [
     {% if enable_dr7 %}
     findlayer('ls-dr67', [
         findlayer('ls-dr56'),
@@ -3144,7 +3161,17 @@ var baseTree = [
     },
 ];
 
- var namedOverlays = {};
+var baseTree = [];
+for (var x in testTree) {
+  baseTree.push(testTree[x]);
+}
+for (var x in baseTree1) {
+  baseTree.push(baseTree1[x]);
+}
+
+console.log('baseTree:', baseTree);
+
+var namedOverlays = {};
 for (var i=0,len=overlays.length; i<len; i++) {
     namedOverlays[overlays[i]._name] = overlays[i];
     // The '.getGroup()' object is the one passed into the overlay tree, so

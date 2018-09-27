@@ -228,7 +228,7 @@ def top_levels(mp, opt):
                     'eboss',
                     'unwise-neo2', 'unwise-neo3', 'unwise-neo4',
                     'galex', 'sdss2', 'wssa',
-                    'ls-dr56', 'ls-dr67']:
+                    'ls-dr56', 'ls-dr67'] or True:
         import pylab as plt
         from viewer import settings
         from legacypipe.survey import get_rgb
@@ -773,7 +773,7 @@ def main():
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                         'unwise-neo3', 'unwise-neo4',
                         'galex', 'wssa', 'des-dr1',
-                    ]:
+                    ] or True:
             from map.views import get_layer
 
             if opt.queue:

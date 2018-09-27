@@ -226,6 +226,17 @@ urlpatterns = [
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
 
+
+    # DR8 tests -- generic layers
+    url(r'^([\w\+-]+)/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.any_tile_view),
+    # catalog
+    #url(r'^([\w\+-]+)/(\d+)/(\d+)/(\d+)/(\d+).cat.json',
+    #    cats.get_any_cat_view),cat_decals_dr8),
+    
+
+
+
     # Cutouts html
     url(r'^cutouts/', views.cutouts, name='cutouts'),
     # Cutouts panel plots
@@ -280,7 +291,7 @@ urlpatterns = [
 
     # PHAT version of the viewer.
     url(r'^phat/?$', views.phat),
-    
+
     # fall-through
     url(r'', views.index),
 

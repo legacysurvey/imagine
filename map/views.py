@@ -308,6 +308,17 @@ def _index(req,
     absurl = req.build_absolute_uri(rooturl)
     hostname_url = req.build_absolute_uri('/')
 
+    test_layers = []
+    try:
+        from map.test_layers import test_layers as tl
+        for la in tl:
+            if not la in test_layers:
+                test_layers.append(la)
+    except:
+        import traceback
+        traceback.print_exc()
+
+
     args = dict(ra=ra, dec=dec, zoom=zoom,
                 maxZoom=maxZoom,
                 galname=galname,
@@ -331,6 +342,8 @@ def _index(req,
                 usercatalogs = usercats,
                 usercatalogurl = usercatalogurl,
                 usercatalogurl2 = usercatalogurl2,
+
+                test_layers = test_layers,
     )
 
     args.update(kwargs)
@@ -1031,7 +1044,9 @@ class MapLayer(object):
         if ver is not None:
             ver = int(ver)
             if not self.tileversion_ok(ver):
-                raise RuntimeError('Invalid tile version %i for %s' % (ver, str(self)))
+                # allow ver=1 for unknown versions
+                if ver != 1:
+                    raise RuntimeError('Invalid tile version %i for %s' % (ver, str(self)))
         else:
             # Set default version...?
             ver = tileversions[self.name][-1]
@@ -3085,7 +3100,7 @@ def get_survey(name):
         print('Cache hit for survey', name)
         return surveys[name]
 
-    debug('Creating LegacySurveyData() object for "%s"' % name)
+    #debug('Creating LegacySurveyData() object for "%s"' % name)
     
     basedir = settings.DATA_DIR
 
@@ -3147,7 +3162,18 @@ def get_survey(name):
         print('Caching survey', name)
         surveys[name] = d
         return d
-    
+ 
+    if '/' in name or '.' in name:
+        return None
+    dirnm = os.path.join(basedir, name)
+    print('checking for survey_dir', dirnm)
+    if os.path.exists(dirnm):
+        d = LegacySurveyData(survey_dir=dirnm)
+        # d.drname = 'eBOSS'
+        # d.drurl = 'http://legacysurvey.org/'
+        surveys[name] = d
+        return d
+
 
     return None
 
@@ -3170,9 +3196,11 @@ def brick_list(req):
 
     I = D.bricks_touching_radec_box(B, east, west, south, north)
     # Limit result size...
-    if len(I) > 10000:
-        return HttpResponse(json.dumps(dict(bricks=[])),
-                            content_type='application/json')
+    #if len(I) > 10000:
+    #    return HttpResponse(json.dumps(dict(bricks=[])),
+    #                        content_type='application/json')
+    I = I[:400]
+    
     bricks = []
     for b in B[I]:
         # brick overlap margin:
@@ -4604,6 +4632,27 @@ def get_layer(name, default=None):
             return np.arcsinh(x * 10.)
         layer = ZeaLayer('sfd', sfd_map, stretch=stretch_sfd, vmin=0.0, vmax=5.0)
 
+    
+    if layer is None:
+        # Try generic
+        basename = name
+        if name.endswith('-model'):
+            basename = name[:-6]
+        if name.endswith('-resid'):
+            basename = name[:-6]
+        survey = get_survey(basename)
+        if survey is not None:
+            image = ReDecalsLayer(name, 'image', survey)
+            model = ReDecalsModelLayer(basename + '-model', 'model', survey,
+                                       drname=basename)
+            resid = ReDecalsResidLayer(image, model, basename + '-resid', 'resid', survey,
+                                       drname=basename)
+            layers[basename] = image
+            layers[basename + '-model'] = model
+            layers[basename + '-resid'] = resid
+            layer = layers[name]
+
+
     if layer is None:
         return default
     layers[name] = layer
@@ -4613,8 +4662,17 @@ def get_tile_view(name):
     name = layer_name_map(name)
     def view(request, ver, zoom, x, y, **kwargs):
         layer = get_layer(name)
+        print('tile view: name', name, 'layer', layer)
         return layer.get_tile(request, ver, zoom, x, y, **kwargs)
     return view
+
+def any_tile_view(request, name, ver, zoom, x, y, **kwargs):
+    print('any_tile_view(', name, ver, zoom, x, y, ')')
+    name = layer_name_map(name)
+    layer = get_layer(name)
+    if layer is None:
+        return HttpResponse('no such layer: ' + name)
+    return layer.get_tile(request, ver, zoom, x, y, **kwargs)
 
 def sdss_wcs(req):
     from astrometry.util.util import Tan
