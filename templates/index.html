@@ -2908,6 +2908,9 @@ var DesiFootprint = CatalogOverlay.extend({
         this._gfa.redraw();
     },
     overlayAdded: function(e) {
+        if (!layerMatchesEvent(this, e)) {
+            return;
+        }
         console.log('DESIFootprint.overlayAdded');
         this._show = true;
         if (!this._got_initial_position) {
