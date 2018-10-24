@@ -2616,6 +2616,12 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
                               'labelsMinZoom': 7,
                              'urlTerm': 'ngc',});
 
+
+var lslga = new GalaxyCatalog('lslga', 'LSLGA Large galaxies',
+                             {'minZoom': 5,
+                              'labelsMinZoom': 7,
+                              'urlTerm': 'lslga',});
+
 var GaiaDr1Catalog = CatalogOverlay.extend({
     getColor: function(json, i) {
         return '#bbbbff';
@@ -3029,7 +3035,7 @@ var overlays = [
 
     brickOverlay,
     ccdOverlaySdss,
-    gals, bright, tycho2,
+    gals, lslga, bright, tycho2,
     {% if enable_ps1 %}
     ps1cat,
     {% endif %}
@@ -3307,6 +3313,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('bright'),
      findoverlay('tycho2'),
      findoverlay('gals'),
+     findoverlay('lslga'),
      findoverlay('constellations'),
  ]);
 

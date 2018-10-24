@@ -33,6 +33,7 @@ catversions = {
     'decals-dr2': [2,],
     'decals-dr3': [1,],
     'ngc': [1,],
+    'lslga': [1,],
     'spec': [1,],
     'spec-deep2': [1,],
     'bright': [1,],
@@ -649,15 +650,51 @@ def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=Fal
     return HttpResponse(json.dumps(rtn),
                         content_type='application/json')
 
+def cat_lslga(req, ver):
+    import json
+    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v1.0.kd.fits')
+    tag = 'lslga'
+    T = cat_kd(req, ver, tag, fn)
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],plate=[])),
+                            content_type='application/json')
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    names = [t.strip() for t in T.galaxy]
+    radius = [d * 60./2. for d in T.d25]
+
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius)),
+                        content_type='application/json')
+
+
 def cat_spec(req, ver):
     import json
+    fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr14-trimmed.kd.fits')
+    tag = 'spec'
+    T = cat_kd(req, ver, tag, fn)
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],plate=[])),
+                            content_type='application/json')
+    plate = req.GET.get('plate', None)
+    if plate is not None:
+        plate = int(plate, 10)
+        T.cut(T.plate == plate)
+
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    names = [t.strip() for t in T.label]
+    # HACK
+    #names = [t.split()[0] for t in names]
+    mjd   = [int(x) for x in T.mjd]
+    fiber = [int(x) for x in T.fiberid]
+    plate = [int(x) for x in T.plate]
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, mjd=mjd, fiber=fiber, plate=plate)),
+                        content_type='application/json')
+
+def cat_kd(req, ver, tag, fn):
     tag = 'spec'
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
     declo = float(req.GET['declo'])
     dechi = float(req.GET['dechi'])
-    plate = req.GET.get('plate', None)
-
     ver = int(ver)
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
@@ -675,14 +712,12 @@ def cat_spec(req, ver):
     rc = rc[0]
     dc = dc[0]
     rad = degrees_between(rc, dc, ralo, declo)
-    #T = fits_table(os.path.join(settings.DATA_DIR, 'specObj-dr12-trim-2.fits'))
-    fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr14-trimmed.kd.fits')
+
     kd = tree_open(fn)
     I = tree_search_radec(kd, rc, dc, rad)
     print('Matched', len(I), 'from', fn)
     if len(I) == 0:
-        return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],plate=[])),
-                            content_type='application/json')
+        return None
     T = fits_table(fn, rows=I)
     debug(len(T), 'spectra')
     if ralo > rahi:
@@ -692,22 +727,7 @@ def cat_spec(req, ver):
         T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
     debug(len(T), 'in cut')
 
-    if plate is not None:
-        plate = int(plate, 10)
-        T.cut(T.plate == plate)
-
-    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
-    names = [t.strip() for t in T.label]
-
-    # HACK
-    #names = [t.split()[0] for t in names]
-
-    mjd   = [int(x) for x in T.mjd]
-    fiber = [int(x) for x in T.fiberid]
-    plate = [int(x) for x in T.plate]
-
-    return HttpResponse(json.dumps(dict(rd=rd, name=names, mjd=mjd, fiber=fiber, plate=plate)),
-                        content_type='application/json')
+    return T
 
 
 def cat_spec_deep2(req, ver):

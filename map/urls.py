@@ -188,11 +188,14 @@ urlpatterns = [
 
     # NGC/IC/UGC galaxies
     url(r'^ngc/(\d+)/cat.json', cats.cat_gals),
+
+    # LSLGA galaxies
+    url(r'^lslga/(\d+)/cat.json', cats.cat_lslga),
     
     # Virgo cluster catalog (VCC) objects
     #url(r'^vcc/(\d+)/cat.json', views.cat_vcc),
 
-    # Spectroscopy
+    # SDSS Spectroscopy
     url(r'^spec/(\d+)/cat.json', cats.cat_spec),
 
     # Bright stars
