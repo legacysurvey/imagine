@@ -3355,6 +3355,7 @@ def sdss_ccds_near(rc, dc, radius):
         return None
     # Read only the CCD-table rows within range.
     T = fits_table(fn, rows=I)
+    T.cut(T.rerun == 301)
     return T
 
 def get_exposure_table(name):
