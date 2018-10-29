@@ -1803,6 +1803,11 @@ tiles = mylayer_B('ps1', 'PS1 images',
 allLayers.push(tiles);
 {% endif %}
 
+tiles = mylayer_B('vlass', 'VLASS images',
+                  {'attribution': 'NRAO',
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 tiles = mylayer_B('unwise-w1w2', 'unWISE W1/W2',
                 {'maxNativeZoom': 12,
                  'urlPatterns': [ [11, maxZoom, tile_url], ],});
@@ -3159,6 +3164,7 @@ var baseTree1 = [
             {% if enable_ps1 %}
             findlayer('ps1'),
             {% endif %}
+            findlayer('vlass'),
             {% comment %}
             findlayer('2mass'),
             {% endcomment %}

@@ -56,6 +56,8 @@ tileversions = {
     'sdssco': [1,],
     'ps1': [1],
 
+    'vlass': [1],
+
     'sdss2': [1,],
 
     'eboss': [1,],
@@ -2744,6 +2746,78 @@ class TwoMassLayer(MapLayer):
         wcs.sin = True
         return wcs
 
+
+
+class VlassLayer(RebrickedMixin, MapLayer):
+    # Native bricks ~ 1 deg ^ 2
+
+    def __init__(self, name):
+        super(VlassLayer, self).__init__(name, nativescale=12)
+        self.pixscale = 1.0
+        self.bands = self.get_bands()
+        self.pixelsize = 3744 # 3600 * 1.04
+
+    def get_bricks(self):
+        from astrometry.util.fits import fits_table
+        return fits_table(os.path.join(self.basedir, 'vlass-tiles.fits'))
+
+    def get_bands(self):
+        return [1]
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        assert(len(imgs) == 1)
+        img = imgs[0]
+        H,W = img.shape
+        mn,mx = -0.0003, 0.003
+        gray = np.clip(255. * ((img-mn) / (mx-mn)), 0., 255.).astype(np.uint8)
+        rgb = np.zeros((H,W,3), np.uint8)
+        rgb[:,:,:] = gray[:,:,np.newaxis]
+        return rgb
+
+    def get_base_filename(self, brick, band, **kwargs):
+        return os.path.join(self.basedir, brick.filename)
+
+    def get_fits_extension(self, scale, fn):
+        if scale == 0:
+            return 0
+        return 1
+
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+            '%(scale)i', '%(brickname).3s',
+            'vlass-%(brickname)s.fits')
+
+    def read_image(self, brick, band, scale, slc, fn=None):
+        extend = (scale == 0 and slc is not None and len(slc) == 2)
+        if extend:
+            slc = (slice(0,1), slice(0,1)) + slc
+        img = super(VlassLayer, self).read_image(brick, band, scale, slc, fn=fn)
+        if extend:
+            img = img[0,0,:,:]
+        return img
+
+    def get_bricks_for_scale(self, scale):
+        if scale in [0, None]:
+            return self.get_bricks()
+        scale = min(scale, 4)
+        from astrometry.util.fits import fits_table
+        fn = os.path.join(self.basedir, 'vlass-bricks-%i.fits' % scale)
+        print('VLASS bricks for scale', scale, '->', fn)
+        b = fits_table(fn)
+        return b
+
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        size = self.pixelsize
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+
+
 class ZeaLayer(MapLayer):
     def __init__(self, name, zeamap, stretch=None, vmin=0., vmax=1.,
                  cmap=None):
@@ -4543,6 +4617,9 @@ def get_layer(name, default=None):
     elif name == 'ps1':
         layer = PS1Layer('ps1')
 
+    elif name == 'vlass':
+        layer = VlassLayer('vlass')
+
     elif name in ['decaps', 'decaps-model', 'decaps-resid']:
         survey = get_survey('decaps')
         image = Decaps2Layer('decaps', 'image', survey)
@@ -4801,7 +4878,9 @@ if __name__ == '__main__':
     #c.get('/des-dr1/1/12/3699/2517.jpg')
     #r = c.get('/fits-cutout?ra=175.8650&dec=52.7103&pixscale=0.5&layer=unwise-neo4')
     #r = c.get('/cutouts/?ra=43.9347&dec=-14.2082&layer=ls-dr67')
-    r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
+    #r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
+    #r = c.get('/vlass/1/12/3352/779.jpg')
+    r = c.get('/vlass/1/9/414/94.jpg')
     print('r:', type(r))
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     sys.exit(0)

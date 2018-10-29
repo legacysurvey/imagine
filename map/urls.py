@@ -167,6 +167,9 @@ urlpatterns = [
     # PS1 catalog test
     url(r'^ps1/(\d+)/cat.json', cats.cat_ps1),
 
+    url(r'^vlass/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('vlass')),
+
     # For nova.astrometry.net: SDSS for a given WCS
     url(r'^sdss-wcs', views.sdss_wcs),
 
