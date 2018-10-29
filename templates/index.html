@@ -22,6 +22,8 @@
 {# From http://kartena.github.io/Leaflet.zoomslider #}
 <script src="{% static "leaflet-zoomslider-0.6.1.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet-zoomslider-0.6.1.css" %}" />
+{# https://github.com/jdfergason/Leaflet.Ellipse #}
+<script src="{% static "l.ellipse.js" %}"></script>
 {% comment %}
 <script src="{% static "leaflet.draw-0.2.4.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet.draw-0.2.4.css" %}" />
@@ -471,6 +473,8 @@ var CatalogOverlay = L.Evented.extend({
         var circleList = new Array(rdlist.length);
         var clong = map.getCenter().lng;
         var radii = result['radiusArcsec'];
+        var abratio = result['abRatio'];
+        var posAngle = result['posAngle'];
         var tooltipStyle = this.getTooltipStyle();
         for (var i=0, len=rdlist.length; i<len; i++) {
             var r = rdlist[i][0];
@@ -488,7 +492,11 @@ var CatalogOverlay = L.Evented.extend({
 	            var meters = (radii[i] * 30.87) || 30;
                 radius = meters;
             }
-            var circ = L.circle([lat, lng], radius, style);
+            if (abratio && posAngle) {
+                var circ = L.ellipse([lat, lng], [radius,radius*abratio[i]], posAngle[i], style);
+            } else {
+                var circ = L.circle([lat, lng], radius, style);
+            }
 	        if (showlabels) {
                 var txt = this.getLabel(result, i);
                 if (txt.length > 0) {
@@ -560,6 +568,15 @@ var GalaxyCatalog = CatalogOverlay.extend({
         var name = oname;
 	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
             oname.replace(' ','+') + '">' + name + '</a>';
+        return name;
+    },
+});
+
+var LSLGACatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        var name = json['name'][i];
+        var pgc = json['pgc'][i];
+	    name = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
         return name;
     },
 });
@@ -2622,7 +2639,7 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
                              'urlTerm': 'ngc',});
 
 
-var lslga = new GalaxyCatalog('lslga', 'LSLGA Large galaxies',
+var lslga = new LSLGACatalog('lslga', 'LSLGA Large galaxies',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
                               'urlTerm': 'lslga',});

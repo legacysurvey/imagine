@@ -652,6 +652,7 @@ def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=Fal
 
 def cat_lslga(req, ver):
     import json
+    import numpy as np
     fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v1.0.kd.fits')
     tag = 'lslga'
     T = cat_kd(req, ver, tag, fn)
@@ -660,9 +661,14 @@ def cat_lslga(req, ver):
                             content_type='application/json')
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
-    radius = [d * 60./2. for d in T.d25]
+    radius = [d * 60./2. for d in T.d25.astype(np.float32)]
 
-    return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius)),
+    ab = [float(f) for f in T.ba.astype(np.float32)]
+    pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa.astype(np.float32)]
+    pgc = [int(p) for p in T.pgc]
+
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
+                                        abRatio=ab, posAngle=pa, pgc=pgc)),
                         content_type='application/json')
 
 
