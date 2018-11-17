@@ -653,7 +653,7 @@ def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=Fal
 def cat_lslga(req, ver):
     import json
     import numpy as np
-    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v1.0.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v2.0.kd.fits')
     tag = 'lslga'
     T = cat_kd(req, ver, tag, fn)
     if T is None:
