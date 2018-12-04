@@ -127,7 +127,8 @@ def cat_gaia_dr2(req, ver):
     cat = gaia.get_catalog_radec_box(ralo, rahi, declo, dechi)
 
     for c in ['ra','dec','phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag',
-              'pmra','pmdec','parallax']:
+              'pmra','pmdec','parallax',
+              'pmra_error', 'pmdec_error', 'parallax_error']:
         val = cat.get(c)
         val[np.logical_not(np.isfinite(val))] = 0.
         cat.set(c, val)
@@ -141,6 +142,9 @@ def cat_gaia_dr2(req, ver):
         pmra=[float(o.pmra) for o in cat],
         pmdec=[float(o.pmdec) for o in cat],
         parallax=[float(o.parallax) for o in cat],
+        pmra_err=[float(o.pmra_error) for o in cat],
+        pmdec_err=[float(o.pmdec_error) for o in cat],
+        parallax_err=[float(o.parallax_error) for o in cat],
     )),
                         content_type='application/json')
 

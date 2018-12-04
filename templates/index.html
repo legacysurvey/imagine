@@ -2669,13 +2669,11 @@ var GaiaDr1Catalog = CatalogOverlay.extend({
     }
 });
 
-//var gaia = new CatalogOverlay('gaia-dr1', 'Gaia DR1 sources',
 var gaia = new GaiaDr1Catalog('gaia-dr1', 'Gaia DR1 sources',
                              {'url_name': 'gaia-dr1',
                               'minZoom': 11,
                               'labelsMinZoom': 99,
                               'urlTerm': 'gaia-dr1',
-                              //'color': '#ffffff',
                               'radius': 260, });
 
 var GaiaDr2Catalog = CatalogOverlay.extend({
@@ -2690,8 +2688,13 @@ var GaiaDr2Catalog = CatalogOverlay.extend({
         var pmra = json['pmra'][i];
         var pmdec = json['pmdec'][i];
         var parallax = json['parallax'][i];
+        var pmra_err = json['pmra_err'][i];
+        var pmdec_err = json['pmdec_err'][i];
+        var parallax_err = json['parallax_err'][i];
         if (pmra != 0.0) {
-            txt = txt + '<br>pmRA,Dec ' + pmra.toFixed(0) + ', ' + pmdec.toFixed(0) + ', parallax ' + parallax.toFixed(0);
+            txt = txt + '<br>pmRA,Dec ' + pmra.toFixed(1) + ', ' + pmdec.toFixed(1) +
+                                        ' &pm; ' + pmra_err.toFixed(1) + ', ' + pmdec_err.toFixed(1) + ' mas/yr, ' +
+                                        'parallax ' + parallax.toFixed(1) + '&pm; ' + parallax_err.toFixed(1) + ' mas';
         }
         txt = txt + '<br>G ' + json['gmag'][i].toFixed(2) + ', BP ' + json['bpmag'][i].toFixed(2) + ', RP ' + json['rpmag'][i].toFixed(2);
         txt = txt + '<br>Source id: ' + json['sourceid'][i];
