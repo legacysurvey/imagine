@@ -579,6 +579,20 @@ var LSLGACatalog = CatalogOverlay.extend({
 	    name = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
         return name;
     },
+
+    getPopupText(json, i) {
+        // matching map/cats.py : cat_lslga
+        d25 = json['radiusArcsec'][i] * 2 / 60.;
+        s = 'PGC ' + json['pgc'][i] + '<br/>Name ' + json['name'][i] + '<br/>' +
+            'D25 ' + d25.toFixed(3) + ', AB ' + json['abRatio'][i].toFixed(2) + ', PA ' + json['posAngle'][i].toFixed(1) + '<br/>';
+        z = json['redshift'][i];
+        t = json['type'][i];
+        if (t.length > 0)
+            s += 'Type ' + t + ' ';
+        if (z != -1.0)
+            s += 'Redshift ' + z.toFixed(3);
+        return s;
+    },
 });
 
 var SdssSpectraCatalog = CatalogOverlay.extend({

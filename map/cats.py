@@ -657,7 +657,7 @@ def cat_lslga(req, ver):
     tag = 'lslga'
     T = cat_kd(req, ver, tag, fn)
     if T is None:
-        return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],plate=[])),
+        return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[], posAngle=[], pgc=[], type=[], redshift=[])),
                             content_type='application/json')
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
@@ -666,9 +666,12 @@ def cat_lslga(req, ver):
     ab = [float(f) for f in T.ba.astype(np.float32)]
     pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa.astype(np.float32)]
     pgc = [int(p) for p in T.pgc]
+    z = [float(z) if np.isfinite(z) else -1. for z in T.z.astype(np.float32)]
+    typ = [t.strip() if t != 'nan' else '' for t in T.get('type')]
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
-                                        abRatio=ab, posAngle=pa, pgc=pgc)),
+                                        abRatio=ab, posAngle=pa, pgc=pgc, type=typ,
+                                        redshift=z)),
                         content_type='application/json')
 
 
