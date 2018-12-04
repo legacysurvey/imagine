@@ -572,19 +572,18 @@ var GalaxyCatalog = CatalogOverlay.extend({
     },
 });
 
-var LSLGACatalog = CatalogOverlay.extend({
-    getLabel: function(json, i) {
+var lslga_popup = function(json, i) {
         var name = json['name'][i];
         var pgc = json['pgc'][i];
-	    name = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
-        return name;
-    },
-
-    getPopupText(json, i) {
+	    //name = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
+        //return name;
+        //},
+        //getPopupText(json, i) {
+	    s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
         // matching map/cats.py : cat_lslga
         d25 = json['radiusArcsec'][i] * 2 / 60.;
-        s = 'PGC ' + json['pgc'][i] + '<br/>Name ' + json['name'][i] + '<br/>' +
-            'D25 ' + d25.toFixed(3) + ', AB ' + json['abRatio'][i].toFixed(2) + ', PA ' + json['posAngle'][i].toFixed(1) + '<br/>';
+        //s = 'PGC ' + json['pgc'][i] + '<br/>Name ' + json['name'][i] + '<br/>' +
+        s += '<br/>D25 ' + d25.toFixed(3) + ', AB ' + json['abRatio'][i].toFixed(2) + ', PA ' + json['posAngle'][i].toFixed(1) + '<br/>';
         z = json['redshift'][i];
         t = json['type'][i];
         if (t.length > 0)
@@ -592,7 +591,21 @@ var LSLGACatalog = CatalogOverlay.extend({
         if (z != -1.0)
             s += 'Redshift ' + z.toFixed(3);
         return s;
+}
+
+var LSLGACatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        return lslga_popup(json, i);
     },
+
+    getPopupText: function(json, i) {
+        return lslga_popup(json, i);
+    },
+
+    getTooltipStyle() {
+        return { permanent: false, interactive: true, };
+    },
+
 });
 
 var SdssSpectraCatalog = CatalogOverlay.extend({
