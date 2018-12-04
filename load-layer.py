@@ -7,12 +7,26 @@ from legacypipe.survey import LegacySurveyData
 
 def main():
 
-    indir = '/global/cscratch1/sd/dstn/dr8test-1'
-    name = 'dr8-test1'
-    pretty = 'DR8 test1'
+    # indir = '/global/cscratch1/sd/dstn/dr8test-1'
+    # name = 'dr8-test1'
+    # pretty = 'DR8 test1'
+
+    # indir = '/scratch1/scratchdirs/desiproc/dr8test002/'
+    # name = 'dr8-test2'
+    # pretty = 'DR8 test2 (outliers)'
+
+    indir = '/scratch1/scratchdirs/desiproc/dr8test003/'
+    name = 'dr8-test3'
+    pretty = 'DR8 test3 (outliers)'
+
+    indir = '/scratch1/scratchdirs/desiproc/dr8test004/'
+    name = 'dr8-test4'
+    pretty = 'DR8 test4 (large-galaxies)'
+
     sublayers = ['', '-model', '-resid']
     subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
     survey_dir = '/global/cscratch1/sd/desiproc/dr7'
+    #survey_dir = '/scratch1/scratchdirs/desiproc/dr8'
     datadir = 'data'
 
     survey = LegacySurveyData(survey_dir=survey_dir)

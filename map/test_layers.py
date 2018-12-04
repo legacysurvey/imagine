@@ -6,8 +6,36 @@ test_layers.append(("dr8-test1-model", "DR8 test1 models"))
 
 test_layers.append(("dr8-test1-resid", "DR8 test1 residuals"))
 
-test_layers.append(("dr8-test2", "DR8 test2 (outliers) images"))
+# test_layers.append(("dr8-test2", "DR8 test2 (outliers) images"))
+# test_layers.append(("dr8-test2-model", "DR8 test2 (outliers) models"))
+# test_layers.append(("dr8-test2-resid", "DR8 test2 (outliers) residuals"))
 
-test_layers.append(("dr8-test2-model", "DR8 test2 (outliers) models"))
+test_layers.append(("dr8-test3", "DR8 test3 (outliers) images"))
 
-test_layers.append(("dr8-test2-resid", "DR8 test2 (outliers) residuals"))
+test_layers.append(("dr8-test3-model", "DR8 test3 (outliers) models"))
+
+test_layers.append(("dr8-test3-resid", "DR8 test3 (outliers) residuals"))
+
+test_layers.append(("dr8-test3", "DR8 test3 (outliers) images"))
+
+test_layers.append(("dr8-test3-model", "DR8 test3 (outliers) models"))
+
+test_layers.append(("dr8-test3-resid", "DR8 test3 (outliers) residuals"))
+
+test_layers.append(("dr8-test3", "DR8 test3 (outliers) images"))
+
+test_layers.append(("dr8-test3-model", "DR8 test3 (outliers) models"))
+
+test_layers.append(("dr8-test3-resid", "DR8 test3 (outliers) residuals"))
+
+test_layers.append(("dr8-test4", "DR8 test4 (large-galaxies) images"))
+
+test_layers.append(("dr8-test4-model", "DR8 test4 (large-galaxies) models"))
+
+test_layers.append(("dr8-test4-resid", "DR8 test4 (large-galaxies) residuals"))
+
+test_layers.append(("dr8-test4", "DR8 test4 (large-galaxies) images"))
+
+test_layers.append(("dr8-test4-model", "DR8 test4 (large-galaxies) models"))
+
+test_layers.append(("dr8-test4-resid", "DR8 test4 (large-galaxies) residuals"))
