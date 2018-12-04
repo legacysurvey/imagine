@@ -929,6 +929,9 @@ class MapLayer(object):
                     traceback.print_exc(None, sys.stdout)
                     continue
 
+                #print('BWCS shape', bwcs.shape, 'desired subimage shape', yhi-ylo, xhi-xlo,
+                #'subwcs shape', subwcs.shape, 'img shape', img.shape)
+
                 #print('Resampling', img.shape)
                 try:
                     Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
@@ -947,6 +950,12 @@ class MapLayer(object):
                     Xo = Xo[I]
                     Yi = Yi[I]
                     Xi = Xi[I]
+
+                # print('xlo xhi', xlo,xhi, 'ylo yhi', ylo,yhi,
+                #       'image shape', img.shape,
+                #       'Xi range', Xi.min(), Xi.max(),
+                #       'Yi range', Yi.min(), Yi.max(),
+                #       'subwcs shape', subwcs.shape)
 
                 if not np.all(np.isfinite(img[Yi,Xi])):
                     ok, = np.nonzero(np.isfinite(img[Yi,Xi]))
@@ -2187,6 +2196,20 @@ class PS1Layer(MapLayer):
 
         return img
 
+    def get_brick_mask(self, scale, bwcs, brick):
+        if scale > 0:
+            return None
+        import numpy as np
+        H,W = bwcs.shape
+        print('Bwcs shape:', H,W)
+        U = np.ones((H,W), bool)
+        # Mask 10 pix at edges
+        U[:10,:] = False
+        U[-10:,:] = False
+        U[:,:10] = False
+        U[:,-10:] = False
+        return U
+
     '''
     Obsolete WCS keywords:
 
@@ -2226,8 +2249,8 @@ class PS1Layer(MapLayer):
         cd12 = hdr['PC001002'] * cdelt1
         cd21 = hdr['PC002001'] * cdelt2
         cd22 = hdr['PC002002'] * cdelt2
-        H = hdr['ZNAXIS1']
-        W = hdr['ZNAXIS2']
+        W = hdr['ZNAXIS1']
+        H = hdr['ZNAXIS2']
         wcs = Tan(*[float(x) for x in [
                     hdr['CRVAL1'], hdr['CRVAL2'], hdr['CRPIX1'], hdr['CRPIX2'],
                     cd11, cd12, cd21, cd22, W, H]])
@@ -2360,6 +2383,23 @@ class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
         if len(I) == 0:
             return None
         return bricks[I]
+
+class UnwiseCatalogModel(RebrickedUnwise):
+    def __init__(self, name, basedir):
+        super(UnwiseCatalogModel, self).__init__(name, basedir)
+        self.basedir = basedir
+
+    def get_base_filename(self, brick, band, **kwargs):
+        brickname = brick.brickname
+        brickpre = brickname[:3]
+        fn = os.path.join(self.basedir, '%s.%s.mod.fits' % (brickname, band))
+        return fn
+
+    def get_fits_extension(self, scale, fn):
+        return 1
+
+
+
 
 class WssaLayer(RebrickedUnwise):
     def __init__(self, name):
@@ -2804,8 +2844,19 @@ class VlassLayer(RebrickedMixin, MapLayer):
         from astrometry.util.fits import fits_table
         fn = os.path.join(self.basedir, 'vlass-bricks-%i.fits' % scale)
         print('VLASS bricks for scale', scale, '->', fn)
+        #if os.path.exists(fn):
         b = fits_table(fn)
         return b
+        # bsmall = self.get_bricks_for_scale(scale - 1)
+        # afn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % scale)
+        # print('Generic brick file:', afn)
+        # assert(os.path.exists(afn))
+        # allbricks = fits_table(afn)
+        # print('Generic bricks:', len(allbricks))
+
+
+        
+
 
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
@@ -4690,6 +4741,10 @@ def get_layer(name, default=None):
     elif name == 'wssa':
         layer = WssaLayer('wssa')
 
+    elif name == 'unwise-cat-model':
+        layer = UnwiseCatalogModel('unwise-cat-model',
+                                   os.path.join(settings.DATA_DIR, 'unwise-catalog', 'models'))
+
     elif name == 'halpha':
         from tractor.sfd import SFDMap
         halpha = SFDMap(
@@ -4880,7 +4935,8 @@ if __name__ == '__main__':
     #r = c.get('/cutouts/?ra=43.9347&dec=-14.2082&layer=ls-dr67')
     #r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
     #r = c.get('/vlass/1/12/3352/779.jpg')
-    r = c.get('/vlass/1/9/414/94.jpg')
+    #r = c.get('/vlass/1/9/414/94.jpg')
+    r = c.get('/unwise-cat-model/1/12/3077/1624.jpg')
     print('r:', type(r))
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     sys.exit(0)

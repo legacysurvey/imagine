@@ -229,6 +229,9 @@ urlpatterns = [
     # NEO4
     url(r'^unwise-neo4/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('unwise-neo4')),
+    # unWISE catalog model
+    url(r'^unwise-cat-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('unwise-cat-model')),
 
     #url(r'^unwise-w3w4-tiles/(\d+)/(\d+)/(\d+)/(\d+).jpg', views.map_unwise_w3w4),
 

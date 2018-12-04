@@ -14,6 +14,9 @@ import fitsio
 # wget -v -r -nH --cut-dirs 2 -np -R *.rms.subim.fits https://archive-new.nrao.edu/vlass/quicklook/VLASS1.1/T29t02/
 # (but then I moved files around, eliminating one level of subdir, sort of by accident)
 # (also, this wget doesn't work at NERSC)
+#
+# eg:
+# cd data/vlass/VLASS1.1/T24t14 && mv */*.fits .
 
 
 fns = glob('data/vlass/VLASS1.1/*/*.fits')

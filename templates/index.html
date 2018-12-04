@@ -1859,6 +1859,11 @@ tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
                  'urlPatterns': [ [9, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
+                {'maxNativeZoom': 12,
+                 'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 {% comment %}
 tiles = mylayer('2mass', '2MASS',
                 {'maxNativeZoom': 12,
@@ -3019,6 +3024,7 @@ var DesiFootprint = CatalogOverlay.extend({
 var desifoot = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
 desifoot._url_term = 'desifoot';
 
+
 var overlays = [
     {% if enable_phat %}
     phat_clusters,
@@ -3184,6 +3190,7 @@ var baseTree1 = [
         findlayer('unwise-neo3'),
         findlayer('unwise-neo2'),
         findlayer('unwise-w1w2'),
+        findlayer('unwise-cat-model'),
     ]),
     {
         label: 'More surveys',
@@ -3464,13 +3471,16 @@ if ('mark' in qstr) {
     map.addLayer(lg);
 }
 
+console.log('adding layers from qstr');
 for (var i=0,len=overlays.length; i<len; i++) {
     ov = overlays[i]
     if (ov._url_term in qstr) {
+        console.log('adding layer ' + ov._url_term + ', ' + ov._pretty);
         ov.initLinkHere(qstr[ov._url_term]);
         map.addLayer(ov.getGroup());
     }
 }
+console.log('done adding layers from qstr');
 
 if ('constel' in qstr) {
   map.addLayer(conGroup);

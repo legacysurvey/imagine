@@ -226,7 +226,7 @@ def top_levels(mp, opt):
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
                     'des-dr1',
                     'eboss',
-                    'unwise-neo2', 'unwise-neo3', 'unwise-neo4',
+                    'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
                     'galex', 'sdss2', 'wssa',
                     'ls-dr56', 'ls-dr67'] or True:
         import pylab as plt
@@ -240,7 +240,7 @@ def top_levels(mp, opt):
         tag = opt.kind
 
         rgbkwargs = {}
-        if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4']:
+        if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model']:
             bands = [1, 2]
             get_rgb = _unwise_to_rgb
         elif opt.kind == 'sdss2':
@@ -704,7 +704,7 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -25
-    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3', 'unwise-neo4',
+    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
                       'galex', 'wssa']:
         if opt.maxdec is None:
             opt.maxdec = 90
@@ -771,7 +771,7 @@ def main():
         if opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
-                        'unwise-neo3', 'unwise-neo4',
+                        'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
                         'galex', 'wssa', 'des-dr1',
                     ] or True:
             from map.views import get_layer
@@ -829,7 +829,7 @@ def main():
         
         if opt.kind in ['decals-dr3', 'decals-dr3-model',
                         'mzls+bass-dr4', 'mzls+bass-dr4-model',
-                        'decaps2', 'decaps2-model', 'eboss']:
+                        'decaps2', 'decaps2-model', 'eboss', 'ps1']:
 
             from glob import glob
             from map.views import get_survey, get_layer
