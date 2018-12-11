@@ -2536,8 +2536,28 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
     }
     return txt;
 },
+});
+
+
+var unwise_tile_detail = function(layer_name, name, aparams) {
+    return '';
+}
+var unwise_tile_detail_list = function(ov, objs) {
+    return '';
+}
     
-                                      });
+var unwiseTileOverlay = new PolygonOverlay('unwise-tiles',
+                                 'unWISE tiles',
+                                 {'url':ccds_url,
+                                 'minZoom': 6,
+                                 'labelMinZoom': 100,
+                                 'urlTerm': 'unwise_tile',
+                                 'detail': unwise_tile_detail,
+                                 'detail_list': unwise_tile_detail_list,
+                                 'url_name': 'unwise-tiles',
+                                 'dr_name': 'unWISE',
+                                 });
+unwiseTileOverlay._color = '#9040f0';
 
 
 var ccdOverlaySdss = new PolygonOverlay('sdss-ccds',
@@ -2593,6 +2613,7 @@ var polygonOverlays = [
     ccdOverlay7, expOverlay7,
     {% endif %}
     brickOverlay,
+    unwiseTileOverlay,
     ccdOverlaySdss,
     {% if enable_spectra %}
     plateOverlay,
@@ -3095,6 +3116,7 @@ var overlays = [
     {% endif %}
 
     brickOverlay,
+    unwiseTileOverlay,
     ccdOverlaySdss,
     gals, lslga, bright, tycho2,
     {% if enable_ps1 %}
@@ -3304,6 +3326,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      //findoverlay('decals-dr7-ccds'),
      //{% endif %}
      findoverlay('sdss-ccds'),
+     findoverlay('unwise-tiles'),
      //],
      //},
      //{ label: 'DECam exposure outlines',

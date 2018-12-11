@@ -3445,6 +3445,42 @@ def ccd_list(req):
                 for t in T]
         return HttpResponse(json.dumps(dict(polys=ccds)), content_type='application/json')
 
+    if name == 'unwise-tiles':
+        from astrometry.util.starutil import radectoxyz, xyztoradec, degrees_between
+        from astrometry.libkd.spherematch import tree_open, tree_search_radec
+        from astrometry.util.fits import fits_table
+        x1,y1,z1 = radectoxyz(east, north)
+        x2,y2,z2 = radectoxyz(west, south)
+        rc,dc = xyztoradec((x1+x2)/2., (y1+y2)/2., (z1+z2)/2.)
+        # 0.8: unWISE tile radius, approx.
+        radius = 0.8 + degrees_between(east, north, west, south)/2.
+        fn = os.path.join(settings.DATA_DIR, 'unwise-tiles.kd.fits')
+        kd = tree_open(fn)
+        I = tree_search_radec(kd, rc, dc, radius)
+        print(len(I), 'unwise tiles within', radius, 'deg of RA,Dec (%.3f, %.3f)' % (rc,dc))
+        if len(I) == 0:
+            return HttpResponse(json.dumps(dict(polys=[])), content_type='application/json')
+        # Read only the tiles within range.
+        T = fits_table(fn, rows=I)
+        '''
+        W = H = 2048
+        pixscale = 2.75
+        wcs = Tan(0., 0., (W + 1) / 2., (H + 1) / 2.,
+           -pixscale / 3600., 0., 0., pixscale / 3600., W, H)
+        dr,dd = wcs.pixelxy2radec([1,1024.5,2048,2048,2048,1024.5,1,1,1],
+             [1,1,1,1024.5,2048,2048,2048,1024.5,1])
+        dr + (-360*(dr>180)), dd
+        '''
+        d = 0.78179176
+        dr = np.array([ d, 0., -d, -d, -d, 0, d, d,  d])
+        dd = np.array([-d,-d , -d,  0,  d, d, d, 0.,-d])
+
+        polys = [dict(name=t.coadd_id,
+                      radecs=list(zip(t.ra  + dr/np.cos(np.deg2rad(t.dec + dd)),
+                                      t.dec + dd)))
+                 for t in T]
+        return HttpResponse(json.dumps(dict(polys=polys)), content_type='application/json')
+
     CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
     print('CCDs in box for', name, ':', len(CCDS))
     if len(CCDS) == 0:
