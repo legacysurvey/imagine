@@ -690,6 +690,7 @@ def main():
 
     parser.add_option('--kind', default='image')
     parser.add_option('--scale', action='store_true', help='Scale images?')
+    parser.add_option('--bricks', action='store_true', help='Compute scaled brick tables?')
     parser.add_option('--coadd', action='store_true', help='Create SDSS coadd images?')
     parser.add_option('--grass', action='store_true', help='progress plot')
 
@@ -764,6 +765,13 @@ def main():
 
     if opt.top:
         top_levels(mp, opt)
+        sys.exit(0)
+
+    if opt.bricks:
+        from map.views import get_layer
+        layer = get_layer(opt.kind)
+        for scale in range(1,8):
+            B = layer.get_bricks_for_scale(scale)
         sys.exit(0)
 
     if opt.scale:

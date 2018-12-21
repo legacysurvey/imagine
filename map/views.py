@@ -1633,7 +1633,7 @@ class RebrickedMixin(object):
         from astrometry.libkd.spherematch import match_radec
 
         fn = os.path.join(self.basedir, 'survey-bricks-%i.fits.gz' % scale)
-        print('Brick file:', fn, 'exists?', os.path.exists(fn))
+        print(self, 'Brick file:', fn, 'exists?', os.path.exists(fn))
         if os.path.exists(fn):
             return fits_table(fn)
         bsmall = self.get_bricks_for_scale(scale - 1)
@@ -4804,6 +4804,7 @@ def get_layer(name, default=None):
     
     if layer is None:
         # Try generic
+        print('get_layer:', name, '-- generic')
         basename = name
         if name.endswith('-model'):
             basename = name[:-6]
@@ -4811,7 +4812,7 @@ def get_layer(name, default=None):
             basename = name[:-6]
         survey = get_survey(basename)
         if survey is not None:
-            image = ReDecalsLayer(name, 'image', survey)
+            image = ReDecalsLayer(basename, 'image', survey)
             model = ReDecalsModelLayer(basename + '-model', 'model', survey,
                                        drname=basename)
             resid = ReDecalsResidLayer(image, model, basename + '-resid', 'resid', survey,
@@ -4972,7 +4973,8 @@ if __name__ == '__main__':
     #r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
     #r = c.get('/vlass/1/12/3352/779.jpg')
     #r = c.get('/vlass/1/9/414/94.jpg')
-    r = c.get('/unwise-cat-model/1/12/3077/1624.jpg')
+    #r = c.get('/unwise-cat-model/1/12/3077/1624.jpg')
+    r = c.get('/unwise-cat-model/1/3/1/1.jpg')
     print('r:', type(r))
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     sys.exit(0)

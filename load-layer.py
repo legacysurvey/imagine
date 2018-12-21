@@ -15,13 +15,17 @@ def main():
     # name = 'dr8-test2'
     # pretty = 'DR8 test2 (outliers)'
 
-    indir = '/scratch1/scratchdirs/desiproc/dr8test003/'
-    name = 'dr8-test3'
-    pretty = 'DR8 test3 (outliers)'
+    # indir = '/scratch1/scratchdirs/desiproc/dr8test003/'
+    # name = 'dr8-test3'
+    # pretty = 'DR8 test3 (outliers)'
+    # 
+    # indir = '/scratch1/scratchdirs/desiproc/dr8test004/'
+    # name = 'dr8-test4'
+    # pretty = 'DR8 test4 (large-galaxies)'
 
-    indir = '/scratch1/scratchdirs/desiproc/dr8test004/'
-    name = 'dr8-test4'
-    pretty = 'DR8 test4 (large-galaxies)'
+    indir = '/global/cscratch1/sd/dstn/dr8test005/'
+    name = 'dr8-test5'
+    pretty = 'DR8 test5 (trident)'
 
     sublayers = ['', '-model', '-resid']
     subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
@@ -65,6 +69,12 @@ def main():
 
     threads = 8
     tharg = '--threads %i ' % threads
+    #tharg = ''
+
+    for x in sublayers:
+        cmd = 'python -u render-tiles.py --kind %s%s --bricks' % (name, x)
+        print(cmd)
+        os.system(cmd)
 
     # images
     for scale in range(1,8):
@@ -75,6 +85,12 @@ def main():
     # models
     for scale in range(1,8):
         cmd = 'python -u render-tiles.py --kind %s-model --scale --zoom %i %s' % (name, scale, tharg)
+        print(cmd)
+        os.system(cmd)
+
+    # resids
+    for scale in range(1,8):
+        cmd = 'python -u render-tiles.py --kind %s-resid --scale --zoom %i %s' % (name, scale, tharg)
         print(cmd)
         os.system(cmd)
 
