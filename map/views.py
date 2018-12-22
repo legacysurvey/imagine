@@ -39,6 +39,13 @@ matplotlib.use('Agg')
 py3 = (sys.version_info[0] >= 3)
 
 
+debug_ps = None
+import pylab as plt
+if False:
+    from astrometry.util.plotutils import PlotSequence
+    debug_ps = PlotSequence('debug')
+
+
 # We add a version number to each layer, to allow long cache times
 # for the tile JPEGs.  Increment this version to invalidate
 # client-side caches.
@@ -98,6 +105,8 @@ tileversions = {
     'unwise-neo3': [1],
     'unwise-neo4': [1],
     #'unwise-w3w4': [1],
+
+    'unwise-cat-model': [1],
 
     '2mass': [1],
     'galex': [1],
@@ -659,17 +668,103 @@ class MapLayer(object):
         return scale
 
     def bricks_touching_aa_wcs(self, wcs, scale=None):
-        '''Assumes WCS is axis-aligned and normal parity'''
+        from astrometry.util.starutil_numpy import degrees_between
+
+        rc,dc = wcs.radec_center()
+        # get radius from the max diagonals
         W = wcs.get_width()
         H = wcs.get_height()
-        rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
-        rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
-        r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
-        r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
-        dlo = min(d1, d2)
-        dhi = max(d1, d2)
-        print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
-        return self.bricks_touching_radec_box(rlo, rhi, dlo, dhi, scale=scale)
+        #rr,dd = wcs.pixelxy2radec([0.5,0.5,W+0.5,W+0.5], [0.5,H+0.5,0.5,H+0.5])
+        rr,dd = wcs.pixelxy2radec([1,1,W,W], [1,H,1,H])[-2:]
+        d1 = degrees_between(rr[0], dd[0], rr[3], dd[3])
+        d2 = degrees_between(rr[1], dd[1], rr[2], dd[2])
+        rad = 1.01 * max(d1,d2)/2.
+
+        B = self.bricks_within_range(rc, dc, rad, scale=scale)
+        if B is None:
+            # Previously...
+            '''Assumes WCS is axis-aligned and normal parity'''
+            rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
+            rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
+            r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
+            r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
+            dlo = min(d1, d2)
+            dhi = max(d1, d2)
+            print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
+            return self.bricks_touching_radec_box(rlo, rhi, dlo, dhi, scale=scale)
+
+        from astrometry.util.miscutils import polygons_intersect
+        import numpy as np
+
+        keep = []
+        xl,xm,xh = 0.5, (W+1)/2., W+0.5
+        yl,ym,yh = 0.5, (H+1)/2., H+0.5
+        xy = np.array([[xl,yl], [xm, yl], [xh,yl], [xh,ym], [xh,yh],
+                       [xm,yh], [xl,yh], [xl,ym], [xl,yl]])
+
+
+        if debug_ps is not None:
+            plt.clf()
+            plt.plot(xy[:,0], xy[:,1], 'k-')
+
+        for i,brick in enumerate(B):
+            bwcs = self.get_scaled_wcs(brick, None, scale)
+            bh,bw = bwcs.shape
+            # walk the boundary
+            xl,xm,xh = 0.5, (bw+1)/2., bw+0.5
+            yl,ym,yh = 0.5, (bh+1)/2., bh+0.5
+            rr,dd = bwcs.pixelxy2radec([xl, xm, xh, xh, xh, xm, xl, xl, xl],
+                                       [yl, yl, yl, ym, yh, yh, yh, ym, yl])
+            try:
+                ok,bx,by = wcs.radec2pixelxy(rr, dd, wrap=False)
+            except:
+                ok,bx,by = wcs.radec2pixelxy(rr, dd)
+
+            # xx1 = np.linspace(xl, xh, 100)
+            # yy1 = np.array([yl]*100)
+            # xx2 = np.array([xh]*100)
+            # yy2 = np.linspace(yl, yh, 100)
+            # xx3 = np.linspace(xh, xl, 100)
+            # yy3 = np.array([yh]*100)
+            # xx4 = np.array([xl]*100)
+            # yy4 = np.linspace(yh, yl, 100)
+            # rr,dd = bwcs.pixelxy2radec(np.hstack((xx1,xx2,xx3,xx4)), np.hstack((yy1,yy2,yy3,yy4)))
+            # try:
+            #     ok,bx,by = wcs.radec2pixelxy(rr, dd, wrap=False)
+            # except:
+            #     ok,bx,by = wcs.radec2pixelxy(rr, dd)
+
+            bx = bx[ok]
+            by = by[ok]
+            if len(bx) == 0:
+                continue
+            if polygons_intersect(xy, np.vstack((bx, by)).T):
+                if debug_ps is not None:
+                    plt.plot(bx, by, '-')
+                keep.append(i)
+            #else:
+            #    plt.plot(bx, by, 'r-')
+        if debug_ps is not None:
+            debug_ps.savefig()
+                
+        print('Looking for bricks touching WCS', wcs)
+        # DEBUG
+        if True:
+            rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
+            rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
+            r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
+            r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
+            #print('Approx RA,Dec range', rlo,rhi, 'Dec', d1,d2)
+
+        #print('Bricks within range:', B.brickname)
+        print('Bricks touching:', B.brickname[np.array(keep)])
+        B.cut(keep)
+        return B
+            
+
+
+    def bricks_within_range(self, ra, dec, radius, scale=None):
+        return None
 
     def bricks_touching_general_wcs(self, wcs, scale=None):
         import numpy as np
@@ -859,9 +954,10 @@ class MapLayer(object):
 
         W = int(wcs.get_width())
         H = int(wcs.get_height())
-        r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
-                                [1,H/2,H,H,H,H/2,1,1])[-2:]
+        target_ra,target_dec = wcs.pixelxy2radec([1,  1,1,W/2,W,W,  W,W/2],
+                                                 [1,H/2,H,H,  H,H/2,1,1  ])[-2:]
 
+        #print('Target RA,Dec:', target_ra, target_dec)
         #print('Render into wcs: RA,Dec points', r, d)
 
         #print('render_into_wcs: scale', scale, 'N bricks:', len(bricks))
@@ -898,13 +994,12 @@ class MapLayer(object):
                     traceback.print_exc(None, sys.stdout)
                     continue
 
-                # Check for pixel overlap area
-                ok,xx,yy = bwcs.radec2pixelxy(r, d)
+                # Check for pixel overlap area (projecting target WCS edges into this brick)
+                ok,xx,yy = bwcs.radec2pixelxy(target_ra, target_dec)
                 xx = xx.astype(np.int)
                 yy = yy.astype(np.int)
 
-                #print('Brick', brickname, 'band', band, 'shape', bwcs.shape,
-                #      'pixel coords', xx, yy)
+                #print('Brick', brickname, 'band', band, 'shape', bwcs.shape, 'pixel coords', xx, yy)
 
                 imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
                 M = 10
@@ -912,11 +1007,46 @@ class MapLayer(object):
                 xhi = np.clip(xx.max() + M, 0, imW)
                 ylo = np.clip(yy.min() - M, 0, imH)
                 yhi = np.clip(yy.max() + M, 0, imH)
-                #print('x range', xlo,xhi, 'y range', ylo,yhi)
+                #print('-- x range', xlo,xhi, 'y range', ylo,yhi)
                 if xlo >= xhi or ylo >= yhi:
                     print('No pixel overlap')
                     continue
-    
+
+                if debug_ps is not None:
+                    plt.clf()
+                    plt.plot([1,1,imW,imW,1], [1,imH,imH,1,1], 'k-')
+                    plt.plot(xx, yy, 'r-')
+                    plt.plot([xlo,xlo,xhi,xhi,xlo], [ylo,yhi,yhi,ylo,ylo], 'm-')
+                    plt.title('black=brick, red=target')
+                    debug_ps.savefig()
+
+                    plt.clf()
+                    xx1 = np.linspace(1, imW, 100)
+                    yy1 = np.array([1]*100)
+                    xx2 = np.array([imW]*100)
+                    yy2 = np.linspace(1, imH, 100)
+                    xx3 = np.linspace(imW, 1, 100)
+                    yy3 = np.array([imH]*100)
+                    xx4 = np.array([1]*100)
+                    yy4 = np.linspace(imH, 1, 100)
+                    rr,dd = bwcs.pixelxy2radec(np.hstack((xx1,xx2,xx3,xx4)), np.hstack((yy1,yy2,yy3,yy4)))
+                    plt.plot(rr, dd, 'k-')
+                    plt.plot(target_ra, target_dec, 'r-')
+                    xx1 = np.linspace(1, W, 100)
+                    yy1 = np.array([1]*100)
+                    xx2 = np.array([W]*100)
+                    yy2 = np.linspace(1, H, 100)
+                    xx3 = np.linspace(W, 1, 100)
+                    yy3 = np.array([H]*100)
+                    xx4 = np.array([1]*100)
+                    yy4 = np.linspace(H, 1, 100)
+                    rr,dd = wcs.pixelxy2radec(np.hstack((xx1,xx2,xx3,xx4)), np.hstack((yy1,yy2,yy3,yy4)))
+                    plt.plot(rr, dd, 'm-', lw=2, alpha=0.5)
+                    plt.title('black=brick, red=target')
+                    debug_ps.savefig()
+                    
+                    
+
                 subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
                 slc = slice(ylo,yhi), slice(xlo,xhi)
                 try:
@@ -929,6 +1059,20 @@ class MapLayer(object):
                     traceback.print_exc(None, sys.stdout)
                     continue
 
+
+                # DEBUG
+                # sh,sw = subwcs.shape
+                # rr,dd = subwcs.pixelxy2radec([1,1,sw,sw], [1,sh,sh,1])
+                # ok,xx,yy = wcs.radec2pixelxy(rr, dd)
+                # print('Sub-WCS corners -> target pixels', xx.astype(int), yy.astype(int))
+
+                #ok,xx,yy = wcs.radec2pixelxy(target_ra, target_dec)
+                #print('Target_ra,dec to target pix:', xx, yy)
+
+                #rr,dd = bwcs.pixelxy2radec([xlo,xlo,xhi,xhi], [ylo,yhi,yhi,ylo])
+                #ok,xx,yy = wcs.radec2pixelxy(rr, dd)
+                #print('WCS corners -> target pixels', xx.astype(int), yy.astype(int))
+
                 #print('BWCS shape', bwcs.shape, 'desired subimage shape', yhi-ylo, xhi-xlo,
                 #'subwcs shape', subwcs.shape, 'img shape', img.shape)
 
@@ -938,6 +1082,8 @@ class MapLayer(object):
                 except OverlapError:
                     #debug('Resampling exception')
                     continue
+
+                #print('Resampling', len(Yo), 'pixels')
 
                 bmask = self.get_brick_mask(scale, bwcs, brick)
                 if bmask is not None:
@@ -950,6 +1096,8 @@ class MapLayer(object):
                     Xo = Xo[I]
                     Yi = Yi[I]
                     Xi = Xi[I]
+
+                    #print('get_brick_mask:', len(Yo), 'pixels')
 
                 # print('xlo xhi', xlo,xhi, 'ylo yhi', ylo,yhi,
                 #       'image shape', img.shape,
@@ -964,6 +1112,8 @@ class MapLayer(object):
                     Yi = Yi[ok]
                     Xi = Xi[ok]
 
+                    #print('finite pixels:', len(Yo))
+
                 ok = self.filter_pixels(scale, img, wcs, subwcs, Yo,Xo,Yi,Xi)
                 if ok is not None:
                     Yo = Yo[ok]
@@ -971,13 +1121,20 @@ class MapLayer(object):
                     Yi = Yi[ok]
                     Xi = Xi[ok]
 
+                    # print('filter pixels:', len(Yo))
+
                 wt = self.get_pixel_weights(band, brick, scale)
+
+                # DEBUG
+                #nz = np.sum(rw == 0)
 
                 rimg[Yo,Xo] += img[Yi,Xi] * wt
                 rw  [Yo,Xo] += wt
 
+                #print('Coadded', len(Yo), 'pixels;', (nz-np.sum(rw==0)), 'new')
+
                 if False:
-                    import pylab as plt
+                    #import pylab as plt
                     dest = np.zeros(wcs.shape, bool)
                     dest[Yo,Xo] = True
                     source = np.zeros(bwcs.shape, bool)
@@ -1011,9 +1168,9 @@ class MapLayer(object):
                     plt.title('rw')
                     plt.savefig('render-%s-%s.png' % (brickname, band))
 
-            print('Median image weight:', np.median(rw.ravel()))
+            #print('Median image weight:', np.median(rw.ravel()))
             rimg /= np.maximum(rw, 1e-18)
-            print('Median image value:', np.median(rimg.ravel()))
+            #print('Median image value:', np.median(rimg.ravel()))
             rimgs.append(rimg)
         return rimgs
 
@@ -2357,6 +2514,14 @@ class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
         wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
                   float(size), float(size))
         return wcs
+
+    def bricks_within_range(self, ra, dec, radius, scale=None):
+        from astrometry.libkd.spherematch import match_radec
+        import numpy as np
+        B = self.get_bricks_for_scale(scale)
+        brad = self.pixelsize * self.pixscale/3600. * 2**scale * np.sqrt(2.)/2. * 1.01
+        I,J,d = match_radec(ra, dec, B.ra, B.dec, radius + brad)
+        return B[J]
 
     def get_bricks_for_scale(self, scale):
         if scale in [0, None]:
@@ -4974,8 +5139,20 @@ if __name__ == '__main__':
     #r = c.get('/vlass/1/12/3352/779.jpg')
     #r = c.get('/vlass/1/9/414/94.jpg')
     #r = c.get('/unwise-cat-model/1/12/3077/1624.jpg')
-    r = c.get('/unwise-cat-model/1/3/1/1.jpg')
+    #r = c.get('/unwise-cat-model/1/3/1/1.jpg')
+    #r = c.get('/unwise-cat-model/1/6/47/44.jpg')
+    #r = c.get('/unwise-cat-model/1/4/11/0.jpg')
+    r = c.get('/jpeg-cutout?ra=0&dec=88.75&pixscale=11&layer=unwise-cat-model')
+    #r = c.get('/jpeg-cutout?ra=0&dec=89.75&pixscale=6&layer=unwise-cat-model')
+    #r = c.get('/jpeg-cutout?ra=180&dec=89.7&pixscale=6&layer=unwise-cat-model')
     print('r:', type(r))
+
+    f = open('out.jpg', 'wb')
+    for x in r:
+        #print('Got', type(x), len(x))
+        f.write(x)
+    f.close()
+
     #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     sys.exit(0)
     # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg

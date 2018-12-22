@@ -1,6 +1,17 @@
 # NOTE, only work on the virtualenv on the "sgn04" machine!
 # (rsync it to /tmp and back)
 
+sgn04:
+cd /tmp
+rsync -arv ~/cosmo/webapp/viewer-dev/viewer-dev-conda-2 .
+
+export PATH=~/miniconda3b/bin:${PATH}
+unset PYTHONPATH
+source activate viewer-dev-conda-2
+# ... tinker...
+rsync -arv viewer-dev-conda-2 edison:cosmo/webapp/viewer-dev/
+
+
 # ??
 # virtualenv --always-copy venv
 

@@ -109,11 +109,12 @@ class MercWCSWrapper(object):
     def __init__(self, wcs, wrap):
         self.wcs = wcs
         self.wrap = float(wrap)
-    def radec2pixelxy(self, ra, dec):
+    def radec2pixelxy(self, ra, dec, wrap=True):
         X = self.wcs.radec2pixelxy(ra, dec)
         (ok,x,y) = X
-        x += (x < -self.wrap/2) * self.wrap
-        x -= (x >  self.wrap/2) * self.wrap
+        if wrap:
+            x += (x < -self.wrap/2) * self.wrap
+            x -= (x >  self.wrap/2) * self.wrap
         return (ok,x,y)
 
     def pixelxy2radec(self, x, y):
