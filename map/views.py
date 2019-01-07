@@ -3522,6 +3522,7 @@ def get_survey(name):
         print('Caching survey', name)
         surveys[name] = d
         return d
+
  
     if '/' in name or '.' in name:
         return None
@@ -5229,6 +5230,7 @@ if __name__ == '__main__':
     #r = c.get('/jpeg-cutout?ra=0&dec=88.75&pixscale=11&layer=unwise-cat-model')
     #r = c.get('/jpeg-cutout?ra=0&dec=89.75&pixscale=6&layer=unwise-cat-model')
     #r = c.get('/jpeg-cutout?ra=180&dec=89.7&pixscale=6&layer=unwise-cat-model')
+    #r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
