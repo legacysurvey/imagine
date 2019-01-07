@@ -128,6 +128,7 @@ ALLOWED_HOSTS = [
     'a.legacysurvey.org', 'b.legacysurvey.org', 'c.legacysurvey.org', 'd.legacysurvey.org',
     'imagine.legacysurvey.org',
     'decaps.legacysurvey.org',
+    'm33.legacysurvey.org',
     'a.imagine.legacysurvey.org',
     'b.imagine.legacysurvey.org',
     'c.imagine.legacysurvey.org',
