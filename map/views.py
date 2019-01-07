@@ -70,6 +70,7 @@ tileversions = {
     'eboss': [1,],
 
     'phat': [1,],
+    'm33': [1,],
 
     'decals-dr7': [1],
     'decals-dr7-model': [1],
@@ -199,7 +200,8 @@ def _index(req,
         enable_desi_targets = True,
         enable_spectra = True,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
-        enable_phat = False,
+        #enable_phat = False,
+        enable_phat = True,
     )
 
     for k in kwargs.keys():
@@ -702,7 +704,6 @@ class MapLayer(object):
         xy = np.array([[xl,yl], [xm, yl], [xh,yl], [xh,ym], [xh,yh],
                        [xm,yh], [xl,yh], [xl,ym], [xl,yl]])
 
-
         if debug_ps is not None:
             plt.clf()
             plt.plot(xy[:,0], xy[:,1], 'k-')
@@ -715,10 +716,10 @@ class MapLayer(object):
             yl,ym,yh = 0.5, (bh+1)/2., bh+0.5
             rr,dd = bwcs.pixelxy2radec([xl, xm, xh, xh, xh, xm, xl, xl, xl],
                                        [yl, yl, yl, ym, yh, yh, yh, ym, yl])
-            try:
-                ok,bx,by = wcs.radec2pixelxy(rr, dd, wrap=False)
-            except:
-                ok,bx,by = wcs.radec2pixelxy(rr, dd)
+            #try:
+            #    ok,bx,by = wcs.radec2pixelxy(rr, dd, wrap=False)
+            #except:
+            ok,bx,by = wcs.radec2pixelxy(rr, dd)
 
             # xx1 = np.linspace(xl, xh, 100)
             # yy1 = np.array([yl]*100)
@@ -1477,7 +1478,7 @@ class PhatLayer(MapLayer):
         self.fits = fitsio.FITS(fn)[0]
         #self.wcs = anwcs_open_wcslib(fn, 0)
         self.wcs = Tan(fn, 0)
-        print('WCS:', self.wcs)
+        #print('WCS:', self.wcs)
 
     def read_image(self, brick, band, scale, slc, fn=None):
         import numpy as np
@@ -1515,6 +1516,9 @@ class PhatLayer(MapLayer):
         H = int(wcs.get_height())
         r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                                 [1,H/2,H,H,H,H/2,1,1])[-2:]
+
+        #print('Tile RA,Decs:', r,d)
+
         rimgs = []
         # scaled down.....
         # call get_filename to possibly generate scaled version
@@ -1526,10 +1530,10 @@ class PhatLayer(MapLayer):
             try:
                 bwcs = self.read_wcs(brick, band, scale, fn=fn)
                 if bwcs is None:
-                    print('No such file:', brickname, band, scale, 'fn', fn)
+                    print('No such file:', brick, band, scale, 'fn', fn)
                     continue
             except:
-                print('Failed to read WCS:', brickname, band, scale, 'fn', fn)
+                print('Failed to read WCS:', brick, band, scale, 'fn', fn)
                 savecache = False
                 import traceback
                 import sys
@@ -1546,6 +1550,9 @@ class PhatLayer(MapLayer):
             xhi = np.clip(xx.max() + M, 0, imW)
             ylo = np.clip(yy.min() - M, 0, imH)
             yhi = np.clip(yy.max() + M, 0, imH)
+
+            #print('My WCS xx,yy', xx, yy, 'imW,H', imW, imH, 'xlohi', xlo,xhi, 'ylohi', ylo,yhi)
+
             if xlo >= xhi or ylo >= yhi:
                 print('No pixel overlap')
                 return
@@ -1587,6 +1594,69 @@ class PhatLayer(MapLayer):
         for i,img in zip([2,1,0], imgs):
             rgb[:,:,i] = mapping[img.astype(int)]
         return rgb
+
+class M33Layer(PhatLayer):
+    '''
+# Image files:
+tifftopnm data/m33/M33_F814W_F475W_mosaic_181216_MJD.tif | ppmtorgb3 -
+pamflip -tb -- -.red | an-pnmtofits -o data/m33/m33-R.fits -v &
+pamflip -tb -- -.grn | an-pnmtofits -o data/m33/m33-G.fits -v &
+pamflip -tb -- -.blu | an-pnmtofits -o data/m33/m33-B.fits -v &
+
+# WCS header:
+hdr = fitsio.read_header('/Users/dstn/Downloads/F475W_wcs.fits')
+outhdr = fitsio.FITSHDR()
+for key in ['SIMPLE', 'BITPIX', 'NAXIS', 'WCSAXES', 'CRPIX1', 'CRPIX2', 'CTYPE1', 'CTYPE2', 'CRVAL1', 'CRVAL2']:
+    v = hdr[key]
+    outhdr[key] = v
+outhdr
+outhdr['CD1_1'] = hdr['CDELT1'] * hdr['PC1_1']
+outhdr['CD1_2'] = hdr['CDELT1'] * hdr['PC1_2']
+outhdr['CD2_1'] = hdr['CDELT2'] * hdr['PC2_1']
+outhdr['CD2_2'] = hdr['CDELT2'] * hdr['PC2_2']
+outhdr['IMAGEW'] = 32073
+outhdr['IMAGEH'] = 41147
+fitsio.write('/tmp/m33-wcs.fits', None, header=outhdr)
+'''
+
+    def __init__(self, name, **kwargs):
+        super(M33Layer, self).__init__(name, **kwargs)
+        from astrometry.util.util import anwcs_open_wcslib
+        self.pixscale = 0.035
+        #fn = self.get_base_filname(None, None)
+        #self.fits = fitsio.FITS(fn)[0]
+        #fn = os.path.join(settings.DATA_DIR, 'm33', 'F475W_wcs.fits')
+        #fn = os.path.join(settings.DATA_DIR, 'm33', 'm33-wcs.fits')
+        fn = os.path.join(settings.DATA_DIR, 'm33', 'm33-wcs814.fits')
+        #self.wcs = anwcs_open_wcslib(fn, 0)
+        from astrometry.util.util import Tan
+        self.wcs = Tan(fn, 0)
+        print('M33 WCS: center', self.wcs.radec_center())
+
+    def read_wcs(self, brick, band, scale, fn=None):
+        if scale == 0:
+            return self.wcs
+        return super(M33Layer, self).read_wcs(brick, band, scale, fn=fn)
+
+    def get_bands(self):
+        return 'RGB'
+
+    def get_base_filename(self, brick, band, **kwargs):
+        return os.path.join(settings.DATA_DIR, 'm33', 'm33-%s.fits' % band)
+
+    def get_scaled_filename(self, brick, band, scale):
+        return os.path.join(settings.DATA_DIR, 'm33', 'm33-%s-scale%i.fits' % (band, scale))
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        #for img in imgs:
+        #    print('Image', img.shape, img.dtype, img.min(), img.max())
+        return np.dstack(imgs) / 255.
+        # sz = imgs[0].shape
+        # rgb = np.zeros((sz[0],sz[1],3), np.uint8)
+        # for i,img in enumerate(imgs):
+        #     rgb[:,:,i] = img
+        # return rgb
 
 class DecalsLayer(MapLayer):
     def __init__(self, name, imagetype, survey, bands='grz', drname=None):
@@ -4822,6 +4892,9 @@ def get_layer(name, default=None):
     elif name == 'phat':
         layer = PhatLayer('phat')
 
+    elif name == 'm33':
+        layer = M33Layer('m33')
+
     elif name == 'eboss':
         survey = get_survey('eboss')
         layer = ReDecalsLayer('eboss', 'image', survey)
@@ -5142,7 +5215,18 @@ if __name__ == '__main__':
     #r = c.get('/unwise-cat-model/1/3/1/1.jpg')
     #r = c.get('/unwise-cat-model/1/6/47/44.jpg')
     #r = c.get('/unwise-cat-model/1/4/11/0.jpg')
-    r = c.get('/jpeg-cutout?ra=0&dec=88.75&pixscale=11&layer=unwise-cat-model')
+    #r = c.get('/m33/1/16/61257/26897.jpg')
+    #r = c.get('/m33/1/15/30627/13432.jpg')
+    #r = c.get('/m33/1/14/15320/6716.jpg')
+    #r = c.get('/m33/1/13/7660/3358.jpg')
+    #r = c.get('/m33/1/12/3830/1679.jpg')
+    #r = c.get('/m33/1/11/1915/840.jpg')
+    #r = c.get('/m33/1/10/957/420.jpg')
+    #r = c.get('/m33/1/9/478/210.jpg')
+    #r = c.get('/m33/1/8/239/105.jpg')
+    #r = c.get('/m33/1/7/120/52.jpg')
+    r = c.get('/unwise-neo4/1/5/27/7.jpg')
+    #r = c.get('/jpeg-cutout?ra=0&dec=88.75&pixscale=11&layer=unwise-cat-model')
     #r = c.get('/jpeg-cutout?ra=0&dec=89.75&pixscale=6&layer=unwise-cat-model')
     #r = c.get('/jpeg-cutout?ra=180&dec=89.7&pixscale=6&layer=unwise-cat-model')
     print('r:', type(r))

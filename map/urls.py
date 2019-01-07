@@ -31,6 +31,9 @@ urlpatterns = [
     url(r'^phat/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('phat')),
 
+    url(r'^m33/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('m33')),
+
     # PHAT cluster catalog
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
 

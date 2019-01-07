@@ -789,12 +789,14 @@ def main():
                     opt.zoom = [1,2,3,4,5,6,7]
                 #step = 0.1
                 #ras = np.arange(opt.minra, opt.maxra+step, step)
-                step = 5.
-                ras = np.arange(opt.minra, opt.maxra+step, step)
+                step = 3.
+                #ras = np.arange(opt.minra, opt.maxra+step, step)
                 decs = np.arange(opt.mindec, opt.maxdec+step, step)
                 for zoom in opt.zoom:
-                    for ralo,rahi in zip(ras, np.clip(ras[1:], opt.minra, opt.maxra)):
-                        for declo,dechi in zip(decs, np.clip(decs[1:], opt.mindec, opt.maxdec)):
+                    for declo,dechi in zip(decs, np.clip(decs[1:], opt.mindec, opt.maxdec)):
+                        rstep = step / np.maximum(0.05, np.cos(np.deg2rad((declo+dechi)/2.)))
+                        ras = np.arange(opt.minra, opt.maxra+rstep, rstep)
+                        for ralo,rahi in zip(ras, np.clip(ras[1:], opt.minra, opt.maxra)):
                             cmd = ('python render-tiles.py --kind %s --scale --minra %f --maxra %f --mindec %f --maxdec %f -z %i' %
                                    (opt.kind, ralo, rahi, declo, dechi, zoom))
                             print(cmd)
@@ -823,7 +825,7 @@ def main():
                         # assume yes
                         has[band] = np.ones(len(B), bool)
 
-                # Run one scale at a time, to avoid too much duplicate work?
+                # Run one scale at a time, to avoid too much duplicate work
                 args = []
                 for ibrick,brick in enumerate(B):
                     for band in bands:

@@ -1810,6 +1810,13 @@ tiles = mylayer('phat', 'PHAT images',
                    'urlPatterns': [ [1, maxZoom, tile_url], ],
                    'maxNativeZoom': maxZoom,});
 allLayers.push(tiles);
+
+// tiles = mylayer('m33', 'M33 image',
+//                   {'attribution': 'M33 collaboration',
+//                    'urlPatterns': [ [1, maxZoom, tile_url], ],
+//                    'maxNativeZoom': maxZoom,});
+// allLayers.push(tiles);
+
 {% endif %}
 
 {% if enable_dr2 %}
@@ -3245,6 +3252,7 @@ var baseTree1 = [
             findlayer('2mass'),
             {% endcomment %}
             findlayer('galex'),
+            //findlayer('m33'),
             findlayer('wssa'),
             findlayer('sfd'),
             findlayer('halpha'),
