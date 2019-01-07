@@ -1811,13 +1811,14 @@ tiles = mylayer('phat', 'PHAT images',
                    'urlPatterns': [ [1, maxZoom, tile_url], ],
                    'maxNativeZoom': maxZoom,});
 allLayers.push(tiles);
+{% endif %}
 
-// tiles = mylayer('m33', 'M33 image',
-//                   {'attribution': 'M33 collaboration',
-//                    'urlPatterns': [ [1, maxZoom, tile_url], ],
-//                    'maxNativeZoom': maxZoom,});
-// allLayers.push(tiles);
-
+{% if enable_m33 %}
+tiles = mylayer('m33', 'M33 image',
+                  {'attribution': 'M33 collaboration',
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],
+                   'maxNativeZoom': maxZoom,});
+allLayers.push(tiles);
 {% endif %}
 
 {% if enable_dr2 %}
@@ -3190,6 +3191,9 @@ var testTree = [];
 console.log('testTree:', testTree);
 
 var baseTree1 = [
+    {% if enable_m33 %}
+    findlayer('m33'),
+    {% endif %}
     {% if enable_dr7 %}
     findlayer('ls-dr67', [
         findlayer('ls-dr56'),
@@ -3259,7 +3263,6 @@ var baseTree1 = [
             findlayer('2mass'),
             {% endcomment %}
             findlayer('galex'),
-            //findlayer('m33'),
             findlayer('wssa'),
             findlayer('sfd'),
             findlayer('halpha'),

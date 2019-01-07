@@ -154,9 +154,15 @@ def is_decaps(req):
     #print('Host:', host)
     return (host == 'decaps.legacysurvey.org')
 
+def is_m33(req):
+    host = req.META.get('HTTP_HOST', None)
+    return (host == 'm33.legacysurvey.org')
+
 def index(req, **kwargs):
     if is_decaps(req):
         return decaps(req)
+    if is_m33(req):
+        return m33(req)
     return _index(req, **kwargs)
 
 def _index(req,
@@ -168,6 +174,7 @@ def _index(req,
            **kwargs):
     kwkeys = dict(
         enable_dev = settings.ENABLE_DEV,
+        enable_m33 = False,
         enable_sql = settings.ENABLE_SQL,
         enable_vcc = settings.ENABLE_VCC,
         enable_wl = settings.ENABLE_WL,
@@ -387,6 +394,29 @@ def decaps(req):
                  default_radec=(225.0, -63.2),
                  default_zoom=10,
                  rooturl=settings.ROOT_URL + '/decaps',
+    )
+
+def m33(req):
+    return _index(req, enable_m33=True,
+                  enable_decaps=True,
+                 enable_dr3_models=False,
+                 enable_dr3_resids=False,
+                 enable_dr4_models=False,
+                 enable_dr4_resids=False,
+                 enable_dr5_models=False,
+                 enable_dr5_resids=False,
+                 enable_dr3=False,
+                 enable_dr5=True,
+                 enable_ps1=False,
+                 enable_dr3_overlays=False,
+                 enable_dr4_overlays=False,
+                 enable_dr5_overlays=False,
+                 enable_desi_targets=False,
+                 enable_spectra=False,
+                 default_layer='m33',
+                 default_radec=(225.0, -63.2),
+                 default_zoom=10,
+                 rooturl=settings.ROOT_URL + '/m33',
     )
 
 def dr5(req):
@@ -1621,8 +1651,10 @@ fitsio.write('/tmp/m33-wcs.fits', None, header=outhdr)
 '''
 
     def __init__(self, name, **kwargs):
-        super(M33Layer, self).__init__(name, **kwargs)
-        from astrometry.util.util import anwcs_open_wcslib
+        ## HACK -- don't call the PhatLayer constructor!
+        #super(M33Layer, self).__init__(name, **kwargs)
+        super(PhatLayer, self).__init__(name, **kwargs)
+        self.nativescale = 17
         self.pixscale = 0.035
         #fn = self.get_base_filname(None, None)
         #self.fits = fitsio.FITS(fn)[0]
