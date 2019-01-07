@@ -5116,7 +5116,7 @@ def get_tile_view(name):
     name = layer_name_map(name)
     def view(request, ver, zoom, x, y, **kwargs):
         layer = get_layer(name)
-        print('tile view: name', name, 'layer', layer)
+        #print('tile view: name', name, 'layer', layer)
         return layer.get_tile(request, ver, zoom, x, y, **kwargs)
     return view
 
