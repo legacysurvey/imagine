@@ -1816,9 +1816,9 @@ allLayers.push(tiles);
 {% endif %}
 
 {% if enable_m33 %}
-tiles = mylayer('m33', 'M33 image',
+tiles = mylayer_B('m33', 'M33 image',
                   {'attribution': 'M33 collaboration',
-                   'urlPatterns': [ [1, maxZoom, tile_url], ],
+                   'urlPatterns': [ [17, maxZoom, tile_url], ],
                    'maxNativeZoom': maxZoom,});
 allLayers.push(tiles);
 {% endif %}

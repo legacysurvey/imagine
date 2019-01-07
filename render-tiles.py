@@ -667,8 +667,8 @@ def main():
     parser.add_option('--mindec', type=float, default=None, help='Minimum Dec to run')
     parser.add_option('--maxdec', type=float, default=None, help='Maximum Dec to run')
 
-    parser.add_option('--minra', type=float, default=0.,   help='Minimum RA to run')
-    parser.add_option('--maxra', type=float, default=360., help='Maximum RA to run')
+    parser.add_option('--minra', type=float, default=None,   help='Minimum RA to run')
+    parser.add_option('--maxra', type=float, default=None, help='Maximum RA to run')
 
     parser.add_option('--near', action='store_true', help='Only run tiles near bricks')
 
@@ -716,6 +716,16 @@ def main():
             opt.bands = 'nf'
         if 'unwise' in opt.kind and opt.bands is None:
             opt.bands = '12'
+
+    elif opt.kind == 'm33':
+        if opt.mindec is None:
+            opt.mindec = 30.40
+        if opt.maxdec is None:
+            opt.maxdec = 30.90
+        if opt.minra is None:
+            opt.minra = 23.29
+        if opt.maxra is None:
+            opt.maxra = 23.73
 
     elif opt.kind in ['des-dr1']:
         if opt.maxdec is None:
