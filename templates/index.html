@@ -2540,7 +2540,7 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
                                        'detail': brick_detail,
                                        'detail_list': function(ov, objs) {
     if (objs.length == 0) { return ''; }
-    txt = 'In brick: '
+    txt = 'In: '
     for (var j=0; j<objs.length; j++) {
         txt += brick_detail(ov._url_name, objs[j], '');
     }
@@ -2550,10 +2550,23 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
 
 
 var unwise_tile_detail = function(layer_name, name, aparams) {
-    return '';
+    return 'Tile: ' + name;
+    //<a href="{% url 'brick_detail_blank' %}' + name
+    //+ '/?layer=' + layer_name + '">' + name + '</a>';
+    //return '';
 }
 var unwise_tile_detail_list = function(ov, objs) {
-    return '';
+    if (objs.length == 0) { return ''; }
+    txt = 'In: '
+    var nin = 0;
+    for (var j=0; j<objs.length; j++) {
+        if (nin > 0)
+            txt += ', ';
+        txt += unwise_tile_detail(ov._url_name, objs[j], '');
+        nin += 1;
+    }
+    return txt;
+    //return '';
 }
     
 var unwiseTileOverlay = new PolygonOverlay('unwise-tiles',
