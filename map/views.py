@@ -1613,8 +1613,8 @@ class PhatLayer(MapLayer):
                 traceback.print_exc(None, sys.stdout)
                 continue
 
-            print('Read image slice', img.shape)
-        
+            #print('Read image slice', img.shape)
+
             try:
                 Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
             except OverlapError:
@@ -5128,7 +5128,7 @@ def any_tile_view(request, name, ver, zoom, x, y, **kwargs):
         return HttpResponse('no such layer: ' + name)
     return layer.get_tile(request, ver, zoom, x, y, **kwargs)
 
-def sdss_wcs(req):
+def cutout_wcs(req, default_layer='decals-dr7'):
     from astrometry.util.util import Tan
     import numpy as np
     args = []
@@ -5137,29 +5137,46 @@ def sdss_wcs(req):
         v = req.GET.get(k)
         fv = float(v)
         args.append(fv)
-    #wcs = Tan(*[float(req.GET.get(k)) for k in ['crval1','crval2','crpix1','crpix2',
-    #                                            'cd11','cd12','cd21','cd22','imagew','imageh']])
     wcs = Tan(*args)
-    print('wcs:', wcs)
+    #print('wcs:', wcs)
     pixscale = wcs.pixel_scale()
-    zoom = 13 - int(np.round(np.log2(pixscale / 0.396)))
     x = y = 0
 
-    sdss = get_layer('sdssco')
+    name = req.GET.get('layer', default_layer)
+    name = layer_name_map(name)
+    layer = get_layer(name)
 
-    rimgs = sdss.render_into_wcs(wcs, zoom, x, y, general_wcs=True)
+    #sdss = get_layer('sdssco')
+
+    scale = int(np.floor(np.log2(pixscale / layer.pixscale)))
+    scale = np.clip(scale, 0, layer.maxscale)
+    #zoom = layer.nativescale - int(np.round(np.log2(pixscale/layer.native_pixscale)))
+    zoom = 0
+
+    rimgs = layer.render_into_wcs(wcs, zoom, x, y, general_wcs=True, scale=scale)
     if rimgs is None:
         from django.http import HttpResponseRedirect
         return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
-    bands = sdss.get_bands()
-    rgb = sdss.get_rgb(rimgs, bands)
+
+    # FLIP VERTICAL AXIS?!
+    flipimgs = []
+    for img in rimgs:
+        if img is not None:
+            flipimgs.append(np.flipud(img))
+        else:
+            flipimgs.append(img)
+
+    bands = layer.get_bands()
+    rgb = layer.get_rgb(flipimgs, bands)
     
     import tempfile
     f,tilefn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
-    sdss.write_jpeg(tilefn, rgb)
+    layer.write_jpeg(tilefn, rgb)
     return send_file(tilefn, 'image/jpeg', unlink=True)
 
+def sdss_wcs(req):
+    return cutout_wcs(req, default_layer='sdssco')
 
 def ra_ranges_overlap(ralo, rahi, ra1, ra2):
     import numpy as np
@@ -5271,11 +5288,14 @@ if __name__ == '__main__':
     #r = c.get('/m33/1/9/478/210.jpg')
     #r = c.get('/m33/1/8/239/105.jpg')
     #r = c.get('/m33/1/7/120/52.jpg')
-    r = c.get('/unwise-neo4/1/5/27/7.jpg')
+    #r = c.get('/unwise-neo4/1/5/27/7.jpg')
     #r = c.get('/jpeg-cutout?ra=0&dec=88.75&pixscale=11&layer=unwise-cat-model')
     #r = c.get('/jpeg-cutout?ra=0&dec=89.75&pixscale=6&layer=unwise-cat-model')
     #r = c.get('/jpeg-cutout?ra=180&dec=89.7&pixscale=6&layer=unwise-cat-model')
     #r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
+    #r = c.get('/cutouts/?ra=148.2641&dec=-1.7679&layer=decals-dr7')
+    #r = c.get('/sdss-wcs/?crval1=195.00000&crval2=60.00000&crpix1=384.4&crpix2=256.4&cd11=1.4810e-4&cd12=0&cd21=0&cd22=-1.4810e-4&imagew=768&imageh=512')
+    r = c.get('/cutout-wcs/?crval1=195.00000&crval2=60.00000&crpix1=384.4&crpix2=256.4&cd11=1.4810e-4&cd12=0&cd21=0&cd22=-1.4810e-4&imagew=768&imageh=512')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

@@ -40,7 +40,7 @@ function toExp(f) {
     return f.toExponential(4);
 }
 
-function moveTo(ra, dec) {
+function moveTo(ra, dec, layer) {
     for (k in ci_wcs) {
         vals = ci_wcs[k];
 
@@ -59,7 +59,7 @@ function moveTo(ra, dec) {
         crpix1 = (vals['CRPIX1'] - 0.5) / scale + 0.5;
         crpix2 = (vals['CRPIX2'] - 0.5) / scale + 0.5;
 
-        url = 'http://legacysurvey.org/viewer-dev/sdss-wcs/?' +
+        url = 'http://legacysurvey.org/viewer-dev/cutout-wcs/?' +
             'crval1=' + crval1.toFixed(5) +
             '&crval2=' + crval2.toFixed(5) +
             '&crpix1=' + crpix1.toFixed(1) +
@@ -69,7 +69,8 @@ function moveTo(ra, dec) {
             '&cd21=' + toExp(vals['CD2_1'] * scale) +
             '&cd22=' + toExp(vals['CD2_2'] * scale) +
             '&imagew=' + sw +
-            '&imageh=' + sh;
+            '&imageh=' + sh +
+            '&layer=' + layer;
         console.log('url: ' + url);
         //urls[k] = url;
 
@@ -82,15 +83,20 @@ function moveTo(ra, dec) {
 
 var r0 = 213.9;
 var d0 = 37.4;
+var lay0 = 'ls-dr67';
+
 if ('ra' in qstr) {
     r0 = parseFloat(qstr['ra']);
 }
 if ('dec' in qstr) {
     d0 = parseFloat(qstr['dec']);
 }
+if ('layer' in qstr) {
+    lay0 = qstr['layer'];
+}
 
 $(document).ready(function() {
-    moveTo(r0, d0);
+    moveTo(r0, d0, lay0);
 });
 
 function submitRadec(e) {
@@ -98,8 +104,9 @@ function submitRadec(e) {
     dec = $('#dec_input').val();
     ra = parseFloat(ra);
     dec = parseFloat(dec);
-    console.log('RA,Dec: ' + ra + ', ' + dec);
-    moveTo(ra, dec);
+    layer = $('#layer_input').val();
+    console.log('RA,Dec: ' + ra + ', ' + dec + ', layer: ' + layer);
+    moveTo(ra, dec, layer);
 }
 
 function keyRadec(e) {
@@ -109,10 +116,12 @@ function keyRadec(e) {
 }
 
 $(document).ready(function() {
-    $("#ra_input").attr('value', r0); //html(r0);
-    $("#dec_input").attr('value', d0); //html(d0);
+    $("#ra_input").attr('value', r0);
+    $("#dec_input").attr('value', d0);
+    $("#layer_input").val(lay0);
     $("#ra_input").keypress(keyRadec);
     $("#dec_input").keypress(keyRadec);
+    $("#layer_input").change(submitRadec);
     $("#radec_submit").click(submitRadec);
 });
 
@@ -130,6 +139,11 @@ $(document).ready(function() {
     <form>
     <input id="ra_input" name="name" size="6">
     <input id="dec_input" name="name" size="6">
+    Layer: <select id="layer_input" name="name">
+      <option value="ls-dr67">Legacy Surveys DR6/DR7</option>
+      <option value="sdssco">SDSS</option>
+      <option value="unwise-neo4">unWISE NEO4</option>
+    </select>
     <input id="radec_submit" type="button" value="Go">
     </form>
 

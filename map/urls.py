@@ -175,6 +175,10 @@ urlpatterns = [
     # For nova.astrometry.net: SDSS for a given WCS
     url(r'^sdss-wcs', views.sdss_wcs),
 
+    # Used by the CI image viewer: render image into given WCS
+    # (eg http://legacysurvey.org/viewer-dev/ci?ra=195&dec=60)
+    url(r'^cutout-wcs', views.cutout_wcs),
+
     url(r'^data-for-radec/', views.data_for_radec, name='data_for_radec'),
 
     url(r'^namequery/', views.name_query),
