@@ -295,6 +295,9 @@ urlpatterns = [
     # Special DECaPS version of viewer.
     url(r'decaps', views.decaps),
 
+    # Special M33 version of viewer.
+    url(r'm33', views.m33),
+
     # DR5 version of the viewer.
     url(r'dr5', views.dr5),
     # DR6 version of the viewer.

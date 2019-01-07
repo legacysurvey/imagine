@@ -1646,7 +1646,7 @@ tiles = mylayer_B('des-dr1', 'DES DR1',
                   {'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
-{% if enable_dr7 %}
+{% if enable_dr67 %}
 tiles = split_layer('ls-dr67', 'LegacySurvey DR6+DR7 images',
                     32.,
                     // North
@@ -1669,6 +1669,7 @@ testLayers = [];
 {% endfor %}
 {% endif %}
 
+{% if enable_dr56 %}
 tiles = split_layer('ls-dr56', 'LegacySurvey DR5+DR6 images',
                     32.,
                     // North
@@ -1679,6 +1680,7 @@ tiles = split_layer('ls-dr56', 'LegacySurvey DR5+DR6 images',
                     'decals-dr5', [ [14, maxZoom, tile_url], ]
                    );
 allLayers.push(tiles);
+{% endif %}
 
 {% if enable_dr7 %}
 tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
@@ -3207,12 +3209,16 @@ var baseTree1 = [
     {% if enable_m33 %}
     findlayer('m33'),
     {% endif %}
-    {% if enable_dr7 %}
+    {% if enable_dr67 %}
     findlayer('ls-dr67', [
+        {% if enable_dr56 %}
         findlayer('ls-dr56'),
+        {% endif %}
     ]),
     {% else %}
+    {% if enable_dr56 %}
     findlayer('ls-dr56'),
+    {% endif %}
     {% endif %}
     {% if enable_dr7 %}
     findlayer('decals-dr7', [
@@ -3337,6 +3343,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
  overlayTree = overlayTree.concat([
      findoverlay('decals-bricks'),
 
+     {% if enable_dr7_overlays %}
      findoverlay('decals-dr7-ccds', [
          {% if enable_dr6_overlays %}
          findoverlay('mzls+bass-dr6-ccds'),
@@ -3351,31 +3358,20 @@ for (var i=0,len=overlays.length; i<len; i++) {
          findoverlay('decals-dr3-ccds'),
          {% endif %}
      ]),
-     //{ label: 'CCD outlines',
-     //children: [
-     //{% if enable_dr7_overlays %}
-     //findoverlay('decals-dr7-ccds'),
-     //{% endif %}
+     {% endif %}
      findoverlay('sdss-ccds'),
      findoverlay('unwise-tiles'),
-     //],
-     //},
-     //{ label: 'DECam exposure outlines',
-     //children: [
-     //{% if enable_dr7_overlays %}
+     {% if enable_dr7_overlays %}
      findoverlay('decals-dr7-exps', [
-         //{% endif %}
          {% if enable_dr5_overlays %}
          findoverlay('decals-dr5-exps'),
          {% endif %}
      ]),
+     {% endif %}
+     {% if enable_dr7_overlays %}
      { label: 'DECaLS DR7 catalog',
-       // label: 'Legacy Survey catalogs',
        layer: namedOverlays['decals-dr7'].getGroup(),
        children: [
-           //{% if enable_dr7_overlays %}
-           //findoverlay('decals-dr7'),
-           //{% endif %}
            {% if enable_dr6_overlays %}
            findoverlay('mzls+bass-dr6'),
            {% endif %}
@@ -3393,6 +3389,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
            {% endif %}
        ],
      },
+     {% endif %}
      { label: 'Other catalogs',
        children: [
            {% if enable_ps1 %}
@@ -3426,7 +3423,9 @@ for (var i=0,len=overlays.length; i<len; i++) {
        ],
      },
      {% endif %}
+     {% if enable_desi_footprint %}
      findoverlay('desi-footprint'),
+     {% endif %}
      findoverlay('bright'),
      findoverlay('tycho2'),
      findoverlay('gals'),
