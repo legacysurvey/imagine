@@ -167,6 +167,7 @@ def _index(req,
            maxZoom = 16,
            **kwargs):
     kwkeys = dict(
+        enable_dev = settings.ENABLE_DEV,
         enable_sql = settings.ENABLE_SQL,
         enable_vcc = settings.ENABLE_VCC,
         enable_wl = settings.ENABLE_WL,

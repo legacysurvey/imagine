@@ -1660,12 +1660,14 @@ allLayers.push(tiles);
 {% endif %}
 
 testLayers = [];
+{% if enable_dev %}
 {% for name,pretty in test_layers %}
   tiles = mylayer_B('{{name}}', '{{pretty}}',
                     {'urlPatterns': [ [1, maxZoom, tile_url], ],});
   allLayers.push(tiles);
   testLayers.push(tiles);
 {% endfor %}
+{% endif %}
 
 tiles = split_layer('ls-dr56', 'LegacySurvey DR5+DR6 images',
                     32.,
@@ -1676,7 +1678,6 @@ tiles = split_layer('ls-dr56', 'LegacySurvey DR5+DR6 images',
                     // South
                     'decals-dr5', [ [14, maxZoom, tile_url], ]
                    );
-//{'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 {% if enable_dr7 %}
@@ -1854,10 +1855,12 @@ tiles = mylayer_B('ps1', 'PS1 images',
 allLayers.push(tiles);
 {% endif %}
 
+{% if enable_dev %}
 tiles = mylayer_B('vlass', 'VLASS images',
                   {'attribution': 'NRAO',
                    'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+{% endif %}
 
 tiles = mylayer_B('unwise-w1w2', 'unWISE W1/W2',
                 {'maxNativeZoom': 12,
@@ -3178,9 +3181,11 @@ function findlayer(name, children=[]) {
 }
  
 var testTree = [];
+{% if enable_dev %}
 {% for name,pretty in test_layers %}
   testTree.push(findlayer('{{name}}'));
 {% endfor %}
+{% endif %}
 
 console.log('testTree:', testTree);
 
@@ -3235,8 +3240,8 @@ var baseTree1 = [
         findlayer('unwise-neo3'),
         findlayer('unwise-neo2'),
         findlayer('unwise-w1w2'),
-        findlayer('unwise-cat-model'),
     ]),
+    findlayer('unwise-cat-model'),
     {
         label: 'More surveys',
         children: [
@@ -3247,7 +3252,9 @@ var baseTree1 = [
             {% if enable_ps1 %}
             findlayer('ps1'),
             {% endif %}
+            {% if enable_dev %}
             findlayer('vlass'),
+            {% endif %}
             {% comment %}
             findlayer('2mass'),
             {% endcomment %}

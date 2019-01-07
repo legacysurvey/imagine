@@ -27,6 +27,8 @@ CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 #ENABLE_SQL = True
 #ENABLE_MZLS = True
 
+ENABLE_DEV = True
+
 ENABLE_DR2  = False
 ENABLE_DECAPS = True
 ENABLE_EBOSS = True

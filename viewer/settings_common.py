@@ -24,6 +24,8 @@ CREATE_GALAXY_CATALOG = True
 
 APPEND_SLASH = False
 
+ENABLE_DEV = False
+
 # Enable Virgo Cluster Catalog layer?
 ENABLE_VCC = False
 # Enable DECaLS Weak Lensing map?
