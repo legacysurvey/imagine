@@ -3254,6 +3254,12 @@ var baseTree1 = [
         {% endif %}
     ]),
     {% endif %}
+    {% if enable_eboss %}
+    findlayer('eboss'),
+    {% endif %}
+    {% if enable_dr3 %}
+    findlayer('decals-dr3'),
+    {% endif %}
     {% if enable_decaps %}
     findlayer('decaps', [
         findlayer('decaps-model'),
