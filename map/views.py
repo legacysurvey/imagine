@@ -2159,6 +2159,8 @@ class SdssLayer(MapLayer):
             return 1
         return 0
     
+### If we ever re-make the SDSS coadds, omit fields from this file:
+## https://trac.sdss.org/browser/data/sdss/photolog/trunk/opfiles/opBadfields.par
 class ReSdssLayer(RebrickedMixin, SdssLayer):
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
@@ -3277,62 +3279,28 @@ def mzls_dr3_rgb(rimgs, bands, scales=None,
 def dr2_rgb(rimgs, bands, **ignored):
     return sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
 
-def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
+def _unwise_to_rgb(imgs, bands=[1,2],
+                   scale1=1.,
+                   scale2=1.,
+                   arcsinh=1./20.,
+                   mn=-20.,
+                   mx=10000., 
+                   w1weight=9.):
     import numpy as np
     img = imgs[0]
     H,W = img.shape
 
-    if S is not None or Q is not None:
-        # 
-        if S is None:
-            S = [1000.]*len(imgs)
-        if Q is None:
-            Q = 25.
-        alpha = 1.5
-
-        if len(imgs) == 2:
-            w1,w2 = imgs
-            S1,S2 = S
-            b = w1 / S1
-            r = w2 / S2
-            g = (r + b) / 2.
-        elif len(imgs) == 4:
-            w1,w2,w3,w4 = imgs
-            S1,S2,S3,S4 = S
-            w1 /= S1
-            w2 /= S2
-            w3 /= S3
-            w4 /= S4
-            b = w1
-            g = 0.8 * w2 + 0.2 * w3
-            r = 0.4 * w2 + 0.8 * w3 + w4
-
-        m = -2e-2
-    
-        r = np.maximum(0, r - m)
-        g = np.maximum(0, g - m)
-        b = np.maximum(0, b - m)
-        I = (r+g+b)/3.
-        fI = np.arcsinh(alpha * Q * I) / np.sqrt(Q)
-        I += (I == 0.) * 1e-6
-        R = fI * r / I
-        G = fI * g / I
-        B = fI * b / I
-        RGB = (np.clip(np.dstack([R,G,B]), 0., 1.) * 255.).astype(np.uint8)
-        return RGB
-
     ## FIXME
+    assert(bands == [1,2])
     w1,w2 = imgs
     
     rgb = np.zeros((H, W, 3), np.uint8)
 
-    scale1 = 50.
-    scale2 = 50.
-
-    mn,mx = -1.,100.
-    arcsinh = 1.
-    #mn,mx = -3.,30.
-    #arcsinh = None
+    # Old:
+    # scale1 = 50.
+    # scale2 = 50.
+    # mn,mx = -1.,100.
+    # arcsinh = 1.
 
     img1 = w1 / scale1
     img2 = w2 / scale2
@@ -3340,14 +3308,19 @@ def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
     if arcsinh is not None:
         def nlmap(x):
             return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
-        #img1 = nlmap(img1)
-        #img2 = nlmap(img2)
-        mean = (img1 + img2) / 2.
-        I = nlmap(mean)
-        img1 = img1 / mean * I
-        img2 = img2 / mean * I
+
+        # intensity -- weight W1 more
+        bright = (w1weight * img1 + img2) / (w1weight + 1.)
+        I = nlmap(bright)
+
+        # color -- abs here prevents weird effects when, eg, W1>0 and W2<0.
+        mean = (np.abs(img1)+np.abs(img2))/2.
+        img1 = np.abs(img1)/mean * I
+        img2 = np.abs(img2)/mean * I
+
         mn = nlmap(mn)
         mx = nlmap(mx)
+
     img1 = (img1 - mn) / (mx - mn)
     img2 = (img2 - mn) / (mx - mn)
 
@@ -4922,6 +4895,7 @@ def get_layer(name, default=None):
         - top-level tiles are from sdss2
         - tile levels 6-13 are from sdssco
         (all on sanjaya)
+
         '''
         layer = ReSdssLayer('sdss2')
 
