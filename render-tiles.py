@@ -769,6 +769,10 @@ def main():
             opt.maxdec = 40
         if opt.mindec is None:
             opt.mindec = -25
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
 
     if opt.bands is None:
         opt.bands = 'grz'

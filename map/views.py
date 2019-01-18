@@ -608,6 +608,10 @@ def data_for_radec(req):
         return HttpResponse('\n'.join(html))
 
     survey = get_survey(layer)
+    if not hasattr(survey, 'drname'):
+        survey.drname = layer
+    if not hasattr(survey, 'drurl'):
+        survey.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/' + layer
 
     bricks = survey.get_bricks()
     I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
@@ -3955,35 +3959,39 @@ def ccd_detail(req, layer, ccd):
     layer = layer_name_map(layer)
     survey, c = get_ccd_object(layer, ccd)
 
-    if layer in ['decals-dr2', 'decals-dr3', 'decals-dr5',
-                 'mzls+bass-dr4', 'mzls+bass-dr6', 'decals-dr7']:
-        imgurl = reverse('image_data', args=[layer, ccd])
-        dqurl  = reverse('dq_data', args=[layer, ccd])
-        ivurl  = reverse('iv_data', args=[layer, ccd])
-        imgstamp = reverse('image_stamp', args=[layer, ccd])
-        flags = ''
-        cols = c.columns()
-        if 'photometric' in cols and 'blacklist_ok' in cols:
-            flags = 'Photometric: %s.  Not-blacklisted: %s<br />' % (c.photometric, c.blacklist_ok)
-        ooitext = ''
-        if '_oki_' in c.image_filename:
-            imgooiurl = imgurl + '?type=ooi'
-            ooitext = '<li>image (ooi): <a href="%s">%s</a>' % (imgooiurl, ccd)
-        if not 'seeing' in cols:
-            pixscale = {'decam':   0.262,
-                        'mosaic':  0.262,
-                        '90prime': 0.454}.get(c.camera.strip(), 0.262)
-            c.seeing = pixscale * c.fwhm
-        if not 'date_obs' in cols:
-            from astrometry.util.starutil_numpy import mjdtodate
-            # c.mjd_obs -> c.date_obs, c.ut
-            date = mjdtodate(c.mjd_obs)
-            iso = date.isoformat()
-            date,time = iso.split('T')
-            c.date_obs = date
-            c.ut = time[:12]
+    cols = c.columns()
+    if 'cpimage' in cols:
+        about = ('CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' %
+                 (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262))
+        return HttpResponse(about)
 
-        about = html_tag + '''
+    imgurl = reverse('image_data', args=[layer, ccd])
+    dqurl  = reverse('dq_data', args=[layer, ccd])
+    ivurl  = reverse('iv_data', args=[layer, ccd])
+    imgstamp = reverse('image_stamp', args=[layer, ccd])
+    flags = ''
+    cols = c.columns()
+    if 'photometric' in cols and 'blacklist_ok' in cols:
+        flags = 'Photometric: %s.  Not-blacklisted: %s<br />' % (c.photometric, c.blacklist_ok)
+    ooitext = ''
+    if '_oki_' in c.image_filename:
+        imgooiurl = imgurl + '?type=ooi'
+        ooitext = '<li>image (ooi): <a href="%s">%s</a>' % (imgooiurl, ccd)
+    if not 'seeing' in cols:
+        pixscale = {'decam':   0.262,
+                    'mosaic':  0.262,
+                    '90prime': 0.454}.get(c.camera.strip(), 0.262)
+        c.seeing = pixscale * c.fwhm
+    if not 'date_obs' in cols:
+        from astrometry.util.starutil_numpy import mjdtodate
+        # c.mjd_obs -> c.date_obs, c.ut
+        date = mjdtodate(c.mjd_obs)
+        iso = date.isoformat()
+        date,time = iso.split('T')
+        c.date_obs = date
+        c.ut = time[:12]
+
+    about = html_tag + '''
 <body>
 CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix, band %s, RA,Dec <a href="%s/?ra=%.4f&dec=%.4f">%.4f, %.4f</a>
 <br />
@@ -3998,17 +4006,13 @@ Observed MJD %.3f, %s %s UT
 <img src="%s" />
 </body></html>
 '''
-        args = (ccd, c.image_filename.strip(), c.image_hdu, c.exptime, c.seeing, c.fwhm,
-                c.filter, settings.ROOT_URL, c.ra, c.dec, c.ra, c.dec,
-                flags,
-                c.mjd_obs, c.date_obs, c.ut,
-                imgurl, ccd,
-                ooitext, ivurl, ccd, dqurl, ccd, imgstamp)
-        about = about % args
-
-    else:
-        about = ('CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' %
-                 (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262))
+    args = (ccd, c.image_filename.strip(), c.image_hdu, c.exptime, c.seeing, c.fwhm,
+            c.filter, settings.ROOT_URL, c.ra, c.dec, c.ra, c.dec,
+            flags,
+            c.mjd_obs, c.date_obs, c.ut,
+            imgurl, ccd,
+            ooitext, ivurl, ccd, dqurl, ccd, imgstamp)
+    about = about % args
 
     return HttpResponse(about)
 
@@ -4859,9 +4863,12 @@ def image_stamp(req, surveyname, ccd):
     os.unlink(tmpfn)
     import pylab as plt
     import numpy as np
-    if 'decals' in surveyname:
-        # rotate image
+    H,W = pix.shape
+    if H > W:
         pix = pix.T
+    #if 'decals' in surveyname:
+    #    # rotate image
+    #    pix = pix.T
 
     mn,mx = np.percentile(pix.ravel(), [25, 99])
     h,w = pix.shape
@@ -5269,9 +5276,11 @@ if __name__ == '__main__':
     #r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
     #r = c.get('/cutouts/?ra=148.2641&dec=-1.7679&layer=decals-dr7')
     #r = c.get('/sdss-wcs/?crval1=195.00000&crval2=60.00000&crpix1=384.4&crpix2=256.4&cd11=1.4810e-4&cd12=0&cd21=0&cd22=-1.4810e-4&imagew=768&imageh=512')
-    r = c.get('/cutout-wcs/?crval1=195.00000&crval2=60.00000&crpix1=384.4&crpix2=256.4&cd11=1.4810e-4&cd12=0&cd21=0&cd22=-1.4810e-4&imagew=768&imageh=512')
+    #r = c.get('/cutout-wcs/?crval1=195.00000&crval2=60.00000&crpix1=384.4&crpix2=256.4&cd11=1.4810e-4&cd12=0&cd21=0&cd22=-1.4810e-4&imagew=768&imageh=512')
     #r = c.get('/lslga/1/cat.json?ralo=23.3077&rahi=23.4725&declo=30.6267&dechi=30.7573')
     #r = c.get('/phat-clusters/1/cat.json?ralo=10.8751&rahi=11.2047&declo=41.3660&dechi=41.5936')
+    #r = c.get('/data-for-radec/?ra=35.8889&dec=-2.7425&layer=dr8-test6')
+    r = c.get('/ccd/dr8-test6/decam-262575-N12-z')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
