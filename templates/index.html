@@ -1858,7 +1858,7 @@ tiles = mylayer_B('ps1', 'PS1 images',
 allLayers.push(tiles);
 {% endif %}
 
-{% if enable_dev %}
+{% if enable_vlass %}
 tiles = mylayer_B('vlass', 'VLASS images',
                   {'attribution': 'NRAO',
                    'urlPatterns': [ [1, maxZoom, tile_url], ],});
@@ -3285,7 +3285,7 @@ var baseTree1 = [
             {% if enable_ps1 %}
             findlayer('ps1'),
             {% endif %}
-            {% if enable_dev %}
+            {% if enable_vlass %}
             findlayer('vlass'),
             {% endif %}
             {% comment %}
