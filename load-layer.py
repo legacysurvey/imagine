@@ -27,9 +27,13 @@ def main():
     # name = 'dr8-test5'
     # pretty = 'DR8 test5 (trident)'
 
-    indir = '/global/cscratch1/sd/dstn/dr8test006/'
-    name = 'dr8-test6'
-    pretty = 'DR8 test6 (sky)'
+    # indir = '/global/cscratch1/sd/dstn/dr8test006/'
+    # name = 'dr8-test6'
+    # pretty = 'DR8 test6 (sky)'
+
+    indir = '/global/cscratch1/sd/dstn/dr8test007/'
+    name = 'dr8-test7'
+    pretty = 'DR8 test7 (outliers)'
 
     # sublayers = ['', '-model', '-resid']
     # subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
