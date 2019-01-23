@@ -239,22 +239,29 @@ def top_levels(mp, opt):
         from map.views import galex_rgb, wssa_rgb
         tag = opt.kind
 
+        from map.views import get_layer
+        layer = get_layer(opt.kind)
+
+        bands = layer.get_bands()
+        #get_rgb = dr2_rgb
+
+        print('Bands', bands)
+
         rgbkwargs = {}
         if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model']:
             bands = [1, 2]
-            get_rgb = _unwise_to_rgb
+            #get_rgb = _unwise_to_rgb
         elif opt.kind == 'sdss2':
             bands = 'gri'
-            get_rgb = sdss_rgb
+            #get_rgb = sdss_rgb
         elif opt.kind == 'galex':
             bands = ['n','f']
-            get_rgb = galex_rgb
+            #get_rgb = galex_rgb
         elif opt.kind == 'wssa':
             bands = ['x']
-            get_rgb = wssa_rgb
-        else:
-            bands = 'grz'
-            get_rgb = dr2_rgb
+            #get_rgb = wssa_rgb
+        #else:
+        #    bands = 'grz'
 
         ver = tileversions.get(opt.kind, [1])[-1]
         print('Version', ver)
@@ -317,7 +324,7 @@ def top_levels(mp, opt):
                 for x in range(tiles):
                     ims = [base[y*tilesize:(y+1)*tilesize,
                                 x*tilesize:(x+1)*tilesize] for base in bases]
-                    rgb = get_rgb(ims, bands, **rgbkwargs)
+                    rgb = layer.get_rgb(ims, bands, **rgbkwargs)
                     pp = patdata.copy()
                     pp.update(zoom=scale, x=x, y=y)
                     fn = pat % pp
@@ -326,7 +333,11 @@ def top_levels(mp, opt):
                     print('Wrote', fn)
 
             for i,base in enumerate(bases):
-                base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
+                if 'vlass' in opt.kind:
+                    base = np.maximum(np.maximum(base[::2,::2], base[1::2,::2]),
+                                      np.maximum(base[1::2,1::2], base[::2,1::2]))
+                else:
+                    base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
                 bases[i] = base
 
 
@@ -706,16 +717,32 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
     elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
-                      'galex', 'wssa']:
+                      'galex', 'wssa', 'vlass']:
         if opt.maxdec is None:
-            opt.maxdec = 90
+            opt.maxdec = 90.
         if opt.mindec is None:
-            opt.mindec = -90
+            opt.mindec = -90.
+        if opt.maxra is None:
+            opt.maxra = 360.
+        if opt.minra is None:
+            opt.minra = 0.
 
         if opt.kind == 'galex' and opt.bands is None:
             opt.bands = 'nf'
         if 'unwise' in opt.kind and opt.bands is None:
             opt.bands = '12'
+        if 'vlass' in opt.kind:
+            opt.bands = [1]
+
+    elif opt.kind == 'm33':
+        if opt.mindec is None:
+            opt.mindec = 30.40
+        if opt.maxdec is None:
+            opt.maxdec = 30.90
+        if opt.minra is None:
+            opt.minra = 23.29
+        if opt.maxra is None:
+            opt.maxra = 23.73
 
     elif opt.kind == 'm33':
         if opt.mindec is None:
@@ -769,6 +796,10 @@ def main():
             opt.maxdec = 40
         if opt.mindec is None:
             opt.mindec = -25
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
 
     if opt.bands is None:
         opt.bands = 'grz'

@@ -608,6 +608,10 @@ def data_for_radec(req):
         return HttpResponse('\n'.join(html))
 
     survey = get_survey(layer)
+    if not hasattr(survey, 'drname'):
+        survey.drname = layer
+    if not hasattr(survey, 'drurl'):
+        survey.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/' + layer
 
     bricks = survey.get_bricks()
     I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
@@ -1613,8 +1617,8 @@ class PhatLayer(MapLayer):
                 traceback.print_exc(None, sys.stdout)
                 continue
 
-            print('Read image slice', img.shape)
-        
+            #print('Read image slice', img.shape)
+
             try:
                 Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
             except OverlapError:
@@ -1982,23 +1986,32 @@ class RebrickedMixin(object):
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
         bricks = self.get_bricks_for_scale(scale)
-        #print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale)
-        # Hacky margin
-        m = { 7: 1. }.get(scale, 0.)
 
-        if rahi < ralo:
-            I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
-                                          bricks.ra1 <= rahi) *
-                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-        else:
-            I, = np.nonzero((bricks.ra1  <= rahi +m) * (bricks.ra2  >= ralo -m) *
-                            (bricks.dec1 <= dechi+m) * (bricks.dec2 >= declo-m))
-        #print('Returning', len(I), 'bricks')
-        #for i in I:
-        #    print('  Brick', bricks.brickname[i], 'RA', bricks.ra1[i], bricks.ra2[i], 'Dec', bricks.dec1[i], bricks.dec2[i])
+        print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale)
+
+        I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
+        I = I[ok]
         if len(I) == 0:
             return None
         return bricks[I]
+
+        # # Hacky margin
+        # m = { 7: 1. }.get(scale, 0.)
+        # print(len(bricks), 'candidate bricks.  ra1,ra2 pairs:', listzip(bricks.ra1, bricks.ra2))
+        # if rahi < ralo:
+        #     I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
+        #                                   bricks.ra1 <= rahi) *
+        #                     (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        # else:
+        #     I, = np.nonzero((bricks.ra1  <= rahi +m) * (bricks.ra2  >= ralo -m) *
+        #                     (bricks.dec1 <= dechi+m) * (bricks.dec2 >= declo-m))
+        # print('Returning', len(I), 'bricks')
+        # #for i in I:
+        # #    print('  Brick', bricks.brickname[i], 'RA', bricks.ra1[i], bricks.ra2[i], 'Dec', bricks.dec1[i], bricks.dec2[i])
+        # if len(I) == 0:
+        #     return None
+        # return bricks[I]
 
 
         
@@ -2159,6 +2172,8 @@ class SdssLayer(MapLayer):
             return 1
         return 0
     
+### If we ever re-make the SDSS coadds, omit fields from this file:
+## https://trac.sdss.org/browser/data/sdss/photolog/trunk/opfiles/opBadfields.par
 class ReSdssLayer(RebrickedMixin, SdssLayer):
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
@@ -3076,6 +3091,7 @@ class VlassLayer(RebrickedMixin, MapLayer):
         self.pixscale = 1.0
         self.bands = self.get_bands()
         self.pixelsize = 3744 # 3600 * 1.04
+        self.maxscale = 6
 
     def get_bricks(self):
         from astrometry.util.fits import fits_table
@@ -3120,23 +3136,12 @@ class VlassLayer(RebrickedMixin, MapLayer):
     def get_bricks_for_scale(self, scale):
         if scale in [0, None]:
             return self.get_bricks()
-        scale = min(scale, 4)
+        scale = min(scale, self.maxscale)
         from astrometry.util.fits import fits_table
         fn = os.path.join(self.basedir, 'vlass-bricks-%i.fits' % scale)
         print('VLASS bricks for scale', scale, '->', fn)
-        #if os.path.exists(fn):
         b = fits_table(fn)
         return b
-        # bsmall = self.get_bricks_for_scale(scale - 1)
-        # afn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % scale)
-        # print('Generic brick file:', afn)
-        # assert(os.path.exists(afn))
-        # allbricks = fits_table(afn)
-        # print('Generic bricks:', len(allbricks))
-
-
-        
-
 
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
@@ -3277,62 +3282,28 @@ def mzls_dr3_rgb(rimgs, bands, scales=None,
 def dr2_rgb(rimgs, bands, **ignored):
     return sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
 
-def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
+def _unwise_to_rgb(imgs, bands=[1,2],
+                   scale1=1.,
+                   scale2=1.,
+                   arcsinh=1./20.,
+                   mn=-20.,
+                   mx=10000., 
+                   w1weight=9.):
     import numpy as np
     img = imgs[0]
     H,W = img.shape
 
-    if S is not None or Q is not None:
-        # 
-        if S is None:
-            S = [1000.]*len(imgs)
-        if Q is None:
-            Q = 25.
-        alpha = 1.5
-
-        if len(imgs) == 2:
-            w1,w2 = imgs
-            S1,S2 = S
-            b = w1 / S1
-            r = w2 / S2
-            g = (r + b) / 2.
-        elif len(imgs) == 4:
-            w1,w2,w3,w4 = imgs
-            S1,S2,S3,S4 = S
-            w1 /= S1
-            w2 /= S2
-            w3 /= S3
-            w4 /= S4
-            b = w1
-            g = 0.8 * w2 + 0.2 * w3
-            r = 0.4 * w2 + 0.8 * w3 + w4
-
-        m = -2e-2
-    
-        r = np.maximum(0, r - m)
-        g = np.maximum(0, g - m)
-        b = np.maximum(0, b - m)
-        I = (r+g+b)/3.
-        fI = np.arcsinh(alpha * Q * I) / np.sqrt(Q)
-        I += (I == 0.) * 1e-6
-        R = fI * r / I
-        G = fI * g / I
-        B = fI * b / I
-        RGB = (np.clip(np.dstack([R,G,B]), 0., 1.) * 255.).astype(np.uint8)
-        return RGB
-
     ## FIXME
+    assert(bands == [1,2])
     w1,w2 = imgs
     
     rgb = np.zeros((H, W, 3), np.uint8)
 
-    scale1 = 50.
-    scale2 = 50.
-
-    mn,mx = -1.,100.
-    arcsinh = 1.
-    #mn,mx = -3.,30.
-    #arcsinh = None
+    # Old:
+    # scale1 = 50.
+    # scale2 = 50.
+    # mn,mx = -1.,100.
+    # arcsinh = 1.
 
     img1 = w1 / scale1
     img2 = w2 / scale2
@@ -3340,14 +3311,19 @@ def _unwise_to_rgb(imgs, bands=[1,2], S=None, Q=None):
     if arcsinh is not None:
         def nlmap(x):
             return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
-        #img1 = nlmap(img1)
-        #img2 = nlmap(img2)
-        mean = (img1 + img2) / 2.
-        I = nlmap(mean)
-        img1 = img1 / mean * I
-        img2 = img2 / mean * I
+
+        # intensity -- weight W1 more
+        bright = (w1weight * img1 + img2) / (w1weight + 1.)
+        I = nlmap(bright)
+
+        # color -- abs here prevents weird effects when, eg, W1>0 and W2<0.
+        mean = np.maximum(1e-6, (np.abs(img1)+np.abs(img2))/2.)
+        img1 = np.abs(img1)/mean * I
+        img2 = np.abs(img2)/mean * I
+
         mn = nlmap(mn)
         mx = nlmap(mx)
+
     img1 = (img1 - mn) / (mx - mn)
     img2 = (img2 - mn) / (mx - mn)
 
@@ -3982,35 +3958,39 @@ def ccd_detail(req, layer, ccd):
     layer = layer_name_map(layer)
     survey, c = get_ccd_object(layer, ccd)
 
-    if layer in ['decals-dr2', 'decals-dr3', 'decals-dr5',
-                 'mzls+bass-dr4', 'mzls+bass-dr6', 'decals-dr7']:
-        imgurl = reverse('image_data', args=[layer, ccd])
-        dqurl  = reverse('dq_data', args=[layer, ccd])
-        ivurl  = reverse('iv_data', args=[layer, ccd])
-        imgstamp = reverse('image_stamp', args=[layer, ccd])
-        flags = ''
-        cols = c.columns()
-        if 'photometric' in cols and 'blacklist_ok' in cols:
-            flags = 'Photometric: %s.  Not-blacklisted: %s<br />' % (c.photometric, c.blacklist_ok)
-        ooitext = ''
-        if '_oki_' in c.image_filename:
-            imgooiurl = imgurl + '?type=ooi'
-            ooitext = '<li>image (ooi): <a href="%s">%s</a>' % (imgooiurl, ccd)
-        if not 'seeing' in cols:
-            pixscale = {'decam':   0.262,
-                        'mosaic':  0.262,
-                        '90prime': 0.454}.get(c.camera.strip(), 0.262)
-            c.seeing = pixscale * c.fwhm
-        if not 'date_obs' in cols:
-            from astrometry.util.starutil_numpy import mjdtodate
-            # c.mjd_obs -> c.date_obs, c.ut
-            date = mjdtodate(c.mjd_obs)
-            iso = date.isoformat()
-            date,time = iso.split('T')
-            c.date_obs = date
-            c.ut = time[:12]
+    cols = c.columns()
+    if 'cpimage' in cols:
+        about = ('CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' %
+                 (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262))
+        return HttpResponse(about)
 
-        about = html_tag + '''
+    imgurl = reverse('image_data', args=[layer, ccd])
+    dqurl  = reverse('dq_data', args=[layer, ccd])
+    ivurl  = reverse('iv_data', args=[layer, ccd])
+    imgstamp = reverse('image_stamp', args=[layer, ccd])
+    flags = ''
+    cols = c.columns()
+    if 'photometric' in cols and 'blacklist_ok' in cols:
+        flags = 'Photometric: %s.  Not-blacklisted: %s<br />' % (c.photometric, c.blacklist_ok)
+    ooitext = ''
+    if '_oki_' in c.image_filename:
+        imgooiurl = imgurl + '?type=ooi'
+        ooitext = '<li>image (ooi): <a href="%s">%s</a>' % (imgooiurl, ccd)
+    if not 'seeing' in cols:
+        pixscale = {'decam':   0.262,
+                    'mosaic':  0.262,
+                    '90prime': 0.454}.get(c.camera.strip(), 0.262)
+        c.seeing = pixscale * c.fwhm
+    if not 'date_obs' in cols:
+        from astrometry.util.starutil_numpy import mjdtodate
+        # c.mjd_obs -> c.date_obs, c.ut
+        date = mjdtodate(c.mjd_obs)
+        iso = date.isoformat()
+        date,time = iso.split('T')
+        c.date_obs = date
+        c.ut = time[:12]
+
+    about = html_tag + '''
 <body>
 CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix, band %s, RA,Dec <a href="%s/?ra=%.4f&dec=%.4f">%.4f, %.4f</a>
 <br />
@@ -4025,17 +4005,13 @@ Observed MJD %.3f, %s %s UT
 <img src="%s" />
 </body></html>
 '''
-        args = (ccd, c.image_filename.strip(), c.image_hdu, c.exptime, c.seeing, c.fwhm,
-                c.filter, settings.ROOT_URL, c.ra, c.dec, c.ra, c.dec,
-                flags,
-                c.mjd_obs, c.date_obs, c.ut,
-                imgurl, ccd,
-                ooitext, ivurl, ccd, dqurl, ccd, imgstamp)
-        about = about % args
-
-    else:
-        about = ('CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec' %
-                 (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262))
+    args = (ccd, c.image_filename.strip(), c.image_hdu, c.exptime, c.seeing, c.fwhm,
+            c.filter, settings.ROOT_URL, c.ra, c.dec, c.ra, c.dec,
+            flags,
+            c.mjd_obs, c.date_obs, c.ut,
+            imgurl, ccd,
+            ooitext, ivurl, ccd, dqurl, ccd, imgstamp)
+    about = about % args
 
     return HttpResponse(about)
 
@@ -4886,9 +4862,12 @@ def image_stamp(req, surveyname, ccd):
     os.unlink(tmpfn)
     import pylab as plt
     import numpy as np
-    if 'decals' in surveyname:
-        # rotate image
+    H,W = pix.shape
+    if H > W:
         pix = pix.T
+    #if 'decals' in surveyname:
+    #    # rotate image
+    #    pix = pix.T
 
     mn,mx = np.percentile(pix.ravel(), [25, 99])
     h,w = pix.shape
@@ -4922,6 +4901,7 @@ def get_layer(name, default=None):
         - top-level tiles are from sdss2
         - tile levels 6-13 are from sdssco
         (all on sanjaya)
+
         '''
         layer = ReSdssLayer('sdss2')
 
@@ -5128,7 +5108,7 @@ def any_tile_view(request, name, ver, zoom, x, y, **kwargs):
         return HttpResponse('no such layer: ' + name)
     return layer.get_tile(request, ver, zoom, x, y, **kwargs)
 
-def sdss_wcs(req):
+def cutout_wcs(req, default_layer='decals-dr7'):
     from astrometry.util.util import Tan
     import numpy as np
     args = []
@@ -5137,29 +5117,46 @@ def sdss_wcs(req):
         v = req.GET.get(k)
         fv = float(v)
         args.append(fv)
-    #wcs = Tan(*[float(req.GET.get(k)) for k in ['crval1','crval2','crpix1','crpix2',
-    #                                            'cd11','cd12','cd21','cd22','imagew','imageh']])
     wcs = Tan(*args)
-    print('wcs:', wcs)
+    #print('wcs:', wcs)
     pixscale = wcs.pixel_scale()
-    zoom = 13 - int(np.round(np.log2(pixscale / 0.396)))
     x = y = 0
 
-    sdss = get_layer('sdssco')
+    name = req.GET.get('layer', default_layer)
+    name = layer_name_map(name)
+    layer = get_layer(name)
 
-    rimgs = sdss.render_into_wcs(wcs, zoom, x, y, general_wcs=True)
+    #sdss = get_layer('sdssco')
+
+    scale = int(np.floor(np.log2(pixscale / layer.pixscale)))
+    scale = np.clip(scale, 0, layer.maxscale)
+    #zoom = layer.nativescale - int(np.round(np.log2(pixscale/layer.native_pixscale)))
+    zoom = 0
+
+    rimgs = layer.render_into_wcs(wcs, zoom, x, y, general_wcs=True, scale=scale)
     if rimgs is None:
         from django.http import HttpResponseRedirect
         return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
-    bands = sdss.get_bands()
-    rgb = sdss.get_rgb(rimgs, bands)
+
+    # FLIP VERTICAL AXIS?!
+    flipimgs = []
+    for img in rimgs:
+        if img is not None:
+            flipimgs.append(np.flipud(img))
+        else:
+            flipimgs.append(img)
+
+    bands = layer.get_bands()
+    rgb = layer.get_rgb(flipimgs, bands)
     
     import tempfile
     f,tilefn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
-    sdss.write_jpeg(tilefn, rgb)
+    layer.write_jpeg(tilefn, rgb)
     return send_file(tilefn, 'image/jpeg', unlink=True)
 
+def sdss_wcs(req):
+    return cutout_wcs(req, default_layer='sdssco')
 
 def ra_ranges_overlap(ralo, rahi, ra1, ra2):
     import numpy as np
@@ -5255,8 +5252,16 @@ if __name__ == '__main__':
     #r = c.get('/fits-cutout?ra=175.8650&dec=52.7103&pixscale=0.5&layer=unwise-neo4')
     #r = c.get('/cutouts/?ra=43.9347&dec=-14.2082&layer=ls-dr67')
     #r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
-    #r = c.get('/vlass/1/12/3352/779.jpg')
-    #r = c.get('/vlass/1/9/414/94.jpg')
+    # r = c.get('/vlass/1/12/3352/779.jpg')
+    # r = c.get('/vlass/1/9/414/94.jpg')
+    # r = c.get('/vlass/1/8/207/47.jpg')
+    # r = c.get('/vlass/1/7/103/23.jpg')
+    # r = c.get('/vlass/1/6/51/11.jpg')
+    # r = c.get('/vlass/1/5/25/5.jpg')
+    #r = c.get('/vlass/1/9/508/114.jpg')
+    r = c.get('/vlass/1/10/1015/228.jpg')
+    #r = c.get('/vlass/1/10/1016/228.jpg')
+    #r = c.get('/vlass/1/7/127/29.jpg')
     #r = c.get('/unwise-cat-model/1/12/3077/1624.jpg')
     #r = c.get('/unwise-cat-model/1/3/1/1.jpg')
     #r = c.get('/unwise-cat-model/1/6/47/44.jpg')
@@ -5278,7 +5283,13 @@ if __name__ == '__main__':
     #r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
     #r = c.get('/cutouts/?ra=148.2641&dec=-1.7679&layer=decals-dr7')
     #r = c.get('/lslga/1/cat.json?ralo=23.3077&rahi=23.4725&declo=30.6267&dechi=30.7573')
-    r = c.get('/phat-clusters/1/cat.json?ralo=10.8751&rahi=11.2047&declo=41.3660&dechi=41.5936')
+    #r = c.get('/phat-clusters/1/cat.json?ralo=10.8751&rahi=11.2047&declo=41.3660&dechi=41.5936')
+    #r = c.get('/sdss-wcs/?crval1=195.00000&crval2=60.00000&crpix1=384.4&crpix2=256.4&cd11=1.4810e-4&cd12=0&cd21=0&cd22=-1.4810e-4&imagew=768&imageh=512')
+    #r = c.get('/cutout-wcs/?crval1=195.00000&crval2=60.00000&crpix1=384.4&crpix2=256.4&cd11=1.4810e-4&cd12=0&cd21=0&cd22=-1.4810e-4&imagew=768&imageh=512')
+    #r = c.get('/lslga/1/cat.json?ralo=23.3077&rahi=23.4725&declo=30.6267&dechi=30.7573')
+    #r = c.get('/phat-clusters/1/cat.json?ralo=10.8751&rahi=11.2047&declo=41.3660&dechi=41.5936')
+    #r = c.get('/data-for-radec/?ra=35.8889&dec=-2.7425&layer=dr8-test6')
+    #r = c.get('/ccd/dr8-test6/decam-262575-N12-z')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

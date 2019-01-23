@@ -19,3 +19,11 @@ test_layers = []
 test_layers.append(("dr8-test5", "DR8 test5 (trident) images"))
 test_layers.append(("dr8-test5-model", "DR8 test5 (trident) models"))
 test_layers.append(("dr8-test5-resid", "DR8 test5 (trident) residuals"))
+
+test_layers.append(("dr8-test6", "DR8 test6 (sky) images"))
+
+test_layers.append(("dr8-test7", "DR8 test7 (outliers) images"))
+
+test_layers.append(("dr8-test7", "DR8 test7 (outliers) images"))
+
+test_layers.append(("dr8-test7", "DR8 test7 (outliers) images"))

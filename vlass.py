@@ -19,7 +19,7 @@ import fitsio
 # cd data/vlass/VLASS1.1/T24t14 && mv */*.fits .
 
 
-fns = glob('data/vlass/VLASS1.1/*/*.fits')
+fns = glob('data/vlass/VLASS1.1/T*/*/*.fits')
 fns.sort()
 print(len(fns), 'files')
 
@@ -33,7 +33,6 @@ T.ra1 = np.zeros(len(T), np.float32)
 T.dec1 = np.zeros(len(T), np.float32)
 T.ra2 = np.zeros(len(T), np.float32)
 T.dec2 = np.zeros(len(T), np.float32)
-
 
 for i,fn in enumerate(fns):
     print('File', fn)

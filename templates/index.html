@@ -1882,7 +1882,8 @@ allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
                 {'maxNativeZoom': 12,
-                 'urlPatterns': [ [9, maxZoom, tile_url], ],});
+                 'urlPatterns': [ [6, maxZoom, tile_url], ],});
+                 //'urlPatterns': [ [9, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
@@ -3255,6 +3256,12 @@ var baseTree1 = [
         findlayer('mzls+bass-dr4-resid'),
         {% endif %}
     ]),
+    {% endif %}
+    {% if enable_eboss %}
+    findlayer('eboss'),
+    {% endif %}
+    {% if enable_dr3 %}
+    findlayer('decals-dr3'),
     {% endif %}
     {% if enable_decaps %}
     findlayer('decaps', [
