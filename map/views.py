@@ -173,6 +173,7 @@ def _index(req,
            maxZoom = 16,
            **kwargs):
     kwkeys = dict(
+        enable_vlass = True,
         enable_dev = settings.ENABLE_DEV,
         enable_m33 = False,
         enable_sql = settings.ENABLE_SQL,
