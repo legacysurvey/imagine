@@ -1986,23 +1986,32 @@ class RebrickedMixin(object):
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
         bricks = self.get_bricks_for_scale(scale)
-        #print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale)
-        # Hacky margin
-        m = { 7: 1. }.get(scale, 0.)
 
-        if rahi < ralo:
-            I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
-                                          bricks.ra1 <= rahi) *
-                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-        else:
-            I, = np.nonzero((bricks.ra1  <= rahi +m) * (bricks.ra2  >= ralo -m) *
-                            (bricks.dec1 <= dechi+m) * (bricks.dec2 >= declo-m))
-        #print('Returning', len(I), 'bricks')
-        #for i in I:
-        #    print('  Brick', bricks.brickname[i], 'RA', bricks.ra1[i], bricks.ra2[i], 'Dec', bricks.dec1[i], bricks.dec2[i])
+        print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale)
+
+        I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
+        I = I[ok]
         if len(I) == 0:
             return None
         return bricks[I]
+
+        # # Hacky margin
+        # m = { 7: 1. }.get(scale, 0.)
+        # print(len(bricks), 'candidate bricks.  ra1,ra2 pairs:', listzip(bricks.ra1, bricks.ra2))
+        # if rahi < ralo:
+        #     I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
+        #                                   bricks.ra1 <= rahi) *
+        #                     (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        # else:
+        #     I, = np.nonzero((bricks.ra1  <= rahi +m) * (bricks.ra2  >= ralo -m) *
+        #                     (bricks.dec1 <= dechi+m) * (bricks.dec2 >= declo-m))
+        # print('Returning', len(I), 'bricks')
+        # #for i in I:
+        # #    print('  Brick', bricks.brickname[i], 'RA', bricks.ra1[i], bricks.ra2[i], 'Dec', bricks.dec1[i], bricks.dec2[i])
+        # if len(I) == 0:
+        #     return None
+        # return bricks[I]
 
 
         
@@ -3082,6 +3091,7 @@ class VlassLayer(RebrickedMixin, MapLayer):
         self.pixscale = 1.0
         self.bands = self.get_bands()
         self.pixelsize = 3744 # 3600 * 1.04
+        self.maxscale = 6
 
     def get_bricks(self):
         from astrometry.util.fits import fits_table
@@ -3126,23 +3136,12 @@ class VlassLayer(RebrickedMixin, MapLayer):
     def get_bricks_for_scale(self, scale):
         if scale in [0, None]:
             return self.get_bricks()
-        scale = min(scale, 4)
+        scale = min(scale, self.maxscale)
         from astrometry.util.fits import fits_table
         fn = os.path.join(self.basedir, 'vlass-bricks-%i.fits' % scale)
         print('VLASS bricks for scale', scale, '->', fn)
-        #if os.path.exists(fn):
         b = fits_table(fn)
         return b
-        # bsmall = self.get_bricks_for_scale(scale - 1)
-        # afn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % scale)
-        # print('Generic brick file:', afn)
-        # assert(os.path.exists(afn))
-        # allbricks = fits_table(afn)
-        # print('Generic bricks:', len(allbricks))
-
-
-        
-
 
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
@@ -3318,7 +3317,7 @@ def _unwise_to_rgb(imgs, bands=[1,2],
         I = nlmap(bright)
 
         # color -- abs here prevents weird effects when, eg, W1>0 and W2<0.
-        mean = (np.abs(img1)+np.abs(img2))/2.
+        mean = np.maximum(1e-6, (np.abs(img1)+np.abs(img2))/2.)
         img1 = np.abs(img1)/mean * I
         img2 = np.abs(img2)/mean * I
 
@@ -5253,8 +5252,16 @@ if __name__ == '__main__':
     #r = c.get('/fits-cutout?ra=175.8650&dec=52.7103&pixscale=0.5&layer=unwise-neo4')
     #r = c.get('/cutouts/?ra=43.9347&dec=-14.2082&layer=ls-dr67')
     #r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
-    #r = c.get('/vlass/1/12/3352/779.jpg')
-    #r = c.get('/vlass/1/9/414/94.jpg')
+    # r = c.get('/vlass/1/12/3352/779.jpg')
+    # r = c.get('/vlass/1/9/414/94.jpg')
+    # r = c.get('/vlass/1/8/207/47.jpg')
+    # r = c.get('/vlass/1/7/103/23.jpg')
+    # r = c.get('/vlass/1/6/51/11.jpg')
+    # r = c.get('/vlass/1/5/25/5.jpg')
+    #r = c.get('/vlass/1/9/508/114.jpg')
+    r = c.get('/vlass/1/10/1015/228.jpg')
+    #r = c.get('/vlass/1/10/1016/228.jpg')
+    #r = c.get('/vlass/1/7/127/29.jpg')
     #r = c.get('/unwise-cat-model/1/12/3077/1624.jpg')
     #r = c.get('/unwise-cat-model/1/3/1/1.jpg')
     #r = c.get('/unwise-cat-model/1/6/47/44.jpg')
@@ -5280,7 +5287,7 @@ if __name__ == '__main__':
     #r = c.get('/lslga/1/cat.json?ralo=23.3077&rahi=23.4725&declo=30.6267&dechi=30.7573')
     #r = c.get('/phat-clusters/1/cat.json?ralo=10.8751&rahi=11.2047&declo=41.3660&dechi=41.5936')
     #r = c.get('/data-for-radec/?ra=35.8889&dec=-2.7425&layer=dr8-test6')
-    r = c.get('/ccd/dr8-test6/decam-262575-N12-z')
+    #r = c.get('/ccd/dr8-test6/decam-262575-N12-z')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
