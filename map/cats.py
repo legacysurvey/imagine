@@ -549,7 +549,7 @@ def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=Fal
     if len(TT) == 0:
         return HttpResponse(json.dumps(dict(rd=[], name=[])),
                             content_type='application/json')
-    T = merge_tables(TT)
+    T = merge_tables(TT, columns='fillzero')
 
     if bgs:
         T.cut(T.bgs_target > 0)

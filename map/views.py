@@ -120,6 +120,15 @@ tileversions = {
     'ls-dr67': [1],
     }
 
+test_layers = []
+try:
+    from map.test_layers import test_layers as tl
+    for key,pretty in tl:
+        tileversions[key] = [1,]
+except:
+    pass
+
+
 def urls(req):
     from django.shortcuts import render
     return render(req, 'urls.html')
