@@ -2280,7 +2280,7 @@ class LegacySurveySplitLayer(MapLayer):
         x = np.empty(256)
         x[:] = 128.5
         y = np.arange(1, 256+1)
-        ok,rr,dd = wcs.pixelxy2radec(x, y)
+        rr,dd = wcs.pixelxy2radec(x, y)[-2:]
         I = np.flatnonzero(dd >= self.decsplit)
         for b,t in zip(botims, topims):
             b[I,:] = t[I,:]
@@ -2481,12 +2481,27 @@ class PS1Layer(MapLayer):
             alpha = 2.5 * np.log10(np.e)
             boff = hdr['BOFFSET']
             bsoft = hdr['BSOFTEN']
+
+            origimg = img
+
             img = boff + bsoft * 2. * np.sinh(img / alpha)
+
 
             # print('After linearitity: image 90th pctile:', np.percentile(img.ravel(), 90))
 
             # Zeropoint of 25 = factor of 10 vs nanomaggies
             img *= 0.1 / exptime
+
+            #img[np.logical_not(np.isfinite(img))] = 0.
+            #img[origimg == bad] = 0.
+
+            bad = hdr['BLANK']
+            bzero = hdr['BZERO']
+            bscale = hdr['BSCALE']
+            badval = bzero + bscale * (bad - 0.5)
+            img[origimg > badval] = 0.
+
+
 
         if header:
             return img,hdr
@@ -5269,7 +5284,7 @@ if __name__ == '__main__':
     # r = c.get('/vlass/1/6/51/11.jpg')
     # r = c.get('/vlass/1/5/25/5.jpg')
     #r = c.get('/vlass/1/9/508/114.jpg')
-    r = c.get('/vlass/1/10/1015/228.jpg')
+    #r = c.get('/vlass/1/10/1015/228.jpg')
     #r = c.get('/vlass/1/10/1016/228.jpg')
     #r = c.get('/vlass/1/7/127/29.jpg')
     #r = c.get('/unwise-cat-model/1/12/3077/1624.jpg')
@@ -5298,6 +5313,8 @@ if __name__ == '__main__':
     #r = c.get('/phat-clusters/1/cat.json?ralo=10.8751&rahi=11.2047&declo=41.3660&dechi=41.5936')
     #r = c.get('/data-for-radec/?ra=35.8889&dec=-2.7425&layer=dr8-test6')
     #r = c.get('/ccd/dr8-test6/decam-262575-N12-z')
+    #r = c.get('/ps1/1/13/7517/2091.jpg')
+    r = c.get('/cutout-wcs/?crval1=0.00000&crval2=0.00000&crpix1=384.5&crpix2=256.5&cd11=1.4812e-4&cd12=0&cd21=0&cd22=-1.4812e-4&imagew=768&imageh=512&layer=ls-dr67')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

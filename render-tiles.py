@@ -1,5 +1,6 @@
 from __future__ import print_function
 import sys
+from glob import glob
 
 ###
 #sys.path.insert(0, 'django-1.7')
@@ -806,13 +807,36 @@ def main():
         sys.exit(0)
 
     if opt.scale:
+
+        if opt.kind == 'ps1':
+            from map.views import get_layer
+
+            fns = glob('data/ps1/skycells/*/ps1-*.fits')
+            fns.sort()
+            #ps1-1561-021-r.fits
+            if len(opt.zoom) == 0:
+                opt.zoom = [1,2,3,4,5,6,7]
+            print(len(fns), 'PS1 image files')
+            layer = get_layer(opt.kind)
+            B = layer.get_bricks()
+            for i,brick in enumerate(B):
+                for band in opt.bands:
+                    fn0 = layer.get_filename(brick, band, 0)
+                    if not os.path.exists(fn0):
+                        continue
+                    for scale in opt.zoom:
+                        fn = layer.get_filename(brick, band, scale)
+                        layer.create_scaled_image(brick, band, scale, fn)
+            sys.exit(0)
+
+
         # Rebricked
         if opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                         'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
                         'galex', 'wssa', 'des-dr1',
-                    ] or True:
+                    ]:# or True:
             from map.views import get_layer
 
             if opt.queue:
@@ -833,7 +857,6 @@ def main():
                             print(cmd)
                 sys.exit(0)
 
-            layer = get_layer(opt.kind)
 
             if len(opt.zoom) == 0:
                 opt.zoom = [1]
@@ -872,7 +895,6 @@ def main():
                         'mzls+bass-dr4', 'mzls+bass-dr4-model',
                         'decaps2', 'decaps2-model', 'eboss', 'ps1']:
 
-            from glob import glob
             from map.views import get_survey, get_layer
 
             surveyname = opt.kind
