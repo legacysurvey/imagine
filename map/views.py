@@ -4406,7 +4406,7 @@ def cutouts_common(req, tgz, copsf):
                       theurl))
     return render(req, 'cutouts.html',
                   dict(ra=ra, dec=dec, ccds=ccdsx, name=layer, layer=layer,
-                       drname=survey.drname,
+                       drname=getattr(survey, 'drname', layer),
                        brick=brick, brickx=brickx, bricky=bricky, size=W))
 
 
@@ -5314,7 +5314,9 @@ if __name__ == '__main__':
     #r = c.get('/data-for-radec/?ra=35.8889&dec=-2.7425&layer=dr8-test6')
     #r = c.get('/ccd/dr8-test6/decam-262575-N12-z')
     #r = c.get('/ps1/1/13/7517/2091.jpg')
-    r = c.get('/cutout-wcs/?crval1=0.00000&crval2=0.00000&crpix1=384.5&crpix2=256.5&cd11=1.4812e-4&cd12=0&cd21=0&cd22=-1.4812e-4&imagew=768&imageh=512&layer=ls-dr67')
+    #r = c.get('/cutout-wcs/?crval1=0.00000&crval2=0.00000&crpix1=384.5&crpix2=256.5&cd11=1.4812e-4&cd12=0&cd21=0&cd22=-1.4812e-4&imagew=768&imageh=512&layer=ls-dr67')
+    #r = c.get('/dr8-test10/1/9/462/260.jpg')
+    r = c.get('/dr8-test10/1/13/7395/4163.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

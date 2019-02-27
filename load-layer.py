@@ -31,17 +31,21 @@ def main():
     # name = 'dr8-test6'
     # pretty = 'DR8 test6 (sky)'
 
-    indir = '/global/cscratch1/sd/dstn/dr8test007/'
-    name = 'dr8-test7'
-    pretty = 'DR8 test7 (outliers)'
+    # indir = '/global/cscratch1/sd/dstn/dr8test007/'
+    # name = 'dr8-test7'
+    # pretty = 'DR8 test7 (outliers)'
 
-    # sublayers = ['', '-model', '-resid']
-    # subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
+    indir = '/global/cscratch1/sd/dstn/dr8test010/'
+    name = 'dr8-test10'
+    pretty = 'DR8 test10 (rc)'
+
+    sublayers = ['', '-model', '-resid']
+    subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
     # survey_dir = '/global/cscratch1/sd/desiproc/dr7'
 
-    sublayers = ['']
-    subpretty = {'':' images'}
-    survey_dir = '/global/cscratch1/sd/dstn/dr8'
+    # sublayers = ['']
+    # subpretty = {'':' images'}
+    survey_dir = '/global/cscratch1/sd/dstn/dr8-depthcut'
 
     datadir = 'data'
 

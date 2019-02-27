@@ -836,8 +836,10 @@ def main():
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                         'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
                         'galex', 'wssa', 'des-dr1',
-                    ]:# or True:
+                    ] or opt.kind.startswith('dr8-test'): # or True:
             from map.views import get_layer
+
+            layer = get_layer(opt.kind)
 
             if opt.queue:
                 if len(opt.zoom) == 0:

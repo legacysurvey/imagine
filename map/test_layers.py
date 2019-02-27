@@ -24,3 +24,12 @@ test_layers.append(("dr8-test6", "DR8 test6 (sky) images"))
 
 test_layers.append(("dr8-test7", "DR8 test7 (outliers) images"))
 
+test_layers.append(("dr8-test10", "DR8 test10 (rc) images"))
+test_layers.append(("dr8-test10-model", "DR8 test10 (rc) models"))
+test_layers.append(("dr8-test10-resid", "DR8 test10 (rc) residuals"))
+
+test_layers.append(("dr8-test10", "DR8 test10 (rc) images"))
+
+test_layers.append(("dr8-test10-model", "DR8 test10 (rc) models"))
+
+test_layers.append(("dr8-test10-resid", "DR8 test10 (rc) residuals"))
