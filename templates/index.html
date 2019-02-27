@@ -510,7 +510,7 @@ var CatalogOverlay = L.Evented.extend({
                     popup.setLatLng(e.latlng)
                          .setContent(e.target.popupText)
                          .openOn(map);
-                    e.stopPropagation();
+                    L.DomEvent.stopPropagation(e);
                 });
             }
             circleList[i] = circ;
@@ -714,25 +714,30 @@ function onTargetClick(e) {
     if ('W2' in src.fluxes) {
         fluxstr += ', W2=' + fluxToMag(src.fluxes.W2).toFixed(2);
     }
-    nobs_g = 0
-    if ('g' in src.nobs) {
-	    nobs_g = src.nobs.g;
-    }
-    nobs_r = 0
-    if ('r' in src.nobs) {
-	    nobs_r = src.nobs.r;
-    }
-    nobs_z = 0
-    if ('z' in src.nobs) {
-	    nobs_z = src.nobs.z;
+    nobs_str = '';
+    if (src.nobs) {
+        nobs_g = 0
+        if ('g' in src.nobs) {
+    	    nobs_g = src.nobs.g;
+        }
+        nobs_r = 0
+        if ('r' in src.nobs) {
+    	    nobs_r = src.nobs.r;
+        }
+        nobs_z = 0
+        if ('z' in src.nobs) {
+    	    nobs_z = src.nobs.z;
+        }
+        nobs_str = '<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z;
     }
     txt = 'Target RA,Dec = ' + src.ra.toFixed(4) + ', ' + src.dec.toFixed(4) +
         '<br/>Mags: ' + fluxstr +
-	    '<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z +
+        nobs_str +
         '<br/>Targetid: ' + src.targetid;
     console.log('Popup text: ' + txt);
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
-    e.stopPropagation();
+    explode;
+    L.DomEvent.stopPropagation(e);
 }
 
 
@@ -784,7 +789,7 @@ var PhatClusterCatalog = CatalogOverlay.extend({
                     text += '<br>Metallicity: ' + z.toFixed(3);
                 }
                 popup.setLatLng(e.latlng).setContent(text).openOn(map);
-                e.stopPropagation();
+                L.DomEvent.stopPropagation(e);
             });
             circleList[i] = circ;
         }
@@ -969,6 +974,9 @@ var decals_getLayer = function(result, radius, defaultcolor) {
     var clong = map.getCenter().lng;
     var radii = result['radius'];
     var colors = result['color'];
+
+    var abratios = result['abratio'];
+    var posangles = result['posangle'];
     
     for (var i=0, len=rdlist.length; i<len; i++) {
         var r = rdlist[i][0];
@@ -1010,8 +1018,14 @@ var decals_getLayer = function(result, radius, defaultcolor) {
         }
         //console.log('Lat,Long,Radius ' + lat + ', ' + lng + ', ' + rad);
         rad = arcsecToMeters(rad);
-        var circ = L.circle([lat, lng], rad,
-                            {'color':color, 'fillOpacity':0, 'weight':5});
+
+        if ((abratios === undefined) || (posangles === undefined)) {
+            var circ = L.circle([lat, lng], rad,
+                                {'color':color, 'fillOpacity':0, 'weight':5});
+        } else {
+            var circ = L.ellipse([lat, lng], [rad, rad*abratios[i]], posangles[i],
+                                 {'color':color, 'fillOpacity':0, 'weight':5});
+        }
         if (labels === undefined) {
         } else {
             var txt = labels[i];
@@ -1055,7 +1069,7 @@ var UserCatalogLayer = CatalogOverlay.extend({
     },
 
     ready: function() {
-        //console.log(this._name + ' ready function called (UserCatalogLayer)');
+        console.log(this._name + ' ready function called (UserCatalogLayer)');
         this._checkbox = getOverlayCheckbox(this._pretty);
         // _checkbox is a jQuery node
         //console.log('checkbox:', this._checkbox);
@@ -1338,7 +1352,7 @@ function onSourceClick(e) {
 	    '<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z;
     console.log('Popup text: ' + txt);
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
-    e.stopPropagation();
+    L.DomEvent.stopPropagation(e);
 }
 
 function brick_detail(ovname, name, aparams) {
@@ -2873,6 +2887,11 @@ var desi_sky_targets67 = new DesiTargetCatalog('targets-sky-dr67', 'DESI Sky Tar
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
+
+var desi_cmx_targets7 = new DesiTargetCatalog('targets-cmx-dr7', 'DESI Commissioning Targets (DR7)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
 {% endif %}
 
 {% if enable_spectra %}
@@ -3164,6 +3183,7 @@ var overlays = [
     desi_sky_targets67,
     desi_dark_targets67,
     desi_bright_targets67,
+    desi_cmx_targets7,
     {% endif %}
     constellations,
     desifoot,
@@ -3344,8 +3364,8 @@ for (var i=0,len=overlays.length; i<len; i++) {
     overlayTree.push({ label: pretty,
                        layer: group });
     map.addLayer(group);
-    map.on('baselayerchange', function(e) {
-        usercat.ready(); });
+    //map.on('baselayerchange', function(e) {
+    //    usercat.ready(); });
   {% endfor %}
 {% endif %}
 
@@ -3425,6 +3445,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      {% if enable_desi_targets %}
      { label: 'DESI targets',
        children: [
+           findoverlay('targets-cmx-dr7'),
            findoverlay('targets-dr67'),
            findoverlay('targets-bgs-dr67'),
            findoverlay('targets-sky-dr67'),

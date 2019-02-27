@@ -8,8 +8,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
-import secrets.django
-import secrets.database
+#import secrets.django
+#import secrets.database
 
 REDIRECT_CUTOUTS_DECAPS = False
 
@@ -91,7 +91,13 @@ SDSS_DIR   = os.path.join(DATA_DIR, 'sdss')
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = secrets.django.SECRET_KEY
+try:
+    import secrets.django
+    SECRET_KEY = secrets.django.SECRET_KEY
+except:
+    import random
+    SECRET_KEY = ''.join([random.choice("abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)")
+                          for i in range(50)])
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -169,15 +175,14 @@ WSGI_APPLICATION = 'wsgi.application'
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    },
-    'cosmo': secrets.database.COSMO_DB,
-    'dr2': secrets.database.DR2_DB,
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     },
+#     'cosmo': secrets.database.COSMO_DB,
+#     'dr2': secrets.database.DR2_DB,
 }
-
-DATABASE_ROUTERS = ['cat.models.Router']
+#DATABASE_ROUTERS = ['cat.models.Router']
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.6/topics/i18n/
