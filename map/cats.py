@@ -47,6 +47,7 @@ catversions = {
     'targets-sky-dr67': [1,],
     'targets-bright-dr67': [1,],
     'targets-dark-dr67': [1,],
+    'targets-cmx-dr7': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
@@ -128,7 +129,8 @@ def cat_gaia_dr2(req, ver):
 
     for c in ['ra','dec','phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag',
               'pmra','pmdec','parallax',
-              'pmra_error', 'pmdec_error', 'parallax_error']:
+              'pmra_error', 'pmdec_error', 'parallax_error',
+              'astrometric_excess_noise']:
         val = cat.get(c)
         val[np.logical_not(np.isfinite(val))] = 0.
         cat.set(c, val)
@@ -145,6 +147,7 @@ def cat_gaia_dr2(req, ver):
         pmra_err=[float(o.pmra_error) for o in cat],
         pmdec_err=[float(o.pmdec_error) for o in cat],
         parallax_err=[float(o.parallax_error) for o in cat],
+        astrometric_excess_noise=[float(o.astrometric_excess_noise) for o in cat],
     )),
                         content_type='application/json')
 
@@ -460,12 +463,16 @@ def cat_targets_dr2(req, ver):
                 )),
                         content_type='application/json')
 
+def cat_targets_cmx_dr7(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-cmx-0.27.0.kd.fits'),
+        ], tag='targets-cmx-dr7', color_name_func=desi_cmx_color_names)
+
 def cat_targets_dr45(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
         os.path.join(settings.DATA_DIR, 'targets-dr4-0.20.0.kd.fits'),
     ], tag = 'targets-dr45')
-
 
 def cat_targets_dr56(req, ver):
     return cat_targets_drAB(req, ver, cats=[
@@ -509,57 +516,8 @@ def cat_targets_dark_dr67(req, ver):
         os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
     ], tag = 'targets-dark-dr67', dark=True)
 
-def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=False, dark=False):
-    import json
-    ralo = float(req.GET['ralo'])
-    rahi = float(req.GET['rahi'])
-    declo = float(req.GET['declo'])
-    dechi = float(req.GET['dechi'])
 
-    ver = int(ver)
-    if not ver in catversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-
-    from astrometry.util.fits import fits_table, merge_tables
-    from astrometry.libkd.spherematch import tree_open, tree_search_radec
-    import numpy as np
-    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
-
-    xyz1 = radectoxyz(ralo, declo)
-    xyz2 = radectoxyz(rahi, dechi)
-    xyz = (xyz1 + xyz2)/2.
-    xyz /= np.sqrt(np.sum(xyz**2))
-    rc,dc = xyztoradec(xyz)
-    rc = rc[0]
-    dc = dc[0]
-    rad = degrees_between(rc, dc, ralo, declo)
-
-    '''
-    startree -i /project/projectdirs/desi/target/catalogs/targets-dr4-0.20.0.fits -o data/targets-dr4-0.20.0.kd.fits -P -k -T
-    '''
-    TT = []
-    for fn in cats:
-        kd = tree_open(fn)
-        I = tree_search_radec(kd, rc, dc, rad)
-        print('Matched', len(I), 'from', fn)
-        if len(I) == 0:
-            continue
-        T = fits_table(fn, rows=I)
-        TT.append(T)
-    if len(TT) == 0:
-        return HttpResponse(json.dumps(dict(rd=[], name=[])),
-                            content_type='application/json')
-    T = merge_tables(TT)
-
-    if bgs:
-        T.cut(T.bgs_target > 0)
-
-    if bright:
-        T.cut(np.logical_or(T.bgs_target > 0, T.mws_target > 0))
-
-    if dark:
-        T.cut(T.desi_target > 0)
-
+def desitarget_color_names(T):
     names = []
     colors = []
     for t in T:
@@ -630,6 +588,98 @@ def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=Fal
         elif 'BGS' in nn:
             cc = 'orange'
         colors.append(cc)
+    return names, colors
+
+def desi_cmx_color_names(T):
+    names = []
+    colors = []
+    for bits in T.cmx_target:
+        bitnames = []
+        for bitval,name in [(0x1, 'STD_GAIA'),
+                            (0x2, 'SV0_STD_BRIGHT'),
+                            (0x4, 'STD_TEST'),
+                            (0x8, 'CALSPEC'),
+                            (0x100, 'SV0_BGS'),
+                            (0x200, 'SV0_MWS'),]:
+            if bits & bitval:
+                bitnames.append(name)
+
+        nn = ' '.join(bitnames)
+        names.append(nn)
+
+        cc = 'white'
+        if 'BGS' in nn:
+            cc = 'orange'
+        elif 'MWS' in nn:
+            cc = 'cyan'
+        elif 'Gaia' in nn:
+            cc = 'gray'
+        else:
+            cc = 'white'
+        colors.append(cc)
+
+    return names, colors
+
+def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=False, dark=False, color_name_func=desitarget_color_names):
+    '''
+    color_name_func: function that selects names and colors for targets
+    (eg based on targeting bit values)
+    '''
+
+    import json
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    import numpy as np
+    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
+
+    xyz1 = radectoxyz(ralo, declo)
+    xyz2 = radectoxyz(rahi, dechi)
+    xyz = (xyz1 + xyz2)/2.
+    xyz /= np.sqrt(np.sum(xyz**2))
+    rc,dc = xyztoradec(xyz)
+    rc = rc[0]
+    dc = dc[0]
+    rad = degrees_between(rc, dc, ralo, declo)
+
+    '''
+    startree -i /project/projectdirs/desi/target/catalogs/targets-dr4-0.20.0.fits -o data/targets-dr4-0.20.0.kd.fits -P -k -T
+    '''
+    TT = []
+    for fn in cats:
+        kd = tree_open(fn)
+        I = tree_search_radec(kd, rc, dc, rad)
+        print('Matched', len(I), 'from', fn)
+        if len(I) == 0:
+            continue
+        T = fits_table(fn, rows=I)
+        TT.append(T)
+    if len(TT) == 0:
+        return HttpResponse(json.dumps(dict(rd=[], name=[])),
+                            content_type='application/json')
+    T = merge_tables(TT, columns='fillzero')
+
+    if bgs:
+        T.cut(T.bgs_target > 0)
+
+    if bright:
+        T.cut(np.logical_or(T.bgs_target > 0, T.mws_target > 0))
+
+    if dark:
+        T.cut(T.desi_target > 0)
+
+    names = None
+    colors = None
+    if color_name_func is not None:
+        names,colors = color_name_func(T)
 
     if sky:
         fluxes = [dict(g=float(g), r=float(r), z=float(z))
@@ -644,15 +694,16 @@ def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=Fal
               in zip(T.nobs_g, T.nobs_r, T.nobs_z)],
 
     rtn = dict(rd=[(t.ra, t.dec) for t in T],
-               name=names,
                targetid=[int(t) for t in T.targetid],
                fluxes=fluxes,
-               color=colors,
-    )
+           )
+    if names is not None:
+        rtn.update(name=names)
+    if colors is not None:
+        rtn.update(color=colors)
     if nobs is not None:
         rtn.update(nobs=nobs)
-    return HttpResponse(json.dumps(rtn),
-                        content_type='application/json')
+    return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def cat_lslga(req, ver):
     import json
@@ -866,6 +917,10 @@ def cat_user(req, ver):
         D.update(radius=list([float(r) for r in cat.radius]))
     if 'color' in cols:
         D.update(color=list([c.strip() for c in cat.color]))
+    if 'abratio' in cols:
+        D.update(abratio=list([float(r) for r in cat.abratio]))
+    if 'posangle' in cols:
+        D.update(posangle=list([float(r) for r in cat.posangle]))
 
     #for k,v in D.items():
     #    print('Cat', k, v)
