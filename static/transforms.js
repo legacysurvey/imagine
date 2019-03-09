@@ -22,26 +22,25 @@ function xyz2radec(telra, teldec, v) {
     // Clockwise rotation around y axis by declination of the tile center
     var decrotate = math.zeros(3, 3);
     var teldec_rad = radians(teldec);
-    decrotate.subset(math.index(0, [0, 1, 2]), [math.cos(teldec_rad), 0, -math.sin(teldec_rad)])
-    decrotate.subset(math.index(1, [0, 1, 2]), [0, 1, 0])
-    decrotate.subset(math.index(2, [0, 1, 2]), [math.sin(teldec_rad), 0, math.cos(teldec_rad)])
+    decrotate = math.subset(decrotate, math.index(0, [0, 1, 2]), [math.cos(teldec_rad), 0, -math.sin(teldec_rad)])
+    decrotate = math.subset(decrotate, math.index(1, [0, 1, 2]), [0, 1, 0])
+    decrotate = math.subset(decrotate, math.index(2, [0, 1, 2]), [math.sin(teldec_rad), 0, math.cos(teldec_rad)])
 
     // Counter-clockwise rotation around the z-axis by the right ascension of the tile center
     var rarotate = math.zeros(3,3)
     var telra_rad = radians(telra)
-    rarotate.subset(math.index(0, [0, 1, 2]), [math.cos(telra_rad), -math.sin(telra_rad), 0])
-    rarotate.subset(math.index(1, [0, 1, 2]), [math.sin(telra_rad), math.cos(telra_rad), 0])
-    rarotate.subset(math.index(1, [0, 1, 2]), [0, 0, 1])
+    rarotate = math.subset(rarotate, math.index(0, [0, 1, 2]), [math.cos(telra_rad), -math.sin(telra_rad), 0])
+    rarotate = math.subset(rarotate, math.index(1, [0, 1, 2]), [math.sin(telra_rad), math.cos(telra_rad), 0])
+    rarotate = math.subset(rarotate, math.index(2, [0, 1, 2]), [0, 0, 1])
 
-    v3 = math.dot(rarotate, math.dot(decrotate, v))
-    // cols = math.size(v3)[1]
-    // console.log(cols)
-    x3 = row(v3, 0)
-    y3 = row(v3, 1)
-    z3 = row(v3, 2)
+    var v3 = math.multiply(rarotate, math.multiply(decrotate, v))
+    
+    var x3 = row(v3, 0)
+    var y3 = row(v3, 1)
+    var z3 = row(v3, 2)
 
-    ra_rad = math.atan2(y3, x3)
-    dec_rad = (math.pi/2) - math.acos(z3)
+    var ra_rad = math.atan2(y3, x3)
+    var dec_rad = math.add(math.acos(z3), math.pi/2)
 
     return [ra_rad, dec_rad]
 }
