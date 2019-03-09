@@ -40,7 +40,7 @@ function xyz2radec(telra, teldec, v) {
     var z3 = row(v3, 2)
 
     var ra_rad = math.atan2(y3, x3)
-    var dec_rad = math.add(math.acos(z3), math.pi/2)
+    var dec_rad = math.add(math.acos(z3), -math.pi/2)
 
     return [ra_rad, dec_rad]
 }
