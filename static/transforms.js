@@ -15,7 +15,7 @@ function degrees(rad) {
 */
 function row(matrix, index) {
     var rows = math.size(matrix).valueOf()[1];
-    return math.flatten(math.subset(matrix, math.index(index, [0, rows])));
+    return math.flatten(math.subset(matrix, math.index(index, math.range(0, rows))));
 }
 
 function xyz2radec(telra, teldec, v) {
