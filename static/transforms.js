@@ -19,6 +19,9 @@ function row(matrix, index) {
 }
 
 function xyz2radec(telra, teldec, v) {
+    // Invert teldec
+    teldec = -teldec;
+
     // Clockwise rotation around y axis by declination of the tile center
     var decrotate = math.zeros(3, 3);
     var teldec_rad = radians(teldec);
