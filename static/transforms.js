@@ -19,6 +19,9 @@ function row(matrix, index) {
 }
 
 function xyz2radec(telra, teldec, v) {
+    // TODO: Add documentation
+    // Source: desimodel.geometry.xy2radec
+
     // Invert teldec
     teldec = -teldec;
 
