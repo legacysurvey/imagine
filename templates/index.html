@@ -3026,9 +3026,6 @@ var DesiFootprint = CatalogOverlay.extend({
         this._ci = L.polyline(polys, {color: 'magenta'});
         group.push(this._ci);
 
-        this._fiberpos = this.getFiberPolyLine(0, 0, clong);
-        group.push(this._fiberpos)
-
         this._layer = L.layerGroup(group);
         //map.on('mapMoved', this.mapMoved.bind(this));
     },
@@ -3089,10 +3086,14 @@ var DesiFootprint = CatalogOverlay.extend({
         this._ci.setLatLngs(polys);
         this._ci.redraw();
 
-        // Recalculate fiber polyline
-        this._layer.removeLayer(this._fiberpos);
-        this._fiberpos = this.getFiberPolyLine(r0, d0, clong);
-        this._layer.addLayer(this._fiberpos);
+        // calculate fiber polyline
+        if (this._show) {
+            if (this._fiberpos) {
+                this._layer.removeLayer(this._fiberpos);
+            }
+            this._fiberpos = this.getFiberPolyLine(r0, d0, clong);
+            this._layer.addLayer(this._fiberpos);
+        }
     },
     load: function() {
     },
