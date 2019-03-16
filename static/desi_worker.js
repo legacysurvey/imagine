@@ -1,7 +1,7 @@
 importScripts("data.js");
 importScripts("transforms.js");
 
-function getFiberPolyLine(telra, teldec, clong) {
+function getFiberMultiLatLngs(telra, teldec, clong) {
     multilatlngs = []
     for (var i = 0; i < 5000; ++i) { // TODO: Get rid of this magic constant
         var circle = fiberpos_projection[i];
@@ -24,5 +24,5 @@ function getFiberPolyLine(telra, teldec, clong) {
 }
 
 onmessage = function(e) {
-    postMessage(getFiberPolyLine(e.data[0], e.data[1], e.data[2]));
+    postMessage(getFiberMultiLatLngs(e.data[0], e.data[1], e.data[2]));
 }

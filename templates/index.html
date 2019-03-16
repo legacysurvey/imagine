@@ -3094,7 +3094,7 @@ var DesiFootprint = CatalogOverlay.extend({
                 this._worker = new Worker('{% static "desi_worker.js" %}');
                 var _this = this;
                 this._worker.addEventListener('message', function(e) {
-                    var polyline = L.polyline(e.data, {color: 'red', smoothFactor: 0.5});
+                    var polyline = L.polyline(e.data, {color: 'DeepSkyBlue', smoothFactor: 0.5});
                     // Remove the previous fiberpos layer if exists
                     if (_this._fiberpos) {
                         _this._layer.removeLayer(_this._fiberpos);
