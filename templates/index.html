@@ -3087,25 +3087,30 @@ var DesiFootprint = CatalogOverlay.extend({
         this._ci.setLatLngs(polys);
         this._ci.redraw();
 
-        // calculate fiber polyline
+        // Fiberpos polyline
         if (this._show) {
+            // Create worker if worker does not exist
             if (!this._worker) {
                 this._worker = new Worker('{% static "desi_worker.js" %}');
                 var _this = this;
                 this._worker.addEventListener('message', function(e) {
                     var polyline = L.polyline(e.data, {color: 'red', smoothFactor: 0.5});
+                    // Remove the previous fiberpos layer if exists
                     if (_this._fiberpos) {
                         _this._layer.removeLayer(_this._fiberpos);
                         _this._fiberpos = undefined;
                     }
+                    // Discard result if desi footprint is not being displayed
                     if (_this._show) {
                         _this._fiberpos = polyline;
+                        // Display result if zoom level is appropriate
                         if (map.getZoom() > _this._ZOOM_THRESH) {
                             _this._layer.addLayer(_this._fiberpos);
                         }
                     }
                 }, false);
             }
+            // Tell worker to initiate calculation
             this._worker.postMessage([r0, d0, clong]);
         }
     },
@@ -3131,9 +3136,12 @@ var DesiFootprint = CatalogOverlay.extend({
         console.log('Set initial position for DESI footprint: ' + r + ', ' + d);
     },
     onMapZoomEnd: function() {
+        // If the footprint is being displayed and fiberpos layer is ready
         if (this._show && this._fiberpos) {
+            // Add fiberpos layer if zoom level is large enough
             if (map.getZoom() > this._ZOOM_THRESH) {
                 this._layer.addLayer(this._fiberpos)
+            // Otherwise attempt to remove fiberpos layer
             } else {
                 this._layer.removeLayer(this._fiberpos)
             }
