@@ -3045,11 +3045,13 @@ var DesiFootprint = CatalogOverlay.extend({
         this._group.addLayer(this._layer);
     },
     overlayRemoved: function(e) {
-        if (this._fiberpos) {
-            this._layer.removeLayer(this._fiberpos);
-            this._fiberpos = undefined;
+        if (layerMatchesEvent(this, e)) {
+            if (this._fiberpos) {
+                this._layer.removeLayer(this._fiberpos);
+                this._fiberpos = undefined;
+            }
+            this._show = false;
         }
-        this._show = false;
     },
     moveTo: function(c) {
         this._circle.setLatLng(c);
