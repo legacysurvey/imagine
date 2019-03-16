@@ -3027,7 +3027,7 @@ var DesiFootprint = CatalogOverlay.extend({
         this._ZOOM_THRESH = 8;
     },
     ready: function() {
-        console.log(this._name + ' ready function called');
+        CatalogOverlay.prototype.ready.call(this);
         if (!this._got_initial_position) {
             this.moveTo(map.getCenter());
         }
@@ -3110,10 +3110,13 @@ var DesiFootprint = CatalogOverlay.extend({
                             _this._layer.addLayer(_this._fiberpos);
                         }
                     }
+                    // Update dispalyed status
+                    _this._status && _this._status.html('');
                 }, false);
             }
             // Tell worker to initiate calculation
             this._worker.postMessage([r0, d0, clong]);
+            this._status && this._status.html('calculating...');
         }
     },
     load: function() {
