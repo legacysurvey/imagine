@@ -1,3 +1,6 @@
+importScripts("math.min.js");
+importScripts("utils.js");
+
 function radians(degrees) {
     return degrees * math.pi / 180;
 }
@@ -21,7 +24,6 @@ function row(matrix, index) {
 function xyz2radec(telra, teldec, v) {
     // TODO: Add documentation
     // Source: desimodel.geometry.xy2radec
-
     // Invert teldec
     teldec = -teldec;
 
@@ -47,6 +49,6 @@ function xyz2radec(telra, teldec, v) {
 
     var ra_rad = math.atan2(y3, x3)
     var dec_rad = math.add(math.acos(z3), -math.pi/2)
-
+    
     return [ra_rad, dec_rad]
 }
