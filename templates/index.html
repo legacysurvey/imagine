@@ -3028,6 +3028,7 @@ var DesiFootprint = CatalogOverlay.extend({
 
         this._layer = L.layerGroup(group);
         //map.on('mapMoved', this.mapMoved.bind(this));
+        this._ZOOM_THRESH = 8;
     },
     ready: function() {
         console.log(this._name + ' ready function called');
@@ -3133,13 +3134,18 @@ var DesiFootprint = CatalogOverlay.extend({
         this._got_initial_position = true;
         console.log('Set initial position for DESI footprint: ' + r + ', ' + d);
     },
+    onMapZoomEnd: function() {
+        if (this._show && this._fiberpos) {
+            if (map.getZoom() > this._ZOOM_THRESH) {
+                this._layer.addLayer(this._fiberpos)
+            } else {
+                this._layer.removeLayer(this._fiberpos)
             }
         }
     },
 });
 var desifoot = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
 desifoot._url_term = 'desifoot';
-
 
 var overlays = [
     {% if enable_phat %}
