@@ -1,4 +1,4 @@
-importScripts("data.js");
+importScripts("desi-fiber-locations.js");
 importScripts("transforms.js");
 
 function getFiberMultiLatLngs(telra, teldec, clong) {
