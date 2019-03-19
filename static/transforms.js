@@ -1,10 +1,20 @@
 importScripts("math.min.js");
 importScripts("utils.js");
 
+/**
+* Convert degrees to radians
+* @param {number} degrees degrees
+* @return {number} radians
+*/
 function radians(degrees) {
     return degrees * math.pi / 180;
 }
 
+/**
+* Convert radians to degrees
+* @param {number} rad radians
+* @return {number} degrees
+*/
 function degrees(rad) {
     return rad * 180 / math.pi;
 }
@@ -21,9 +31,16 @@ function row(matrix, index) {
     return math.flatten(math.subset(matrix, math.index(index, math.range(0, rows))));
 }
 
+/**
+* Transform vectors on the unit sphere to radec
+* @param {number} telra Right ascension for telescope center
+* @param {number} teldec  Declination for telescope center
+* @param {Matrix | Array} v A matrix containing 3 dimensional
+*                           vectors on the unit sphere to be transformed
+* @return {Matrix | Array} A matrix containing radec vectors in radians
+* @source desimodel.geometry.xy2radec
+*/
 function xyz2radec(telra, teldec, v) {
-    // TODO: Add documentation
-    // Source: desimodel.geometry.xy2radec
     // Invert teldec
     teldec = -teldec;
 
