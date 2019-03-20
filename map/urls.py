@@ -114,6 +114,9 @@ urlpatterns = [
     # DR6/7 DESI targets
     url(r'^targets-dr67/(\d+)/cat.json', cats.cat_targets_dr67),
 
+    # DR8b DESI targets
+    url(r'^targets-dr8b/(\d+)/cat.json', cats.cat_targets_dr8b),
+
     # DR5/6 DESI targets, BGS survey only
     url(r'^targets-bgs-dr56/(\d+)/cat.json', cats.cat_targets_bgs_dr56),
     # DR6/7 DESI targets, BGS survey only
@@ -248,10 +251,8 @@ urlpatterns = [
     url(r'^([\w\+-]+)/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.any_tile_view),
     # catalog
-    #url(r'^([\w\+-]+)/(\d+)/(\d+)/(\d+)/(\d+).cat.json',
-    #    cats.get_any_cat_view),cat_decals_dr8),
-    
-
+    url(r'^([\w\+-]+)/(\d+)/(\d+)/(\d+)/(\d+).cat.json',
+        cats.any_cat),
 
 
     # Cutouts html

@@ -2892,6 +2892,7 @@ var desi_cmx_targets7 = new DesiTargetCatalog('targets-cmx-dr7', 'DESI Commissio
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
+
 {% endif %}
 
 {% if enable_spectra %}
@@ -3200,6 +3201,23 @@ for (k in qstr) {
 }
 
 
+{% if enable_dev %}
+var desi_targets8b = new DesiTargetCatalog('targets-dr8b', 'DESI Targets (DR8b)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+overlays.push(desi_targets8b);
+{% for name,pretty in test_cats %}
+  var testcat = new DecalsCatalogLayer(tileWatcher,
+                                       '{{name}}', '{{pretty}}',
+                                        {'url': cat_url,
+                                         'minZoom': 12,
+                                         'urlTerm': '{{name}}'});
+  overlays.push(testcat);
+{% endfor %}
+{% endif %}
+
+
 
 var namedLayers = {};
 for (var i in allLayers) {
@@ -3370,6 +3388,14 @@ for (var i=0,len=overlays.length; i<len; i++) {
 {% endif %}
 
 
+
+{% if enable_dev %}
+overlayTree.push(findoverlay('targets-dr8b'));
+{% for name,pretty in test_cats %}
+  overlayTree.push(findoverlay('{{name}}'));
+{% endfor %}
+{% endif %}
+
  overlayTree = overlayTree.concat([
      {% if enable_phat %}
      findoverlay('phat-clusters'),
@@ -3405,6 +3431,8 @@ for (var i=0,len=overlays.length; i<len; i++) {
      { label: 'DECaLS DR7 catalog',
        layer: namedOverlays['decals-dr7'].getGroup(),
        children: [
+           
+
            {% if enable_dr6_overlays %}
            findoverlay('mzls+bass-dr6'),
            {% endif %}

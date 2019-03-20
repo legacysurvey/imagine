@@ -352,6 +352,16 @@ def _index(req,
         import traceback
         traceback.print_exc()
 
+    test_cats = []
+    try:
+        from map.test_layers import test_cats as tc
+        for la in tc:
+            if not la in test_cats:
+                test_cats.append(la)
+    except:
+        import traceback
+        traceback.print_exc()
+
 
     args = dict(ra=ra, dec=dec, zoom=zoom,
                 maxZoom=maxZoom,
@@ -378,6 +388,7 @@ def _index(req,
                 usercatalogurl2 = usercatalogurl2,
 
                 test_layers = test_layers,
+                test_cats = test_cats,
     )
 
     args.update(kwargs)

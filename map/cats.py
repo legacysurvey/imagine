@@ -48,12 +48,22 @@ catversions = {
     'targets-bright-dr67': [1,],
     'targets-dark-dr67': [1,],
     'targets-cmx-dr7': [1,],
+    'targets-dr8b': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
 }
+
+test_cats = []
+try:
+    from map.test_layers import test_cats as tc
+    for key,pretty in tc:
+        catversions[key] = [1,]
+except:
+    pass
+
 
 def cat_phat_clusters(req, ver):
     import json
@@ -515,6 +525,11 @@ def cat_targets_dark_dr67(req, ver):
         os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
         os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
     ], tag = 'targets-dark-dr67', dark=True)
+def cat_targets_dr8b(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr8b.kd.fits'),
+    ], tag = 'targets-dr67')
+
 
 
 def desitarget_color_names(T):
@@ -1011,6 +1026,16 @@ def cat_mobo_dr6(req, ver, zoom, x, y, tag='mzls+bass-dr6'):
 
 def cat_decals_dr7(req, ver, zoom, x, y, tag='decals-dr7'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def any_cat(req, name, ver, zoom, x, y, **kwargs):
+    from map.views import layer_name_map, get_layer
+    print('any_cat(', name, ver, zoom, x, y, ')')
+    name = layer_name_map(name)
+    layer = get_layer(name)
+    if layer is None:
+        return HttpResponse('no such layer: ' + name)
+    return cat_decals(req, ver, zoom, x, y, tag=name, docache=False)
+
 
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     import json

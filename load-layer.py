@@ -99,6 +99,11 @@ def main():
             os.makedirs(basedir)
             for subdir in ['coadd', 'tractor']:
                 os.symlink(os.path.join(indir, subdir), os.path.join(basedir, subdir), target_is_directory=True)
+            for fn in ['images', 'calib']:
+                os.symlink(os.path.join(indir, subdir), os.path.join(basedir, subdir), target_is_directory=False)
+            for pat in ['survey-ccds-*']:
+                for fn in [os.path.basename(f) for f in glob(os.path.join(indir, pat))]:
+                    os.symlink(os.path.join(indir, subdir), os.path.join(basedir, subdir), target_is_directory=False)
 
     allbricks = survey.get_bricks_readonly()
 
