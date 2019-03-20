@@ -3537,6 +3537,11 @@ def get_survey(name):
             south = get_survey('decals-dr7')
             d = SplitSurveyData(north, south)
             d.drname = 'LegacySurvey DR6+DR7'
+
+        elif 'dr8b' in name:
+            d = LegacySurveyData(survey_dir=dirnm,
+                                 cache_dir=os.path.join(dirnm, 'extra-images'))
+
         else:
             d = MyLegacySurveyData(survey_dir=dirnm)
 

@@ -93,7 +93,12 @@ def main():
     allbricks = survey.get_bricks_readonly()
 
     imagefns = glob(os.path.join(basedir, 'coadd', '*', '*', '*-image-*.fits*'))
-    print('Image filenames:', len(imagefns))
+
+    extraimagefns = glob(os.path.join(basedir, 'extra-images', 'coadd', '*', '*', '*-image-*.fits*'))
+
+    print('Image filenames:', len(imagefns), 'plus', len(extraimagefns), 'extras')
+    imagefns += extraimagefns
+
     brickset = set()
     for fn in imagefns:
         dirs = fn.split('/')
