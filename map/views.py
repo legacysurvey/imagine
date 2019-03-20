@@ -5090,6 +5090,26 @@ def get_layer(name, default=None):
             return np.arcsinh(x * 10.)
         layer = ZeaLayer('sfd', sfd_map, stretch=stretch_sfd, vmin=0.0, vmax=5.0)
 
+
+    elif 'dr8b' in name:
+        # Generic NON-rebricked
+        print('get_layer:', name, '-- generic')
+        basename = name
+        if name.endswith('-model'):
+            basename = name[:-6]
+        if name.endswith('-resid'):
+            basename = name[:-6]
+        survey = get_survey(basename)
+        if survey is not None:
+            image = DecalsLayer(basename, 'image', survey)
+            model = DecalsLayer(basename + '-model', 'model', survey,
+                                       drname=basename)
+            resid = DecalsResidLayer(image, model, basename + '-resid', 'resid', survey,
+                                       drname=basename)
+            layers[basename] = image
+            layers[basename + '-model'] = model
+            layers[basename + '-resid'] = resid
+            layer = layers[name]
     
     if layer is None:
         # Try generic

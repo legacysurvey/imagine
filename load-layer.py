@@ -35,9 +35,16 @@ def main():
     # name = 'dr8-test7'
     # pretty = 'DR8 test7 (outliers)'
 
-    indir = '/global/cscratch1/sd/dstn/dr8test010/'
-    name = 'dr8-test10'
-    pretty = 'DR8 test10 (rc)'
+    #indir = '/global/cscratch1/sd/dstn/dr8test14/'
+    #name = 'dr8-test14'
+    #pretty = 'DR8 test14 (rc)'
+
+    #indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
+    #name = 'dr8a'
+    #pretty = 'DR8a (rc)'
+    indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam/'
+    name = 'dr8b-decam'
+    pretty = 'DR8b DECam'
 
     sublayers = ['', '-model', '-resid']
     subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
@@ -45,7 +52,12 @@ def main():
 
     # sublayers = ['']
     # subpretty = {'':' images'}
-    survey_dir = '/global/cscratch1/sd/dstn/dr8-depthcut'
+    
+    #survey_dir = '/global/cscratch1/sd/dstn/dr8-depthcut'
+    #survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
+    survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam'
+
+    rsync = False
 
     datadir = 'data'
 
@@ -58,17 +70,25 @@ def main():
     open(fn, 'wb').write(txt.encode())
     print('Wrote', fn)
 
-
-    cmd = 'rsync -LRarv %s/./{coadd/*/*/*-{image-,model-,ccds}*.fits*,tractor} %s/%s' % (indir, datadir, name)
-    print(cmd)
-    os.system(cmd)
-
-    # ...?
-    cmd = 'rsync -Rarv %s/./{images,survey-ccds*.fits} %s/%s' % (survey_dir, datadir, name)
-    print(cmd)
-    os.system(cmd)
-
     basedir = os.path.join(datadir, name)
+
+    if rsync:
+        cmd = 'rsync -LRarv %s/./{coadd/*/*/*-{image-,model-,ccds}*.fits*,tractor} %s/%s' % (indir, datadir, name)
+        print(cmd)
+        os.system(cmd)
+
+        # ...?
+        cmd = 'rsync -Rarv %s/./{images,survey-ccds*.fits} %s/%s' % (survey_dir, datadir, name)
+        print(cmd)
+        os.system(cmd)
+    else:
+        # symlink
+        if os.path.exists(basedir):
+            print('Not symlinking', indir, 'to', basedir, ': already exists!')
+        else:
+            os.makedirs(basedir)
+            for subdir in ['coadd', 'tractor']:
+                os.symlink(os.path.join(indir, subdir), os.path.join(basedir, subdir), target_is_directory=True)
 
     allbricks = survey.get_bricks_readonly()
 

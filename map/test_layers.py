@@ -28,8 +28,20 @@ test_layers.append(("dr8-test10", "DR8 test10 (rc) images"))
 test_layers.append(("dr8-test10-model", "DR8 test10 (rc) models"))
 test_layers.append(("dr8-test10-resid", "DR8 test10 (rc) residuals"))
 
-test_layers.append(("dr8-test10", "DR8 test10 (rc) images"))
+test_layers.append(("dr8-test14", "DR8 test14 (rc) images"))
+test_layers.append(("dr8-test14-model", "DR8 test14 (rc) models"))
+test_layers.append(("dr8-test14-resid", "DR8 test14 (rc) residuals"))
 
-test_layers.append(("dr8-test10-model", "DR8 test10 (rc) models"))
+test_layers.append(("dr8a", "DR8a (rc) images"))
+test_layers.append(("dr8a-model", "DR8a (rc) models"))
+test_layers.append(("dr8a-resid", "DR8a (rc) residuals"))
 
-test_layers.append(("dr8-test10-resid", "DR8 test10 (rc) residuals"))
+test_layers.append(("dr8b-decam", "DR8b DECam images"))
+test_layers.append(("dr8b-decam-model", "DR8b DECam models"))
+test_layers.append(("dr8b-decam-resid", "DR8b DECam residuals"))
+
+test_layers.append(("dr8b-decam", "DR8b DECam images"))
+
+test_layers.append(("dr8b-decam-model", "DR8b DECam models"))
+
+test_layers.append(("dr8b-decam-resid", "DR8b DECam residuals"))

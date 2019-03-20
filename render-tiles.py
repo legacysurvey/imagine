@@ -893,17 +893,23 @@ def main():
             sys.exit(0)
                 
         
-        if opt.kind in ['decals-dr3', 'decals-dr3-model',
-                        'mzls+bass-dr4', 'mzls+bass-dr4-model',
-                        'decaps2', 'decaps2-model', 'eboss', 'ps1']:
+        if (opt.kind in ['decals-dr3', 'decals-dr3-model',
+                         'mzls+bass-dr4', 'mzls+bass-dr4-model',
+                         'decaps2', 'decaps2-model', 'eboss', 'ps1']
+            or 'dr8b' in opt.kind):
 
             from map.views import get_survey, get_layer
 
             surveyname = opt.kind
             # *-model -> *
-            for prefix in ['decals-dr3', 'mzls+bass-dr4', 'decaps2', 'decals-dr5']:
-                if prefix in surveyname:
-                    surveyname = prefix
+            # for prefix in ['decals-dr3', 'mzls+bass-dr4', 'decaps2', 'decals-dr5']:
+            #     if prefix in surveyname:
+            #         surveyname = prefix
+
+            for suffix in ['-model', '-resid']:
+                if surveyname.endswith(suffix):
+                    surveyname = surveyname[:-len(suffix)]
+
             survey = get_survey(surveyname)
 
             B = survey.get_bricks()
@@ -933,14 +939,16 @@ def main():
                     # assume yes
                     has[band] = np.ones(len(B), bool)
 
-            for ibrick,brick in enumerate(B):
-                for band in bands:
-                    if not has[band][ibrick]:
-                        print('Brick', brick.brickname, 'does not have', band)
-                        continue
-                    fn = layer.get_filename(brick, band, 7)
-                    print(fn)
-
+            for scale in opt.zoom:
+                args = []
+                for ibrick,brick in enumerate(B):
+                    for band in bands:
+                        if not has[band][ibrick]:
+                            print('Brick', brick.brickname, 'does not have', band)
+                            continue
+                        args.append((layer, brick, band, scale, opt.ignore))
+                mp.map(_layer_get_filename, args)
+                
             sys.exit(0)
 
         elif opt.kind == 'sdss2':
