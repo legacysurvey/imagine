@@ -42,9 +42,20 @@ def main():
     #indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
     #name = 'dr8a'
     #pretty = 'DR8a (rc)'
-    indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam/'
-    name = 'dr8b-decam'
-    pretty = 'DR8b DECam'
+
+    if False:
+        indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam/'
+        name = 'dr8b-decam'
+        pretty = 'DR8b DECam'
+        survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam'
+
+    if True:
+        indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-90prime-mosaic/'
+        name = 'dr8b-90p-mos'
+        pretty = 'DR8b BASS+MzLS'
+        survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-90prime-mosaic'
+
+    # ln -s /global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam/coadds-only/coadd/ .
 
     sublayers = ['', '-model', '-resid']
     subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
@@ -55,7 +66,6 @@ def main():
     
     #survey_dir = '/global/cscratch1/sd/dstn/dr8-depthcut'
     #survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
-    survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam'
 
     rsync = False
 

@@ -246,6 +246,10 @@ def top_levels(mp, opt):
         bands = layer.get_bands()
         #get_rgb = dr2_rgb
 
+        print('Layer:', layer)
+        print('Survey:', layer.survey)
+        print('  cache_dir:', layer.survey.cache_dir)
+
         print('Bands', bands)
 
         rgbkwargs = {}
@@ -708,7 +712,19 @@ def main():
 
     parser.add_option('--bands', default=None)
 
+    parser.add_option('-v', '--verbose', dest='verbose', action='count',
+                      default=0, help='Make more verbose')
+
+
     opt,args = parser.parse_args()
+
+    import logging
+    if opt.verbose == 0:
+        lvl = logging.INFO
+    else:
+        lvl = logging.DEBUG
+    logging.basicConfig(level=lvl, format='%(message)s', stream=sys.stdout)
+
 
     mp = multiproc(opt.threads)
 
@@ -911,6 +927,9 @@ def main():
                     surveyname = surveyname[:-len(suffix)]
 
             survey = get_survey(surveyname)
+
+            print('Survey:', survey)
+            print('  cache_dir:', survey.cache_dir)
 
             B = survey.get_bricks()
             print(len(B), 'bricks')

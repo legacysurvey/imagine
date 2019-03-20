@@ -908,7 +908,7 @@ class MapLayer(object):
         # Read scale-1 image and scale it
         sourcefn = self.get_filename(brick, band, scale-1)
         if sourcefn is None or not os.path.exists(sourcefn):
-            print('create_scaled_image: brick', brick, 'band', band, 'scale', scale, ': Image source file', sourcefn, 'not found')
+            print('create_scaled_image: brick', brick.brickname, 'band', band, 'scale', scale, ': Image source file', sourcefn, 'not found')
             return None
         ro = settings.READ_ONLY_BASEDIR
         if ro:
@@ -3538,9 +3538,6 @@ def get_survey(name):
             d = SplitSurveyData(north, south)
             d.drname = 'LegacySurvey DR6+DR7'
 
-        elif 'dr8b' in name:
-            d = LegacySurveyData(survey_dir=dirnm,
-                                 cache_dir=os.path.join(dirnm, 'extra-images'))
 
         else:
             d = MyLegacySurveyData(survey_dir=dirnm)
@@ -3580,7 +3577,12 @@ def get_survey(name):
     dirnm = os.path.join(basedir, name)
     print('checking for survey_dir', dirnm)
     if os.path.exists(dirnm):
-        d = LegacySurveyData(survey_dir=dirnm)
+
+        cachedir = None
+        if 'dr8b' in name:
+            cachedir=os.path.join(dirnm, 'extra-images')
+
+        d = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
         # d.drname = 'eBOSS'
         # d.drurl = 'http://legacysurvey.org/'
         surveys[name] = d
