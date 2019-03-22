@@ -209,6 +209,26 @@ def cat_sdss(req, ver):
     )),
                         content_type='application/json')
 
+def rename_cols(T):
+    """If TARGET_RA and TARGET_DEC exists, rename them to ra, dec
+
+    Parameters
+    ----------
+    T : :class:`astrometry.util.fits.tabledata`
+    A table data object, parsed from user upload
+
+    Returns
+    -------
+    boolean
+    true if renaming took place, false if otherwise
+    """
+    cols = T.columns()
+    if (('target_ra' in cols) and ('target_dec' in cols)
+        and ('ra' not in cols) and ('dec' not in cols)):
+        T.rename('target_ra', 'ra')
+        T.rename('target_dec', 'dec')
+        return True
+    return False
 
 def upload_cat(req):
     import tempfile
@@ -240,6 +260,11 @@ def upload_cat(req):
         T = fits_table(tmpfn)
     except:
         return HttpResponse('Must upload FITS format catalog including "RA", "Dec", optionally "Name" columns')
+    
+    # Rename and resave columns if necessary
+    if rename_cols(T):
+        T.write_to(tmpfn)
+
     cols = T.columns()
     if not (('ra' in cols) and ('dec' in cols)):
         return HttpResponse('Must upload catalog including "RA", "Dec", optionally "Name" columns')
