@@ -24,6 +24,8 @@
 <link rel="stylesheet" href="{% static "leaflet-zoomslider-0.6.1.css" %}" />
 {# https://github.com/jdfergason/Leaflet.Ellipse #}
 <script src="{% static "l.ellipse.js" %}"></script>
+<script src="{% static "utils.js" %}"></script>
+
 {% comment %}
 <script src="{% static "leaflet.draw-0.2.4.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet.draw-0.2.4.css" %}" />
@@ -1261,40 +1263,6 @@ function getkeys(obj) {
         s += k;
     }
     return s;
-}
-
-function long2ra(lng) {
-    var ra = 180. - lng;
-    while (ra < 0) {
-        ra += 360.;
-    }
-    while (ra > 360) {
-        ra -= 360.;
-    }
-    return ra;
-}
-
-function wrap_long(lng, clong) {
-    while (lng < clong-180) {
-        lng += 360;
-    }
-    while (lng > clong+180) {
-        lng -= 360;
-    }
-    return lng;
-}
-
-function ra2long_C(ra, clong) {
-    var lng = 180 - ra;
-    lng = wrap_long(lng, clong);
-    return lng;
-}
-
-function dec2lat(dec) {
-    return dec;
-}
-function lat2dec(lat) {
-    return lat;
 }
 
 function getSubdomain(x,y) {
@@ -2929,30 +2897,32 @@ var constellations = {
 };
 
 // DESI Footprint
-// from gfa-corners.fits from Bailey, 2017-09-14
+// from gfa-corners.fits from Bailey, 2019-03-18
 var petal_radius = [
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
-    [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479]];
+    [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
+    [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
+    [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
+    [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
+    [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
+    [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
+    [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
+    [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
+    [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
+    [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059]
+];
 var petal_phi = [
-    [ -72.68064188,  -72.65497301,  -76.97939241,  -77.1732807 ],
-    [ -36.68064188,  -36.65497301,  -40.97939241,  -41.1732807 ],
-    [  -0.68064188,   -0.65497301,   -4.97939241,   -5.1732807 ],
-    [  35.31935812,   35.34502699,   31.02060759,   30.8267193 ],
-    [  71.31935812,   71.34502699,   67.02060759,   66.8267193 ],
-    [ 107.31935812,  107.34502699,  103.02060759,  102.8267193 ],
-    [ 143.31935812,  143.34502699,  139.02060759,  138.8267193 ],
-    [ 179.31935812,  179.34502699,  175.02060759,  174.8267193 ],
-    [-144.68064188, -144.65497301, -148.97939241, -149.1732807 ],
-    [-108.68064188, -108.65497301, -112.97939241, -113.1732807 ]];
-var desi_radius = 1.60577;
+    [287.31935812, 287.34502698699998, 283.02060759099999, 282.82671929999998],
+    [323.31935812, 323.34502698699998, 319.02060759099999, 318.82671929999998],
+    [359.31935812, 359.34502698699998, 355.02060759099999, 354.82671929999998],
+    [35.319358120399997, 35.345026987399997, 31.020607590600001, 30.826719299699999],
+    [71.319358120399997, 71.345026987400004, 67.020607590599994, 66.826719299700002],
+    [107.31935812, 107.345026987, 103.020607591, 102.82671929999999],
+    [143.31935812, 143.34502698700001, 139.02060759099999, 138.82671930000001],
+    [179.31935812, 179.34502698700001, 175.02060759099999, 174.82671930000001],
+    [215.31935812, 215.34502698700001, 211.02060759099999, 210.82671930000001],
+    [251.31935812, 251.34502698700001, 247.02060759099999, 246.82671930000001]
+];
+var desi_radius=1.6274810767584347;
 
 // Commissioning instrument CCDs
 //CIW: RA,Dec boundaries relative to boresight (0,0):
@@ -2973,9 +2943,77 @@ var ci_radecs = {'CIW':
                   [ 0.0503096,  0.0503096, -0.0488675, -0.0488675]],
                 };
 
-var DesiFootprint = CatalogOverlay.extend({
+var DesiOverlay = CatalogOverlay.extend({
+    ready: function() {
+        CatalogOverlay.prototype.ready.call(this);
+        if (!this._got_initial_position) {
+            this.moveTo(map.getCenter());
+        }
+    },
+    overlayAdded: function(e) {
+        if (!layerMatchesEvent(this, e)) {
+            return;
+        }
+        this._show = true;
+        if (!this._got_initial_position) {
+            this.moveTo(map.getCenter());
+        }
+        this._group.addLayer(this._layer);
+    },
+    load: function() {
+    },
+})
+
+var DesiFiberPos = DesiOverlay.extend({
     initialize: function(name, pretty, kwargs) {
-        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        DesiOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this._layer = L.layerGroup([]);
+    },
+    moveTo: function(c) {
+        var clong = c.lng
+        var d0 = lat2dec(c.lat);
+        var r0 = long2ra(clong);
+
+        if (this._show) {
+            // Create worker if worker does not exist
+            if (!this._worker) {
+                this._worker = new Worker('{% static "desi_worker.js" %}');
+                var _this = this;
+                this._worker.addEventListener('message', function(e) {
+                    var polyline = L.polyline(e.data, {color: 'DeepSkyBlue', smoothFactor: 0.5, opacity: 0.2});
+                    // Remove the previous fiberpos layer if exists
+                    if (_this._fiberpos) {
+                        _this._layer.removeLayer(_this._fiberpos);
+                        _this._fiberpos = undefined;
+                    }
+                    // Discard result if desi footprint is not being displayed
+                    if (_this._show) {
+                        _this._fiberpos = polyline;
+                        _this._layer.addLayer(_this._fiberpos);
+                    }
+                    // Update displayed status
+                    _this._status && _this._status.html('');
+                }, false);
+            }
+            // Tell worker to initiate calculation
+            this._worker.postMessage([r0, d0, clong]);
+            this._status && this._status.html('calculating...');
+        }
+    },
+    overlayRemoved: function(e) {
+        if (layerMatchesEvent(this, e)) {
+            if (this._fiberpos) {
+                this._layer.removeLayer(this._fiberpos);
+                this._fiberpos = undefined;
+            }
+            this._show = false;
+        }
+    },
+});
+
+var DesiFootprint = DesiOverlay.extend({
+    initialize: function(name, pretty, kwargs) {
+        DesiOverlay.prototype.initialize.call(this, name, pretty, kwargs);
         this._got_initial_position = false;
         var group = [];
         var clong = 180;
@@ -2991,8 +3029,11 @@ var DesiFootprint = CatalogOverlay.extend({
             var N = petal_radius[i].length;
             for (var j=0; j<N+1; j++) {
                 var phi = petal_phi[i][j%N] * Math.PI / 180.0;
-                var ddec = petal_radius[i][j%N] * Math.cos(phi);
-                var dra  = petal_radius[i][j%N] * Math.sin(phi);
+                var ddec = petal_radius[i][j%N] * Math.sin(phi);
+                // This ra was flipped positive to make the positions look right,
+                // but I don't understand why this is necessary
+                // -- Mark
+                var dra  = petal_radius[i][j%N] * Math.cos(phi);
                 rd.push([dra, ddec]);
                 ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
             }
@@ -3025,25 +3066,8 @@ var DesiFootprint = CatalogOverlay.extend({
         //map.on('mapMoved', this.mapMoved.bind(this));
     },
     ready: function() {
-        console.log(this._name + ' ready function called');
-        if (!this._got_initial_position) {
-            this.moveTo(map.getCenter());
-        }
+        DesiOverlay.prototype.ready.call(this);
         this._gfa.redraw();
-    },
-    overlayAdded: function(e) {
-        if (!layerMatchesEvent(this, e)) {
-            return;
-        }
-        console.log('DESIFootprint.overlayAdded');
-        this._show = true;
-        if (!this._got_initial_position) {
-            this.moveTo(map.getCenter());
-        }
-        this._group.addLayer(this._layer);
-    },
-    overlayRemoved: function(e) {
-        this._show = false;
     },
     moveTo: function(c) {
         this._circle.setLatLng(c);
@@ -3081,8 +3105,6 @@ var DesiFootprint = CatalogOverlay.extend({
         this._ci.setLatLngs(polys);
         this._ci.redraw();
     },
-    load: function() {
-    },
     getLinkHere: function() {
         return 'desifoot=' + this.ra.toFixed(4) + ',' + this.dec.toFixed(4);
     },
@@ -3102,10 +3124,11 @@ var DesiFootprint = CatalogOverlay.extend({
         this._got_initial_position = true;
         console.log('Set initial position for DESI footprint: ' + r + ', ' + d);
     },
-
 });
 var desifoot = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
 desifoot._url_term = 'desifoot';
+var desifiber = new DesiFiberPos('desi-fiberpos', 'DESI Fiber Positions', {});
+desifiber._url_term = 'desifiber'
 
 
 var overlays = [
@@ -3187,6 +3210,7 @@ var overlays = [
     {% endif %}
     constellations,
     desifoot,
+    desifiber,
 ];
 
 
@@ -3459,6 +3483,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      {% endif %}
      {% if enable_desi_footprint %}
      findoverlay('desi-footprint'),
+     findoverlay('desi-fiberpos'),
      {% endif %}
      findoverlay('bright'),
      findoverlay('tycho2'),
