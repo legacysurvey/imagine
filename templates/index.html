@@ -2943,6 +2943,71 @@ var ci_radecs = {'CIW':
                   [ 0.0503096,  0.0503096, -0.0488675, -0.0488675]],
                 };
 
+var DesiFiberPos = CatalogOverlay.extend({
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this._layer = L.layerGroup([]);
+    },
+    moveTo: function(c) {
+        var clong = c.lng
+        var d0 = lat2dec(c.lat);
+        var r0 = long2ra(clong);
+        
+        if (this._show) {
+            // Create worker if worker does not exist
+            if (!this._worker) {
+                this._worker = new Worker('{% static "desi_worker.js" %}');
+                var _this = this;
+                this._worker.addEventListener('message', function(e) {
+                    var polyline = L.polyline(e.data, {color: 'DeepSkyBlue', smoothFactor: 0.5, opacity: 0.2});
+                    // Remove the previous fiberpos layer if exists
+                    if (_this._fiberpos) {
+                        _this._layer.removeLayer(_this._fiberpos);
+                        _this._fiberpos = undefined;
+                    }
+                    // Discard result if desi footprint is not being displayed
+                    if (_this._show) {
+                        _this._fiberpos = polyline;
+                        _this._layer.addLayer(_this._fiberpos);
+                    }
+                    // Update dispalyed status
+                    _this._status && _this._status.html('');
+                }, false);
+            }
+            // Tell worker to initiate calculation
+            this._worker.postMessage([r0, d0, clong]);
+            this._status && this._status.html('calculating...');
+        }
+    },
+    ready: function() {
+        CatalogOverlay.prototype.ready.call(this);
+        if (!this._got_initial_position) {
+            this.moveTo(map.getCenter());
+        }
+    },
+    overlayAdded: function(e) {
+        if (!layerMatchesEvent(this, e)) {
+            return;
+        }
+        this._show = true;
+        if (!this._got_initial_position) {
+            this.moveTo(map.getCenter());
+        }
+        this._group.addLayer(this._layer);
+    },
+    overlayRemoved: function(e) {
+        if (layerMatchesEvent(this, e)) {
+            if (this._fiberpos) {
+                this._layer.removeLayer(this._fiberpos);
+                this._fiberpos = undefined;
+            }
+            this._show = false;
+        }
+    },
+    load: function() {
+    },
+});
+
 var DesiFootprint = CatalogOverlay.extend({
     initialize: function(name, pretty, kwargs) {
         CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
@@ -2995,7 +3060,6 @@ var DesiFootprint = CatalogOverlay.extend({
 
         this._layer = L.layerGroup(group);
         //map.on('mapMoved', this.mapMoved.bind(this));
-        this._ZOOM_THRESH = 8;
     },
     ready: function() {
         CatalogOverlay.prototype.ready.call(this);
@@ -3014,15 +3078,6 @@ var DesiFootprint = CatalogOverlay.extend({
             this.moveTo(map.getCenter());
         }
         this._group.addLayer(this._layer);
-    },
-    overlayRemoved: function(e) {
-        if (layerMatchesEvent(this, e)) {
-            if (this._fiberpos) {
-                this._layer.removeLayer(this._fiberpos);
-                this._fiberpos = undefined;
-            }
-            this._show = false;
-        }
     },
     moveTo: function(c) {
         this._circle.setLatLng(c);
@@ -3059,36 +3114,6 @@ var DesiFootprint = CatalogOverlay.extend({
         }
         this._ci.setLatLngs(polys);
         this._ci.redraw();
-
-        // Fiberpos polyline
-        if (this._show) {
-            // Create worker if worker does not exist
-            if (!this._worker) {
-                this._worker = new Worker('{% static "desi_worker.js" %}');
-                var _this = this;
-                this._worker.addEventListener('message', function(e) {
-                    var polyline = L.polyline(e.data, {color: 'DeepSkyBlue', smoothFactor: 0.5, opacity: 0.2});
-                    // Remove the previous fiberpos layer if exists
-                    if (_this._fiberpos) {
-                        _this._layer.removeLayer(_this._fiberpos);
-                        _this._fiberpos = undefined;
-                    }
-                    // Discard result if desi footprint is not being displayed
-                    if (_this._show) {
-                        _this._fiberpos = polyline;
-                        // Display result if zoom level is appropriate
-                        if (map.getZoom() > _this._ZOOM_THRESH) {
-                            _this._layer.addLayer(_this._fiberpos);
-                        }
-                    }
-                    // Update dispalyed status
-                    _this._status && _this._status.html('');
-                }, false);
-            }
-            // Tell worker to initiate calculation
-            this._worker.postMessage([r0, d0, clong]);
-            this._status && this._status.html('calculating...');
-        }
     },
     load: function() {
     },
@@ -3111,21 +3136,12 @@ var DesiFootprint = CatalogOverlay.extend({
         this._got_initial_position = true;
         console.log('Set initial position for DESI footprint: ' + r + ', ' + d);
     },
-    onMapZoomEnd: function() {
-        // If the footprint is being displayed and fiberpos layer is ready
-        if (this._show && this._fiberpos) {
-            // Add fiberpos layer if zoom level is large enough
-            if (map.getZoom() > this._ZOOM_THRESH) {
-                this._layer.addLayer(this._fiberpos)
-            // Otherwise attempt to remove fiberpos layer
-            } else {
-                this._layer.removeLayer(this._fiberpos)
-            }
-        }
-    },
 });
 var desifoot = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
 desifoot._url_term = 'desifoot';
+var desifiber = new DesiFiberPos('desi-fiberpos', 'DESI Fiber Positions', {});
+desifiber._url_term = 'desifiber'
+
 
 var overlays = [
     {% if enable_phat %}
@@ -3206,6 +3222,7 @@ var overlays = [
     {% endif %}
     constellations,
     desifoot,
+    desifiber,
 ];
 
 
@@ -3478,6 +3495,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      {% endif %}
      {% if enable_desi_footprint %}
      findoverlay('desi-footprint'),
+     findoverlay('desi-fiberpos'),
      {% endif %}
      findoverlay('bright'),
      findoverlay('tycho2'),
