@@ -1044,8 +1044,6 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         return HttpResponse(json.dumps(dict(rd=[])),
                             content_type='application/json')
 
-    from astrometry.util.fits import fits_table
-
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
     except RuntimeError as e:

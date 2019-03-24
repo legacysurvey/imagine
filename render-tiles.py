@@ -226,18 +226,15 @@ def top_levels(mp, opt):
                     'ls-dr56', 'ls-dr67'] or True:
         import pylab as plt
         from viewer import settings
-        from legacypipe.survey import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
         from map.views import _unwise_to_rgb
-        from map.views import galex_rgb
         tag = opt.kind
 
         from map.views import get_layer
         layer = get_layer(opt.kind)
 
         bands = layer.get_bands()
-        #get_rgb = dr2_rgb
 
         print('Layer:', layer)
         print('Survey:', layer.survey)
@@ -248,13 +245,10 @@ def top_levels(mp, opt):
         rgbkwargs = {}
         if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model']:
             bands = [1, 2]
-            #get_rgb = _unwise_to_rgb
         elif opt.kind == 'sdss2':
             bands = 'gri'
-            #get_rgb = sdss_rgb
         elif opt.kind == 'galex':
             bands = ['n','f']
-            #get_rgb = galex_rgb
         elif opt.kind == 'wssa':
             bands = ['x']
         #else:
