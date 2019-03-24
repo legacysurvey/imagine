@@ -2,7 +2,7 @@ from __future__ import print_function
 import os
 from glob import glob
 import numpy as np
-from astrometry.util.file import read_file, write_file
+from astrometry.util.file import read_file
 from legacypipe.survey import LegacySurveyData
 
 def main():

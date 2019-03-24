@@ -1,4 +1,3 @@
-import os
 from viewer.settings_common import *
 
 ENABLE_DR2 = False
