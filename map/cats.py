@@ -524,13 +524,13 @@ def cat_targets_bgs_dr56(req, ver):
 def cat_targets_dr67(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.29.0.kd.fits'),
     ], tag = 'targets-dr67')
 
 def cat_targets_bgs_dr67(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.29.0.kd.fits'),
     ], tag = 'targets-bgs-dr67', bgs=True)
 
 def cat_targets_sky_dr67(req, ver):
@@ -542,19 +542,18 @@ def cat_targets_sky_dr67(req, ver):
 def cat_targets_bright_dr67(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.29.0.kd.fits'),
     ], tag = 'targets-bright-dr67', bright=True)
 
 def cat_targets_dark_dr67(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.29.0.kd.fits'),
     ], tag = 'targets-dark-dr67', dark=True)
 def cat_targets_dr8b(req, ver):
     return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-dr8b.kd.fits'),
-    ], tag = 'targets-dr67')
-
+        os.path.join(settings.DATA_DIR, 'targets-dr8b-0.29.0.kd.fits'),
+    ], tag='targets-dr8b')
 
 
 def desitarget_color_names(T):
