@@ -2944,8 +2944,6 @@ var ci_radecs = {'CIW':
                   [ 0.0503096,  0.0503096, -0.0488675, -0.0488675]],
                 };
 
-var desiLocationStack = [];
-
 var DesiOverlay = CatalogOverlay.extend({
     ready: function() {
         CatalogOverlay.prototype.ready.call(this);
@@ -2955,21 +2953,12 @@ var DesiOverlay = CatalogOverlay.extend({
             return;
         }
         this._show = true;
-        
-        var latlng;
-        if (desiLocationStack.length > 0) { // If a previous DesiOverlay is being displayed
-            latlng = desiLocationStack[0];  // set latlng to its location
-        } else if (this._got_initial_position) { // If radec is specified by url
-            latlng = L.latLng(dec2lat(this.dec), ra2long_C(this.ra, 180))
+        if (!this._got_initial_position) {
+            this.moveTo(map.getCenter());
         } else {
-            latlng = map.getCenter();
+            this.moveTo(L.latLng(dec2lat(this.dec), ra2long_C(this.ra, 180)));
         }
         this._group.addLayer(this._layer);
-        this.moveTo(latlng);
-        desiLocationStack.push(latlng);
-    },
-    overlayRemoved: function(e) {
-        desiLocationStack.pop();
     },
     load: function() {
     },
@@ -3029,6 +3018,15 @@ var DesiFiberPos = DesiOverlay.extend({
             // Tell worker to initiate calculation
             this._worker.postMessage([r0, d0, clong]);
             this._status && this._status.html('calculating...');
+        }
+    },
+    overlayRemoved: function(e) {
+        if (layerMatchesEvent(this, e)) {
+            if (this._fiberpos) {
+                this._layer.removeLayer(this._fiberpos);
+                this._fiberpos = undefined;
+            }
+            this._show = false;
         }
     },
 });
