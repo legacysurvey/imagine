@@ -338,6 +338,7 @@ var CatalogOverlay = L.Evented.extend({
             console.log('BUG line 278');
             return;
         }
+
         // add status span after the layer name span
         var nxt = this._checkbox.next();
         var stat = L.DomUtil.create('span', 'layer-status');
@@ -1372,7 +1373,6 @@ function onMapClick(e) {
 
     for (var i=0,len=overlays.length; i<len; i++) {
         console.log('Overlay ' + overlays[i]._name + ' shown? ' + overlays[i]._show);
-        console.log('   link: ' + overlays[i].getLinkHere());
         if (overlays[i]._show) {
             linkurl += '&' + overlays[i].getLinkHere()
         }
@@ -2944,24 +2944,56 @@ var ci_radecs = {'CIW':
                   [ 0.0503096,  0.0503096, -0.0488675, -0.0488675]],
                 };
 
+var desiLocationStack = [];
+
 var DesiOverlay = CatalogOverlay.extend({
     ready: function() {
         CatalogOverlay.prototype.ready.call(this);
-        if (!this._got_initial_position) {
-            this.moveTo(map.getCenter());
-        }
     },
     overlayAdded: function(e) {
         if (!layerMatchesEvent(this, e)) {
             return;
         }
         this._show = true;
-        if (!this._got_initial_position) {
-            this.moveTo(map.getCenter());
+
+        var latlng;
+        if (desiLocationStack.length > 0) { // If a previous DesiOverlay is being displayed
+            latlng = desiLocationStack[0];  // set latlng to its location
+        } else if (this._got_initial_position) { // If radec is specified by url
+            latlng = L.latLng(dec2lat(this.dec), ra2long_C(this.ra, 180))
+        } else {
+            latlng = map.getCenter();
         }
+
+        this.moveTo(latlng);
+        desiLocationStack.push(latlng);
         this._group.addLayer(this._layer);
     },
+    overlayRemoved: function(e) {
+        CatalogOverlay.prototype.overlayRemoved.call(this, e);
+        if (layerMatchesEvent(this, e)) {
+            desiLocationStack.pop();
+        }
+    },
     load: function() {
+    },
+    getLinkHere: function() {
+        return this._url_term + '=' + this.ra.toFixed(4) + ',' + this.dec.toFixed(4);
+    },
+    initLinkHere: function(val) {
+        if (val === undefined) {
+            return;
+        }
+        words = val.split(',');
+        if (words.length != 2) {
+            return;
+        }
+        var r = Number.parseFloat(words[0]);
+        var d = Number.parseFloat(words[1]);
+        this.ra = r;
+        this.dec = d;
+        this._show = true;
+        this._got_initial_position = true;
     },
 })
 
@@ -2974,6 +3006,8 @@ var DesiFiberPos = DesiOverlay.extend({
         var clong = c.lng
         var d0 = lat2dec(c.lat);
         var r0 = long2ra(clong);
+        this.ra = r0;
+        this.dec = d0;
 
         if (this._show) {
             // Create worker if worker does not exist
@@ -3002,6 +3036,7 @@ var DesiFiberPos = DesiOverlay.extend({
         }
     },
     overlayRemoved: function(e) {
+        DesiOverlay.prototype.overlayRemoved.call(this, e);
         if (layerMatchesEvent(this, e)) {
             if (this._fiberpos) {
                 this._layer.removeLayer(this._fiberpos);
@@ -3105,25 +3140,6 @@ var DesiFootprint = DesiOverlay.extend({
         }
         this._ci.setLatLngs(polys);
         this._ci.redraw();
-    },
-    getLinkHere: function() {
-        return 'desifoot=' + this.ra.toFixed(4) + ',' + this.dec.toFixed(4);
-    },
-    initLinkHere: function(val) {
-        if (val === undefined) {
-            return;
-        }
-        words = val.split(',');
-        if (words.length != 2) {
-            return;
-        }
-        var r = Number.parseFloat(words[0]);
-        var d = Number.parseFloat(words[1]);
-        this.ra = r;
-        this.dec = d;
-        this.moveTo(L.latLng(dec2lat(d), ra2long_C(r, 180)));
-        this._got_initial_position = true;
-        console.log('Set initial position for DESI footprint: ' + r + ', ' + d);
     },
 });
 var desifoot = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
