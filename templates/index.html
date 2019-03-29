@@ -675,12 +675,14 @@ var DesiTargetCatalog = CatalogOverlay.extend({
             }
 
             var circ = L.circle([lat, lng], rad,
-                                {'color':color, 'fillOpacity':0, 'weight':5});
+                                {'color':color, 'fillOpacity':0,
+                                'weight':5, 'opacity': 0.2});
             if (labels === undefined) {
             } else {
                 var txt = labels[i];
                 if (txt.length > 0) {
-                    circ.bindTooltip(txt, { permanent: true, interactive: true });
+                    circ.bindTooltip(txt, { permanent: true, interactive: true,
+                    opacity: 0.5 });
                 }
             }
     
