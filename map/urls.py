@@ -1,4 +1,5 @@
 from django.conf.urls import url
+from django.urls import path
 
 from map import views
 from map import cats
@@ -312,6 +313,9 @@ urlpatterns = [
 
     # PHAT version of the viewer.
     url(r'^phat/?$', views.phat),
+
+    # DESI tile id
+    path('desitile/<int:tile_id>', views.desi_tile, name='desi_tile'),
 
     # fall-through
     url(r'', views.index),
