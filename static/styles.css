@@ -72,8 +72,7 @@
 }
 
 .leaflet-container {
-//background: #000;
-background: #242424;
+    background: #242424;
 }
 
 .leaflet-control-scale-line {
@@ -81,10 +80,11 @@ background: #242424;
     margin-bottom: 15px;
 }
 
-// hmm, can't get this to work
-//.leaflet-control-attribution {
-//    font-size: 200%;
-//}
+/* hmm, can't get this to work
+.leaflet-control-attribution {
+    font-size: 200%;
+}
+*/
 
 #gotosubmit {
     font-size: 100%;
@@ -93,7 +93,7 @@ background: #242424;
     font-size: 100%;
 }
 
-// https://gis.stackexchange.com/questions/212820/overriding-leaflet-tooltip-style
+/* https://gis.stackexchange.com/questions/212820/overriding-leaflet-tooltip-style */
 .leaflet-tooltip-left.spectrumTooltip {
   margin-left: -15px;
 }
