@@ -100,3 +100,9 @@ background: #242424;
 .leaflet-tooltip-right.spectrumTooltip {
   margin-left: 15px;
 }
+
+.leaflet-tooltip {
+    background: transparent;
+    color: white;
+    box-shadow: 0 0px 0px rgba(0,0,0,0);
+}

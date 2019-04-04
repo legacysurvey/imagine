@@ -10,7 +10,7 @@
   })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
   ga('create', 'UA-5565065-29', 'auto');
   ga('send', 'pageview');
-</script> 
+</script>
 <link rel="stylesheet" href="{% static "leaflet-1.3.1.css" %}" />
 <script src="{% static "leaflet-src-1.3.1.js" %}"></script>
 {# From https://github.com/mapbox/leaflet-pip #}
@@ -577,8 +577,7 @@ var DesiTargetCatalog = CatalogOverlay.extend({
             } else {
                 var txt = labels[i];
                 if (txt.length > 0) {
-                    circ.bindTooltip(txt, { permanent: true, interactive: true,
-                    opacity: 0.5 });
+                    circ.bindTooltip(txt, { permanent: true, interactive: true });
                 }
             }
     
