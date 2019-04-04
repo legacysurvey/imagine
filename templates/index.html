@@ -2098,7 +2098,8 @@ $(document).ready(function() {
                 window.location.href = window.location.origin +
                                        window.location.pathname +
                                        "?desi_tile=" + splited[1] +
-                                       '&layer=' + layer_name;
+                                       '&layer=' + layer_name +
+                                       '&desifoot&desifiber';
                 return;
             }
 
@@ -2992,7 +2993,8 @@ var DesiOverlay = CatalogOverlay.extend({
         return this._url_term + '=' + this.ra.toFixed(4) + ',' + this.dec.toFixed(4);
     },
     initLinkHere: function(val) {
-        if (val === undefined) {
+        if (typeof val !== String) {
+            this._show = true;
             return;
         }
         words = val.split(',');
@@ -3156,8 +3158,8 @@ var DesiFootprint = DesiOverlay.extend({
 var desifoot = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
 desifoot._url_term = 'desifoot';
 var desifiber = new DesiFiberPos('desi-fiberpos', 'DESI Fibers', {});
-desifiber._url_term = 'desifiber'
-
+desifiber._url_term = 'desifiber';
+// TODO: Make url terms a constant
 
 var overlays = [
     {% if enable_phat %}
