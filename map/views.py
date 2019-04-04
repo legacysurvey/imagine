@@ -277,7 +277,7 @@ def _index(req,
     try:
         # Set ra and dec
         tileid = req.GET.get('desi_tile')
-        ra, dec = get_desi_tile_radec(tileid)
+        ra, dec = get_desi_tile_radec(int(tileid))
     except:
         pass
 
