@@ -31,8 +31,7 @@ from viewer import settings
 from map.utils import (get_tile_wcs, trymakedirs, save_jpeg, ra2long, ra2long_B,
                        send_file, oneyear)
 from map.coadds import get_scaled
-from map.cats import get_random_galaxy
-from astropy.table import Table
+from map.cats import get_random_galaxy, get_desi_tiles
 
 import matplotlib
 matplotlib.use('Agg')
@@ -277,12 +276,7 @@ def _index(req,
     # desi_tile parameter
     try:
         # Load tile radec
-        # TODO: move this to a separate function and add caching
-        path = os.path.join(settings.DATA_DIR, 'desi-tiles.fits')
-        t = Table.read(path)
-        tileradec = dict()
-        for tileid, ra, dec in t['TILEID', 'RA', 'DEC']:
-            tileradec[tileid] = (ra,dec)
+        tileradec = get_desi_tiles
 
         # Set ra and dec
         tileid = req.GET.get('desi_tile')

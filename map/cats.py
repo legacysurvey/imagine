@@ -18,7 +18,9 @@ except:
     # django 2.0
     from django.urls import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
-
+from astropy.table import Table
+# I am a little hesistant to introduce another dependency here.
+# Any better ideas? -- Mark Zhang (April 3 2019)
 
 debug = print
 if not settings.DEBUG_LOGGING:
@@ -54,6 +56,7 @@ catversions = {
     'sdss-cat': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
+    'desi-tiles': [1,],
 }
 
 test_cats = []
@@ -1135,6 +1138,17 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     f.write(json)
     f.close()
     return send_file(cachefn, 'application/json', **sendfile_kwargs)
+
+# TODO: add caching
+def get_desi_tiles():
+    """Returns a dictionary mapping of tileid: (ra, dec) of desi tiles
+    """
+    path = os.path.join(settings.DATA_DIR, 'desi-tiles.fits')
+    t = Table.read(path)
+    tileradec = dict()
+    for tileid, ra, dec in t['TILEID', 'RA', 'DEC']:
+        tileradec[tileid] = (ra,dec)
+    return tileradec
 
 def _get_decals_cat(wcs, tag='decals'):
     from astrometry.util.fits import fits_table, merge_tables
