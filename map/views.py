@@ -274,6 +274,24 @@ def _index(req,
     except:
         pass
 
+    # desi_tile parameter
+    try:
+        # Load tile radec
+        # TODO: move this to a separate function and add caching
+        path = os.path.join(settings.DATA_DIR, 'desi-tiles.fits')
+        t = Table.read(path)
+        tileradec = dict()
+        for tileid, ra, dec in t['TILEID', 'RA', 'DEC']:
+            tileradec[tileid] = (ra,dec)
+
+        # Set ra and dec
+        tileid = req.GET.get('desi_tile')
+        if tileid in tileradec:
+            ra = tileradec[tileid][0]
+            dec = tileradec[tileid][1]
+    except:
+        pass
+
     galname = None
     if ra is None or dec is None:
         ra,dec,galname = get_random_galaxy(layer=layer)
@@ -5245,29 +5263,6 @@ def ra_ranges_overlap(ralo, rahi, ra1, ra2):
     #print('3:', cw31, cw32)
     #print('4:', cw41, cw42)
     return np.logical_and(cw32 <= 0, cw41 >= 0)
-
-def desi_tile(request, **kwargs):
-    # Load tile radec
-    # TODO: move this to a separate function and add caching
-    path = os.path.join(settings.DATA_DIR, 'desi-tiles.fits')
-    t = Table.read(path)
-    tileradec = dict()
-    for tileid, ra, dec in t['TILEID', 'RA', 'DEC']:
-        tileradec[tileid] = (ra,dec)
-
-    # Construct url
-    query = request.GET.copy()
-    tileId = kwargs['tile_id']
-    if tileid in tileradec:
-        # Add radec values to QueryDict
-        query['ra'] = tileradec[tileid][0]
-        query['dec'] = tileradec[tileid][1]
-        
-        # Construct a radec string for desifoot and desifiber layers
-        radec = str(query['ra']) + ',' + str(query['dec'])
-        query['desifoot'] = radec
-        query['desifiber'] = radec
-    return redirect('/?'+query.urlencode())
 
 if __name__ == '__main__':
     import sys
