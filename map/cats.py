@@ -1150,6 +1150,19 @@ def get_desi_tiles():
         tileradec[tileid] = (ra,dec)
     return tileradec
 
+def get_desi_tile_radec(tile_id):
+    """Accepts a tile_id, returns a tuple of ra, dec
+    If tile is not found, return (0, 0)
+    """
+    # Load tile radec
+    tileradec = get_desi_tiles()
+
+    ra, dec = 0, 0
+    if tileid in tileradec:
+        ra = tileradec[tile_id][0]
+        dec = tileradec[tile_id][1]
+    return ra, dec
+
 def _get_decals_cat(wcs, tag='decals'):
     from astrometry.util.fits import fits_table, merge_tables
     from map.views import get_survey

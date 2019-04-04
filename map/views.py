@@ -31,7 +31,7 @@ from viewer import settings
 from map.utils import (get_tile_wcs, trymakedirs, save_jpeg, ra2long, ra2long_B,
                        send_file, oneyear)
 from map.coadds import get_scaled
-from map.cats import get_random_galaxy, get_desi_tiles
+from map.cats import get_random_galaxy, get_desi_tile_radec
 
 import matplotlib
 matplotlib.use('Agg')
@@ -275,14 +275,9 @@ def _index(req,
 
     # desi_tile parameter
     try:
-        # Load tile radec
-        tileradec = get_desi_tiles
-
         # Set ra and dec
         tileid = req.GET.get('desi_tile')
-        if tileid in tileradec:
-            ra = tileradec[tileid][0]
-            dec = tileradec[tileid][1]
+        ra, dec = get_desi_tile_radec(tileid)
     except:
         pass
 
