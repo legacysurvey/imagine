@@ -1152,16 +1152,17 @@ def get_desi_tiles():
 
 def get_desi_tile_radec(tile_id):
     """Accepts a tile_id, returns a tuple of ra, dec
-    If tile is not found, return (0, 0)
+    Raises a RuntimeException if tile_id is not found
     """
     # Load tile radec
     tileradec = get_desi_tiles()
 
-    ra, dec = 0, 0
     if tile_id in tileradec:
         ra = tileradec[tile_id][0]
         dec = tileradec[tile_id][1]
-    return ra, dec
+        return ra, dec
+    else:
+        raise RuntimeError("DESI tile not found")
 
 def _get_decals_cat(wcs, tag='decals'):
     from astrometry.util.fits import fits_table, merge_tables
