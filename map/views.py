@@ -548,20 +548,9 @@ def name_query(req):
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=name)),
                             content_type='application/json')
 
+    # Check for RA,Dec in decimal degrees or H:M:S.
     words = obj.strip().split()
     print('Parsing name query: words', words)
-
-    # Checks if query is desi tile
-    if words[0] == "DESI":
-        try:
-            tileid = int(words[1])
-            ra, dec = get_desi_tile_radec(tileid)
-            return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=obj)),
-                                content_type='application/json')
-        except:
-            pass
-
-    # Check for RA,Dec in decimal degrees or H:M:S.
     if len(words) == 2:
         try:
             rastr,decstr = words

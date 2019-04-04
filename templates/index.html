@@ -2091,6 +2091,17 @@ $(document).ready(function() {
         // when Enter is hit in the Object name search box
         if (event.keyCode == 13) {
             var qstring = $('#objquery').val();
+            
+            // Check if query is on desi tile
+            var splited = qstring.split(" ");
+            if (splited.length == 2 && splited[0] === "DESI") {
+                window.location.href = window.location.origin +
+                                       window.location.pathname +
+                                       "?desi_tile=" + splited[1] +
+                                       '&layer=' + layer_name;
+                return;
+            }
+
             var url = L.Util.template(name_query_url, L.extend({
                 obj: qstring,
             }));
