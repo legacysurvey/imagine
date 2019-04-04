@@ -1158,7 +1158,7 @@ def get_desi_tile_radec(tile_id):
     tileradec = get_desi_tiles()
 
     ra, dec = 0, 0
-    if tileid in tileradec:
+    if tile_id in tileradec:
         ra = tileradec[tile_id][0]
         dec = tileradec[tile_id][1]
     return ra, dec
