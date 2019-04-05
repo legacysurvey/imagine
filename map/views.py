@@ -26,7 +26,6 @@ except:
     from django.urls import reverse
 
 from django import forms
-from django.shortcuts import redirect
 from viewer import settings
 from map.utils import (get_tile_wcs, trymakedirs, save_jpeg, ra2long, ra2long_B,
                        send_file, oneyear)
