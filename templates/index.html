@@ -544,11 +544,11 @@ var DesiTargetCatalog = CatalogOverlay.extend({
         var nobs = result['nobs'];
         var labels = result['name'];
         var colors = result['color'];
+        var radii = result['radius'];
 
         var circleList = new Array(rdlist.length);
         var clong = map.getCenter().lng;
-
-        var radii = result['radius'];
+        var zoom = map.getZoom();
 
         for (var i=0, len=rdlist.length; i<len; i++) {
             var r = rdlist[i][0];
@@ -573,8 +573,7 @@ var DesiTargetCatalog = CatalogOverlay.extend({
             var circ = L.circle([lat, lng], rad,
                                 {'color':color, 'fillOpacity':0,
                                 'weight':5, 'opacity': 0.2});
-            if (labels === undefined) {
-            } else {
+            if (labels !== undefined && zoom > 13) {
                 var txt = labels[i];
                 if (txt.length > 0) {
                     circ.bindTooltip(txt, { permanent: true, interactive: true });
@@ -591,7 +590,6 @@ var DesiTargetCatalog = CatalogOverlay.extend({
             circleList[i] = circ;
         }
         return L.layerGroup(circleList);
-
     },
 });
 
