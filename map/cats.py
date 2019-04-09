@@ -20,8 +20,6 @@ except:
     from django.urls import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 from astropy.table import Table
-# I am a little hesistant to introduce another dependency here.
-# Any better ideas? -- Mark Zhang (April 3 2019)
 
 debug = print
 if not settings.DEBUG_LOGGING:
