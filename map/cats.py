@@ -1,4 +1,5 @@
 from __future__ import print_function
+from functools import lru_cache
 import os
 import fitsio
 
@@ -1139,7 +1140,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     f.close()
     return send_file(cachefn, 'application/json', **sendfile_kwargs)
 
-# TODO: add caching
+@lru_cache(maxsize=1)
 def get_desi_tiles():
     """Returns a dictionary mapping of tileid: (ra, dec) of desi tiles
     """
