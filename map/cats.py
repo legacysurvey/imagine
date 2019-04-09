@@ -1153,7 +1153,7 @@ def get_desi_tiles():
 
 def get_desi_tile_radec(tile_id):
     """Accepts a tile_id, returns a tuple of ra, dec
-    Raises a RuntimeException if tile_id is not found
+    Raises a RuntimeError if tile_id is not found
     """
     # Load tile radec
     tileradec = get_desi_tiles()
