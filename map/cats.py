@@ -19,7 +19,6 @@ except:
     # django 2.0
     from django.urls import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
-from astropy.table import Table
 
 debug = print
 if not settings.DEBUG_LOGGING:
@@ -1142,10 +1141,12 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
 def get_desi_tiles():
     """Returns a dictionary mapping of tileid: (ra, dec) of desi tiles
     """
+    from astrometry.util.fits import fits_table
+
     path = os.path.join(settings.DATA_DIR, 'desi-tiles.fits')
-    t = Table.read(path)
+    t = fits_table(path)
     tileradec = dict()
-    for tileid, ra, dec in t['TILEID', 'RA', 'DEC']:
+    for tileid, ra, dec in zip(t.tileid, t.ra, t.dec):
         tileradec[tileid] = (ra,dec)
     return tileradec
 
