@@ -1,4 +1,5 @@
 from __future__ import print_function
+from functools import lru_cache
 import os
 import fitsio
 
@@ -18,7 +19,6 @@ except:
     # django 2.0
     from django.urls import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
-
 
 debug = print
 if not settings.DEBUG_LOGGING:
@@ -54,6 +54,7 @@ catversions = {
     'sdss-cat': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
+    'desi-tiles': [1,],
 }
 
 test_cats = []
@@ -1135,6 +1136,33 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     f.write(json)
     f.close()
     return send_file(cachefn, 'application/json', **sendfile_kwargs)
+
+@lru_cache(maxsize=1)
+def get_desi_tiles():
+    """Returns a dictionary mapping of tileid: (ra, dec) of desi tiles
+    """
+    from astrometry.util.fits import fits_table
+
+    path = os.path.join(settings.DATA_DIR, 'desi-tiles.fits')
+    t = fits_table(path)
+    tileradec = dict()
+    for tileid, ra, dec in zip(t.tileid, t.ra, t.dec):
+        tileradec[tileid] = (ra,dec)
+    return tileradec
+
+def get_desi_tile_radec(tile_id):
+    """Accepts a tile_id, returns a tuple of ra, dec
+    Raises a RuntimeError if tile_id is not found
+    """
+    # Load tile radec
+    tileradec = get_desi_tiles()
+
+    if tile_id in tileradec:
+        ra = tileradec[tile_id][0]
+        dec = tileradec[tile_id][1]
+        return ra, dec
+    else:
+        raise RuntimeError("DESI tile not found")
 
 def _get_decals_cat(wcs, tag='decals'):
     from astrometry.util.fits import fits_table, merge_tables

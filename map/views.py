@@ -26,12 +26,11 @@ except:
     from django.urls import reverse
 
 from django import forms
-
 from viewer import settings
 from map.utils import (get_tile_wcs, trymakedirs, save_jpeg, ra2long, ra2long_B,
                        send_file, oneyear)
 from map.coadds import get_scaled
-from map.cats import get_random_galaxy
+from map.cats import get_random_galaxy, get_desi_tile_radec
 
 import matplotlib
 matplotlib.use('Agg')
@@ -270,6 +269,14 @@ def _index(req,
             dec = 0.1 * int(brickname[-3:], 10)
             pm = (1. if brickname[4] == 'p' else -1.)
             dec *= pm
+    except:
+        pass
+
+    # Process desi_tile parameter
+    try:
+        tileid = req.GET.get('desi_tile')
+        # Set ra and dec
+        ra, dec = get_desi_tile_radec(int(tileid))
     except:
         pass
 
@@ -5244,7 +5251,6 @@ def ra_ranges_overlap(ralo, rahi, ra1, ra2):
     #print('3:', cw31, cw32)
     #print('4:', cw41, cw42)
     return np.logical_and(cw32 <= 0, cw41 >= 0)
-
 
 if __name__ == '__main__':
     import sys
