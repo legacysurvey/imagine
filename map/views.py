@@ -26,12 +26,11 @@ except:
     from django.urls import reverse
 
 from django import forms
-
 from viewer import settings
 from map.utils import (get_tile_wcs, trymakedirs, save_jpeg, ra2long, ra2long_B,
                        send_file, oneyear)
 from map.coadds import get_scaled
-from map.cats import get_random_galaxy
+from map.cats import get_random_galaxy, get_desi_tile_radec
 
 import matplotlib
 matplotlib.use('Agg')
@@ -272,6 +271,14 @@ def _index(req,
     except:
         pass
 
+    # Process desi_tile parameter
+    try:
+        tileid = req.GET.get('desi_tile')
+        # Set ra and dec
+        ra, dec = get_desi_tile_radec(int(tileid))
+    except:
+        pass
+
     galname = None
     if ra is None or dec is None:
         ra,dec,galname = get_random_galaxy(layer=layer)
@@ -351,6 +358,16 @@ def _index(req,
         import traceback
         traceback.print_exc()
 
+    test_cats = []
+    try:
+        from map.test_layers import test_cats as tc
+        for la in tc:
+            if not la in test_cats:
+                test_cats.append(la)
+    except:
+        import traceback
+        traceback.print_exc()
+
 
     args = dict(ra=ra, dec=dec, zoom=zoom,
                 maxZoom=maxZoom,
@@ -377,6 +394,7 @@ def _index(req,
                 usercatalogurl2 = usercatalogurl2,
 
                 test_layers = test_layers,
+                test_cats = test_cats,
     )
 
     args.update(kwargs)
@@ -907,7 +925,7 @@ class MapLayer(object):
         # Read scale-1 image and scale it
         sourcefn = self.get_filename(brick, band, scale-1)
         if sourcefn is None or not os.path.exists(sourcefn):
-            print('create_scaled_image: brick', brick, 'band', band, 'scale', scale, ': Image source file', sourcefn, 'not found')
+            print('create_scaled_image: brick', brick.brickname, 'band', band, 'scale', scale, ': Image source file', sourcefn, 'not found')
             return None
         ro = settings.READ_ONLY_BASEDIR
         if ro:
@@ -3536,6 +3554,8 @@ def get_survey(name):
             south = get_survey('decals-dr7')
             d = SplitSurveyData(north, south)
             d.drname = 'LegacySurvey DR6+DR7'
+
+
         else:
             d = MyLegacySurveyData(survey_dir=dirnm)
 
@@ -3574,7 +3594,12 @@ def get_survey(name):
     dirnm = os.path.join(basedir, name)
     print('checking for survey_dir', dirnm)
     if os.path.exists(dirnm):
-        d = LegacySurveyData(survey_dir=dirnm)
+
+        cachedir = None
+        if 'dr8b' in name:
+            cachedir=os.path.join(dirnm, 'extra-images')
+
+        d = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
         # d.drname = 'eBOSS'
         # d.drurl = 'http://legacysurvey.org/'
         surveys[name] = d
@@ -5089,6 +5114,26 @@ def get_layer(name, default=None):
             return np.arcsinh(x * 10.)
         layer = ZeaLayer('sfd', sfd_map, stretch=stretch_sfd, vmin=0.0, vmax=5.0)
 
+
+    elif 'dr8b' in name:
+        # Generic NON-rebricked
+        print('get_layer:', name, '-- generic')
+        basename = name
+        if name.endswith('-model'):
+            basename = name[:-6]
+        if name.endswith('-resid'):
+            basename = name[:-6]
+        survey = get_survey(basename)
+        if survey is not None:
+            image = DecalsLayer(basename, 'image', survey)
+            model = DecalsLayer(basename + '-model', 'model', survey,
+                                       drname=basename)
+            resid = DecalsResidLayer(image, model, basename + '-resid', 'resid', survey,
+                                       drname=basename)
+            layers[basename] = image
+            layers[basename + '-model'] = model
+            layers[basename + '-resid'] = resid
+            layer = layers[name]
     
     if layer is None:
         # Try generic
@@ -5205,7 +5250,6 @@ def ra_ranges_overlap(ralo, rahi, ra1, ra2):
     #print('3:', cw31, cw32)
     #print('4:', cw41, cw42)
     return np.logical_and(cw32 <= 0, cw41 >= 0)
-
 
 if __name__ == '__main__':
     import sys

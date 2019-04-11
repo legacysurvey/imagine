@@ -1,0 +1,108 @@
+#map { height: 100%; width: 100%; padding: 1;}
+
+#thebody { margin:0; }
+
+.info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
+.query {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
+.upload {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
+.objquery {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
+.inbrickccd {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
+.inbrickccd ul {
+    margin-top: 0pt;
+}
+
+.highccd {
+    color: red;
+}
+.highccd:link {
+    color: red;
+}
+.highccd:visited {
+    color: red;
+}
+
+.highexp {
+    color: red;
+}
+.highexp:link {
+    color: red;
+}
+.highexp:visited {
+    color: red;
+}
+
+.leaflet-container {
+    background: #242424;
+}
+
+.leaflet-control-scale-line {
+    font-size: 200%;
+    margin-bottom: 15px;
+}
+
+/* hmm, can't get this to work
+.leaflet-control-attribution {
+    font-size: 200%;
+}
+*/
+
+#gotosubmit {
+    font-size: 100%;
+}
+#gotocancel {
+    font-size: 100%;
+}
+
+/* https://gis.stackexchange.com/questions/212820/overriding-leaflet-tooltip-style */
+.leaflet-tooltip-left.spectrumTooltip {
+  margin-left: -15px;
+}
+.leaflet-tooltip-right.spectrumTooltip {
+  margin-left: 15px;
+}
+
+.leaflet-tooltip {
+    background: transparent;
+    color: white;
+    box-shadow: 0 0px 0px rgba(0,0,0,0);
+}

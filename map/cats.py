@@ -1,16 +1,15 @@
 from __future__ import print_function
+from functools import lru_cache
 import os
-import fitsio
 
 if __name__ == '__main__':
     import sys
     sys.path.insert(0, 'django-1.9')
-    import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
     django.setup()
 
-from django.http import HttpResponse, StreamingHttpResponse
+from django.http import HttpResponse
 from viewer import settings
 try:
     from django.core.urlresolvers import reverse
@@ -18,7 +17,6 @@ except:
     # django 2.0
     from django.urls import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
-
 
 debug = print
 if not settings.DEBUG_LOGGING:
@@ -48,12 +46,23 @@ catversions = {
     'targets-bright-dr67': [1,],
     'targets-dark-dr67': [1,],
     'targets-cmx-dr7': [1,],
+    'targets-dr8b': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
+    'desi-tiles': [1,],
 }
+
+test_cats = []
+try:
+    from map.test_layers import test_cats as tc
+    for key,pretty in tc:
+        catversions[key] = [1,]
+except:
+    pass
+
 
 def cat_phat_clusters(req, ver):
     import json
@@ -209,6 +218,26 @@ def cat_sdss(req, ver):
     )),
                         content_type='application/json')
 
+def rename_cols(T):
+    """If TARGET_RA and TARGET_DEC exists, rename them to ra, dec
+
+    Parameters
+    ----------
+    T : :class:`astrometry.util.fits.tabledata`
+    A table data object, parsed from user upload
+
+    Returns
+    -------
+    boolean
+    true if renaming took place, false if otherwise
+    """
+    cols = T.columns()
+    if (('target_ra' in cols) and ('target_dec' in cols)
+        and ('ra' not in cols) and ('dec' not in cols)):
+        T.rename('target_ra', 'ra')
+        T.rename('target_dec', 'dec')
+        return True
+    return False
 
 def upload_cat(req):
     import tempfile
@@ -233,13 +262,18 @@ def upload_cat(req):
     print('Saving to', tmpfn)
     with open(tmpfn, 'wb+') as destination:
         for chunk in cat.chunks():
-            destination.write(chunk)    
+            destination.write(chunk)
     print('Wrote', tmpfn)
 
     try:
         T = fits_table(tmpfn)
     except:
         return HttpResponse('Must upload FITS format catalog including "RA", "Dec", optionally "Name" columns')
+    
+    # Rename and resave columns if necessary
+    if rename_cols(T):
+        T.write_to(tmpfn)
+
     cols = T.columns()
     if not (('ra' in cols) and ('dec' in cols)):
         return HttpResponse('Must upload catalog including "RA", "Dec", optionally "Name" columns')
@@ -264,9 +298,11 @@ def upload_cat(req):
     return HttpResponseRedirect(reverse(index) +
                                 '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, catname))
 
+from map.views import galaxycat
+
 def get_random_galaxy(layer=None):
     import numpy as np
-    from map.views import galaxycat, layer_to_survey_name
+    from map.views import layer_to_survey_name
 
     if layer is not None:
         layer = layer_to_survey_name(layer)
@@ -295,7 +331,6 @@ def get_random_galaxy(layer=None):
             except:
                 import traceback
                 traceback.print_exc()
-                pass
         if not os.path.exists(galfn):
             if drnum == 4:
                 return 147.1744, 44.0812, 'NGC 2998'
@@ -489,13 +524,13 @@ def cat_targets_bgs_dr56(req, ver):
 def cat_targets_dr67(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.29.0.kd.fits'),
     ], tag = 'targets-dr67')
 
 def cat_targets_bgs_dr67(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.29.0.kd.fits'),
     ], tag = 'targets-bgs-dr67', bgs=True)
 
 def cat_targets_sky_dr67(req, ver):
@@ -507,14 +542,18 @@ def cat_targets_sky_dr67(req, ver):
 def cat_targets_bright_dr67(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.29.0.kd.fits'),
     ], tag = 'targets-bright-dr67', bright=True)
 
 def cat_targets_dark_dr67(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.23.0.kd.fits'),
+        os.path.join(settings.DATA_DIR, 'targets-dr7.1-0.29.0.kd.fits'),
     ], tag = 'targets-dark-dr67', dark=True)
+def cat_targets_dr8b(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr8b-0.29.0.kd.fits'),
+    ], tag='targets-dr8b')
 
 
 def desitarget_color_names(T):
@@ -620,11 +659,13 @@ def desi_cmx_color_names(T):
 
     return names, colors
 
-def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=False, dark=False, color_name_func=desitarget_color_names):
+def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=False, dark=False, color_name_func=desitarget_color_names):
     '''
     color_name_func: function that selects names and colors for targets
     (eg based on targeting bit values)
     '''
+    if cats is None:
+        cats = []
 
     import json
     ralo = float(req.GET['ralo'])
@@ -703,6 +744,10 @@ def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=Fal
         rtn.update(color=colors)
     if nobs is not None:
         rtn.update(nobs=nobs)
+    
+    # Convert targetid to string to prevent rounding errors
+    rtn['targetid'] = [str(s) for s in rtn['targetid']]
+    
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def cat_lslga(req, ver):
@@ -966,7 +1011,6 @@ def cat(req, ver, tag, fn):
     from astrometry.util.fits import fits_table
     import numpy as np
 
-    TT = []
     T = fits_table(fn)
     debug(len(T), 'catalog objects')
     if ralo > rahi:
@@ -1012,15 +1056,22 @@ def cat_mobo_dr6(req, ver, zoom, x, y, tag='mzls+bass-dr6'):
 def cat_decals_dr7(req, ver, zoom, x, y, tag='decals-dr7'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
+def any_cat(req, name, ver, zoom, x, y, **kwargs):
+    from map.views import layer_name_map, get_layer
+    print('any_cat(', name, ver, zoom, x, y, ')')
+    name = layer_name_map(name)
+    layer = get_layer(name)
+    if layer is None:
+        return HttpResponse('no such layer: ' + name)
+    return cat_decals(req, ver, zoom, x, y, tag=name, docache=False)
+
+
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     import json
     zoom = int(zoom)
     if zoom < 12:
         return HttpResponse(json.dumps(dict(rd=[])),
                             content_type='application/json')
-
-    from astrometry.util.fits import fits_table, merge_tables
-    import numpy as np
 
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
@@ -1087,11 +1138,37 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     f.close()
     return send_file(cachefn, 'application/json', **sendfile_kwargs)
 
+@lru_cache(maxsize=1)
+def get_desi_tiles():
+    """Returns a dictionary mapping of tileid: (ra, dec) of desi tiles
+    """
+    from astrometry.util.fits import fits_table
+
+    path = os.path.join(settings.DATA_DIR, 'desi-tiles.fits')
+    t = fits_table(path)
+    tileradec = dict()
+    for tileid, ra, dec in zip(t.tileid, t.ra, t.dec):
+        tileradec[tileid] = (ra,dec)
+    return tileradec
+
+def get_desi_tile_radec(tile_id):
+    """Accepts a tile_id, returns a tuple of ra, dec
+    Raises a RuntimeError if tile_id is not found
+    """
+    # Load tile radec
+    tileradec = get_desi_tiles()
+
+    if tile_id in tileradec:
+        ra = tileradec[tile_id][0]
+        dec = tileradec[tile_id][1]
+        return ra, dec
+    else:
+        raise RuntimeError("DESI tile not found")
+
 def _get_decals_cat(wcs, tag='decals'):
     from astrometry.util.fits import fits_table, merge_tables
     from map.views import get_survey
 
-    basedir = settings.DATA_DIR
     H,W = wcs.shape
     X = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                             [1,H/2,H,H,H,H/2,1,1])

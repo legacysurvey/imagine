@@ -2,7 +2,7 @@ from __future__ import print_function
 import os
 from glob import glob
 import numpy as np
-from astrometry.util.file import read_file, write_file
+from astrometry.util.file import read_file
 from legacypipe.survey import LegacySurveyData
 
 def main():
@@ -35,9 +35,27 @@ def main():
     # name = 'dr8-test7'
     # pretty = 'DR8 test7 (outliers)'
 
-    indir = '/global/cscratch1/sd/dstn/dr8test010/'
-    name = 'dr8-test10'
-    pretty = 'DR8 test10 (rc)'
+    #indir = '/global/cscratch1/sd/dstn/dr8test14/'
+    #name = 'dr8-test14'
+    #pretty = 'DR8 test14 (rc)'
+
+    #indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
+    #name = 'dr8a'
+    #pretty = 'DR8a (rc)'
+
+    if False:
+        indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam/'
+        name = 'dr8b-decam'
+        pretty = 'DR8b DECam'
+        survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam'
+
+    if True:
+        indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-90prime-mosaic/'
+        name = 'dr8b-90p-mos'
+        pretty = 'DR8b BASS+MzLS'
+        survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-90prime-mosaic'
+
+    # ln -s /global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam/coadds-only/coadd/ .
 
     sublayers = ['', '-model', '-resid']
     subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
@@ -45,7 +63,11 @@ def main():
 
     # sublayers = ['']
     # subpretty = {'':' images'}
-    survey_dir = '/global/cscratch1/sd/dstn/dr8-depthcut'
+    
+    #survey_dir = '/global/cscratch1/sd/dstn/dr8-depthcut'
+    #survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
+
+    rsync = False
 
     datadir = 'data'
 
@@ -58,22 +80,40 @@ def main():
     open(fn, 'wb').write(txt.encode())
     print('Wrote', fn)
 
-
-    cmd = 'rsync -LRarv %s/./{coadd/*/*/*-{image-,model-,ccds}*.fits*,tractor} %s/%s' % (indir, datadir, name)
-    print(cmd)
-    os.system(cmd)
-
-    # ...?
-    cmd = 'rsync -Rarv %s/./{images,survey-ccds*.fits} %s/%s' % (survey_dir, datadir, name)
-    print(cmd)
-    os.system(cmd)
-
     basedir = os.path.join(datadir, name)
+
+    if rsync:
+        cmd = 'rsync -LRarv %s/./{coadd/*/*/*-{image-,model-,ccds}*.fits*,tractor} %s/%s' % (indir, datadir, name)
+        print(cmd)
+        os.system(cmd)
+
+        # ...?
+        cmd = 'rsync -Rarv %s/./{images,survey-ccds*.fits} %s/%s' % (survey_dir, datadir, name)
+        print(cmd)
+        os.system(cmd)
+    else:
+        # symlink
+        if os.path.exists(basedir):
+            print('Not symlinking', indir, 'to', basedir, ': already exists!')
+        else:
+            os.makedirs(basedir)
+            for subdir in ['coadd', 'tractor']:
+                os.symlink(os.path.join(indir, subdir), os.path.join(basedir, subdir), target_is_directory=True)
+            for fn in ['images', 'calib']:
+                os.symlink(os.path.join(indir, subdir), os.path.join(basedir, subdir), target_is_directory=False)
+            for pat in ['survey-ccds-*']:
+                for fn in [os.path.basename(f) for f in glob(os.path.join(indir, pat))]:
+                    os.symlink(os.path.join(indir, subdir), os.path.join(basedir, subdir), target_is_directory=False)
 
     allbricks = survey.get_bricks_readonly()
 
     imagefns = glob(os.path.join(basedir, 'coadd', '*', '*', '*-image-*.fits*'))
-    print('Image filenames:', len(imagefns))
+
+    extraimagefns = glob(os.path.join(basedir, 'extra-images', 'coadd', '*', '*', '*-image-*.fits*'))
+
+    print('Image filenames:', len(imagefns), 'plus', len(extraimagefns), 'extras')
+    imagefns += extraimagefns
+
     brickset = set()
     for fn in imagefns:
         dirs = fn.split('/')

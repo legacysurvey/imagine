@@ -1,4 +1,3 @@
-import os
 from settings_common import *
 
 REDIRECT_CUTOUTS_DECAPS = True

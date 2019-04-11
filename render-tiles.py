@@ -1,15 +1,10 @@
 from __future__ import print_function
+import os
 import sys
 from glob import glob
 
-###
-#sys.path.insert(0, 'django-1.7')
 sys.path.insert(0, 'django-1.9')
-###
-
 import django
-#django.setup()
-import os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
 
 from viewer import settings
@@ -167,7 +162,6 @@ def _bounce_sdssco(X):
         save = True
 
     # Save jpeg
-    from viewer import settings
     #tag = 'sdss'
     tag = 'sdssco'
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
@@ -232,35 +226,31 @@ def top_levels(mp, opt):
                     'ls-dr56', 'ls-dr67'] or True:
         import pylab as plt
         from viewer import settings
-        from legacypipe.survey import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
-        from map.views import trymakedirs
         from map.views import _unwise_to_rgb
-        from map.views import galex_rgb, wssa_rgb
         tag = opt.kind
 
         from map.views import get_layer
         layer = get_layer(opt.kind)
 
         bands = layer.get_bands()
-        #get_rgb = dr2_rgb
+
+        print('Layer:', layer)
+        print('Survey:', layer.survey)
+        print('  cache_dir:', layer.survey.cache_dir)
 
         print('Bands', bands)
 
         rgbkwargs = {}
         if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model']:
             bands = [1, 2]
-            #get_rgb = _unwise_to_rgb
         elif opt.kind == 'sdss2':
             bands = 'gri'
-            #get_rgb = sdss_rgb
         elif opt.kind == 'galex':
             bands = ['n','f']
-            #get_rgb = galex_rgb
         elif opt.kind == 'wssa':
             bands = ['x']
-            #get_rgb = wssa_rgb
         #else:
         #    bands = 'grz'
 
@@ -345,7 +335,7 @@ def top_levels(mp, opt):
     elif opt.kind in ['unwise', 'unwise-neo1', 'unwise-w3w4',]:
         import pylab as plt
         from viewer import settings
-        from map.views import _unwise_to_rgb, save_jpeg, trymakedirs
+        from map.views import _unwise_to_rgb
         import fitsio
 
         if opt.kind == 'unwise-w3w4':
@@ -488,7 +478,7 @@ def top_levels(mp, opt):
         from map.views import trymakedirs
 
         tag = 'decam-' + opt.kind
-        band = opt.kind[-1]
+        #band = opt.kind[-1]
         ver = 1
         basescale = 5
         pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
@@ -545,7 +535,6 @@ def top_levels(mp, opt):
         from legacypipe.survey import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
-        from map.views import trymakedirs
 
         tag = opt.kind
 
@@ -565,7 +554,6 @@ def top_levels(mp, opt):
             get_rgb = dr2_rgb
             rgbkwargs = {}
         elif opt.kind == 'sdssco':
-            rgbfunc=sdss_rgb
             rgbkwargs = {}
 
         ver = tileversions.get(opt.kind, [1])[-1]
@@ -708,7 +696,18 @@ def main():
 
     parser.add_option('--bands', default=None)
 
+    parser.add_option('-v', '--verbose', dest='verbose', action='count',
+                      default=0, help='Make more verbose')
+
+
     opt,args = parser.parse_args()
+
+    if opt.verbose == 0:
+        lvl = logging.INFO
+    else:
+        lvl = logging.DEBUG
+    logging.basicConfig(level=lvl, format='%(message)s', stream=sys.stdout)
+
 
     mp = multiproc(opt.threads)
 
@@ -903,18 +902,27 @@ def main():
             sys.exit(0)
                 
         
-        if opt.kind in ['decals-dr3', 'decals-dr3-model',
-                        'mzls+bass-dr4', 'mzls+bass-dr4-model',
-                        'decaps2', 'decaps2-model', 'eboss', 'ps1']:
+        if (opt.kind in ['decals-dr3', 'decals-dr3-model',
+                         'mzls+bass-dr4', 'mzls+bass-dr4-model',
+                         'decaps2', 'decaps2-model', 'eboss', 'ps1']
+            or 'dr8b' in opt.kind):
 
             from map.views import get_survey, get_layer
 
             surveyname = opt.kind
             # *-model -> *
-            for prefix in ['decals-dr3', 'mzls+bass-dr4', 'decaps2', 'decals-dr5']:
-                if prefix in surveyname:
-                    surveyname = prefix
+            # for prefix in ['decals-dr3', 'mzls+bass-dr4', 'decaps2', 'decals-dr5']:
+            #     if prefix in surveyname:
+            #         surveyname = prefix
+
+            for suffix in ['-model', '-resid']:
+                if surveyname.endswith(suffix):
+                    surveyname = surveyname[:-len(suffix)]
+
             survey = get_survey(surveyname)
+
+            print('Survey:', survey)
+            print('  cache_dir:', survey.cache_dir)
 
             B = survey.get_bricks()
             print(len(B), 'bricks')
@@ -929,7 +937,6 @@ def main():
             if '-model' in opt.kind:
                 model = True
                 filetype = 'model'
-            imagetag = filetype
 
             bands = opt.bands
 
@@ -943,14 +950,16 @@ def main():
                     # assume yes
                     has[band] = np.ones(len(B), bool)
 
-            for ibrick,brick in enumerate(B):
-                for band in bands:
-                    if not has[band][ibrick]:
-                        print('Brick', brick.brickname, 'does not have', band)
-                        continue
-                    fn = layer.get_filename(brick, band, 7)
-                    print(fn)
-
+            for scale in opt.zoom:
+                args = []
+                for ibrick,brick in enumerate(B):
+                    for band in bands:
+                        if not has[band][ibrick]:
+                            print('Brick', brick.brickname, 'does not have', band)
+                            continue
+                        args.append((layer, brick, band, scale, opt.ignore))
+                mp.map(_layer_get_filename, args)
+                
             sys.exit(0)
 
         elif opt.kind == 'sdss2':
