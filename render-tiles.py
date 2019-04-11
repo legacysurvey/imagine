@@ -1,15 +1,10 @@
 from __future__ import print_function
+import os
 import sys
 from glob import glob
 
-###
-#sys.path.insert(0, 'django-1.7')
 sys.path.insert(0, 'django-1.9')
-###
-
 import django
-#django.setup()
-import os
 os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
 
 from viewer import settings
@@ -167,7 +162,6 @@ def _bounce_sdssco(X):
         save = True
 
     # Save jpeg
-    from viewer import settings
     #tag = 'sdss'
     tag = 'sdssco'
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
@@ -232,19 +226,15 @@ def top_levels(mp, opt):
                     'ls-dr56', 'ls-dr67'] or True:
         import pylab as plt
         from viewer import settings
-        from legacypipe.survey import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
-        from map.views import trymakedirs
         from map.views import _unwise_to_rgb
-        from map.views import galex_rgb, wssa_rgb
         tag = opt.kind
 
         from map.views import get_layer
         layer = get_layer(opt.kind)
 
         bands = layer.get_bands()
-        #get_rgb = dr2_rgb
 
         print('Layer:', layer)
         print('Survey:', layer.survey)
@@ -255,16 +245,12 @@ def top_levels(mp, opt):
         rgbkwargs = {}
         if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model']:
             bands = [1, 2]
-            #get_rgb = _unwise_to_rgb
         elif opt.kind == 'sdss2':
             bands = 'gri'
-            #get_rgb = sdss_rgb
         elif opt.kind == 'galex':
             bands = ['n','f']
-            #get_rgb = galex_rgb
         elif opt.kind == 'wssa':
             bands = ['x']
-            #get_rgb = wssa_rgb
         #else:
         #    bands = 'grz'
 
@@ -349,7 +335,7 @@ def top_levels(mp, opt):
     elif opt.kind in ['unwise', 'unwise-neo1', 'unwise-w3w4',]:
         import pylab as plt
         from viewer import settings
-        from map.views import _unwise_to_rgb, save_jpeg, trymakedirs
+        from map.views import _unwise_to_rgb
         import fitsio
 
         if opt.kind == 'unwise-w3w4':
@@ -492,7 +478,7 @@ def top_levels(mp, opt):
         from map.views import trymakedirs
 
         tag = 'decam-' + opt.kind
-        band = opt.kind[-1]
+        #band = opt.kind[-1]
         ver = 1
         basescale = 5
         pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
@@ -549,7 +535,6 @@ def top_levels(mp, opt):
         from legacypipe.survey import get_rgb
         import fitsio
         from scipy.ndimage.filters import gaussian_filter
-        from map.views import trymakedirs
 
         tag = opt.kind
 
@@ -569,7 +554,6 @@ def top_levels(mp, opt):
             get_rgb = dr2_rgb
             rgbkwargs = {}
         elif opt.kind == 'sdssco':
-            rgbfunc=sdss_rgb
             rgbkwargs = {}
 
         ver = tileversions.get(opt.kind, [1])[-1]
@@ -718,7 +702,6 @@ def main():
 
     opt,args = parser.parse_args()
 
-    import logging
     if opt.verbose == 0:
         lvl = logging.INFO
     else:
@@ -944,7 +927,6 @@ def main():
             if '-model' in opt.kind:
                 model = True
                 filetype = 'model'
-            imagetag = filetype
 
             bands = opt.bands
 

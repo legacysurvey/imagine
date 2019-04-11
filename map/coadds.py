@@ -2,7 +2,7 @@ from __future__ import print_function
 import os
 import fitsio
 
-from map.utils import save_jpeg, send_file, trymakedirs, oneyear, get_tile_wcs
+from map.utils import save_jpeg, send_file, trymakedirs, oneyear
 
 from viewer import settings
 debug = print
@@ -67,7 +67,6 @@ def read_sip_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
 def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wcs=None,
                wcs=None, img=None, return_data=False, read_base_image=None):
     from scipy.ndimage.filters import gaussian_filter
-    import fitsio
     from astrometry.util.util import Tan
     import tempfile
     import numpy as np
@@ -84,11 +83,12 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
         
     if os.path.exists(fn):
         if return_data:
-            F = fitsio.FITS(sourcefn)
+            F = fitsio.FITS(fn)
             #img = F[0].read()
             #hdr = F[0].read_header()
             img = F[-1].read()
             hdr = F[-1].read_header()
+            H,W = img.shape
             wcs = read_wcs(fn, 0, hdr=hdr, W=W, H=H, fitsfile=F)
             return img,wcs,fn
         return fn
@@ -144,7 +144,6 @@ def get_scaled(scalepat, scalekwargs, scale, basefn, read_wcs=None, read_base_wc
 
     dirnm = os.path.dirname(fn)
 
-    from viewer import settings
     ro = settings.READ_ONLY_BASEDIR
     if ro:
         dirnm = None

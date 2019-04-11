@@ -2,7 +2,7 @@ importScripts("desi-fiber-locations.js");
 importScripts("transforms.js");
 
 function getFiberMultiLatLngs(telra, teldec, clong) {
-    multilatlngs = [];
+    var multilatlngs = [];
     var radec = xyz2radec(telra, teldec, [fiberpos_projection["xs"],
                                           fiberpos_projection["ys"],
                                           fiberpos_projection["zs"]]);
@@ -29,4 +29,4 @@ function getFiberMultiLatLngs(telra, teldec, clong) {
 
 onmessage = function(e) {
     postMessage(getFiberMultiLatLngs(e.data[0], e.data[1], e.data[2]));
-}
+};

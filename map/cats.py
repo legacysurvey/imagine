@@ -1,17 +1,15 @@
 from __future__ import print_function
 from functools import lru_cache
 import os
-import fitsio
 
 if __name__ == '__main__':
     import sys
     sys.path.insert(0, 'django-1.9')
-    import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
     django.setup()
 
-from django.http import HttpResponse, StreamingHttpResponse
+from django.http import HttpResponse
 from viewer import settings
 try:
     from django.core.urlresolvers import reverse
@@ -264,7 +262,7 @@ def upload_cat(req):
     print('Saving to', tmpfn)
     with open(tmpfn, 'wb+') as destination:
         for chunk in cat.chunks():
-            destination.write(chunk)    
+            destination.write(chunk)
     print('Wrote', tmpfn)
 
     try:
@@ -300,9 +298,11 @@ def upload_cat(req):
     return HttpResponseRedirect(reverse(index) +
                                 '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, catname))
 
+from map.views import galaxycat
+
 def get_random_galaxy(layer=None):
     import numpy as np
-    from map.views import galaxycat, layer_to_survey_name
+    from map.views import layer_to_survey_name
 
     if layer is not None:
         layer = layer_to_survey_name(layer)
@@ -331,7 +331,6 @@ def get_random_galaxy(layer=None):
             except:
                 import traceback
                 traceback.print_exc()
-                pass
         if not os.path.exists(galfn):
             if drnum == 4:
                 return 147.1744, 44.0812, 'NGC 2998'
@@ -660,11 +659,13 @@ def desi_cmx_color_names(T):
 
     return names, colors
 
-def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=False, dark=False, color_name_func=desitarget_color_names):
+def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=False, dark=False, color_name_func=desitarget_color_names):
     '''
     color_name_func: function that selects names and colors for targets
     (eg based on targeting bit values)
     '''
+    if cats is None:
+        cats = []
 
     import json
     ralo = float(req.GET['ralo'])
@@ -1010,7 +1011,6 @@ def cat(req, ver, tag, fn):
     from astrometry.util.fits import fits_table
     import numpy as np
 
-    TT = []
     T = fits_table(fn)
     debug(len(T), 'catalog objects')
     if ralo > rahi:
@@ -1072,9 +1072,6 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     if zoom < 12:
         return HttpResponse(json.dumps(dict(rd=[])),
                             content_type='application/json')
-
-    from astrometry.util.fits import fits_table, merge_tables
-    import numpy as np
 
     try:
         wcs, W, H, zoomscale, zoom,x,y = get_tile_wcs(zoom, x, y)
@@ -1172,7 +1169,6 @@ def _get_decals_cat(wcs, tag='decals'):
     from astrometry.util.fits import fits_table, merge_tables
     from map.views import get_survey
 
-    basedir = settings.DATA_DIR
     H,W = wcs.shape
     X = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
                             [1,H/2,H,H,H,H/2,1,1])
