@@ -221,8 +221,7 @@ def _index(req,
         enable_desi_footprint = True,
         enable_spectra = True,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
-        #enable_phat = False,
-        enable_phat = True,
+        enable_phat = False,
     )
 
     for k in kwargs.keys():
