@@ -743,6 +743,10 @@ def cat_targets_drAB(req, ver, cats=[], tag='', bgs=False, sky=False, bright=Fal
         rtn.update(color=colors)
     if nobs is not None:
         rtn.update(nobs=nobs)
+    
+    # Convert targetid to string to prevent rounding errors
+    rtn['targetid'] = [str(s) for s in rtn['targetid']]
+    
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def cat_lslga(req, ver):
