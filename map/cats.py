@@ -298,8 +298,7 @@ def upload_cat(req):
     return HttpResponseRedirect(reverse(index) +
                                 '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, catname))
 
-from map.views import galaxycat
-
+galaxycat = None
 def get_random_galaxy(layer=None):
     import numpy as np
     from map.views import layer_to_survey_name

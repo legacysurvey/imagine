@@ -155,8 +155,6 @@ def layer_to_survey_name(layer):
     layer = layer.replace('-resid', '')
     return layer
 
-galaxycat = None
-
 def is_decaps(req):
     host = req.META.get('HTTP_HOST', None)
     #print('Host:', host)
