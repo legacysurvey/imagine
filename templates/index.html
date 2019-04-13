@@ -1987,15 +1987,30 @@ $(document).ready(function() {
         if (event.keyCode == 13) {
             var qstring = $('#objquery').val();
             
-            // Check if query is on desi tile
+            // Check if query is DESI tile
             var splited = qstring.split(" ");
-            if (splited.length == 2 && splited[0] === "DESI") {
+            if (splited.length === 2 && splited[0] === "DESI") {
                 window.location.href = window.location.origin +
                                        window.location.pathname +
                                        "?desi_tile=" + splited[1] +
                                        '&layer=' + layer_name +
                                        '&desifoot&desifiber' +
                                        '&zoom=8';
+                return;
+            }
+
+            // Check if query is BRICK
+            if (splited[0] === "BRICK") {
+                // Default input syntax: "BRICK 1234p567"
+                var brickParam = splited[1];
+                // Alternative input syntax: "BRICK 1234 567"
+                if (splited.length === 3) {
+                    brickParam = splited[1] + parameterizeDec(splited[2]);
+                }
+                window.location.href = window.location.origin +
+                                       window.location.pathname +
+                                       "?brick=" + brickParam +
+                                       '&layer=' + layer_name;
                 return;
             }
 
