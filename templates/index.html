@@ -1989,7 +1989,7 @@ $(document).ready(function() {
             
             // Check if query is on desi tile
             var splited = qstring.split(" ");
-            if (splited.length == 2 && splited[0] === "DESI") {
+            if (splited.length === 2 && splited[0] === "DESI") {
                 window.location.href = window.location.origin +
                                        window.location.pathname +
                                        "?desi_tile=" + splited[1] +
