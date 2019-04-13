@@ -577,10 +577,10 @@ def desitarget_color_names(T):
             1:  'ELG',
             2:  'QSO',
             # 8:  'LRG_NORTH',
-            # 9:  'ELG_NORTH',
+            9:  'ELG_NORTH',
             # 10: 'QSO_NORTH',
             # 16: 'LRG_SOUTH',
-            # 17: 'ELG_SOUTH',
+            17: 'ELG_SOUTH',
             # 18: 'QSO_SOUTH',
             32: 'SKY',
             33: 'STD_FSTAR',
@@ -593,7 +593,7 @@ def desitarget_color_names(T):
             # 60: 'BGS_ANY',
             # 61: 'MWS_ANY',
             62: 'ANCILLARY_ANY',
-        }.get(b) for b in desibits]
+        }.get(b) for b in desibits][:1] # Ony display one name to prevent clutter
         bgsnames = [{
             0:  'BGS_FAINT',
             1:  'BGS_BRIGHT',
