@@ -1999,6 +1999,16 @@ $(document).ready(function() {
                 return;
             }
 
+            // Check if query is BRICK
+            if (splited.length === 3 && splited[0] === "BRICK") {
+                window.location.href = window.location.origin +
+                                       window.location.pathname +
+                                       "?brick=" + splited[1] +
+                                       parameterizeDec(splited[2]) +
+                                       '&layer=' + layer_name;
+                return;
+            }
+
             var url = L.Util.template(name_query_url, L.extend({
                 obj: qstring,
             }));
