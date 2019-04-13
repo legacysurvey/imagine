@@ -35,6 +35,6 @@ function lat2dec(lat) {
 function parameterizeDec(dec) {
     // Accepts a number dec, returns a string
     // If dec is positive/zero, append 'p' to the front, otherwise append 'm'
-    var decStr = Math.abs(dec).toString()
+    var decStr = Math.abs(dec).toString();
     return dec >= 0 ? 'p' + decStr : 'm' + decStr;
 }
