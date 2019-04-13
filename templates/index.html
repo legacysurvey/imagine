@@ -2000,11 +2000,16 @@ $(document).ready(function() {
             }
 
             // Check if query is BRICK
-            if (splited.length === 3 && splited[0] === "BRICK") {
+            if (splited[0] === "BRICK") {
+                // Default input syntax: "BRICK 1234p567"
+                var brickParam = splited[1];
+                // Alternative input syntax: "BRICK 1234 567"
+                if (splited.length === 3) {
+                    brickParam = splited[1] + parameterizeDec(splited[2]);
+                }
                 window.location.href = window.location.origin +
                                        window.location.pathname +
-                                       "?brick=" + splited[1] +
-                                       parameterizeDec(splited[2]) +
+                                       "?brick=" + brickParam +
                                        '&layer=' + layer_name;
                 return;
             }
