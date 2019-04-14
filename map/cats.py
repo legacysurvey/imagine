@@ -574,12 +574,12 @@ def desitarget_color_names(T):
             0:  'LRG',
             1:  'ELG',
             2:  'QSO',
-            # 8:  'LRG_NORTH',
-            # 9:  'ELG_NORTH',
-            # 10: 'QSO_NORTH',
-            # 16: 'LRG_SOUTH',
-            # 17: 'ELG_SOUTH',
-            # 18: 'QSO_SOUTH',
+            8:  'LRG_NORTH',
+            9:  'ELG_NORTH',
+            10: 'QSO_NORTH',
+            16: 'LRG_SOUTH',
+            17: 'ELG_SOUTH',
+            18: 'QSO_SOUTH',
             32: 'SKY',
             33: 'STD_FSTAR',
             34: 'STD_WD',
@@ -588,17 +588,17 @@ def desitarget_color_names(T):
             50: 'BRIGHT_OBJECT',
             51: 'IN_BRIGHT_OBJECT',
             52: 'NEAR_BRIGHT_OBJECT',
-            # 60: 'BGS_ANY',
-            # 61: 'MWS_ANY',
+            60: 'BGS_ANY',
+            61: 'MWS_ANY',
             62: 'ANCILLARY_ANY',
         }.get(b) for b in desibits]
         bgsnames = [{
             0:  'BGS_FAINT',
             1:  'BGS_BRIGHT',
-            # 8:  'BGS_FAINT_NORTH',
-            # 9:  'BGS_BRIGHT_NORTH',
-            # 16: 'BGS_FAINT_SOUTH',
-            # 17: 'BGS_BRIGHT_SOUTH',
+            8:  'BGS_FAINT_NORTH',
+            9:  'BGS_BRIGHT_NORTH',
+            16: 'BGS_FAINT_SOUTH',
+            17: 'BGS_BRIGHT_SOUTH',
             40: 'BGS_KNOWN_ANY',
             41: 'BGS_KNOWN_COLLIDED',
             42: 'BGS_KNOWN_SDSS',
@@ -612,6 +612,30 @@ def desitarget_color_names(T):
         }.get(b) for b in mwsbits]
 
         bitnames = [n for n in desinames + bgsnames + mwsnames if n is not None]
+        # If any of the names in value exists, remove the key in bitnames
+        # Example: if 'ELG' exists, remove 'ELG_SOUTH' and 'ELG_NORTH'
+        bitnames_veto = {
+            'ELG_SOUTH': ['ELG'],
+            'ELG_NORTH': ['ELG'],
+            'QSO_SOUTH': ['QSO'],
+            'QSO_NORTH': ['QSO'],
+            'LRG_NORTH': ['LRG'],
+            'LRG_SOUTH': ['LRG'],
+            'BGS_FAINT_NORTH': ['BGS_FAINT'],
+            'BGS_FAINT_SOUTH': ['BGS_FAINT'],
+            'BGS_BRIGHT_NORTH': ['BGS_BRIGHT'],
+            'BGS_BRIGHT_SOUTH': ['BGS_BRIGHT'],
+            'BGS_ANY': ['BGS_FAINT', 'BGS_BRIGHT', 'BGS_FAINT_NORTH',
+                        'BGS_BRIGHT_NORTH', 'BGS_FAINT_SOUTH', 'BGS_BRIGHT_SOUTH',
+                        'BGS_KNOWN_ANY', 'BGS_KNOWN_COLLIDED', 'BGS_KNOWN_SDSS',
+                        'BGS_KNOWN_BOSS'],
+            'MWS_ANY': ['MWS_MAIN', 'MWS_WD', 'MWS_NEARBY', 'MWS_MAIN_VERY_FAINT'],
+        }
+        for name in bitnames[:]:
+            # As described in the comment above, if any of the better_names
+            # exist in bitnames, remove the current name
+            if any([better_name in bitnames for better_name in bitnames_veto.get(name, [])]):
+                bitnames.remove(name)
 
         names.append(', '.join(bitnames))
 
