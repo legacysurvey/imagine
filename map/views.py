@@ -4621,6 +4621,8 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     x = int(req.GET['x'], 10)
     y = int(req.GET['y'], 10)
 
+    kind = req.GET.get('kind', 'image')
+
     # half-size in DECam pixels
     size = int(req.GET.get('size', '100'), 10)
     size = min(200, size)
@@ -4638,24 +4640,30 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     H,W = im.shape
     slc = (slice(max(0, y-size), min(H, y+size+1)),
            slice(max(0, x-size), min(W, x+size+1)))
-    tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                               dq=False, invvar=False)
-    #thelayer = get_layer(layer)
-    #rgb = thelayer.get_rgb([tim.data], [tim.band])
-    from legacypipe.survey import get_rgb
-    rgb = get_rgb([tim.data], [tim.band], mnmx=(-1,100.), arcsinh=1.)
-
-    index = dict(g=2, r=1, z=0)[tim.band]
-    bw = rgb[:,:,index]
-    print('BW', bw.shape, bw.dtype)
 
     import tempfile
     f,jpegfn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
-    plt.imsave(jpegfn, bw, vmin=0, vmax=1, cmap='gray', origin='lower')
-    #mn,mx = np.percentile(img.ravel(), [25, 99])
-    #save_jpeg(jpegfn, destimg, origin='lower', cmap='gray',
-    #          vmin=mn, vmax=mx)
+
+    if kind == 'image':
+        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
+                                   dq=False, invvar=False)
+        from legacypipe.survey import get_rgb
+        rgb = get_rgb([tim.data], [tim.band], mnmx=(-1,100.), arcsinh=1.)
+        index = dict(g=2, r=1, z=0)[tim.band]
+        bw = rgb[:,:,index]
+        plt.imsave(jpegfn, bw, vmin=0, vmax=1, cmap='gray', origin='lower')
+
+    elif kind == 'weight':
+        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
+                                   pixels=False, dq=False, invvar=True)
+        plt.imsave(jpegfn, tim.getInvvar(), vmin=0, cmap='gray', origin='lower')
+
+    elif kind == 'dq':
+        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
+                                   pixels=False, dq=True, invvar=False)
+        plt.imsave(jpegfn, tim.dq, vmin=0, cmap='gray', origin='lower')
+
     return send_file(jpegfn, 'image/jpeg', unlink=True)
 
 

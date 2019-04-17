@@ -40,6 +40,8 @@ SDSS objects: X
 <tr>
 <th>CCD</th>
 <th>Image</th>
+<th>Weight</th>
+<th>DQ</th>
 
 {% comment %}
 <th>Model (DR1)</th>
@@ -62,6 +64,14 @@ SDSS objects: X
 
 <td>
 <img src="{{ ccdurl }}" width="{{ size }}" height="{{ size }}" />
+</td>
+
+<td>
+<img src="{{ ccdurl }}&kind=weight" width="{{ size }}" height="{{ size }}" />
+</td>
+
+<td>
+<img src="{{ ccdurl }}&kind=dq" width="{{ size }}" height="{{ size }}" />
 </td>
 
 </tr>

@@ -298,7 +298,7 @@ def upload_cat(req):
     return HttpResponseRedirect(reverse(index) +
                                 '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, catname))
 
-galaxycat = None
+galaxycats = {}
 def get_random_galaxy(layer=None):
     import numpy as np
     from map.views import layer_to_survey_name
@@ -306,7 +306,7 @@ def get_random_galaxy(layer=None):
     if layer is not None:
         layer = layer_to_survey_name(layer)
 
-    global galaxycat
+    global galaxycats
     if layer == 'mzls+bass-dr4':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr4.fits')
         drnum = 4
@@ -323,7 +323,7 @@ def get_random_galaxy(layer=None):
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr3.fits')
         drnum = 3
 
-    if galaxycat is None and not os.path.exists(galfn):
+    if (not layer in galaxycats) and not os.path.exists(galfn):
         if settings.CREATE_GALAXY_CATALOG:
             try:
                 create_galaxy_catalog(galfn, drnum)
@@ -336,10 +336,11 @@ def get_random_galaxy(layer=None):
             else:
                 return 18.6595, -1.0210, 'NGC 442'
 
-    if galaxycat is None:
+    if not layer in galaxycats:
         from astrometry.util.fits import fits_table
-        galaxycat = fits_table(galfn)
+        galaxycats[layer] = fits_table(galfn)
 
+    galaxycat = galaxycats[layer]
     i = np.random.randint(len(galaxycat))
     ra = float(galaxycat.ra[i])
     dec = float(galaxycat.dec[i])
