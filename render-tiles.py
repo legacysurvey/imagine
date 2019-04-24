@@ -895,7 +895,8 @@ def main():
         if (opt.kind in ['decals-dr3', 'decals-dr3-model',
                          'mzls+bass-dr4', 'mzls+bass-dr4-model',
                          'decaps2', 'decaps2-model', 'eboss', 'ps1']
-            or 'dr8b' in opt.kind):
+            or 'dr8b' in opt.kind
+            or 'dr8c' in opt.kind):
 
             from map.views import get_survey, get_layer
 
