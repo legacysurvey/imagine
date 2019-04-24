@@ -53,3 +53,4 @@ test_layers.append(("dr8c-90p-mos", "DR8c BASS+MzLS images"))
 test_layers.append(("dr8c-90p-mos-model", "DR8c BASS+MzLS models"))
 test_layers.append(("dr8c-90p-mos-resid", "DR8c BASS+MzLS residuals"))
 
+test_cats.append(("dr8c-90p-mos", "Catalog: DR8c BASS+MzLS"))

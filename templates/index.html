@@ -3415,13 +3415,13 @@ overlayTree.push(findoverlay('targets-dr8b'));
        ],
      },
      {% endif %}
+     findoverlay('gaia-dr2'),
      { label: 'Other catalogs',
        children: [
            {% if enable_ps1 %}
            findoverlay('ps1-cat'),
            {% endif %}
            findoverlay('gaia-dr1'),
-           findoverlay('gaia-dr2'),
            findoverlay('sdss-cat'),
        ],
      },
