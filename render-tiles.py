@@ -237,8 +237,8 @@ def top_levels(mp, opt):
         bands = layer.get_bands()
 
         print('Layer:', layer)
-        print('Survey:', layer.survey)
-        print('  cache_dir:', layer.survey.cache_dir)
+        #print('Survey:', layer.survey)
+        #print('  cache_dir:', layer.survey.cache_dir)
 
         print('Bands', bands)
 
@@ -717,7 +717,7 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
     elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
-                      'galex', 'wssa', 'vlass']:
+                      'galex', 'wssa', 'vlass', 'hsc']:
         if opt.maxdec is None:
             opt.maxdec = 90.
         if opt.mindec is None:
@@ -834,7 +834,7 @@ def main():
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                         'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
-                        'galex', 'wssa', 'des-dr1',
+                        'galex', 'wssa', 'des-dr1', 'hsc',
                     ] or opt.kind.startswith('dr8-test'): # or True:
             from map.views import get_layer
 
@@ -880,7 +880,7 @@ def main():
                         # assume yes
                         has[band] = np.ones(len(B), bool)
 
-                # Run one scale at a time, to avoid too much duplicate work
+                # Run one scale at a time
                 args = []
                 for ibrick,brick in enumerate(B):
                     for band in bands:
