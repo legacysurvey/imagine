@@ -174,6 +174,10 @@ urlpatterns = [
     # PS1 catalog test
     url(r'^ps1/(\d+)/cat.json', cats.cat_ps1),
 
+    # HSC
+    url(r'^hsc/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('hsc')),
+
     url(r'^vlass/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('vlass')),
 

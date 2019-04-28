@@ -61,6 +61,7 @@ tileversions = {
     'sdss': [1,],
     'sdssco': [1,],
     'ps1': [1],
+    'hsc': [1],
 
     'vlass': [1],
 
@@ -2012,13 +2013,16 @@ class RebrickedMixin(object):
         import numpy as np
         bricks = self.get_bricks_for_scale(scale)
 
-        print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale)
-
         I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
         ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
         I = I[ok]
         if len(I) == 0:
+            print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale,
+                  ': none')
             return None
+        print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale, ': ',
+              ', '.join(bricks.brickname[I]))
+
         return bricks[I]
 
         # # Hacky margin
@@ -2110,7 +2114,10 @@ class UniqueBrickMixin(object):
                                brick.ra1, brick.ra2, brick.dec1, brick.dec2)
         return U
 
-class DecalsResidLayer(ResidMixin, DecalsLayer):
+class DecalsResidLayer(ResidMixin, UniqueBrickMixin, DecalsLayer):
+    pass
+
+class DecalsModelLayer(UniqueBrickMixin, DecalsLayer):
     pass
 
 class Decaps2ResidLayer(ResidMixin, Decaps2Layer):
@@ -2227,6 +2234,79 @@ class ReDecalsResidLayer(UniqueBrickMixin, ResidMixin, ReDecalsLayer):
 
 class ReDecalsModelLayer(UniqueBrickMixin, ReDecalsLayer):
     pass
+
+class HscLayer(RebrickedMixin, MapLayer):
+    def __init__(self, name):
+        super(HscLayer, self).__init__(name)
+        self.bands = 'grz'
+        self.basedir = os.path.join(settings.DATA_DIR, self.name)
+        self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
+        self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+        self.bricks = None
+        self.pixscale = 0.168
+
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+            '%(scale)i%(band)s', '%(brickname).4s',
+            'hsc' + '-%(brickname)s-%(band)s.fits')
+
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        # Scaled tiles (which are 0.5-degree on a side for scale=1) need to be:
+        # 0.25 * 3600 / 0.168 ~ 5360 pix
+        size = 5360
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        # from legacypipe.survey import get_rgb
+        from tractor.brightness import NanoMaggies
+        # #zpscale = NanoMaggies.zeropointToScale(27.0) * 0.1
+        # #rgb = get_rgb([im/zpscale for im in imgs], 'grz', arcsinh=2., mnmx=(-0.2,50))
+        # 
+        # # zpscale = NanoMaggies.zeropointToScale(27.0) * 0.2
+        # # scales = dict(g = (2, 0.0066),
+        # #               r = (1, 0.01),
+        # #               z = (0, 0.015))
+        # # rgb = get_rgb([im/zpscale for im in imgs], 'grz', arcsinh=1, mnmx=(-0.5,50), scales=scales)
+        # zpscale = NanoMaggies.zeropointToScale(27.0)
+        # #rgb = sdss_rgb([im/zpscale for im in imgs], bands)
+        # rgb = dr2_rgb([im/zpscale for im in imgs], bands)
+
+        zpscale = NanoMaggies.zeropointToScale(27.0)
+        rgb = sdss_rgb([im/zpscale for im in imgs], bands,
+                       scales=dict(g=6.0*5., r=3.4*5., z=2.2*5.), m=0.03)
+
+        return rgb
+
+    def get_base_filename(self, brick, band, **kwargs):
+        path = os.path.join(self.basedir, brick.filename.strip().replace('-R', '-'+band.upper()))
+        return path
+
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        from astrometry.util.fits import fits_table
+        self.bricks = fits_table(os.path.join(self.basedir, 'hsc-bricks.fits'))
+        return self.bricks
+
+    def get_brick_size_for_scale(self, scale):
+        if scale == 0:
+            return 4200 * self.pixscale / 3600.
+        return 0.25 * 2**scale
+
+    def get_bands(self):
+        return self.bands
+    
+    # def read_image(self, brick, band, scale, slc, fn=None):
+    #     img = super(DesLayer,self).read_image(brick, band, scale, slc, fn=fn)
+    #     if scale == 0:
+    #         img /= 10.**((30. - 22.5) / 2.5)
+    #     return img
 
 
 
@@ -4620,6 +4700,8 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     x = int(req.GET['x'], 10)
     y = int(req.GET['y'], 10)
 
+    kind = req.GET.get('kind', 'image')
+
     # half-size in DECam pixels
     size = int(req.GET.get('size', '100'), 10)
     size = min(200, size)
@@ -4637,24 +4719,30 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     H,W = im.shape
     slc = (slice(max(0, y-size), min(H, y+size+1)),
            slice(max(0, x-size), min(W, x+size+1)))
-    tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                               dq=False, invvar=False)
-    #thelayer = get_layer(layer)
-    #rgb = thelayer.get_rgb([tim.data], [tim.band])
-    from legacypipe.survey import get_rgb
-    rgb = get_rgb([tim.data], [tim.band], mnmx=(-1,100.), arcsinh=1.)
-
-    index = dict(g=2, r=1, z=0)[tim.band]
-    bw = rgb[:,:,index]
-    print('BW', bw.shape, bw.dtype)
 
     import tempfile
     f,jpegfn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
-    plt.imsave(jpegfn, bw, vmin=0, vmax=1, cmap='gray', origin='lower')
-    #mn,mx = np.percentile(img.ravel(), [25, 99])
-    #save_jpeg(jpegfn, destimg, origin='lower', cmap='gray',
-    #          vmin=mn, vmax=mx)
+
+    if kind == 'image':
+        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
+                                   dq=False, invvar=False)
+        from legacypipe.survey import get_rgb
+        rgb = get_rgb([tim.data], [tim.band], mnmx=(-1,100.), arcsinh=1.)
+        index = dict(g=2, r=1, z=0)[tim.band]
+        bw = rgb[:,:,index]
+        plt.imsave(jpegfn, bw, vmin=0, vmax=1, cmap='gray', origin='lower')
+
+    elif kind == 'weight':
+        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
+                                   pixels=False, dq=False, invvar=True)
+        plt.imsave(jpegfn, tim.getInvvar(), vmin=0, cmap='gray', origin='lower')
+
+    elif kind == 'dq':
+        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
+                                   pixels=False, dq=True, invvar=False)
+        plt.imsave(jpegfn, tim.dq, vmin=0, cmap='gray', origin='lower')
+
     return send_file(jpegfn, 'image/jpeg', unlink=True)
 
 
@@ -5113,7 +5201,7 @@ def get_layer(name, default=None):
         layer = ZeaLayer('sfd', sfd_map, stretch=stretch_sfd, vmin=0.0, vmax=5.0)
 
 
-    elif 'dr8b' in name:
+    elif 'dr8b' in name or 'dr8c' in name:
         # Generic NON-rebricked
         print('get_layer:', name, '-- generic')
         basename = name
@@ -5124,14 +5212,18 @@ def get_layer(name, default=None):
         survey = get_survey(basename)
         if survey is not None:
             image = DecalsLayer(basename, 'image', survey)
-            model = DecalsLayer(basename + '-model', 'model', survey,
-                                       drname=basename)
+            model = DecalsModelLayer(basename + '-model', 'model', survey,
+                                     drname=basename)
             resid = DecalsResidLayer(image, model, basename + '-resid', 'resid', survey,
                                        drname=basename)
             layers[basename] = image
             layers[basename + '-model'] = model
             layers[basename + '-resid'] = resid
             layer = layers[name]
+
+    elif name == 'hsc':
+        
+        layer = HscLayer('hsc')
     
     if layer is None:
         # Try generic
@@ -5359,7 +5451,11 @@ if __name__ == '__main__':
     #r = c.get('/ps1/1/13/7517/2091.jpg')
     #r = c.get('/cutout-wcs/?crval1=0.00000&crval2=0.00000&crpix1=384.5&crpix2=256.5&cd11=1.4812e-4&cd12=0&cd21=0&cd22=-1.4812e-4&imagew=768&imageh=512&layer=ls-dr67')
     #r = c.get('/dr8-test10/1/9/462/260.jpg')
-    r = c.get('/dr8-test10/1/13/7395/4163.jpg')
+    #r = c.get('/dr8-test10/1/13/7395/4163.jpg')
+    #r = c.get('/hsc/1/15/29582/16839.jpg')
+    #r = c.get('/hsc/1/12/1321/1505.jpg')
+    #r = c.get('/hsc/1/11/660/752.jpg')
+    r = c.get('/hsc/1/8/82/93.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

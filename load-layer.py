@@ -43,17 +43,20 @@ def main():
     #name = 'dr8a'
     #pretty = 'DR8a (rc)'
 
-    if False:
-        indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam/'
-        name = 'dr8b-decam'
-        pretty = 'DR8b DECam'
-        survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam'
+    # indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam/'
+    # name = 'dr8b-decam'
+    # pretty = 'DR8b DECam'
+    # survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam'
 
-    if True:
-        indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-90prime-mosaic/'
-        name = 'dr8b-90p-mos'
-        pretty = 'DR8b BASS+MzLS'
-        survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-90prime-mosaic'
+    # indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-90prime-mosaic/'
+    # name = 'dr8b-90p-mos'
+    # pretty = 'DR8b BASS+MzLS'
+    # survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-90prime-mosaic'
+
+    indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8c/90prime-mosaic/'
+    name = 'dr8c-90p-mos'
+    pretty = 'DR8c BASS+MzLS'
+    survey_dir = '/global/cscratch1/sd/landriau/dr8'
 
     # ln -s /global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam/coadds-only/coadd/ .
 
