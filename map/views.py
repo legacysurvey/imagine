@@ -2285,8 +2285,7 @@ class HscLayer(RebrickedMixin, MapLayer):
         return rgb
 
     def get_base_filename(self, brick, band, **kwargs):
-        path = os.path.join(self.basedir, brick.filename.strip().replace('-R', '-'+band.upper()).
-                            replace('-Z', '-'+band.upper()))
+        path = os.path.join(self.basedir, brick.filename.strip().replace('-Z', '-'+band.upper()))
         return path
 
     def get_bricks(self):
