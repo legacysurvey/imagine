@@ -472,6 +472,8 @@ var GalaxyCatalog = CatalogOverlay.extend({
 });
 
 var lslga_popup = function(json, i) {
+        var ra = json['rd'][i][0];
+        var dec = json['rd'][i][1];
         var name = json['name'][i];
         var pgc = json['pgc'][i];
 	    //name = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
@@ -482,6 +484,7 @@ var lslga_popup = function(json, i) {
         // matching map/cats.py : cat_lslga
         d25 = json['radiusArcsec'][i] * 2 / 60.;
         //s = 'PGC ' + json['pgc'][i] + '<br/>Name ' + json['name'][i] + '<br/>' +
+        s += '<br/>RA Dec='+ra+dec;
         s += '<br/>D(25)='+d25.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngle'][i].toFixed(1)+' deg<br/>';
         z = json['redshift'][i];
         t = json['type'][i];
