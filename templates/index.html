@@ -3178,6 +3178,13 @@ var desi_targets8b = new DesiTargetCatalog('targets-dr8b', 'DESI Targets (DR8b)'
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
 overlays.push(desi_targets8b);
+
+var desi_targets8c = new DesiTargetCatalog('targets-dr8c', 'DESI Targets (DR8c)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+overlays.push(desi_targets8c);
+
 {% for name,pretty in test_cats %}
   var testcat = new DecalsCatalogLayer(tileWatcher,
                                        '{{name}}', '{{pretty}}',
@@ -3363,6 +3370,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
 
 {% if enable_dev %}
 overlayTree.push(findoverlay('targets-dr8b'));
+overlayTree.push(findoverlay('targets-dr8c'));
 {% for name,pretty in test_cats %}
   overlayTree.push(findoverlay('{{name}}'));
 {% endfor %}

@@ -16,6 +16,16 @@ These are postage stamps from the calibrated image files
 (so North is not necessarily up).
 </p>
 
+<p>
+The "Weight" maps are 1/variance of the pixel values, including Poisson noise, so brighter
+areas will have relatively smaller statistical weight.
+</p>
+
+<p>
+The "DQ" maps are flags raised by the Community Pipeline during processing for, eg, Cosmic Rays,
+bad pixels, etc.
+</p>
+
 {% comment %}
 <table>
 <tr>
@@ -41,6 +51,7 @@ SDSS objects: X
 <th>CCD</th>
 <th>Image</th>
 <th>Weight</th>
+<th>Image * (Weight>0)</th>
 <th>DQ</th>
 
 {% comment %}
@@ -68,6 +79,10 @@ SDSS objects: X
 
 <td>
 <img src="{{ ccdurl }}&kind=weight" width="{{ size }}" height="{{ size }}" />
+</td>
+
+<td>
+<img src="{{ ccdurl }}&kind=weightedimage" width="{{ size }}" height="{{ size }}" />
 </td>
 
 <td>

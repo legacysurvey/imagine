@@ -54,3 +54,10 @@ test_layers.append(("dr8c-90p-mos-model", "DR8c BASS+MzLS models"))
 test_layers.append(("dr8c-90p-mos-resid", "DR8c BASS+MzLS residuals"))
 
 test_cats.append(("dr8c-90p-mos", "Catalog: DR8c BASS+MzLS"))
+
+test_layers.append(("dr8c-decam", "DR8c DECam images"))
+test_layers.append(("dr8c-decam-model", "DR8c DECam models"))
+test_layers.append(("dr8c-decam-resid", "DR8c DECam residuals"))
+
+test_cats.append(("dr8c-decam", "Catalog: DR8c DECam"))
+

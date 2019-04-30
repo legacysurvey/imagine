@@ -2255,7 +2255,10 @@ class HscLayer(RebrickedMixin, MapLayer):
         from astrometry.util.util import Tan
         # Scaled tiles (which are 0.5-degree on a side for scale=1) need to be:
         # 0.25 * 3600 / 0.168 ~ 5360 pix
-        size = 5360
+        if scale >= 7:
+            size = 6200
+        else:
+            size = 5360
         pixscale = self.pixscale * 2**scale
         cd = pixscale / 3600.
         crpix = size/2. + 0.5
@@ -4739,6 +4742,15 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
                                    pixels=False, dq=False, invvar=True)
         plt.imsave(jpegfn, tim.getInvvar(), vmin=0, cmap='gray', origin='lower')
 
+    elif kind == 'weightedimage':
+        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
+                                   dq=False, invvar=True)
+        from legacypipe.survey import get_rgb
+        rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band], mnmx=(-1,100.), arcsinh=1.)
+        index = dict(g=2, r=1, z=0)[tim.band]
+        bw = rgb[:,:,index]
+        plt.imsave(jpegfn, bw, vmin=0, vmax=1, cmap='gray', origin='lower')
+
     elif kind == 'dq':
         tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
                                    pixels=False, dq=True, invvar=False)
@@ -5454,7 +5466,8 @@ if __name__ == '__main__':
     #r = c.get('/hsc/1/15/29582/16839.jpg')
     #r = c.get('/hsc/1/12/1321/1505.jpg')
     #r = c.get('/hsc/1/11/660/752.jpg')
-    r = c.get('/hsc/1/8/82/93.jpg')
+    #r = c.get('/hsc/1/8/82/93.jpg')
+    r = c.get('/hsc/1/7/41/40.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

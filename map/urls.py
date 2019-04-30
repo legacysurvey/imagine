@@ -117,6 +117,9 @@ urlpatterns = [
     # DR8b DESI targets
     url(r'^targets-dr8b/(\d+)/cat.json', cats.cat_targets_dr8b),
 
+    # DR8c DESI targets
+    url(r'^targets-dr8c/(\d+)/cat.json', cats.cat_targets_dr8c),
+
     # DR5/6 DESI targets, BGS survey only
     url(r'^targets-bgs-dr56/(\d+)/cat.json', cats.cat_targets_bgs_dr56),
     # DR6/7 DESI targets, BGS survey only

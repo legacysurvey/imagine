@@ -47,6 +47,7 @@ catversions = {
     'targets-dark-dr67': [1,],
     'targets-cmx-dr7': [1,],
     'targets-dr8b': [1,],
+    'targets-dr8c': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
@@ -554,6 +555,10 @@ def cat_targets_dr8b(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr8b-0.29.0.kd.fits'),
     ], tag='targets-dr8b')
+def cat_targets_dr8c(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr8c-PR490.kd.fits'),
+    ], tag='targets-dr8c')
 
 
 def desitarget_color_names(T):
