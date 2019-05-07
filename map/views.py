@@ -368,6 +368,16 @@ def _index(req,
         import traceback
         traceback.print_exc()
 
+    test_ccds = []
+    try:
+        from map.test_layers import test_ccds as tc
+        for la in tc:
+            if not la in test_ccds:
+                test_ccds.append(la)
+    except:
+        import traceback
+        traceback.print_exc()
+
 
     args = dict(ra=ra, dec=dec, zoom=zoom,
                 maxZoom=maxZoom,
@@ -395,6 +405,7 @@ def _index(req,
 
                 test_layers = test_layers,
                 test_cats = test_cats,
+                test_ccds = test_ccds,
     )
 
     args.update(kwargs)

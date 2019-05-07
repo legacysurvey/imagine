@@ -3185,6 +3185,22 @@ var desi_targets8c = new DesiTargetCatalog('targets-dr8c', 'DESI Targets (DR8c)'
                                    'minZoom': 11, });
 overlays.push(desi_targets8c);
 
+{% if enable_dev %}
+{% for name,pretty in test_ccds %}
+var ccds = new PolygonOverlay('{{name}}-ccds', '{{pretty}}',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': '{{name}}',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': '{{name}}',
+                                    });
+overlays.push(ccds);
+{% endfor %}
+{% endif %}
+
+
 {% for name,pretty in test_cats %}
   var testcat = new DecalsCatalogLayer(tileWatcher,
                                        '{{name}}', '{{pretty}}',
@@ -3373,6 +3389,9 @@ overlayTree.push(findoverlay('targets-dr8b'));
 overlayTree.push(findoverlay('targets-dr8c'));
 {% for name,pretty in test_cats %}
   overlayTree.push(findoverlay('{{name}}'));
+{% endfor %}
+{% for name,pretty in test_ccds %}
+  overlayTree.push(findoverlay('{{name}}-ccds'));
 {% endfor %}
 {% endif %}
 

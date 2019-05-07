@@ -1,5 +1,6 @@
 test_layers = []
 test_cats = []
+test_ccds = []
 
 # test_layers.append(("dr8-test1", "DR8 test1 images"))
 # test_layers.append(("dr8-test1-model", "DR8 test1 models"))
@@ -61,3 +62,4 @@ test_layers.append(("dr8c-decam-resid", "DR8c DECam residuals"))
 
 test_cats.append(("dr8c-decam", "Catalog: DR8c DECam"))
 
+test_ccds.append(("dr8c-decam", "CCDs: DR8c DECam"))
