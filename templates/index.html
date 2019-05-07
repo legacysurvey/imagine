@@ -484,7 +484,7 @@ var lslga_popup = function(json, i) {
         // matching map/cats.py : cat_lslga
         d25 = json['radiusArcsec'][i] * 2 / 60.;
         //s = 'PGC ' + json['pgc'][i] + '<br/>Name ' + json['name'][i] + '<br/>' +
-        s += '<br/>RA Dec='+ra+dec;
+        s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
         s += '<br/>D(25)='+d25.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngle'][i].toFixed(1)+' deg<br/>';
         z = json['redshift'][i];
         t = json['type'][i];
