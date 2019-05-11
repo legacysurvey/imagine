@@ -24,6 +24,7 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
+    'mzls+bass-dr8': [1,],
     'decals-dr7': [1,],
     'mzls+bass-dr6': [1,],
     'decals-dr5': [1,],
@@ -1080,6 +1081,9 @@ def cat_decals_dr5(req, ver, zoom, x, y, tag='decals-dr5'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_mobo_dr6(req, ver, zoom, x, y, tag='mzls+bass-dr6'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def cat_mobo_dr8(req, ver, zoom, x, y, tag='mzls+bass-dr8'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_decals_dr7(req, ver, zoom, x, y, tag='decals-dr7'):

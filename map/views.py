@@ -72,6 +72,10 @@ tileversions = {
     'phat': [1,],
     'm33': [1,],
 
+    'mzls+bass-dr8': [1],
+    'mzls+bass-dr8-model': [1],
+    'mzls+bass-dr8-resid': [1],
+
     'decals-dr7': [1],
     'decals-dr7-model': [1],
     'decals-dr7-resid': [1],
@@ -195,6 +199,7 @@ def _index(req,
         enable_dr5 = settings.ENABLE_DR5,
         enable_dr6 = settings.ENABLE_DR6,
         enable_dr7 = settings.ENABLE_DR7,
+        enable_dr8 = settings.ENABLE_DR8,
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         enable_des_dr1 = settings.ENABLE_DES_DR1,
@@ -208,12 +213,15 @@ def _index(req,
         enable_dr6_resids = settings.ENABLE_DR6,
         enable_dr7_models = settings.ENABLE_DR7,
         enable_dr7_resids = settings.ENABLE_DR7,
+        enable_dr8_models = settings.ENABLE_DR8,
+        enable_dr8_resids = settings.ENABLE_DR8,
         enable_dr2_overlays = settings.ENABLE_DR2,
         enable_dr3_overlays = settings.ENABLE_DR3,
         enable_dr4_overlays = settings.ENABLE_DR4,
         enable_dr5_overlays = settings.ENABLE_DR5,
         enable_dr6_overlays = settings.ENABLE_DR6,
         enable_dr7_overlays = settings.ENABLE_DR7,
+        enable_dr8_overlays = settings.ENABLE_DR8,
         enable_eboss = settings.ENABLE_EBOSS,
         enable_desi_targets = True,
         enable_desi_footprint = True,
@@ -3387,6 +3395,10 @@ def layer_name_map(name):
             'mzls bass-dr6-model': 'mzls+bass-dr6-model',
             'mzls bass-dr6-resid': 'mzls+bass-dr6-resid',
 
+            'mzls bass-dr8': 'mzls+bass-dr8',
+            'mzls bass-dr8-model': 'mzls+bass-dr8-model',
+            'mzls bass-dr8-resid': 'mzls+bass-dr8-resid',
+
             'decaps2': 'decaps',
             'decaps2-model': 'decaps-model',
             'decaps2-resid': 'decaps-resid',
@@ -3621,7 +3633,7 @@ def get_survey(name):
     basedir = settings.DATA_DIR
 
     if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5', 'decals-dr7',
-                 'mzls+bass-dr4', 'mzls+bass-dr6',
+                 'mzls+bass-dr4', 'mzls+bass-dr6', 'mzls+bass-dr8',
                  'decaps', 'eboss', 'ls-dr56', 'ls-dr67']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
@@ -3670,6 +3682,9 @@ def get_survey(name):
         elif name == 'decals-dr7':
             d.drname = 'DECaLS DR7'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr7/'
+        elif name == 'mzls+bass-dr8':
+            d.drname = 'MzLS+BASS DR8'
+            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/'
         elif name == 'decaps':
             d.drname = 'DECaPS'
             d.drurl = 'http://legacysurvey.org/'
@@ -5086,6 +5101,17 @@ def get_layer(name, default=None):
 
     elif name == 'des-dr1':
         layer = DesLayer('des-dr1')
+
+    elif name in ['mzls+bass-dr8', 'mzls+bass-dr8-model', 'mzls+bass-dr8-resid']:
+        survey = get_survey('mzls+bass-dr8')
+        image = ReDecalsLayer('mzls+bass-dr8', 'image', survey)
+        model = ReDecalsModelLayer('mzls+bass-dr8-model', 'model', survey, drname='mzls+bass-dr8')
+        resid = ReDecalsResidLayer(image, model, 'mzls+bass-dr8-resid', 'resid', survey,
+                                   drname='mzls+bass-dr8')
+        layers['mzls+bass-dr8'] = image
+        layers['mzls+bass-dr8-model'] = model
+        layers['mzls+bass-dr8-resid'] = resid
+        layer = layers[name]
 
     elif name in ['decals-dr7', 'decals-dr7-model', 'decals-dr7-resid']:
         survey = get_survey('decals-dr7')

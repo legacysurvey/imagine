@@ -45,6 +45,16 @@ urlpatterns = [
     url(r'^des-dr1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('des-dr1')),
 
+    # MzLS+BASS DR8 tiles
+    url(r'^mzls\+bass-dr8/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('mzls+bass-dr8')),
+    url(r'^mzls\+bass-dr8-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('mzls+bass-dr8-model')),
+    url(r'^mzls\+bass-dr8-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('mzls+bass-dr8-resid')),
+    # DR8 catalog
+    url(r'^mzls\+bass-dr8/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr8),
+
     # DR7
     url(r'^decals-dr7/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decals-dr7')),

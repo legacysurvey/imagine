@@ -1526,6 +1526,28 @@ tiles = mylayer_B('des-dr1', 'DES DR1',
                   {'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+{% if enable_dr8 %}
+tiles = mylayer_B('mzls+bass-dr8', 'MzLS+BASS DR8 images',
+                {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+if (defaultTile == null) {
+    defaultTile = tiles;
+}
+
+{% if enable_dr8_models %}
+tiles = mylayer_B('mzls+bass-dr8-model', 'MzLS+BASS DR8 models',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+                                            
+{% if enable_dr8_resids %}
+tiles = mylayer_B('mzls+bass-dr8-resid', 'MzLS+BASS DR8 residuals',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+
 {% if enable_dr67 %}
 tiles = split_layer('ls-dr67', 'LegacySurvey DR6+DR7 images',
                     32.,
@@ -2449,6 +2471,21 @@ var expOverlay7 = new CircleOverlay('decals-dr7-exps',
                                      'dr_name': 'DR7',
                                     });
 {% endif %}
+
+{% if enable_dr8_overlays %}
+var ccdOverlay8 = new PolygonOverlay('mzls+bass-dr8-ccds',
+                                     'MzLS+BASS DR8 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds8',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'mzls+bass-dr8',
+                                     'dr_name': 'DR8',
+                                    });
+{% endif %}
+
                                                      
 var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
                                       {'url': bricks_url,
@@ -2554,6 +2591,9 @@ var polygonOverlays = [
     {% if enable_dr7_overlays %}
     ccdOverlay7, expOverlay7,
     {% endif %}
+    {% if enable_dr8_overlays %}
+    ccdOverlay8,
+    {% endif %}
     brickOverlay,
     unwiseTileOverlay,
     ccdOverlaySdss,
@@ -2617,6 +2657,15 @@ var decalscat7 = new DecalsCatalogLayer(tileWatcher,
                                         {'url': cat_url,
                                          'minZoom': 12,
                                          'urlTerm': 'sources-dr7'});
+{% endif %}
+
+{% if enable_dr8_overlays %}
+var mzlsbasscat8 = new DecalsCatalogLayer(tileWatcher,
+                                          'mzls+bass-dr8',
+                                          'MzLS+BASS DR8 Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr8'});
 {% endif %}
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
@@ -3104,6 +3153,9 @@ var overlays = [
     {% if enable_dr7_overlays %}
     decalscat7,
     {% endif %}
+    {% if enable_dr8_overlays %}
+    mzlsbasscat8,
+    {% endif %}
     {% if enable_dr2_overlays %}
     ccdOverlay2,
     {% endif %}
@@ -3121,6 +3173,9 @@ var overlays = [
     {% endif %}
     {% if enable_dr7_overlays %}
     ccdOverlay7,
+    {% endif %}
+    {% if enable_dr8_overlays %}
+    ccdOverlay8,
     {% endif %}
     {% if enable_dr2_overlays %}
     expOverlay2,
@@ -3258,6 +3313,12 @@ var baseTree1 = [
     {% if enable_dr56 %}
     findlayer('ls-dr56'),
     {% endif %}
+    {% endif %}
+    {% if enable_dr8 %}
+    findlayer('mzls+bass-dr8', [
+        findlayer('mzls+bass-dr8-model'),
+        findlayer('mzls+bass-dr8-resid'),
+    ]),
     {% endif %}
     {% if enable_dr7 %}
     findlayer('decals-dr7', [
@@ -3406,6 +3467,9 @@ overlayTree.push(findoverlay('targets-dr8c'));
 
      {% if enable_dr7_overlays %}
      findoverlay('decals-dr7-ccds', [
+         {% if enable_dr8_overlays %}
+         findoverlay('mzls+bass-dr8-ccds'),
+         {% endif %}
          {% if enable_dr6_overlays %}
          findoverlay('mzls+bass-dr6-ccds'),
          {% endif %}
@@ -3435,6 +3499,9 @@ overlayTree.push(findoverlay('targets-dr8c'));
        children: [
            
 
+           {% if enable_dr8_overlays %}
+           findoverlay('mzls+bass-dr8'),
+           {% endif %}
            {% if enable_dr6_overlays %}
            findoverlay('mzls+bass-dr6'),
            {% endif %}
