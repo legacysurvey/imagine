@@ -2254,7 +2254,10 @@ class HscLayer(RebrickedMixin, MapLayer):
         from astrometry.util.util import Tan
         # Scaled tiles (which are 0.5-degree on a side for scale=1) need to be:
         # 0.25 * 3600 / 0.168 ~ 5360 pix
-        size = 5360
+        if scale >= 7:
+            size = 6200
+        else:
+            size = 5360
         pixscale = self.pixscale * 2**scale
         cd = pixscale / 3600.
         crpix = size/2. + 0.5
@@ -2284,7 +2287,7 @@ class HscLayer(RebrickedMixin, MapLayer):
         return rgb
 
     def get_base_filename(self, brick, band, **kwargs):
-        path = os.path.join(self.basedir, brick.filename.strip().replace('-R', '-'+band.upper()))
+        path = os.path.join(self.basedir, brick.filename.strip().replace('-Z', '-'+band.upper()))
         return path
 
     def get_bricks(self):
