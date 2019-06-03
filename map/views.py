@@ -4769,7 +4769,7 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
 
     elif kind == 'weightedimage':
         tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   dq=False, invvar=True)
+                                   dq=False, invvar=True, old_calibs_ok=True)
         from legacypipe.survey import get_rgb
         rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band], mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, z=0)[tim.band]
@@ -5504,7 +5504,8 @@ if __name__ == '__main__':
     #r = c.get('/hsc/1/11/660/752.jpg')
     #r = c.get('/hsc/1/8/82/93.jpg')
     #r = c.get('/hsc/1/7/41/40.jpg')
-    r = c.get('/cutout_panels/decals-dr7/634843/S24/?x=1658&y=799&size=100')
+    #r = c.get('/cutout_panels/decals-dr7/634843/S24/?x=1658&y=799&size=100')
+    r = c.get('/cutout_panels/decals-dr7/392804/N13/?x=1723&y=2989&size=100&kind=weightedimage')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
