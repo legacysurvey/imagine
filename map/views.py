@@ -4491,7 +4491,6 @@ def cutouts_common(req, tgz, copsf):
     brick = brick.to_dict()
     
     from django.shortcuts import render
-    from django.core.urlresolvers import reverse
 
     url = req.build_absolute_uri('/') + settings.ROOT_URL + '/cutout_panels/%s/%i/%s/'
     # Deployment: http://{s}.DOMAIN/...
@@ -4729,7 +4728,7 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
 
     if kind == 'image':
         tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   dq=False, invvar=False)
+                                   dq=False, invvar=False, old_calibs_ok=True)
         from legacypipe.survey import get_rgb
         rgb = get_rgb([tim.data], [tim.band], mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, z=0)[tim.band]
@@ -4738,12 +4737,12 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
 
     elif kind == 'weight':
         tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   pixels=False, dq=False, invvar=True)
+                                   pixels=False, dq=False, invvar=True, old_calibs_ok=True)
         plt.imsave(jpegfn, tim.getInvvar(), vmin=0, cmap='gray', origin='lower')
 
     elif kind == 'dq':
         tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   pixels=False, dq=True, invvar=False)
+                                   pixels=False, dq=True, invvar=False, old_calibs_ok=True)
         plt.imsave(jpegfn, tim.dq, vmin=0, cmap='gray', origin='lower')
 
     return send_file(jpegfn, 'image/jpeg', unlink=True)
@@ -5458,7 +5457,8 @@ if __name__ == '__main__':
     #r = c.get('/hsc/1/15/29582/16839.jpg')
     #r = c.get('/hsc/1/12/1321/1505.jpg')
     #r = c.get('/hsc/1/11/660/752.jpg')
-    r = c.get('/hsc/1/8/82/93.jpg')
+    #r = c.get('/hsc/1/8/82/93.jpg')
+    r = c.get('/cutout_panels/decals-dr7/634843/S24/?x=1658&y=799&size=100')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
