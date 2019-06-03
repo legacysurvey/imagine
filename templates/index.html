@@ -1528,7 +1528,7 @@ allLayers.push(tiles);
 
 {% if enable_dr8 %}
 tiles = mylayer_B('mzls+bass-dr8', 'MzLS+BASS DR8 images',
-                {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                {'urlPatterns': [ [13, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 if (defaultTile == null) {
     defaultTile = tiles;
@@ -1536,13 +1536,13 @@ if (defaultTile == null) {
 
 {% if enable_dr8_models %}
 tiles = mylayer_B('mzls+bass-dr8-model', 'MzLS+BASS DR8 models',
-                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [13, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
                                             
 {% if enable_dr8_resids %}
 tiles = mylayer_B('mzls+bass-dr8-resid', 'MzLS+BASS DR8 residuals',
-                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [13, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 {% endif %}

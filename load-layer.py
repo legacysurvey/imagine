@@ -66,6 +66,14 @@ def main():
     pretty = 'DR8c DECam'
     #rsync = True
 
+    indir = 'data/dr8i-decam'
+    name = 'dr8i-decam'
+    pretty = 'DR8i DECam'
+
+    indir = 'data/dr8i-90p-mos'
+    name = 'dr8i-90p-mos'
+    pretty = 'DR8i MzLS+BASS'
+
     sublayers = ['', '-model', '-resid']
     subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
     # survey_dir = '/global/cscratch1/sd/desiproc/dr7'

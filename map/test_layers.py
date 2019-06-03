@@ -61,5 +61,20 @@ test_layers.append(("dr8c-decam-model", "DR8c DECam models"))
 test_layers.append(("dr8c-decam-resid", "DR8c DECam residuals"))
 
 test_cats.append(("dr8c-decam", "Catalog: DR8c DECam"))
-
 test_ccds.append(("dr8c-decam", "CCDs: DR8c DECam"))
+
+
+test_layers.append(("dr8i-decam", "DR8i DECam images"))
+test_layers.append(("dr8i-decam-model", "DR8i DECam models"))
+test_layers.append(("dr8i-decam-resid", "DR8i DECam residuals"))
+
+test_layers.append(("dr8i-90p-mos", "DR8i MzLS+BASS images"))
+test_layers.append(("dr8i-90p-mos-model", "DR8i MzLS+BASS models"))
+test_layers.append(("dr8i-90p-mos-resid", "DR8i MzLS+BASS residuals"))
+
+test_cats.append(("dr8i-decam", "Catalog: DR8i DECam"))
+test_cats.append(("dr8i-90p-mos", "Catalog: DR8i MzLS+BASS"))
+
+test_ccds.append(("dr8i-decam", "CCDs: DR8i DECam"))
+test_ccds.append(("dr8i-90p-mos", "CCDs: DR8i MzLS+BASS"))
+

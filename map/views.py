@@ -5251,7 +5251,7 @@ def get_layer(name, default=None):
         layer = ZeaLayer('sfd', sfd_map, stretch=stretch_sfd, vmin=0.0, vmax=5.0)
 
 
-    elif 'dr8b' in name or 'dr8c' in name:
+    elif 'dr8b' in name or 'dr8c' in name or 'dr8i' in name:
         # Generic NON-rebricked
         print('get_layer:', name, '-- generic')
         basename = name
