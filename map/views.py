@@ -3642,6 +3642,8 @@ def get_survey(name):
             d = MyLegacySurveyData(survey_dir=dirnm, version='dr2')
         elif name == 'decaps':
             d = Decaps2LegacySurveyData(survey_dir=dirnm)
+        elif name == 'decals-dr5':
+            d = LegacySurveyData(survey_dir=dirnm)
         elif name in ['mzls+bass-dr6']:
             # CCDs table has no 'photometric' etc columns.
             d = LegacySurveyData(survey_dir=dirnm)
@@ -5505,7 +5507,8 @@ if __name__ == '__main__':
     #r = c.get('/hsc/1/8/82/93.jpg')
     #r = c.get('/hsc/1/7/41/40.jpg')
     #r = c.get('/cutout_panels/decals-dr7/634843/S24/?x=1658&y=799&size=100')
-    r = c.get('/cutout_panels/decals-dr7/392804/N13/?x=1723&y=2989&size=100&kind=weightedimage')
+    #r = c.get('/cutout_panels/decals-dr7/392804/N13/?x=1723&y=2989&size=100&kind=weightedimage')
+    r = c.get('/cutout_panels/decals-dr5/335553/N17/?x=1034&y=800&size=100')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
