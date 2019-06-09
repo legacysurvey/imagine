@@ -1767,6 +1767,12 @@ tiles = mylayer_B('hsc', 'HSC images',
 allLayers.push(tiles);
 
 
+tiles = mylayer_B('hsc2', 'HSC DR2 images',
+                  {//'attribution': sdss_attrib,
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
 {% if enable_vlass %}
 tiles = mylayer_B('vlass', 'VLASS images',
                   {'attribution': 'NRAO',
@@ -3382,6 +3388,7 @@ var baseTree1 = [
             findlayer('ps1'),
             {% endif %}
             findlayer('hsc'),
+            findlayer('hsc2'),
             {% if enable_vlass %}
             findlayer('vlass'),
             {% endif %}

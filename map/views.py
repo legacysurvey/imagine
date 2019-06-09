@@ -62,6 +62,7 @@ tileversions = {
     'sdssco': [1,],
     'ps1': [1],
     'hsc': [1],
+    'hsc2': [1],
 
     'vlass': [1],
 
@@ -1315,6 +1316,7 @@ class MapLayer(object):
 
         if (not get_images) and (wcs is None):
             tilefn = self.get_tile_filename(ver, zoom, x, y)
+            print('Tile image filename:', tilefn, 'exists?', os.path.exists(tilefn))
             if os.path.exists(tilefn) and not ignoreCached:
                 print('Sending tile', tilefn)
                 return send_file(tilefn, 'image/jpeg', expires=oneyear,
@@ -2276,6 +2278,8 @@ class HscLayer(RebrickedMixin, MapLayer):
         # 0.25 * 3600 / 0.168 ~ 5360 pix
         if scale >= 7:
             size = 6200
+        elif scale == 6:
+            size = 5600
         else:
             size = 5360
         pixscale = self.pixscale * 2**scale
@@ -2331,6 +2335,14 @@ class HscLayer(RebrickedMixin, MapLayer):
     #         img /= 10.**((30. - 22.5) / 2.5)
     #     return img
 
+    def read_wcs(self, brick, band, scale, fn=None):
+        from map.coadds import read_tan_from_header
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        if fn is None:
+            return None
+        ext = self.get_fits_extension(scale, fn)
+        return read_tan_from_header(fn, ext)
 
 
 class LegacySurveySplitLayer(MapLayer):
@@ -5275,6 +5287,10 @@ def get_layer(name, default=None):
     elif name == 'hsc':
         
         layer = HscLayer('hsc')
+
+    elif name == 'hsc2':
+
+        layer = HscLayer('hsc-dr2')
     
     if layer is None:
         # Try generic
@@ -5507,8 +5523,11 @@ if __name__ == '__main__':
     #r = c.get('/hsc/1/8/82/93.jpg')
     #r = c.get('/hsc/1/7/41/40.jpg')
     #r = c.get('/cutout_panels/decals-dr7/634843/S24/?x=1658&y=799&size=100')
-    #r = c.get('/cutout_panels/decals-dr7/392804/N13/?x=1723&y=2989&size=100&kind=weightedimage')
-    r = c.get('/cutout_panels/decals-dr5/335553/N17/?x=1034&y=800&size=100')
+    #class r = c.get('/cutout_panels/decals-dr7/392804/N13/?x=1723&y=2989&size=100&kind=weightedimage')
+    #r = c.get('/cutout_panels/decals-dr5/335553/N17/?x=1034&y=800&size=100')
+    #r = c.get('/hsc2/1/15/16505/16429.jpg')
+    #r = c.get('/hsc2/1/8/116/129.jpg')
+    r = c.get('/hsc2/1/1/0/0.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

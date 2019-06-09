@@ -717,7 +717,7 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
     elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
-                      'galex', 'wssa', 'vlass', 'hsc']:
+                      'galex', 'wssa', 'vlass', 'hsc', 'hsc2']:
         if opt.maxdec is None:
             opt.maxdec = 90.
         if opt.mindec is None:
@@ -834,7 +834,7 @@ def main():
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                         'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
-                        'galex', 'wssa', 'des-dr1', 'hsc',
+                        'galex', 'wssa', 'des-dr1', 'hsc', 'hsc2',
                     ] or opt.kind.startswith('dr8-test'): # or True:
             from map.views import get_layer
 
