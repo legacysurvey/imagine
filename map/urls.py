@@ -214,8 +214,11 @@ urlpatterns = [
     url(r'^tycho2/(\d+)/cat.json', cats.cat_tycho2),
 
     # Cutouts
-    url(r'^jpeg-cutout', cutouts.jpeg_cutout, name='cutout-jpeg'),
+    #url(r'^jpeg-cutout', cutouts.jpeg_cutout, name='cutout-jpeg'),
+    url(r'^cutout.jpg', cutouts.jpeg_cutout, name='cutout-jpeg'),
+    url(r'^jpeg-cutout', cutouts.jpeg_cutout),
     url(r'^fits-cutout', cutouts.fits_cutout, name='cutout-fits'),
+
 
     # NGC/IC/UGC galaxies
     url(r'^ngc/(\d+)/cat.json', cats.cat_gals),
