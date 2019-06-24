@@ -24,6 +24,7 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
+    'dr8-north': [1,],
     'mzls+bass-dr8': [1,],
     'decals-dr7': [1,],
     'mzls+bass-dr6': [1,],

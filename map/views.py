@@ -73,6 +73,10 @@ tileversions = {
     'phat': [1,],
     'm33': [1,],
 
+    'dr8-north': [1],
+    'dr8-north-model': [1],
+    'dr8-north-resid': [1],
+
     'mzls+bass-dr8': [1],
     'mzls+bass-dr8-model': [1],
     'mzls+bass-dr8-resid': [1],
@@ -201,6 +205,10 @@ def _index(req,
         enable_dr6 = settings.ENABLE_DR6,
         enable_dr7 = settings.ENABLE_DR7,
         enable_dr8 = settings.ENABLE_DR8,
+        enable_dr8_north = settings.ENABLE_DR8,
+        enable_dr8_north_models = settings.ENABLE_DR8,
+        enable_dr8_north_resids = settings.ENABLE_DR8,
+        enable_dr8_north_overlays = settings.ENABLE_DR8,
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         enable_des_dr1 = settings.ENABLE_DES_DR1,
@@ -5527,7 +5535,13 @@ if __name__ == '__main__':
     #r = c.get('/cutout_panels/decals-dr5/335553/N17/?x=1034&y=800&size=100')
     #r = c.get('/hsc2/1/15/16505/16429.jpg')
     #r = c.get('/hsc2/1/8/116/129.jpg')
-    r = c.get('/hsc2/1/1/0/0.jpg')
+    #r = c.get('/hsc2/1/1/0/0.jpg')
+    r = c.get('/dr8-north/1/14/7696/5555.jpg')
+    r = c.get('/dr8-north/1/13/3848/2777.jpg')
+    r = c.get('/dr8-north/1/12/1924/1388.jpg')
+    r = c.get('/dr8-north/1/11/962/695.jpg')
+    r = c.get('/dr8-north/1/10/481/347.jpg')
+    r = c.get('/dr8-north/1/9/240/173.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

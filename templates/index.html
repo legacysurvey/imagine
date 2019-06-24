@@ -1584,6 +1584,23 @@ tiles = split_layer('ls-dr56', 'LegacySurvey DR5+DR6 images',
 allLayers.push(tiles);
 {% endif %}
 
+{% if enable_dr8_north %}
+tiles = mylayer_B('dr8-north', 'Legacy Surveys DR8-north images',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% if enable_dr8_north_models %}
+tiles = mylayer_B('dr8-north-model', 'Legacy Surveys DR8-north models',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr8_north_resids %}
+tiles = mylayer_B('dr8-north-resid', 'Legacy Surveys DR8-north residuals',
+                  {'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+
 {% if enable_dr7 %}
 tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
                   {'urlPatterns': [ [11, maxZoom, tile_url], ],});
@@ -2492,8 +2509,23 @@ var ccdOverlay8 = new PolygonOverlay('mzls+bass-dr8-ccds',
                                     });
 {% endif %}
 
+{% if enable_dr8_north_overlays %}
+var ccdOverlay8n = new PolygonOverlay('dr8-north-ccds',
+                                     'Legacy Surveys DR8-north CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds8n',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'dr8-north',
+                                     'dr_name': 'DR8N',
+                                    });
+{% endif %}
+
+
                                                      
-var brickOverlay = new PolygonOverlay('decals-bricks', 'DECaLS Bricks',
+var brickOverlay = new PolygonOverlay('decals-bricks', 'Legacy Surveys Bricks',
                                       {'url': bricks_url,
                                        'minZoom': 1,
                                        'labelMinZoom': 100,
@@ -2600,6 +2632,9 @@ var polygonOverlays = [
     {% if enable_dr8_overlays %}
     ccdOverlay8,
     {% endif %}
+    {% if enable_dr8_north_overlays %}
+    ccdOverlay8n,
+    {% endif %}
     brickOverlay,
     unwiseTileOverlay,
     ccdOverlaySdss,
@@ -2672,6 +2707,15 @@ var mzlsbasscat8 = new DecalsCatalogLayer(tileWatcher,
                                           {'url': cat_url,
                                            'minZoom': 12,
                                            'urlTerm': 'sources-dr8'});
+{% endif %}
+
+{% if enable_dr8_north_overlays %}
+var dr8northcat = new DecalsCatalogLayer(tileWatcher,
+                                        'dr8-north',
+                                          'Legacy Surveys DR8-north Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr8n'});
 {% endif %}
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
@@ -3162,6 +3206,9 @@ var overlays = [
     {% if enable_dr8_overlays %}
     mzlsbasscat8,
     {% endif %}
+    {% if enable_dr8_north_overlays %}
+    dr8northcat,
+    {% endif %}
     {% if enable_dr2_overlays %}
     ccdOverlay2,
     {% endif %}
@@ -3179,6 +3226,9 @@ var overlays = [
     {% endif %}
     {% if enable_dr7_overlays %}
     ccdOverlay7,
+    {% endif %}
+    {% if enable_dr8_north_overlays %}
+    ccdOverlay8n,
     {% endif %}
     {% if enable_dr8_overlays %}
     ccdOverlay8,
@@ -3324,6 +3374,12 @@ var baseTree1 = [
     findlayer('mzls+bass-dr8', [
         findlayer('mzls+bass-dr8-model'),
         findlayer('mzls+bass-dr8-resid'),
+    ]),
+    {% endif %}
+    {% if enable_dr8_north %}
+    findlayer('dr8-north', [
+        findlayer('dr8-north-model'),
+        findlayer('dr8-north-resid'),
     ]),
     {% endif %}
     {% if enable_dr7 %}
@@ -3472,6 +3528,9 @@ overlayTree.push(findoverlay('targets-dr8c'));
      {% endif %}    
      findoverlay('decals-bricks'),
 
+     {% if enable_dr8_north_overlays %}
+     findoverlay('dr8-north-ccds'),
+     {% endif %}
      {% if enable_dr7_overlays %}
      findoverlay('decals-dr7-ccds', [
          {% if enable_dr8_overlays %}
@@ -3500,6 +3559,11 @@ overlayTree.push(findoverlay('targets-dr8c'));
          {% endif %}
      ]),
      {% endif %}
+
+     {% if enable_dr8_north_overlays %}
+     findoverlay('dr8-north'),
+     {% endif %}
+
      {% if enable_dr7_overlays %}
      { label: 'DECaLS DR7 catalog',
        layer: namedOverlays['decals-dr7'].getGroup(),
