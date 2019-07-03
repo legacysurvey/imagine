@@ -8,12 +8,6 @@ if __name__ == '__main__':
     os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
     django.setup()
-    #print('Django:', django.__file__)
-    #print('Version:', django.get_version())
-
-    #from viewer import settings
-    #settings.ALLOWED_HOSTS += 'testserver'
-
 
 import os
 import sys
@@ -63,10 +57,11 @@ tileversions = {
     'ps1': [1],
     'hsc': [1],
     'hsc2': [1],
-
     'vlass': [1],
-
     'sdss2': [1,],
+    '2mass': [1],
+    'galex': [1],
+    'des-dr1': [1],
 
     'eboss': [1,],
 
@@ -77,9 +72,13 @@ tileversions = {
     'dr8-north-model': [1],
     'dr8-north-resid': [1],
 
-    'mzls+bass-dr8': [1],
-    'mzls+bass-dr8-model': [1],
-    'mzls+bass-dr8-resid': [1],
+    'dr8-north': [1],
+    'dr8-north-model': [1],
+    'dr8-north-resid': [1],
+
+    'dr8': [1],
+    'dr8-model': [1],
+    'dr8-resid': [1],
 
     'decals-dr7': [1],
     'decals-dr7-model': [1],
@@ -102,30 +101,15 @@ tileversions = {
     'mzls+bass-dr4-model': [1,2],
     'mzls+bass-dr4-resid': [1,2],
 
-    'decals-dr3': [1],
-    'decals-dr3-model': [1],
-    'decals-dr3-resid': [1],
-
-    'decals-dr2': [1, 2],
-    'decals-dr2-model': [1],
-    'decals-dr2-resid': [1],
-
     'unwise-w1w2': [1],
     'unwise-neo2': [1],
     'unwise-neo3': [1],
     'unwise-neo4': [1],
-    #'unwise-w3w4': [1],
 
     'unwise-cat-model': [1],
 
-    '2mass': [1],
-    'galex': [1],
-
-    'des-dr1': [1],
-
     'cutouts': [1],
 
-    'ls-dr56': [1],
     'ls-dr67': [1],
     }
 
@@ -175,6 +159,7 @@ def is_m33(req):
     return (host == 'm33.legacysurvey.org')
 
 def index(req, **kwargs):
+    print('Host is', req.META.get('HTTP_HOST', None))
     if is_decaps(req):
         return decaps(req)
     if is_m33(req):
@@ -198,8 +183,6 @@ def _index(req,
         enable_cutouts = settings.ENABLE_CUTOUTS,
         enable_dr67 = settings.ENABLE_DR67,
         enable_dr56 = settings.ENABLE_DR56,
-        enable_dr2 = settings.ENABLE_DR2,
-        enable_dr3 = settings.ENABLE_DR3,
         enable_dr4 = settings.ENABLE_DR4,
         enable_dr5 = settings.ENABLE_DR5,
         enable_dr6 = settings.ENABLE_DR6,
@@ -212,8 +195,6 @@ def _index(req,
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         enable_des_dr1 = settings.ENABLE_DES_DR1,
-        enable_dr3_models = settings.ENABLE_DR3,
-        enable_dr3_resids = settings.ENABLE_DR3,
         enable_dr4_models = settings.ENABLE_DR4,
         enable_dr4_resids = settings.ENABLE_DR4,
         enable_dr5_models = settings.ENABLE_DR5,
@@ -224,8 +205,6 @@ def _index(req,
         enable_dr7_resids = settings.ENABLE_DR7,
         enable_dr8_models = settings.ENABLE_DR8,
         enable_dr8_resids = settings.ENABLE_DR8,
-        enable_dr2_overlays = settings.ENABLE_DR2,
-        enable_dr3_overlays = settings.ENABLE_DR3,
         enable_dr4_overlays = settings.ENABLE_DR4,
         enable_dr5_overlays = settings.ENABLE_DR5,
         enable_dr6_overlays = settings.ENABLE_DR6,
@@ -236,8 +215,8 @@ def _index(req,
         enable_desi_footprint = True,
         enable_spectra = True,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
-        #enable_phat = False,
-        enable_phat = True,
+        enable_phat = False,
+        #enable_phat = True,
     )
 
     for k in kwargs.keys():
@@ -433,29 +412,45 @@ def _index(req,
 
 
 def decaps(req):
-    return _index(req, enable_decaps=True,
-                 enable_dr3_models=False,
-                 enable_dr3_resids=False,
-                 enable_dr4_models=False,
-                 enable_dr4_resids=False,
-                 enable_dr5_models=False,
-                 enable_dr5_resids=False,
-                 enable_dr3=False,
-                 enable_dr5=True,
-                 enable_ps1=False,
-                 enable_dr3_overlays=False,
-                 enable_dr4_overlays=False,
-                 enable_dr5_overlays=False,
-                 enable_desi_targets=False,
-                 enable_spectra=False,
-                 default_layer='decaps',
-                 default_radec=(225.0, -63.2),
-                 default_zoom=10,
-                 rooturl=settings.ROOT_URL + '/decaps',
+    return _index(req,
+                  enable_decaps=True,
+                  enable_dr4_models=False,
+                  enable_dr4_resids=False,
+                  enable_dr5_models=False,
+                  enable_dr5_resids=False,
+                  enable_dr5=True,
+                  enable_ps1=False,
+                  enable_dr4_overlays=False,
+                  enable_dr5_overlays=False,
+                  enable_desi_targets=False,
+                  enable_spectra=False,
+                  default_layer='decaps',
+                  default_radec=(225.0, -63.2),
+                  default_zoom=10,
+                  rooturl=settings.ROOT_URL + '/decaps',
     )
 
+def dr5(req):
+    return _index(req, enable_decaps=True,
+                  enable_ps1=False,
+                  enable_desi_targets=True,
+                  default_layer='decals-dr5',
+                  default_radec=(234.7, 13.6),
+                  rooturl=settings.ROOT_URL + '/dr5',
+              )
+
+def dr6(req):
+    return _index(req, enable_decaps=True,
+                  enable_ps1=False,
+                  enable_desi_targets=True,
+                  default_layer='mzls+bass-dr6',
+                  default_radec=(175.32, 47.69),
+                  rooturl=settings.ROOT_URL + '/dr6',
+              )
+
 def m33(req):
-    return _index(req, enable_m33=True,
+    return _index(req,
+                  enable_m33=True,
                   enable_decaps=True,
                   enable_dev=False,
                   enable_dr7=False,
@@ -463,45 +458,23 @@ def m33(req):
                   enable_dr5=False,
                   enable_dr4=False,
                   enable_dr56=False,
-                 enable_dr3=False,
-                 enable_dr3_models=False,
-                 enable_dr3_resids=False,
-                 enable_dr4_models=False,
-                 enable_dr4_resids=False,
-                 enable_dr5_models=False,
-                 enable_dr5_resids=False,
-                 enable_ps1=False,
-                 enable_dr3_overlays=False,
-                 enable_dr4_overlays=False,
-                 enable_dr5_overlays=False,
-                 enable_dr7_overlays=False,
-                 enable_desi_footprint=False,
-                 enable_desi_targets=False,
-                 enable_spectra=False,
-                 default_layer='m33',
-                 default_radec=(23.390, 30.692),
-                 default_zoom=16,
+                  enable_dr4_models=False,
+                  enable_dr4_resids=False,
+                  enable_dr5_models=False,
+                  enable_dr5_resids=False,
+                  enable_ps1=False,
+                  enable_dr4_overlays=False,
+                  enable_dr5_overlays=False,
+                  enable_dr7_overlays=False,
+                  enable_desi_footprint=False,
+                  enable_desi_targets=False,
+                  enable_spectra=False,
+                  default_layer='m33',
+                  default_radec=(23.390, 30.692),
+                  default_zoom=16,
                   maxZoom=18,
                   maxNativeZoom = 18,
-                 rooturl=settings.ROOT_URL + '/m33',
-    )
-
-def dr5(req):
-    return _index(req, enable_decaps=True,
-                 enable_ps1=False,
-                 enable_desi_targets=True,
-                 default_layer='decals-dr5',
-                 default_radec=(234.7, 13.6),
-                 rooturl=settings.ROOT_URL + '/dr5',
-    )
-
-def dr6(req):
-    return _index(req, enable_decaps=True,
-                 enable_ps1=False,
-                 enable_desi_targets=True,
-                 default_layer='mzls+bass-dr6',
-                 default_radec=(175.32, 47.69),
-                 rooturl=settings.ROOT_URL + '/dr6',
+                  rooturl=settings.ROOT_URL + '/m33',
     )
 
 def phat(req):
@@ -512,7 +485,7 @@ def phat(req):
                   default_radec=(11.04, 41.48),
                   rooturl=settings.ROOT_URL + '/phat',
                   maxZoom=18,
-    )
+              )
 
 def query_ned(q):
     try:
@@ -1569,200 +1542,6 @@ class MapLayer(object):
         return view
 
      
-class PhatLayer(MapLayer):
-    def __init__(self, name, **kwargs):
-        import fitsio
-        from astrometry.util.util import Tan
-        #from astrometry.util.util import anwcs_open_wcslib
-        super(PhatLayer, self).__init__(name, **kwargs)
-        self.nativescale = 17
-        self.pixscale = 0.05
-        fn = os.path.join(settings.DATA_DIR, 'm31_full.fits')
-        self.fits = fitsio.FITS(fn)[0]
-        #self.wcs = anwcs_open_wcslib(fn, 0)
-        self.wcs = Tan(fn, 0)
-        #print('WCS:', self.wcs)
-
-    def read_image(self, brick, band, scale, slc, fn=None):
-        import numpy as np
-        img = super(PhatLayer,self).read_image(brick, band, scale, slc, fn=fn)
-        return img.astype(np.float32)
-
-    def get_bands(self):
-        ### FIXME
-        return 'BGR'
-
-    def get_base_filename(self, brick, band, **kwargs):
-        #return os.path.join(settings.DATA_DIR, 'm31_full.fits')
-        return os.path.join(settings.DATA_DIR, 'm31_full_%s.fits' % band)
-
-    def get_scaled_filename(self, brick, band, scale):
-        #return os.path.join(settings.DATA_DIR, 'm31_full_scale%i.fits' % scale)
-        return os.path.join(settings.DATA_DIR, 'm31_full_%s_scale%i.fits' % (band, scale))
-
-    def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
-                        scale=None, tempfiles=None):
-        import numpy as np
-        from astrometry.util.resample import resample_with_wcs, OverlapError
-
-        if scale is None:
-            scale = self.get_scale(zoom, x, y, wcs)
-
-        #if bricks is None or len(bricks) == 0:
-        #    print('No bricks touching WCS')
-        #    return None
-
-        if bands is None:
-            bands = self.get_bands()
-
-        W = int(wcs.get_width())
-        H = int(wcs.get_height())
-        r,d = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
-                                [1,H/2,H,H,H,H/2,1,1])[-2:]
-
-        #print('Tile RA,Decs:', r,d)
-
-        rimgs = []
-        # scaled down.....
-        # call get_filename to possibly generate scaled version
-        for band in bands:
-            brick = None
-            fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
-            print('scale', scale, 'band', band, 'fn', fn)
-
-            try:
-                bwcs = self.read_wcs(brick, band, scale, fn=fn)
-                if bwcs is None:
-                    print('No such file:', brick, band, scale, 'fn', fn)
-                    continue
-            except:
-                print('Failed to read WCS:', brick, band, scale, 'fn', fn)
-                savecache = False
-                import traceback
-                import sys
-                traceback.print_exc(None, sys.stdout)
-                continue
-
-            # Check for pixel overlap area
-            ok,xx,yy = bwcs.radec2pixelxy(r, d)
-            xx = xx.astype(np.int)
-            yy = yy.astype(np.int)
-            imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
-            M = 10
-            xlo = np.clip(xx.min() - M, 0, imW)
-            xhi = np.clip(xx.max() + M, 0, imW)
-            ylo = np.clip(yy.min() - M, 0, imH)
-            yhi = np.clip(yy.max() + M, 0, imH)
-
-            #print('My WCS xx,yy', xx, yy, 'imW,H', imW, imH, 'xlohi', xlo,xhi, 'ylohi', ylo,yhi)
-
-            if xlo >= xhi or ylo >= yhi:
-                print('No pixel overlap')
-                return
-
-            subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
-            slc = slice(ylo,yhi), slice(xlo,xhi)
-
-            try:
-                img = self.read_image(brick, band, scale, slc, fn=fn)
-            except:
-                print('Failed to read image:', brickname, band, scale, 'fn', fn)
-                savecache = False
-                import traceback
-                import sys
-                traceback.print_exc(None, sys.stdout)
-                continue
-
-            #print('Read image slice', img.shape)
-
-            try:
-                Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
-            except OverlapError:
-                #debug('Resampling exception')
-                return
-
-            rimg = np.zeros((H,W), np.float32)
-            rimg[Yo,Xo] = img[Yi,Xi]
-            rimgs.append(rimg)
-
-        return rimgs
-
-    def get_rgb(self, imgs, bands, **kwargs):
-        import numpy as np
-        sz = imgs[0].shape
-        #mapping = np.zeros(256, np.uint8)
-        lo,hi = 0.15, 0.8
-        mapping = np.clip(np.round((np.arange(256) - lo*255) / (hi - lo)), 0, 255).astype(np.uint8)
-        rgb = np.zeros((sz[0],sz[1],3), np.uint8)
-        for i,img in zip([2,1,0], imgs):
-            rgb[:,:,i] = mapping[img.astype(int)]
-        return rgb
-
-class M33Layer(PhatLayer):
-    '''
-# Image files:
-tifftopnm data/m33/M33_F814W_F475W_mosaic_181216_MJD.tif | ppmtorgb3 -
-pamflip -tb -- -.red | an-pnmtofits -o data/m33/m33-R.fits -v &
-pamflip -tb -- -.grn | an-pnmtofits -o data/m33/m33-G.fits -v &
-pamflip -tb -- -.blu | an-pnmtofits -o data/m33/m33-B.fits -v &
-
-# WCS header:
-hdr = fitsio.read_header('/Users/dstn/Downloads/F475W_wcs.fits')
-outhdr = fitsio.FITSHDR()
-for key in ['SIMPLE', 'BITPIX', 'NAXIS', 'WCSAXES', 'CRPIX1', 'CRPIX2', 'CTYPE1', 'CTYPE2', 'CRVAL1', 'CRVAL2']:
-    v = hdr[key]
-    outhdr[key] = v
-outhdr
-outhdr['CD1_1'] = hdr['CDELT1'] * hdr['PC1_1']
-outhdr['CD1_2'] = hdr['CDELT1'] * hdr['PC1_2']
-outhdr['CD2_1'] = hdr['CDELT2'] * hdr['PC2_1']
-outhdr['CD2_2'] = hdr['CDELT2'] * hdr['PC2_2']
-outhdr['IMAGEW'] = 32073
-outhdr['IMAGEH'] = 41147
-fitsio.write('/tmp/m33-wcs.fits', None, header=outhdr)
-'''
-
-    def __init__(self, name, **kwargs):
-        ## HACK -- don't call the PhatLayer constructor!
-        #super(M33Layer, self).__init__(name, **kwargs)
-        super(PhatLayer, self).__init__(name, **kwargs)
-        self.nativescale = 17
-        self.pixscale = 0.035
-        #fn = self.get_base_filname(None, None)
-        #self.fits = fitsio.FITS(fn)[0]
-        #fn = os.path.join(settings.DATA_DIR, 'm33', 'F475W_wcs.fits')
-        #fn = os.path.join(settings.DATA_DIR, 'm33', 'm33-wcs.fits')
-        fn = os.path.join(settings.DATA_DIR, 'm33', 'm33-wcs814.fits')
-        #self.wcs = anwcs_open_wcslib(fn, 0)
-        from astrometry.util.util import Tan
-        self.wcs = Tan(fn, 0)
-        print('M33 WCS: center', self.wcs.radec_center())
-
-    def read_wcs(self, brick, band, scale, fn=None):
-        if scale == 0:
-            return self.wcs
-        return super(M33Layer, self).read_wcs(brick, band, scale, fn=fn)
-
-    def get_bands(self):
-        return 'RGB'
-
-    def get_base_filename(self, brick, band, **kwargs):
-        return os.path.join(settings.DATA_DIR, 'm33', 'm33-%s.fits' % band)
-
-    def get_scaled_filename(self, brick, band, scale):
-        return os.path.join(settings.DATA_DIR, 'm33', 'm33-%s-scale%i.fits' % (band, scale))
-
-    def get_rgb(self, imgs, bands, **kwargs):
-        import numpy as np
-        #for img in imgs:
-        #    print('Image', img.shape, img.dtype, img.min(), img.max())
-        return np.dstack(imgs) / 255.
-        # sz = imgs[0].shape
-        # rgb = np.zeros((sz[0],sz[1],3), np.uint8)
-        # for i,img in enumerate(imgs):
-        #     rgb[:,:,i] = img
-        # return rgb
-
 class DecalsLayer(MapLayer):
     def __init__(self, name, imagetype, survey, bands='grz', drname=None):
         '''
@@ -1835,7 +1614,6 @@ class DecalsInvvarLayer(DecalsLayer):
         return None
     def get_scaled_filename(self, brick, band, scale):
         return None
-
 
 class DecalsDr3Layer(DecalsLayer):
     '''The data model changed (added .fz compression) as of DR5; this
@@ -2298,24 +2076,10 @@ class HscLayer(RebrickedMixin, MapLayer):
         return wcs
 
     def get_rgb(self, imgs, bands, **kwargs):
-        # from legacypipe.survey import get_rgb
         from tractor.brightness import NanoMaggies
-        # #zpscale = NanoMaggies.zeropointToScale(27.0) * 0.1
-        # #rgb = get_rgb([im/zpscale for im in imgs], 'grz', arcsinh=2., mnmx=(-0.2,50))
-        # 
-        # # zpscale = NanoMaggies.zeropointToScale(27.0) * 0.2
-        # # scales = dict(g = (2, 0.0066),
-        # #               r = (1, 0.01),
-        # #               z = (0, 0.015))
-        # # rgb = get_rgb([im/zpscale for im in imgs], 'grz', arcsinh=1, mnmx=(-0.5,50), scales=scales)
-        # zpscale = NanoMaggies.zeropointToScale(27.0)
-        # #rgb = sdss_rgb([im/zpscale for im in imgs], bands)
-        # rgb = dr2_rgb([im/zpscale for im in imgs], bands)
-
         zpscale = NanoMaggies.zeropointToScale(27.0)
         rgb = sdss_rgb([im/zpscale for im in imgs], bands,
                        scales=dict(g=6.0*5., r=3.4*5., z=2.2*5.), m=0.03)
-
         return rgb
 
     def get_base_filename(self, brick, band, **kwargs):
@@ -2337,12 +2101,6 @@ class HscLayer(RebrickedMixin, MapLayer):
     def get_bands(self):
         return self.bands
     
-    # def read_image(self, brick, band, scale, slc, fn=None):
-    #     img = super(DesLayer,self).read_image(brick, band, scale, slc, fn=fn)
-    #     if scale == 0:
-    #         img /= 10.**((30. - 22.5) / 2.5)
-    #     return img
-
     def read_wcs(self, brick, band, scale, fn=None):
         from map.coadds import read_tan_from_header
         if fn is None:
@@ -2450,7 +2208,6 @@ class LegacySurveySplitLayer(MapLayer):
                               '%i' % ver, '%i' % zoom, '%i' % x, '%i.jpg' % y)
         print('Middle:', tilefn)
         return tilefn
-
 
 
 class DesLayer(ReDecalsLayer):
@@ -3398,15 +3155,7 @@ def sdss_rgb(rimgs, bands, scales=None,
 
 
 def layer_name_map(name):
-    return {'decals-dr2-model': 'decals-dr2',
-            'decals-dr2-resid': 'decals-dr2',
-            'decals-dr2-ccds': 'decals-dr2',
-            'decals-dr2-exps': 'decals-dr2',
-            'decals-bricks': 'decals-dr2',
-
-            'decals-dr3-ccds': 'decals-dr3',
-            'decals-dr3-exps': 'decals-dr3',
-
+    return {#'decals-bricks': 'decals-dr2',
             'mzls bass-dr4': 'mzls+bass-dr4',
             'mzls bass-dr4-model': 'mzls+bass-dr4-model',
             'mzls bass-dr4-resid': 'mzls+bass-dr4-resid',
@@ -3415,36 +3164,10 @@ def layer_name_map(name):
             'mzls bass-dr6-model': 'mzls+bass-dr6-model',
             'mzls bass-dr6-resid': 'mzls+bass-dr6-resid',
 
-            'mzls bass-dr8': 'mzls+bass-dr8',
-            'mzls bass-dr8-model': 'mzls+bass-dr8-model',
-            'mzls bass-dr8-resid': 'mzls+bass-dr8-resid',
-
             'decaps2': 'decaps',
             'decaps2-model': 'decaps-model',
             'decaps2-resid': 'decaps-resid',
-
     }.get(name, name)
-
-# z-band only B&W images
-def mzls_dr3_rgb(rimgs, bands, scales=None,
-                 m = 0.02, **stuff):
-    import numpy as np
-    rgbscales = {'z': 0.4,}
-    if scales is not None:
-        rgbscales.update(scales)
-    assert(bands == 'z')
-    assert(len(rimgs) == 1)
-
-    z = rimgs[0] * rgbscales[bands[0]]
-    z = np.maximum(0, z + m)
-    I = z
-    Q = 20
-    fI = np.arcsinh(Q * I) / np.sqrt(Q)
-    I += (I == 0.) * 1e-6
-    Z = fI * z / I
-    rgb = np.dstack((Z,Z,Z))
-    rgb = np.clip(rgb, 0, 1)
-    return rgb
 
 def dr2_rgb(rimgs, bands, **ignored):
     return sdss_rgb(rimgs, bands, scales=dict(g=6.0, r=3.4, z=2.2), m=0.03)
@@ -3652,15 +3375,13 @@ def get_survey(name):
     
     basedir = settings.DATA_DIR
 
-    if name in [ 'decals-dr2', 'decals-dr3', 'decals-dr5', 'decals-dr7',
+    if name in [ 'decals-dr5', 'decals-dr7',
                  'mzls+bass-dr4', 'mzls+bass-dr6', 'mzls+bass-dr8',
-                 'decaps', 'eboss', 'ls-dr56', 'ls-dr67']:
+                 'decaps', 'eboss', 'ls-dr67']:
         dirnm = os.path.join(basedir, name)
         print('survey_dir', dirnm)
 
-        if name == 'decals-dr2':
-            d = MyLegacySurveyData(survey_dir=dirnm, version='dr2')
-        elif name == 'decaps':
+        if name == 'decaps':
             d = Decaps2LegacySurveyData(survey_dir=dirnm)
         elif name == 'decals-dr5':
             d = LegacySurveyData(survey_dir=dirnm)
@@ -3668,31 +3389,24 @@ def get_survey(name):
             # CCDs table has no 'photometric' etc columns.
             d = LegacySurveyData(survey_dir=dirnm)
         elif name == 'decals-dr7':
-            # testing 1 2 3
             d = LegacySurveyData(survey_dir=dirnm,
                                  cache_dir=os.path.join(dirnm, 'dr7images'))
-        elif name == 'ls-dr56':
-            north = get_survey('mzls+bass-dr6')
-            south = get_survey('decals-dr5')
-            d = SplitSurveyData(north, south)
-            d.drname = 'LegacySurvey DR5+DR6'
         elif name == 'ls-dr67':
             north = get_survey('mzls+bass-dr6')
             south = get_survey('decals-dr7')
             d = SplitSurveyData(north, south)
             d.drname = 'LegacySurvey DR6+DR7'
 
+        elif name == 'dr8':
+            north = get_survey('dr8-north')
+            south = get_survey('dr8-south')
+            d = SplitSurveyData(north, south)
+            d.drname = 'LegacySurvey DR8'
 
         else:
             d = MyLegacySurveyData(survey_dir=dirnm)
 
-        if name == 'decals-dr2':
-            d.drname = 'DECaLS DR2'
-            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr2/'
-        elif name == 'decals-dr3':
-            d.drname = 'DECaLS DR3'
-            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr3/'
-        elif name == 'mzls+bass-dr4':
+        if name == 'mzls+bass-dr4':
             d.drname = 'MzLS+BASS DR4'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr4/'
         elif name == 'decals-dr5':
@@ -3704,8 +3418,8 @@ def get_survey(name):
         elif name == 'decals-dr7':
             d.drname = 'DECaLS DR7'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr7/'
-        elif name == 'mzls+bass-dr8':
-            d.drname = 'MzLS+BASS DR8'
+        elif 'dr8' in name:
+            d.drname = 'Legacy Surveys DR8'
             d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/'
         elif name == 'decaps':
             d.drname = 'DECaPS'
@@ -3723,20 +3437,16 @@ def get_survey(name):
         return None
     dirnm = os.path.join(basedir, name)
     print('checking for survey_dir', dirnm)
-    if os.path.exists(dirnm):
+    if not os.path.exists(dirnm):
+        return None
 
-        cachedir = None
-        if 'dr8b' in name or 'dr8' in name:
-            cachedir = os.path.join(dirnm, 'extra-images')
+    cachedir = None
+    if 'dr8' in name:
+        cachedir = os.path.join(dirnm, 'extra-images')
 
-        d = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
-        # d.drname = 'eBOSS'
-        # d.drurl = 'http://legacysurvey.org/'
-        surveys[name] = d
-        return d
-
-
-    return None
+    d = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+    surveys[name] = d
+    return d
 
 def brick_list(req):
     import json
@@ -3958,25 +3668,7 @@ def sdss_ccds_near(rc, dc, radius):
 def get_exposure_table(name):
     from astrometry.util.fits import fits_table
     name = str(name)
-    if name == 'decals-dr2':
-        T = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr2',
-                                    'decals-exposures.fits'))
-    elif name == 'decals-dr3':
-        '''
-        T1=fits_table('survey-ccds-extra.fits.gz')
-        T2=fits_table('survey-ccds-decals.fits.gz')
-        T3=fits_table('survey-ccds-nondecals.fits.gz')
-        T = merge_tables([T1,T2,T3])
-        e,I = np.unique(T.expnum, return_index=True)
-        E = T[I]
-        E.ra = E.ra_bore
-        E.dec = E.dec_bore
-        E.writeto('dr3-exposures.fits', columns=['ra', 'dec', 'expnum', 'seeing', 'propid',
-        'fwhm', 'zpt', 'airmass', 'exptime', 'date_obs', 'ut', 'filter', 'mjd_obs', 'image_filename'])
-        '''
-        T = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
-                                    'decals-exposures.fits'))
-    elif name in ['decals-dr5', 'decals-dr7']:
+    if name in ['decals-dr5', 'decals-dr7']:
         fn = os.path.join(settings.DATA_DIR, name, 'exposures.fits')
         if not os.path.exists(fn):
             import numpy as np
@@ -4001,7 +3693,7 @@ def get_exposure_table(name):
         else:
             T = fits_table(fn)
     else:
-        T = fits_table(os.path.join(settings.DATA_DIR, 'decals-exposures-dr1.fits'))
+        T = fits_table()
     return T
 
 exposure_cache = {}
@@ -4805,179 +4497,6 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
 
     return send_file(jpegfn, 'image/jpeg', unlink=True)
 
-
-    ############################
-
-    fn = im.imgfn
-    #fn = _get_image_filename(ccd)
-    print('Filename:', fn)
-    if not os.path.exists(fn):
-        return HttpResponse('no such image: ' + fn)
-
-    print('Getting postage stamp for', fn)
-    img,hdr,slc,xstart,ystart = _get_image_slice(fn, ccd.image_hdu, x, y, size=size)
-
-    sky = hdr.get('AVSKY', None)
-    if sky is None:
-        sky = np.median(img)
-    img -= sky
-
-    # band = ccd.filter.strip()
-    # zpt = ccd.zpt
-    # scales = dict(g = (2, 0.0066),
-    #               r = (1, 0.01),
-    #               z = (0, 0.025),)
-    # scale = scales.get(band, None)
-    # if scale is None or not np.isfinite(zpt):
-    #     mn,mx = np.percentile(img.ravel(), [25, 99])
-    # else:
-    #     mn,mx = 
-
-    h,w = img.shape
-    destimg = np.zeros((max(h, size*2), max(w,size*2)), img.dtype)
-    destimg[ystart:ystart+h, xstart:xstart+w] = img
-
-    plt.clf()
-    import tempfile
-    f,jpegfn = tempfile.mkstemp(suffix='.jpg')
-    os.close(f)
-    mn,mx = np.percentile(img.ravel(), [25, 99])
-    save_jpeg(jpegfn, destimg, origin='lower', cmap='gray',
-              vmin=mn, vmax=mx)
-    return send_file(jpegfn, 'image/jpeg', unlink=True)
-
-    # wfn = fn.replace('ooi', 'oow')
-    # if not os.path.exists(wfn):
-    #     return HttpResponse('no such image: ' + wfn)
-    # 
-    # from legacypipe.decam import DecamImage
-    # from legacypipe.desi_common import read_fits_catalog
-    # from tractor import Tractor
-    # 
-    # ccd.cpimage = fn
-    # D = get_survey(name=name)
-    # im = D.get_image_object(ccd)
-    # kwargs = {}
-    # 
-    # if name == 'decals-dr2':
-    #     kwargs.update(pixPsf=True, splinesky=True)
-    # else:
-    #     kwargs.update(const2psf=True)
-    # tim = im.get_tractor_image(slc=slc, tiny=1, **kwargs)
-    # 
-    # if tim is None:
-    #     img = np.zeros((0,0))
-    # 
-    # mn,mx = -1, 100
-    # arcsinh = 1.
-    # cmap = 'gray'
-    # pad = True
-    # 
-    # scales = dict(g = (2, 0.0066),
-    #               r = (1, 0.01),
-    #               z = (0, 0.025),
-    #               )
-    # rows,cols = 1,5
-    # f = plt.figure(figsize=(cols,rows))
-    # f.clf()
-    # f.subplots_adjust(left=0.002, bottom=0.02, top=0.995, right=0.998,
-    #                   wspace=0.02, hspace=0)
-    # 
-    # imgs = []
-    # 
-    # img = tim.getImage()
-    # imgs.append((img,None))
-    # 
-    # M = 10
-    # margwcs = tim.subwcs.get_subimage(-M, -M, int(tim.subwcs.get_width())+2*M, int(tim.subwcs.get_height())+2*M)
-    # for dr in ['dr1j']:
-    #     cat,hdr = _get_decals_cat(margwcs, tag='decals-%s' % dr)
-    #     if cat is None:
-    #         tcat = []
-    #     else:
-    #         cat.shapedev = np.vstack((cat.shapedev_r, cat.shapedev_e1, cat.shapedev_e2)).T
-    #         cat.shapeexp = np.vstack((cat.shapeexp_r, cat.shapeexp_e1, cat.shapeexp_e2)).T
-    #         tcat = read_fits_catalog(cat, hdr=hdr)
-    #     tr = Tractor([tim], tcat)
-    #     img = tr.getModelImage(0)
-    #     imgs.append((img,None))
-    # 
-    #     img = tr.getChiImage(0)
-    #     imgs.append((img, dict(mn=-5,mx=5, arcsinh = None, scale = 1.)))
-    # 
-    # th,tw = tim.shape
-    # pp = tim.getPsf().getPointSourcePatch(tw/2., th/2.)
-    # img = np.zeros(tim.shape, np.float32)
-    # pp.addTo(img)
-    # imgs.append((img, dict(scale=0.0001, cmap='hot')))
-    # 
-    # from tractor.psfex import PsfEx
-    # from tractor.patch import Patch
-    # # HACK hard-coded image sizes.
-    # thepsf = PsfEx(im.psffn, 2046, 4096)
-    # psfim = thepsf.instantiateAt(x, y)
-    # img = np.zeros(tim.shape, np.float32)
-    # h,w = tim.shape
-    # ph,pw = psfim.shape
-    # patch = Patch((w-pw)/2., (h-ph)/2., psfim)
-    # patch.addTo(img)
-    # imgs.append((img, dict(scale = 0.0001, cmap = 'hot')))
-    # 
-    # for i,(img,d) in enumerate(imgs):
-    # 
-    #     mn,mx = -5, 100
-    #     arcsinh = 1.
-    #     cmap = 'gray'
-    #     nil,scale = scales[ccd.filter]
-    #     pad = True
-    # 
-    #     if d is not None:
-    #         if 'mn' in d:
-    #             mn = d['mn']
-    #         if 'mx' in d:
-    #             mx = d['mx']
-    #         if 'arcsinh' in d:
-    #             arcsinh = d['arcsinh']
-    #         if 'cmap' in d:
-    #             cmap = d['cmap']
-    #         if 'scale' in d:
-    #             scale = d['scale']
-    # 
-    #     img = img / scale
-    #     if arcsinh is not None:
-    #         def nlmap(x):
-    #             return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
-    #         img = nlmap(img)
-    #         mn = nlmap(mn)
-    #         mx = nlmap(mx)
-    # 
-    #     img = (img - mn) / (mx - mn)
-    #     if pad:
-    #         ih,iw = img.shape
-    #         padimg = np.zeros((2*size,2*size), img.dtype) + 0.5
-    #         padimg[ystart:ystart+ih, xstart:xstart+iw] = img
-    #         img = padimg
-    # 
-    #     ax = f.add_subplot(rows, cols, i+1, xticks=[], yticks=[])
-    #     # the chips are turned sideways :)
-    #     #plt.imshow(np.rot90(np.clip(img, 0, 1), k=3), cmap=cmap,
-    #     #           interpolation='nearest', origin='lower')
-    #     ax.imshow(np.rot90(np.clip(img, 0, 1).T, k=2), cmap=cmap,
-    #                interpolation='nearest', origin='lower')
-    #     #ax.xticks([]); ax.yticks([])
-    # 
-    # import tempfile
-    # ff,tilefn = tempfile.mkstemp(suffix='.jpg')
-    # os.close(ff)
-    # 
-    # f.savefig(tilefn)
-    # f.clf()
-    # del f
-    # 
-    # return send_file(tilefn, 'image/jpeg', unlink=True,
-    #                  expires=3600)
-
-
 def image_data(req, survey, ccd):
     import fitsio
     survey, c = get_ccd_object(survey, ccd)
@@ -5080,6 +4599,8 @@ layers = {}
 def get_layer(name, default=None):
     global layers
 
+    from map.phat import PhatLayer, M33Layer
+
     # mzls+bass-dr4 in URLs turns the "+" into a " "
     name = name.replace(' ', '+')
 
@@ -5100,15 +4621,15 @@ def get_layer(name, default=None):
         '''
         layer = ReSdssLayer('sdss2')
 
-    elif name == 'ls-dr56':
-        dr5 = get_layer('decals-dr5')
-        dr6 = get_layer('mzls+bass-dr6')
-        layer = LegacySurveySplitLayer(name, dr6, dr5, 32.)
-
     elif name == 'ls-dr67':
         dr7 = get_layer('decals-dr7')
         dr6 = get_layer('mzls+bass-dr6')
         layer = LegacySurveySplitLayer(name, dr6, dr7, 32.)
+
+    elif name == 'dr8':
+        north = get_layer('dr8-north')
+        south = get_layer('dr8-south')
+        layer = LegacySurveySplitLayer(name, south, north, 32.)
 
     elif name == 'phat':
         layer = PhatLayer('phat')
@@ -5123,53 +4644,42 @@ def get_layer(name, default=None):
     elif name == 'des-dr1':
         layer = DesLayer('des-dr1')
 
-    elif name in ['mzls+bass-dr8', 'mzls+bass-dr8-model', 'mzls+bass-dr8-resid']:
-        survey = get_survey('mzls+bass-dr8')
-        image = ReDecalsLayer('mzls+bass-dr8', 'image', survey)
-        model = ReDecalsModelLayer('mzls+bass-dr8-model', 'model', survey, drname='mzls+bass-dr8')
-        resid = ReDecalsResidLayer(image, model, 'mzls+bass-dr8-resid', 'resid', survey,
-                                   drname='mzls+bass-dr8')
-        layers['mzls+bass-dr8'] = image
-        layers['mzls+bass-dr8-model'] = model
-        layers['mzls+bass-dr8-resid'] = resid
-        layer = layers[name]
-
-    elif name in ['decals-dr7', 'decals-dr7-model', 'decals-dr7-resid']:
-        survey = get_survey('decals-dr7')
-        image = ReDecalsLayer('decals-dr7', 'image', survey)
-        model = ReDecalsModelLayer('decals-dr7-model', 'model', survey, drname='decals-dr7')
-        resid = ReDecalsResidLayer(image, model, 'decals-dr7-resid', 'resid', survey,
-                                   drname='decals-dr7')
-        layers['decals-dr7'] = image
-        layers['decals-dr7-model'] = model
-        layers['decals-dr7-resid'] = resid
-        layer = layers[name]
+    # elif name in ['decals-dr7', 'decals-dr7-model', 'decals-dr7-resid']:
+    #     survey = get_survey('decals-dr7')
+    #     image = ReDecalsLayer('decals-dr7', 'image', survey)
+    #     model = ReDecalsModelLayer('decals-dr7-model', 'model', survey, drname='decals-dr7')
+    #     resid = ReDecalsResidLayer(image, model, 'decals-dr7-resid', 'resid', survey,
+    #                                drname='decals-dr7')
+    #     layers['decals-dr7'] = image
+    #     layers['decals-dr7-model'] = model
+    #     layers['decals-dr7-resid'] = resid
+    #     layer = layers[name]
 
     elif name == 'decals-dr7-invvar':
         survey = get_survey('decals-dr7')
         layer = DecalsInvvarLayer(name, 'invvar', survey)
 
-    elif name in ['mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
-        survey = get_survey('mzls+bass-dr6')
-        image = ReDecalsLayer('mzls+bass-dr6', 'image', survey)
-        model = ReDecalsModelLayer('mzls+bass-dr6-model', 'model', survey, drname='mzls+bass-dr6')
-        resid = ReDecalsResidLayer(image, model, 'mzls+bass-dr6-resid', 'resid', survey,
-                                   drname='mzls+bass-dr6')
-        layers['mzls+bass-dr6'] = image
-        layers['mzls+bass-dr6-model'] = model
-        layers['mzls+bass-dr6-resid'] = resid
-        layer = layers[name]
-
-    elif name in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid']:
-        survey = get_survey('decals-dr5')
-        image = ReDecalsLayer('decals-dr5', 'image', survey)
-        model = ReDecalsLayer('decals-dr5-model', 'model', survey, drname='decals-dr5')
-        resid = ReDecalsResidLayer(image, model, 'decals-dr5-resid', 'resid', survey,
-                                   drname='decals-dr5')
-        layers['decals-dr5'] = image
-        layers['decals-dr5-model'] = model
-        layers['decals-dr5-resid'] = resid
-        layer = layers[name]
+    # elif name in ['mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
+    #     survey = get_survey('mzls+bass-dr6')
+    #     image = ReDecalsLayer('mzls+bass-dr6', 'image', survey)
+    #     model = ReDecalsModelLayer('mzls+bass-dr6-model', 'model', survey, drname='mzls+bass-dr6')
+    #     resid = ReDecalsResidLayer(image, model, 'mzls+bass-dr6-resid', 'resid', survey,
+    #                                drname='mzls+bass-dr6')
+    #     layers['mzls+bass-dr6'] = image
+    #     layers['mzls+bass-dr6-model'] = model
+    #     layers['mzls+bass-dr6-resid'] = resid
+    #     layer = layers[name]
+    # 
+    # elif name in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid']:
+    #     survey = get_survey('decals-dr5')
+    #     image = ReDecalsLayer('decals-dr5', 'image', survey)
+    #     model = ReDecalsLayer('decals-dr5-model', 'model', survey, drname='decals-dr5')
+    #     resid = ReDecalsResidLayer(image, model, 'decals-dr5-resid', 'resid', survey,
+    #                                drname='decals-dr5')
+    #     layers['decals-dr5'] = image
+    #     layers['decals-dr5-model'] = model
+    #     layers['decals-dr5-resid'] = resid
+    #     layer = layers[name]
         
     elif name == 'ps1':
         layer = PS1Layer('ps1')
@@ -5198,31 +4708,6 @@ def get_layer(name, default=None):
         layers['mzls+bass-dr4'] = image
         layers['mzls+bass-dr4-model'] = model
         layers['mzls+bass-dr4-resid'] = resid
-        layer = layers[name]
-
-    elif name in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
-        survey = get_survey('decals-dr3')
-        image = DecalsDr3Layer('decals-dr3', 'image', survey)
-        model = DecalsDr3Layer('decals-dr3-model', 'model', survey, drname='decals-dr3')
-        resid = DecalsResidLayer(image, model, 'decals-dr3-resid', 'resid', survey,
-                                 drname='decals-dr3')
-        # No disk space for DR3 scale=1 !
-        image.minscale = model.minscale = resid.minscale = 2
-        
-        layers['decals-dr3'] = image
-        layers['decals-dr3-model'] = model
-        layers['decals-dr3-resid'] = resid
-        layer = layers[name]
-
-    elif name in ['decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
-        survey = get_survey('decals-dr2')
-        image = DecalsDr3Layer('decals-dr2', 'image', survey)
-        model = DecalsDr3Layer('decals-dr2-model', 'model', survey, drname='decals-dr2')
-        resid = DecalsResidLayer(image, model, 'decals-dr2-resid', 'resid', survey,
-                                 drname='decals-dr2')
-        layers['decals-dr2'] = image
-        layers['decals-dr2-model'] = model
-        layers['decals-dr2-resid'] = resid
         layer = layers[name]
 
     elif name == 'unwise-w1w2':
@@ -5272,36 +4757,34 @@ def get_layer(name, default=None):
         layer = ZeaLayer('sfd', sfd_map, stretch=stretch_sfd, vmin=0.0, vmax=5.0)
 
 
-    elif 'dr8b' in name or 'dr8c' in name or 'dr8i' in name:
-        # Generic NON-rebricked
-        print('get_layer:', name, '-- generic')
-        basename = name
-        if name.endswith('-model'):
-            basename = name[:-6]
-        if name.endswith('-resid'):
-            basename = name[:-6]
-        survey = get_survey(basename)
-        if survey is not None:
-            image = DecalsLayer(basename, 'image', survey)
-            model = DecalsModelLayer(basename + '-model', 'model', survey,
-                                     drname=basename)
-            resid = DecalsResidLayer(image, model, basename + '-resid', 'resid', survey,
-                                       drname=basename)
-            layers[basename] = image
-            layers[basename + '-model'] = model
-            layers[basename + '-resid'] = resid
-            layer = layers[name]
+    # elif 'dr8b' in name or 'dr8c' in name or 'dr8i' in name:
+    #     # Generic NON-rebricked
+    #     print('get_layer:', name, '-- generic')
+    #     basename = name
+    #     if name.endswith('-model'):
+    #         basename = name[:-6]
+    #     if name.endswith('-resid'):
+    #         basename = name[:-6]
+    #     survey = get_survey(basename)
+    #     if survey is not None:
+    #         image = DecalsLayer(basename, 'image', survey)
+    #         model = DecalsModelLayer(basename + '-model', 'model', survey,
+    #                                  drname=basename)
+    #         resid = DecalsResidLayer(image, model, basename + '-resid', 'resid', survey,
+    #                                    drname=basename)
+    #         layers[basename] = image
+    #         layers[basename + '-model'] = model
+    #         layers[basename + '-resid'] = resid
+    #         layer = layers[name]
 
     elif name == 'hsc':
-        
         layer = HscLayer('hsc')
 
     elif name == 'hsc2':
-
         layer = HscLayer('hsc-dr2')
     
     if layer is None:
-        # Try generic
+        # Try generic rebricked
         print('get_layer:', name, '-- generic')
         basename = name
         if name.endswith('-model'):
@@ -5319,7 +4802,6 @@ def get_layer(name, default=None):
             layers[basename + '-model'] = model
             layers[basename + '-resid'] = resid
             layer = layers[name]
-
 
     if layer is None:
         return default
@@ -5499,7 +4981,7 @@ if __name__ == '__main__':
     #r = c.get('/unwise-cat-model/1/3/1/1.jpg')
     #r = c.get('/unwise-cat-model/1/6/47/44.jpg')
     #r = c.get('/unwise-cat-model/1/4/11/0.jpg')
-    #r = c.get('/m33/1/16/61257/26897.jpg')
+    r = c.get('/m33/1/16/61257/26897.jpg')
     #r = c.get('/m33/1/15/30627/13432.jpg')
     #r = c.get('/m33/1/14/15320/6716.jpg')
     #r = c.get('/m33/1/13/7660/3358.jpg')
@@ -5546,7 +5028,7 @@ if __name__ == '__main__':
     #r = c.get('/dr8-north/1/11/967/693.jpg')
     #r = c.get('/dr8-north/1/9/237/175.jpg')
     #r = c.get('/dr8-north/1/8/112/71.jpg')
-    r = c.get('/dr8-north/1/14/4578/6019.jpg')
+    #r = c.get('/dr8-north/1/14/4578/6019.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
