@@ -3726,8 +3726,8 @@ def get_survey(name):
     if os.path.exists(dirnm):
 
         cachedir = None
-        if 'dr8b' in name:
-            cachedir=os.path.join(dirnm, 'extra-images')
+        if 'dr8b' in name or 'dr8' in name:
+            cachedir = os.path.join(dirnm, 'extra-images')
 
         d = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
         # d.drname = 'eBOSS'
@@ -5536,12 +5536,17 @@ if __name__ == '__main__':
     #r = c.get('/hsc2/1/15/16505/16429.jpg')
     #r = c.get('/hsc2/1/8/116/129.jpg')
     #r = c.get('/hsc2/1/1/0/0.jpg')
-    r = c.get('/dr8-north/1/14/7696/5555.jpg')
-    r = c.get('/dr8-north/1/13/3848/2777.jpg')
-    r = c.get('/dr8-north/1/12/1924/1388.jpg')
-    r = c.get('/dr8-north/1/11/962/695.jpg')
-    r = c.get('/dr8-north/1/10/481/347.jpg')
-    r = c.get('/dr8-north/1/9/240/173.jpg')
+    # r = c.get('/dr8-north/1/14/7696/5555.jpg')
+    # r = c.get('/dr8-north/1/13/3848/2777.jpg')
+    # r = c.get('/dr8-north/1/12/1924/1388.jpg')
+    # r = c.get('/dr8-north/1/11/962/695.jpg')
+    # r = c.get('/dr8-north/1/10/481/347.jpg')
+    # r = c.get('/dr8-north/1/9/240/173.jpg')
+    #r = c.get('/dr8-north/1/11/910/787.jpg')
+    #r = c.get('/dr8-north/1/11/967/693.jpg')
+    #r = c.get('/dr8-north/1/9/237/175.jpg')
+    #r = c.get('/dr8-north/1/8/112/71.jpg')
+    r = c.get('/dr8-north/1/14/4578/6019.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

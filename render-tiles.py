@@ -670,6 +670,9 @@ def main():
     parser.add_option('--minra', type=float, default=None,   help='Minimum RA to run')
     parser.add_option('--maxra', type=float, default=None, help='Maximum RA to run')
 
+    parser.add_option('--touching', default=False, action='store_true',
+                      help='Select bricks touching min/max ra/dec box (vs container within)')
+
     parser.add_option('--near', action='store_true', help='Only run tiles near bricks')
 
     parser.add_option('--near-ccds', action='store_true', help='Only run tiles near CCDs')
@@ -877,10 +880,16 @@ def main():
             for scale in opt.zoom:
                 B = layer.get_bricks_for_scale(scale)
                 print(len(B), 'bricks for scale', scale)
-                B.cut((B.dec >= opt.mindec) * (B.dec <= opt.maxdec))
-                print(len(B), 'in Dec range')
-                B.cut((B.ra  >= opt.minra)  * (B.ra  <= opt.maxra))
-                print(len(B), 'in RA range')
+                if opt.touching:
+                    B.cut((B.dec2 >= opt.mindec) * (B.dec1 <= opt.maxdec))
+                    print(len(B), 'touching Dec range')
+                    B.cut((B.ra2 >= opt.minra) * (B.ra1 <= opt.maxra))
+                    print(len(B), 'touching RA range')
+                else:
+                    B.cut((B.dec >= opt.mindec) * (B.dec <= opt.maxdec))
+                    print(len(B), 'in Dec range')
+                    B.cut((B.ra  >= opt.minra)  * (B.ra  <= opt.maxra))
+                    print(len(B), 'in RA range')
 
                 bands = opt.bands
 
