@@ -786,6 +786,16 @@ def main():
         if opt.minra is None:
             opt.minra = 0
 
+    elif opt.kind in ['dr8-south', 'dr8-south-model', 'dr8-south-resid']:
+        if opt.maxdec is None:
+            opt.maxdec = 40
+        if opt.mindec is None:
+            opt.mindec = -70
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
+
     elif opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
         if opt.maxdec is None:
             opt.maxdec = -20
@@ -850,6 +860,7 @@ def main():
                         'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
                         'galex', 'wssa', 'des-dr1', 'hsc', 'hsc2',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
+                        'dr8-south', 'dr8-south-model', 'dr8-south-resid',
                     ] or opt.kind.startswith('dr8-test'): # or True:
             from map.views import get_layer
 

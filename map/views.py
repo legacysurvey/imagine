@@ -836,8 +836,6 @@ class MapLayer(object):
         print('Bricks touching:', B.brickname[np.array(keep)])
         B.cut(keep)
         return B
-            
-
 
     def bricks_within_range(self, ra, dec, radius, scale=None):
         return None
@@ -2143,11 +2141,11 @@ class LegacySurveySplitLayer(MapLayer):
                            for l in self.layers])
         return BB
 
-    # def get_filename(self, brick, band, scale, tempfiles=None):
-    #     pass
-    # 
-    # def get_base_filename(self, brick, band, **kwargs):
-    #     pass
+    def get_filename(self, brick, band, scale, tempfiles=None):
+        raise RuntimeError('split layer.get_filename()')
+
+    def get_base_filename(self, brick, band, **kwargs):
+        raise RuntimeError('split layer.get_base_filename()')
 
     def render_into_wcs(self, wcs, zoom, x, y, general_wcs=False, **kwargs):
         
@@ -2208,7 +2206,6 @@ class LegacySurveySplitLayer(MapLayer):
                               '%i' % ver, '%i' % zoom, '%i' % x, '%i.jpg' % y)
         print('Middle:', tilefn)
         return tilefn
-
 
 class DesLayer(ReDecalsLayer):
 
@@ -3301,7 +3298,7 @@ class SplitSurveyData(MyLegacySurveyData):
         if self.bricks is None:
             from astrometry.util.fits import merge_tables
             self.bricks = merge_tables([self.north.get_bricks_readonly(),
-                                        self.south.get_bricks_readonly()])
+                                        self.south.get_bricks_readonly()], columns='fillzero')
         return self.bricks
 
     def get_ccds(self, **kwargs):
@@ -3371,82 +3368,63 @@ def get_survey(name):
         print('Cache hit for survey', name)
         return surveys[name]
 
+    if '/' in name or '.' in name:
+        return None
+
     #debug('Creating LegacySurveyData() object for "%s"' % name)
     
     basedir = settings.DATA_DIR
-
-    if name in [ 'decals-dr5', 'decals-dr7',
-                 'mzls+bass-dr4', 'mzls+bass-dr6', 'mzls+bass-dr8',
-                 'decaps', 'eboss', 'ls-dr67']:
-        dirnm = os.path.join(basedir, name)
-        print('survey_dir', dirnm)
-
-        if name == 'decaps':
-            d = Decaps2LegacySurveyData(survey_dir=dirnm)
-        elif name == 'decals-dr5':
-            d = LegacySurveyData(survey_dir=dirnm)
-        elif name in ['mzls+bass-dr6']:
-            # CCDs table has no 'photometric' etc columns.
-            d = LegacySurveyData(survey_dir=dirnm)
-        elif name == 'decals-dr7':
-            d = LegacySurveyData(survey_dir=dirnm,
-                                 cache_dir=os.path.join(dirnm, 'dr7images'))
-        elif name == 'ls-dr67':
-            north = get_survey('mzls+bass-dr6')
-            south = get_survey('decals-dr7')
-            d = SplitSurveyData(north, south)
-            d.drname = 'LegacySurvey DR6+DR7'
-
-        elif name == 'dr8':
-            north = get_survey('dr8-north')
-            south = get_survey('dr8-south')
-            d = SplitSurveyData(north, south)
-            d.drname = 'LegacySurvey DR8'
-
-        else:
-            d = MyLegacySurveyData(survey_dir=dirnm)
-
-        if name == 'mzls+bass-dr4':
-            d.drname = 'MzLS+BASS DR4'
-            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr4/'
-        elif name == 'decals-dr5':
-            d.drname = 'DECaLS DR5'
-            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'
-        elif name == 'mzls+bass-dr6':
-            d.drname = 'MzLS+BASS DR6'
-            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr6/'
-        elif name == 'decals-dr7':
-            d.drname = 'DECaLS DR7'
-            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr7/'
-        elif 'dr8' in name:
-            d.drname = 'Legacy Surveys DR8'
-            d.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/'
-        elif name == 'decaps':
-            d.drname = 'DECaPS'
-            d.drurl = 'http://legacysurvey.org/'
-        elif name == 'eboss':
-            d.drname = 'eBOSS'
-            d.drurl = 'http://legacysurvey.org/'
-
-        print('Caching survey', name)
-        surveys[name] = d
-        return d
-
- 
-    if '/' in name or '.' in name:
-        return None
     dirnm = os.path.join(basedir, name)
-    print('checking for survey_dir', dirnm)
-    if not os.path.exists(dirnm):
-        return None
+
+    survey = None
 
     cachedir = None
-    if 'dr8' in name:
+    if 'dr8' in name or 'dr7' in name:
         cachedir = os.path.join(dirnm, 'extra-images')
 
-    d = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
-    surveys[name] = d
-    return d
+    if name == 'decaps':
+        survey = Decaps2LegacySurveyData(survey_dir=dirnm)
+
+    elif name == 'ls-dr67':
+        north = get_survey('mzls+bass-dr6')
+        south = get_survey('decals-dr7')
+        survey = SplitSurveyData(north, south)
+
+    elif name == 'dr8':
+        north = get_survey('dr8-north')
+        south = get_survey('dr8-south')
+        survey = SplitSurveyData(north, south)
+
+    elif name in ['decals-dr5', 'decals-dr7', 'mzls+bass-dr4', 'mzls+bass-dr6', 'eboss']:
+        survey = MyLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+
+
+    if survey is None and not os.path.exists(dirnm):
+        return None
+
+    if survey is None:
+        survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+        print('Creating LegacySurveyData for', name, 'with survey_dir', dirnm)
+
+    names_urls = {
+        'mzls+bass-dr4': ('MzLS+BASS DR4', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr4/'),
+        'mzls+bass-dr6': ('MzLS+BASS DR6', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr6/'),
+        'decals-dr5': ('DECaLS DR5', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'),
+        'decals-dr7': ('DECaLS DR7', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr7/'),
+        'eboss': ('eBOSS', 'http://legacysurvey.org/'),
+        'decals': ('DECaPS', 'http://legacysurvey.org/'),
+        'ls-dr67': ('Legacy Surveys DR6+DR7', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/'),
+        }
+
+    n,u = names_urls.get(name, ('',''))
+    if 'dr8' in name:
+        n = 'Legacy Surveys DR8'
+        u = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/'
+    survey.drname = n
+    survey.drurl = u
+    surveys[name] = survey
+
+    return survey
 
 def brick_list(req):
     import json
@@ -4626,10 +4604,11 @@ def get_layer(name, default=None):
         dr6 = get_layer('mzls+bass-dr6')
         layer = LegacySurveySplitLayer(name, dr6, dr7, 32.)
 
-    elif name == 'dr8':
-        north = get_layer('dr8-north')
-        south = get_layer('dr8-south')
-        layer = LegacySurveySplitLayer(name, south, north, 32.)
+    elif name in ['dr8', 'dr8-model', 'dr8-resid']:
+        suff = name[3:]
+        north = get_layer('dr8-north' + suff)
+        south = get_layer('dr8-south' + suff)
+        layer = LegacySurveySplitLayer(name, north, south, 32.)
 
     elif name == 'phat':
         layer = PhatLayer('phat')
@@ -5029,6 +5008,9 @@ if __name__ == '__main__':
     #r = c.get('/dr8-north/1/9/237/175.jpg')
     #r = c.get('/dr8-north/1/8/112/71.jpg')
     #r = c.get('/dr8-north/1/14/4578/6019.jpg')
+    #r = c.get('/dr8-south/1/13/3327/3329.jpg')
+    #r = c.get('/cutouts/?ra=213.7119&dec=45.0500&layer=dr8')
+    r = c.get('/dr8-model/1/14/6675/6653.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
