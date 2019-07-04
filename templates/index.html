@@ -1611,26 +1611,6 @@ testLayers = [];
 {% endif %}
 
 
-
-{% if enable_dr7 %}
-tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
-                  {'urlPatterns': [ [11, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% if enable_dr7_models %}
-tiles = mylayer_B('decals-dr7-model', 'DECaLS DR7 models',
-                  {'urlPatterns': [ [10, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr7_resids %}
-tiles = mylayer_B('decals-dr7-resid', 'DECaLS DR7 residuals',
-                {'urlPatterns': [ [10, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-
-
-{% endif %}
-
 {% if enable_dr6 %}
 tiles = mylayer_B('mzls+bass-dr6', 'MzLS+BASS DR6 images',
                 {'urlPatterns': [ [13, maxZoom, tile_url], ],});
@@ -1933,15 +1913,6 @@ query.onAdd = function (map) {
 };
 query.addTo(map);
 {% endif %}
-
-// upload catalog input field
-var upload = L.control({'position':'bottomleft'});
-upload.onAdd = function (map) {
-    this._div = L.DomUtil.create('div', 'upload');
-    this._div.innerHTML = 'Custom catalog upload (FITS table; RA,Dec,[name]): <form action="' + usercat_upload_url + '" method="POST" enctype="multipart/form-data"><input type="file" name="catalog" id="usercat_file" /><span id="upload_status"></span><input type="submit" value="Upload" id="usercat_submit" /></form>'
-    return this._div;
-};
-upload.addTo(map);
 
 // Named object search field
 var objquery = L.control({'position':'bottomleft'});
@@ -2376,30 +2347,6 @@ var ccdOverlay6 = new PolygonOverlay('mzls+bass-dr6-ccds',
                                     });
 {% endif %}
 
-{% if enable_dr7_overlays %}
-var ccdOverlay7 = new PolygonOverlay('decals-dr7-ccds',
-                                     'DECaLS DR7 CCDs',
-                                    {'url':ccds_url,
-                                     'minZoom': 8,
-                                     'labelMinZoom': 100,
-                                     'urlTerm': 'ccds7',
-                                     'detail': ccd_detail,
-                                     'detail_list': ccd_detail_list,
-                                     'url_name': 'decals-dr7',
-                                     'dr_name': 'DR7',
-                                    });
-var expOverlay7 = new CircleOverlay('decals-dr7-exps',
-                                    'DECaLS DR7 Exposures',
-                                    {'url':exposures_url,
-                                     'labelMinZoom': 100,
-                                     'urlTerm': 'exps7',
-                                     'detail': exp_detail,
-                                     'detail_list': exp_detail_list,
-                                     'url_name': 'decals-dr7',
-                                     'dr_name': 'DR7',
-                                    });
-{% endif %}
-
 {% if enable_dr8_overlays %}
 var ccdOverlay8 = new PolygonOverlay('dr8-ccds',
                                      'Legacy Surveys DR8 CCDs',
@@ -2598,15 +2545,6 @@ var mzlsbasscat6 = new DecalsCatalogLayer(tileWatcher,
                                           {'url': cat_url,
                                            'minZoom': 12,
                                            'urlTerm': 'sources-dr6'});
-{% endif %}
-
-{% if enable_dr7_overlays %}
-var decalscat7 = new DecalsCatalogLayer(tileWatcher,
-                                        'decals-dr7',
-                                        'DECaLS DR7 Catalog',
-                                        {'url': cat_url,
-                                         'minZoom': 12,
-                                         'urlTerm': 'sources-dr7'});
 {% endif %}
 
 {% if enable_dr8_overlays %}
