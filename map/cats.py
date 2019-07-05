@@ -24,14 +24,13 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
+    'dr8': [1,],
     'dr8-north': [1,],
-    'mzls+bass-dr8': [1,],
+    'dr8-south': [1,],
     'decals-dr7': [1,],
     'mzls+bass-dr6': [1,],
     'decals-dr5': [1,],
     'mzls+bass-dr4': [1,],
-    'decals-dr2': [2,],
-    'decals-dr3': [1,],
     'ngc': [1,],
     'lslga': [1,],
     'spec': [1,],
@@ -40,16 +39,12 @@ catversions = {
     'tycho2': [1,],
     'targets-dr2': [1,],
     'targets-dr45': [1,],
-    'targets-dr56': [1,],
-    'targets-bgs-dr56': [1,],
     'targets-dr67': [1,],
     'targets-bgs-dr67': [1,],
     'targets-sky-dr67': [1,],
     'targets-bright-dr67': [1,],
     'targets-dark-dr67': [1,],
     'targets-cmx-dr7': [1,],
-    'targets-dr8b': [1,],
-    'targets-dr8c': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
@@ -462,45 +457,6 @@ def create_galaxy_catalog(galfn, drnum):
     print('Wrote', fn)
     T.writeto(galfn)
 
-def cat_targets_dr2(req, ver):
-    import json
-    tag = 'targets-dr2'
-    ralo = float(req.GET['ralo'])
-    rahi = float(req.GET['rahi'])
-    declo = float(req.GET['declo'])
-    dechi = float(req.GET['dechi'])
-
-    ver = int(ver)
-    if not ver in catversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-
-    from astrometry.util.fits import fits_table, merge_tables
-    import numpy as np
-    from cat.models import DR2_Target as Target
-
-    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
-    xyz1 = radectoxyz(ralo, declo)
-    xyz2 = radectoxyz(rahi, dechi)
-    xyz = (xyz1 + xyz2)/2.
-    xyz /= np.sqrt(np.sum(xyz**2))
-    rc,dc = xyztoradec(xyz)
-    rc = rc[0]
-    dc = dc[0]
-    rad = degrees_between(rc, dc, ralo, declo)
-
-    objs = Target.objects.extra(where=[
-            'q3c_radial_query(target.ra, target.dec, %.4f, %.4f, %g)'
-            % (rc, dc, rad * 1.01)])
-    print('Got', objs.count(), 'targets')
-    print('types:', np.unique([o.type for o in objs]))
-    print('versions:', np.unique([o.version for o in objs]))
-
-    return HttpResponse(json.dumps(dict(
-                rd=[(float(o.ra),float(o.dec)) for o in objs],
-                name=[o.type for o in objs],
-                )),
-                        content_type='application/json')
-
 def cat_targets_cmx_dr7(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-cmx-0.27.0.kd.fits'),
@@ -511,18 +467,6 @@ def cat_targets_dr45(req, ver):
         os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
         os.path.join(settings.DATA_DIR, 'targets-dr4-0.20.0.kd.fits'),
     ], tag = 'targets-dr45')
-
-def cat_targets_dr56(req, ver):
-    return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-    ], tag = 'targets-dr56')
-
-def cat_targets_bgs_dr56(req, ver):
-    return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-    ], tag = 'targets-bgs-dr56', bgs=True)
 
 def cat_targets_dr67(req, ver):
     return cat_targets_drAB(req, ver, cats=[
@@ -1069,12 +1013,6 @@ def cat(req, ver, tag, fn):
         
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
-def cat_decals_dr2(req, ver, zoom, x, y, tag='decals-dr2'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
-def cat_decals_dr3(req, ver, zoom, x, y, tag='decals-dr3'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
 def cat_mobo_dr4(req, ver, zoom, x, y, tag='mzls+bass-dr4'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
@@ -1084,10 +1022,16 @@ def cat_decals_dr5(req, ver, zoom, x, y, tag='decals-dr5'):
 def cat_mobo_dr6(req, ver, zoom, x, y, tag='mzls+bass-dr6'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
-def cat_mobo_dr8(req, ver, zoom, x, y, tag='mzls+bass-dr8'):
+def cat_decals_dr7(req, ver, zoom, x, y, tag='decals-dr7'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
-def cat_decals_dr7(req, ver, zoom, x, y, tag='decals-dr7'):
+def cat_dr8(req, ver, zoom, x, y, tag='dr8'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def cat_dr8_north(req, ver, zoom, x, y, tag='dr8-north'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def cat_dr8_south(req, ver, zoom, x, y, tag='dr8-south'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def any_cat(req, name, ver, zoom, x, y, **kwargs):

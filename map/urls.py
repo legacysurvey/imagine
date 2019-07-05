@@ -14,8 +14,8 @@ urlpatterns = [
     url(r'^gfas', views.gfas),
     url(r'^ci', views.ci),
 
-    url(r'^ls-dr56/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('ls-dr56')),
+    #url(r'^ls-dr56/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+    #    views.get_tile_view('ls-dr56')),
     url(r'^ls-dr67/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('ls-dr67')),
 
@@ -45,15 +45,42 @@ urlpatterns = [
     url(r'^des-dr1/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('des-dr1')),
 
-    # MzLS+BASS DR8 tiles
-    url(r'^mzls\+bass-dr8/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls+bass-dr8')),
-    url(r'^mzls\+bass-dr8-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls+bass-dr8-model')),
-    url(r'^mzls\+bass-dr8-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls+bass-dr8-resid')),
-    # DR8 catalog
-    url(r'^mzls\+bass-dr8/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr8),
+    # # MzLS+BASS DR8 tiles
+    # url(r'^mzls\+bass-dr8/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+    #     views.get_tile_view('mzls+bass-dr8')),
+    # url(r'^mzls\+bass-dr8-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+    #     views.get_tile_view('mzls+bass-dr8-model')),
+    # url(r'^mzls\+bass-dr8-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+    #     views.get_tile_view('mzls+bass-dr8-resid')),
+    # # DR8 catalog
+    # url(r'^mzls\+bass-dr8/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr8),
+
+    # DR8
+    url(r'^dr8/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('dr8')),
+    url(r'^dr8-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('dr8-model')),
+    url(r'^dr8-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('dr8-resid')),
+    url(r'^dr8/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_dr8),
+
+    # DR8-north
+    url(r'^dr8-north/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('dr8-north')),
+    url(r'^dr8-north-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('dr8-north-model')),
+    url(r'^dr8-north-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('dr8-north-resid')),
+    url(r'^dr8-north/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_dr8_north),
+
+    # DR8-south
+    url(r'^dr8-south/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('dr8-south')),
+    url(r'^dr8-south-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('dr8-south-model')),
+    url(r'^dr8-south-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
+        views.get_tile_view('dr8-south-resid')),
+    url(r'^dr8-south/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_dr8_south),
 
     # DR7
     url(r'^decals-dr7/(\d+)/(\d+)/(\d+)/(\d+).jpg',
@@ -95,44 +122,12 @@ urlpatterns = [
     # DR4 catalog
     url(r'^mzls\+bass-dr4/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr4),
 
-    # DR3
-    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr3')),
-    url(r'^decals-dr3-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr3-model')),
-    url(r'^decals-dr3-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr3-resid')),
-    # DR3 catalog
-    url(r'^decals-dr3/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr3),
-    
-    # DR2
-    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr2')),
-    url(r'^decals-dr2-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr2-model')),
-    url(r'^decals-dr2-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('decals-dr2-resid')),
-
-    # DR2 catalog
-    url(r'^decals-dr2/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr2),
-    url(r'^targets-dr2/(\d+)/cat.json', cats.cat_targets_dr2),
-
     # DR4/5 DESI targets
     url(r'^targets-dr45/(\d+)/cat.json', cats.cat_targets_dr45),
-    # DR5/6 DESI targets
-    url(r'^targets-dr56/(\d+)/cat.json', cats.cat_targets_dr56),
-    # DR6/7 DESI targets
+     # DR6/7 DESI targets
     url(r'^targets-dr67/(\d+)/cat.json', cats.cat_targets_dr67),
 
-    # DR8b DESI targets
-    url(r'^targets-dr8b/(\d+)/cat.json', cats.cat_targets_dr8b),
-
-    # DR8c DESI targets
-    url(r'^targets-dr8c/(\d+)/cat.json', cats.cat_targets_dr8c),
-
-    # DR5/6 DESI targets, BGS survey only
-    url(r'^targets-bgs-dr56/(\d+)/cat.json', cats.cat_targets_bgs_dr56),
-    # DR6/7 DESI targets, BGS survey only
+     # DR6/7 DESI targets, BGS survey only
     url(r'^targets-bgs-dr67/(\d+)/cat.json', cats.cat_targets_bgs_dr67),
 
     # DR6/7 DESI sky fibers

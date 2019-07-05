@@ -188,10 +188,17 @@ def _index(req,
         enable_dr6 = settings.ENABLE_DR6,
         enable_dr7 = settings.ENABLE_DR7,
         enable_dr8 = settings.ENABLE_DR8,
+        enable_dr8_overlays = settings.ENABLE_DR8,
+        enable_dr8_models = settings.ENABLE_DR8,
+        enable_dr8_resids = settings.ENABLE_DR8,
         enable_dr8_north = settings.ENABLE_DR8,
         enable_dr8_north_models = settings.ENABLE_DR8,
         enable_dr8_north_resids = settings.ENABLE_DR8,
         enable_dr8_north_overlays = settings.ENABLE_DR8,
+        enable_dr8_south = settings.ENABLE_DR8,
+        enable_dr8_south_models = settings.ENABLE_DR8,
+        enable_dr8_south_resids = settings.ENABLE_DR8,
+        enable_dr8_south_overlays = settings.ENABLE_DR8,
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         enable_des_dr1 = settings.ENABLE_DES_DR1,
@@ -203,13 +210,10 @@ def _index(req,
         enable_dr6_resids = settings.ENABLE_DR6,
         enable_dr7_models = settings.ENABLE_DR7,
         enable_dr7_resids = settings.ENABLE_DR7,
-        enable_dr8_models = settings.ENABLE_DR8,
-        enable_dr8_resids = settings.ENABLE_DR8,
         enable_dr4_overlays = settings.ENABLE_DR4,
         enable_dr5_overlays = settings.ENABLE_DR5,
         enable_dr6_overlays = settings.ENABLE_DR6,
         enable_dr7_overlays = settings.ENABLE_DR7,
-        enable_dr8_overlays = settings.ENABLE_DR8,
         enable_eboss = settings.ENABLE_EBOSS,
         enable_desi_targets = True,
         enable_desi_footprint = True,
@@ -4960,7 +4964,7 @@ if __name__ == '__main__':
     #r = c.get('/unwise-cat-model/1/3/1/1.jpg')
     #r = c.get('/unwise-cat-model/1/6/47/44.jpg')
     #r = c.get('/unwise-cat-model/1/4/11/0.jpg')
-    r = c.get('/m33/1/16/61257/26897.jpg')
+    #r = c.get('/m33/1/16/61257/26897.jpg')
     #r = c.get('/m33/1/15/30627/13432.jpg')
     #r = c.get('/m33/1/14/15320/6716.jpg')
     #r = c.get('/m33/1/13/7660/3358.jpg')
@@ -5010,7 +5014,9 @@ if __name__ == '__main__':
     #r = c.get('/dr8-north/1/14/4578/6019.jpg')
     #r = c.get('/dr8-south/1/13/3327/3329.jpg')
     #r = c.get('/cutouts/?ra=213.7119&dec=45.0500&layer=dr8')
-    r = c.get('/dr8-model/1/14/6675/6653.jpg')
+    #r = c.get('/dr8-model/1/14/6675/6653.jpg')
+    #r = c.get('/dr8-south/1/5/30/20.jpg')
+    r = c.get('/dr8-south/1/7/117/56.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
