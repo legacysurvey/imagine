@@ -1519,7 +1519,7 @@ allLayers.push(tiles);
 
 {% if enable_dr8 %}
 tiles = split_layer('dr8', 'LegacySurvey DR8 images',
-                    32.,
+                    32.375,
                     // North
                     'dr8-north', [ [1, maxZoom, tile_url], ],
                     // Mid
@@ -1530,7 +1530,7 @@ tiles = split_layer('dr8', 'LegacySurvey DR8 images',
 allLayers.push(tiles);
 {% if enable_dr8_models %}
 tiles = split_layer('dr8-model', 'LegacySurvey DR8 models',
-                    32.,
+                    32.375,
                     // North
                     'dr8-north-model', [ [1, maxZoom, tile_url], ],
                     // Mid
@@ -1542,7 +1542,7 @@ allLayers.push(tiles);
 {% endif %}
 {% if enable_dr8_resids %}
 tiles = split_layer('dr8-resid', 'LegacySurvey DR8 residuals',
-                    32.,
+                    32.375,
                     // North
                     'dr8-north-resid', [ [1, maxZoom, tile_url], ],
                     // Mid

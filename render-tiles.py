@@ -776,6 +776,16 @@ def main():
         if opt.minra is None:
             opt.minra = 0
 
+    # elif opt.kind in ['dr8', 'dr8-model', 'dr8-resid']:
+    #     if opt.maxdec is None:
+    #         opt.maxdec = 90
+    #     if opt.mindec is None:
+    #         opt.mindec = -5
+    #     if opt.maxra is None:
+    #         opt.maxra = 360
+    #     if opt.minra is None:
+    #         opt.minra = 0
+    
     elif opt.kind in ['dr8-north', 'dr8-north-model', 'dr8-north-resid']:
         if opt.maxdec is None:
             opt.maxdec = 90

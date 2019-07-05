@@ -167,7 +167,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'decals-dr7',
+           default_layer = 'dr8',
            default_radec = (None,None),
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
@@ -1564,6 +1564,42 @@ class DecalsLayer(MapLayer):
         self.basedir = os.path.join(settings.DATA_DIR, self.drname)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.drname)
 
+    def get_catalog_in_wcs(self, wcs):
+        from astrometry.util.fits import fits_table, merge_tables
+        # returns cat,hdr
+
+        H,W = wcs.shape
+        X = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
+                              [1,H/2,H,H,H,H/2,1,1])
+        r,d = X[-2:]
+
+        B = self.bricks_touching_aa_wcs(wcs)
+        if B is None:
+            return None, None
+        cat = []
+        hdr = None
+        for brickname in B.brickname:
+            catfn = self.survey.find_file('tractor', brick=brickname)
+            if not os.path.exists(catfn):
+                print('Does not exist:', catfn)
+                continue
+            debug('Reading catalog', catfn)
+            T = fits_table(catfn)
+            T.cut(T.brick_primary)
+            print('File', catfn, 'cut to', len(T), 'primary')
+            if len(T) == 0:
+                continue
+            ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
+            T.cut((xx > 0) * (yy > 0) * (xx < W) * (yy < H))
+            cat.append(T)
+            if hdr is None:
+                hdr = T.get_header()
+        if len(cat) == 0:
+            cat = None
+        else:
+            cat = merge_tables(cat, columns='fillzero')
+        return cat,hdr
+
     def get_bricks(self):
         B = self.survey.get_bricks_readonly()
         # drop unnecessary columns.
@@ -2142,6 +2178,26 @@ class LegacySurveySplitLayer(MapLayer):
             ok,rr,dd = wcs.pixelxy2radec([1,1], [1,256])
             #print('Decs', dd)
             self.tilesplits[zoom] = y
+
+    def get_catalog_in_wcs(self, wcs):
+        from astrometry.util.fits import merge_tables
+        allcats = []
+        hdr = None
+        for layer,above in [(self.top,True), (self.bottom,False)]:
+            cat,h = layer.get_catalog_in_wcs(wcs)
+            if cat is not None and len(cat)>0:
+                if above:
+                    cat.cut(cat.dec >= self.decsplit)
+                else:
+                    cat.cut(cat.dec < self.decsplit)
+                allcats.append(cat)
+            if h is not None:
+                hdr = h
+        if len(allcats) == 0:
+            allcats = None
+        else:
+            allcats = merge_tables(allcats, columns='fillzero')
+        return allcats,hdr
 
     def get_bricks(self):
         BB = merge_tables([l.get_bricks() for l in self.layers])
@@ -4619,7 +4675,8 @@ def get_layer(name, default=None):
         suff = name[3:]
         north = get_layer('dr8-north' + suff)
         south = get_layer('dr8-south' + suff)
-        layer = LegacySurveySplitLayer(name, north, south, 32.)
+        ### NOTE, must also change the javascript in template/index.html !
+        layer = LegacySurveySplitLayer(name, north, south, 32.375)
 
     elif name == 'phat':
         layer = PhatLayer('phat')
@@ -5028,7 +5085,8 @@ if __name__ == '__main__':
     #r = c.get('/dr8-south/1/6/47/40.jpg')
     #r = c.get('/dr8-north/1/14/10580/6658.cat.json')
     #r = c.get('/dr8-south/1/14/10580/6656.cat.json')
-    r = c.get('/dr8/1/14/10580/6657.cat.json')
+    #r = c.get('/dr8/1/14/10580/6657.cat.json')
+    r = c.get('/dr8/1/14/9389/3788.cat.json')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
