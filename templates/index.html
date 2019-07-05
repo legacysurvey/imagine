@@ -33,8 +33,6 @@
 <script src="{% static "leaflet.measurecontrol-20150626.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet.measurecontrol-20150626.css" %}" />
 {% endcomment %}
-
-
 {% endblock %}
 
 {% block body %}
@@ -1381,8 +1379,8 @@ var inbrickccdAdded = false;
 var map = L.map('map', {zoomsliderControl: false});
 var popup = L.popup();
 
-map.attributionControl.options.prefix = '<a href="http://legacysurvey.org/svtips/">Tips &amp; Tricks | ' +
-     map.attributionControl.options.prefix + ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
+map.attributionControl.options.prefix = map.attributionControl.options.prefix +
+        ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
 
 // default to 1.
 var tileversions = {
@@ -1922,6 +1920,15 @@ objquery.onAdd = function (map) {
     return this._div;
 };
 objquery.addTo(map);
+
+//FAQ
+var faq = L.control({'position':'bottomright'});
+faq.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'faq');
+    this._div.innerHTML = '<a href="https://djschlegel.wordpress.com/faq-legacy-survey-sky-image/">FAQ</a>';
+    return this._div;
+};
+faq.addTo(map);
 
 // A list of object names mapped to [lat,lng,zoom], for history navgation
 var hashLocations = {};
@@ -3718,4 +3725,5 @@ AstroMeasureControl = L.Control.MeasureControl.extend({
 
 </script>
 </body>
+
 {% endblock %}
