@@ -2031,7 +2031,14 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
 
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
-        size = 3600
+
+        # Work around issue where the largest-scale bricks don't quite
+        # meet up due to TAN projection effects.
+        if scale >= 6:
+            size = 3800
+        else:
+            size = 3600
+
         pixscale = self.pixscale * 2**scale
         cd = pixscale / 3600.
         crpix = size/2. + 0.5
@@ -5016,7 +5023,12 @@ if __name__ == '__main__':
     #r = c.get('/cutouts/?ra=213.7119&dec=45.0500&layer=dr8')
     #r = c.get('/dr8-model/1/14/6675/6653.jpg')
     #r = c.get('/dr8-south/1/5/30/20.jpg')
-    r = c.get('/dr8-south/1/7/117/56.jpg')
+    # Problems with tilings
+    #r = c.get('/dr8-south/1/7/117/56.jpg')
+    #r = c.get('/dr8-south/1/6/47/40.jpg')
+    #r = c.get('/dr8-north/1/14/10580/6658.cat.json')
+    #r = c.get('/dr8-south/1/14/10580/6656.cat.json')
+    r = c.get('/dr8/1/14/10580/6657.cat.json')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
