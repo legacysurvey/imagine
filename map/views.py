@@ -3710,7 +3710,7 @@ def sdss_ccds_near(rc, dc, radius):
 def get_exposure_table(name):
     from astrometry.util.fits import fits_table
     name = str(name)
-    if name in ['decals-dr5', 'decals-dr7']:
+    if name in ['decals-dr5', 'decals-dr7', 'dr8-south']:
         fn = os.path.join(settings.DATA_DIR, name, 'exposures.fits')
         if not os.path.exists(fn):
             import numpy as np
@@ -5087,7 +5087,8 @@ if __name__ == '__main__':
     #r = c.get('/dr8-south/1/14/10580/6656.cat.json')
     #r = c.get('/dr8/1/14/10580/6657.cat.json')
     #r = c.get('/dr8/1/14/9389/3788.cat.json')
-    r = c.get('/ccds/?ralo=192.2058&rahi=192.7009&declo=19.1607&dechi=19.4216&id=dr8')
+    #r = c.get('/ccds/?ralo=192.2058&rahi=192.7009&declo=19.1607&dechi=19.4216&id=dr8')
+    r = c.get('/exps/?ralo=192.9062&rahi=193.8963&declo=32.1721&dechi=32.6388&id=dr8-south')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
