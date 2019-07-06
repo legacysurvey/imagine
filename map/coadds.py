@@ -25,39 +25,45 @@ def read_tansip_wcs(sourcefn, ext, hdr=None, W=None, H=None, tansip=None):
         pass
     return None
 
+def read_tan_from_header(sourcefn, ext, hdr=None, fitsfile=None, W=None, H=None):
+    import fitsio
+    from astrometry.util.util import Tan
+    # maybe gzipped; try fitsio header.
+    if hdr is None:
+        hdr = fitsio.read_header(sourcefn, ext)
+    if W is None or H is None:
+        if fitsfile is None:
+            F = fitsio.FITS(sourcefn)
+        else:
+            F = fitsfile
+        info = F[ext].get_info()
+        H,W = info['dims']
+
+    # PS1 wonky WCS
+    if (not 'CD1_1' in hdr) and ('PC001001' in hdr):
+        cdelt1 = hdr['CDELT1']
+        cdelt2 = hdr['CDELT2']
+        # ????
+        cd11 = hdr['PC001001'] * cdelt1
+        cd12 = hdr['PC001002'] * cdelt1
+        cd21 = hdr['PC002001'] * cdelt2
+        cd22 = hdr['PC002002'] * cdelt2
+    else:
+        cd11,cd12,cd21,cd22 = (hdr.get('CD1_1',0.), hdr.get('CD1_2',0.),
+                               hdr.get('CD2_1',0.), hdr.get('CD2_2',0.))
+
+    wcs = Tan(*[float(x) for x in [
+                hdr['CRVAL1'], hdr['CRVAL2'], hdr['CRPIX1'], hdr['CRPIX2'],
+                cd11, cd12, cd21, cd22, W, H]])                    
+    return wcs
+
 def read_tan_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):
     from astrometry.util.util import Tan
     if not os.path.exists(sourcefn):
         return None
     wcs = read_tansip_wcs(sourcefn, ext, hdr=hdr, W=W, H=H, tansip=Tan)
     if wcs is None:
-        import fitsio
-        # maybe gzipped; try fitsio header.
-        if hdr is None:
-            hdr = fitsio.read_header(sourcefn, ext)
-        if W is None or H is None:
-            if fitsfile is None:
-                F = fitsio.FITS(sourcefn)
-            else:
-                F = fitsfile
-            info = F[ext].get_info()
-            H,W = info['dims']
-
-        # PS1 wonky WCS
-        if (not 'CD1_1' in hdr) and ('PC001001' in hdr):
-            cdelt1 = hdr['CDELT1']
-            cdelt2 = hdr['CDELT2']
-            # ????
-            cd11 = hdr['PC001001'] * cdelt1
-            cd12 = hdr['PC001002'] * cdelt1
-            cd21 = hdr['PC002001'] * cdelt2
-            cd22 = hdr['PC002002'] * cdelt2
-        else:
-            cd11,cd12,cd21,cd22 = hdr['CD1_1'], hdr['CD1_2'], hdr['CD2_1'], hdr['CD2_2'],
-
-        wcs = Tan(*[float(x) for x in [
-                    hdr['CRVAL1'], hdr['CRVAL2'], hdr['CRPIX1'], hdr['CRPIX2'],
-                    cd11, cd12, cd21, cd22, W, H]])                    
+        wcs = read_tan_from_header(sourcefn, ext)
     return wcs
 
 def read_sip_wcs(sourcefn, ext, hdr=None, W=None, H=None, fitsfile=None):

@@ -9,9 +9,19 @@ unset PYTHONPATH
 #export PYTHONPATH=${PYTHONPATH}:$(pwd)/viewer-dev-conda
 
 export PATH=~/miniconda3b/bin:${PATH}
-source activate viewer-dev-conda-2
-export PYTHONPATH=${PYTHONPATH}:$(pwd)/viewer-dev-conda-2
-export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
+
+#source activate viewer-dev-conda-2
+source activate viewer-dev-conda-3
+export PYTHONPATH=${PYTHONPATH}:$(pwd)/viewer-dev-conda-3
+
+which python
+python --version
+python -c "import weakref"
+python -c "from weakref import WeakKeyDictionary"
+which uwsgi
+python -c "import django"
+
+#export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
 
 # echo "PYTHONPATH:"
 # echo $PYTHONPATH | tr : '\n'

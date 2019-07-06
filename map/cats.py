@@ -24,12 +24,13 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
+    'dr8': [1,],
+    'dr8-north': [1,],
+    'dr8-south': [1,],
     'decals-dr7': [1,],
     'mzls+bass-dr6': [1,],
     'decals-dr5': [1,],
     'mzls+bass-dr4': [1,],
-    'decals-dr2': [2,],
-    'decals-dr3': [1,],
     'ngc': [1,],
     'lslga': [1,],
     'spec': [1,],
@@ -38,15 +39,12 @@ catversions = {
     'tycho2': [1,],
     'targets-dr2': [1,],
     'targets-dr45': [1,],
-    'targets-dr56': [1,],
-    'targets-bgs-dr56': [1,],
     'targets-dr67': [1,],
     'targets-bgs-dr67': [1,],
     'targets-sky-dr67': [1,],
     'targets-bright-dr67': [1,],
     'targets-dark-dr67': [1,],
     'targets-cmx-dr7': [1,],
-    'targets-dr8b': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
@@ -319,9 +317,10 @@ def get_random_galaxy(layer=None):
     elif layer == 'decals-dr5':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr5.fits')
         drnum = 5
+
     else:
-        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr3.fits')
-        drnum = 3
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr8.fits')
+
 
     if (not layer in galaxycats) and not os.path.exists(galfn):
         if settings.CREATE_GALAXY_CATALOG:
@@ -384,13 +383,7 @@ def create_galaxy_catalog(galfn, drnum):
     from map.views import get_survey
 
     bricks = None
-    if drnum == 3:
-        bricks = fits_table(os.path.join(settings.DATA_DIR, 'decals-dr3',
-                                         'decals-bricks-in-dr3.fits'))
-        bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
-        print(len(bricks), 'bricks with grz')
-        survey = get_survey('decals-dr3')
-    elif drnum == 4:
+    if drnum == 4:
         survey = get_survey('mzls+bass-dr4')
         bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-in-dr4.fits'))
     elif drnum == 6:
@@ -401,6 +394,8 @@ def create_galaxy_catalog(galfn, drnum):
         survey = get_survey('decals-dr5')
     elif drnum == 7:
         survey = get_survey('decals-dr7')
+    #elif drnum == 8:
+    #    survey = get_survey('dr8')
 
     if bricks is None:
         bricks = survey.get_bricks()
@@ -459,45 +454,6 @@ def create_galaxy_catalog(galfn, drnum):
     print('Wrote', fn)
     T.writeto(galfn)
 
-def cat_targets_dr2(req, ver):
-    import json
-    tag = 'targets-dr2'
-    ralo = float(req.GET['ralo'])
-    rahi = float(req.GET['rahi'])
-    declo = float(req.GET['declo'])
-    dechi = float(req.GET['dechi'])
-
-    ver = int(ver)
-    if not ver in catversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-
-    from astrometry.util.fits import fits_table, merge_tables
-    import numpy as np
-    from cat.models import DR2_Target as Target
-
-    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
-    xyz1 = radectoxyz(ralo, declo)
-    xyz2 = radectoxyz(rahi, dechi)
-    xyz = (xyz1 + xyz2)/2.
-    xyz /= np.sqrt(np.sum(xyz**2))
-    rc,dc = xyztoradec(xyz)
-    rc = rc[0]
-    dc = dc[0]
-    rad = degrees_between(rc, dc, ralo, declo)
-
-    objs = Target.objects.extra(where=[
-            'q3c_radial_query(target.ra, target.dec, %.4f, %.4f, %g)'
-            % (rc, dc, rad * 1.01)])
-    print('Got', objs.count(), 'targets')
-    print('types:', np.unique([o.type for o in objs]))
-    print('versions:', np.unique([o.version for o in objs]))
-
-    return HttpResponse(json.dumps(dict(
-                rd=[(float(o.ra),float(o.dec)) for o in objs],
-                name=[o.type for o in objs],
-                )),
-                        content_type='application/json')
-
 def cat_targets_cmx_dr7(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-cmx-0.27.0.kd.fits'),
@@ -508,18 +464,6 @@ def cat_targets_dr45(req, ver):
         os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
         os.path.join(settings.DATA_DIR, 'targets-dr4-0.20.0.kd.fits'),
     ], tag = 'targets-dr45')
-
-def cat_targets_dr56(req, ver):
-    return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-    ], tag = 'targets-dr56')
-
-def cat_targets_bgs_dr56(req, ver):
-    return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr6-0.22.0.kd.fits'),
-    ], tag = 'targets-bgs-dr56', bgs=True)
 
 def cat_targets_dr67(req, ver):
     return cat_targets_drAB(req, ver, cats=[
@@ -554,6 +498,10 @@ def cat_targets_dr8b(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr8b-0.29.0.kd.fits'),
     ], tag='targets-dr8b')
+def cat_targets_dr8c(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr8c-PR490.kd.fits'),
+    ], tag='targets-dr8c')
 
 
 def desitarget_color_names(T):
@@ -1062,12 +1010,6 @@ def cat(req, ver, tag, fn):
         
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
-def cat_decals_dr2(req, ver, zoom, x, y, tag='decals-dr2'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
-def cat_decals_dr3(req, ver, zoom, x, y, tag='decals-dr3'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
 def cat_mobo_dr4(req, ver, zoom, x, y, tag='mzls+bass-dr4'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
@@ -1078,6 +1020,15 @@ def cat_mobo_dr6(req, ver, zoom, x, y, tag='mzls+bass-dr6'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def cat_decals_dr7(req, ver, zoom, x, y, tag='decals-dr7'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def cat_dr8(req, ver, zoom, x, y, tag='dr8'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def cat_dr8_north(req, ver, zoom, x, y, tag='dr8-north'):
+    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
+
+def cat_dr8_south(req, ver, zoom, x, y, tag='dr8-south'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
 def any_cat(req, name, ver, zoom, x, y, **kwargs):
@@ -1190,50 +1141,21 @@ def get_desi_tile_radec(tile_id):
         raise RuntimeError("DESI tile not found")
 
 def _get_decals_cat(wcs, tag='decals'):
-    from astrometry.util.fits import fits_table, merge_tables
-    from map.views import get_survey
-
-    H,W = wcs.shape
-    X = wcs.pixelxy2radec([1,1,1,W/2,W,W,W,W/2],
-                            [1,H/2,H,H,H,H/2,1,1])
-    r,d = X[-2:]
-
-    #catpat = os.path.join(basedir, 'cats', tag, '%(brickname).3s',
-    #                      'tractor-%(brickname)s.fits')
-
-    survey = get_survey(tag)
-    B = survey.get_bricks_readonly()
-    I = survey.bricks_touching_radec_box(B, r.min(), r.max(), d.min(), d.max())
-    #print(len(I), 'bricks touching RA,Dec box', r.min(),r.max(), d.min(),d.max())
-
-    cat = []
-    hdr = None
-    for brickname in B.brickname[I]:
-        catfn = survey.find_file('tractor', brick=brickname)
-        if not os.path.exists(catfn):
-            print('Does not exist:', catfn)
-            continue
-        debug('Reading catalog', catfn)
-        T = fits_table(catfn)
-        T.cut(T.brick_primary)
-        print('File', catfn, 'cut to', len(T), 'primary')
-        ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
-        T.cut((xx > 0) * (yy > 0) * (xx < W) * (yy < H))
-        cat.append(T)
-        if hdr is None:
-            hdr = T.get_header()
-    if len(cat) == 0:
-        cat = None
-    else:
-        cat = merge_tables(cat, columns='fillzero')
-
-    return cat,hdr
-
+    from map.views import get_layer
+    layer = get_layer(tag)
+    return layer.get_catalog_in_wcs(wcs)
 
 
 if __name__ == '__main__':
     #print('Random galaxy:', get_random_galaxy(layer='mzls+bass-dr4'))
-    #create_galaxy_catalog('/tmp/dr6.fits', 6)
+    #create_galaxy_catalog('/tmp/dr8.fits', 8)
+    
+    from astrometry.util.fits import *
+    T6 = fits_table('data/galaxies-in-dr6.fits')
+    T7 = fits_table('data/galaxies-in-dr7.fits')
+    T8 = merge_tables([T6, T7], columns='fillzero')
+    T8.writeto('data/galaxies-in-dr8.fits')
+
     #specObj-dr14.fits
     #T = fits_table('/project/projectdirs/cosmo/data/sdss/dr14/sdss/spectro/redux/specObj-dr14.fits')
 
