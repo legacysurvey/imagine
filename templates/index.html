@@ -1539,7 +1539,7 @@ allLayers.push(tiles);
 
 
 {% if enable_dr8 %}
-tiles = split_layer('dr8', 'LegacySurvey DR8 images',
+tiles = split_layer('dr8', 'Legacy Surveys DR8 images',
                     32.375,
                     // North
                     'dr8-north', [ [0, maxZoom, tile_url], ],
@@ -1550,7 +1550,7 @@ tiles = split_layer('dr8', 'LegacySurvey DR8 images',
                    );
 allLayers.push(tiles);
 {% if enable_dr8_models %}
-tiles = split_layer('dr8-model', 'LegacySurvey DR8 models',
+tiles = split_layer('dr8-model', 'Legacy Surveys DR8 models',
                     32.375,
                     // North
                     'dr8-north-model', [ [0, maxZoom, tile_url], ],
@@ -1562,7 +1562,7 @@ tiles = split_layer('dr8-model', 'LegacySurvey DR8 models',
 allLayers.push(tiles);
 {% endif %}
 {% if enable_dr8_resids %}
-tiles = split_layer('dr8-resid', 'LegacySurvey DR8 residuals',
+tiles = split_layer('dr8-resid', 'Legacy Surveys DR8 residuals',
                     32.375,
                     // North
                     'dr8-north-resid', [ [0, maxZoom, tile_url], ],
@@ -1609,7 +1609,7 @@ allLayers.push(tiles);
 
 
 {% if enable_dr67 %}
-tiles = split_layer('ls-dr67', 'LegacySurvey DR6+DR7 images',
+tiles = split_layer('ls-dr67', 'Legacy Surveys DR6+DR7 images',
                     32.,
                     // North
                     'mzls+bass-dr6', [ [13, maxZoom, tile_url], ],
@@ -1766,17 +1766,19 @@ tiles = mylayer_B('ps1', 'PS1 images',
 allLayers.push(tiles);
 {% endif %}
 
+{% if enable_hsc_dr1 %}
 tiles = mylayer_B('hsc', 'HSC DR1 images',
                   {//'attribution': sdss_attrib,
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+{% endif %}
 
-
+{% if enable_hsc_dr2 %}
 tiles = mylayer_B('hsc2', 'HSC DR2 images',
                   {//'attribution': sdss_attrib,
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
-
+{% endif %}
 
 {% if enable_vlass %}
 tiles = mylayer_B('vlass', 'VLASS images',
@@ -3338,8 +3340,12 @@ var baseTree1 = [
             {% if enable_ps1 %}
             findlayer('ps1'),
             {% endif %}
+            {% if enable_hsc_dr1 %}
             findlayer('hsc'),
+            {% endif %}
+            {% if enable_hsc_dr2 %}
             findlayer('hsc2'),
+            {% endif %}
             {% if enable_vlass %}
             findlayer('vlass'),
             {% endif %}
@@ -3544,10 +3550,18 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
      
      txts = [
          {% if enable_dr7 %}
-         'LegacySurvey DR6+DR7 images',
+         'Legacy Surveys DR6+DR7 images',
          {% endif %}
-         'MzLS+BASS DR4 images',
+         {% if enable_dr8_north %}
+         'Legacy Surveys DR8-north images',
+         {% endif %}
+         {% if enable_dr8_south %}
+         'Legacy Surveys DR8-south images',
+         {% endif %}
+         'DECaLS DR7 images',
+         'MzLS+BASS DR6 images',
          'DECaLS DR5 images',
+         'MzLS+BASS DR4 images',
          'DECaPS images',
          'unWISE W1/W2 NEO4',
          'DECaLS DR7 catalog',
