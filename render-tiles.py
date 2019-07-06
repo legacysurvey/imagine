@@ -670,6 +670,9 @@ def main():
     parser.add_option('--minra', type=float, default=None,   help='Minimum RA to run')
     parser.add_option('--maxra', type=float, default=None, help='Maximum RA to run')
 
+    parser.add_option('--touching', default=False, action='store_true',
+                      help='Select bricks touching min/max ra/dec box (vs container within)')
+
     parser.add_option('--near', action='store_true', help='Only run tiles near bricks')
 
     parser.add_option('--near-ccds', action='store_true', help='Only run tiles near CCDs')
@@ -717,7 +720,7 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
     elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
-                      'galex', 'wssa', 'vlass', 'hsc']:
+                      'galex', 'wssa', 'vlass', 'hsc', 'hsc2'] or 'dr8i' in opt.kind:
         if opt.maxdec is None:
             opt.maxdec = 90.
         if opt.mindec is None:
@@ -772,6 +775,37 @@ def main():
             opt.maxra = 360
         if opt.minra is None:
             opt.minra = 0
+
+    # elif opt.kind in ['dr8', 'dr8-model', 'dr8-resid']:
+    #     if opt.maxdec is None:
+    #         opt.maxdec = 90
+    #     if opt.mindec is None:
+    #         opt.mindec = -5
+    #     if opt.maxra is None:
+    #         opt.maxra = 360
+    #     if opt.minra is None:
+    #         opt.minra = 0
+    
+    elif opt.kind in ['dr8-north', 'dr8-north-model', 'dr8-north-resid']:
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = -5
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
+
+    elif opt.kind in ['dr8-south', 'dr8-south-model', 'dr8-south-resid']:
+        if opt.maxdec is None:
+            opt.maxdec = 40
+        if opt.mindec is None:
+            opt.mindec = -70
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
+
     elif opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
         if opt.maxdec is None:
             opt.maxdec = -20
@@ -834,7 +868,9 @@ def main():
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                         'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
-                        'galex', 'wssa', 'des-dr1', 'hsc',
+                        'galex', 'wssa', 'des-dr1', 'hsc', 'hsc2',
+                        'dr8-north', 'dr8-north-model', 'dr8-north-resid',
+                        'dr8-south', 'dr8-south-model', 'dr8-south-resid',
                     ] or opt.kind.startswith('dr8-test'): # or True:
             from map.views import get_layer
 
@@ -865,10 +901,16 @@ def main():
             for scale in opt.zoom:
                 B = layer.get_bricks_for_scale(scale)
                 print(len(B), 'bricks for scale', scale)
-                B.cut((B.dec >= opt.mindec) * (B.dec <= opt.maxdec))
-                print(len(B), 'in Dec range')
-                B.cut((B.ra  >= opt.minra)  * (B.ra  <= opt.maxra))
-                print(len(B), 'in RA range')
+                if opt.touching:
+                    B.cut((B.dec2 >= opt.mindec) * (B.dec1 <= opt.maxdec))
+                    print(len(B), 'touching Dec range')
+                    B.cut((B.ra2 >= opt.minra) * (B.ra1 <= opt.maxra))
+                    print(len(B), 'touching RA range')
+                else:
+                    B.cut((B.dec >= opt.mindec) * (B.dec <= opt.maxdec))
+                    print(len(B), 'in Dec range')
+                    B.cut((B.ra  >= opt.minra)  * (B.ra  <= opt.maxra))
+                    print(len(B), 'in RA range')
 
                 bands = opt.bands
 
@@ -896,7 +938,8 @@ def main():
                          'mzls+bass-dr4', 'mzls+bass-dr4-model',
                          'decaps2', 'decaps2-model', 'eboss', 'ps1']
             or 'dr8b' in opt.kind
-            or 'dr8c' in opt.kind):
+            or 'dr8c' in opt.kind
+            or 'dr8i' in opt.kind):
 
             from map.views import get_survey, get_layer
 
