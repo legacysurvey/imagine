@@ -3,6 +3,122 @@
 
 sgn04:
 cd /tmp
+
+export PATH=~/miniconda3b/bin:${PATH}
+unset PYTHONPATH
+conda create -p /tmp/viewer-conda-3 python==3.6
+source activate /tmp/viewer-conda-3
+cd /tmp/viewer-conda-3
+conda install freetype
+wget ftp://ftp.atnf.csiro.au/pub/software/wcslib/wcslib-6.2.tar.bz2
+tar xjf wcslib-6.2.tar.bz2 
+cd wcslib-6.2
+export CFLAGS=-fPIC
+./configure --prefix=/tmp/viewer-conda-3
+make -j8
+make install
+export WCSLIB_LIB=/tmp/viewer-conda-3/lib/libwcs.a
+export PKG_CONFIG_PATH=/tmp/viewer-conda-3/lib/pkgconfig
+
+wget http://downloads.sourceforge.net/project/swig/swig/swig-3.0.8/swig-3.0.8.tar.gz
+tar xzf swig-3.0.8.tar.gz
+cd swig-3.0.8
+./configure --prefix=/tmp/viewer-conda-3 --without-pcre --without-perl5
+make
+make -j8
+make install
+
+cd ..
+git clone https://github.com/dstndstn/astrometry.net.git astrometry
+cd astrometry
+make -k
+
+unset PKG_CONFIG_PATH
+make -k
+make -k py
+cd ..
+
+git clone https://github.com/dstndstn/tractor.git tractor-git
+cd tractor-git/
+make
+make version
+ln -s tractor-git/tractor .
+git clone https://github.com/legacysurvey/legacypipe.git legacypipe-git
+ln -s legacypipe-git/py/legacypipe/ .
+cd ..
+pip install psycopg2
+cd viewer-conda-3/
+pip install psycopg2
+pip install matplotlib
+pip install uwsgi
+pip install django
+pip install fitsio==0.9.11
+pip install astropy
+pip install scipy
+
+pip install Pillow
+pip install requests
+
+-------------------------
+
+export PATH=~/miniconda3b/bin:${PATH}
+unset PYTHONPATH
+unset PKG_CONFIG_PATH
+conda create -y -p /tmp/viewer-dev-conda-3 python==3.6
+source activate /tmp/viewer-dev-conda-3
+cd /tmp/viewer-dev-conda-3
+conda install -y freetype
+
+pip install numpy
+pip install scipy
+pip install matplotlib
+
+wget ftp://ftp.atnf.csiro.au/pub/software/wcslib/wcslib-6.2.tar.bz2
+tar xjf wcslib-6.2.tar.bz2 
+cd wcslib-6.2
+export CFLAGS=-fPIC
+./configure --prefix=/tmp/viewer-dev-conda-3
+make -j8
+make install
+export WCSLIB_LIB=/tmp/viewer-dev-conda-3/lib/libwcs.a
+export PKG_CONFIG_PATH=/tmp/viewer-dev-conda-3/lib/pkgconfig
+cd ..
+
+wget http://downloads.sourceforge.net/project/swig/swig/swig-3.0.8/swig-3.0.8.tar.gz
+tar xzf swig-3.0.8.tar.gz
+cd swig-3.0.8
+./configure --prefix=/tmp/viewer-dev-conda-3 --without-pcre --without-perl5
+make
+make -j8
+make install
+cd ..
+
+git clone https://github.com/dstndstn/astrometry.net.git astrometry
+cd astrometry
+make -k
+make -k py
+cd ..
+
+git clone https://github.com/dstndstn/tractor.git tractor-git
+cd tractor-git/
+make
+make version
+cd ..
+ln -s tractor-git/tractor .
+
+git clone https://github.com/legacysurvey/legacypipe.git legacypipe-git
+ln -s legacypipe-git/py/legacypipe/ .
+
+pip install uwsgi
+pip install django
+pip install fitsio==0.9.11
+pip install astropy
+
+-------------------------
+
+
+sgn04:
+cd /tmp
 rsync -arv ~/cosmo/webapp/viewer-dev/viewer-dev-conda-2 .
 
 export PATH=~/miniconda3b/bin:${PATH}
@@ -56,7 +172,7 @@ cd ../..
 git clone https://github.com/dstndstn/astrometry.net.git astrometry
 cd astrometry
 make -k
-make -k py
+4make -k py
 (cd libkd && make py)
 cd ..
 

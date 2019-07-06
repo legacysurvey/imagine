@@ -707,6 +707,27 @@ var Ps1CatalogOverlay = CatalogOverlay.extend({
 });
 {% endif %}
 
+{% comment %}
+var url = '';
+var maskOverlay = L.imageOverlay(url, map.getBounds(), { opacity: 0.5,
+                                                         interactive: true,
+                                                         crossOrigin: true,
+                                                         //zIndex: 11,
+                                                         //bubblingMouseEvents: false,
+                                                       });
+ //maskOverlay.addTo(map);
+ //maskOverlay.remove();
+ // tooltips
+ maskOverlay.on('load', function(e){});
+ maskOverlay.setUrl();
+ maskOverlay.setBounds();
+ map.on('moveend', function(e) {
+ });
+ map.on('overlayadd', overlayAdded);
+ map.on('overlayremove', overlayRemoved);
+{% endcomment %}
+
+
 function layerMatchesEvent(layer, event) {
     return (layer._name == event.layer._name);
 }
