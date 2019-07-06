@@ -19,4 +19,4 @@ CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 #ENABLE_WL   = False
 #ENABLE_DR5  = True
 #ENABLE_DR6  = True
-ENABLE_DES_DR1 = True
+#ENABLE_DES_DR1 = True

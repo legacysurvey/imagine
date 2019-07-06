@@ -215,12 +215,13 @@ def _index(req,
         enable_dr6_overlays = settings.ENABLE_DR6,
         enable_dr7_overlays = settings.ENABLE_DR7,
         enable_eboss = settings.ENABLE_EBOSS,
+        enable_hsc_dr1 = settings.ENABLE_HSC_DR1,
+        enable_hsc_dr2 = settings.ENABLE_HSC_DR2,
         enable_desi_targets = True,
         enable_desi_footprint = True,
         enable_spectra = True,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         enable_phat = False,
-        #enable_phat = True,
     )
 
     for k in kwargs.keys():
@@ -696,6 +697,9 @@ class MapLayer(object):
         self.basedir = os.path.join(settings.DATA_DIR, self.name)
         self.tiledir = os.path.join(settings.DATA_DIR, 'tiles', self.name)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
+
+    def ccds_touching_box(self, north, south, east, west, Nmax=None):
+        return None
 
     def get_bricks(self):
         pass
@@ -1564,6 +1568,32 @@ class DecalsLayer(MapLayer):
         self.basedir = os.path.join(settings.DATA_DIR, self.drname)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.drname)
 
+    def ccds_touching_box(self, north, south, east, west, Nmax=None):
+        from astrometry.util.starutil import radectoxyz, xyztoradec, degrees_between
+        from astrometry.util.fits import fits_table
+        from astrometry.util.util import Tan
+        import numpy as np
+        x1,y1,z1 = radectoxyz(east, north)
+        x2,y2,z2 = radectoxyz(west, south)
+        rc,dc = xyztoradec((x1+x2)/2., (y1+y2)/2., (z1+z2)/2.)
+        # 0.4: ~ 90prime radius
+        #radius = 0.4 + degrees_between(east, north, west, south)/2.
+        pixscale = 1./3600.
+        width = max(degrees_between(east, north, west, north),
+                    degrees_between(east, south, west, south)) / pixscale * 1.1;
+        height = np.abs(north - south) / pixscale * 1.1;
+        fakewcs = Tan(rc, dc, width/2. + 0.5, height/2. + 0.5,
+                      -pixscale, 0., 0., pixscale, width, height)
+        ccds = self.survey.ccds_touching_wcs(fakewcs)
+        if ccds is None:
+            return None
+        print(len(ccds), 'CCDs from survey')
+        if 'good_ccd' in ccds.columns():
+            ccds.cut(ccds.good_ccd)
+        if Nmax:
+            ccds = ccds[:Nmax]
+        return ccds
+
     def get_catalog_in_wcs(self, wcs):
         from astrometry.util.fits import fits_table, merge_tables
         # returns cat,hdr
@@ -2178,6 +2208,19 @@ class LegacySurveySplitLayer(MapLayer):
             ok,rr,dd = wcs.pixelxy2radec([1,1], [1,256])
             #print('Decs', dd)
             self.tilesplits[zoom] = y
+
+    def ccds_touching_box(self, north, south, east, west, Nmax=None):
+        from astrometry.util.fits import merge_tables
+        ccds_n = self.top.ccds_touching_box(north, south, east, west, Nmax=Nmax)
+        ccds_s = self.bottom.ccds_touching_box(north, south, east, west, Nmax=Nmax)
+        ccds = []
+        if ccds_n is not None:
+            ccds.append(ccds_n)
+        if ccds_s is not None:
+            ccds.append(ccds_s)
+        if not len(ccds):
+            return None
+        return merge_tables(ccds, columns='fillzero')
 
     def get_catalog_in_wcs(self, wcs):
         from astrometry.util.fits import merge_tables
@@ -3551,53 +3594,6 @@ def _objects_touching_box(kdtree, north, south, east, west,
         J = J[:Nmax]
     return J
 
-# A cache of kd-trees of CCDs
-ccd_cache = {}
-
-def _ccds_touching_box(north, south, east, west, Nmax=None, name=None, survey=None):
-    from astrometry.libkd.spherematch import tree_build_radec
-    from astrometry.libkd.spherematch import tree_open, tree_search_radec
-    from astrometry.util.fits import fits_table
-    import numpy as np
-    global ccd_cache
-
-    print('ccds_touching_box: ccd_cache keys:', ccd_cache.keys())
-    
-    if not name in ccd_cache:
-        debug('Finding CCDs for name:', name)
-        if survey is None:
-            survey = get_survey(name)
-
-        kdfns = survey.find_file('ccd-kds')
-        print('KD filenames:', kdfns)
-        if len(kdfns) == 1:
-            kdfn = kdfns[0]
-            tree = tree_open(kdfn, 'ccds')
-            def read_ccd_rows_kd(fn, J):
-                return fits_table(fn, rows=J)
-            ccd_cache[name] = (tree, read_ccd_rows_kd, kdfn)
-
-        else:
-            CCDs = survey.get_ccds_readonly()
-            print('Read CCDs:', CCDs.columns())
-            tree = tree_build_radec(CCDs.ra, CCDs.dec)
-            def read_ccd_rows_table(ccds, J):
-                return ccds[J]
-            ccd_cache[name] = (tree, read_ccd_rows_table, CCDs)
-    tree,readrows,readrows_arg = ccd_cache[name]
-
-    # image size -- DECam
-    radius = np.hypot(2048, 4096) * 0.262/3600. / 2.
-    # image size -- 90prime
-    radius = max(radius, np.hypot(4096,4096) * 0.45 / 3600. / 2.)
-
-    J = _objects_touching_box(tree, north, south, east, west, Nmax=Nmax,
-                              radius=radius)
-    if len(J) == 0:
-        return []
-    #return CCDs[J]
-    return readrows(readrows_arg, J)
-
 def ccd_list(req):
     import json
     from astrometry.util.util import Tan
@@ -3644,7 +3640,7 @@ def ccd_list(req):
         x2,y2,z2 = radectoxyz(west, south)
         rc,dc = xyztoradec((x1+x2)/2., (y1+y2)/2., (z1+z2)/2.)
         # 0.8: unWISE tile radius, approx.
-        radius = 0.8 + degrees_between(east, north, west, south)/2.
+        radius = 0.8 + degrees_between(east, north, west, south)/2. 
         fn = os.path.join(settings.DATA_DIR, 'unwise-tiles.kd.fits')
         kd = tree_open(fn)
         I = tree_search_radec(kd, rc, dc, radius)
@@ -3672,17 +3668,18 @@ def ccd_list(req):
                  for t in T]
         return HttpResponse(json.dumps(dict(polys=polys)), content_type='application/json')
 
-    CCDS = _ccds_touching_box(north, south, east, west, Nmax=10000, name=name)
-    print('CCDs in box for', name, ':', len(CCDS))
-    if len(CCDS) == 0:
+    layer = get_layer(name)
+    if layer is None:
         return HttpResponse(json.dumps(dict(polys=[])), content_type='application/json')
-        
-    if 'good_ccd' in CCDS.columns():
-        CCDS.cut(CCDS.good_ccd)
-        print('Good CCDs in box for', name, ':', len(CCDS))
-    CCDS.cut(np.lexsort((CCDS.expnum, CCDS.filter)))
+                            
+    CCDs = layer.ccds_touching_box(north, south, east, west, Nmax=10000)
+    print('No CCDs touching box from layer', layer)
+    if CCDs is None:
+        return HttpResponse(json.dumps(dict(polys=[])), content_type='application/json')
+
+    CCDs.cut(np.lexsort((CCDs.expnum, CCDs.filter)))
     ccds = []
-    for c in CCDS:
+    for c in CCDs:
         wcs = Tan(*[float(x) for x in [
             c.crval1, c.crval2, c.crpix1, c.crpix2, c.cd1_1, c.cd1_2,
             c.cd2_1, c.cd2_2, c.width, c.height]])
@@ -5044,6 +5041,8 @@ if __name__ == '__main__':
     #r = c.get('/jpeg-cutout?ra=180&dec=89.7&pixscale=6&layer=unwise-cat-model')
     #r = c.get('/cutout_panels/ls-dr67/372648/N23/?x=1673&y=3396&size=100')
     #r = c.get('/cutouts/?ra=148.2641&dec=-1.7679&layer=decals-dr7')
+    #r = c.get('/lslga/1/cat.json?ralo=23.3077&rahi=23.4725&declo=30.6267&dechi=30.7573')
+    #r = c.get('/phat-clusters/1/cat.json?ralo=10.8751&rahi=11.2047&declo=41.3660&dechi=41.5936')
     #r = c.get('/sdss-wcs/?crval1=195.00000&crval2=60.00000&crpix1=384.4&crpix2=256.4&cd11=1.4810e-4&cd12=0&cd21=0&cd22=-1.4810e-4&imagew=768&imageh=512')
     #r = c.get('/cutout-wcs/?crval1=195.00000&crval2=60.00000&crpix1=384.4&crpix2=256.4&cd11=1.4810e-4&cd12=0&cd21=0&cd22=-1.4810e-4&imagew=768&imageh=512')
     #r = c.get('/lslga/1/cat.json?ralo=23.3077&rahi=23.4725&declo=30.6267&dechi=30.7573')
@@ -5058,6 +5057,7 @@ if __name__ == '__main__':
     #r = c.get('/hsc/1/12/1321/1505.jpg')
     #r = c.get('/hsc/1/11/660/752.jpg')
     #r = c.get('/hsc/1/8/82/93.jpg')
+    #r = c.get('/cutout_panels/decals-dr7/634843/S24/?x=1658&y=799&size=100')
     #r = c.get('/hsc/1/7/41/40.jpg')
     #r = c.get('/cutout_panels/decals-dr7/634843/S24/?x=1658&y=799&size=100')
     #class r = c.get('/cutout_panels/decals-dr7/392804/N13/?x=1723&y=2989&size=100&kind=weightedimage')
@@ -5086,7 +5086,8 @@ if __name__ == '__main__':
     #r = c.get('/dr8-north/1/14/10580/6658.cat.json')
     #r = c.get('/dr8-south/1/14/10580/6656.cat.json')
     #r = c.get('/dr8/1/14/10580/6657.cat.json')
-    r = c.get('/dr8/1/14/9389/3788.cat.json')
+    #r = c.get('/dr8/1/14/9389/3788.cat.json')
+    r = c.get('/ccds/?ralo=192.2058&rahi=192.7009&declo=19.1607&dechi=19.4216&id=dr8')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

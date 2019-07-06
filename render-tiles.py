@@ -747,6 +747,16 @@ def main():
         if opt.maxra is None:
             opt.maxra = 23.73
 
+    elif opt.kind == 'm33':
+        if opt.mindec is None:
+            opt.mindec = 30.40
+        if opt.maxdec is None:
+            opt.maxdec = 30.90
+        if opt.minra is None:
+            opt.minra = 23.29
+        if opt.maxra is None:
+            opt.maxra = 23.73
+
     elif opt.kind in ['des-dr1']:
         if opt.maxdec is None:
             opt.maxdec = 6

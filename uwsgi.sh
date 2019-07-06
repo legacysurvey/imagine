@@ -9,7 +9,11 @@ cd /project/projectdirs/cosmo/webapp/viewer
 
 unset PYTHONPATH
 export PATH=~/miniconda3b/bin:${PATH}
-source activate viewer-conda-2
+#source activate viewer-conda-2
+source activate viewer-conda-3
+which uwsgi
+uwsgi --version
+echo $PATH
 export PYTHONPATH=${PYTHONPATH}:${CONDA_PREFIX}
 export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
 
