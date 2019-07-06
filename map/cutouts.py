@@ -31,7 +31,7 @@ if not settings.DEBUG_LOGGING:
         pass
 
 def jpeg_cutout(req):
-    name = req.GET.get('layer', 'decals-dr3')
+    name = req.GET.get('layer', 'dr8')
     name = layer_name_map(name)
 
     # Sanjaya : redirect to NERSC
