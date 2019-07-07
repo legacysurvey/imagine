@@ -3172,105 +3172,11 @@ var testTree = [];
 console.log('testTree:', testTree);
 
 var baseTree1 = [
-    {% if enable_m33 %}
-    findlayer('m33'),
-    {% endif %}
-    {% if enable_phat %}
-    findlayer('phat'),
-    {% endif %}
     {% if enable_dr8 %}
-    findlayer('dr8', [
-        findlayer('dr8-model'),
-        findlayer('dr8-resid'),
-    ]),
+    findlayer('dr8'),
+    findlayer('dr8-north'),
+    findlayer('dr8-south'),
     {% endif %}
-    {% if enable_dr8_north %}
-    findlayer('dr8-north', [
-        findlayer('dr8-north-model'),
-        findlayer('dr8-north-resid'),
-    ]),
-    {% endif %}
-    {% if enable_dr8_south %}
-    findlayer('dr8-south', [
-        findlayer('dr8-south-model'),
-        findlayer('dr8-south-resid'),
-    ]),
-    {% endif %}
-    {% if enable_dr67 %}
-    findlayer('ls-dr67'),
-    {% endif %}
-    {% if enable_dr7 %}
-    findlayer('decals-dr7', [
-        findlayer('decals-dr7-model'),
-        findlayer('decals-dr7-resid'),
-    ]),
-    {% endif %}
-    {% if enable_dr6 %}
-    //{
-    findlayer('mzls+bass-dr6', [
-        findlayer('mzls+bass-dr6-model'),
-        findlayer('mzls+bass-dr6-resid'),
-    ]),
-    {% endif %}
-    {% if enable_dr5 %}
-    findlayer('decals-dr5', [
-        {% if enable_dr5_model %}
-        findlayer('decals-dr5-model'),
-        {% endif %}
-        {% if enable_dr5_resid %}
-        findlayer('decals-dr5-resid'),
-        {% endif %}
-    ]),
-    {% endif %}
-    {% if enable_dr4 %}
-    findlayer('mzls+bass-dr4', [
-        {% if enable_dr4_model %}
-        findlayer('mzls+bass-dr4-model'),
-        {% endif %}
-        {% if enable_dr4_resid %}
-        findlayer('mzls+bass-dr4-resid'),
-        {% endif %}
-    ]),
-    {% endif %}
-    {% if enable_eboss %}
-    findlayer('eboss'),
-    {% endif %}
-    {% if enable_decaps %}
-    findlayer('decaps', [
-        findlayer('decaps-model'),
-        findlayer('decaps-resid'),
-    ]),
-    {% endif %}
-    findlayer('unwise-neo4', [
-        findlayer('unwise-neo3'),
-        findlayer('unwise-neo2'),
-        findlayer('unwise-w1w2'),
-    ]),
-    findlayer('unwise-cat-model'),
-    {
-        label: 'More surveys',
-        children: [
-            findlayer('sdss2'),
-            {% if enable_des_dr1 %}
-            findlayer('des-dr1'),
-            {% endif %}
-            {% if enable_ps1 %}
-            findlayer('ps1'),
-            {% endif %}
-            findlayer('hsc'),
-            findlayer('hsc2'),
-            {% if enable_vlass %}
-            findlayer('vlass'),
-            {% endif %}
-            {% comment %}
-            findlayer('2mass'),
-            {% endcomment %}
-            findlayer('galex'),
-            findlayer('wssa'),
-            findlayer('sfd'),
-            findlayer('halpha'),
-        ],
-    },
 ];
 
 var baseTree = [];
