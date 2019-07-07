@@ -317,10 +317,9 @@ def get_random_galaxy(layer=None):
     elif layer == 'decals-dr5':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr5.fits')
         drnum = 5
-
     else:
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr8.fits')
-
+        drnum = 8
 
     if (not layer in galaxycats) and not os.path.exists(galfn):
         if settings.CREATE_GALAXY_CATALOG:
