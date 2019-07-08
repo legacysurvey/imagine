@@ -37,7 +37,6 @@ catversions = {
     'spec-deep2': [1,],
     'bright': [1,],
     'tycho2': [1,],
-    'targets-dr2': [1,],
     'targets-dr45': [1,],
     'targets-dr67': [1,],
     'targets-bgs-dr67': [1,],
@@ -45,6 +44,7 @@ catversions = {
     'targets-bright-dr67': [1,],
     'targets-dark-dr67': [1,],
     'targets-cmx-dr7': [1,],
+    'targets-dr8': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
@@ -453,6 +453,11 @@ def create_galaxy_catalog(galfn, drnum):
     T.writeto(fn)
     print('Wrote', fn)
     T.writeto(galfn)
+
+def cat_targets_dr8(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr8-0.31.1-main.kd.fits'),
+        ], tag='targets-dr8')
 
 def cat_targets_cmx_dr7(req, ver):
     return cat_targets_drAB(req, ver, cats=[

@@ -2823,6 +2823,10 @@ var desi_cmx_targets7 = new DesiTargetCatalog('targets-cmx-dr7', 'DESI Commissio
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
 
+var desi_targets8 = new DesiTargetCatalog('targets-dr8', 'DESI Targets (DR8)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
 {% endif %}
 
 {% if enable_spectra %}
@@ -3179,6 +3183,7 @@ var overlays = [
     spec, plateOverlay, specDeep2,
     {% endif %}
     {% if enable_desi_targets %}
+    desi_targets8,
     desi_targets45,
     desi_targets67,
     desi_bgs_targets67,
@@ -3507,9 +3512,12 @@ for (var i=0,len=overlays.length; i<len; i++) {
        ],
      },
      {% endif %}
+
+ {% comment %}
+{% endcomment %}
+
      {% if enable_desi_targets %}
-     { label: 'DESI targets',
-       children: [
+     findoverlay('targets-dr8', [
            findoverlay('targets-cmx-dr7'),
            findoverlay('targets-dr67'),
            findoverlay('targets-bgs-dr67'),
@@ -3517,8 +3525,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
            findoverlay('targets-bright-dr67'),
            findoverlay('targets-dark-dr67'),
            findoverlay('targets-dr45'),
-       ],
-     },
+     ]),
      {% endif %}
      {% if enable_desi_footprint %}
      findoverlay('desi-footprint'),

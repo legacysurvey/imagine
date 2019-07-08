@@ -138,6 +138,9 @@ urlpatterns = [
 
     url(r'^targets-cmx-dr7/(\d+)/cat.json', cats.cat_targets_cmx_dr7),
 
+    # DR8
+    url(r'^targets-dr8/(\d+)/cat.json', cats.cat_targets_dr8),
+
     # DECaPS2 tiles
     url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decaps2')),
