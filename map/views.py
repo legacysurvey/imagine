@@ -1499,7 +1499,7 @@ class DecalsLayer(MapLayer):
         if drname is None:
             drname = name
         self.drname = drname
-        self.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/' + self.drname
+        #self.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/' + self.drname
 
         self.basedir = os.path.join(settings.DATA_DIR, self.drname)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.drname)
@@ -1550,12 +1550,12 @@ class DecalsLayer(MapLayer):
         survey = self.survey
         brickname = brick.brickname
         html = [
-            '<h1>%s data for brick %s:</h1>' % (self.drname, brickname),
+            '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
             '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
             '<ul>',
-            '<li><a href="%s/coadd/%s/%s/legacysurvey-%s-image.jpg">JPEG image</a></li>' % (self.drurl, brickname[:3], brickname, brickname),
-            '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (self.drurl, brickname[:3], brickname),
-            '<li><a href="%s/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (self.drurl, brickname[:3], brickname),
+            '<li><a href="%s/coadd/%s/%s/legacysurvey-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
+            '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
+            '<li><a href="%s/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
             '</ul>',
             ]
         return html
@@ -3590,12 +3590,12 @@ def get_survey(name):
         'eboss': ('eBOSS', 'http://legacysurvey.org/'),
         'decals': ('DECaPS', 'http://legacysurvey.org/'),
         'ls-dr67': ('Legacy Surveys DR6+DR7', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/'),
+        'dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/north'),
+        'dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/south'),
+        'dr8': ('Legacy Surveys DR8', 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/'),
         }
 
     n,u = names_urls.get(name, ('',''))
-    if 'dr8' in name:
-        n = 'Legacy Surveys DR8'
-        u = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/'
     survey.drname = n
     survey.drurl = u
     surveys[name] = survey
@@ -4914,14 +4914,6 @@ def get_layer(name, default=None):
             layers[basename + '-model'] = model
             layers[basename + '-resid'] = resid
             layer = layers[name]
-
-            if name == 'dr8-north':
-                image.drurl = 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/north'
-                image.drname = 'Legacy Surveys DR8-north'
-            elif name == 'dr8-south':
-                image.drurl = 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/south'
-                image.drname = 'Legacy Surveys DR8-south'
-                
 
     if layer is None:
         return default
