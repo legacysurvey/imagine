@@ -1553,7 +1553,7 @@ class DecalsLayer(MapLayer):
             '<h1>%s data for brick %s:</h1>' % (self.drname, brickname),
             '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
             '<ul>',
-            '<li><a href="%s/coadd/%s/%s/legacysurvey-%s-image.jpg">JPEG image</a></li>' % (self.drurl, brickname[:3], brickname, coadd_prefix, brickname),
+            '<li><a href="%s/coadd/%s/%s/legacysurvey-%s-image.jpg">JPEG image</a></li>' % (self.drurl, brickname[:3], brickname, brickname),
             '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (self.drurl, brickname[:3], brickname),
             '<li><a href="%s/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (self.drurl, brickname[:3], brickname),
             '</ul>',
@@ -2227,6 +2227,53 @@ class LegacySurveySplitLayer(MapLayer):
             ok,rr,dd = wcs.pixelxy2radec([1,1], [1,256])
             #print('Decs', dd)
             self.tilesplits[zoom] = y
+
+    def data_for_radec(self, ra, dec):
+        import numpy as np
+        html = [
+            html_tag,
+            '<head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
+                    (self.drname, ra, dec),
+            ccds_table_css + '<body>',
+        ]
+
+        for layer in [self.top, self.bottom]:
+            survey = layer.survey
+            bricks = survey.get_bricks()
+            I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
+                               (dec >= bricks.dec1) * (dec < bricks.dec2))
+            if len(I) == 0:
+                continue
+            I = I[0]
+            brick = bricks[I]
+            brickname = brick.brickname
+            brick_html = layer.brick_details_body(brick)
+            html.extend(brick_html)
+
+            ccdsfn = survey.find_file('ccds-table', brick=brickname)
+            if not os.path.exists(ccdsfn):
+                continue
+            from astrometry.util.fits import fits_table
+            ccds = fits_table(ccdsfn)
+            ccds = touchup_ccds(ccds, survey)
+            if len(ccds) == 0:
+                continue
+            html.append('<h1>CCDs overlapping brick:</h1>')
+            html.extend(layer.ccds_overlapping_html(ccds, ra=ra, dec=dec))
+            from legacypipe.survey import wcs_for_brick
+            brickwcs = wcs_for_brick(brick)
+            ok,bx,by = brickwcs.radec2pixelxy(ra, dec)
+            print('Brick x,y:', bx,by)
+            ccds.cut((bx >= ccds.brick_x0) * (bx <= ccds.brick_x1) *
+                     (by >= ccds.brick_y0) * (by <= ccds.brick_y1))
+            print('Cut to', len(ccds), 'CCDs containing RA,Dec point')
+            if len(ccds):
+                html.append('<h1>CCDs overlapping RA,Dec:</h1>')
+                html.extend(layer.ccds_overlapping_html(ccds, ra=ra, dec=dec))
+
+        html.extend(['</body></html>',])
+        return HttpResponse('\n'.join(html))
+
 
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
         from astrometry.util.fits import merge_tables
@@ -4686,6 +4733,7 @@ def get_layer(name, default=None):
         dr7 = get_layer('decals-dr7')
         dr6 = get_layer('mzls+bass-dr6')
         layer = LegacySurveySplitLayer(name, dr6, dr7, 32.)
+        layer.drname = 'Legacy Surveys DR6+DR7'
 
     elif name in ['dr8', 'dr8-model', 'dr8-resid']:
         suff = name[3:]
@@ -4693,6 +4741,7 @@ def get_layer(name, default=None):
         south = get_layer('dr8-south' + suff)
         ### NOTE, must also change the javascript in template/index.html !
         layer = LegacySurveySplitLayer(name, north, south, 32.375)
+        layer.drname = 'Legacy Surveys DR8'
 
     elif name == 'phat':
         layer = PhatLayer('phat')
@@ -4865,6 +4914,14 @@ def get_layer(name, default=None):
             layers[basename + '-model'] = model
             layers[basename + '-resid'] = resid
             layer = layers[name]
+
+            if name == 'dr8-north':
+                image.drurl = 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/north'
+                image.drname = 'Legacy Surveys DR8-north'
+            elif name == 'dr8-south':
+                image.drurl = 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/south'
+                image.drname = 'Legacy Surveys DR8-south'
+                
 
     if layer is None:
         return default
@@ -5107,7 +5164,8 @@ if __name__ == '__main__':
     #r = c.get('/dr8/1/14/10580/6657.cat.json')
     #r = c.get('/dr8/1/14/9389/3788.cat.json')
     #r = c.get('/ccds/?ralo=192.2058&rahi=192.7009&declo=19.1607&dechi=19.4216&id=dr8')
-    r = c.get('/exps/?ralo=192.9062&rahi=193.8963&declo=32.1721&dechi=32.6388&id=dr8-south')
+    #r = c.get('/exps/?ralo=192.9062&rahi=193.8963&declo=32.1721&dechi=32.6388&id=dr8-south')
+    r = c.get('/data-for-radec/?ra=127.1321&dec=30.4327&layer=dr8')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
