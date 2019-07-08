@@ -2827,6 +2827,11 @@ var desi_targets8 = new DesiTargetCatalog('targets-dr8', 'DESI Targets (DR8)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
+
+var desi_sv_targets8 = new DesiTargetCatalog('targets-sv-dr8', 'DESI Targets (SV-DR8)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
 {% endif %}
 
 {% if enable_spectra %}
@@ -3183,6 +3188,7 @@ var overlays = [
     spec, plateOverlay, specDeep2,
     {% endif %}
     {% if enable_desi_targets %}
+    desi_sv_targets8,
     desi_targets8,
     desi_targets45,
     desi_targets67,
@@ -3518,6 +3524,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
 
      {% if enable_desi_targets %}
      findoverlay('targets-dr8', [
+           //findoverlay('targets-sv-dr8'),
            findoverlay('targets-cmx-dr7'),
            findoverlay('targets-dr67'),
            findoverlay('targets-bgs-dr67'),

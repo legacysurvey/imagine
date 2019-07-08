@@ -140,6 +140,7 @@ urlpatterns = [
 
     # DR8
     url(r'^targets-dr8/(\d+)/cat.json', cats.cat_targets_dr8),
+    url(r'^targets-sv-dr8/(\d+)/cat.json', cats.cat_targets_sv_dr8),
 
     # DECaPS2 tiles
     url(r'^decaps2/(\d+)/(\d+)/(\d+)/(\d+).jpg',

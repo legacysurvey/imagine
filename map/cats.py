@@ -45,6 +45,7 @@ catversions = {
     'targets-dark-dr67': [1,],
     'targets-cmx-dr7': [1,],
     'targets-dr8': [1,],
+    'targets-sv-dr8': [1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
@@ -459,6 +460,11 @@ def cat_targets_dr8(req, ver):
         os.path.join(settings.DATA_DIR, 'targets-dr8-0.31.1-main.kd.fits'),
         ], tag='targets-dr8')
 
+def cat_targets_sv_dr8(req, ver):
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-dr8-0.31.1-sv.kd.fits'),
+        ], tag='targets-sv-dr8', colprefix='sv1_')
+
 def cat_targets_cmx_dr7(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-cmx-0.27.0.kd.fits'),
@@ -509,19 +515,22 @@ def cat_targets_dr8c(req, ver):
     ], tag='targets-dr8c')
 
 
-def desitarget_color_names(T):
+def desitarget_color_names(T, colprefix=''):
     names = []
     colors = []
     for t in T:
         desibits = []
         bgsbits = []
         mwsbits = []
+        desi_target = int(t.get(colprefix + 'desi_target'))
+        bgs_target = int(t.get(colprefix + 'bgs_target'))
+        mws_target = int(t.get(colprefix + 'mws_target'))
         for bit in range(64):
-            if (1 << bit) & int(t.desi_target):
+            if (1 << bit) & desi_target:
                 desibits.append(bit)
-            if (1 << bit) & int(t.bgs_target):
+            if (1 << bit) & bgs_target:
                 bgsbits.append(bit)
-            if (1 << bit) & int(t.mws_target):
+            if (1 << bit) & mws_target:
                 mwsbits.append(bit)
         # https://github.com/desihub/desitarget/blob/master/py/desitarget/data/targetmask.yaml
         desinames = [{
@@ -606,7 +615,7 @@ def desitarget_color_names(T):
         colors.append(cc)
     return names, colors
 
-def desi_cmx_color_names(T):
+def desi_cmx_color_names(T, colprefix=None):
     names = []
     colors = []
     for bits in T.cmx_target:
@@ -636,7 +645,7 @@ def desi_cmx_color_names(T):
 
     return names, colors
 
-def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=False, dark=False, color_name_func=desitarget_color_names):
+def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=False, dark=False, color_name_func=desitarget_color_names, colprefix=''):
     '''
     color_name_func: function that selects names and colors for targets
     (eg based on targeting bit values)
@@ -686,18 +695,22 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
     T = merge_tables(TT, columns='fillzero')
 
     if bgs:
-        T.cut(T.bgs_target > 0)
+        bgs_target = T.get(colprefix + 'bgs_target')
+        T.cut(bgs_target > 0)
 
     if bright:
-        T.cut(np.logical_or(T.bgs_target > 0, T.mws_target > 0))
+        bgs_target = T.get(colprefix + 'bgs_target')
+        mws_target = T.get(colprefix + 'mws_target')
+        T.cut(np.logical_or(bgs_target > 0, mws_target > 0))
 
     if dark:
+        desi_target = T.get(colprefix + 'desi_target')
         T.cut(T.desi_target > 0)
 
     names = None
     colors = None
     if color_name_func is not None:
-        names,colors = color_name_func(T)
+        names,colors = color_name_func(T, colprefix=colprefix)
 
     if sky:
         fluxes = [dict(g=float(g), r=float(r), z=float(z))
