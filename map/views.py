@@ -604,79 +604,12 @@ html_tag = '''<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 ''' % (settings.STATIC_URL, settings.STATIC_URL)
 
 def data_for_radec(req):
-    import numpy as np
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
-    layer = request_layer_name(req)
-    layer = layer_to_survey_name(layer)
-    ## FIXME -- could point to unWISE data!
-    #if 'unwise' in name or name == 'sdssco':
-    #    name = 'decals-dr3'
-
-    print('Layer', layer)
-    if layer in ['sdss2']:
-        # from ccd_list...
-        # 0.15: SDSS field radius is ~ 0.13
-        radius = 0.15
-        T = sdss_ccds_near(ra, dec, radius)
-        if T is None:
-            return HttpResponse('No SDSS data near RA,Dec = (%.3f, %.3f)' % (ra,dec))
-
-        
-        html = [html_tag + '<head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
-                ('SDSS', ra, dec),
-                ccds_table_css + '<body>',
-                '<h1>%s data for RA,Dec = (%.4f, %.4f): CCDs overlapping</h1>' %
-                ('SDSS', ra, dec)]
-        html.append('<table class="ccds"><thead><tr><th>Details</th><th>Jpeg</th><th>Run</th><th>Camcol</th><th>Field</th></thead><tbody>')
-        T.cut(np.lexsort((T.field, T.camcol, T.run)))
-        for t in T:
-            url = 'https://dr12.sdss.org/fields/runCamcolField?run=%i&camcol=%i&field=%i' % (t.run, t.camcol, t.field)
-            #
-            jpeg_url = 'https://dr12.sdss.org/sas/dr12/boss/photoObj/frames/301/%i/%i/frame-irg-%06i-%i-%04i.jpg' % (t.run, t.camcol, t.run, t.camcol, t.field)
-            html.append('<tr><td><a href="%s">details</a></td><td><a href="%s">jpeg</a></td><td>%i</td><td>%i</td><td>%i</td>' % (url, jpeg_url, t.run, t.camcol, t.field))
-
-        html.append('</tbody></table>')
-        html.append('</body></html>')
-        return HttpResponse('\n'.join(html))
-
-    survey = get_survey(layer)
-    if not hasattr(survey, 'drname'):
-        survey.drname = layer
-    if not hasattr(survey, 'drurl'):
-        survey.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/' + layer
-
-    bricks = survey.get_bricks()
-    I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
-                       (dec >= bricks.dec1) * (dec < bricks.dec2))
-    if len(I) == 0:
-        return HttpResponse('No DECaLS data overlaps RA,Dec = %.4f, %.4f for version %s' % (ra, dec, name))
-    I = I[0]
-    brick = bricks[I]
-    brickname = brick.brickname
-
-    brick_html,ccds = brick_detail(req, brickname, get_html=True, brick=brick)
-    html = brick_html
-
-    if ccds is not None and len(ccds):
-        from legacypipe.survey import wcs_for_brick
-        brickwcs = wcs_for_brick(brick)
-        ok,bx,by = brickwcs.radec2pixelxy(ra, dec)
-        print('Brick x,y:', bx,by)
-        ccds.cut((bx >= ccds.brick_x0) * (bx <= ccds.brick_x1) *
-                 (by >= ccds.brick_y0) * (by <= ccds.brick_y1))
-        print('Cut to', len(ccds), 'CCDs containing RA,Dec point')
-
-        html = [html_tag + '<head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
-                (survey.drname, ra, dec),
-                ccds_table_css + '<body>',
-                '<h1>%s data for RA,Dec = (%.4f, %.4f): CCDs overlapping</h1>' %
-                (survey.drname, ra, dec)]
-        html.extend(ccds_overlapping_html(ccds, layer, ra=ra, dec=dec))
-        html = html + brick_html[1:]
-
-    return HttpResponse('\n'.join(html))
-
+    layername = request_layer_name(req)
+    #layer = layer_to_survey_name(layer)
+    layer = get_layer(layername)
+    return layer.data_for_radec(ra, dec)
 
 class MapLayer(object):
     '''
@@ -698,6 +631,9 @@ class MapLayer(object):
         self.tiledir = os.path.join(settings.DATA_DIR, 'tiles', self.name)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
 
+    def data_for_radec(self, ra, dec):
+        pass
+        
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
         return None
 
@@ -1568,6 +1504,79 @@ class DecalsLayer(MapLayer):
         self.basedir = os.path.join(settings.DATA_DIR, self.drname)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.drname)
 
+    def data_for_radec(self, ra, dec):
+        #survey = get_survey(layer)
+        survey = self.survey
+        if not hasattr(survey, 'drname'):
+            survey.drname = self.drname
+        if not hasattr(survey, 'drurl'):
+            survey.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/' + self.drnames
+
+        bricks = survey.get_bricks()
+        I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
+                           (dec >= bricks.dec1) * (dec < bricks.dec2))
+        if len(I) == 0:
+            return HttpResponse('No DECaLS data overlaps RA,Dec = %.4f, %.4f for version %s' % (ra, dec, name))
+        I = I[0]
+        brick = bricks[I]
+        brickname = brick.brickname
+    
+        brick_html,ccds = self.brick_detail(brick)
+        html = brick_html
+    
+        if ccds is not None and len(ccds):
+            from legacypipe.survey import wcs_for_brick
+            brickwcs = wcs_for_brick(brick)
+            ok,bx,by = brickwcs.radec2pixelxy(ra, dec)
+            print('Brick x,y:', bx,by)
+            ccds.cut((bx >= ccds.brick_x0) * (bx <= ccds.brick_x1) *
+                     (by >= ccds.brick_y0) * (by <= ccds.brick_y1))
+            print('Cut to', len(ccds), 'CCDs containing RA,Dec point')
+    
+            html = [html_tag + '<head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
+                    (survey.drname, ra, dec),
+                    ccds_table_css + '<body>',
+                    '<h1>%s data for RA,Dec = (%.4f, %.4f): CCDs overlapping</h1>' %
+                    (survey.drname, ra, dec)]
+            html.extend(ccds_overlapping_html(ccds, layer, ra=ra, dec=dec))
+            html = html + brick_html[1:]
+    
+        return HttpResponse('\n'.join(html))
+
+    def brick_details(self, brick):
+        survey = self.survey
+        brickname = brick.brickname
+        coadd_prefix = 'legacysurvey'
+        html = [
+            html_tag + '<head><title>%s data for brick %s</title></head>' %
+            (survey.drname, brickname)
+            + ccds_table_css + '<body>',
+            '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
+            '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
+            '<ul>',
+            '<li><a href="%scoadd/%s/%s/%s-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, coadd_prefix, brickname),
+            '<li><a href="%scoadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
+            '<li><a href="%stractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
+            '</ul>',
+            ]
+    
+        ccdsfn = survey.find_file('ccds-table', brick=brickname)
+        if not os.path.exists(ccdsfn):
+            print('No CCDs table:', ccdsfn)
+            ccds = None
+        else:
+            from astrometry.util.fits import fits_table
+            ccds = fits_table(ccdsfn)
+            ccds = touchup_ccds(ccds, survey)
+            if len(ccds):
+                html.append('CCDs overlapping brick:')
+                html.extend(ccds_overlapping_html(ccds, layer))
+    
+        html.extend([
+                '</body></html>',
+                ])
+        return html,ccds
+
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
         from astrometry.util.starutil import radectoxyz, xyztoradec, degrees_between
         from astrometry.util.fits import fits_table
@@ -2017,13 +2026,37 @@ class MzlsLayer(MzlsMixin, DecalsLayer):
 class MzlsResidLayer(ResidMixin, DecalsLayer):
     pass
 
-
 class SdssLayer(MapLayer):
     def __init__(self, name):
         super(SdssLayer, self).__init__(name, nativescale=13, maxscale=6)
         self.pixscale = 0.396
         self.bricks = None
+
+    def data_for_radec(self, ra, dec):
+        # from ccd_list...
+        # 0.15: SDSS field radius is ~ 0.13
+        radius = 0.15
+        T = sdss_ccds_near(ra, dec, radius)
+        if T is None:
+            return HttpResponse('No SDSS data near RA,Dec = (%.3f, %.3f)' % (ra,dec))
         
+        html = [html_tag + '<head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
+                ('SDSS', ra, dec),
+                ccds_table_css + '<body>',
+                '<h1>%s data for RA,Dec = (%.4f, %.4f): CCDs overlapping</h1>' %
+                ('SDSS', ra, dec)]
+        html.append('<table class="ccds"><thead><tr><th>Details</th><th>Jpeg</th><th>Run</th><th>Camcol</th><th>Field</th></thead><tbody>')
+        T.cut(np.lexsort((T.field, T.camcol, T.run)))
+        for t in T:
+            url = 'https://dr12.sdss.org/fields/runCamcolField?run=%i&camcol=%i&field=%i' % (t.run, t.camcol, t.field)
+            #
+            jpeg_url = 'https://dr12.sdss.org/sas/dr12/boss/photoObj/frames/301/%i/%i/frame-irg-%06i-%i-%04i.jpg' % (t.run, t.camcol, t.run, t.camcol, t.field)
+            html.append('<tr><td><a href="%s">details</a></td><td><a href="%s">jpeg</a></td><td>%i</td><td>%i</td><td>%i</td>' % (url, jpeg_url, t.run, t.camcol, t.field))
+
+        html.append('</tbody></table>')
+        html.append('</body></html>')
+        return HttpResponse('\n'.join(html))
+
     def get_bricks(self):
         if self.bricks is not None:
             return self.bricks
