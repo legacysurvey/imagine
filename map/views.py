@@ -1562,7 +1562,7 @@ class DecalsLayer(MapLayer):
     def ccds_overlapping_html(self, ccds, ra=None, dec=None, brick=None):
         if brick is not None:
             html = ['<h1>CCDs overlapping brick:</h1>']
-        if ra is not None and dec is not None:
+        elif ra is not None and dec is not None:
             html = ['<h1>CCDs overlapping RA,Dec:</h1>']
         html.extend(ccds_overlapping_html(ccds, self.name, ra=ra, dec=dec))
         return html
@@ -1921,8 +1921,8 @@ class RebrickedMixin(object):
         
 class Decaps2Layer(DecalsDr3Layer):
 
-    def ccds_overlapping_html(self, ccds, ra=None, dec=None, brick=None):
-        return ''
+    #def ccds_overlapping_html(self, ccds, ra=None, dec=None, brick=None):
+    #    return ''
 
     def brick_details_body(self, brick):
         survey = self.survey
