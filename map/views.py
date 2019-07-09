@@ -1505,6 +1505,7 @@ class DecalsLayer(MapLayer):
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.drname)
 
     def data_for_radec(self, ra, dec):
+        import numpy as np
         survey = self.survey
         bricks = survey.get_bricks()
         I = np.flatnonzero((ra >= bricks.ra1) * (ra < bricks.ra2) *
@@ -1530,8 +1531,7 @@ class DecalsLayer(MapLayer):
             ccds = fits_table(ccdsfn)
             ccds = touchup_ccds(ccds, survey)
             if len(ccds):
-                html.append('<h1>CCDs overlapping brick:</h1>')
-                html.extend(self.ccds_overlapping_html(ccds, ra=ra, dec=dec))
+                html.extend(self.ccds_overlapping_html(ccds, brick=brickname, ra=ra, dec=dec))
             from legacypipe.survey import wcs_for_brick
             brickwcs = wcs_for_brick(brick)
             ok,bx,by = brickwcs.radec2pixelxy(ra, dec)
@@ -1540,7 +1540,6 @@ class DecalsLayer(MapLayer):
                      (by >= ccds.brick_y0) * (by <= ccds.brick_y1))
             print('Cut to', len(ccds), 'CCDs containing RA,Dec point')
             if len(ccds):
-                html.append('<h1>CCDs overlapping RA,Dec:</h1>')
                 html.extend(self.ccds_overlapping_html(ccds, ra=ra, dec=dec))
 
         html.extend(['</body></html>',])
@@ -1560,8 +1559,13 @@ class DecalsLayer(MapLayer):
             ]
         return html
 
-    def ccds_overlapping_html(self, ccds, ra=None, dec=None):
-        return ccds_overlapping_html(ccds, self.name, ra=ra, dec=dec)
+    def ccds_overlapping_html(self, ccds, ra=None, dec=None, brick=None):
+        if brick is not None:
+            html = ['<h1>CCDs overlapping brick:</h1>']
+        if ra is not None and dec is not None:
+            html = ['<h1>CCDs overlapping RA,Dec:</h1>']
+        html.extend(ccds_overlapping_html(ccds, self.name, ra=ra, dec=dec))
+        return html
     
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
         from astrometry.util.starutil import radectoxyz, xyztoradec, degrees_between
@@ -1917,6 +1921,23 @@ class RebrickedMixin(object):
         
 class Decaps2Layer(DecalsDr3Layer):
 
+    def ccds_overlapping_html(self, ccds, ra=None, dec=None, brick=None):
+        return ''
+
+    def brick_details_body(self, brick):
+        survey = self.survey
+        brickname = brick.brickname
+        html = [
+            '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
+            '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
+            '<ul>',
+            '<li><a href="%s/coadd/%s/%s/legacysurvey-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
+            '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
+            '</ul>',
+            ]
+        return html
+
+
     # Some of the DECaPS2 images do not have WCS headers, so create them based on the brick center.
     def read_wcs(self, brick, band, scale, fn=None):
         if scale > 0:
@@ -2259,7 +2280,7 @@ class LegacySurveySplitLayer(MapLayer):
             if len(ccds) == 0:
                 continue
             html.append('<h1>CCDs overlapping brick:</h1>')
-            html.extend(layer.ccds_overlapping_html(ccds, ra=ra, dec=dec))
+            html.extend(layer.ccds_overlapping_html(ccds, ra=ra, dec=dec, brick=brickname))
             from legacypipe.survey import wcs_for_brick
             brickwcs = wcs_for_brick(brick)
             ok,bx,by = brickwcs.radec2pixelxy(ra, dec)
@@ -3560,6 +3581,8 @@ def get_survey(name):
 
     if name == 'decaps':
         survey = Decaps2LegacySurveyData(survey_dir=dirnm)
+        survey.drname = 'DECaPS'
+        survey.drurl = 'https://portal.nersc.gov/project/cosmo/data/decaps/dr1'
 
     elif name == 'ls-dr67':
         north = get_survey('mzls+bass-dr6')
@@ -3596,8 +3619,11 @@ def get_survey(name):
         }
 
     n,u = names_urls.get(name, ('',''))
-    survey.drname = n
-    survey.drurl = u
+    if not hasattr(survey, 'drname'):
+        survey.drname = n
+    if not hasattr(survey, 'drurl'):
+        survey.drurl = u
+
     surveys[name] = survey
 
     return survey
