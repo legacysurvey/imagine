@@ -57,6 +57,7 @@ tileversions = {
     'ps1': [1],
     'hsc': [1],
     'hsc2': [1],
+    'hsc-dr2': [1],
     'vlass': [1],
     'sdss2': [1,],
     '2mass': [1],
@@ -1224,7 +1225,7 @@ class MapLayer(object):
         zoomscale = 2.**zoom
         x = int(x)
         y = int(y)
-        if zoom < 0 or x < 0 or y < 0 or x >= zoomscale or y >= zoomscale:
+        if zoom < 0 or x < -1 or y < -1 or x >= zoomscale or y >= zoomscale:
             raise RuntimeError('Invalid zoom,x,y %i,%i,%i' % (zoom,x,y))
 
         if ver is not None:
@@ -1426,7 +1427,9 @@ class MapLayer(object):
         zoom = native_zoom - int(np.round(np.log2(pixscale / native_pixscale)))
         zoom = max(0, min(zoom, 16))
 
-        rtn = self.get_tile(req, None, zoom, 0, 0, wcs=wcs, get_images=fits,
+        xtile = ytile = -1
+
+        rtn = self.get_tile(req, None, zoom, xtile, ytile, wcs=wcs, get_images=fits,
                              savecache=False, bands=bands, tempfiles=tempfiles)
         if jpeg:
             return rtn
@@ -2348,13 +2351,16 @@ class LegacySurveySplitLayer(MapLayer):
         
         ## FIXME -- generic WCS
 
-        split = self.tilesplits[zoom]
-        if y < split:
-            return self.top.render_into_wcs(wcs, zoom, x, y,
-                                            general_wcs=general_wcs, **kwargs)
-        if y > split:
-            return self.bottom.render_into_wcs(wcs, zoom, x, y,
-                                               general_wcs=general_wcs, **kwargs)
+        print('render_into_wcs zoom,x,y', zoom,x,y, 'wcs', wcs)
+
+        if y != -1:
+            split = self.tilesplits[zoom]
+            if y < split:
+                return self.top.render_into_wcs(wcs, zoom, x, y,
+                                                general_wcs=general_wcs, **kwargs)
+            if y > split:
+                return self.bottom.render_into_wcs(wcs, zoom, x, y,
+                                                   general_wcs=general_wcs, **kwargs)
 
         # both!
         topims = self.top.render_into_wcs(wcs, zoom, x, y,
@@ -5183,7 +5189,9 @@ if __name__ == '__main__':
     #r = c.get('/dr8/1/14/9389/3788.cat.json')
     #r = c.get('/ccds/?ralo=192.2058&rahi=192.7009&declo=19.1607&dechi=19.4216&id=dr8')
     #r = c.get('/exps/?ralo=192.9062&rahi=193.8963&declo=32.1721&dechi=32.6388&id=dr8-south')
-    r = c.get('/data-for-radec/?ra=127.1321&dec=30.4327&layer=dr8')
+    #r = c.get('/data-for-radec/?ra=127.1321&dec=30.4327&layer=dr8')
+    r = c.get('/cutout.jpg?ra=159.8827&dec=-0.6241&zoom=13&layer=dr8')
+    r = c.get('/dr8-south/1/12/2277/2055.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
