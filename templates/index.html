@@ -143,6 +143,7 @@ var SplitTileLayer = L.TileLayer.extend({
     // new SplitTileLayer(static_tile_url_B, ysplits,
     //                    north_args, mid_args, south_args);
     options: {
+        maxNativeZoom: 14,
         attribution: decals_attrib,
     },
     initialize: function(url, ysplits, north_args, mid_args, south_args) {
@@ -1386,7 +1387,7 @@ inbrickccd.onAdd = function (map) {
 };
 var inbrickccdAdded = false;
 
-var map = L.map('map', {zoomsliderControl: false});
+var map = L.map('map', {zoomsliderControl: false, minZoom: 0, maxZoom: 16});
 var popup = L.popup();
 
 map.attributionControl.options.prefix = map.attributionControl.options.prefix +
