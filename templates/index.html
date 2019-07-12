@@ -83,6 +83,13 @@ var maxZoom = {{ maxZoom }};
 var sql_url = '{{sqlurl|safe}}';
 {% endif %}
 
+var decals_attrib = '<a href="http://legacysurvey.org">Legacy Survey</a>,' +
+    '<a href="https://www.noao.edu/image_gallery/copyright.html">&copy;</a>' +
+    ' <a href="http://noao.edu">NOAO</a>/<a href="http://www.aura-astronomy.org/">AURA</a>/<a href="http://www.nsf.gov/">NSF</a>';
+var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">(c)</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
+
+var ps1_attrib = 'Pan-STARRS1';
+
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
     var terms = window.location.search.substr(1).split('&');
@@ -135,6 +142,9 @@ var SplitTileLayer = L.TileLayer.extend({
 
     // new SplitTileLayer(static_tile_url_B, ysplits,
     //                    north_args, mid_args, south_args);
+    options: {
+        attribution: decals_attrib,
+    },
     initialize: function(url, ysplits, north_args, mid_args, south_args) {
         this._url = url;
         this._ysplits = ysplits;
@@ -1413,13 +1423,6 @@ function getcatversion(layer) {
 }
 
 var allLayers = [];
-
-var decals_attrib = '<a href="http://legacysurvey.org">Legacy Survey</a>,' +
-    '<a href="https://www.noao.edu/image_gallery/copyright.html">&copy;</a>' +
-    ' <a href="http://noao.edu">NOAO</a>/<a href="http://www.aura-astronomy.org/">AURA</a>/<a href="http://www.nsf.gov/">NSF</a>';
-var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">(c)</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
-
-var ps1_attrib = 'Pan-STARRS1';
 
 var mylayer = function (name, pretty, kwargs) {
     var args = {
