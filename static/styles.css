@@ -31,12 +31,18 @@
 
 .faq, .objquery {
     padding: 6px 8px;
-    font: 14px/16px Arial, Helvetica, sans-serif;
+    font: 22px/24px Arial, Helvetica, sans-serif;
     background: white;
     background: rgba(255,255,255,0.7);
     box-shadow: 0 0 15px rgba(0,0,0,0.2);
     border-radius: 5px;
 }
+
+.faq {
+    font: 26px/28px Arial, Helvetica, sans-serif;
+}
+
+input[type='text'] { font-size: 22px; }
 
 .inbrickccd {
     padding: 6px 8px;
@@ -105,6 +111,10 @@
     background: transparent;
     color: white;
     box-shadow: 0 0px 0px rgba(0,0,0,0);
+}
+
+.leaflet-tooltip a {
+    color: white
 }
 
 html, body {margin: 0; height: 100%; overflow: hidden}
