@@ -1920,13 +1920,13 @@ query.addTo(map);
 var objquery = L.control({'position':'bottomleft'});
 objquery.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'objquery');
-    this._div.innerHTML = 'Jump to object: <input type="text" id="objquery" value="NGC 5614" size="25"/> <span id="objquerystatus"></span>';
+    this._div.innerHTML = 'Jump to object: <input type="text" id="objquery" value="NGC 5614" size="20"/> <span id="objquerystatus"></span>';
     return this._div;
 };
 objquery.addTo(map);
 
 //FAQ
-var faq = L.control({'position':'bottomright'});
+var faq = L.control({'position':'bottomleft'});
 faq.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'faq');
     this._div.innerHTML = '<a href="https://djschlegel.wordpress.com/faq-legacy-survey-sky-image/">FAQ</a>';
@@ -3183,8 +3183,8 @@ console.log('testTree:', testTree);
 var baseTree1 = [
     {% if enable_dr8 %}
     findlayer('dr8'),
-    findlayer('dr8-north'),
-    findlayer('dr8-south'),
+    // findlayer('dr8-north'),
+    // findlayer('dr8-south'),
     {% endif %}
 ];
 
