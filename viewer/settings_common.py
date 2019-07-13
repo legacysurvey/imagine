@@ -210,3 +210,5 @@ STATICFILES_DIRS = (
 
 STATIC_ROOT = os.path.join(WEB_DIR, 'static')
 
+MAX_UPLOAD_SIZE = 5e7 # 50MB
+
