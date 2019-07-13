@@ -254,10 +254,20 @@ def upload_cat(req):
 
     # Replace upload handlers
     req.upload_handlers = [LimitSizeFileUploadHandler(req)]
+    # Check request type
     if req.method != 'POST':
         return HttpResponse('POST only')
-    print('Files:', req.FILES)
-    cat = req.FILES['catalog']
+    # Check file size
+    try:
+        print('Files:', req.FILES) # Force django to call FileUploadHandlers
+    except RuntimeError:
+        return HttpResponse('Upload failed. File too large? ' +
+                '(Limit: {}MB)'.format(settings.MAX_UPLOAD_SIZE / 1e6))
+    # Check file existance
+    try:
+        cat = req.FILES['catalog']
+    except MultiValueDictKeyError:
+        return HttpResponse('Empty upload')
 
     dirnm = settings.USER_QUERY_DIR
     if not os.path.exists(dirnm):
