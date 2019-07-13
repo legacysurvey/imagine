@@ -17,6 +17,8 @@ except:
     # django 2.0
     from django.urls import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
+from django.core.files.uploadhandler import TemporaryFileUploadHandler
+from django.utils.datastructures import MultiValueDictKeyError
 
 debug = print
 if not settings.DEBUG_LOGGING:
@@ -238,12 +240,20 @@ def rename_cols(T):
         return True
     return False
 
+class LimitSizeFileUploadHandler(TemporaryFileUploadHandler):
+    def receive_data_chunk(self, raw_data, start):
+        if start > settings.MAX_UPLOAD_SIZE:
+            raise RuntimeError('File too large')
+        self.file.write(raw_data)
+
 def upload_cat(req):
     import tempfile
     from astrometry.util.fits import fits_table
     from django.http import HttpResponseRedirect
     from map.views import index
 
+    # Replace upload handlers
+    req.upload_handlers = [LimitSizeFileUploadHandler(req)]
     if req.method != 'POST':
         return HttpResponse('POST only')
     print('Files:', req.FILES)
