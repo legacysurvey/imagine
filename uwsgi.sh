@@ -17,6 +17,6 @@ echo $PATH
 export PYTHONPATH=${PYTHONPATH}:${CONDA_PREFIX}
 export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib
 
-uwsgi -s :3033 --wsgi-file wsgi.py --touch-reload wsgi.py --processes 8 --reload-on-rss 768 --logto /tmp/uwsgi.log -d /tmp/uwsgi2.log
+uwsgi -s :3033 --wsgi-file wsgi.py --touch-reload wsgi.py --processes 8 --reload-on-rss 768 -d /tmp/uwsgi2.log --limit-post 50000000
 
 
