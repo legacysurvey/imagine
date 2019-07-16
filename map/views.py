@@ -3600,8 +3600,10 @@ def get_survey(name):
         south = get_survey('dr8-south')
         survey = SplitSurveyData(north, south)
 
-    elif name in ['decals-dr5', 'decals-dr7', 'mzls+bass-dr4', 'mzls+bass-dr6', 'eboss']:
-        survey = MyLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+    #elif name in [
+    #        #'decals-dr5',
+    #        #'decals-dr7', 'mzls+bass-dr4', 'mzls+bass-dr6', 'eboss']:
+    #    survey = MyLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
 
     if survey is None and not os.path.exists(dirnm):
@@ -4593,6 +4595,7 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     layer = clean_layer_name(layer)
     layer = layer_to_survey_name(layer)
     survey = get_survey(layer)
+    print('cutout_panels: survey is', survey)
     ccd = _get_ccd(expnum, extname, survey=survey)
     print('CCD:', ccd)
     im = survey.get_image_object(ccd)
@@ -5190,8 +5193,14 @@ if __name__ == '__main__':
     #r = c.get('/ccds/?ralo=192.2058&rahi=192.7009&declo=19.1607&dechi=19.4216&id=dr8')
     #r = c.get('/exps/?ralo=192.9062&rahi=193.8963&declo=32.1721&dechi=32.6388&id=dr8-south')
     #r = c.get('/data-for-radec/?ra=127.1321&dec=30.4327&layer=dr8')
-    r = c.get('/cutout.jpg?ra=159.8827&dec=-0.6241&zoom=13&layer=dr8')
-    r = c.get('/dr8-south/1/12/2277/2055.jpg')
+    #r = c.get('/cutout.jpg?ra=159.8827&dec=-0.6241&zoom=13&layer=dr8')
+    #r = c.get('/dr8-south/1/12/2277/2055.jpg')
+    #r = c.get('/cutouts/?ra=194.5524&dec=26.3962&layer=dr8')
+    #r = c.get('/cutout_panels/dr8/721218/N10/?x=21&y=328&size=100')
+    r = c.get('/cutout_panels/decals-dr5/634863/N10/?x=1077&y=3758&size=100')
+    #r = c.get('/cutouts/?ra=194.5517&dec=26.3977&layer=decals-dr5')
+    #s = get_survey('decals-dr5')
+    #s.get_ccds()
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
