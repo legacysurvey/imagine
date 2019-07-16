@@ -1289,6 +1289,58 @@ class MapLayer(object):
     
         if get_images:
             return rimgs
+
+        if "lslga" in req.GET:
+
+            from PIL import Image, ImageDraw
+            img = Image.open(tilefn)
+
+            ra, dec = wcs.crval
+            pixscale = np.abs(wcs.cd[0]) * 3600
+
+            width, height = img.size
+
+            ralo = ra - ((width / 2) * pixscale / 3600)
+            rahi = ra + ((width / 2) * pixscale / 3600)
+            declo = dec - ((height / 2) * pixscale / 3600)
+            dechi = dec + ((height / 2) * pixscale / 3600)
+
+            import requests
+            json_url = 'http://legacysurvey.org/viewer/lslga/1/cat.json?ralo={}&rahi={}&declo={}&dechi={}'.format(ralo, rahi, declo, dechi)
+            r = requests.get(json_url).json()
+
+            for i in range(len(r['rd'])):
+
+                RA, DEC = r['rd'][i]
+                RAD = r['radiusArcsec'][i]
+                AB = r['abRatio'][i]
+                PA = r['posAngle'][i]
+
+                PA = 90 - PA
+
+                major_axis_arcsec = RAD * 2
+                minor_axis_arcsec = major_axis_arcsec * AB
+
+                overlay_height = int(major_axis_arcsec / pixscale)
+                overlay_width = int(minor_axis_arcsec / pixscale)
+
+                overlay = Image.new('RGBA', (overlay_width, overlay_height))
+                draw = ImageDraw.ImageDraw(overlay)
+                box_corners = (0, 0, overlay_width, overlay_height)
+                draw.ellipse(box_corners, fill=None, outline=(0, 0, 255), width=3)
+
+                rotated = overlay.rotate(PA, expand=True)
+                rotated_width, rotated_height = rotated.size
+
+                pix_from_left = (rahi - RA) * 3600 / pixscale
+                pix_from_top = (dechi - DEC) * 3600 / pixscale
+
+                paste_shift_x = int(pix_from_left - rotated_width / 2)
+                paste_shift_y = int(pix_from_top - rotated_height / 2)
+
+                img.paste(rotated, (paste_shift_x, paste_shift_y), rotated)
+
+            img.save(tilefn)
     
         return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
                          filename=filename)
