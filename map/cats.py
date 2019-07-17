@@ -145,7 +145,7 @@ def cat_gaia_dr2(req, ver):
 
     return HttpResponse(json.dumps(dict(
         rd=[(float(o.ra),float(o.dec)) for o in cat],
-        sourceid=[int(o.source_id) for o in cat],
+        sourceid=[str(o.source_id) for o in cat],
         gmag=[float(o.phot_g_mean_mag) for o in cat],
         bpmag=[float(o.phot_bp_mean_mag) for o in cat],
         rpmag=[float(o.phot_rp_mean_mag) for o in cat],
