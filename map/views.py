@@ -3491,7 +3491,7 @@ class MyLegacySurveyData(LegacySurveyData):
         return super(MyLegacySurveyData, self).find_ccds(expnum=expnum, ccdname=ccdname,
                                                          camera=camera)
 
-class SplitSurveyData(MyLegacySurveyData):
+class SplitSurveyData(LegacySurveyData):
     def __init__(self, north, south):
         super(SplitSurveyData, self).__init__()
         self.north = north
@@ -3522,11 +3522,13 @@ class SplitSurveyData(MyLegacySurveyData):
         print('ccds_touching_wcs: north', n)
         if n is not None:
             n.is_north = np.ones(len(n), bool)
+            n.layer = np.array([self.north.layer] * len(n))
             ns.append(n)
         s = self.south.ccds_touching_wcs(wcs, **kwargs)
         print('ccds_touching_wcs: south', s)
         if s is not None:
             s.is_north = np.zeros(len(s), bool)
+            s.layer = np.array([self.south.layer] * len(s))
             ns.append(s)
         if len(ns) == 0:
             return None
@@ -3592,12 +3594,16 @@ def get_survey(name):
 
     elif name == 'ls-dr67':
         north = get_survey('mzls+bass-dr6')
+        north.layer = 'mzls+bass-dr6'
         south = get_survey('decals-dr7')
+        south.layer = 'decals-dr7'
         survey = SplitSurveyData(north, south)
 
     elif name == 'dr8':
         north = get_survey('dr8-north')
+        north.layer = 'dr8-north'
         south = get_survey('dr8-south')
+        south.layer = 'dr8-south'
         survey = SplitSurveyData(north, south)
 
     #elif name in [
@@ -4346,19 +4352,14 @@ def cutouts_common(req, tgz, copsf):
     ccds = []
     for i in range(len(CCDs)):
         c = CCDs[i]
-        try:
-            dim = survey.get_image_object(c)
-            print('Image object:', dim)
-            print('Filename:', dim.imgfn)
-            wcs = dim.get_wcs()
-        except:
-            import traceback
-            traceback.print_exc()
-            
-            wcs = Tan(*[float(x) for x in [
-                c.ra_bore, c.dec_bore, c.crpix1, c.crpix2, c.cd1_1, c.cd1_2,
-                c.cd2_1, c.cd2_2, c.width, c.height]])
-        ok,x,y = wcs.radec2pixelxy(ra, dec)
+
+        dim = survey.get_image_object(c)
+        print('Image object:', dim)
+        print('Filename:', dim.imgfn)
+        #wcs = dim.get_wcs()
+        awcs = survey.get_approx_wcs(c)
+
+        ok,x,y = awcs.radec2pixelxy(ra, dec)
         x = int(np.round(x-1))
         y = int(np.round(y-1))
         if x < -size or x >= c.width+size or y < -size or y >= c.height+size:
@@ -4384,9 +4385,10 @@ def cutouts_common(req, tgz, copsf):
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
-        theurl = url % (domains[i%len(domains)], layer, int(ccd.expnum), ccd.ccdname.strip()) + '?x=%i&y=%i&size=%i' % (x, y, size*2)
+        ccdlayer = getattr(ccd, 'layer', layer)
+        theurl = url % (domains[i%len(domains)], ccdlayer, int(ccd.expnum), ccd.ccdname.strip()) + '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
         print('CCD columns:', ccd.columns())
-        ccdsx.append(('<br/>'.join(['CCD %s %i %s, %.1f sec (x,y = %i,%i)' % (ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
+        ccdsx.append(('<br/>'.join(['CCD %s %i %s, %.1f sec (x,y ~ %i,%i)' % (ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
                                     '<small>(observed %s @ %s)</small>' % (ccd.date_obs, ccd.ut),
                                     '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % format_jpl_url(ra, dec, ccd),]),
@@ -4582,15 +4584,18 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     import pylab as plt
     import numpy as np
 
-    x = int(req.GET['x'], 10)
-    y = int(req.GET['y'], 10)
+    #x = int(req.GET['x'], 10)
+    #y = int(req.GET['y'], 10)
+
+    ra = float(req.GET['ra'])
+    dec = float(req.GET['dec'])
 
     kind = req.GET.get('kind', 'image')
 
     # half-size in DECam pixels
     size = int(req.GET.get('size', '100'), 10)
     size = min(200, size)
-    size = size // 2
+    #size = size // 2
 
     layer = clean_layer_name(layer)
     layer = layer_to_survey_name(layer)
@@ -4601,14 +4606,31 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     im = survey.get_image_object(ccd)
     print('Image object:', im)
 
+    wcs = im.get_wcs()
+    ok,x,y = wcs.radec2pixelxy(ra, dec)
+    x = int(x-1)
+    y = int(y-1)
 
     H,W = im.shape
-    slc = (slice(max(0, y-size), min(H, y+size+1)),
-           slice(max(0, x-size), min(W, x+size+1)))
+    x0 = x - size//2
+    y0 = y - size//2
+    x1 = x0 + size
+    y1 = y0 + size
+
+    # Compute padding to add to left/right/top/bottom
+    padleft   = max(0, -x0)
+    padbottom = max(0, -y0)
+    padright  = max(0, x1-W)
+    padtop    = max(0, y1-H)
+
+    slc = (slice(max(0, y0), min(H, y1)),
+           slice(max(0, x0), min(W, x1)))
 
     import tempfile
     f,jpegfn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
+
+    kwa = dict(cmap='gray', origin='lower')
 
     if kind == 'image':
         tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
@@ -4616,13 +4638,14 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
         from legacypipe.survey import get_rgb
         rgb = get_rgb([tim.data], [tim.band], mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, z=0)[tim.band]
-        bw = rgb[:,:,index]
-        plt.imsave(jpegfn, bw, vmin=0, vmax=1, cmap='gray', origin='lower')
+        img = rgb[:,:,index]
+        kwa.update(vmin=0, vmax=1)
 
     elif kind == 'weight':
         tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
                                    pixels=False, dq=False, invvar=True, old_calibs_ok=True)
-        plt.imsave(jpegfn, tim.getInvvar(), vmin=0, cmap='gray', origin='lower')
+        img = tim.getInvvar()
+        kwa.update(vmin=0)
 
     elif kind == 'weightedimage':
         tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
@@ -4630,14 +4653,30 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
         from legacypipe.survey import get_rgb
         rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band], mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, z=0)[tim.band]
-        bw = rgb[:,:,index]
-        plt.imsave(jpegfn, bw, vmin=0, vmax=1, cmap='gray', origin='lower')
+        img = rgb[:,:,index]
+        kwa.update(vmin=0, vmax=1)
 
     elif kind == 'dq':
         tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
                                    pixels=False, dq=True, invvar=False, old_calibs_ok=True)
-        plt.imsave(jpegfn, tim.dq, vmin=0, cmap='gray', origin='lower')
+        img = tim.dq
+        kwa.update(vmin=0)
 
+    H,W = img.shape
+    if padleft:
+        img = np.hstack((np.zeros((H, padleft), img.dtype), img))
+        H,W = img.shape
+    if padright:
+        img = np.hstack((img, np.zeros((H, padright), img.dtype)))
+        H,W = img.shape
+    if padtop:
+        img = np.vstack((np.zeros((W, padtop), img.dtype), img))
+        H,W = img.shape
+    if padbottom:
+        img = np.vstack((img, np.zeros((W, padbottom), img.dtype)))
+        H,W = img.shape
+
+    plt.imsave(jpegfn, img, **kwa)
     return send_file(jpegfn, 'image/jpeg', unlink=True)
 
 def image_data(req, survey, ccd):
@@ -5195,12 +5234,13 @@ if __name__ == '__main__':
     #r = c.get('/data-for-radec/?ra=127.1321&dec=30.4327&layer=dr8')
     #r = c.get('/cutout.jpg?ra=159.8827&dec=-0.6241&zoom=13&layer=dr8')
     #r = c.get('/dr8-south/1/12/2277/2055.jpg')
-    #r = c.get('/cutouts/?ra=194.5524&dec=26.3962&layer=dr8')
+    r = c.get('/cutouts/?ra=194.5524&dec=26.3962&layer=dr8')
     #r = c.get('/cutout_panels/dr8/721218/N10/?x=21&y=328&size=100')
-    r = c.get('/cutout_panels/decals-dr5/634863/N10/?x=1077&y=3758&size=100')
+    #r = c.get('/cutout_panels/decals-dr5/634863/N10/?x=1077&y=3758&size=100')
     #r = c.get('/cutouts/?ra=194.5517&dec=26.3977&layer=decals-dr5')
     #s = get_survey('decals-dr5')
     #s.get_ccds()
+    
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
