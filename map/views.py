@@ -1296,7 +1296,7 @@ class MapLayer(object):
             img = Image.open(tilefn)
 
             ra, dec = wcs.crval
-            pixscale = np.abs(wcs.cd[0]) * 3600
+            pixscale = wcs.pixel_scale()
 
             width, height = img.size
 
