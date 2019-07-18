@@ -812,12 +812,7 @@ def cat_kd(req, ver, tag, fn):
     dc = dc[0]
     rad = degrees_between(rc, dc, ralo, declo)
 
-    kd = tree_open(fn)
-    I = tree_search_radec(kd, rc, dc, rad)
-    print('Matched', len(I), 'from', fn)
-    if len(I) == 0:
-        return None
-    T = fits_table(fn, rows=I)
+    T = cat_query_radec(fn, rc, dc, rad)
     debug(len(T), 'spectra')
     if ralo > rahi:
         # RA wrap
@@ -828,6 +823,14 @@ def cat_kd(req, ver, tag, fn):
 
     return T
 
+def cat_query_radec(kdfn, ra, dec, radius):
+    kd = tree_open(kdfn)
+    I = tree_search_radec(kd, ra, dec, radius)
+    #print('Matched', len(I), 'from', fn)
+    if len(I) == 0:
+        return None
+    T = fits_table(kdfn, rows=I)
+    return T
 
 def cat_spec_deep2(req, ver):
     import json
