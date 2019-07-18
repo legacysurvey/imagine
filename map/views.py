@@ -1300,8 +1300,8 @@ class MapLayer(object):
 
             width, height = img.size
 
-            ralo = ra - ((width / 2) * pixscale / 3600)
-            rahi = ra + ((width / 2) * pixscale / 3600)
+            ralo = ra - ((width / 2) * pixscale / 3600 / np.cos(np.deg2rad(dec)))
+            rahi = ra + ((width / 2) * pixscale / 3600 / np.cos(np.deg2rad(dec)))
             declo = dec - ((height / 2) * pixscale / 3600)
             dechi = dec + ((height / 2) * pixscale / 3600)
 
