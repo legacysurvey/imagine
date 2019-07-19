@@ -754,7 +754,7 @@ def cat_lslga(req, ver):
                             content_type='application/json')
 
     wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
-    W,H = wcs.shape
+    H,W = wcs.shape
     ### cut to lslga entries possibly touching wcs box
     radius_pix = T.d25 / 2. * 60. / wcs.pixel_scale()
     print('radius_pix range:', radius_pix.min(), radius_pix.max())
@@ -1208,7 +1208,8 @@ if __name__ == '__main__':
     import sys
     from django.test import Client
     c = Client()
-    r = c.get('/lslga/1/cat.json?ralo=259.2787&rahi=259.7738&declo=35.9422&dechi=36.1656')
+    #r = c.get('/lslga/1/cat.json?ralo=259.2787&rahi=259.7738&declo=35.9422&dechi=36.1656')
+    r = c.get('/lslga/1/cat.json?ralo=259.5726&rahi=260.0677&declo=35.9146&dechi=36.1382')
     ## should contain NGC 6349
 
     f = open('out', 'wb')
