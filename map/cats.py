@@ -746,9 +746,7 @@ def cat_lslga(req, ver):
     ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
     # max radius for LSLGA entries?!
     lslga_radius = 1.0
-    print('radec box radius', radius)
     T = cat_query_radec(fn, ra, dec, radius + lslga_radius)
-    print(len(T), 'in range')
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[], posAngle=[], pgc=[], type=[], redshift=[])),
                             content_type='application/json')
@@ -757,15 +755,13 @@ def cat_lslga(req, ver):
     H,W = wcs.shape
     ### cut to lslga entries possibly touching wcs box
     radius_pix = T.d25 / 2. * 60. / wcs.pixel_scale()
-    print('radius_pix range:', radius_pix.min(), radius_pix.max())
     ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
-    #print('xx,yy', xx,yy)
-    for x,y,name,r in zip(xx,yy,T.galaxy,radius_pix):
-        print('  ', name, 'at', x,y, 'radius', r)
+    #for x,y,name,r in zip(xx,yy,T.galaxy,radius_pix):
+    #    print('  ', name, 'at', x,y, 'radius', r)
     T.cut((xx > -radius_pix) * (xx < W+radius_pix) *
           (yy > -radius_pix) * (yy < H+radius_pix))
-    print('Cut to', len(T), 'LSLGA possibly touching WCS:')
-    print(T.galaxy)
+    #print('Cut to', len(T), 'LSLGA possibly touching WCS:')
+    #print(T.galaxy)
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
