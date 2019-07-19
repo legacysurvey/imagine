@@ -1292,6 +1292,55 @@ class MapLayer(object):
     
         if get_images:
             return rimgs
+
+        if "lslga" in req.GET:
+
+            from PIL import Image, ImageDraw
+            img = Image.open(tilefn)
+
+            ra, dec = wcs.crval
+            pixscale = wcs.pixel_scale()
+
+            width, height = img.size
+
+            ralo = ra - ((width / 2) * pixscale / 3600 / np.cos(np.deg2rad(dec)))
+            rahi = ra + ((width / 2) * pixscale / 3600 / np.cos(np.deg2rad(dec)))
+            declo = dec - ((height / 2) * pixscale / 3600)
+            dechi = dec + ((height / 2) * pixscale / 3600)
+
+            from map.cats import query_lslga_radecbox
+            galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
+
+            for r in galaxies:
+
+                RA, DEC = r.ra, r.dec
+                RAD = r.radius_arcsec
+                AB = r.ba
+                PA = r.pa
+
+                major_axis_arcsec = RAD * 2
+                minor_axis_arcsec = major_axis_arcsec * AB
+
+                overlay_height = int(major_axis_arcsec / pixscale)
+                overlay_width = int(minor_axis_arcsec / pixscale)
+
+                overlay = Image.new('RGBA', (overlay_width, overlay_height))
+                draw = ImageDraw.ImageDraw(overlay)
+                box_corners = (0, 0, overlay_width, overlay_height)
+                draw.ellipse(box_corners, fill=None, outline=(0, 0, 255), width=3)
+
+                rotated = overlay.rotate(PA, expand=True)
+                rotated_width, rotated_height = rotated.size
+
+                pix_from_left = (rahi - RA) * 3600 / pixscale
+                pix_from_top = (dechi - DEC) * 3600 / pixscale
+
+                paste_shift_x = int(pix_from_left - rotated_width / 2)
+                paste_shift_y = int(pix_from_top - rotated_height / 2)
+
+                img.paste(rotated, (paste_shift_x, paste_shift_y), rotated)
+
+            img.save(tilefn)
     
         return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
                          filename=filename)
