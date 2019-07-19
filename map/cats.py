@@ -730,7 +730,6 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
 def cat_lslga(req, ver):
     import json
     import numpy as np
-    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v2.0.kd.fits')
     tag = 'lslga'
     # The LSLGA catalog includes radii for the galaxies, and we want galaxies
     # that touch our RA,Dec box, so can't use the standard method...
@@ -743,25 +742,11 @@ def cat_lslga(req, ver):
     ver = int(ver)
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-    ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
-    # max radius for LSLGA entries?!
-    lslga_radius = 1.0
-    T = cat_query_radec(fn, ra, dec, radius + lslga_radius)
+
+    T = query_lslga_radecbox(ralo, rahi, declo, dechi)
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[], posAngle=[], pgc=[], type=[], redshift=[])),
                             content_type='application/json')
-
-    wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
-    H,W = wcs.shape
-    ### cut to lslga entries possibly touching wcs box
-    radius_pix = T.d25 / 2. * 60. / wcs.pixel_scale()
-    ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
-    #for x,y,name,r in zip(xx,yy,T.galaxy,radius_pix):
-    #    print('  ', name, 'at', x,y, 'radius', r)
-    T.cut((xx > -radius_pix) * (xx < W+radius_pix) *
-          (yy > -radius_pix) * (yy < H+radius_pix))
-    #print('Cut to', len(T), 'LSLGA possibly touching WCS:')
-    #print(T.galaxy)
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
@@ -778,6 +763,27 @@ def cat_lslga(req, ver):
                                         redshift=z)),
                         content_type='application/json')
 
+def query_lslga_radecbox(ralo, rahi, declo, dechi):
+    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v2.0.kd.fits')
+    ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
+    # max radius for LSLGA entries?!
+    lslga_radius = 1.0
+    T = cat_query_radec(fn, ra, dec, radius + lslga_radius)
+    if T is None:
+        return None
+    wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
+    H,W = wcs.shape
+    # cut to lslga entries possibly touching wcs box
+    radius_pix = T.d25 / 2. * 60. / wcs.pixel_scale()
+    ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
+    #for x,y,name,r in zip(xx,yy,T.galaxy,radius_pix):
+    #    print('  ', name, 'at', x,y, 'radius', r)
+    T.cut((xx > -radius_pix) * (xx < W+radius_pix) *
+          (yy > -radius_pix) * (yy < H+radius_pix))
+    #print('Cut to', len(T), 'LSLGA possibly touching WCS:', T.galaxy)
+    if len(T) == 0:
+        return None
+    return T
 
 def cat_spec(req, ver):
     import json
