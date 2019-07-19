@@ -1308,18 +1308,15 @@ class MapLayer(object):
             declo = dec - ((height / 2) * pixscale / 3600)
             dechi = dec + ((height / 2) * pixscale / 3600)
 
-            import requests
-            json_url = 'http://legacysurvey.org/viewer/lslga/1/cat.json?ralo={}&rahi={}&declo={}&dechi={}'.format(ralo, rahi, declo, dechi)
-            r = requests.get(json_url).json()
+            from map.cats import query_lslga_radecbox
+            galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
 
-            for i in range(len(r['rd'])):
+            for r in galaxies:
 
-                RA, DEC = r['rd'][i]
-                RAD = r['radiusArcsec'][i]
-                AB = r['abRatio'][i]
-                PA = r['posAngle'][i]
-
-                PA = 90 - PA
+                RA, DEC = r.ra, r.dec
+                RAD = r.radius_arcsec
+                AB = r.ba
+                PA = r.pa
 
                 major_axis_arcsec = RAD * 2
                 minor_axis_arcsec = major_axis_arcsec * AB
