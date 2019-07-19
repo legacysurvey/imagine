@@ -746,7 +746,9 @@ def cat_lslga(req, ver):
     ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
     # max radius for LSLGA entries?!
     lslga_radius = 1.0
+    print('radec box radius', radius)
     T = cat_query_radec(fn, ra, dec, radius + lslga_radius)
+    print(len(T), 'in range')
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[], posAngle=[], pgc=[], type=[], redshift=[])),
                             content_type='application/json')
@@ -757,9 +759,13 @@ def cat_lslga(req, ver):
     radius_pix = T.d25 / 2. * 60. / wcs.pixel_scale()
     print('radius_pix range:', radius_pix.min(), radius_pix.max())
     ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
+    #print('xx,yy', xx,yy)
+    for x,y,name,r in zip(xx,yy,T.galaxy,radius_pix):
+        print('  ', name, 'at', x,y, 'radius', r)
     T.cut((xx > -radius_pix) * (xx < W+radius_pix) *
           (yy > -radius_pix) * (yy < H+radius_pix))
-    print('Cut to', len(T), 'LSLGA possibly touching WCS')
+    print('Cut to', len(T), 'LSLGA possibly touching WCS:')
+    print(T.galaxy)
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
@@ -821,20 +827,22 @@ def cat_kd(req, ver, tag, fn):
 
     return T
 
-def radecbox_to_wcs(ralo, rahi, declo, dechi, W=100, H=100):
+def radecbox_to_wcs(ralo, rahi, declo, dechi):
     from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
     from astrometry.util.util import Tan
+    import numpy as np
     rc,dc,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
-    wd = degrees_between(rc, declo, rc, dechi)
-    hd = degrees_between(ralo, dc, rahi, dc)
-    psx = wd / W
-    psy = hd / H
-    wcs = Tan(rc, dc, (W+1.)/2., (H+1)/2., psx, 0., 0., -psy,
+    wd = degrees_between(ralo, dc, rahi, dc)
+    hd = degrees_between(rc, declo, rc, dechi)
+    W = 1000.
+    pixsc = wd / W
+    H = hd / pixsc
+    wcs = Tan(rc, dc, (W+1.)/2., (H+1.)/2., -pixsc, 0., 0., pixsc,
               float(W), float(H))
     ok,x,y = wcs.radec2pixelxy(ralo, declo)
-    print('Lower corner:', x, y)
+    ok,x,y = wcs.radec2pixelxy(ralo, dechi)
+    ok,x,y = wcs.radec2pixelxy(rahi, declo)
     ok,x,y = wcs.radec2pixelxy(rahi, dechi)
-    print('Upper corner:', x, y)
     return wcs
 
 def radecbox_to_circle(ralo, rahi, declo, dechi):
