@@ -163,7 +163,7 @@ def cat_gaia_dr2(req, ver):
 def cat_sdss(req, ver):
     import json
     import numpy as np
-    from astrometry.util.starutil_numpy import degrees_between, radectoxyz, xyztoradec
+
     from map.views import sdss_ccds_near
     from astrometry.util.fits import fits_table, merge_tables
 
@@ -177,12 +177,7 @@ def cat_sdss(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    rad = degrees_between(ralo, declo, rahi, dechi) / 2.
-    xyz1 = radectoxyz(ralo, declo)
-    xyz2 = radectoxyz(rahi, dechi)
-    xyz = (xyz1 + xyz2)
-    xyz /= np.sqrt(np.sum(xyz**2))
-    rc,dc = xyztoradec(xyz)
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
     rad = rad + np.hypot(10.,14.)/2./60.
     ccds = sdss_ccds_near(rc[0], dc[0], rad)
     if ccds is None:
@@ -666,16 +661,8 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
     from astrometry.util.fits import fits_table, merge_tables
     from astrometry.libkd.spherematch import tree_open, tree_search_radec
     import numpy as np
-    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
 
-    xyz1 = radectoxyz(ralo, declo)
-    xyz2 = radectoxyz(rahi, dechi)
-    xyz = (xyz1 + xyz2)/2.
-    xyz /= np.sqrt(np.sum(xyz**2))
-    rc,dc = xyztoradec(xyz)
-    rc = rc[0]
-    dc = dc[0]
-    rad = degrees_between(rc, dc, ralo, declo)
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
 
     '''
     startree -i /project/projectdirs/desi/target/catalogs/targets-dr4-0.20.0.fits -o data/targets-dr4-0.20.0.kd.fits -P -k -T
@@ -745,10 +732,35 @@ def cat_lslga(req, ver):
     import numpy as np
     fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v2.0.kd.fits')
     tag = 'lslga'
-    T = cat_kd(req, ver, tag, fn)
+    # The LSLGA catalog includes radii for the galaxies, and we want galaxies
+    # that touch our RA,Dec box, so can't use the standard method...
+    #T = cat_kd(req, ver, tag, fn)
+
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+    ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
+    # max radius for LSLGA entries?!
+    lslga_radius = 1.0
+    T = cat_query_radec(fn, ra, dec, radius + lslga_radius)
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[], posAngle=[], pgc=[], type=[], redshift=[])),
                             content_type='application/json')
+
+    wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
+    W,H = wcs.shape
+    ### cut to lslga entries possibly touching wcs box
+    radius_pix = T.d25 / 2. * 60. / wcs.pixel_scale()
+    print('radius_pix range:', radius_pix.min(), radius_pix.max())
+    ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
+    T.cut((xx > -radius_pix) * (xx < W+radius_pix) *
+          (yy > -radius_pix) * (yy < H+radius_pix))
+    print('Cut to', len(T), 'LSLGA possibly touching WCS')
+
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
     radius = [d * 60./2. for d in T.d25.astype(np.float32)]
@@ -789,7 +801,6 @@ def cat_spec(req, ver):
                         content_type='application/json')
 
 def cat_kd(req, ver, tag, fn):
-    tag = 'spec'
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
     declo = float(req.GET['declo'])
@@ -798,21 +809,8 @@ def cat_kd(req, ver, tag, fn):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    import numpy as np
-    from astrometry.util.fits import fits_table, merge_tables
-    from astrometry.libkd.spherematch import tree_open, tree_search_radec
-    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
-
-    xyz1 = radectoxyz(ralo, declo)
-    xyz2 = radectoxyz(rahi, dechi)
-    xyz = (xyz1 + xyz2)/2.
-    xyz /= np.sqrt(np.sum(xyz**2))
-    rc,dc = xyztoradec(xyz)
-    rc = rc[0]
-    dc = dc[0]
-    rad = degrees_between(rc, dc, ralo, declo)
-
-    T = cat_query_radec(fn, rc, dc, rad)
+    ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
+    T = cat_query_radec(fn, ra, dec, radius)
     debug(len(T), 'spectra')
     if ralo > rahi:
         # RA wrap
@@ -823,7 +821,38 @@ def cat_kd(req, ver, tag, fn):
 
     return T
 
+def radecbox_to_wcs(ralo, rahi, declo, dechi, W=100, H=100):
+    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
+    from astrometry.util.util import Tan
+    rc,dc,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
+    wd = degrees_between(rc, declo, rc, dechi)
+    hd = degrees_between(ralo, dc, rahi, dc)
+    psx = wd / W
+    psy = hd / H
+    wcs = Tan(rc, dc, (W+1.)/2., (H+1)/2., psx, 0., 0., -psy,
+              float(W), float(H))
+    ok,x,y = wcs.radec2pixelxy(ralo, declo)
+    print('Lower corner:', x, y)
+    ok,x,y = wcs.radec2pixelxy(rahi, dechi)
+    print('Upper corner:', x, y)
+    return wcs
+
+def radecbox_to_circle(ralo, rahi, declo, dechi):
+    from astrometry.util.starutil_numpy import radectoxyz, xyztoradec, degrees_between
+    import numpy as np
+    xyz1 = radectoxyz(ralo, declo)
+    xyz2 = radectoxyz(rahi, dechi)
+    xyz = (xyz1 + xyz2)/2.
+    xyz /= np.sqrt(np.sum(xyz**2))
+    rc,dc = xyztoradec(xyz)
+    rc = rc[0]
+    dc = dc[0]
+    rad = degrees_between(rc, dc, ralo, declo)
+    return rc, dc, rad
+    
 def cat_query_radec(kdfn, ra, dec, radius):
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    from astrometry.util.fits import fits_table
     kd = tree_open(kdfn)
     I = tree_search_radec(kd, ra, dec, radius)
     #print('Matched', len(I), 'from', fn)
@@ -1168,8 +1197,22 @@ def _get_decals_cat(wcs, tag='decals'):
 
 
 if __name__ == '__main__':
+    import sys
+    from django.test import Client
+    c = Client()
+    r = c.get('/lslga/1/cat.json?ralo=259.2787&rahi=259.7738&declo=35.9422&dechi=36.1656')
+    ## should contain NGC 6349
+
+    f = open('out', 'wb')
+    for x in r:
+        f.write(x)
+    f.close()
+
+    sys.exit(0)
+    
     #print('Random galaxy:', get_random_galaxy(layer='mzls+bass-dr4'))
     #create_galaxy_catalog('/tmp/dr8.fits', 8)
+
     
     from astrometry.util.fits import *
     T6 = fits_table('data/galaxies-in-dr6.fits')
@@ -1184,7 +1227,6 @@ if __name__ == '__main__':
     c = Client()
     c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
 
-    import sys
     sys.exit(0)
 
     T=fits_table('/project/projectdirs/cosmo/data/sdss/dr14/sdss/spectro/redux/specObj-dr14.fits',
