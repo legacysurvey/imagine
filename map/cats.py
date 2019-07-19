@@ -750,7 +750,7 @@ def cat_lslga(req, ver):
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
-    radius = [d * 60./2. for d in T.d25.astype(np.float32)]
+    radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
 
     ab = [float(f) for f in T.ba.astype(np.float32)]
     pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa.astype(np.float32)]
@@ -774,7 +774,8 @@ def query_lslga_radecbox(ralo, rahi, declo, dechi):
     wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
     H,W = wcs.shape
     # cut to lslga entries possibly touching wcs box
-    radius_pix = T.d25 / 2. * 60. / wcs.pixel_scale()
+    T.radius_arcsec = T.d25 / 2. * 60.
+    radius_pix = T.radius_arcsec / wcs.pixel_scale()
     ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
     #for x,y,name,r in zip(xx,yy,T.galaxy,radius_pix):
     #    print('  ', name, 'at', x,y, 'radius', r)
