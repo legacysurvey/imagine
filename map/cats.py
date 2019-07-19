@@ -184,7 +184,7 @@ def cat_sdss(req, ver):
     xyz /= np.sqrt(np.sum(xyz**2))
     rc,dc = xyztoradec(xyz)
     rad = rad + np.hypot(10.,14.)/2./60.
-    ccds = sdss_ccds_near(rc[0], dc[0], rad)
+    ccds = sdss_ccds_near(rc, dc, rad)
     if ccds is None:
         print('No SDSS CCDs nearby')
         return HttpResponse(json.dumps(dict(rd=[])),
