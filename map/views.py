@@ -1327,7 +1327,8 @@ class MapLayer(object):
                 overlay = Image.new('RGBA', (overlay_width, overlay_height))
                 draw = ImageDraw.ImageDraw(overlay)
                 box_corners = (0, 0, overlay_width, overlay_height)
-                draw.ellipse(box_corners, fill=None, outline=(0, 0, 255), width=3)
+                ellipse_color = '#' + req.GET.get('lslgacolor', '#3388ff').lstrip('#')
+                draw.ellipse(box_corners, fill=None, outline=ellipse_color, width=3)
 
                 rotated = overlay.rotate(PA, expand=True)
                 rotated_width, rotated_height = rotated.size
