@@ -1925,6 +1925,11 @@ objquery.onAdd = function (map) {
 };
 objquery.addTo(map);
 
+var container = objquery.getContainer();
+L.DomEvent
+    .disableClickPropagation(container)
+    .disableScrollPropagation(container);
+
 //FAQ
 var faq = L.control({'position':'bottomleft'});
 faq.onAdd = function (map) {
