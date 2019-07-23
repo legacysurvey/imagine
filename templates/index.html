@@ -1990,6 +1990,11 @@ objquery.onAdd = function (map) {
 };
 objquery.addTo(map);
 
+var container = objquery.getContainer();
+L.DomEvent
+    .disableClickPropagation(container)
+    .disableScrollPropagation(container);
+
 // A list of object names mapped to [lat,lng,zoom], for history navgation
 var hashLocations = {};
 
