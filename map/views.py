@@ -2427,9 +2427,11 @@ class LegacySurveySplitLayer(MapLayer):
             return topims
 
         import numpy as np
-        x = np.empty(256)
-        x[:] = 128.5
-        y = np.arange(1, 256+1)
+        # Compute Decs for each Y in the WCS -- this is assuming that the WCS is axis-aligned!!
+        H,W = wcs.shape
+        x = np.empty(H)
+        x[:] = W//2 + 0.5
+        y = np.arange(1, H+1)
         rr,dd = wcs.pixelxy2radec(x, y)[-2:]
         I = np.flatnonzero(dd >= self.decsplit)
         for b,t in zip(botims, topims):
