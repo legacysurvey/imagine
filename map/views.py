@@ -2308,6 +2308,9 @@ class LegacySurveySplitLayer(MapLayer):
             #print('Decs', dd)
             self.tilesplits[zoom] = y
 
+    def has_cutouts(self):
+        return True
+
     def data_for_radec(self, ra, dec):
         import numpy as np
         html = [
