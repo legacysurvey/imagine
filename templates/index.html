@@ -77,6 +77,9 @@ var subdomains = {{ subdomains|safe }};
 var static_tile_url_B = '{{ static_tile_url_B|safe }}';
 var subdomains_B = {{ subdomains_B|safe }};
 
+var aws_tile_url = 'http://{id}.legacysurvey.org/{z}/{x}/{y}.jpg';
+var max_aws_zoom = 14;
+
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
 
@@ -136,7 +139,8 @@ var SplitTileLayer = L.TileLayer.extend({
 
     // new SplitTileLayer(static_tile_url_B, ysplits,
     //                    north_args, mid_args, south_args);
-    initialize: function(url, ysplits, north_args, mid_args, south_args) {
+    initialize: function(url, args, ysplits, north_args, mid_args, south_args) {
+        L.TileLayer.prototype.initialize.call(this, url, args);
         this._url = url;
         this._ysplits = ysplits;
         this._north_args = north_args;
@@ -1491,7 +1495,8 @@ var mylayer_B = function (name, pretty, kwargs) {
 function split_layer(name, pretty, decsplit,
                      north_name, north_urls,
                      mid_name,   mid_urls,
-                     south_name, south_urls) {
+                     south_name, south_urls,
+                     kwargs) {
     var args = {
         maxZoom: maxZoom,
         minZoom: minZoom,
@@ -1500,6 +1505,9 @@ function split_layer(name, pretty, decsplit,
         unloadInvisibleTiles: true,
         subdomains: subdomains_B,
     };
+    for (var key in kwargs) {
+        args[key] = kwargs[key];
+    }
     var north_args = Object.assign(
         {},
         args,
@@ -1526,7 +1534,7 @@ function split_layer(name, pretty, decsplit,
         ysplits[zoom] = Math.floor(y);
         console.log('Dec split', decsplit, 'zoom', zoom, '-> y', ysplits[zoom]);
     }
-    var tiles = new SplitTileLayer(static_tile_url_B, ysplits,
+    var tiles = new SplitTileLayer(tile_url, args, ysplits,
                                    north_args, mid_args, south_args);
     tiles.name = name;
     tiles.pretty = pretty;
@@ -1542,11 +1550,14 @@ allLayers.push(tiles);
 tiles = split_layer('dr8', 'Legacy Surveys DR8 images',
                     32.375,
                     // North
-                    'dr8-north', [ [0, maxZoom, tile_url], ],
+                    //'dr8-north', [ [0, maxZoom, tile_url], ],
+                    'dr8-north', [ [0, max_aws_zoom, aws_tile_url], ],
                     // Mid
                     'dr8', [ [0, maxZoom, tile_url], ],
                     // South
-                    'dr8-south', [ [0, maxZoom, tile_url], ]
+                    //'dr8-south', [ [0, maxZoom, tile_url], ]
+                    'dr8-south', [ [0, max_aws_zoom, aws_tile_url], ],
+                    { 'maxNativeZoom': max_aws_zoom }
                    );
 allLayers.push(tiles);
 {% if enable_dr8_models %}
@@ -1557,7 +1568,8 @@ tiles = split_layer('dr8-model', 'Legacy Surveys DR8 models',
                     // Mid
                     'dr8-model', [ [0, maxZoom, tile_url], ],
                     // South
-                    'dr8-south-model', [ [0, maxZoom, tile_url], ]
+                    'dr8-south-model', [ [0, maxZoom, tile_url], ],
+                    { 'maxNativeZoom': max_aws_zoom }
                    );
 allLayers.push(tiles);
 {% endif %}
@@ -1569,7 +1581,8 @@ tiles = split_layer('dr8-resid', 'Legacy Surveys DR8 residuals',
                     // Mid
                     'dr8-resid', [ [0, maxZoom, tile_url], ],
                     // South
-                    'dr8-south-resid', [ [0, maxZoom, tile_url], ]
+                    'dr8-south-resid', [ [0, maxZoom, tile_url], ],
+                    { 'maxNativeZoom': max_aws_zoom }
                    );
 allLayers.push(tiles);
 {% endif %}
@@ -1577,7 +1590,8 @@ allLayers.push(tiles);
 
 {% if enable_dr8_north %}
 tiles = mylayer_B('dr8-north', 'Legacy Surveys DR8-north images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
+                   'maxNativeZoom':max_aws_zoom, });
 allLayers.push(tiles);
 {% if enable_dr8_north_models %}
 tiles = mylayer_B('dr8-north-model', 'Legacy Surveys DR8-north models',
@@ -1593,7 +1607,8 @@ allLayers.push(tiles);
 
 {% if enable_dr8_south %}
 tiles = mylayer_B('dr8-south', 'Legacy Surveys DR8-south images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+                  {'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
+                   'maxNativeZoom':max_aws_zoom });
 allLayers.push(tiles);
 {% if enable_dr8_south_models %}
 tiles = mylayer_B('dr8-south-model', 'Legacy Surveys DR8-south models',
@@ -1974,6 +1989,11 @@ objquery.onAdd = function (map) {
     return this._div;
 };
 objquery.addTo(map);
+
+var container = objquery.getContainer();
+L.DomEvent
+    .disableClickPropagation(container)
+    .disableScrollPropagation(container);
 
 // A list of object names mapped to [lat,lng,zoom], for history navgation
 var hashLocations = {};

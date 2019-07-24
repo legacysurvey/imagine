@@ -30,7 +30,7 @@ python -c "import django"
 # echo
 # which uwsgi
 
-uwsgi -s :3032 --wsgi-file wsgi.py --touch-reload wsgi.py --processes 4 --reload-on-rss 500 --logto /tmp/uwsgi-dev.log -d /tmp/uwsgi2-dev.log
+uwsgi -s :3032 --wsgi-file wsgi.py --touch-reload wsgi.py --processes 4 --reload-on-rss 500 -d /tmp/uwsgi2-dev.log --limit-post 50000000
 
 
 
