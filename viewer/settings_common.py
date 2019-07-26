@@ -51,11 +51,11 @@ ENABLE_DES_DR1 = False
 ENABLE_EBOSS = False
 
 # Can the web service not create files under BASE_DIR?
-READ_ONLY_BASEDIR = False
+READ_ONLY_BASEDIR = True
 
 DEBUG_LOGGING = False
 
-MAX_NATIVE_ZOOM = 15
+MAX_NATIVE_ZOOM = 14
 
 
 # Tile cache is writable?
@@ -101,9 +101,9 @@ except:
                           for i in range(50)])
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-TEMPLATE_DEBUG = True
+TEMPLATE_DEBUG = False
 
 TEMPLATE_DIRS = (os.path.join(WEB_DIR, 'templates'),)
 
@@ -176,10 +176,10 @@ WSGI_APPLICATION = 'wsgi.application'
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
 
 DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-#     },
+     'default': {
+         'ENGINE': 'django.db.backends.sqlite3',
+         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+     },
 #     'cosmo': secrets.database.COSMO_DB,
 #     'dr2': secrets.database.DR2_DB,
 }
