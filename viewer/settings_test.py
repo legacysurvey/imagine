@@ -56,3 +56,21 @@ STATIC_TILE_URL = 'http://{s}.legacysurvey.org/viewer-dev/static/tiles/{id}/{ver
 # DUST_DIR = '/project/projectdirs/cosmo/webapp/viewer/dust'
 # UNWISE_DIR = '/project/projectdirs/cosmo/data/unwise/unwise-coadds'
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'filters': None,
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+    },
+}
+
