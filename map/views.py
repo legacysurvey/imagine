@@ -1299,14 +1299,13 @@ class MapLayer(object):
             img = Image.open(tilefn)
 
             ra, dec = wcs.crval
+            img_cx, img_cy = wcs.crpix
             pixscale = wcs.pixel_scale()
 
-            width, height = img.size
-
-            ralo = ra - ((width / 2) * pixscale / 3600 / np.cos(np.deg2rad(dec)))
-            rahi = ra + ((width / 2) * pixscale / 3600 / np.cos(np.deg2rad(dec)))
-            declo = dec - ((height / 2) * pixscale / 3600)
-            dechi = dec + ((height / 2) * pixscale / 3600)
+            ralo = ra - (img_cx * pixscale / 3600 / np.cos(np.deg2rad(dec)))
+            rahi = ra + (img_cx * pixscale / 3600 / np.cos(np.deg2rad(dec)))
+            declo = dec - (img_cy * pixscale / 3600)
+            dechi = dec + (img_cy * pixscale / 3600)
 
             from map.cats import query_lslga_radecbox
             galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
@@ -1333,11 +1332,11 @@ class MapLayer(object):
                 rotated = overlay.rotate(PA, expand=True)
                 rotated_width, rotated_height = rotated.size
 
-                pix_from_left = (rahi - RA) * 3600 / pixscale
-                pix_from_top = (dechi - DEC) * 3600 / pixscale
+                ellipse_x = img_cx - ((RA - ra) * 3600 / pixscale))
+                ellipse_y = img_cy - ((DEC - dec) * 3600 / pixscale)
 
-                paste_shift_x = int(pix_from_left - rotated_width / 2)
-                paste_shift_y = int(pix_from_top - rotated_height / 2)
+                paste_shift_x = int(ellipse_x - rotated_width / 2)
+                paste_shift_y = int(ellipse_y - rotated_height / 2)
 
                 img.paste(rotated, (paste_shift_x, paste_shift_y), rotated)
 
