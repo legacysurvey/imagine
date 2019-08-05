@@ -1310,7 +1310,7 @@ class MapLayer(object):
             from map.cats import query_lslga_radecbox
             galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
 
-            for r in galaxies:
+            for r in galaxies if galaxies is not None else []:
 
                 RA, DEC = r.ra, r.dec
                 RAD = r.radius_arcsec
