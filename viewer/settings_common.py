@@ -54,7 +54,7 @@ ENABLE_HSC_DR1 = False
 ENABLE_HSC_DR2 = True
 
 # Can the web service not create files under BASE_DIR?
-READ_ONLY_BASEDIR = False
+READ_ONLY_BASEDIR = True
 
 DEBUG_LOGGING = False
 
