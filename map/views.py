@@ -1332,7 +1332,7 @@ class MapLayer(object):
                 rotated = overlay.rotate(PA, expand=True)
                 rotated_width, rotated_height = rotated.size
 
-                ellipse_x = img_cx - ((RA - ra) * 3600 / pixscale))
+                ellipse_x = img_cx - ((RA - ra) * 3600 / pixscale * np.cos(np.deg2rad(dec)))
                 ellipse_y = img_cy - ((DEC - dec) * 3600 / pixscale)
 
                 paste_shift_x = int(ellipse_x - rotated_width / 2)
