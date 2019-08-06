@@ -1298,8 +1298,9 @@ class MapLayer(object):
             from PIL import Image, ImageDraw
             img = Image.open(tilefn)
 
-            ra, dec = wcs.crval
-            img_cx, img_cy = wcs.crpix
+            ra, dec = wcs.radec_center()
+            img_cx = img.size[0] / 2
+            img_cy = img.size[1] / 2
             pixscale = wcs.pixel_scale()
 
             ralo = ra - (img_cx * pixscale / 3600 / np.cos(np.deg2rad(dec)))
@@ -1338,13 +1339,14 @@ class MapLayer(object):
                 rotated = overlay.rotate(PA, expand=True)
                 rotated_width, rotated_height = rotated.size
 
-                ellipse_x = img_cx - ((RA - ra) * 3600 / pixscale * np.cos(np.deg2rad(dec)))
-                ellipse_y = img_cy - ((DEC - dec) * 3600 / pixscale)
+                ok, ellipse_x, ellipse_y = wcs.radec2pixelxy(RA, DEC)
 
-                paste_shift_x = int(ellipse_x - rotated_width / 2)
-                paste_shift_y = int(ellipse_y - rotated_height / 2)
+                if ok:
 
-                img.paste(rotated, (paste_shift_x, paste_shift_y), rotated)
+                    paste_shift_x = int(ellipse_x - rotated_width / 2)
+                    paste_shift_y = int(ellipse_y - rotated_height / 2)
+
+                    img.paste(rotated, (paste_shift_x, paste_shift_y), rotated)
 
             img.save(tilefn)
     
