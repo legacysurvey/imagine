@@ -1317,6 +1317,11 @@ class MapLayer(object):
                 AB = r.ba
                 PA = r.pa
 
+                if np.isnan(AB):
+                    AB = 1
+                if np.isnan(PA):
+                    PA = 90
+
                 major_axis_arcsec = RAD * 2
                 minor_axis_arcsec = major_axis_arcsec * AB
 
