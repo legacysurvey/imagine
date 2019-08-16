@@ -1,6 +1,6 @@
 from viewer.settings_common import *
 
-DEBUG = False
+DEBUG = True
 
 DEBUG_LOGGING = True
 
