@@ -3595,6 +3595,25 @@ class SplitSurveyData(LegacySurveyData):
                                         self.south.get_bricks_readonly()], columns='fillzero')
         return self.bricks
 
+    def find_ccds(self, expnum=None, ccdname=None, camera=None):
+        import numpy as np
+        from astrometry.util.fits import merge_tables
+        ccds = []
+        ccds_n = self.north.find_ccds(expnum=expnum, ccdname=ccdname, camera=camera)
+        if ccds_n is not None:
+            ccds_n.is_north = np.ones(len(ccds_n), bool)
+            ccds.append(ccds_n)
+        print('north CCDs:', ccds_n)
+        ccds_s = self.south.find_ccds(expnum=expnum, ccdname=ccdname, camera=camera)
+        print('south CCDs:', ccds_s)
+        if ccds_s is not None:
+            ccds_s.is_north = np.zeros(len(ccds_s), bool)
+            ccds.append(ccds_s)
+        if len(ccds) == 0:
+            return None
+        ccds = merge_tables(ccds)
+        return ccds
+    
     def get_ccds(self, **kwargs):
         from astrometry.util.fits import merge_tables
         import numpy as np
@@ -5337,7 +5356,9 @@ if __name__ == '__main__':
     #r = c.get('/cutouts/?ra=194.5517&dec=26.3977&layer=decals-dr5')
     #s = get_survey('decals-dr5')
     #s.get_ccds()
-    r = c.get('/data-for-radec/?ra=54.8733&dec=-13.1156&layer=des-dr1')
+    #r = c.get('/data-for-radec/?ra=54.8733&dec=-13.1156&layer=des-dr1')
+    #r = c.get('/ccd/dr8/decam-767361-N29-z/')
+    r = c.get('/image-data/dr8/decam-767361-N29-z')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
