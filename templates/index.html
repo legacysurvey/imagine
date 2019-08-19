@@ -26,6 +26,7 @@
 <script src="{% static "l.ellipse.js" %}"></script>
 <script src="{% static "utils.js" %}"></script>
 <link rel="stylesheet" href="{% static "styles.css" %}" />
+<style id='tile-filters'></style>
 
 {% comment %}
 <script src="{% static "leaflet.draw-0.2.4.js" %}"></script>
@@ -1988,6 +1989,31 @@ objquery.onAdd = function (map) {
 };
 objquery.addTo(map);
 disableMouseEventPropagation(objquery);
+
+// Brightness & contrast sliders
+function addCSSFilterSlider(filterType) {
+    var sliderControl = L.control({'position': 'bottomleft'})
+    sliderControl.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', filterType);
+        this._div.innerHTML = '<input type="range" min="0" max="10" value="1" step="0.1" class="slider" id="' + filterType + '">';
+        return this._div;
+    }
+    sliderControl.addTo(map);
+    var slider = document.getElementById(filterType);
+    slider.oninput = function() {
+        let sliders = document.querySelectorAll('input[type="range"]');
+        let css = '-webkit-filter: '
+        sliders.forEach(s => {
+            css += s.id + '(' + String(s.value) + ') ';
+        })
+        css += ';'
+        let styleElement = document.getElementById('tile-filters');
+        styleElement.innerHTML = '.leaflet-tile { '+ css + '}';
+    }
+    disableMouseEventPropagation(sliderControl);
+}
+addCSSFilterSlider('brightness');
+addCSSFilterSlider('contrast');
 
 
 // A list of object names mapped to [lat,lng,zoom], for history navgation
