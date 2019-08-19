@@ -1955,10 +1955,8 @@ info.addTo(map);
 map.zoomsliderControl = new L.Control.Zoomslider();
 map.addControl(map.zoomsliderControl);
 
+disableMouseEventPropagation(info);
 var container = info.getContainer();
-L.DomEvent
-    .disableClickPropagation(container)
-    .disableScrollPropagation(container);
 L.DomEvent.on(container, 'click', infoBoxClicked);
 
 {% if enable_sql %}
@@ -1989,11 +1987,8 @@ objquery.onAdd = function (map) {
     return this._div;
 };
 objquery.addTo(map);
+disableMouseEventPropagation(objquery);
 
-var container = objquery.getContainer();
-L.DomEvent
-    .disableClickPropagation(container)
-    .disableScrollPropagation(container);
 
 // A list of object names mapped to [lat,lng,zoom], for history navgation
 var hashLocations = {};
