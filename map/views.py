@@ -73,9 +73,9 @@ tileversions = {
     'dr8-north-model': [1],
     'dr8-north-resid': [1],
 
-    'dr8-north': [1],
-    'dr8-north-model': [1],
-    'dr8-north-resid': [1],
+    'dr8-south': [1],
+    'dr8-south-model': [1],
+    'dr8-south-resid': [1],
 
     'dr8': [1],
     'dr8-model': [1],
