@@ -1992,7 +1992,7 @@ disableMouseEventPropagation(objquery);
 
 // Brightness & contrast sliders
 function addCSSFilterSlider(filterType) {
-    var sliderControl = L.control({'position': 'bottomleft'})
+    let sliderControl = L.control({'position': 'bottomleft'})
     sliderControl.onAdd = function (map) {
         this._div = L.DomUtil.create('div', filterType);
         // Add input
@@ -2002,7 +2002,7 @@ function addCSSFilterSlider(filterType) {
         return this._div;
     }
     sliderControl.addTo(map);
-    var slider = document.getElementById(filterType);
+    let slider = document.getElementById(filterType);
     slider.oninput = function() {
         // Put all filters into one css rule
         let sliders = document.querySelectorAll('input[type="range"]');
