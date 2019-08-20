@@ -1193,7 +1193,7 @@ function fluxToMag(f) {
 }
 
 function cutout_radec_url(ra, dec) {
-    return '{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + layer_name;
+    return abs_url + '{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + layer_name;
 }
 
 function cutout_radec_link(ra, dec) {
@@ -1279,14 +1279,18 @@ function onMapClick(e) {
     var dec = lat2dec(e.latlng.lat);
 
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
-    var linkqstr = radecstr + '&zoom=' + map.getZoom() + '&layer=' + layer_name;
+    var linkqstr = radecstr + '&layer=' + layer_name;
+    var zoomstr = '&zoom=' + map.getZoom();
 
-    var cutout = hostname_url + '{% url 'cutout-jpeg' %}?' + linkqstr;
-    var linkurl = abs_url + '?' + linkqstr;
+    var pixscale = 0.25 * Math.pow(2, 14 - map.getZoom());
+    var pixstr = '&pixscale=' + pixscale.toFixed(2);
+
+    var cutout = abs_url + '{% url 'cutout-jpeg' %}?' + linkqstr + pixstr;
+    var cutout_fits = abs_url + '{% url 'cutout-fits' %}?' + linkqstr + pixstr;
+    var linkurl = abs_url + '?' + linkqstr + zoomstr;
     if ('plate' in qstr) {
         linkurl += '&plate=' + qstr['plate'];
     }
-
     for (var i=0,len=overlays.length; i<len; i++) {
         console.log('Overlay ' + overlays[i]._name + ' shown? ' + overlays[i]._show);
         if (overlays[i]._show) {
@@ -1300,7 +1304,7 @@ function onMapClick(e) {
         encodeURIComponent(linkurl) +
         '&category=Interesting+things';
 
-    var datalink = '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + layer_name;
+    var datalink = abs_url + '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + layer_name;
     var spacer = ' &nbsp;|&nbsp; ';
 
     var txt =
@@ -1308,9 +1312,9 @@ function onMapClick(e) {
         '<br/><a href="' + linkurl +
         '">Link Here</a>' + spacer +
         '<a href="' + datalink + '">Data</a>' + spacer +
-        '<a href="' + cutout + '">Cutout</a>' + spacer +
+        '<a href="' + cutout + '">Cutout</a> (<a href="' + cutout_fits + '">FITS</a>)' + spacer +
     {% if enable_cutouts %}
-        '<a href="' + cutout_radec_url(ra,dec) + '">Single Image Cutouts</a>' + spacer +
+        '<a href="' + cutout_radec_url(ra,dec) + '">Single Exposuress</a>' + spacer +
     {% endif %}
         '<a href="' + discuss + '">Discuss This Object</a>';
 
