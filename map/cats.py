@@ -288,8 +288,9 @@ def upload_cat(req):
             catname = catname + '-c%s' % color.strip()
     except:
         pass
+
     
-    return HttpResponseRedirect(reverse(index) +
+    return HttpResponseRedirect(settings.ROOT_URL + reverse(index) +
                                 '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, catname))
 
 galaxycats = {}
