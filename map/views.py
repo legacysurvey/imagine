@@ -343,10 +343,9 @@ def _index(req,
         if len(usercats) == 0:
             usercats = None
     #print('User catalogs:', usercats)
-    usercatalogurl = reverse(cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
-    usercatalogurl2 = reverse(cat_user, args=(1,)) + '?start={start}&N={N}&cat={cat}'
+    usercatalogurl = baseurl + reverse(cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
+    usercatalogurl2 = baseurl + reverse(cat_user, args=(1,)) + '?start={start}&N={N}&cat={cat}'
 
-    
     absurl = req.build_absolute_uri(rooturl)
     hostname_url = req.build_absolute_uri('/')
 
