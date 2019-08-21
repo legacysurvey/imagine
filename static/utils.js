@@ -38,3 +38,10 @@ function parameterizeDec(dec) {
     var decStr = Math.abs(dec).toString();
     return dec >= 0 ? 'p' + decStr : 'm' + decStr;
 }
+
+function disableMouseEventPropagation(element) {
+    let container = element.getContainer();
+    L.DomEvent
+        .disableClickPropagation(container)
+        .disableScrollPropagation(container);
+}
