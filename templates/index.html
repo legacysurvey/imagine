@@ -1990,25 +1990,32 @@ objquery.onAdd = function (map) {
 objquery.addTo(map);
 disableMouseEventPropagation(objquery);
 
-// Brightness & contrast sliders
-function addCSSFilterSlider(filterType) {
-    let sliderControl = L.control({'position': 'bottomleft'})
-    sliderControl.onAdd = function (map) {
-        this._div = L.DomUtil.create('div', filterType);
-        // Add input
-        this._div.innerHTML = '<input type="range" min="0" max="10" value="1" step="0.1" class="slider" id="' + filterType + '">';
-        // Add status text
-        this._div.innerHTML += '<span id="' + filterType + '-status">' + filterType.charAt(0).toUpperCase() + filterType.slice(1) + ': 1</span>';
-        return this._div;
-    }
-    sliderControl.addTo(map);
+// CSS Filters
+let sliderControlGroup = L.control({'position':'bottomleft'});
+sliderControlGroup.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'slider-controls');
+    return this._div;
+}
+sliderControlGroup.addTo(map);
+disableMouseEventPropagation(sliderControlGroup);
+
+function addCSSFilterSlider(filterType, minValue, maxValue, defaultValue, increment) {
+    node = document.createElement('div');
+    sliderHTML = '<input type="range" min="{0}" max="{1}" value="{2}" step="{3}" class="slider" id="{4}">'.format(minValue, maxValue, defaultValue, increment, filterType);
+    sliderHTML += '<span id="' + filterType + '-status">' + filterType.charAt(0).toUpperCase() + filterType.slice(1) + ': {0}</span>'.format(defaultValue);
+    node.innerHTML = sliderHTML;
+    sliderControlGroup._div.appendChild(node);
+
     let slider = document.getElementById(filterType);
     slider.oninput = function() {
         // Put all filters into one css rule
         let sliders = document.querySelectorAll('input[type="range"]');
         let css = '-webkit-filter: '
         sliders.forEach(s => {
-            css += s.id + '(' + s.value + ') ';
+            if (s.id == 'blur')
+                css += s.id + '(' + s.value + 'px) ';
+            else
+                css += s.id + '(' + s.value + ') ';
         })
         css += ';'
         // Update css
@@ -2018,10 +2025,10 @@ function addCSSFilterSlider(filterType) {
         let statusElement = document.getElementById(this.id+'-'+'status');
         statusElement.innerHTML = this.id.charAt(0).toUpperCase() + this.id.slice(1) + ': ' + this.value;
     }
-    disableMouseEventPropagation(sliderControl);
 }
-addCSSFilterSlider('brightness');
-addCSSFilterSlider('contrast');
+addCSSFilterSlider('brightness', 0, 10, 1, 0.1);
+addCSSFilterSlider('contrast', 0, 10, 1, 0.1);
+addCSSFilterSlider('blur', 0, 50, 0, 1);
 
 // A list of object names mapped to [lat,lng,zoom], for history navgation
 var hashLocations = {};
