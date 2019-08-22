@@ -2,7 +2,7 @@
 
 #thebody { margin:0; }
 
-.inbrickccd, .objquery, .info, .query, .upload, .brightness, .contrast {
+.inbrickccd, .objquery, .info, .query, .upload, .slider-controls {
     padding: 6px 8px;
     font: 14px/16px Arial, Helvetica, sans-serif;
     background: white;
