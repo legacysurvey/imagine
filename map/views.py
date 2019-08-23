@@ -123,6 +123,21 @@ except:
     pass
 
 
+def my_url(req, url):
+
+    # Can't do this simple thing because CORS prevents
+    #decaps.legacysurvey.org from reading from legacysurvey.org.
+    #baseurl = 'http://%s%s' % (settings.HOSTNAME, settings.ROOT_URL)
+    path = settings.ROOT_URL
+    if is_decaps(req):
+        path = '/'
+    baseurl = req.build_absolute_uri(path)
+    if baseurl.endswith('/'):
+        baseurl = baseurl[:-1]
+    #print('Base URL:', baseurl)
+
+    return baseurl + url
+
 def urls(req):
     from django.shortcuts import render
     return render(req, 'urls.html')
@@ -285,20 +300,9 @@ def _index(req,
     if ra is None or dec is None:
         ra,dec,galname = get_random_galaxy(layer=layer)
 
-    # Can't do this simple thing because CORS prevents
-    #decaps.legacysurvey.org from reading from legacysurvey.org.
-    #baseurl = 'http://%s%s' % (settings.HOSTNAME, settings.ROOT_URL)
-    path = settings.ROOT_URL
-    if is_decaps(req):
-        path = '/'
-    baseurl = req.build_absolute_uri(path)
-    if baseurl.endswith('/'):
-        baseurl = baseurl[:-1]
-    print('Base URL:', baseurl)
+    caturl = my_url(req, '/{id}/{ver}/{z}/{x}/{y}.cat.json')
 
-    caturl = baseurl + '/{id}/{ver}/{z}/{x}/{y}.cat.json'
-
-    smallcaturl = baseurl + '/{id}/{ver}/cat.json?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
+    smallcaturl = my_url(req, '/{id}/{ver}/cat.json?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}')
 
     tileurl = settings.TILE_URL
 
@@ -312,14 +316,15 @@ def _index(req,
     subdomains_B = settings.SUBDOMAINS_B
     subdomains_B = '[' + ','.join(["'%s'" % s for s in subdomains_B]) + '];'
 
-    ccdsurl = baseurl + '/ccds/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
-    bricksurl = baseurl + '/bricks/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&layer={layer}'
-    expsurl = baseurl + '/exps/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
-    platesurl = baseurl + '/sdss-plates/?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
-    sqlurl = baseurl + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
-    namequeryurl = baseurl + '/namequery/?obj={obj}'
-
-    uploadurl = baseurl + '/upload-cat/'
+    ccdsurl = my_url(req, reverse('ccd-list')) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    bricksurl = my_url(req, reverse('brick-list')) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&layer={layer}'
+    expsurl = my_url(req, reverse('exposure-list')) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    platesurl = my_url(req, reverse('sdss-plate-list')) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
+    #sqlurl = baseurl + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
+    namequeryurl = my_url(req, reverse('object-query')) + '?obj={obj}'
+    uploadurl = my_url(req, reverse('upload-cat'))
+    usercatalogurl = my_url(req, reverse(cat_user, args=(1,))) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
+    usercatalogurl2 = my_url(req, reverse(cat_user, args=(1,))) + '?start={start}&N={N}&cat={cat}'
 
     usercatalog = req.GET.get('catalog', None)
     usercats = None
@@ -343,8 +348,6 @@ def _index(req,
         if len(usercats) == 0:
             usercats = None
     #print('User catalogs:', usercats)
-    usercatalogurl = baseurl + reverse(cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
-    usercatalogurl2 = baseurl + reverse(cat_user, args=(1,)) + '?start={start}&N={N}&cat={cat}'
 
     absurl = req.build_absolute_uri(rooturl)
     hostname_url = req.build_absolute_uri('/')
@@ -609,7 +612,7 @@ def data_for_radec(req):
     layername = request_layer_name(req)
     #layer = layer_to_survey_name(layer)
     layer = get_layer(layername)
-    return layer.data_for_radec(ra, dec)
+    return layer.data_for_radec(req, ra, dec)
 
 class MapLayer(object):
     '''
@@ -634,7 +637,7 @@ class MapLayer(object):
     def has_cutouts(self):
         return False
 
-    def data_for_radec(self, ra, dec):
+    def data_for_radec(self, req, ra, dec):
         pass
         
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
@@ -1569,7 +1572,7 @@ class DecalsLayer(MapLayer):
     def has_cutouts(self):
         return True
 
-    def data_for_radec(self, ra, dec):
+    def data_for_radec(self, req, ra, dec):
         import numpy as np
         survey = self.survey
         bricks = survey.get_bricks()
@@ -1596,7 +1599,7 @@ class DecalsLayer(MapLayer):
             ccds = fits_table(ccdsfn)
             ccds = touchup_ccds(ccds, survey)
             if len(ccds):
-                html.extend(self.ccds_overlapping_html(ccds, brick=brickname, ra=ra, dec=dec))
+                html.extend(self.ccds_overlapping_html(req, ccds, brick=brickname, ra=ra, dec=dec))
             from legacypipe.survey import wcs_for_brick
             brickwcs = wcs_for_brick(brick)
             ok,bx,by = brickwcs.radec2pixelxy(ra, dec)
@@ -1605,7 +1608,7 @@ class DecalsLayer(MapLayer):
                      (by >= ccds.brick_y0) * (by <= ccds.brick_y1))
             print('Cut to', len(ccds), 'CCDs containing RA,Dec point')
             if len(ccds):
-                html.extend(self.ccds_overlapping_html(ccds, ra=ra, dec=dec))
+                html.extend(self.ccds_overlapping_html(req, ccds, ra=ra, dec=dec))
 
         html.extend(['</body></html>',])
         return HttpResponse('\n'.join(html))
@@ -1624,12 +1627,12 @@ class DecalsLayer(MapLayer):
             ]
         return html
 
-    def ccds_overlapping_html(self, ccds, ra=None, dec=None, brick=None):
+    def ccds_overlapping_html(self, req, ccds, ra=None, dec=None, brick=None):
         if brick is not None:
             html = ['<h1>CCDs overlapping brick:</h1>']
         elif ra is not None and dec is not None:
             html = ['<h1>CCDs overlapping RA,Dec:</h1>']
-        html.extend(ccds_overlapping_html(ccds, self.name, ra=ra, dec=dec))
+        html.extend(ccds_overlapping_html(req, ccds, self.name, ra=ra, dec=dec))
         return html
     
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
@@ -1986,9 +1989,6 @@ class RebrickedMixin(object):
         
 class Decaps2Layer(DecalsDr3Layer):
 
-    #def ccds_overlapping_html(self, ccds, ra=None, dec=None, brick=None):
-    #    return ''
-
     def brick_details_body(self, brick):
         survey = self.survey
         brickname = brick.brickname
@@ -2104,7 +2104,7 @@ class SdssLayer(MapLayer):
         self.pixscale = 0.396
         self.bricks = None
 
-    def data_for_radec(self, ra, dec):
+    def data_for_radec(self, req, ra, dec):
         # from ccd_list...
         # 0.15: SDSS field radius is ~ 0.13
         radius = 0.15
@@ -2317,7 +2317,7 @@ class LegacySurveySplitLayer(MapLayer):
     def has_cutouts(self):
         return True
 
-    def data_for_radec(self, ra, dec):
+    def data_for_radec(self, req, ra, dec):
         import numpy as np
         html = [
             html_tag,
@@ -2347,7 +2347,7 @@ class LegacySurveySplitLayer(MapLayer):
             ccds = touchup_ccds(ccds, survey)
             if len(ccds) == 0:
                 continue
-            html.extend(layer.ccds_overlapping_html(ccds, ra=ra, dec=dec, brick=brickname))
+            html.extend(layer.ccds_overlapping_html(req, ccds, ra=ra, dec=dec, brick=brickname))
             from legacypipe.survey import wcs_for_brick
             brickwcs = wcs_for_brick(brick)
             ok,bx,by = brickwcs.radec2pixelxy(ra, dec)
@@ -2356,7 +2356,7 @@ class LegacySurveySplitLayer(MapLayer):
                      (by >= ccds.brick_y0) * (by <= ccds.brick_y1))
             print('Cut to', len(ccds), 'CCDs containing RA,Dec point')
             if len(ccds):
-                html.extend(layer.ccds_overlapping_html(ccds, ra=ra, dec=dec))
+                html.extend(layer.ccds_overlapping_html(req, ccds, ra=ra, dec=dec))
 
         html.extend(['</body></html>',])
         return HttpResponse('\n'.join(html))
@@ -2540,7 +2540,7 @@ class DesLayer(ReDecalsLayer):
             img /= 10.**((30. - 22.5) / 2.5)
         return img
 
-    def data_for_radec(self, ra, dec):
+    def data_for_radec(self, req, ra, dec):
         bricks = self.bricks_touching_radec_box(ra, ra, dec, dec, scale=0)
         print('Bricks:', bricks)
         html = ['<html>',
@@ -4099,10 +4099,10 @@ def ccd_detail(req, layer, ccd):
                  (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262))
         return HttpResponse(about)
 
-    imgurl = reverse('image_data', args=[layer, ccd])
-    dqurl  = reverse('dq_data', args=[layer, ccd])
-    ivurl  = reverse('iv_data', args=[layer, ccd])
-    imgstamp = reverse('image_stamp', args=[layer, ccd])
+    imgurl   = my_url(req, reverse('image_data', args=[layer, ccd]))
+    dqurl    = my_url(req, reverse('dq_data', args=[layer, ccd]))
+    ivurl    = my_url(req, reverse('iv_data', args=[layer, ccd]))
+    imgstamp = my_url(req, reverse('image_stamp', args=[layer, ccd]))
     flags = ''
     cols = c.columns()
     if 'photometric' in cols and 'blacklist_ok' in cols:
@@ -4204,7 +4204,7 @@ def brick_detail(req, brickname, get_html=False, brick=None):
         ccds = touchup_ccds(ccds, survey)
         if len(ccds):
             html.append('CCDs overlapping brick:')
-            html.extend(ccds_overlapping_html(ccds, layer))
+            html.extend(ccds_overlapping_html(req, ccds, layer))
 
     html.extend([
             '</body></html>',
@@ -4236,13 +4236,13 @@ def touchup_ccds(ccds, survey):
         ccds.ut = np.array(uts)
     return ccds
 
-def format_jpl_url(ra, dec, ccd):
-    jpl_url = reverse(jpl_lookup)
+def format_jpl_url(req, ra, dec, ccd):
+    jpl_url = my_url(req, reverse(jpl_lookup))
     return ('%s?ra=%.4f&dec=%.4f&date=%s&camera=%s' %
             (jpl_url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip()))
 
 
-def ccds_overlapping_html(ccds, layer, ra=None, dec=None):
+def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None):
     jplstr = ''
     if ra is not None:
         jplstr = '<th>JPL</th>'
@@ -4251,19 +4251,19 @@ def ccds_overlapping_html(ccds, layer, ra=None, dec=None):
         ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum,
                                    ccd.ccdname.strip(), ccd.filter.strip())
         ccdtag = ccdname.replace(' ','-')
-        imgurl = reverse('image_data', args=(layer, ccdtag))
-        dqurl  = reverse('dq_data', args=(layer, ccdtag))
-        ivurl  = reverse('iv_data', args=(layer, ccdtag))
+        imgurl = my_url(req, reverse('image_data', args=(layer, ccdtag)))
+        dqurl  = my_url(req, reverse('dq_data', args=(layer, ccdtag)))
+        ivurl  = my_url(req, reverse('iv_data', args=(layer, ccdtag)))
         imgooiurl = imgurl + '?type=ooi'
         ooitext = ''
         if '_oki_' in ccd.image_filename:
             ooitext = '<a href="%s">ooi</a>' % imgooiurl
         jplstr = ''
         if ra is not None:
-            jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(ra, dec, ccd)
+            jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(req, ra, dec, ccd)
         html.append(('<tr><td><a href="%s">%s</a></td><td>%.1f</td><td>%.2f</td>' +
                      '<td>%s</td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td><a href="%s">oow</a></td><td><a href="%s">ood</a></td>%s</tr>') % (
-                         reverse(ccd_detail, args=(layer, ccdtag)), ccdname,
+                         my_url(req, reverse(ccd_detail, args=(layer, ccdtag))), ccdname,
                          ccd.exptime, ccd.seeing, ccd.propid, ccd.date_obs + ' ' + ccd.ut[:8],
                          imgurl, ccd.image_filename.strip(), ooitext, ivurl, dqurl,
                          jplstr))
@@ -5364,7 +5364,8 @@ if __name__ == '__main__':
     #s.get_ccds()
     #r = c.get('/data-for-radec/?ra=54.8733&dec=-13.1156&layer=des-dr1')
     #r = c.get('/ccd/dr8/decam-767361-N29-z/')
-    r = c.get('/image-data/dr8/decam-767361-N29-z')
+    #r = c.get('/image-data/dr8/decam-767361-N29-z')
+    r = c.get('/')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

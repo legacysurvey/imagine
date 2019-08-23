@@ -162,7 +162,7 @@ urlpatterns = [
     url(r'^gaia-dr2/(\d+)/cat.json', cats.cat_gaia_dr2),
 
     # Upload user catalog
-    url(r'^upload-cat/', cats.upload_cat),
+    url(r'^upload-cat/', cats.upload_cat, name='upload-cat'),
 
     # AJAX retrieval of user catalogs
     url(r'^usercatalog/(\d+)/cat.json', cats.cat_user),
@@ -202,12 +202,12 @@ urlpatterns = [
 
     url(r'^data-for-radec/', views.data_for_radec, name='data_for_radec'),
 
-    url(r'^namequery/', views.name_query),
+    url(r'^namequery/', views.name_query, name='object-query'),
 
     # CCDs: list of polygons
-    url(r'^ccds/', views.ccd_list),
+    url(r'^ccds/', views.ccd_list, name='ccd-list'),
     # Exposures: list of circles
-    url(r'^exps/', views.exposure_list),
+    url(r'^exps/', views.exposure_list, name='exposure-list'),
 
     # Tycho-2 stars
     url(r'^tycho2/(\d+)/cat.json', cats.cat_tycho2),
@@ -295,10 +295,10 @@ urlpatterns = [
     url(r'^jpl_lookup/', views.jpl_lookup),
 
     # bricks: list of polygons
-    url(r'^bricks/', views.brick_list),
+    url(r'^bricks/', views.brick_list, name='brick-list'),
 
     # SDSS spectro plates: list of circles
-    url(r'^sdss-plates/', views.sdss_plate_list),
+    url(r'^sdss-plates/', views.sdss_plate_list, name='sdss-plate-list'),
 
     # Brick details
     url(r'^brick/(\d{4}[pm]\d{3})', views.brick_detail, name='brick_detail'),

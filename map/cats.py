@@ -1213,7 +1213,8 @@ if __name__ == '__main__':
     from django.test import Client
     c = Client()
     #r = c.get('/lslga/1/cat.json?ralo=259.2787&rahi=259.7738&declo=35.9422&dechi=36.1656')
-    r = c.get('/lslga/1/cat.json?ralo=259.5726&rahi=260.0677&declo=35.9146&dechi=36.1382')
+    #r = c.get('/lslga/1/cat.json?ralo=259.5726&rahi=260.0677&declo=35.9146&dechi=36.1382')
+    r = c.get('/usercatalog/1/cat.json?ralo=350.0142&rahi=350.0761&declo=-9.6430&dechi=-9.6090&cat=tmppboi50xv')
     ## should contain NGC 6349
 
     f = open('out', 'wb')
