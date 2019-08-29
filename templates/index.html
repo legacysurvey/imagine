@@ -3495,13 +3495,14 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('decals-bricks'),
 
      {% if enable_dr8_overlays %}
-     findoverlay('dr8-ccds'),
-     {% endif %}
-     {% if enable_dr8_north_overlays %}
-     findoverlay('dr8-north-ccds'),
-     {% endif %}
-     {% if enable_dr8_south_overlays %}
-     findoverlay('dr8-south-ccds'),
+     findoverlay('dr8-ccds', [
+       {% if enable_dr8_north_overlays %}
+       findoverlay('dr8-north-ccds'),
+       {% endif %}
+       {% if enable_dr8_south_overlays %}
+       findoverlay('dr8-south-ccds'),
+       {% endif %}
+     ]),
      {% endif %}
      {% if enable_dr7_overlays %}
      findoverlay('decals-dr7-ccds', [
@@ -3637,9 +3638,10 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
          'DECaLS DR7 Exposures',
          'Other catalogs',
          'Spectroscopy',
-         'DESI targets',
+         'DESI Targets (DR8)',
          {% if enable_dr8_overlays %}
          'Legacy Surveys DR8 Catalog',
+         'Legacy Surveys DR8 CCDs',
          {% endif %}
             ];
 
