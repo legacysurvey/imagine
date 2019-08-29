@@ -123,38 +123,19 @@ try:
 except:
     pass
 
-def my_url(req, url):
-
-    # Can't do this simple thing because CORS prevents
-    #decaps.legacysurvey.org from reading from legacysurvey.org.
-    #baseurl = 'http://%s%s' % (settings.HOSTNAME, settings.ROOT_URL)
-
+def my_reverse(req, *args, **kwargs):
+    ### FIXME -- does this work for decaps.legacysurvey.org ??
+    # Or need something like:
     # path = settings.ROOT_URL
     # if is_decaps(req):
     #     path = '/'
-    # baseurl = req.build_absolute_uri(path)
-    # if baseurl.endswith('/'):
-    #     baseurl = baseurl[:-1]
-    # #print('Base URL:', baseurl)
-    # 
-    # return baseurl + url
-    pre = get_script_prefix()
-    if pre.endswith('/'):
-        pre = pre[:-1]
-    if not url.startswith('/'):
-        url = '/' + url
-    return pre + url
-
-def my_reverse(req, *args, **kwargs):
     return reverse(*args, **kwargs)
 
 def urls(req):
     from django.shortcuts import render
     script_prefix = get_script_prefix()
     this_url = reverse('urls')
-    myurl = my_url(req, '/urls')
-    return render(req, 'urls.html', dict(script_prefix=script_prefix, this_url=this_url,
-                                         my_url=myurl))
+    return render(req, 'urls.html', dict(script_prefix=script_prefix, this_url=this_url))
 
 def gfas(req):
     from django.shortcuts import render
@@ -314,12 +295,8 @@ def _index(req,
     if ra is None or dec is None:
         ra,dec,galname = get_random_galaxy(layer=layer)
 
-    #caturl = my_url(req, '/{id}/{ver}/{z}/{x}/{y}.cat.json')
     from urllib.parse import unquote
     caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
-                        #kwargs=dict(id='{id}', ver='{ver}', x='{x}', y='{y}', z='{z}'))
-                        #args=('{id}', '{ver}', '{z}', '{x}', '{y}'))
-    
     smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
 
     tileurl = settings.TILE_URL
