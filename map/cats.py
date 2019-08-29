@@ -1072,12 +1072,6 @@ def cat(req, ver, tag, fn):
         
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
-def cat_mobo_dr4(req, ver, zoom, x, y, tag='mzls+bass-dr4'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
-def cat_decals_dr5(req, ver, zoom, x, y, tag='decals-dr5'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
 def any_cat(req, name, ver, zoom, x, y, **kwargs):
     from map.views import layer_name_map, get_layer
     print('any_cat(', name, ver, zoom, x, y, ')')
