@@ -62,7 +62,6 @@ urlpatterns = [
         views.get_tile_view('dr8-model')),
     url(r'^dr8-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('dr8-resid')),
-    url(r'^dr8/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_dr8),
 
     # DR8-north
     url(r'^dr8-north/(\d+)/(\d+)/(\d+)/(\d+).jpg',
@@ -71,7 +70,6 @@ urlpatterns = [
         views.get_tile_view('dr8-north-model')),
     url(r'^dr8-north-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('dr8-north-resid')),
-    url(r'^dr8-north/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_dr8_north),
 
     # DR8-south
     url(r'^dr8-south/(\d+)/(\d+)/(\d+)/(\d+).jpg',
@@ -80,7 +78,6 @@ urlpatterns = [
         views.get_tile_view('dr8-south-model')),
     url(r'^dr8-south-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('dr8-south-resid')),
-    url(r'^dr8-south/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_dr8_south),
 
     # DR7
     url(r'^decals-dr7/(\d+)/(\d+)/(\d+)/(\d+).jpg',
@@ -89,8 +86,6 @@ urlpatterns = [
         views.get_tile_view('decals-dr7-model')),
     url(r'^decals-dr7-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decals-dr7-resid')),
-    # DR7 catalog
-    url(r'^decals-dr7/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr7),
 
     # MzLS+BASS DR6 tiles
     url(r'^mzls\+bass-dr6/(\d+)/(\d+)/(\d+)/(\d+).jpg',
@@ -99,8 +94,6 @@ urlpatterns = [
         views.get_tile_view('mzls+bass-dr6-model')),
     url(r'^mzls\+bass-dr6-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('mzls+bass-dr6-resid')),
-    # DR6 catalog
-    url(r'^mzls\+bass-dr6/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr6),
 
     # DR5
     url(r'^decals-dr5/(\d+)/(\d+)/(\d+)/(\d+).jpg',
@@ -109,18 +102,6 @@ urlpatterns = [
         views.get_tile_view('decals-dr5-model')),
     url(r'^decals-dr5-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('decals-dr5-resid')),
-    # DR5 catalog
-    url(r'^decals-dr5/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_decals_dr5),
-
-    # MzLS+BASS DR4 tiles
-    url(r'^mzls\+bass-dr4/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls+bass-dr4')),
-    url(r'^mzls\+bass-dr4-model/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls+bass-dr4-model')),
-    url(r'^mzls\+bass-dr4-resid/(\d+)/(\d+)/(\d+)/(\d+).jpg',
-        views.get_tile_view('mzls+bass-dr4-resid')),
-    # DR4 catalog
-    url(r'^mzls\+bass-dr4/(\d+)/(\d+)/(\d+)/(\d+).cat.json', cats.cat_mobo_dr4),
 
     # DR4/5 DESI targets
     url(r'^targets-dr45/(\d+)/cat.json', cats.cat_targets_dr45),

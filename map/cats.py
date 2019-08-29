@@ -1078,21 +1078,6 @@ def cat_mobo_dr4(req, ver, zoom, x, y, tag='mzls+bass-dr4'):
 def cat_decals_dr5(req, ver, zoom, x, y, tag='decals-dr5'):
     return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
 
-def cat_mobo_dr6(req, ver, zoom, x, y, tag='mzls+bass-dr6'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
-def cat_decals_dr7(req, ver, zoom, x, y, tag='decals-dr7'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
-def cat_dr8(req, ver, zoom, x, y, tag='dr8'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
-def cat_dr8_north(req, ver, zoom, x, y, tag='dr8-north'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
-def cat_dr8_south(req, ver, zoom, x, y, tag='dr8-south'):
-    return cat_decals(req, ver, zoom, x, y, tag=tag, docache=False)
-
 def any_cat(req, name, ver, zoom, x, y, **kwargs):
     from map.views import layer_name_map, get_layer
     print('any_cat(', name, ver, zoom, x, y, ')')
@@ -1214,9 +1199,15 @@ if __name__ == '__main__':
     c = Client()
     #r = c.get('/lslga/1/cat.json?ralo=259.2787&rahi=259.7738&declo=35.9422&dechi=36.1656')
     #r = c.get('/lslga/1/cat.json?ralo=259.5726&rahi=260.0677&declo=35.9146&dechi=36.1382')
-    r = c.get('/usercatalog/1/cat.json?ralo=350.0142&rahi=350.0761&declo=-9.6430&dechi=-9.6090&cat=tmppboi50xv')
+    #r = c.get('/usercatalog/1/cat.json?ralo=350.0142&rahi=350.0761&declo=-9.6430&dechi=-9.6090&cat=tmppboi50xv')
     ## should contain NGC 6349
 
+    #r = c.get('/dr8-south/1/12/3572/2187.cat.json')
+    #r = c.get('/dr8-north/1/14/8194/5895.cat.json')
+    #r = c.get('/dr8/1/14/8194/5895.cat.json')
+    #r = c.get('/decals-dr7/1/14/8639/7624.cat.json')
+    r = c.get('/mzls+bass-dr6/1/14/7517/6364.cat.json')
+    
     f = open('out', 'wb')
     for x in r:
         f.write(x)
