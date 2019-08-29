@@ -1330,15 +1330,19 @@ function onMapClick(e) {
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
 }
 
+function updateInfoBox(latlng) {
+    var ra  = long2ra(latlng.lng);
+    var dec = lat2dec(latlng.lat);
+    lastLatLng = latlng;
+    if (infoBoxActive) {
+	    info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) +
+            ", zoom " + map.getZoom();
+    }
+}
+
 function onMouseMove(e) {
     //console.log('mouse move: ' + e.latlng);
-    var ra  = long2ra(e.latlng.lng);
-    var dec = lat2dec(e.latlng.lat);
-    lastLatLng = e.latlng;
-    if (infoBoxActive) {
-	    info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) + ", zoom " + map.getZoom();
-	    //+ ', lat,long ' + e.latlng.lat.toFixed(3) + ',' + e.latlng.lng.toFixed(3);
-    }
+    updateInfoBox(e.latlng);
     if (inbrickccdAdded) {
         inbrickccdUpdate(e);
     }
@@ -3727,7 +3731,12 @@ if ('constel' in qstr) {
   map.addLayer(conGroup);
 }
 
+function onViewReset(e) {
+    updateInfoBox(map.getCenter());
+}
+
 map.on('mousemove', onMouseMove);
+map.on('viewreset', onViewReset);
 map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
 map.on('click', onMapClick);
