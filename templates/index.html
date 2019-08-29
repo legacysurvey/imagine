@@ -3530,13 +3530,14 @@ for (var i=0,len=overlays.length; i<len; i++) {
      {% endif %}
 
      {% if enable_dr8_overlays %}
-     findoverlay('dr8'),
-     {% endif %}
-     {% if enable_dr8_north_overlays %}
-     findoverlay('dr8-north'),
-     {% endif %}
-     {% if enable_dr8_south_overlays %}
-     findoverlay('dr8-south'),
+     findoverlay('dr8', [
+       {% if enable_dr8_north_overlays %}
+       findoverlay('dr8-north'),
+       {% endif %}
+       {% if enable_dr8_south_overlays %}
+       findoverlay('dr8-south'),
+       {% endif %}
+       ]),
      {% endif %}
 
      {% if enable_dr7_overlays %}
@@ -3574,9 +3575,6 @@ for (var i=0,len=overlays.length; i<len; i++) {
        ],
      },
      {% endif %}
-
- {% comment %}
-{% endcomment %}
 
      {% if enable_desi_targets %}
      findoverlay('targets-dr8', [
@@ -3640,6 +3638,9 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
          'Other catalogs',
          'Spectroscopy',
          'DESI targets',
+         {% if enable_dr8_overlays %}
+         'Legacy Surveys DR8 Catalog',
+         {% endif %}
             ];
 
      for (var i=0,len=txts.length; i<len; i++) {
