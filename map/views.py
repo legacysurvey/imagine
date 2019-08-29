@@ -3,7 +3,8 @@ if __name__ == '__main__':
     ## NOTE, if you want to run this from the command-line, probably have to do so
     # from sgn04 node within the virtualenv.
     import sys
-    sys.path.insert(0, 'django-1.9')
+    #sys.path.insert(0, 'django-1.9')
+    sys.path.insert(0, 'django-2.2.4')
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
@@ -14,10 +15,10 @@ import sys
 import re
 from django.http import HttpResponse, StreamingHttpResponse
 try:
-    from django.core.urlresolvers import reverse
+    from django.core.urlresolvers import reverse, get_script_prefix
 except:
     # django 2.0
-    from django.urls import reverse
+    from django.urls import reverse, get_script_prefix
 
 from django import forms
 from viewer import settings
@@ -122,25 +123,38 @@ try:
 except:
     pass
 
-
 def my_url(req, url):
 
     # Can't do this simple thing because CORS prevents
     #decaps.legacysurvey.org from reading from legacysurvey.org.
     #baseurl = 'http://%s%s' % (settings.HOSTNAME, settings.ROOT_URL)
-    path = settings.ROOT_URL
-    if is_decaps(req):
-        path = '/'
-    baseurl = req.build_absolute_uri(path)
-    if baseurl.endswith('/'):
-        baseurl = baseurl[:-1]
-    #print('Base URL:', baseurl)
 
-    return baseurl + url
+    # path = settings.ROOT_URL
+    # if is_decaps(req):
+    #     path = '/'
+    # baseurl = req.build_absolute_uri(path)
+    # if baseurl.endswith('/'):
+    #     baseurl = baseurl[:-1]
+    # #print('Base URL:', baseurl)
+    # 
+    # return baseurl + url
+    pre = get_script_prefix()
+    if pre.endswith('/'):
+        pre = pre[:-1]
+    if not url.startswith('/'):
+        url = '/' + url
+    return pre + url
+
+def my_reverse(req, *args, **kwargs):
+    return reverse(*args, **kwargs)
 
 def urls(req):
     from django.shortcuts import render
-    return render(req, 'urls.html')
+    script_prefix = get_script_prefix()
+    this_url = reverse('urls')
+    myurl = my_url(req, '/urls')
+    return render(req, 'urls.html', dict(script_prefix=script_prefix, this_url=this_url,
+                                         my_url=myurl))
 
 def gfas(req):
     from django.shortcuts import render
@@ -300,9 +314,13 @@ def _index(req,
     if ra is None or dec is None:
         ra,dec,galname = get_random_galaxy(layer=layer)
 
-    caturl = my_url(req, '/{id}/{ver}/{z}/{x}/{y}.cat.json')
-
-    smallcaturl = my_url(req, '/{id}/{ver}/cat.json?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}')
+    #caturl = my_url(req, '/{id}/{ver}/{z}/{x}/{y}.cat.json')
+    from urllib.parse import unquote
+    caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
+                        #kwargs=dict(id='{id}', ver='{ver}', x='{x}', y='{y}', z='{z}'))
+                        #args=('{id}', '{ver}', '{z}', '{x}', '{y}'))
+    
+    smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
 
     tileurl = settings.TILE_URL
 
@@ -316,15 +334,14 @@ def _index(req,
     subdomains_B = settings.SUBDOMAINS_B
     subdomains_B = '[' + ','.join(["'%s'" % s for s in subdomains_B]) + '];'
 
-    ccdsurl = my_url(req, reverse('ccd-list')) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
-    bricksurl = my_url(req, reverse('brick-list')) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&layer={layer}'
-    expsurl = my_url(req, reverse('exposure-list')) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
-    platesurl = my_url(req, reverse('sdss-plate-list')) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
-    #sqlurl = baseurl + '/sql-box/?north={north}&east={east}&south={south}&west={west}&q={q}'
-    namequeryurl = my_url(req, reverse('object-query')) + '?obj={obj}'
-    uploadurl = my_url(req, reverse('upload-cat'))
-    usercatalogurl = my_url(req, reverse(cat_user, args=(1,))) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
-    usercatalogurl2 = my_url(req, reverse(cat_user, args=(1,))) + '?start={start}&N={N}&cat={cat}'
+    ccdsurl = my_reverse(req, 'ccd-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    bricksurl = my_reverse(req, 'brick-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&layer={layer}'
+    expsurl = my_reverse(req, 'exposure-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    platesurl = my_reverse(req, 'sdss-plate-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
+    namequeryurl = my_reverse(req, 'object-query') + '?obj={obj}'
+    uploadurl = my_reverse(req, 'upload-cat')
+    usercatalogurl = my_reverse(req, cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
+    usercatalogurl2 = my_reverse(req, cat_user, args=(1,)) + '?start={start}&N={N}&cat={cat}'
 
     usercatalog = req.GET.get('catalog', None)
     usercats = None
@@ -389,7 +406,6 @@ def _index(req,
                 layer=layer, tileurl=tileurl,
                 absurl=absurl,
                 hostname_url=hostname_url,
-                sqlurl=sqlurl,
                 uploadurl=uploadurl,
                 caturl=caturl, bricksurl=bricksurl,
                 smallcaturl=smallcaturl,
@@ -4099,10 +4115,10 @@ def ccd_detail(req, layer, ccd):
                  (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262))
         return HttpResponse(about)
 
-    imgurl   = my_url(req, reverse('image_data', args=[layer, ccd]))
-    dqurl    = my_url(req, reverse('dq_data', args=[layer, ccd]))
-    ivurl    = my_url(req, reverse('iv_data', args=[layer, ccd]))
-    imgstamp = my_url(req, reverse('image_stamp', args=[layer, ccd]))
+    imgurl   = my_reverse(req, 'image_data', args=[layer, ccd])
+    dqurl    = my_reverse(req, 'dq_data', args=[layer, ccd])
+    ivurl    = my_reverse(req, 'iv_data', args=[layer, ccd])
+    imgstamp = my_reverse(req, 'image_stamp', args=[layer, ccd])
     flags = ''
     cols = c.columns()
     if 'photometric' in cols and 'blacklist_ok' in cols:
@@ -4237,7 +4253,7 @@ def touchup_ccds(ccds, survey):
     return ccds
 
 def format_jpl_url(req, ra, dec, ccd):
-    jpl_url = my_url(req, reverse(jpl_lookup))
+    jpl_url = my_reverse(req, jpl_lookup)
     return ('%s?ra=%.4f&dec=%.4f&date=%s&camera=%s' %
             (jpl_url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip()))
 
@@ -4251,9 +4267,9 @@ def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None):
         ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum,
                                    ccd.ccdname.strip(), ccd.filter.strip())
         ccdtag = ccdname.replace(' ','-')
-        imgurl = my_url(req, reverse('image_data', args=(layer, ccdtag)))
-        dqurl  = my_url(req, reverse('dq_data', args=(layer, ccdtag)))
-        ivurl  = my_url(req, reverse('iv_data', args=(layer, ccdtag)))
+        imgurl = my_reverse(req, 'image_data', args=(layer, ccdtag))
+        dqurl  = my_reverse(req, 'dq_data', args=(layer, ccdtag))
+        ivurl  = my_reverse(req, 'iv_data', args=(layer, ccdtag))
         imgooiurl = imgurl + '?type=ooi'
         ooitext = ''
         if '_oki_' in ccd.image_filename:
@@ -4263,7 +4279,7 @@ def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None):
             jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(req, ra, dec, ccd)
         html.append(('<tr><td><a href="%s">%s</a></td><td>%.1f</td><td>%.2f</td>' +
                      '<td>%s</td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td><a href="%s">oow</a></td><td><a href="%s">ood</a></td>%s</tr>') % (
-                         my_url(req, reverse(ccd_detail, args=(layer, ccdtag))), ccdname,
+                         my_reverse(req, ccd_detail, args=(layer, ccdtag)), ccdname,
                          ccd.exptime, ccd.seeing, ccd.propid, ccd.date_obs + ' ' + ccd.ut[:8],
                          imgurl, ccd.image_filename.strip(), ooitext, ivurl, dqurl,
                          jplstr))
@@ -4513,7 +4529,7 @@ def cutouts_common(req, tgz, copsf):
         ccdsx.append(('<br/>'.join(['CCD %s %i %s, %.1f sec (x,y ~ %i,%i)' % (ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
                                     '<small>(observed %s @ %s)</small>' % (ccd.date_obs, ccd.ut),
-                                    '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % format_jpl_url(ra, dec, ccd),]),
+                                    '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % format_jpl_url(req, ra, dec, ccd),]),
                       theurl))
     return render(req, 'cutouts.html',
                   dict(ra=ra, dec=dec, ccds=ccdsx, name=layername, layer=layername,
@@ -5366,6 +5382,8 @@ if __name__ == '__main__':
     #r = c.get('/ccd/dr8/decam-767361-N29-z/')
     #r = c.get('/image-data/dr8/decam-767361-N29-z')
     r = c.get('/')
+    #r = c.get('/jpl_lookup/?ra=346.6075&dec=-3.3056&date=2017-07-18%2007:28:16.522187&camera=decam')
+    #r = c.get('/urls')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

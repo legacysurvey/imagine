@@ -4,12 +4,12 @@ from map import views
 from map import cats
 from map import cutouts
 
-survey_regex = r'([\w +-]+)'
-
+survey_regex = r'[\w +-]+'
+layer_regex = r'\{id\}|' + survey_regex
 
 urlpatterns = [
 
-    url(r'^urls', views.urls),
+    url(r'^urls', views.urls, name='urls'),
 
     url(r'^gfas', views.gfas),
     url(r'^ci', views.ci),
@@ -236,6 +236,11 @@ urlpatterns = [
     # Bright stars
     url(r'^bright/(\d+)/cat.json', cats.cat_bright),
 
+    # hackish -- pattern for small catalogs
+    url(r'^\{id\}/\{ver\}/cat.json?ralo=\{ralo\}&rahi=\{rahi\}&declo=\{declo\}&dechi=\{dechi\}',
+        cats.cat_bright,
+        name='cat-json-pattern'),
+    
     # SFD dust map
     url(r'^sfd/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.get_tile_view('sfd')),
@@ -271,10 +276,12 @@ urlpatterns = [
     # DR8 tests -- generic layers
     url(r'^([\w\+-]+)/(\d+)/(\d+)/(\d+)/(\d+).jpg',
         views.any_tile_view),
-    # catalog
-    url(r'^([\w\+-]+)/(\d+)/(\d+)/(\d+)/(\d+).cat.json',
-        cats.any_cat),
+    # tiled catalog
+    url(r'^(%s)/(\d+)/(\d+)/(\d+)/(\d+).cat.json' % layer_regex,
+        cats.any_cat, name='cat-json-tiled'),
 
+    ## hackish -- the pattern (using leaflet's template format) for cat-json-tiled
+    url(r'^\{id\}/\{ver\}/\{z\}/\{x\}/\{y\}.cat.json', cats.any_cat, name='cat-json-tiled-pattern'),
 
     # Cutouts html
     url(r'^cutouts/', views.cutouts, name='cutouts'),
@@ -305,7 +312,7 @@ urlpatterns = [
     # this one is here to provide a name for the javascript to refer to.
     url(r'^brick/', views.nil, name='brick_detail_blank'),
     # CCD details
-    url(r'^ccd/%s/([\w-]+)' % survey_regex, views.ccd_detail, name='ccd_detail'),
+    url(r'^ccd/(%s)/([\w-]+)' % survey_regex, views.ccd_detail, name='ccd_detail'),
     # this one is here to provide a name for the javascript to refer to.
     url(r'^ccd/', views.nil, name='ccd_detail_blank'),
     # Exposure details
@@ -314,11 +321,11 @@ urlpatterns = [
     url(r'^exposure/', views.nil, name='exp_detail_blank'),
 
     # Image data
-    url(r'^image-data/%s/([\w-]+)' % survey_regex, views.image_data, name='image_data'),
-    url(r'^dq-data/%s/([\w-]+)' % survey_regex, views.dq_data, name='dq_data'),
-    url(r'^iv-data/%s/([\w-]+)' % survey_regex, views.iv_data, name='iv_data'),
+    url(r'^image-data/(%s)/([\w-]+)' % survey_regex, views.image_data, name='image_data'),
+    url(r'^dq-data/(%s)/([\w-]+)' % survey_regex, views.dq_data, name='dq_data'),
+    url(r'^iv-data/(%s)/([\w-]+)' % survey_regex, views.iv_data, name='iv_data'),
 
-    url(r'^image-stamp/%s/([\w-]+).jpg' % survey_regex, views.image_stamp, name='image_stamp'),
+    url(r'^image-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.image_stamp, name='image_stamp'),
 
     # Special DECaPS version of viewer.
     url(r'decaps', views.decaps),
