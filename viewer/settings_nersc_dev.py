@@ -13,6 +13,8 @@ READ_ONLY_BASEDIR = True
 ROOT_URL = '/viewer-dev'
 STATIC_URL_PATH = '/viewer-dev/static'
 
+FORCE_SCRIPT_NAME = ROOT_URL
+
 STATIC_URL = 'http://%s%s/' % (HOSTNAME, STATIC_URL_PATH)
 TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
