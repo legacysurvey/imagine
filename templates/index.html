@@ -108,8 +108,44 @@ function arcsecToMeters(arcsec) {
     return arcsec * 30.87;
 }
 
+var MyTileLayer = L.TileLayer.extend({
+
+    /*
+    getTiles: function() {
+        var tiles = [];
+   	    for (var key in this._tiles) {
+            var c = this._tiles[key].coords;
+            var code = '' + c.z + ':' + c.x + ':' + c.y;
+            tiles.push(code);
+        }
+        return tiles;
+    },
+    */
+
+    _abortLoading: function() {
+		var i, tile;
+        console.log('TileLayer._abortLoading() start');
+		for (i in this._tiles) {
+			if (this._tiles[i].coords.z !== this._tileZoom) {
+                tile = this._tiles[i].el;
+				if (!tile.complete) {
+                    console.log('Incomplete tile: ' + i);
+                    var coords = this._tiles[i].coords;
+                    this.fire('tileabort', {
+                        tile: tile,
+                        coords: coords
+                    });
+                }
+			}
+		}
+        L.TileLayer.prototype._abortLoading.call(this);
+        console.log('TileLayer._abortLoading() finished');
+    },
+
+});
+
 // A subclass that switches URL patterns depending on zoom range.
-var ZoomRangeTileLayer = L.TileLayer.extend({
+var ZoomRangeTileLayer = MyTileLayer.extend({
     options: {
         urlPatterns: [],
     },
@@ -136,7 +172,7 @@ var ZoomRangeTileLayer = L.TileLayer.extend({
     },
 });
 
-var SplitTileLayer = L.TileLayer.extend({
+var SplitTileLayer = MyTileLayer.extend({
 
     // new SplitTileLayer(static_tile_url_B, ysplits,
     //                    north_args, mid_args, south_args);
@@ -761,7 +797,41 @@ var TileWatcher = L.Evented.extend({
 
     listenToLayer: function(layer) {
         layer.on('tileloadstart', this.tileLoadStart.bind(this));
+        layer.on('tileload',      this.tileLoad.bind(this));
         layer.on('tileunload',    this.tileUnload.bind(this));
+        layer.on('tileerror',     this.tileError.bind(this));
+        layer.on('tileabort',     this.tileAbort.bind(this));
+        layer.on('loading',       this.loading.bind(this));
+        layer.on('load',          this.load.bind(this));
+    },
+
+    loading: function(e) {
+        console.log('loading');
+    },
+    load: function(e) {
+        console.log('load');
+    },
+
+    tileError: function(e) {
+        var coord = e.coords;
+        var x = coord.x;
+        var y = coord.x;
+        var zoom = coord.z;
+        var maxtile = 1 << zoom;
+        x = x % maxtile;
+        var key = '' + zoom + ':' + x + ':' + coord.y;
+        console.log('Tile error: ' + key);
+    },
+
+    tileAbort: function(e) {
+        var coord = e.coords;
+        var x = coord.x;
+        var y = coord.x;
+        var zoom = coord.z;
+        var maxtile = 1 << zoom;
+        x = x % maxtile;
+        var key = '' + zoom + ':' + x + ':' + coord.y;
+        console.log('Tile abort: ' + key);
     },
 
     tileLoadStart: function(e) {
@@ -772,7 +842,7 @@ var TileWatcher = L.Evented.extend({
         // In leaflet-1.2.0, x can be > 2**zoom
         x = x % maxtile;
         var key = '' + zoom + ':' + x + ':' + coord.y;
-        //console.log('Tile load start: ' + key);
+        console.log('Tile load start: ' + key);
         if (key in this._visibleTiles) {
             //console.log('tile was already in visible tiles');
         } else {
@@ -784,10 +854,21 @@ var TileWatcher = L.Evented.extend({
         }
     },
 
+    tileLoad: function(e) {
+        var coord = e.coords;
+        var x = coord.x;
+        var zoom = coord.z;
+        var maxtile = 1 << zoom;
+        // In leaflet-1.2.0, x can be > 2**zoom
+        x = x % maxtile;
+        var key = '' + zoom + ':' + x + ':' + coord.y;
+        console.log('Tile loaded: ' + key);
+    },
+
     tileUnload: function(e) {
-        var tile = e.tile;
-        var key = '' + tile.z + ':' + tile.tilex + ':' + tile.tiley;
-        //console.log('Tile unload: ' + key);
+        var coord = e.coords;
+        var key = '' + coord.z + ':' + coord.x + ':' + coord.y;
+        console.log('Tile unload: ' + key);
         delete this._visibleTiles[key];
         e.key = key;
         // A tile became invisible
@@ -803,7 +884,7 @@ var TiledOverlay = CatalogOverlay.extend({
         // count of how many tile loads are outstanding
         this._loadingTiles = 0;
         this._tw = tw;
-        tw.on('tilevisible', this.tileVisible.bind(this));
+        tw.on('tilevisible',   this.tileVisible.bind(this));
         tw.on('tileinvisible', this.tileInvisible.bind(this));
     },
 
@@ -874,6 +955,7 @@ var TiledOverlay = CatalogOverlay.extend({
         }
         // load all visible tiles
         for (var key in this._tw._visibleTiles) {
+            console.log('Adding overlay ' + this._name + ': tile ' + key);
             // parse into zoom:x:y
             var words = key.split(':');
             var zoom = parseInt(words[0]);
@@ -991,6 +1073,32 @@ var DecalsCatalogLayer = TiledOverlay.extend({
     getLayer: function(result) {
         return decals_getLayer(result, 1);
     },
+
+    /* Consider accessing list of available tiles directly via MyTileLayer.getTiles()
+       rather than using the TileWatcher stuff.
+
+        overlayAdded: function(e) {
+            console.log('DecalsCatalogLayer: overlayAdded: map layers:');
+            var alltiles = [];
+            map.eachLayer(function(layer) {
+                console.log('Layer: ' + layer._name + ' / ' + layer.name + ': ', layer);
+                try {
+                    tiles = layer.getTiles();
+                    for (var k in tiles) {
+                        code = tiles[k];
+                        if (code in alltiles) {
+                        } else {
+                            alltiles.push(code);
+                            console.log('  tile ' + code);
+                        }
+                    }
+                    console.log('Total of', alltiles.length);
+                } catch {}
+            });
+            TiledOverlay.prototype.overlayAdded.call(this, e);
+        },
+    */
+    
 });
 
 // User catalog
@@ -2361,7 +2469,6 @@ var tileWatcher = new TileWatcher();
 for (var k in baseMaps) {
     tileWatcher.listenToLayer(baseMaps[k]);
 }
-
 
 var exp_detail_list = function(ov, objs) {
     if (objs.length == 0) { return ''; }

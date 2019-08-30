@@ -2354,7 +2354,6 @@ class LegacySurveySplitLayer(MapLayer):
         html.extend(['</body></html>',])
         return HttpResponse('\n'.join(html))
 
-
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
         from astrometry.util.fits import merge_tables
         ccds_n = self.top.ccds_touching_box(north, south, east, west, Nmax=Nmax)
