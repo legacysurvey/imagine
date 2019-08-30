@@ -154,14 +154,10 @@ var SplitTileLayer = L.TileLayer.extend({
         tilesize = 256
         px = tilesize * tile.x + tilesize/2;
         py = tilesize * tile.y + tilesize/2;
-        mapzoom = map.getZoom();
-        origin = map.getPixelOrigin();
-        console.log('tile zoom ' + tile.z + ' vs map zoom ' + mapzoom + ', tile center pix:', px, ', ' + py + ' vs map pixel origin ' + origin.x + ', ' + origin.y);
-        tilelatlng = map.layerPointToLatLng(L.point(px-origin.x, py-origin.y));
-        //console.log('tile lat,lng:', tilelatlng);
+        tilelatlng = map.unproject(L.point(px, py), tile.z);
         ra = long2ra(tilelatlng.lng);
         dec = lat2dec(tilelatlng.lat);
-        console.log('tile ra,dec: ' + ra + ', ' + dec);
+        //console.log('tile ra,dec: ' + ra + ', ' + dec);
         ux = Math.cos(ra * Math.PI / 180.0) * Math.cos(dec * Math.PI / 180.0);
         uy = Math.sin(ra * Math.PI / 180.0) * Math.cos(dec * Math.PI / 180.0);
         uz = Math.sin(dec * Math.PI / 180.0);
@@ -170,11 +166,9 @@ var SplitTileLayer = L.TileLayer.extend({
         gy = -0.19807637;
         gz =  0.45598378;
         gdot = ux * gx + uy * gy + uz * gz;
-        console.log('x', tile.x, 'y', tile.y, 'zoom', tile.z, '-> Gdot ' + gdot);
         // SGC -- always take South
         if (gdot < 0) {
             opts = this._south_args;
-            console.log('x', tile.x, 'y', tile.y, 'zoom', tile.z, '-> SGC -> south');
         } else {
             var ysplit = this._ysplits[tile.z];
             // y=0 is the top!
@@ -182,25 +176,20 @@ var SplitTileLayer = L.TileLayer.extend({
             var opts;
             if (tile.y < ysplit) {
                 opts = this._north_args;
-                console.log('y', tile.y, 'zoom', tile.z, '<', ysplit, '-> north');
             } else if (tile.y > ysplit) {
                 opts = this._south_args;
-                console.log('y', tile.y, 'zoom', tile.z, '>', ysplit, '-> south');
             } else {
                 opts = this._mid_args;
-                console.log('y', tile.y, 'zoom', tile.z, '=', ysplit, '-> mid');
             }
         }
         urlpat = this._getUrlPattern(tile.z, opts['urlPatterns']);
-        //console.log('URL pattern:', urlpat);
-        //console.log('opts:', opts);
 		var url = L.Util.template(urlpat, L.extend({
 			s: this._getSubdomain(tile),
 			z: tile.z,
 			x: tile.x,
 			y: tile.y
 		}, opts));
-        console.log('-> ', url);
+        //console.log('-> ', url);
         return url;
 	},
 
@@ -1438,6 +1427,25 @@ inbrickccd.onAdd = function (map) {
     return this._div;
 };
 var inbrickccdAdded = false;
+
+/*
+var MyMap = L.Map.extend({
+    _resetView: function(center, zoom) {
+        console.log('map._resetView() starting');
+        rtn = L.Map.prototype._resetView.call(this, center, zoom);
+        console.log('map._resetView() finished');
+        return rtn;
+    },
+    _tryAnimatedZoom: function(center, zoom, dozoom) {
+        console.log('map._tryAnimatedZoom() starting');
+        rtn = L.Map.prototype._tryAnimatedZoom.call(this, center, zoom, dozoom);
+        console.log('map._tryAnimatedZoom() finished');
+        return rtn;
+    },
+
+});
+var map = new MyMap('map', {
+*/
 
 var map = L.map('map', {
     zoomsliderControl: false,
