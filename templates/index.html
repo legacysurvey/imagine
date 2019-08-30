@@ -61,8 +61,8 @@ var usercat_url = '{{ usercatalogurl|safe }}';
 var tile_url = '{{ tileurl|safe }}';
 var maxNativeZoom = {{ maxNativeZoom }};
 
-var abs_url = '{{ absurl }}';
-var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
+//var abs_url = '{{ absurl }}';
+//var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
 
 var ccds_url = '{{ ccdsurl|safe }}';
 var exposures_url = '{{ expsurl|safe }}';
@@ -1210,7 +1210,7 @@ function fluxToMag(f) {
 }
 
 function cutout_radec_url(ra, dec) {
-    return abs_url + '{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + layer_name;
+    return '{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + layer_name;
 }
 
 function cutout_radec_link(ra, dec) {
@@ -1302,9 +1302,9 @@ function onMapClick(e) {
     var pixscale = 0.25 * Math.pow(2, 14 - map.getZoom());
     var pixstr = '&pixscale=' + pixscale.toFixed(2);
 
-    var cutout = abs_url + '{% url 'cutout-jpeg' %}?' + linkqstr + pixstr;
-    var cutout_fits = abs_url + '{% url 'cutout-fits' %}?' + linkqstr + pixstr;
-    var linkurl = abs_url + '?' + linkqstr + zoomstr;
+    var cutout = '{% url 'cutout-jpeg' %}?' + linkqstr + pixstr;
+    var cutout_fits = '{% url 'cutout-fits' %}?' + linkqstr + pixstr;
+    var linkurl = '?' + linkqstr + zoomstr;
     if ('plate' in qstr) {
         linkurl += '&plate=' + qstr['plate'];
     }
@@ -1321,7 +1321,7 @@ function onMapClick(e) {
         encodeURIComponent(linkurl) +
         '&category=Interesting+things';
 
-    var datalink = abs_url + '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + layer_name;
+    var datalink = '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + layer_name;
     var spacer = ' &nbsp;|&nbsp; ';
 
     var txt =
