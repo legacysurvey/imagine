@@ -150,10 +150,11 @@ var SplitTileLayer = L.TileLayer.extend({
     },
     
 	getTileUrl: function (tile) {
-        // HACK -- assume tile size = 256 pixels
-        tilesize = 256
-        px = tilesize * tile.x + tilesize/2;
-        py = tilesize * tile.y + tilesize/2;
+        tilesize = this.getTileSize();
+        tw = tilesize.x;
+        th = tilesize.y;
+        px = tw * tile.x + tw/2;
+        py = th * tile.y + th/2;
         tilelatlng = map.unproject(L.point(px, py), tile.z);
         ra = long2ra(tilelatlng.lng);
         dec = lat2dec(tilelatlng.lat);
