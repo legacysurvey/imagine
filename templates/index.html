@@ -797,51 +797,23 @@ var TileWatcher = L.Evented.extend({
 
     listenToLayer: function(layer) {
         layer.on('tileloadstart', this.tileLoadStart.bind(this));
-        layer.on('tileload',      this.tileLoad.bind(this));
         layer.on('tileunload',    this.tileUnload.bind(this));
         layer.on('tileerror',     this.tileError.bind(this));
         layer.on('tileabort',     this.tileAbort.bind(this));
-        layer.on('loading',       this.loading.bind(this));
-        layer.on('load',          this.load.bind(this));
     },
 
-    loading: function(e) {
-        console.log('loading');
-    },
-    load: function(e) {
-        console.log('load');
-    },
-
-    tileError: function(e) {
+    _eventToKey: function(e) {
         var coord = e.coords;
         var x = coord.x;
-        var y = coord.x;
         var zoom = coord.z;
         var maxtile = 1 << zoom;
         x = x % maxtile;
         var key = '' + zoom + ':' + x + ':' + coord.y;
-        console.log('Tile error: ' + key);
-    },
-
-    tileAbort: function(e) {
-        var coord = e.coords;
-        var x = coord.x;
-        var y = coord.x;
-        var zoom = coord.z;
-        var maxtile = 1 << zoom;
-        x = x % maxtile;
-        var key = '' + zoom + ':' + x + ':' + coord.y;
-        console.log('Tile abort: ' + key);
-    },
+        return key;
+    }
 
     tileLoadStart: function(e) {
-        var coord = e.coords;
-        var x = coord.x;
-        var zoom = coord.z;
-        var maxtile = 1 << zoom;
-        // In leaflet-1.2.0, x can be > 2**zoom
-        x = x % maxtile;
-        var key = '' + zoom + ':' + x + ':' + coord.y;
+        var key = this._eventToKey(e);
         console.log('Tile load start: ' + key);
         if (key in this._visibleTiles) {
             //console.log('tile was already in visible tiles');
@@ -849,29 +821,29 @@ var TileWatcher = L.Evented.extend({
             e.key = key;
             //console.log('firing tilevisible: ' + key);
             this._visibleTiles[key] = true;
-            // A tile became visible
             this.fire('tilevisible', e);
         }
     },
-
-    tileLoad: function(e) {
-        var coord = e.coords;
-        var x = coord.x;
-        var zoom = coord.z;
-        var maxtile = 1 << zoom;
-        // In leaflet-1.2.0, x can be > 2**zoom
-        x = x % maxtile;
-        var key = '' + zoom + ':' + x + ':' + coord.y;
-        console.log('Tile loaded: ' + key);
+    
+    tileUnload: function(e) {
+        //console.log('Tile unload: ' + this._eventToKey(e));
+        this._tileGone(e);
     },
 
-    tileUnload: function(e) {
-        var coord = e.coords;
-        var key = '' + coord.z + ':' + coord.x + ':' + coord.y;
-        console.log('Tile unload: ' + key);
+    tileAbort: function(e) {
+        //console.log('Tile abort: ' + this._eventToKey(e));
+        this._tileGone(e);
+    },
+
+    tileError: function(e) {
+        //console.log('Tile error: ' + this._eventToKey(e));
+        this._tileGone(e);
+    },
+
+    _tileGone: function(e) {
+        var key = this._eventToKey(e);
         delete this._visibleTiles[key];
         e.key = key;
-        // A tile became invisible
         this.fire('tileinvisible', e);
     },
 
