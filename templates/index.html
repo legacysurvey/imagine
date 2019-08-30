@@ -799,6 +799,10 @@ var TileWatcher = L.Evented.extend({
         layer.on('tileabort',     this.tileAbort.bind(this));
     },
 
+    getVisibleTiles: function() {
+        return this._visibleTiles;
+    },
+
     _eventToKey: function(e) {
         var coord = e.coords;
         var x = coord.x;
@@ -816,7 +820,7 @@ var TileWatcher = L.Evented.extend({
             //console.log('tile was already in visible tiles');
         } else {
             e.key = key;
-            //console.log('firing tilevisible: ' + key);
+            //console.log('firing tilevisible: ' + key + ', event ', e);
             this._visibleTiles[key] = true;
             this.fire('tilevisible', e);
         }
@@ -842,6 +846,7 @@ var TileWatcher = L.Evented.extend({
         delete this._visibleTiles[key];
         e.key = key;
         this.fire('tileinvisible', e);
+        //console.log('firing tileinvisible: ' + key + ', event ', e);
     },
 
 });
@@ -862,16 +867,14 @@ var TiledOverlay = CatalogOverlay.extend({
             return;
         }
         console.log('Layer ' + this._name + ': tile visible');
-        var tile = e.tile;
-        //console.log('tileVisible: tile ' + tile);
-        if (tile.z === undefined) {
+        var coords = e.coords;
+        if (coords.z === undefined) {
             return;
         }
-        if (tile.z < this._minZoom) {
+        if (coords.z < this._minZoom) {
             return;
         }
-        //console.log('tileVisible: z ' + tile.z + ', x,y ' + tile.tilex + ',' + tile.tiley);
-        this.load(tile.z, tile.tilex, tile.tiley);
+        this.load(coords.z, coords.x, coords.y);
     },
 
     load: function(zoom, x, y) {
@@ -923,7 +926,7 @@ var TiledOverlay = CatalogOverlay.extend({
             return;
         }
         // load all visible tiles
-        for (var key in this._tw._visibleTiles) {
+        for (var key in this._tw.getVisibleTiles()) {
             //console.log('Adding overlay ' + this._name + ': tile ' + key);
             // parse into zoom:x:y
             var words = key.split(':');
@@ -933,7 +936,7 @@ var TiledOverlay = CatalogOverlay.extend({
             this.load(zoom, x, y);
         }
     },
-    
+
     loaded: function(zoom, tilex, tiley, result) {
         //console.log('Loaded: zoom ' + zoom + ' x,y ' + tilex + ',' + tiley);
         // waiting for how many tiles now?
