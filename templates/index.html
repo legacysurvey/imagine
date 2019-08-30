@@ -11,8 +11,8 @@
   ga('create', 'UA-5565065-29', 'auto');
   ga('send', 'pageview');
 </script>
-<link rel="stylesheet" href="{% static "leaflet-1.3.1.css" %}" />
-<script src="{% static "leaflet-src-1.3.1.js" %}"></script>
+<link rel="stylesheet" href="{% static "leaflet-1.5.1.css" %}" />
+<script src="{% static "leaflet-src-1.5.1.js" %}"></script>
 {# From https://github.com/mapbox/leaflet-pip #}
 <script src="{% static "leaflet-pip-20170913.js" %}"></script>
 {# From https://github.com/jjimenezshaw/Leaflet.Control.Layers.Tree #}
@@ -20,8 +20,8 @@
 <link rel="stylesheet" href="{% static "L.Control.Layers.Tree.css" %}" />
 <script src="{% static "jquery-2.1.1.min.js" %}"></script>
 {# From http://kartena.github.io/Leaflet.zoomslider #}
-<script src="{% static "leaflet-zoomslider-0.6.1.js" %}"></script>
-<link rel="stylesheet" href="{% static "leaflet-zoomslider-0.6.1.css" %}" />
+<script src="{% static "leaflet-zoomslider-0.7.1.js" %}"></script>
+<link rel="stylesheet" href="{% static "leaflet-zoomslider-0.7.1.css" %}" />
 {# https://github.com/jdfergason/Leaflet.Ellipse #}
 <script src="{% static "l.ellipse.js" %}"></script>
 <script src="{% static "utils.js" %}"></script>
@@ -150,19 +150,46 @@ var SplitTileLayer = L.TileLayer.extend({
     },
     
 	getTileUrl: function (tile) {
-        var ysplit = this._ysplits[tile.z];
-        // y=0 is the top!
-        var urlpat;
-        var opts;
-        if (tile.y < ysplit) {
-            opts = this._north_args;
-            console.log('y', tile.y, 'zoom', tile.z, '<', ysplit, '-> north');
-        } else if (tile.y > ysplit) {
+        // HACK -- assume tile size = 256 pixels
+        tilesize = 256
+        px = tilesize * tile.x + tilesize/2;
+        py = tilesize * tile.y + tilesize/2;
+        mapzoom = map.getZoom();
+        origin = map.getPixelOrigin();
+        console.log('tile zoom ' + tile.z + ' vs map zoom ' + mapzoom + ', tile center pix:', px, ', ' + py + ' vs map pixel origin ' + origin.x + ', ' + origin.y);
+        tilelatlng = map.layerPointToLatLng(L.point(px-origin.x, py-origin.y));
+        //console.log('tile lat,lng:', tilelatlng);
+        ra = long2ra(tilelatlng.lng);
+        dec = lat2dec(tilelatlng.lat);
+        console.log('tile ra,dec: ' + ra + ', ' + dec);
+        ux = Math.cos(ra * Math.PI / 180.0) * Math.cos(dec * Math.PI / 180.0);
+        uy = Math.sin(ra * Math.PI / 180.0) * Math.cos(dec * Math.PI / 180.0);
+        uz = Math.sin(dec * Math.PI / 180.0);
+        // var galactic_z_vector = [-0.86766615, -0.19807637, 0.45598378];
+        gx = -0.86766615;
+        gy = -0.19807637;
+        gz =  0.45598378;
+        gdot = ux * gx + uy * gy + uz * gz;
+        console.log('x', tile.x, 'y', tile.y, 'zoom', tile.z, '-> Gdot ' + gdot);
+        // SGC -- always take South
+        if (gdot < 0) {
             opts = this._south_args;
-            console.log('y', tile.y, 'zoom', tile.z, '>', ysplit, '-> south');
+            console.log('x', tile.x, 'y', tile.y, 'zoom', tile.z, '-> SGC -> south');
         } else {
-            opts = this._mid_args;
-            console.log('y', tile.y, 'zoom', tile.z, '=', ysplit, '-> mid');
+            var ysplit = this._ysplits[tile.z];
+            // y=0 is the top!
+            var urlpat;
+            var opts;
+            if (tile.y < ysplit) {
+                opts = this._north_args;
+                console.log('y', tile.y, 'zoom', tile.z, '<', ysplit, '-> north');
+            } else if (tile.y > ysplit) {
+                opts = this._south_args;
+                console.log('y', tile.y, 'zoom', tile.z, '>', ysplit, '-> south');
+            } else {
+                opts = this._mid_args;
+                console.log('y', tile.y, 'zoom', tile.z, '=', ysplit, '-> mid');
+            }
         }
         urlpat = this._getUrlPattern(tile.z, opts['urlPatterns']);
         //console.log('URL pattern:', urlpat);
@@ -1412,7 +1439,10 @@ inbrickccd.onAdd = function (map) {
 };
 var inbrickccdAdded = false;
 
-var map = L.map('map', {zoomsliderControl: false});
+var map = L.map('map', {
+    zoomsliderControl: false,
+    zoomControl: false,
+});
 var popup = L.popup();
 
 map.attributionControl.options.prefix = '<a href="http://legacysurvey.org/svtips/">Tips &amp; Tricks | ' +
@@ -1961,8 +1991,7 @@ info.onAdd = function (map) {
 info.addTo(map);
 
 // from static/leaflet-zoomslider -- add the zoom slider manually so it goes *after* the RA,Dec box.
-map.zoomsliderControl = new L.Control.Zoomslider();
-map.addControl(map.zoomsliderControl);
+map.addControl(new L.Control.Zoomslider());
 
 disableMouseEventPropagation(info);
 var container = info.getContainer();
@@ -2050,6 +2079,7 @@ function objQueryLoaded(result) {
     location.hash = result['name'];
     hashLocations[location.hash] = [lat, lng, zoom];
     console.log('Saved hash location:', location.hash, '=', hashLocations[location.hash]);
+    
 }
 
 $(document).ready(function() {
