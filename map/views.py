@@ -2377,7 +2377,11 @@ class LegacySurveySplitLayer(MapLayer):
                 if above:
                     cat.cut(cat.dec >= self.decsplit)
                 else:
-                    cat.cut(cat.dec < self.decsplit)
+                    from astrometry.util.starutil_numpy import radectolb
+                    import numpy as np
+                    l,b = radectolb(cat.ra, cat.dec)
+                    sgc = (b < 0.)
+                    cat.cut(np.logical_or(cat.dec < self.decsplit, sgc))
                 allcats.append(cat)
             if h is not None:
                 hdr = h
@@ -2409,6 +2413,8 @@ class LegacySurveySplitLayer(MapLayer):
         print('render_into_wcs zoom,x,y', zoom,x,y, 'wcs', wcs)
 
         if y != -1:
+            ## FIXME -- this is not the correct cut -- only listen to split for NGC --
+            ## but this doesn't get called anyway because the JavaScript layer has the smarts.
             split = self.tilesplits[zoom]
             if y < split:
                 return self.top.render_into_wcs(wcs, zoom, x, y,
@@ -2451,6 +2457,7 @@ class LegacySurveySplitLayer(MapLayer):
         '''Pre-rendered JPEG tile filename.'''
         print('SplitLayer.get_tile_filename: zoom', zoom, 'y', y)
         split = self.tilesplits[zoom]
+        ## FIXME -- this is not the correct cut -- ignores NGC/SGC difference
         if y < split:
             fn = self.top.get_tile_filename(ver, zoom, x, y)
             print('Top fn', fn)
@@ -5357,9 +5364,11 @@ if __name__ == '__main__':
     #r = c.get('/data-for-radec/?ra=54.8733&dec=-13.1156&layer=des-dr1')
     #r = c.get('/ccd/dr8/decam-767361-N29-z/')
     #r = c.get('/image-data/dr8/decam-767361-N29-z')
-    r = c.get('/')
+    #r = c.get('/')
     #r = c.get('/jpl_lookup/?ra=346.6075&dec=-3.3056&date=2017-07-18%2007:28:16.522187&camera=decam')
     #r = c.get('/urls')
+    r = c.get('/dr8/1/14/16023/6558.cat.json')
+    
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

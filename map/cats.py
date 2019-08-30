@@ -1081,7 +1081,6 @@ def any_cat(req, name, ver, zoom, x, y, **kwargs):
         return HttpResponse('no such layer: ' + name)
     return cat_decals(req, ver, zoom, x, y, tag=name, docache=False)
 
-
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     import json
     zoom = int(zoom)
