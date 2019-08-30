@@ -124,12 +124,10 @@ var MyTileLayer = L.TileLayer.extend({
 
     _abortLoading: function() {
 		var i, tile;
-        console.log('TileLayer._abortLoading() start');
 		for (i in this._tiles) {
 			if (this._tiles[i].coords.z !== this._tileZoom) {
                 tile = this._tiles[i].el;
 				if (!tile.complete) {
-                    console.log('Incomplete tile: ' + i);
                     var coords = this._tiles[i].coords;
                     this.fire('tileabort', {
                         tile: tile,
@@ -139,7 +137,6 @@ var MyTileLayer = L.TileLayer.extend({
 			}
 		}
         L.TileLayer.prototype._abortLoading.call(this);
-        console.log('TileLayer._abortLoading() finished');
     },
 
 });
@@ -810,11 +807,11 @@ var TileWatcher = L.Evented.extend({
         x = x % maxtile;
         var key = '' + zoom + ':' + x + ':' + coord.y;
         return key;
-    }
+    },
 
     tileLoadStart: function(e) {
         var key = this._eventToKey(e);
-        console.log('Tile load start: ' + key);
+        //console.log('Tile load start: ' + key);
         if (key in this._visibleTiles) {
             //console.log('tile was already in visible tiles');
         } else {
@@ -927,7 +924,7 @@ var TiledOverlay = CatalogOverlay.extend({
         }
         // load all visible tiles
         for (var key in this._tw._visibleTiles) {
-            console.log('Adding overlay ' + this._name + ': tile ' + key);
+            //console.log('Adding overlay ' + this._name + ': tile ' + key);
             // parse into zoom:x:y
             var words = key.split(':');
             var zoom = parseInt(words[0]);
@@ -3845,7 +3842,6 @@ map.on('click', onMapClick);
 map.on('zoomend', onMapZoomEnd);
 
 map.on('moveend', function(e) {
-    console.log('moveend');
     buildConstellations();
 });
 
