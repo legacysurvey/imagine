@@ -1428,25 +1428,6 @@ inbrickccd.onAdd = function (map) {
 };
 var inbrickccdAdded = false;
 
-/*
-var MyMap = L.Map.extend({
-    _resetView: function(center, zoom) {
-        console.log('map._resetView() starting');
-        rtn = L.Map.prototype._resetView.call(this, center, zoom);
-        console.log('map._resetView() finished');
-        return rtn;
-    },
-    _tryAnimatedZoom: function(center, zoom, dozoom) {
-        console.log('map._tryAnimatedZoom() starting');
-        rtn = L.Map.prototype._tryAnimatedZoom.call(this, center, zoom, dozoom);
-        console.log('map._tryAnimatedZoom() finished');
-        return rtn;
-    },
-
-});
-var map = new MyMap('map', {
-*/
-
 var map = L.map('map', {
     zoomsliderControl: false,
     zoomControl: false,
