@@ -65,6 +65,7 @@ MAX_NATIVE_ZOOM = 15
 SAVE_CACHE = False
 
 ROOT_URL = '/viewer'
+
 HOSTNAME = 'legacysurvey.org'
 SUBDOMAINS = ['a','b','c','d']
 
