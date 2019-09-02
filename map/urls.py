@@ -171,6 +171,6 @@ urlpatterns = [
     url(r'^phat/?$', views.phat),
 
     # fall-through
-    url(r'', views.index),
+    url(r'', views.index, name='index'),
 
 ]
