@@ -299,6 +299,8 @@ def _index(req,
     caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
     smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
 
+    print('Small catalog URL:', smallcaturl)
+    
     tileurl = settings.TILE_URL
 
     subdomains = settings.SUBDOMAINS
@@ -5364,10 +5366,10 @@ if __name__ == '__main__':
     #r = c.get('/data-for-radec/?ra=54.8733&dec=-13.1156&layer=des-dr1')
     #r = c.get('/ccd/dr8/decam-767361-N29-z/')
     #r = c.get('/image-data/dr8/decam-767361-N29-z')
-    #r = c.get('/')
+    r = c.get('/')
     #r = c.get('/jpl_lookup/?ra=346.6075&dec=-3.3056&date=2017-07-18%2007:28:16.522187&camera=decam')
     #r = c.get('/urls')
-    r = c.get('/dr8/1/14/16023/6558.cat.json')
+    #r = c.get('/dr8/1/14/16023/6558.cat.json')
     
     print('r:', type(r))
 

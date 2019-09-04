@@ -98,7 +98,7 @@ urlpatterns = [
     url(r'^bright/(\d+)/cat.json', cats.cat_bright),
 
     # hackish -- pattern for small catalogs
-    url(r'^\{id\}/\{ver\}/cat.json?ralo=\{ralo\}&rahi=\{rahi\}&declo=\{declo\}&dechi=\{dechi\}',
+    url(r'^\{id\}/\{ver\}/cat.json\?ralo=\{ralo\}&rahi=\{rahi\}&declo=\{declo\}&dechi=\{dechi\}',
         cats.cat_bright,
         name='cat-json-pattern'),
     
