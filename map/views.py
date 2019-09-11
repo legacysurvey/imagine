@@ -1592,7 +1592,8 @@ class DecalsLayer(MapLayer):
         bb = get_radec_bbox(req)
         if bb is not None:
             ralo,rahi,declo,dechi = bb
-            caturl = (my_reverse(req, 'cat-fits', args=(layer)) + 
+            print('RA,Dec bb:', bb)
+            caturl = (my_reverse(req, 'cat-fits', args=(layer)) +
                       '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
             html.extend(['<h1>%s Data for RA,Dec box:</h1>' % self.drname,
                          '<p><a href="%s">Catalog</a></p>' % caturl])
@@ -2343,6 +2344,15 @@ class LegacySurveySplitLayer(MapLayer):
                     (self.drname, ra, dec),
             ccds_table_css + '<body>',
         ]
+
+        bb = get_radec_bbox(req)
+        if bb is not None:
+            ralo,rahi,declo,dechi = bb
+            print('RA,Dec bb:', bb)
+            caturl = (my_reverse(req, 'cat-fits', args=(layer)) +
+                      '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
+            html.extend(['<h1>%s Data for RA,Dec box:</h1>' % self.drname,
+                         '<p><a href="%s">Catalog</a></p>' % caturl])
 
         for layer in [self.top, self.bottom]:
             survey = layer.survey
@@ -5176,6 +5186,9 @@ def get_radec_bbox(req):
         dechi = float(req.GET.get('dechi'))
         return ralo,rahi,declo,dechi
     except:
+        print('Failed to parse RA,Dec bbox:')
+        import traceback
+        traceback.print_exc()
         return None
 
 def cutout_wcs(req, default_layer='decals-dr7'):

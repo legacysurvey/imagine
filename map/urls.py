@@ -109,7 +109,7 @@ urlpatterns = [
         cats.any_cat, name='cat-json-tiled'),
 
     # FITS catalog cutout
-    url(r'^(%s)/cat.fits' % layer_regex, views.any_fits_cat),
+    url(r'^(%s)/cat.fits' % layer_regex, views.any_fits_cat, name='cat-fits'),
 
     ## hackish -- the pattern (using leaflet's template format) for cat-json-tiled
     url(r'^\{id\}/\{ver\}/\{z\}/\{x\}/\{y\}.cat.json', cats.any_cat, name='cat-json-tiled-pattern'),
