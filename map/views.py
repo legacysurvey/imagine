@@ -299,8 +299,6 @@ def _index(req,
     caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
     smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
 
-    print('Small catalog URL:', smallcaturl)
-    
     tileurl = settings.TILE_URL
 
     subdomains = settings.SUBDOMAINS
@@ -605,8 +603,8 @@ def data_for_radec(req):
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
     layername = request_layer_name(req)
-    #layer = layer_to_survey_name(layer)
     layer = get_layer(layername)
+    print('data_for_radec: layer', layer)
     return layer.data_for_radec(req, ra, dec)
 
 class MapLayer(object):
@@ -1590,6 +1588,7 @@ class DecalsLayer(MapLayer):
         ]
 
         bb = get_radec_bbox(req)
+        print('DecalsLayer.data_for_radec: bb', bb)
         if bb is not None:
             ralo,rahi,declo,dechi = bb
             print('RA,Dec bb:', bb)
@@ -5179,11 +5178,13 @@ def any_fits_cat(req, name, **kwargs):
     return layer.get_catalog(req, ralo, rahi, declo, dechi)
 
 def get_radec_bbox(req):
+    print('get_radec_bbox()')
     try:
         ralo = float(req.GET.get('ralo'))
         rahi = float(req.GET.get('rahi'))
         declo = float(req.GET.get('declo'))
         dechi = float(req.GET.get('dechi'))
+        print('get_radec_bbox() ->', ralo,rahi,declo,dechi)
         return ralo,rahi,declo,dechi
     except:
         print('Failed to parse RA,Dec bbox:')
