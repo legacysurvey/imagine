@@ -1406,6 +1406,14 @@ function onMapClick(e) {
         '&category=Interesting+things';
 
     var datalink = '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + layer_name;
+
+    // add ra,dec lo,hi bounds to data-for-radec link
+    var b = map.getBounds();
+    datalink += ('&ralo=' + long2ra(b.getEast()).toFixed(4) +
+                 '&rahi=' + long2ra(b.getWest()).toFixed(4) +
+                 '&declo=' + lat2dec(b.getSouth()).toFixed(4) +
+                 '&dechi=' + lat2dec(b.getNorth()).toFixed(4));
+
     var spacer = ' &nbsp;|&nbsp; ';
 
     var txt =
