@@ -1592,7 +1592,7 @@ class DecalsLayer(MapLayer):
         if bb is not None:
             ralo,rahi,declo,dechi = bb
             print('RA,Dec bb:', bb)
-            caturl = (my_reverse(req, 'cat-fits', args=(self.name)) +
+            caturl = (my_reverse(req, 'cat-fits', args=(self.name,)) +
                       '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
             html.extend(['<h1>%s Data for RA,Dec box:</h1>' % self.drname,
                          '<p><a href="%s">Catalog</a></p>' % caturl])
@@ -1707,13 +1707,13 @@ class DecalsLayer(MapLayer):
     def get_catalog(self, req, ralo, rahi, declo, dechi):
         from map.cats import radecbox_to_wcs
         wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
-        cat = self.get_catalog_in_wcs(wcs)
+        cat,hdr = self.get_catalog_in_wcs(wcs)
         fn = 'cat-%s.fits' % (self.name)
         import tempfile
         f,outfn = tempfile.mkstemp(suffix='.fits')
         os.close(f)
         os.unlink(outfn)
-        cat.writeto(outfn)
+        cat.writeto(outfn, header=hdr)
         return send_file(outfn, 'image/fits', unlink=True, filename=fn)
 
     def get_bricks(self):
@@ -2349,7 +2349,7 @@ class LegacySurveySplitLayer(MapLayer):
         if bb is not None:
             ralo,rahi,declo,dechi = bb
             print('RA,Dec bb:', bb)
-            caturl = (my_reverse(req, 'cat-fits', args=(layer)) +
+            caturl = (my_reverse(req, 'cat-fits', args=(self.name,)) +
                       '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
             html.extend(['<h1>%s Data for RA,Dec box:</h1>' % self.drname,
                          '<p><a href="%s">Catalog</a></p>' % caturl])
