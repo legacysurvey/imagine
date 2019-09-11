@@ -81,7 +81,6 @@ urlpatterns = [
     url(r'^jpeg-cutout', cutouts.jpeg_cutout),
     url(r'^fits-cutout', cutouts.fits_cutout),
 
-
     # NGC/IC/UGC galaxies
     url(r'^ngc/(\d+)/cat.json', cats.cat_gals),
 
@@ -108,6 +107,9 @@ urlpatterns = [
     # tiled catalog
     url(r'^(%s)/(\d+)/(\d+)/(\d+)/(\d+).cat.json' % layer_regex,
         cats.any_cat, name='cat-json-tiled'),
+
+    # FITS catalog cutout
+    url(r'^(%s)/cat.fits' % layer_regex, views.any_fits_cat),
 
     ## hackish -- the pattern (using leaflet's template format) for cat-json-tiled
     url(r'^\{id\}/\{ver\}/\{z\}/\{x\}/\{y\}.cat.json', cats.any_cat, name='cat-json-tiled-pattern'),
