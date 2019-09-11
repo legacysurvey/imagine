@@ -605,8 +605,8 @@ def data_for_radec(req):
     ra  = float(req.GET['ra'])
     dec = float(req.GET['dec'])
     layername = request_layer_name(req)
-    #layer = layer_to_survey_name(layer)
     layer = get_layer(layername)
+    print('data_for_radec: layer', layer)
     return layer.data_for_radec(req, ra, dec)
 
 class MapLayer(object):
@@ -634,7 +634,10 @@ class MapLayer(object):
 
     def data_for_radec(self, req, ra, dec):
         pass
-        
+
+    def get_catalog(self, req, ralo, rahi, declo, dechi):
+        return HttpResponse('no catalog for layer ' + self.name)
+
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
         return None
 
@@ -1585,6 +1588,17 @@ class DecalsLayer(MapLayer):
                     (self.drname, ra, dec),
             ccds_table_css + '<body>',
         ]
+
+        bb = get_radec_bbox(req)
+        print('DecalsLayer.data_for_radec: bb', bb)
+        if bb is not None:
+            ralo,rahi,declo,dechi = bb
+            print('RA,Dec bb:', bb)
+            caturl = (my_reverse(req, 'cat-fits', args=(self.name,)) +
+                      '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
+            html.extend(['<h1>%s Data for RA,Dec box:</h1>' % self.drname,
+                         '<p><a href="%s">Catalog</a></p>' % caturl])
+
         brick_html = self.brick_details_body(brick)
         html.extend(brick_html)
 
@@ -1691,6 +1705,18 @@ class DecalsLayer(MapLayer):
         else:
             cat = merge_tables(cat, columns='fillzero')
         return cat,hdr
+
+    def get_catalog(self, req, ralo, rahi, declo, dechi):
+        from map.cats import radecbox_to_wcs
+        wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
+        cat,hdr = self.get_catalog_in_wcs(wcs)
+        fn = 'cat-%s.fits' % (self.name)
+        import tempfile
+        f,outfn = tempfile.mkstemp(suffix='.fits')
+        os.close(f)
+        os.unlink(outfn)
+        cat.writeto(outfn, header=hdr)
+        return send_file(outfn, 'image/fits', unlink=True, filename=fn)
 
     def get_bricks(self):
         B = self.survey.get_bricks_readonly()
@@ -2321,6 +2347,15 @@ class LegacySurveySplitLayer(MapLayer):
             ccds_table_css + '<body>',
         ]
 
+        bb = get_radec_bbox(req)
+        if bb is not None:
+            ralo,rahi,declo,dechi = bb
+            print('RA,Dec bb:', bb)
+            caturl = (my_reverse(req, 'cat-fits', args=(self.name,)) +
+                      '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
+            html.extend(['<h1>%s Data for RA,Dec box:</h1>' % self.drname,
+                         '<p><a href="%s">Catalog</a></p>' % caturl])
+
         for layer in [self.top, self.bottom]:
             survey = layer.survey
             bricks = survey.get_bricks()
@@ -2368,6 +2403,19 @@ class LegacySurveySplitLayer(MapLayer):
         if not len(ccds):
             return None
         return merge_tables(ccds, columns='fillzero')
+
+    # copied from DecalsLayer
+    def get_catalog(self, req, ralo, rahi, declo, dechi):
+        from map.cats import radecbox_to_wcs
+        wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
+        cat,hdr = self.get_catalog_in_wcs(wcs)
+        fn = 'cat-%s.fits' % (self.name)
+        import tempfile
+        f,outfn = tempfile.mkstemp(suffix='.fits')
+        os.close(f)
+        os.unlink(outfn)
+        cat.writeto(outfn, header=hdr)
+        return send_file(outfn, 'image/fits', unlink=True, filename=fn)
 
     def get_catalog_in_wcs(self, wcs):
         from astrometry.util.fits import merge_tables
@@ -5132,6 +5180,33 @@ def any_tile_view(request, name, ver, zoom, x, y, **kwargs):
     if layer is None:
         return HttpResponse('no such layer: ' + name)
     return layer.get_tile(request, ver, zoom, x, y, **kwargs)
+
+def any_fits_cat(req, name, **kwargs):
+    print('any_fits_cat(', name, ')')
+    name = layer_name_map(name)
+    layer = get_layer(name)
+    if layer is None:
+        return HttpResponse('no such layer: ' + name)
+    bb = get_radec_bbox(req)
+    if bb is None:
+        return HttpResponse('no ra,dec bbox')
+    ralo,rahi,declo,dechi = bb
+    return layer.get_catalog(req, ralo, rahi, declo, dechi)
+
+def get_radec_bbox(req):
+    print('get_radec_bbox()')
+    try:
+        ralo = float(req.GET.get('ralo'))
+        rahi = float(req.GET.get('rahi'))
+        declo = float(req.GET.get('declo'))
+        dechi = float(req.GET.get('dechi'))
+        print('get_radec_bbox() ->', ralo,rahi,declo,dechi)
+        return ralo,rahi,declo,dechi
+    except:
+        print('Failed to parse RA,Dec bbox:')
+        import traceback
+        traceback.print_exc()
+        return None
 
 def cutout_wcs(req, default_layer='decals-dr7'):
     from astrometry.util.util import Tan

@@ -1406,6 +1406,14 @@ function onMapClick(e) {
         '&category=Interesting+things';
 
     var datalink = '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + layer_name;
+
+    // add ra,dec lo,hi bounds to data-for-radec link
+    var b = map.getBounds();
+    datalink += ('&ralo=' + long2ra(b.getEast()).toFixed(4) +
+                 '&rahi=' + long2ra(b.getWest()).toFixed(4) +
+                 '&declo=' + lat2dec(b.getSouth()).toFixed(4) +
+                 '&dechi=' + lat2dec(b.getNorth()).toFixed(4));
+
     var spacer = ' &nbsp;|&nbsp; ';
 
     var txt =
@@ -1417,6 +1425,8 @@ function onMapClick(e) {
     {% if enable_cutouts %}
         '<a href="' + cutout_radec_url(ra,dec) + '">Single Exposures</a>' + spacer +
     {% endif %}
+        '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?Coord=' + ra.toFixed(4) + 'd' + dec.toFixed(4) + 'd' + '&CooFrame=ICRS&CooEpoch=2000&CooEqui=2000&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=">Look up in Simbad</a>'
+        + spacer +
         '<a href="' + discuss + '">Discuss This Object</a>';
 
     for (var i=0; i<polygonOverlays.length; i++) {
