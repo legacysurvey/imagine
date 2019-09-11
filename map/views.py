@@ -2402,6 +2402,19 @@ class LegacySurveySplitLayer(MapLayer):
             return None
         return merge_tables(ccds, columns='fillzero')
 
+    # copied from DecalsLayer
+    def get_catalog(self, req, ralo, rahi, declo, dechi):
+        from map.cats import radecbox_to_wcs
+        wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
+        cat,hdr = self.get_catalog_in_wcs(wcs)
+        fn = 'cat-%s.fits' % (self.name)
+        import tempfile
+        f,outfn = tempfile.mkstemp(suffix='.fits')
+        os.close(f)
+        os.unlink(outfn)
+        cat.writeto(outfn, header=hdr)
+        return send_file(outfn, 'image/fits', unlink=True, filename=fn)
+
     def get_catalog_in_wcs(self, wcs):
         from astrometry.util.fits import merge_tables
         allcats = []
