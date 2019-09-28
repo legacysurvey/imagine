@@ -1,4 +1,4 @@
-from settings_common import *
+from viewer.settings_common import *
 
 REDIRECT_CUTOUTS_DECAPS = True
 
