@@ -3206,10 +3206,7 @@ var DesiFootprint = DesiOverlay.extend({
             for (var j=0; j<N+1; j++) {
                 var phi = petal_phi[i][j%N] * Math.PI / 180.0;
                 var ddec = petal_radius[i][j%N] * Math.sin(phi);
-                // This ra was flipped positive to make the positions look right,
-                // but I don't understand why this is necessary
-                // -- Mark
-                var dra  = petal_radius[i][j%N] * Math.cos(phi);
+                var dra  = -petal_radius[i][j%N] * Math.cos(phi);
                 rd.push([dra, ddec]);
                 ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
             }
