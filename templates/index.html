@@ -3213,7 +3213,7 @@ var DesiFootprint = DesiOverlay.extend({
             this._gfa_rds.push(rd);
             polys.push(ll);
         }
-        this._gfa = L.polyline(polys, {color: 'green'});
+        this._gfa = L.polyline(polys, {color: 'magenta'});
         group.push(this._gfa);
 
         this._ci_rds = [];
@@ -3232,7 +3232,7 @@ var DesiFootprint = DesiOverlay.extend({
             this._ci_rds.push(rd);
             polys.push(ll);
         }
-        this._ci = L.polyline(polys, {color: 'magenta'});
+        this._ci = L.polyline(polys, {color: 'green'});
         group.push(this._ci);
 
         this._layer = L.layerGroup(group);
