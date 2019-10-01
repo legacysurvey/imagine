@@ -1397,7 +1397,7 @@ function onMapClick(e) {
     }
 
     var abs_cutout = hostname_url + cutout;
-    var abs_link = hostname_url + {% url 'index' %} + linkurl;
+    var abs_link = hostname_url + '{% url 'index' %}' + linkurl;
 
     var discuss = 'http://discuss.legacysurvey.org/new-topic?title=Interesting+object&body=' +
         '%3Cimg+src%3D%22' + encodeURIComponent(abs_cutout) + '%22%3E' +
