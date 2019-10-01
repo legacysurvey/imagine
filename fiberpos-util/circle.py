@@ -28,7 +28,7 @@ class Circle:
         delta = np.pi * 2 / samples
         points = []
         start_pos = np.array([0, self.radius])
-        for i in range(samples):
+        for _ in range(samples):
             theta += delta
             points.append(np.matmul(rotation_matrix(theta), start_pos))
         points = map(lambda p: (p[0] + self.x, p[1] + self.y), points)

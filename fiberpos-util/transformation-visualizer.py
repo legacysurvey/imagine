@@ -3,11 +3,10 @@
 import desimodel.io
 from desimodel.focalplane import xy2radec
 import numpy as np
-from astropy.table import Column, vstack
+from astropy.table import Column
 from pylab import *
 from circle import Circle
-from matplotlib.patches import Ellipse
-    
+
 fp = desimodel.io.load_fiberpos()  #- load the fiberpos.fits file
 telra, teldec = 10.0, 20.0   #- telescope central pointing at this RA,dec
 

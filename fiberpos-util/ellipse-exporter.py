@@ -2,7 +2,7 @@ import desimodel.io
 from desimodel.focalplane import xy2radec
 import numpy as np
 from numpy.linalg import eig, inv
-from math import cos, sin
+from math import cos
 from astropy.table import Column
 from pylab import * # change this
 from circle import Circle, Ellipse
@@ -21,7 +21,6 @@ def xy2xyz(x, y):
     
     x1 = np.cos(r_rad)
     y1 = -np.sin(r_rad)
-    z1 = np.zeros_like(x1)
 
     x2 = x1
     y2 = y1*np.cos(q_rad)           # z1=0 so drop sin(q_rad) term
@@ -42,8 +41,7 @@ def transform2radec(telra, teldec, v):
 
 def create_circles(step=1):
     # Added step parameter to make rendering faster by skipping step - 1 fiberpos
-    """Create circles at each fiberpos
-    
+    """Create circles at each fiberpos    
     Returns
     -------
     list
@@ -54,7 +52,7 @@ def create_circles(step=1):
     j = 0
     for i in range(0, len(fp['X']), step):
         circles[j] = Circle(fp['X'][i], fp['Y'][i], 6)
-        j += 1 
+        j += 1
     return circles
 
 def calculate_ellipses(circles):
@@ -72,7 +70,7 @@ def calculate_ellipses(circles):
     """
     # ellipses = np.empty(len(circles)*2, dtype=object)
     ellipses = []
-    for i, c in enumerate(circles):
+    for _, c in enumerate(circles):
         axis_points = list(map(lambda p: transform2radec(telra, teldec, p), c.get_axis_points()))
         center = transform2radec(telra, teldec, [c.x, c.y]) # circle center
         axis0_len = np.linalg.norm(axis_points[1] - axis_points[0])
@@ -173,7 +171,7 @@ def fitEllipse(x,y):
     return a
 
 def ellipse_center(a):
-    b,c,d,f,g,a = a[1]/2, a[2], a[3]/2, a[4]/2, a[5], a[0]
+    b,c,d,f,_,a = a[1]/2, a[2], a[3]/2, a[4]/2, a[5], a[0]
     num = b*b-a*c
     x0=(c*d-b*f)/num
     y0=(a*f-b*d)/num
@@ -234,7 +232,7 @@ circles = create_circles()
 # ellipses = calculate_ellipses(circles)
 
 def display():
-    fig, ax = plt.subplots(subplot_kw={'aspect': 'equal'})
+    _, ax = plt.subplots(subplot_kw={'aspect': 'equal'})
     for e in ellipses:
         plot_ellipse(ax, e)
     for c in circles:
