@@ -41,9 +41,6 @@ function row(matrix, index) {
 * @source desimodel.geometry.xy2radec
 */
 function xyz2radec(telra, teldec, v) {
-    // Invert teldec
-    teldec = -teldec;
-
     // Clockwise rotation around y axis by declination of the tile center
     var decrotate = math.zeros(3, 3);
     var teldec_rad = radians(teldec);
@@ -65,7 +62,7 @@ function xyz2radec(telra, teldec, v) {
     var z3 = row(v3, 2);
 
     var ra_rad = math.atan2(y3, x3);
-    var dec_rad = math.add(math.acos(z3), -math.pi/2);
+    var dec_rad = math.add(math.multiply(-1, math.acos(z3)), math.pi/2);
     
     return [ra_rad, dec_rad];
 }
