@@ -26,6 +26,11 @@ var petal_phi = [
     [215.31935812, 215.34502698700001, 211.02060759099999, 210.82671930000001],
     [251.31935812, 251.34502698700001, 247.02060759099999, 246.82671930000001]
 ];
+
+var petal_names = [
+    'GUIDE0', 'FOCUS1', 'GUIDE2', 'GUIDE3', 'FOCUS4',
+    'GUIDE5', 'FOCUS6', 'GUIDE7', 'GUIDE8', 'FOCUS9', ];
+
 var desi_radius=1.6274810767584347;
 
 // Commissioning instrument CCDs
@@ -163,23 +168,46 @@ var DesiFootprint = DesiOverlay.extend({
         group.push(this._circle);
         this._gfa_rds = [];
         var polys = [];
+        var labels = [];
         for (var i=0; i<petal_radius.length; i++) {
             var ll = [];
             var rd = [];
             var N = petal_radius[i].length;
             for (var j=0; j<N+1; j++) {
                 var phi = petal_phi[i][j%N] * Math.PI / 180.0;
-                var ddec = petal_radius[i][j%N] * Math.sin(phi);
+                var ddec =  petal_radius[i][j%N] * Math.sin(phi);
                 var dra  = -petal_radius[i][j%N] * Math.cos(phi);
                 rd.push([dra, ddec]);
                 ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
             }
             this._gfa_rds.push(rd);
             polys.push(ll);
+
+            var mean_phi = 0.;
+            var mean_radius = 0.;
+            for (var j=0; j<N; j++) {
+                mean_phi += petal_phi[i][j];
+                mean_radius += petal_radius[i][j];
+            }
+            mean_phi /= N;
+            mean_radius /= N;
+            mean_phi *= Math.PI / 180.0;
+            var ddec =  mean_radius * Math.sin(mean_phi);
+            var dra  = -mean_radius * Math.cos(mean_phi)
+            var latlng = [dec2lat(ddec), ra2long_C(dra, clong)];
+            var circ = L.circle(latlng, 0., {'color':'red', 'opacity':0.,
+                                         'fillOpacity':0, 'weight':5});
+            circ.bindTooltip(petal_names[i],
+                             {interactive: true, permanent: true,
+                              direction: 'center', className: 'gfa-label' });
+            group.push(circ);
+            
         }
         this._gfa = L.polyline(polys, {color: 'magenta'});
         group.push(this._gfa);
 
+
+        
         this._ci_rds = [];
         polys = [];
         for (var k in ci_radecs) {
