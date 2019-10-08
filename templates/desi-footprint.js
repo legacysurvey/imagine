@@ -2,7 +2,7 @@
 
 // DESI Footprint
 // from gfa-corners.fits from Bailey, 2019-03-18
-var petal_radius = [
+var gfa_radius = [
     [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
     [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
     [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
@@ -14,7 +14,7 @@ var petal_radius = [
     [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059],
     [1.54426530072, 1.5999816327800001, 1.6054123220500001, 1.54995479059]
 ];
-var petal_phi = [
+var gfa_phi = [
     [287.31935812, 287.34502698699998, 283.02060759099999, 282.82671929999998],
     [323.31935812, 323.34502698699998, 319.02060759099999, 318.82671929999998],
     [359.31935812, 359.34502698699998, 355.02060759099999, 354.82671929999998],
@@ -27,7 +27,7 @@ var petal_phi = [
     [251.31935812, 251.34502698700001, 247.02060759099999, 246.82671930000001]
 ];
 
-var petal_names = [
+var gfa_names = [
     'GUIDE0', 'FOCUS1', 'GUIDE2', 'GUIDE3', 'FOCUS4',
     'GUIDE5', 'FOCUS6', 'GUIDE7', 'GUIDE8', 'FOCUS9', ];
 
@@ -167,16 +167,18 @@ var DesiFootprint = DesiOverlay.extend({
                                 {color:'yellow', fill:false}); //fillOpacity:0.01});
         group.push(this._circle);
         this._gfa_rds = [];
+        this._gfa_label_rds = [];
+        this._gfa_labels = [];
         var polys = [];
         var labels = [];
-        for (var i=0; i<petal_radius.length; i++) {
+        for (var i=0; i<gfa_radius.length; i++) {
             var ll = [];
             var rd = [];
-            var N = petal_radius[i].length;
+            var N = gfa_radius[i].length;
             for (var j=0; j<N+1; j++) {
-                var phi = petal_phi[i][j%N] * Math.PI / 180.0;
-                var ddec =  petal_radius[i][j%N] * Math.sin(phi);
-                var dra  = -petal_radius[i][j%N] * Math.cos(phi);
+                var phi = gfa_phi[i][j%N] * Math.PI / 180.0;
+                var ddec =  gfa_radius[i][j%N] * Math.sin(phi);
+                var dra  = -gfa_radius[i][j%N] * Math.cos(phi);
                 rd.push([dra, ddec]);
                 ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
             }
@@ -186,27 +188,27 @@ var DesiFootprint = DesiOverlay.extend({
             var mean_phi = 0.;
             var mean_radius = 0.;
             for (var j=0; j<N; j++) {
-                mean_phi += petal_phi[i][j];
-                mean_radius += petal_radius[i][j];
+                mean_phi += gfa_phi[i][j];
+                mean_radius += gfa_radius[i][j];
             }
             mean_phi /= N;
             mean_radius /= N;
             mean_phi *= Math.PI / 180.0;
             var ddec =  mean_radius * Math.sin(mean_phi);
             var dra  = -mean_radius * Math.cos(mean_phi)
+            this._gfa_label_rds.push([dra,ddec]);
+
             var latlng = [dec2lat(ddec), ra2long_C(dra, clong)];
             var circ = L.circle(latlng, 0., {'color':'red', 'opacity':0.,
                                          'fillOpacity':0, 'weight':5});
-            circ.bindTooltip(petal_names[i],
+            circ.bindTooltip(gfa_names[i],
                              {interactive: true, permanent: true,
                               direction: 'center', className: 'gfa-label' });
+            this._gfa_labels.push(circ);
             group.push(circ);
-            
         }
         this._gfa = L.polyline(polys, {color: 'magenta'});
         group.push(this._gfa);
-
-
         
         this._ci_rds = [];
         polys = [];
@@ -255,6 +257,12 @@ var DesiFootprint = DesiOverlay.extend({
         }
         this._gfa.setLatLngs(polys);
         this._gfa.redraw();
+
+        for (var i=0; i<this._gfa_label_rds.length; i++) {
+            rd = this._gfa_label_rds[i];
+            this._gfa_labels[i].setLatLng([dec2lat(d0 + rd[1]),
+                                           ra2long_C(r0 + rd[0] / cosdec, clong)]);
+        }
 
         var polys = [];
         for (var i=0; i<this._ci_rds.length; i++) {
