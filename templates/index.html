@@ -1074,7 +1074,7 @@ var DecalsCatalogLayer = TiledOverlay.extend({
 });
 
 // User catalog
-{% include "user-cat.html" %}
+{% include "user-cat.js" %}
 
 {% if enable_sql %}
 var SqlCatalogOverlay = CatalogOverlay.extend({
@@ -2888,7 +2888,7 @@ var constellations = {
     initLinkHere: function(val) {},
 };
 
-{% include "desi-footprint.html" %}
+{% include "desi-footprint.js" %}
 
 var desifoot = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
 desifoot._url_term = 'desifoot';
@@ -3490,7 +3490,7 @@ function keyDown(e) {
 document.addEventListener('keydown', keyDown);
 //map.getContainer().addEventListener('keypress', keyDown);
 
-{% include "constellations.html" %}
+{% include "constellations.js" %}
 
 // A scale bar that shows arcsec / arcmin / degrees rather than meters
 var AstroControl = L.Control.Scale.extend({
