@@ -2126,6 +2126,7 @@ class SdssLayer(MapLayer):
         self.bricks = None
 
     def data_for_radec(self, req, ra, dec):
+        import numpy as np
         # from ccd_list...
         # 0.15: SDSS field radius is ~ 0.13
         radius = 0.15
@@ -5441,11 +5442,11 @@ if __name__ == '__main__':
     #r = c.get('/data-for-radec/?ra=54.8733&dec=-13.1156&layer=des-dr1')
     #r = c.get('/ccd/dr8/decam-767361-N29-z/')
     #r = c.get('/image-data/dr8/decam-767361-N29-z')
-    r = c.get('/')
+    #r = c.get('/')
     #r = c.get('/jpl_lookup/?ra=346.6075&dec=-3.3056&date=2017-07-18%2007:28:16.522187&camera=decam')
     #r = c.get('/urls')
     #r = c.get('/dr8/1/14/16023/6558.cat.json')
-    
+    r = c.get('/cutout.fits?ra=212.1944&dec=4.9083&layer=dr8-south&pixscale=0.27')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
