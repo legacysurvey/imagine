@@ -4840,10 +4840,10 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
         img = np.hstack((img, np.zeros((H, padright), img.dtype)))
         H,W = img.shape
     if padtop:
-        img = np.vstack((np.zeros((W, padtop), img.dtype), img))
+        img = np.vstack(img, (np.zeros((padtop, W), img.dtype)))
         H,W = img.shape
     if padbottom:
-        img = np.vstack((img, np.zeros((W, padbottom), img.dtype)))
+        img = np.vstack((np.zeros((padbottom, W), img.dtype), img))
         H,W = img.shape
 
     plt.imsave(jpegfn, img, **kwa)
@@ -5444,7 +5444,8 @@ if __name__ == '__main__':
     #r = c.get('/jpl_lookup/?ra=346.6075&dec=-3.3056&date=2017-07-18%2007:28:16.522187&camera=decam')
     #r = c.get('/urls')
     #r = c.get('/dr8/1/14/16023/6558.cat.json')
-    r = c.get('/cutout.fits?ra=212.1944&dec=4.9083&layer=dr8-south&pixscale=0.27')
+    #r = c.get('/cutout.fits?ra=212.1944&dec=4.9083&layer=dr8-south&pixscale=0.27')
+    r = c.get('/cutout_panels/dr8-south/680175/N5/?ra=5.4638&dec=22.4002&size=100')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
