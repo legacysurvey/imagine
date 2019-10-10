@@ -821,6 +821,9 @@ def cat_kd(req, ver, tag, fn):
 
     ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
     T = cat_query_radec(fn, ra, dec, radius)
+    if T is None:
+        debug('No objects in query')
+        return None
     debug(len(T), 'spectra')
     if ralo > rahi:
         # RA wrap
