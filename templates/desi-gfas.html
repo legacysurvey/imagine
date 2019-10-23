@@ -196,7 +196,7 @@ function phirad_to_radec(rc, dc, phi, radius) {
 
 //var urls = [];
 
-function moveTo(ra, dec) {
+function moveTo(ra, dec, layer) {
     for (var i=0; i<petal_radius.length; i++) {
         var N = petal_radius[i].length;
 
@@ -243,7 +243,7 @@ function moveTo(ra, dec) {
         var c = Math.cos(p);
         var s = Math.sin(p);
 
-        url = 'http://legacysurvey.org/viewer-dev/sdss-wcs/?' +
+        url = 'http://legacysurvey.org/viewer-dev/cutout-wcs/?' +
             'crval1=' + crval[0].toFixed(5) +
             '&crval2=' + crval[1].toFixed(5) +
             '&crpix1=' + crpix[0].toFixed(1) +
@@ -253,7 +253,8 @@ function moveTo(ra, dec) {
             '&cd21=' + (-s * cd).toExponential(4) +
             '&cd22=' + ( c * cd).toExponential(4) +
             '&imagew=' + sw +
-            '&imageh=' + sh;
+            '&imageh=' + sh +
+            '&layer=' + layer;
         console.log('url: ' + url);
         //urls[i] = url;
 
@@ -282,15 +283,21 @@ var qstr = QueryItems();
 
 var r0 = 213.9;
 var d0 = 37.4;
+var lay0 = 'dr8';
+
 if ('ra' in qstr) {
     r0 = parseFloat(qstr['ra']);
 }
 if ('dec' in qstr) {
     d0 = parseFloat(qstr['dec']);
 }
+if ('layer' in qstr) {
+    lay0 = qstr['layer'];
+}
+
 
 $(document).ready(function() {
-    moveTo(r0, d0);
+    moveTo(r0, d0, lay0);
 });
 
 function submitRadec(e) {
@@ -298,8 +305,9 @@ function submitRadec(e) {
     dec = $('#dec_input').val();
     ra = parseFloat(ra);
     dec = parseFloat(dec);
+    layer = $('#layer_input').val();
     console.log('RA,Dec: ' + ra + ', ' + dec);
-    moveTo(ra, dec);
+    moveTo(ra, dec, layer);
 }
 
 function keyRadec(e) {
@@ -309,10 +317,12 @@ function keyRadec(e) {
 }
 
 $(document).ready(function() {
-    $("#ra_input").attr('value', r0); //html(r0);
-    $("#dec_input").attr('value', d0); //html(d0);
+    $("#ra_input").attr('value', r0);
+    $("#dec_input").attr('value', d0);
+    $("#layer_input").val(lay0);
     $("#ra_input").keypress(keyRadec);
     $("#dec_input").keypress(keyRadec);
+    $("#layer_input").change(submitRadec);
     $("#radec_submit").click(submitRadec);
 });
 
@@ -332,47 +342,52 @@ $(document).ready(function() {
     <form>
     <input id="ra_input" name="name" size="6">
     <input id="dec_input" name="name" size="6">
+    Layer: <select id="layer_input" name="name">
+      <option value="dr8">Legacy Surveys DR8</option>
+      <option value="sdssco">SDSS</option>
+      <option value="unwise-neo4">unWISE NEO4</option>
+    </select>
     <input id="radec_submit" type="button" value="Go">
     </form>
 
     <div id="image-holder" />
-    GFA 0: Center <span id="gfa_center_0"></span>
+    GFA 0 / GUIDE0: Center <span id="gfa_center_0"></span>
     <br/>
     <img id="image_0" src="" width="512" height="233" />
     <br/>
-    GFA 1: Center <span id="gfa_center_1"></span>
+    GFA 1 / FOCUS1: Center <span id="gfa_center_1"></span>
     <br/>
     <img id="image_1" src="" width="512" height="233" />
     <br/>
-    GFA 2: Center <span id="gfa_center_2"></span>
+    GFA 2 / GUIDE2: Center <span id="gfa_center_2"></span>
     <br/>
     <img id="image_2" src="" width="512" height="233" />
     <br/>
-    GFA 3: Center <span id="gfa_center_3"></span>
+    GFA 3 / FOCUS3: Center <span id="gfa_center_3"></span>
     <br/>
     <img id="image_3" src="" width="512" height="233" />
     <br/>
-    GFA 4: Center <span id="gfa_center_4"></span>
+    GFA 4 / GUIDE4: Center <span id="gfa_center_4"></span>
     <br/>
     <img id="image_4" src="" width="512" height="233" />
     <br/>
-    GFA 5: Center <span id="gfa_center_5"></span>
+    GFA 5 / GUIDE5: Center <span id="gfa_center_5"></span>
     <br/>
     <img id="image_5" src="" width="512" height="233" />
     <br/>
-    GFA 6: Center <span id="gfa_center_6"></span>
+    GFA 6 / FOCUS6: Center <span id="gfa_center_6"></span>
     <br/>
     <img id="image_6" src="" width="512" height="233" />
     <br/>
-    GFA 7: Center <span id="gfa_center_7"></span>
+    GFA 7 / GUIDE7: Center <span id="gfa_center_7"></span>
     <br/>
     <img id="image_7" src="" width="512" height="233" />
     <br/>
-    GFA 8: Center <span id="gfa_center_8"></span>
+    GFA 8 / FOCUS8: Center <span id="gfa_center_8"></span>
     <br/>
     <img id="image_8" src="" width="512" height="233" />
     <br/>
-    GFA 9: Center <span id="gfa_center_9"></span>
+    GFA 9 / GUIDE9: Center <span id="gfa_center_9"></span>
     <br/>
     <img id="image_9" src="" width="512" height="233" />
 </center>
