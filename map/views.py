@@ -4840,7 +4840,7 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
         img = np.hstack((img, np.zeros((H, padright), img.dtype)))
         H,W = img.shape
     if padtop:
-        img = np.vstack(img, (np.zeros((padtop, W), img.dtype)))
+        img = np.vstack((img, np.zeros((padtop, W), img.dtype)))
         H,W = img.shape
     if padbottom:
         img = np.vstack((np.zeros((padbottom, W), img.dtype), img))
