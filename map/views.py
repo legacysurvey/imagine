@@ -299,6 +299,8 @@ def _index(req,
     caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
     smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
 
+    print('Small catalog URL:', smallcaturl)
+    
     tileurl = settings.TILE_URL
 
     subdomains = settings.SUBDOMAINS
