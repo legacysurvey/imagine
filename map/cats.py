@@ -289,8 +289,8 @@ def upload_cat(req):
     except:
         pass
 
-    
-    return HttpResponseRedirect(settings.ROOT_URL + reverse(index) +
+    from map.views import my_reverse
+    return HttpResponseRedirect(my_reverse(req, index) +
                                 '?ra=%.4f&dec=%.4f&catalog=%s' % (ra, dec, catname))
 
 galaxycats = {}
