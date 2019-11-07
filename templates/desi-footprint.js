@@ -89,10 +89,7 @@ var DesiOverlay = CatalogOverlay.extend({
         return this._url_term + '=' + this.ra.toFixed(4) + ',' + this.dec.toFixed(4);
     },
     initLinkHere: function(val) {
-        if (typeof val !== String) {
-            this._show = true;
-            return;
-        }
+        val = String(val);
         words = val.split(',');
         if (words.length != 2) {
             return;
@@ -101,6 +98,7 @@ var DesiOverlay = CatalogOverlay.extend({
         var d = Number.parseFloat(words[1]);
         this.ra = r;
         this.dec = d;
+        console.log('Desi Overlay: ra,dec', r, d);
         this._show = true;
         this._got_initial_position = true;
     },

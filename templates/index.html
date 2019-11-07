@@ -3424,7 +3424,7 @@ console.log('adding layers from qstr');
 for (var i=0,len=overlays.length; i<len; i++) {
     ov = overlays[i]
     if (ov._url_term in qstr) {
-        console.log('adding layer ' + ov._url_term + ', ' + ov._pretty);
+        console.log('adding layer ' + ov._url_term + ', ' + ov._pretty + ': ' + qstr[ov._url_term]);
         ov.initLinkHere(qstr[ov._url_term]);
         map.addLayer(ov.getGroup());
     }
