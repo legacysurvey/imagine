@@ -57,10 +57,15 @@ WCS = {
 'CD2_2': 0.0}
 }
 
+{% endcomment %}
 
-From Klaus in email 2018-06-21:
 
-WCS = {'GFA0': {'CD1_1': -3.2280804219438e-05,
+
+{% block header %}
+<script src="{% static "jquery-2.1.1.min.js" %}"></script>
+<script>  
+// From Klaus in email 2018-06-21:
+GFA_WCS = {'GFA0': {'CD1_1': -3.2280804219438e-05,
                     'CD1_2': -4.5597439990055e-05,
                     'CD2_1': -4.9648547108039e-05,
                     'CD2_2': 2.96490518259101e-05,
@@ -140,9 +145,10 @@ WCS = {'GFA0': {'CD1_1': -3.2280804219438e-05,
                     'CRPIX2': 512.5,
                     'CRVAL1': 178.404096089872,
                     'CRVAL2': 9.91472317644592},
+};
 
-And in case you need this, here is the mapping of GFA to guide and
-focus function:
+//And in case you need this, here is the mapping of GFA to guide and
+//focus function:
 
     GFA_MAPPING = {'GUIDE0' : 'GFA0',
                    'FOCUS1' : 'GFA1',
@@ -153,15 +159,26 @@ focus function:
                    'FOCUS6' : 'GFA6',
                    'GUIDE7' : 'GFA7',
                    'FOCUS8' : 'GFA8',
-                   'GUIDE9' : 'GFA9'}
-
-{% endcomment %}
+                   'GUIDE9' : 'GFA9'};
 
 
-{% block header %}
-<script src="{% static "jquery-2.1.1.min.js" %}"></script>
-<script>  
-var petal_radius = [
+
+// from running get-gfa-wcs.py
+GFA_LIST = [['GUIDE0', {'CD1_1': -5.6274e-05, 'CD1_2': 1.68e-05, 'CD2_1': 1.8285e-05, 'CD2_2': 5.1704e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 179.5832, 'CRVAL2': 8.4811}], ['FOCUS1', {'CD1_1': -3.4778e-05, 'CD1_2': 4.3981e-05, 'CD2_1': 4.7668e-05, 'CD2_2': 3.1954e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 178.7586, 'CRVAL2': 9.0116}], ['GUIDE2', {'CD1_1': 3.0194e-16, 'CD1_2': 5.4361e-05, 'CD2_1': 5.9164e-05, 'CD2_2': -2.7742e-06, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 178.4046, 'CRVAL2': 9.9192}], ['GUIDE3', {'CD1_1': 3.4774e-05, 'CD1_2': 4.3977e-05, 'CD2_1': 4.7862e-05, 'CD2_2': -3.1951e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 178.6595, 'CRVAL2': 10.8588}], ['FOCUS4', {'CD1_1': 5.6263e-05, 'CD1_2': 1.6797e-05, 'CD2_1': 1.8281e-05, 'CD2_2': -5.1696e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 179.43, 'CRVAL2': 11.4703}], ['GUIDE5', {'CD1_1': 5.6263e-05, 'CD1_2': -1.6769e-05, 'CD2_1': -1.8281e-05, 'CD2_2': -5.1696e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 180.4207, 'CRVAL2': 11.5181}], ['FOCUS6', {'CD1_1': 3.4774e-05, 'CD1_2': -4.3977e-05, 'CD2_1': -4.7862e-05, 'CD2_2': -3.1951e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 181.2488, 'CRVAL2': 10.9838}], ['GUIDE7', {'CD1_1': -9.0581e-16, 'CD1_2': -5.3461e-05, 'CD2_1': -5.9164e-05, 'CD2_2': 8.3228e-16, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 181.5962, 'CRVAL2': 10.0733}], ['GUIDE8', {'CD1_1': -3.4778e-05, 'CD1_2': -4.3981e-05, 'CD2_1': -4.7868e-05, 'CD2_2': 3.1954e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 181.3335, 'CRVAL2': 9.13759}], ['FOCUS9', {'CD1_1': -5.6274e-05, 'CD1_2': -1.68e-05, 'CD2_1': -1.8284e-05, 'CD2_2': 5.1704e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 180.565, 'CRVAL2': 8.5285}]]
+
+
+
+var gfa_revmap = {};
+var gfa_order = [];
+for (k in GFA_MAPPING) {
+console.log('GFA_MAPPING ' + k);
+v = GFA_MAPPING[k];
+gfa_revmap[v] = k;
+gfa_order.push(k);
+}
+
+
+  var petal_radius = [
     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
     [ 1.5442653 ,  1.59998163,  1.60541232,  1.54995479],
@@ -197,6 +214,62 @@ function phirad_to_radec(rc, dc, phi, radius) {
 //var urls = [];
 
 function moveTo(ra, dec, layer) {
+    //for (var i=0; i<gfa_order.length; i++) {
+    //    name = gfa_order[i];
+    //    gfai = GFA_MAPPING[name];
+    //    wcs = GFA_WCS[gfai];
+
+    for (var i=0; i<GFA_LIST.length; i++) {
+        name = GFA_LIST[i][0];
+        wcs = GFA_LIST[i][1];
+
+        crval1 = wcs['CRVAL1'];
+        crval2 = wcs['CRVAL2'];
+        cd11 = wcs['CD1_1'];
+        cd12 = wcs['CD1_2'];
+        cd21 = wcs['CD2_1'];
+        cd22 = wcs['CD2_2'];
+        crpix1 = wcs['CRPIX1'];
+        crpix2 = wcs['CRPIX2'];
+
+        cosdec = Math.cos(dec * Math.PI / 180.0);
+        cosdec10 = Math.cos(10. * Math.PI / 180.0);
+
+        // Move from nominal 180.,10. boresight
+        crval1 = ra + (crval1 - 180.)*cosdec10 / cosdec;
+        crval2 = crval2 - 10. + dec;
+
+        W = 2048;
+        H =  934;
+        scale = 4.;
+
+        p1 = (crpix1 - 0.5) / scale + 0.5;
+        p2 = (crpix2 - 0.5) / scale + 0.5;
+        sw = Math.round(W / scale);
+        sh = Math.round(H / scale);
+
+        url = 'http://legacysurvey.org/viewer-dev/cutout-wcs/?' +
+            'crval1=' + crval1.toFixed(5) +
+            '&crval2=' + crval2.toFixed(5) +
+            '&crpix1=' + p1.toFixed(1) +
+            '&crpix2=' + p2.toFixed(1) +
+            '&cd11=' + (cd11 * scale).toExponential(4) +
+            '&cd12=' + (cd12 * scale).toExponential(4) +
+            '&cd21=' + (cd21 * scale).toExponential(4) +
+            '&cd22=' + (cd22 * scale).toExponential(4) +
+            '&imagew=' + sw +
+            '&imageh=' + sh +
+            '&layer=' + layer;
+        console.log('url: ' + url);
+
+        $("#image_" + i).attr('src', url);
+        $("#gfa_center_" + i).html('(' + crval1.toFixed(4) + ', ' +
+                        crval2.toFixed(4) + ')');
+    }
+}
+
+
+function XmoveTo(ra, dec, layer) {
     for (var i=0; i<petal_radius.length; i++) {
         var N = petal_radius[i].length;
 
@@ -259,7 +332,6 @@ function moveTo(ra, dec, layer) {
         //urls[i] = url;
 
         $("#image_" + i).attr('src', url);
-
         $("#gfa_center_" + i).html('(' + crval[0].toFixed(4) + ', ' +
                         crval[1].toFixed(4) + ')');
     }
