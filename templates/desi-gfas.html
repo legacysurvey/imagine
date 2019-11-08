@@ -2,6 +2,17 @@
 {% load static %}
 
 {% block header %}
+<style type="text/css">
+table, th, td {
+  border: 1px solid #666;
+}
+table {
+  border-collapse: collapse;
+}
+td {
+text-align: right;
+}
+</style>
 <script src="{% static "jquery-2.1.1.min.js" %}"></script>
 <script>  
 //And in case you need this, here is the mapping of GFA to guide and
@@ -23,7 +34,12 @@ GFA_MAPPING = {
 // from running get-gfa-wcs.py
 GFA_LIST = [['GUIDE0', {'CD1_1': -5.6274e-05, 'CD1_2': 1.68e-05, 'CD2_1': 1.8285e-05, 'CD2_2': 5.1704e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 179.5832, 'CRVAL2': 8.4811}], ['FOCUS1', {'CD1_1': -3.4778e-05, 'CD1_2': 4.3981e-05, 'CD2_1': 4.7668e-05, 'CD2_2': 3.1954e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 178.7586, 'CRVAL2': 9.0116}], ['GUIDE2', {'CD1_1': 3.0194e-16, 'CD1_2': 5.4361e-05, 'CD2_1': 5.9164e-05, 'CD2_2': -2.7742e-06, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 178.4046, 'CRVAL2': 9.9192}], ['GUIDE3', {'CD1_1': 3.4774e-05, 'CD1_2': 4.3977e-05, 'CD2_1': 4.7862e-05, 'CD2_2': -3.1951e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 178.6595, 'CRVAL2': 10.8588}], ['FOCUS4', {'CD1_1': 5.6263e-05, 'CD1_2': 1.6797e-05, 'CD2_1': 1.8281e-05, 'CD2_2': -5.1696e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 179.43, 'CRVAL2': 11.4703}], ['GUIDE5', {'CD1_1': 5.6263e-05, 'CD1_2': -1.6769e-05, 'CD2_1': -1.8281e-05, 'CD2_2': -5.1696e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 180.4207, 'CRVAL2': 11.5181}], ['FOCUS6', {'CD1_1': 3.4774e-05, 'CD1_2': -4.3977e-05, 'CD2_1': -4.7862e-05, 'CD2_2': -3.1951e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 181.2488, 'CRVAL2': 10.9838}], ['GUIDE7', {'CD1_1': -9.0581e-16, 'CD1_2': -5.3461e-05, 'CD2_1': -5.9164e-05, 'CD2_2': 8.3228e-16, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 181.5962, 'CRVAL2': 10.0733}], ['GUIDE8', {'CD1_1': -3.4778e-05, 'CD1_2': -4.3981e-05, 'CD2_1': -4.7868e-05, 'CD2_2': 3.1954e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 181.3335, 'CRVAL2': 9.13759}], ['FOCUS9', {'CD1_1': -5.6274e-05, 'CD1_2': -1.68e-05, 'CD2_1': -1.8284e-05, 'CD2_2': 5.1704e-05, 'CRPIX1': 1024.5, 'CRPIX2': 516.5, 'CRVAL1': 180.565, 'CRVAL2': 8.5285}]]
 
+var image_scale = 4.;
+var W = 2048;
+var H =  934;
+
 function moveTo(ra, dec, layer) {
+    J = [];
     for (var i=0; i<GFA_LIST.length; i++) {
         name = GFA_LIST[i][0];
         wcs = GFA_LIST[i][1];
@@ -44,9 +60,12 @@ function moveTo(ra, dec, layer) {
         crval1 = ra + (crval1 - 180.)*cosdec10 / cosdec;
         crval2 = crval2 - 10. + dec;
 
-        W = 2048;
-        H =  934;
-        scale = 4.;
+        j = {'crval1':crval1, 'crval2':crval2, 'crpix1':crpix1, 'crpix2':crpix2,
+          'cd11':cd11, 'cd12':cd12, 'cd21':cd21, 'cd22':cd22, 'width':W, 'height':H,
+          'name':name};
+        J.push(j);
+
+        scale = image_scale;
 
         p1 = (crpix1 - 0.5) / scale + 0.5;
         p2 = (crpix2 - 0.5) / scale + 0.5;
@@ -71,8 +90,63 @@ function moveTo(ra, dec, layer) {
         $("#gfa_center_" + i).html('(' + crval1.toFixed(4) + ', ' +
                         crval2.toFixed(4) + ')');
     }
+
+    var url = 'http://legacysurvey.org/viewer-dev/gaia-stars-for-wcs';
+    $.ajax(url, {//contentType:'application/x-www-form-urlencoded; charset=UTF-8',
+                 data:{'wcs':JSON.stringify(J)},
+                 success:loadedGaiaStars,
+                 method:'POST'});
 }
 
+var loadedGaiaStars = function(res) {
+    console.log('Loaded Gaia Stars for', res.length, 'chips:', res);
+    for (var i=0; i<res.length; i++) {
+
+        var img = document.getElementById("image_"+i);
+        var canvas = document.getElementById("canvas_"+i);
+        canvas.style.position = "absolute";
+        canvas.style.left = img.offsetLeft + "px";
+        canvas.style.top = img.offsetTop + "px";
+
+        var stars = res[i];
+        console.log('Chip ' + GFA_LIST[i][0] + ' has ' + stars.length + ' stars');
+        console.log('stars:', stars);
+
+        var html = '<table><tr><th>#</th><th>RA (deg)</th><th>Dec (deg)</th><th>X (FITS pix)</th><th>Y (FITS pix)</th><th>G (mag)</th><th>BP (mag)</th><th>RP (mag)</th></tr>';
+        var ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (var j=0; j<stars.length; j++) {
+            var x = (stars[j]['x'] - 1) / image_scale;
+            var y = (H - (stars[j]['y'] - 1)) / image_scale;
+
+            var star = stars[j];
+            html += '<tr><td>' + (j+1) + '</td><td>' + star['ra'].toFixed(4) + '</td><td>' + star['dec'].toFixed(4) +
+                 '</td><td>' + star['x'].toFixed(1) + '</td><td>' + star['y'].toFixed(1) + '</td><td>' +
+                 star['g'].toFixed(2) + '</td><td>' + star['bp'].toFixed(2) + '</td><td>' + star['rp'].toFixed(2) + '</td></tr>';
+
+            //console.log('x,y', x, y);
+            ctx.beginPath();
+            //ctx.arc(x, y, 5, 0, 2 * Math.PI, false);
+            var inr = 5;
+            var out = 9;
+            ctx.moveTo(x-out, y);
+            ctx.lineTo(x-inr,  y);
+            ctx.moveTo(x+out, y);
+            ctx.lineTo(x+inr,  y);
+            ctx.moveTo(x, y-out);
+            ctx.lineTo(x, y-inr );
+            ctx.moveTo(x, y+out);
+            ctx.lineTo(x, y+inr );
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#00ff00';
+            ctx.fillText(''+(j+1), x+out, y);
+            ctx.fillStyle = '#00ff00';
+            ctx.stroke();
+        }
+        html += '</table>';
+        $("#stars_"+i).html(html);
+    }
+};
 
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
@@ -132,6 +206,15 @@ $(document).ready(function() {
     $("#dec_input").keypress(keyRadec);
     $("#layer_input").change(submitRadec);
     $("#radec_submit").click(submitRadec);
+
+    // Do this every time, because any changes in, eg, table formatting will move the image around.
+    for (var i=0; i<GFA_LIST.length; i++) {
+            var img = document.getElementById("image_"+i);
+            var canvas = document.getElementById("canvas_"+i);
+            canvas.style.position = "absolute";
+            canvas.style.left = img.offsetLeft + "px";
+            canvas.style.top = img.offsetTop + "px";
+    }
 });
 
 
@@ -162,42 +245,72 @@ $(document).ready(function() {
     GFA 0 / GUIDE0: Center <span id="gfa_center_0"></span>
     <br/>
     <img id="image_0" src="" width="512" height="233" />
+    <canvas id="canvas_0" width="512" height="233"></canvas>
+    <br/><br/>
+    <div id="stars_0"></div>
     <br/>
     GFA 1 / FOCUS1: Center <span id="gfa_center_1"></span>
     <br/>
     <img id="image_1" src="" width="512" height="233" />
+    <canvas id="canvas_1" width="512" height="233"></canvas>
+    <br/><br/>
+    <div id="stars_1"></div>
     <br/>
     GFA 2 / GUIDE2: Center <span id="gfa_center_2"></span>
     <br/>
     <img id="image_2" src="" width="512" height="233" />
+    <canvas id="canvas_2" width="512" height="233"></canvas>
+    <br/><br/>
+    <div id="stars_2"></div>
     <br/>
     GFA 3 / FOCUS3: Center <span id="gfa_center_3"></span>
     <br/>
     <img id="image_3" src="" width="512" height="233" />
+    <canvas id="canvas_3" width="512" height="233"></canvas>
+    <br/><br/>
+    <div id="stars_3"></div>
     <br/>
     GFA 4 / GUIDE4: Center <span id="gfa_center_4"></span>
     <br/>
     <img id="image_4" src="" width="512" height="233" />
+    <canvas id="canvas_4" width="512" height="233"></canvas>
+    <br/><br/>
+    <div id="stars_4"></div>
     <br/>
     GFA 5 / GUIDE5: Center <span id="gfa_center_5"></span>
     <br/>
     <img id="image_5" src="" width="512" height="233" />
+    <canvas id="canvas_5" width="512" height="233"></canvas>
+    <br/><br/>
+    <div id="stars_5"></div>
     <br/>
     GFA 6 / FOCUS6: Center <span id="gfa_center_6"></span>
     <br/>
     <img id="image_6" src="" width="512" height="233" />
+    <canvas id="canvas_6" width="512" height="233"></canvas>
+    <br/><br/>
+    <div id="stars_6"></div>
     <br/>
     GFA 7 / GUIDE7: Center <span id="gfa_center_7"></span>
     <br/>
     <img id="image_7" src="" width="512" height="233" />
+    <canvas id="canvas_7" width="512" height="233"></canvas>
+    <br/><br/>
+    <div id="stars_7"></div>
     <br/>
     GFA 8 / FOCUS8: Center <span id="gfa_center_8"></span>
     <br/>
     <img id="image_8" src="" width="512" height="233" />
+    <canvas id="canvas_8" width="512" height="233"></canvas>
     <br/>
+    <div id="stars_8"></div>
+    <br/><br/>
     GFA 9 / GUIDE9: Center <span id="gfa_center_9"></span>
     <br/>
     <img id="image_9" src="" width="512" height="233" />
+    <canvas id="canvas_9" width="512" height="233"></canvas>
+    <br/><br/>
+    <div id="stars_9"></div>
 </center>
 </body>
 {% endblock %}

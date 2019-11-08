@@ -63,6 +63,41 @@ except:
     pass
 
 
+def gaia_stars_for_wcs(req):
+    import json
+    from legacypipe.gaiacat import GaiaCatalog
+    from astrometry.util.util import Tan
+    import os
+    import numpy as np
+    
+    os.environ['GAIA_CAT_DIR'] = '/global/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr2-astrom-2/'
+
+    J = json.loads(req.POST['wcs'])
+    print('Got WCS values:', J)
+    reply = []
+    gaia = GaiaCatalog()
+    for jwcs in J:
+        wcs = Tan(*[float(jwcs[k]) for k in
+                    ['crval1', 'crval2', 'crpix1', 'crpix2', 'cd11', 'cd12', 'cd21', 'cd22',
+                     'width', 'height']])
+        stars = gaia.get_catalog_in_wcs(wcs)
+        I = np.argsort(stars.phot_g_mean_mag)
+        stars.cut(I[:10])
+        ok,xx,yy = wcs.radec2pixelxy(stars.ra, stars.dec)
+
+        def clean(x):
+            if np.isfinite(x):
+                return float(x)
+            return 0.
+
+        reply.append([
+            dict(ra=clean(g.ra), dec=clean(g.dec),
+                 g=clean(g.phot_g_mean_mag), bp=clean(g.phot_bp_mean_mag),
+                 rp=clean(g.phot_rp_mean_mag), x=clean(x), y=clean(y))
+            for g,x,y in zip(stars, xx, yy)])
+    return HttpResponse(json.dumps(reply),
+                        content_type='application/json')
+    
 def cat_phat_clusters(req, ver):
     import json
     from astrometry.util.fits import fits_table, merge_tables
