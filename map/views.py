@@ -4624,9 +4624,12 @@ def jpl_lookup(req):
     print('JPL lookup: submitting search')
     r10 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(search="Find Objects"))
     txt = r10.text
-    txt = txt.replace('<a href="sbdb.cgi', '<a href="https://ssd.jpl.nasa.gov/sbdb.cgi')
+    txt = txt.replace('<head>', '<head><base href="https://ssd.jpl.nasa.gov/">')
     return HttpResponse(txt)
 
+def jpl_redirect(req, jpl_url):
+    from django.http import HttpResponseRedirect
+    return HttpResponseRedirect('https://ssd.jpl.nasa.gov/' + jpl_url + '?' + req.META['QUERY_STRING'])
 
 # def cat_plot(req):
 #     import pylab as plt
