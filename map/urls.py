@@ -130,7 +130,9 @@ urlpatterns = [
     url(r'^coadd-psf/', views.cutouts_coadd_psf, name='coadd_psf'),
 
     # Look up this position, date, observatory in JPL Small Bodies database
-    url(r'^jpl_lookup/', views.jpl_lookup),
+    url(r'^jpl_lookup/?$', views.jpl_lookup),
+    # Redirect to other URLs on the JPL site.
+    url(r'^jpl_lookup/(?P<jpl_url>.*)', views.jpl_redirect),
 
     # bricks: list of polygons
     url(r'^bricks/', views.brick_list, name='brick-list'),
