@@ -129,6 +129,7 @@ var loadedGaiaStars = function(res) {
             //ctx.arc(x, y, 5, 0, 2 * Math.PI, false);
             var inr = 5;
             var out = 9;
+            ctx.strokeStyle = '#00ff00';
             ctx.moveTo(x-out, y);
             ctx.lineTo(x-inr,  y);
             ctx.moveTo(x+out, y);
@@ -138,9 +139,8 @@ var loadedGaiaStars = function(res) {
             ctx.moveTo(x, y+out);
             ctx.lineTo(x, y+inr );
             ctx.lineWidth = 3;
-            ctx.strokeStyle = '#00ff00';
-            ctx.fillText(''+(j+1), x+out, y);
             ctx.fillStyle = '#00ff00';
+            ctx.fillText(''+(j+1), x+out, y);
             ctx.stroke();
         }
         html += '</table>';
