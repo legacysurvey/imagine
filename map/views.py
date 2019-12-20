@@ -1308,15 +1308,25 @@ class MapLayer(object):
             declo = dec - (img_cy * pixscale / 3600)
             dechi = dec + (img_cy * pixscale / 3600)
 
-            from map.cats import query_lslga_radecbox
-            galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
+            from map.cats import query_lslga_radecbox, query_lslga_model_radecbox
+            if req.GET == 'lslga':
+                lslgacolor_default = '#3388ff'
+                galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
+            elif req.GET == 'lslga-model':
+                lslgacolor_default = '#ffaa33'
+                galaxies = query_lslga_model_radecbox(ralo, rahi, declo, dechi)
 
             for r in galaxies if galaxies is not None else []:
 
                 RA, DEC = r.ra, r.dec
-                RAD = r.radius_arcsec
-                AB = r.ba
-                PA = r.pa
+                if req.GET == 'lslga':
+                    RAD = r.radius_arcsec
+                    AB = r.ba
+                    PA = r.pa
+                elif req.GET == 'lslga-model':
+                    RAD = r.radius_model_arcsec
+                    AB = r.ba_model
+                    PA = r.pa_model
 
                 if np.isnan(AB):
                     AB = 1
@@ -1332,7 +1342,7 @@ class MapLayer(object):
                 overlay = Image.new('RGBA', (overlay_width, overlay_height))
                 draw = ImageDraw.ImageDraw(overlay)
                 box_corners = (0, 0, overlay_width, overlay_height)
-                ellipse_color = '#' + req.GET.get('lslgacolor', '#3388ff').lstrip('#')
+                ellipse_color = '#' + req.GET.get('lslgacolor', lslgacolor_default).lstrip('#')
                 ellipse_width = int(np.round(float(req.GET.get('lslgawidth', 3)), 0))
                 draw.ellipse(box_corners, fill=None, outline=ellipse_color, width=ellipse_width)
 

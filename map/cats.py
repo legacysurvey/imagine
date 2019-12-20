@@ -857,7 +857,7 @@ def query_lslga_model_radecbox(ralo, rahi, declo, dechi):
         
         T.pa_model = np.hstack(pa)
         T.ba_model = np.hstack(ba)
-        T.radius_arcsec_model = T.fracdev * T.shapedev_r + (1 - T.fracdev) * T.shapeexp_r
+        T.radius_model_arcsec = T.fracdev * T.shapedev_r + (1 - T.fracdev) * T.shapeexp_r
     return T
 
 def cat_spec(req, ver):
