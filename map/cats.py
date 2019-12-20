@@ -802,18 +802,24 @@ def _cat_lslga(req, ver, model=False):
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
-    radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
-
-    ab = [float(f) for f in T.ba.astype(np.float32)]
-    pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa.astype(np.float32)]
+    if model:
+        radius = [float(r) for r in T.radius_model_arcsec.astype(np.float32)]
+        ab = [float(f) for f in T.ba_model.astype(np.float32)]
+        pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa_model.astype(np.float32)]
+        color = '#ffaa33'
+    else:
+        radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
+        ab = [float(f) for f in T.ba.astype(np.float32)]
+        pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa.astype(np.float32)]
+        color = '#3388ff'
     pgc = [int(p) for p in T.pgc]
     z = [float(z) if np.isfinite(z) else -1. for z in T.z.astype(np.float32)]
     typ = [t.strip() if t != 'nan' else '' for t in T.get('type')]
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
                                         abRatio=ab, posAngle=pa, pgc=pgc, type=typ,
-                                        redshift=z)),
-                        content_type='application/json')
+                                        redshift=z, color=color)),
+                                        content_type='application/json')
 
 def query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi):
     ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
