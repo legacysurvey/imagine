@@ -799,8 +799,7 @@ def cat_lslga(req, ver):
                                         redshift=z)),
                         content_type='application/json')
 
-def query_lslga_radecbox(ralo, rahi, declo, dechi):
-    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v2.0.kd.fits')
+def query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi):
     ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
     # max radius for LSLGA entries?!
     lslga_radius = 1.0
@@ -820,6 +819,45 @@ def query_lslga_radecbox(ralo, rahi, declo, dechi):
     #print('Cut to', len(T), 'LSLGA possibly touching WCS:', T.galaxy)
     if len(T) == 0:
         return None
+    return T
+
+def query_lslga_radecbox(ralo, rahi, declo, dechi):
+    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v2.0.kd.fits')
+    T = query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi)
+    if len(T) == 0:
+        return None
+    return T
+
+def query_lslga_model_radecbox(ralo, rahi, declo, dechi):
+    fn = os.path.join(settings.DATA_DIR, 'lslga', 'dr8-lslga-northsouth.kd.fits')
+    T = query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi)
+    if len(T) == 0:
+        return None
+    else:
+        # convert Tractor model parameters to ellipse geometry
+        def get_ba_pa(e1, e2):
+            ee = np.hypot(e1, e2)
+            ba = (1 - ee) / (1 + ee)
+            pa = 180 - (-np.rad2deg(np.arctan2(e2, e1) / 2))
+            return ba, pa
+            
+        ba, pa = [], []
+        for Tone in T:
+            ttype = Tone.type.strip()
+            if ttype == 'DEV' or ttype == 'COMP':
+                e1, e2 = Tone.shapedev_e1, Tone.shapedev_e2
+                ba, pa = get_ba_pa(e1, e2)
+            elif ttype == 'EXP' or ttype == 'REX':
+                e1, e2 = Tone.shapeexp_e1, Tone.shapeexp_e2
+                ba, pa = get_ba_pa(e1, e2)
+            else: # PSF
+                ba, pa = np.nan, np.nan 
+            ba.append(ba)
+            pa.append(pa)
+        
+        T.pa_model = np.hstack(pa)
+        T.ba_model = np.hstack(ba)
+        T.radius_model_arcsec = T.fracdev * T.shapedev_r + (1 - T.fracdev) * T.shapeexp_r
     return T
 
 def cat_spec(req, ver):
