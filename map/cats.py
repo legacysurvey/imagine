@@ -369,8 +369,14 @@ def get_random_galaxy(layer=None):
 
     if not layer in galaxycats:
         from astrometry.util.fits import fits_table
+
         galaxycats[layer] = fits_table(galfn)
 
+        ### HACK
+        #cat = fits_table(galfn)
+        #cat.cut(cat.dec < 30.)
+        #galaxycats[layer] = cat
+        
     galaxycat = galaxycats[layer]
     i = np.random.randint(len(galaxycat))
     ra = float(galaxycat.ra[i])

@@ -74,6 +74,11 @@ def main():
     name = 'dr8i-90p-mos'
     pretty = 'DR8i MzLS+BASS'
 
+    indir = '/global/cscratch1/sd/ziyaoz/dr9c/'
+    name = 'dr9c'
+    pretty = 'DR9c'
+    survey_dir = indir
+
     sublayers = ['', '-model', '-resid']
     subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
     # survey_dir = '/global/cscratch1/sd/desiproc/dr7'
@@ -115,11 +120,14 @@ def main():
             os.makedirs(basedir)
             for subdir in ['coadd', 'tractor']:
                 os.symlink(os.path.join(indir, subdir), os.path.join(basedir, subdir), target_is_directory=True)
-            for fn in ['images', 'calib']:
-                os.symlink(os.path.join(indir, subdir), os.path.join(basedir, subdir), target_is_directory=False)
+            for subdir in ['images', 'calib']:
+                os.symlink(os.path.join(indir, subdir), os.path.join(basedir, subdir), target_is_directory=True)
             for pat in ['survey-ccds-*']:
-                for fn in [os.path.basename(f) for f in glob(os.path.join(indir, pat))]:
-                    os.symlink(os.path.join(indir, subdir), os.path.join(basedir, subdir), target_is_directory=False)
+                fns = glob(os.path.join(indir, pat))
+                print('fns', fns)
+                for fn in [os.path.basename(f) for f in fns]:
+                    print('symlink', os.path.join(indir, subdir), os.path.join(basedir, subdir))
+                    os.symlink(os.path.join(indir, fn), os.path.join(basedir, fn), target_is_directory=False)
 
     allbricks = survey.get_bricks_readonly()
 
