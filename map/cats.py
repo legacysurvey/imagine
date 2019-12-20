@@ -806,12 +806,12 @@ def _cat_lslga(req, ver, model=False):
         radius = [float(r) for r in T.radius_model_arcsec.astype(np.float32)]
         ab = [float(f) for f in T.ba_model.astype(np.float32)]
         pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa_model.astype(np.float32)]
-        color = '#ffaa33'
+        color = ['#ffaa33']*len(T)
     else:
         radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
         ab = [float(f) for f in T.ba.astype(np.float32)]
         pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa.astype(np.float32)]
-        color = '#3388ff'
+        color = ['#3388ff']*len(T)
     pgc = [int(p) for p in T.pgc]
     z = [float(z) if np.isfinite(z) else -1. for z in T.z.astype(np.float32)]
     typ = [t.strip() if t != 'nan' else '' for t in T.get('type')]
