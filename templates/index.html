@@ -2704,6 +2704,11 @@ var lslga = new LSLGACatalog('lslga', 'LSLGA (large galaxies)',
                               'labelsMinZoom': 7,
                               'urlTerm': 'lslga',});
 
+var lslga_model = new LSLGACatalog('lslga-model', 'LSLGA (DR8 models)',
+                             {'minZoom': 5,
+                              'labelsMinZoom': 7,
+                              'urlTerm': 'lslga-model',});
+                              
 var GaiaDr1Catalog = CatalogOverlay.extend({
     getColor: function(json, i) {
         return '#bbbbff';
@@ -2959,7 +2964,7 @@ var overlays = [
     brickOverlay,
     unwiseTileOverlay,
     ccdOverlaySdss,
-    gals, lslga, bright, tycho2,
+    gals, lslga, lslga_model, bright, tycho2,
     {% if enable_ps1 %}
     ps1cat,
     {% endif %}
@@ -3307,6 +3312,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('tycho2'),
      findoverlay('gals'),
      findoverlay('lslga'),
+     findoverlay('lslga-model'),
      findoverlay('constellations'),
  ]);
 

@@ -88,7 +88,9 @@ urlpatterns = [
 
     # LSLGA galaxies
     url(r'^lslga/(\d+)/cat.json', cats.cat_lslga),
-    
+
+    url(r'^lslga-model/(\d+)/cat.json', cats.cat_lslga_model),
+
     # Virgo cluster catalog (VCC) objects
     #url(r'^vcc/(\d+)/cat.json', views.cat_vcc),
 

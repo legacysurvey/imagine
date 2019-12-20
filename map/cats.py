@@ -770,6 +770,12 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def cat_lslga(req, ver):
+    return _cat_lslga(req, ver)
+
+def cat_lslga_model(req, ver):
+    return _cat_lslga(req, ver, model=True)
+
+def _cat_lslga(req, ver, model=False):
     import json
     import numpy as np
     tag = 'lslga'
@@ -785,7 +791,11 @@ def cat_lslga(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    T = query_lslga_radecbox(ralo, rahi, declo, dechi)
+    if model:
+        T = query_lslga_model_radecbox(ralo, rahi, declo, dechi)
+    else:
+        T = query_lslga_radecbox(ralo, rahi, declo, dechi)
+
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[], posAngle=[], pgc=[], type=[], redshift=[])),
                             content_type='application/json')
@@ -835,6 +845,7 @@ def query_lslga_radecbox(ralo, rahi, declo, dechi):
     return T
 
 def query_lslga_model_radecbox(ralo, rahi, declo, dechi):
+    import numpy as np
     fn = os.path.join(settings.DATA_DIR, 'lslga', 'dr8-lslga-northsouth.kd.fits')
     T = query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi)
     if len(T) == 0:
@@ -852,14 +863,14 @@ def query_lslga_model_radecbox(ralo, rahi, declo, dechi):
             ttype = Tone.type.strip()
             if ttype == 'DEV' or ttype == 'COMP':
                 e1, e2 = Tone.shapedev_e1, Tone.shapedev_e2
-                ba, pa = get_ba_pa(e1, e2)
+                bai, pai = get_ba_pa(e1, e2)
             elif ttype == 'EXP' or ttype == 'REX':
                 e1, e2 = Tone.shapeexp_e1, Tone.shapeexp_e2
-                ba, pa = get_ba_pa(e1, e2)
+                bai, pai = get_ba_pa(e1, e2)
             else: # PSF
-                ba, pa = np.nan, np.nan 
-            ba.append(ba)
-            pa.append(pa)
+                bai, pai = np.nan, np.nan
+            ba.append(bai)
+            pa.append(pai)
         
         T.pa_model = np.hstack(pa)
         T.ba_model = np.hstack(ba)
