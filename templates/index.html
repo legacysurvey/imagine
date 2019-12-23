@@ -551,6 +551,22 @@ var lslga_popup = function(json, i) {
         return s;
 }
 
+var lslga_model_popup = function(json, i) {
+        var ra = json['rd'][i][0];
+        var dec = json['rd'][i][1];
+        var name = json['name'][i];
+        var pgc = json['pgc'][i];
+	    s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
+        // matching map/cats.py : cat_lslga_model
+        r50 = json['radiusArcsec'][i] / 60.;
+        s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
+        s += '<br/>r(50)='+r50.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngle'][i].toFixed(1)+' deg<br/>';
+        t = json['type'][i];
+        if (t.length > 0)
+            s += 'Type: '+t+' ';
+        return s;
+}
+
 var LSLGACatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
         return lslga_popup(json, i);
@@ -558,6 +574,21 @@ var LSLGACatalog = CatalogOverlay.extend({
 
     getPopupText: function(json, i) {
         return lslga_popup(json, i);
+    },
+
+    getTooltipStyle() {
+        return { permanent: false, interactive: true, };
+    },
+
+});
+
+var LSLGACatalogModel = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        return lslga_model_popup(json, i);
+    },
+
+    getPopupText: function(json, i) {
+        return lslga_model_popup(json, i);
     },
 
     getTooltipStyle() {
@@ -2704,7 +2735,7 @@ var lslga = new LSLGACatalog('lslga', 'LSLGA (large galaxies)',
                               'labelsMinZoom': 7,
                               'urlTerm': 'lslga',});
 
-var lslga_model = new LSLGACatalog('lslga-model', 'LSLGA (DR8 models)',
+var lslga_model = new LSLGACatalogModel('lslga-model', 'LSLGA (DR8 models)',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
                               'urlTerm': 'lslga-model',});
