@@ -1310,12 +1310,14 @@ class MapLayer(object):
 
             from map.cats import query_lslga_radecbox, query_lslga_model_radecbox
             galaxies = None
-            if req.GET == 'lslga':
+            if req.GET.get('lslga', None) == '':
                 lslgacolor_default = '#3388ff'
                 galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
-            elif req.GET == 'lslga-model':
+            elif req.GET.get('lslga-model', None) == '':
                 lslgacolor_default = '#ffaa33'
                 galaxies = query_lslga_model_radecbox(ralo, rahi, declo, dechi)
+            else:
+                galaxies, lslgacolor_default = None, None
 
             for r in galaxies if galaxies is not None else []:
 
