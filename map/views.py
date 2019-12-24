@@ -1309,6 +1309,7 @@ class MapLayer(object):
             dechi = dec + (img_cy * pixscale / 3600)
 
             from map.cats import query_lslga_radecbox, query_lslga_model_radecbox
+            galaxies = None
             if req.GET == 'lslga':
                 lslgacolor_default = '#3388ff'
                 galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
