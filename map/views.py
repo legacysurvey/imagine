@@ -1322,11 +1322,11 @@ class MapLayer(object):
             for r in galaxies if galaxies is not None else []:
 
                 RA, DEC = r.ra, r.dec
-                if req.GET == 'lslga':
+                if req.GET.get('lslga', None) == '':
                     RAD = r.radius_arcsec
                     AB = r.ba
                     PA = r.pa
-                elif req.GET == 'lslga-model':
+                elif req.GET.get('lslga-model', None) == '':
                     RAD = r.radius_model_arcsec
                     AB = r.ba_model
                     PA = r.pa_model
