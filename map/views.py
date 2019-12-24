@@ -1293,7 +1293,7 @@ class MapLayer(object):
         if get_images:
             return rimgs
 
-        if "lslga" in req.GET:
+        if "lslga" in req.GET or "lslga-model" in req.GET:
 
             from PIL import Image, ImageDraw
             img = Image.open(tilefn)
