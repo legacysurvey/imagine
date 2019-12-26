@@ -532,6 +532,16 @@ var GalaxyCatalog = CatalogOverlay.extend({
     },
 });
 
+var GCsPNeCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        var oname = json['name'][i];
+        var name = oname;
+	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
+            oname.replace(' ','+') + '">' + name + '</a>';
+        return name;
+    },
+});
+
 var lslga_popup = function(json, i) {
         var ra = json['rd'][i][0];
         var dec = json['rd'][i][1];
@@ -2728,6 +2738,12 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
                              'urlTerm': 'ngc',});
+
+var GCsPNe = new GalaxyCatalog(GCs-PNe', 'GCs/PNe',
+                             {'url_name': 'GCs-PNe',
+                              'minZoom': 5,
+                              'labelsMinZoom': 7,
+                             'urlTerm': 'GCs-PNe',});
 
 
 var lslga = new LSLGACatalog('lslga', 'LSLGA (large galaxies)',
