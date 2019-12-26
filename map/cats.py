@@ -32,6 +32,7 @@ catversions = {
     'decals-dr5': [1,],
     'mzls+bass-dr4': [1,],
     'ngc': [1,],
+    'GCs-PNe': [1,],
     'lslga': [1,],
     'spec': [1,],
     'spec-deep2': [1,],
@@ -1125,6 +1126,10 @@ def cat_tycho2(req, ver):
 def cat_gals(req, ver):
     return cat(req, ver, 'ngc',
                os.path.join(settings.DATA_DIR,'galaxy-cats.fits'))
+
+def cat_GCs_PNe(req, ver):
+    return cat(req, ver, 'GCs-PNe',
+               os.path.join(settings.DATA_DIR,'NGC-star-clusters.fits'))
 
 def cat_ps1(req, ver):
     ralo = float(req.GET['ralo'])
