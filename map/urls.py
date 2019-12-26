@@ -91,6 +91,8 @@ urlpatterns = [
 
     url(r'^lslga-model/(\d+)/cat.json', cats.cat_lslga_model),
 
+    url(r'^GCs-PNe/(\d+)/cat.json', cats.cat_GCs_PNe),
+
     # Virgo cluster catalog (VCC) objects
     #url(r'^vcc/(\d+)/cat.json', views.cat_vcc),
 
