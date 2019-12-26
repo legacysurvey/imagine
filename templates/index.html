@@ -536,6 +536,10 @@ var GCsPNeCatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
         var oname = json['name'][i];
         var name = oname;
+        var altnames = json['altname'];
+        if (altnames[i].length > 0) {
+            name = name + ' (' + altnames[i] + ')';
+        }
 	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
             oname.replace(' ','+') + '">' + name + '</a>';
         return name;
@@ -2739,7 +2743,7 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
                               'labelsMinZoom': 7,
                              'urlTerm': 'ngc',});
 
-var GCsPNe = new GalaxyCatalog('GCs-PNe', 'GCs/PNe',
+var GCsPNe = new GCsPNeCatalog(GCs-PNe', 'GCs/PNe',
                              {'url_name': 'GCs-PNe',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
