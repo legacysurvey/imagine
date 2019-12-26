@@ -1129,7 +1129,7 @@ def cat_gals(req, ver):
 
 def cat_GCs_PNe(req, ver):
     return cat(req, ver, 'GCs-PNe',
-               os.path.join(settings.DATA_DIR,'NGC-star-clusters.kd.fits'))
+               os.path.join(settings.DATA_DIR,'NGC-star-clusters.fits'))
 
 def cat_ps1(req, ver):
     ralo = float(req.GET['ralo'])
