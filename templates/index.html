@@ -3015,7 +3015,7 @@ var overlays = [
     brickOverlay,
     unwiseTileOverlay,
     ccdOverlaySdss,
-    gals, lslga, lslga_model, bright, tycho2,
+    gals, lslga, lslga_model, GCsPNe, bright, tycho2,
     {% if enable_ps1 %}
     ps1cat,
     {% endif %}
@@ -3364,6 +3364,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('gals'),
      findoverlay('lslga'),
      findoverlay('lslga-model'),
+     findoverlay('GCs-PNe'),
      findoverlay('constellations'),
  ]);
 
