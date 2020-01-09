@@ -1814,6 +1814,13 @@ class RebrickedMixin(object):
 
     def get_fits_extension(self, scale, fn):
         # Original and scaled images are in ext 1.
+        #return 1
+        # ... except for images where fitsio (1.0.5) screwed up the fpack...
+        import fitsio
+        F = fitsio.FITS(fn)
+        print('File', fn, 'has', len(F), 'hdus')
+        if len(F) == 1:
+            return 0
         return 1
 
     def get_scaled_pattern(self):

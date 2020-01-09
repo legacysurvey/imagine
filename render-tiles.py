@@ -881,7 +881,9 @@ def main():
                         'galex', 'wssa', 'des-dr1', 'hsc', 'hsc2',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
                         'dr8-south', 'dr8-south-model', 'dr8-south-resid',
-                        'dr9c',
+                        'dr9c', 'dr9c-model', 'dr9c-resid',
+                        'dr9d-south', 'dr9d-south-model', 'dr9d-south-resid',
+                        'dr9d-north', 'dr9d-north-model', 'dr9d-north-resid',
                     ] or opt.kind.startswith('dr8-test'): # or True:
             from map.views import get_layer
 

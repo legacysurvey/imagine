@@ -74,13 +74,23 @@ def main():
     name = 'dr8i-90p-mos'
     pretty = 'DR8i MzLS+BASS'
 
-    indir = '/global/cscratch1/sd/ziyaoz/dr9c/'
+    sublayers = ['', '-model', '-resid']
+    subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
+    
+    #indir = '/global/cscratch1/sd/ziyaoz/dr9c/'
+    #indir = '/global/cscratch1/sd/dstn/dr9c-fpack/'
+    #rsync = True
+    indir = 'data/dr9c'
     name = 'dr9c'
     pretty = 'DR9c'
     survey_dir = indir
 
-    sublayers = ['', '-model', '-resid']
-    subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
+    indir = '/global/cscratch1/sd/ziyaoz/dr9d-south/'
+    rsync = True
+    name = 'dr9d-south'
+    pretty = 'DR9d south'
+    survey_dir = indir
+    
     # survey_dir = '/global/cscratch1/sd/desiproc/dr7'
 
     # sublayers = ['']
