@@ -75,6 +75,7 @@ def create_circles(step=1):
     j = 0
     for i in range(0, len(fp['X']), step):
         circles[j] = Circle(fp['X'][i], fp['Y'][i], 6)
+        circles[j].fiber = fp['FIBER'][i]
         j += 1
     return circles
 
@@ -166,7 +167,8 @@ def export_points(circles, file):
         "pointsPerCircle": 20,
         "xs": [],
         "ys": [],
-        "zs": []
+        "zs": [],
+        "fibers": []
     }
     for c in circles:
         x, y = c.get_points(20)
@@ -174,6 +176,7 @@ def export_points(circles, file):
         point_groups["xs"].extend(transformed["xs"])
         point_groups["ys"].extend(transformed["ys"])
         point_groups["zs"].extend(transformed["zs"])
+        point_groups["fibers"].append(int(c.fiber))
     json.dump(point_groups, file)
 
 ####################################
