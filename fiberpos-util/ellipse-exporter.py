@@ -11,6 +11,29 @@ import json
 telra, teldec = 0, 0   #- telescope central pointing at this RA,dec
 fp = desimodel.io.load_fiberpos()  #- load the fiberpos.fits file
 
+def get_radius_deg(x, y):
+    """Returns the radius in degrees given `x`, `y` coordinates using the
+    platescale data.
+
+    Parameters
+    ----------
+    x : :class:`float`
+        The x coordinate in mm of a location on the focal plane
+    y : :class:`float`
+        The y coordinate in mm of a location on the focal plane
+
+    Returns
+    -------
+    :class:`float`
+        Radius corresponding to `x`, `y`.
+    """
+    radius = np.sqrt(x**2 + y**2)
+    platescale = desimodel.io.load_platescale()
+    fn = interp1d(platescale['radius'], platescale['theta'],
+                                    kind='quadratic')
+    degree = fn(radius).astype(float)
+    return degree
+
 def xy2xyz(x, y):
     """Transforms points from focal plane coordinates to points on
     a unit sphere
