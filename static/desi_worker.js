@@ -1,5 +1,6 @@
 importScripts("desi-fiber-locations.js");
 importScripts("transforms.js");
+/*global fiberpos_projection*/
 
 function getFiberMultiLatLngs(telra, teldec, clong) {
     var multilatlngs = [];
@@ -16,10 +17,10 @@ function getFiberMultiLatLngs(telra, teldec, clong) {
         var latlngs = [];
         var centerLat = 0, centerLng = 0;
         for (var j = 0; j < pointsPerFiber; ++j) {
-            ra = ras.subset(math.index(j));
-            dec = decs.subset(math.index(j));
-            ra_deg = degrees(ra);
-            dec_deg = degrees(dec);
+            var ra = ras.subset(math.index(j));
+            var dec = decs.subset(math.index(j));
+            var ra_deg = degrees(ra);
+            var dec_deg = degrees(dec);
             var latlng = [dec2lat(dec_deg), ra2long_C(ra_deg, clong)];
             centerLat += latlng[0];
             centerLng += latlng[1];
@@ -32,9 +33,9 @@ function getFiberMultiLatLngs(telra, teldec, clong) {
         latlngs.push(latlngs[0]);
         // Add to return value
         multilatlngs.push(latlngs);
-        hiddenCircles.push([centerLat, centerLng, fiberpos_projection["fibers"][i]]);
+        hiddenCircles.push([centerLat, centerLng, fiberpos_projection["fibers"][parseInt(i)]]);
     }
-    return { 'multilatlngs': multilatlngs, 'hiddenCircles': hiddenCircles };
+    return { multilatlngs, hiddenCircles };
 }
 
 onmessage = function(e) {
