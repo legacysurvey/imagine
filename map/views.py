@@ -1816,6 +1816,8 @@ class RebrickedMixin(object):
         # Original and scaled images are in ext 1.
         #return 1
         # ... except for images where fitsio (1.0.5) screwed up the fpack...
+        if not os.path.exists(fn):
+            return 1
         import fitsio
         F = fitsio.FITS(fn)
         print('File', fn, 'has', len(F), 'hdus')
@@ -2463,10 +2465,12 @@ class LegacySurveySplitLayer(MapLayer):
         return allcats,hdr
 
     def get_bricks(self):
+        from astrometry.util.fits import merge_tables
         BB = merge_tables([l.get_bricks() for l in self.layers])
         return BB
 
     def bricks_touching_radec_box(self, *args, **kwargs):
+        from astrometry.util.fits import merge_tables
         BB = merge_tables([l.bricks_touching_radec_box(*args, **kwargs)
                            for l in self.layers])
         return BB
