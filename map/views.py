@@ -1433,6 +1433,7 @@ class MapLayer(object):
             from astrometry.libkd.spherematch import match_radec
             import tempfile
             import numpy as np
+            import fitsio
             bricks = self.get_bricks()
             # HACK
             #brickrad = 3600. * 0.262 / 2 * np.sqrt(2.) / 3600.
