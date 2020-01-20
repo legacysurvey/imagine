@@ -122,7 +122,16 @@ var DesiFiberPos = DesiOverlay.extend({
                 this._worker = new Worker('{% static "desi_worker.js" %}');
                 var _this = this;
                 this._worker.addEventListener('message', function(e) {
-                    var polyline = L.polyline(e.data, {color: 'DeepSkyBlue', smoothFactor: 0.5, opacity: 0.2});
+                    var fiberpos = L.layerGroup();
+                    // Add fiber outlines
+                    var polyline = L.polyline(e.data['multilatlngs'], {color: 'DeepSkyBlue', smoothFactor: 0.5, opacity: 0.2});
+                    fiberpos.addLayer(polyline);
+                    // Add invisible circles to display fiber number
+                    for (var i = 0; i < e.data['hiddenCircles'].length; ++i) {
+                        var circ = L.circle([e.data['hiddenCircles'][i][0], e.data['hiddenCircles'][i][1]], { radius: 1500, opacity: 0, fillOpacity: 0 });
+                        circ.bindTooltip('Fiber: ' + e.data['hiddenCircles'][i][2].toString(), { permanent: false, interactive: false });
+                        fiberpos.addLayer(circ);
+                    }
                     // Remove the previous fiberpos layer if exists
                     if (_this._fiberpos) {
                         _this._layer.removeLayer(_this._fiberpos);
@@ -130,7 +139,7 @@ var DesiFiberPos = DesiOverlay.extend({
                     }
                     // Discard result if desi footprint is not being displayed
                     if (_this._show) {
-                        _this._fiberpos = polyline;
+                        _this._fiberpos = fiberpos;
                         _this._layer.addLayer(_this._fiberpos);
                     }
                     // Update displayed status

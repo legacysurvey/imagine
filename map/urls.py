@@ -14,6 +14,8 @@ urlpatterns = [
     url(r'^gfas', views.gfas),
     url(r'^ci', views.ci),
 
+    url(r'^gaia-stars-for-wcs', cats.gaia_stars_for_wcs),
+    
     # PHAT cluster catalog
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
 
@@ -86,7 +88,11 @@ urlpatterns = [
 
     # LSLGA galaxies
     url(r'^lslga/(\d+)/cat.json', cats.cat_lslga),
-    
+
+    url(r'^lslga-model/(\d+)/cat.json', cats.cat_lslga_model),
+
+    url(r'^GCs-PNe/(\d+)/cat.json', cats.cat_GCs_PNe),
+
     # Virgo cluster catalog (VCC) objects
     #url(r'^vcc/(\d+)/cat.json', views.cat_vcc),
 

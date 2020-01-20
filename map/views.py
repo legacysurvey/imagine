@@ -1293,7 +1293,7 @@ class MapLayer(object):
         if get_images:
             return rimgs
 
-        if "lslga" in req.GET:
+        if "lslga" in req.GET or "lslga-model" in req.GET:
 
             from PIL import Image, ImageDraw
             img = Image.open(tilefn)
@@ -1308,15 +1308,28 @@ class MapLayer(object):
             declo = dec - (img_cy * pixscale / 3600)
             dechi = dec + (img_cy * pixscale / 3600)
 
-            from map.cats import query_lslga_radecbox
-            galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
+            from map.cats import query_lslga_radecbox, query_lslga_model_radecbox
+            galaxies = None
+            if req.GET.get('lslga', None) == '':
+                lslgacolor_default = '#3388ff'
+                galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
+            elif req.GET.get('lslga-model', None) == '':
+                lslgacolor_default = '#ffaa33'
+                galaxies = query_lslga_model_radecbox(ralo, rahi, declo, dechi)
+            else:
+                galaxies, lslgacolor_default = None, None
 
             for r in galaxies if galaxies is not None else []:
 
                 RA, DEC = r.ra, r.dec
-                RAD = r.radius_arcsec
-                AB = r.ba
-                PA = r.pa
+                if req.GET.get('lslga', None) == '':
+                    RAD = r.radius_arcsec
+                    AB = r.ba
+                    PA = r.pa
+                elif req.GET.get('lslga-model', None) == '':
+                    RAD = r.radius_model_arcsec
+                    AB = r.ba_model
+                    PA = r.pa_model
 
                 if np.isnan(AB):
                     AB = 1
@@ -1332,7 +1345,7 @@ class MapLayer(object):
                 overlay = Image.new('RGBA', (overlay_width, overlay_height))
                 draw = ImageDraw.ImageDraw(overlay)
                 box_corners = (0, 0, overlay_width, overlay_height)
-                ellipse_color = '#' + req.GET.get('lslgacolor', '#3388ff').lstrip('#')
+                ellipse_color = '#' + req.GET.get('lslgacolor', lslgacolor_default).lstrip('#')
                 ellipse_width = int(np.round(float(req.GET.get('lslgawidth', 3)), 0))
                 draw.ellipse(box_corners, fill=None, outline=ellipse_color, width=ellipse_width)
 
@@ -1420,6 +1433,7 @@ class MapLayer(object):
             from astrometry.libkd.spherematch import match_radec
             import tempfile
             import numpy as np
+            import fitsio
             bricks = self.get_bricks()
             # HACK
             #brickrad = 3600. * 0.262 / 2 * np.sqrt(2.) / 3600.
@@ -1801,6 +1815,15 @@ class RebrickedMixin(object):
 
     def get_fits_extension(self, scale, fn):
         # Original and scaled images are in ext 1.
+        #return 1
+        # ... except for images where fitsio (1.0.5) screwed up the fpack...
+        if not os.path.exists(fn):
+            return 1
+        import fitsio
+        F = fitsio.FITS(fn)
+        print('File', fn, 'has', len(F), 'hdus')
+        if len(F) == 1:
+            return 0
         return 1
 
     def get_scaled_pattern(self):
@@ -2443,10 +2466,12 @@ class LegacySurveySplitLayer(MapLayer):
         return allcats,hdr
 
     def get_bricks(self):
+        from astrometry.util.fits import merge_tables
         BB = merge_tables([l.get_bricks() for l in self.layers])
         return BB
 
     def bricks_touching_radec_box(self, *args, **kwargs):
+        from astrometry.util.fits import merge_tables
         BB = merge_tables([l.bricks_touching_radec_box(*args, **kwargs)
                            for l in self.layers])
         return BB

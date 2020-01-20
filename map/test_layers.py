@@ -45,4 +45,10 @@ test_ccds = []
 # test_ccds.append(("dr8i-decam", "CCDs: DR8i DECam"))
 # test_ccds.append(("dr8i-90p-mos", "CCDs: DR8i MzLS+BASS"))
 
+test_layers.append(("dr9c", "DR9c images"))
+test_layers.append(("dr9c-model", "DR9c models"))
+test_layers.append(("dr9c-resid", "DR9c residuals"))
 
+test_layers.append(("dr9d-south", "DR9d south images"))
+test_layers.append(("dr9d-south-model", "DR9d south models"))
+test_layers.append(("dr9d-south-resid", "DR9d south residuals"))
