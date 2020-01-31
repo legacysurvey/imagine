@@ -86,10 +86,22 @@ def main():
     survey_dir = indir
 
     indir = '/global/cscratch1/sd/ziyaoz/dr9d-south/'
-    rsync = True
+    #rsync = True
     name = 'dr9d-south'
     pretty = 'DR9d south'
     survey_dir = indir
+
+    
+    # indir = '/global/cscratch1/sd/ziyaoz/dr9d-north/'
+    # #rsync = True
+    # name = 'dr9d-north'
+    # pretty = 'DR9d north'
+    # survey_dir = indir
+
+    # code runs:
+    #    rsync -LRarv /global/cscratch1/sd/ziyaoz/dr9d-south//./{coadd/*/*/*-{image-,model-,ccds}*.fits*,tractor} data/dr9d-south
+    # add my image-coadds:
+    #    rsync -LRarv /global/cscratch1/sd/dstn/dr9d-coadds/./coadd/*/*/*-{image-,ccds}*.fits* data/dr9d-south
     
     # survey_dir = '/global/cscratch1/sd/desiproc/dr7'
 
