@@ -1128,8 +1128,12 @@ def cat_gals(req, ver):
                os.path.join(settings.DATA_DIR,'galaxy-cats.fits'))
 
 def cat_GCs_PNe(req, ver):
-    return cat(req, ver, 'GCs-PNe',
-               os.path.join(settings.DATA_DIR,'NGC-star-clusters.fits'))
+    from astrometry.util.fits import fits_table
+    import numpy as np
+    T = fits_table(os.path.join(settings.DATA_DIR,'NGC-star-clusters.fits'))
+    T.alt_name = np.array(['' if n.startswith('N/A') else n.strip() for n in T.commonnames])
+    return cat(req, ver, 'GCs-PNe', None, T=T)
+               
 
 def cat_ps1(req, ver):
     ralo = float(req.GET['ralo'])
@@ -1143,7 +1147,7 @@ def cat_ps1(req, ver):
     return cat(req, ver, 'ps1',
                os.path.join(settings.DATA_DIR,'ps1-cat.fits'))
 
-def cat(req, ver, tag, fn):
+def cat(req, ver, tag, fn, T=None):
     import json
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
@@ -1157,8 +1161,9 @@ def cat(req, ver, tag, fn):
     from astrometry.util.fits import fits_table
     import numpy as np
 
-    T = fits_table(fn)
-    debug(len(T), 'catalog objects')
+    if T is None:
+        T = fits_table(fn)
+        debug(len(T), 'catalog objects')
     if ralo > rahi:
         # RA wrap
         T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
