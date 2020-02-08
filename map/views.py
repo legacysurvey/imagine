@@ -2467,7 +2467,7 @@ class LegacySurveySplitLayer(MapLayer):
 
     def get_bricks(self):
         from astrometry.util.fits import merge_tables
-        BB = merge_tables([l.get_bricks() for l in self.layers])
+        BB = merge_tables([l.get_bricks() for l in self.layers], columns='fillzero')
         return BB
 
     def bricks_touching_radec_box(self, *args, **kwargs):

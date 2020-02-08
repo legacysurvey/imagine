@@ -1131,9 +1131,9 @@ def cat_GCs_PNe(req, ver):
     from astrometry.util.fits import fits_table
     import numpy as np
     T = fits_table(os.path.join(settings.DATA_DIR,'NGC-star-clusters.fits'))
-    T.alt_name = np.array(['' if n.startswith('N/A') else n.strip() for n in T.commonnames])
+    #T.alt_name = np.array(['' if n.startswith('N/A') else n.strip() for n in T.commonnames])
     return cat(req, ver, 'GCs-PNe', None, T=T)
-               
+
 
 def cat_ps1(req, ver):
     ralo = float(req.GET['ralo'])
@@ -1181,11 +1181,22 @@ def cat(req, ver, tag, fn, T=None):
     if 'name' in T.columns():
         names = [t.strip() for t in T.name]
         rtn['name'] = names
-    # bright stars
+    # bright stars, GCs/PNe
     if 'alt_name' in T.columns():
         rtn.update(altname = [t.strip() for t in T.alt_name])
+
+    # if 'majax' in T.columns() and 'minax' in T.columns() and 'pa' in T.columns():
+    #     # GCs/PNe catalog
+    #     T.abRatio = T.minax / T.majax
+    #     T.posAngle = T.pa
+    #     T.rename('majax', 'radius')
+
     if 'radius' in T.columns():
         rtn.update(radiusArcsec=list(float(f) for f in T.radius * 3600.))
+
+    # if 'posAngle' in T.columns() and 'abRatio' in T.columns():
+    #     rtn.update(posAngle=list(float(f) for f in T.posAngle),
+    #                abRatio =list(float(f) for f in T.abRatio))
         
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
