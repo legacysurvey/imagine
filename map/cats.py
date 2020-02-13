@@ -812,8 +812,14 @@ def _cat_lslga(req, ver, model=False):
     if model:
         radius = [float(r) for r in T.radius_model_arcsec.astype(np.float32)]
         ab = [float(f) for f in T.ba_model.astype(np.float32)]
-        pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa_model.astype(np.float32)]
-        pa_disp = [float(f) if np.isfinite(f) else 0. for f in T.pa_model.astype(np.float32)]
+
+        pax = T.pa_model.copy().astype(np.float32)
+        pax[np.logical_not(np.isfinite(pax))] = 0.
+        pax[pax < 0] += 180.
+        pax[pax >= 180.] -= 180.
+
+        pa = [float(90.-f) for f in pax]
+        pa_disp = [float(f) for f in pax]
         color = ['#ffaa33']*len(T)
 
         return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
@@ -823,8 +829,14 @@ def _cat_lslga(req, ver, model=False):
     else:
         radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
         ab = [float(f) for f in T.ba.astype(np.float32)]
-        pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa.astype(np.float32)]
-        pa_disp = [float(f) if np.isfinite(f) else 0. for f in T.pa.astype(np.float32)]
+
+        pax = T.pa.copy().astype(np.float32)
+        pax[np.logical_not(np.isfinite(pax))] = 0.
+        pax[pax < 0] += 180.
+        pax[pax >= 180.] -= 180.
+
+        pa = [float(90.-f) for f in pax]
+        pa_disp = [float(f) for f in pax]
         color = ['#3388ff']*len(T)
         z = [float(z) if np.isfinite(z) else -1. for z in T.z.astype(np.float32)]
 
