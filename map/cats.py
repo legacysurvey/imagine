@@ -877,22 +877,33 @@ def query_lslga_model_radecbox(ralo, rahi, declo, dechi):
             return ba, pa
             
         ba, pa = [], []
-        for Tone in T:
-            ttype = Tone.type.strip()
-            if ttype == 'DEV' or ttype == 'COMP':
-                e1, e2 = Tone.shapedev_e1, Tone.shapedev_e2
-                bai, pai = get_ba_pa(e1, e2)
-            elif ttype == 'EXP' or ttype == 'REX':
-                e1, e2 = Tone.shapeexp_e1, Tone.shapeexp_e2
-                bai, pai = get_ba_pa(e1, e2)
-            else: # PSF
-                bai, pai = np.nan, np.nan
+        cols = T.get_columns()
+        for t in T:
+            ttype = t.type.strip()
+            if 'shapedev_r' in cols:
+                if ttype == 'DEV' or ttype == 'COMP':
+                    e1, e2 = t.shapedev_e1, t.shapedev_e2
+                    bai, pai = get_ba_pa(e1, e2)
+                elif ttype == 'EXP' or ttype == 'REX':
+                    e1, e2 = t.shapeexp_e1, t.shapeexp_e2
+                    bai, pai = get_ba_pa(e1, e2)
+                else: # PSF
+                    bai, pai = np.nan, np.nan
+            else:
+                # DR9
+                if ttype in ['DEV', 'EXP', 'REX', 'SER']:
+                    bai, pai = get_ba_pa(t.shape_e1, t.shape_p2)
+                else: # PSF
+                    bai, pai = np.nan, np.nan
             ba.append(bai)
             pa.append(pai)
         
         T.pa_model = np.hstack(pa)
         T.ba_model = np.hstack(ba)
-        T.radius_model_arcsec = T.fracdev * T.shapedev_r + (1 - T.fracdev) * T.shapeexp_r
+        if 'fracdev' in cols:
+            T.radius_model_arcsec = T.fracdev * T.shapedev_r + (1 - T.fracdev) * T.shapeexp_r
+        else:
+            T.radius_model_arcsec = T.shape_r
     return T
 
 def cat_spec(req, ver):
