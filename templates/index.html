@@ -557,7 +557,7 @@ var lslga_popup = function(json, i) {
         // matching map/cats.py : cat_lslga
         d25 = json['radiusArcsec'][i] * 2 / 60.;
         s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
-        s += '<br/>D(25)='+d25.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngle'][i].toFixed(1)+' deg<br/>';
+        s += '<br/>D(25)='+d25.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
         z = json['redshift'][i];
         t = json['type'][i];
         if (t.length > 0)
@@ -576,7 +576,7 @@ var lslga_model_popup = function(json, i) {
         // matching map/cats.py : cat_lslga_model
         r50 = json['radiusArcsec'][i] / 60.;
         s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
-        s += '<br/>r(50)='+r50.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngle'][i].toFixed(1)+' deg<br/>';
+        s += '<br/>r(50)='+r50.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
         t = json['type'][i];
         if (t.length > 0)
             s += 'Type: '+t+' ';
