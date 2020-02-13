@@ -1100,7 +1100,7 @@ class MapLayer(object):
 
                 #print('Resampling', img.shape)
                 try:
-                    Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
+                    Yo,Xo,Yi,Xi,[resamp] = resample_with_wcs(wcs, subwcs, [img])
                 except OverlapError:
                     #debug('Resampling exception')
                     continue
@@ -1118,6 +1118,7 @@ class MapLayer(object):
                     Xo = Xo[I]
                     Yi = Yi[I]
                     Xi = Xi[I]
+                    resamp = resamp[I]
 
                     #print('get_brick_mask:', len(Yo), 'pixels')
 
@@ -1127,14 +1128,14 @@ class MapLayer(object):
                 #       'Yi range', Yi.min(), Yi.max(),
                 #       'subwcs shape', subwcs.shape)
 
-                if not np.all(np.isfinite(img[Yi,Xi])):
-                    ok, = np.nonzero(np.isfinite(img[Yi,Xi]))
+                #if not np.all(np.isfinite(img[Yi,Xi])):
+                if not np.all(np.isfinite(resamp)):
+                    ok, = np.nonzero(np.isfinite(resamp))
                     Yo = Yo[ok]
                     Xo = Xo[ok]
                     Yi = Yi[ok]
                     Xi = Xi[ok]
-
-                    #print('finite pixels:', len(Yo))
+                    resamp = resamp[ok]
 
                 ok = self.filter_pixels(scale, img, wcs, subwcs, Yo,Xo,Yi,Xi)
                 if ok is not None:
@@ -1142,15 +1143,12 @@ class MapLayer(object):
                     Xo = Xo[ok]
                     Yi = Yi[ok]
                     Xi = Xi[ok]
-
-                    # print('filter pixels:', len(Yo))
+                    resamp = resamp[ok]
 
                 wt = self.get_pixel_weights(band, brick, scale)
 
-                # DEBUG
-                #nz = np.sum(rw == 0)
-
-                rimg[Yo,Xo] += img[Yi,Xi] * wt
+                #rimg[Yo,Xo] += img[Yi,Xi] * wt
+                rimg[Yo,Xo] += resamp * wt
                 rw  [Yo,Xo] += wt
 
                 #print('Coadded', len(Yo), 'pixels;', (nz-np.sum(rw==0)), 'new')
