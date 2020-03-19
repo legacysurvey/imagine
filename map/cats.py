@@ -24,6 +24,9 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
+    'dr9sv': [1,],
+    'dr9sv-north': [1,],
+    'dr9sv-south': [1,],
     'dr8': [1,],
     'dr8-north': [1,],
     'dr8-south': [1,],
@@ -350,7 +353,8 @@ def get_random_galaxy(layer=None):
     elif layer == 'decals-dr5':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr5.fits')
         drnum = 5
-
+    elif layer == 'hsc2':
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
     else:
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr8.fits')
 
@@ -385,7 +389,7 @@ def get_random_galaxy(layer=None):
     name = galaxycat.name[i].strip()
     return ra,dec,name
 
-def create_galaxy_catalog(galfn, drnum):
+def create_galaxy_catalog(galfn, drnum, layer=None):
     import astrometry.catalogs
     from astrometry.util.fits import fits_table, merge_tables
     import fitsio
@@ -393,13 +397,15 @@ def create_galaxy_catalog(galfn, drnum):
     from astrometry.libkd.spherematch import match_radec
     import numpy as np
 
-    fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ngc2000.fits')
+    #fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ngc2000.fits')
+    fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'openngc-ngc.fits')
     NGC = fits_table(fn)
     print(len(NGC), 'NGC objects')
     NGC.name = np.array(['NGC %i' % n for n in NGC.ngcnum])
     NGC.delete_column('ngcnum')
     
-    fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ic2000.fits')
+    #fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'ic2000.fits')
+    fn = os.path.join(os.path.dirname(astrometry.catalogs.__file__), 'openngc-ic.fits')
     IC = fits_table(fn)
     print(len(IC), 'IC objects')
     IC.name = np.array(['IC %i' % n for n in IC.icnum])
@@ -422,19 +428,26 @@ def create_galaxy_catalog(galfn, drnum):
     from map.views import get_survey
 
     bricks = None
-    if drnum == 4:
-        survey = get_survey('mzls+bass-dr4')
-        bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-in-dr4.fits'))
-    elif drnum == 6:
-        survey = get_survey('mzls+bass-dr6')
-        bricks = survey.get_bricks()
-        bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
-    elif drnum == 5:
-        survey = get_survey('decals-dr5')
-    elif drnum == 7:
-        survey = get_survey('decals-dr7')
-    #elif drnum == 8:
-    #    survey = get_survey('dr8')
+
+    if layer is not None:
+        bricks = layer.get_bricks()
+        name = layer.name
+        survey = None
+    else:
+        name = 'dr%i' % drnum
+        if drnum == 4:
+            survey = get_survey('mzls+bass-dr4')
+            bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-in-dr4.fits'))
+        elif drnum == 6:
+            survey = get_survey('mzls+bass-dr6')
+            bricks = survey.get_bricks()
+            bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
+        elif drnum == 5:
+            survey = get_survey('decals-dr5')
+        elif drnum == 7:
+            survey = get_survey('decals-dr7')
+        #elif drnum == 8:
+        #    survey = get_survey('dr8')
 
     if bricks is None:
         bricks = survey.get_bricks()
@@ -463,10 +476,6 @@ def create_galaxy_catalog(galfn, drnum):
 
 
     for brick in bricks:
-        fn = survey.find_file('nexp', brick=brick.brickname, band='r')
-        if not os.path.exists(fn):
-            print('Does not exist:', fn)
-            continue
 
         I = np.flatnonzero((T.ra  >= brick.ra1 ) * (T.ra  < brick.ra2 ) *
                            (T.dec >= brick.dec1) * (T.dec < brick.dec2))
@@ -474,6 +483,15 @@ def create_galaxy_catalog(galfn, drnum):
         if len(I) == 0:
             continue
 
+        keep[I] = True
+        
+        if survey is None:
+            continue
+        fn = survey.find_file('nexp', brick=brick.brickname, band='r')
+        if not os.path.exists(fn):
+            print('Does not exist:', fn)
+            continue
+        
         nn,hdr = fitsio.read(fn, header=True)
         h,w = nn.shape
         #imgfn = survey.find_file('image', brick=brick.brickname, band='r')
@@ -488,7 +506,7 @@ def create_galaxy_catalog(galfn, drnum):
         keep[I[n > 0]] = True
 
     T.cut(keep)
-    fn = '/tmp/galaxies-in-dr%i.fits' % drnum
+    fn = '/tmp/galaxies-in-%s.fits' % name
     T.writeto(fn)
     print('Wrote', fn)
     T.writeto(galfn)
@@ -1342,6 +1360,13 @@ def _get_decals_cat(wcs, tag='decals'):
 
 if __name__ == '__main__':
     import sys
+
+    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
+    from map.views import get_layer
+    layer = get_layer('hsc2')
+    create_galaxy_catalog(galfn, None, layer=layer)
+
+
     from django.test import Client
     c = Client()
     #r = c.get('/lslga/1/cat.json?ralo=259.2787&rahi=259.7738&declo=35.9422&dechi=36.1656')

@@ -70,6 +70,18 @@ tileversions = {
     'phat': [1,],
     'm33': [1,],
 
+    'dr9sv-north': [1],
+    'dr9sv-north-model': [1],
+    'dr9sv-north-resid': [1],
+
+    'dr9sv-south': [1],
+    'dr9sv-south-model': [1],
+    'dr9sv-south-resid': [1],
+
+    'dr9sv': [1],
+    'dr9sv-model': [1],
+    'dr9sv-resid': [1],
+
     'dr8-north': [1],
     'dr8-north-model': [1],
     'dr8-north-resid': [1],
@@ -210,6 +222,18 @@ def _index(req,
         enable_dr8_south_models = settings.ENABLE_DR8,
         enable_dr8_south_resids = settings.ENABLE_DR8,
         enable_dr8_south_overlays = settings.ENABLE_DR8,
+        enable_dr9sv = settings.ENABLE_DR9SV,
+        enable_dr9sv_overlays = settings.ENABLE_DR9SV,
+        enable_dr9sv_models = settings.ENABLE_DR9SV,
+        enable_dr9sv_resids = settings.ENABLE_DR9SV,
+        enable_dr9sv_north = settings.ENABLE_DR9SV,
+        enable_dr9sv_north_models = settings.ENABLE_DR9SV,
+        enable_dr9sv_north_resids = settings.ENABLE_DR9SV,
+        enable_dr9sv_north_overlays = settings.ENABLE_DR9SV,
+        enable_dr9sv_south = settings.ENABLE_DR9SV,
+        enable_dr9sv_south_models = settings.ENABLE_DR9SV,
+        enable_dr9sv_south_resids = settings.ENABLE_DR9SV,
+        enable_dr9sv_south_overlays = settings.ENABLE_DR9SV,
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         enable_des_dr1 = settings.ENABLE_DES_DR1,
@@ -5015,6 +5039,14 @@ def get_layer(name, default=None):
         layer = LegacySurveySplitLayer(name, north, south, 32.375)
         layer.drname = 'Legacy Surveys DR8'
 
+    elif name in ['dr9sv', 'dr9sv-model', 'dr9sv-resid']:
+        suff = name[5:]
+        north = get_layer('dr9sv-north' + suff)
+        south = get_layer('dr9sv-south' + suff)
+        ### NOTE, must also change the javascript in template/index.html !
+        layer = LegacySurveySplitLayer(name, north, south, 32.375)
+        layer.drname = 'Legacy Surveys DR9-SV'
+
     elif name == 'phat':
         layer = PhatLayer('phat')
 
@@ -5473,7 +5505,13 @@ if __name__ == '__main__':
     #r = c.get('/urls')
     #r = c.get('/dr8/1/14/16023/6558.cat.json')
     #r = c.get('/cutout.fits?ra=212.1944&dec=4.9083&layer=dr8-south&pixscale=0.27')
-    r = c.get('/cutout_panels/dr8-south/680175/N5/?ra=5.4638&dec=22.4002&size=100')
+    #r = c.get('/cutout_panels/dr8-south/680175/N5/?ra=5.4638&dec=22.4002&size=100')
+    #r = c.get('/dr9sv-north/1/11/1225/827.jpg')
+    #r = c.get('/dr9sv-south/1/12/2412/1671.jpg')
+    #r = c.get('/dr9sv-north/1/10/378/377.jpg')
+    #r = c.get('/dr9sv-north/1/9/189/188.jpg')
+    #r = c.get('/dr9sv-north/1/11/1220/823.jpg')
+    r = c.get('/dr9sv-north/1/10/396/372.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
@@ -5488,7 +5526,6 @@ if __name__ == '__main__':
     print('Got:', response.status_code)
     print('Content:', response.content)
     sys.exit(0)
-
 
     class duck(object):
         pass

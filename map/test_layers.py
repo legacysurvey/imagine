@@ -45,9 +45,9 @@ test_ccds = []
 # test_ccds.append(("dr8i-decam", "CCDs: DR8i DECam"))
 # test_ccds.append(("dr8i-90p-mos", "CCDs: DR8i MzLS+BASS"))
 
-test_layers.append(("dr9c", "DR9c images"))
-test_layers.append(("dr9c-model", "DR9c models"))
-test_layers.append(("dr9c-resid", "DR9c residuals"))
+# test_layers.append(("dr9c", "DR9c images"))
+# test_layers.append(("dr9c-model", "DR9c models"))
+# test_layers.append(("dr9c-resid", "DR9c residuals"))
 
 test_layers.append(("dr9d-south", "DR9d south images"))
 test_layers.append(("dr9d-south-model", "DR9d south models"))
@@ -62,44 +62,15 @@ test_layers.append(("dr9d-north-resid", "DR9d north residuals"))
 test_cats.append(("dr9d-north", "Catalog: DR9d north"))
 
 
-test_layers.append(("dr9d-north", "DR9d north images"))
+# test_layers.append(("dr9e-north", "DR9-SV north images"))
+# test_layers.append(("dr9e-north-model", "DR9-SV north models"))
+# test_layers.append(("dr9e-north-resid", "DR9-SV north residuals"))
+# 
+# test_cats.append(("dr9e-north", "Catalog: DR9-SV north"))
+# 
+# test_layers.append(("dr9e-south", "DR9-SV south images"))
+# test_layers.append(("dr9e-south-model", "DR9-SV south models"))
+# test_layers.append(("dr9e-south-resid", "DR9-SV south residuals"))
+# 
+# test_cats.append(("dr9e-south", "Catalog: DR9-SV south"))
 
-test_layers.append(("dr9d-north-model", "DR9d north models"))
-
-test_layers.append(("dr9d-north-resid", "DR9d north residuals"))
-
-test_layers.append(("dr9d-north", "DR9d north images"))
-
-test_layers.append(("dr9d-north-model", "DR9d north models"))
-
-test_layers.append(("dr9d-north-resid", "DR9d north residuals"))
-
-test_layers.append(("dr9d-north", "DR9d north images"))
-
-test_layers.append(("dr9d-north-model", "DR9d north models"))
-
-test_layers.append(("dr9d-north-resid", "DR9d north residuals"))
-
-test_layers.append(("dr9d-south", "DR9d south images"))
-
-test_layers.append(("dr9d-south-model", "DR9d south models"))
-
-test_layers.append(("dr9d-south-resid", "DR9d south residuals"))
-
-test_layers.append(("dr9d-south", "DR9d south images"))
-
-test_layers.append(("dr9d-south-model", "DR9d south models"))
-
-test_layers.append(("dr9d-south-resid", "DR9d south residuals"))
-
-test_layers.append(("dr9d-south", "DR9d south images"))
-
-test_layers.append(("dr9d-south-model", "DR9d south models"))
-
-test_layers.append(("dr9d-south-resid", "DR9d south residuals"))
-
-test_layers.append(("dr9d-south", "DR9d south images"))
-
-test_layers.append(("dr9d-south-model", "DR9d south models"))
-
-test_layers.append(("dr9d-south-resid", "DR9d south residuals"))

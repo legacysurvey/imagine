@@ -62,7 +62,7 @@ def _one_tile(X):
                  return_if_not_found=True)
 
     elif kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
-                  'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
+                  'mzl1s+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
         v = 1
         layer = get_layer(kind)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
@@ -796,7 +796,8 @@ def main():
     #     if opt.minra is None:
     #         opt.minra = 0
     
-    elif opt.kind in ['dr8-north', 'dr8-north-model', 'dr8-north-resid']:
+    elif opt.kind in ['dr8-north', 'dr8-north-model', 'dr8-north-resid',
+                      'dr9sv-north', 'dr9sv-north-model', 'dr9sv-north-resid']:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
@@ -806,7 +807,8 @@ def main():
         if opt.minra is None:
             opt.minra = 0
 
-    elif opt.kind in ['dr8-south', 'dr8-south-model', 'dr8-south-resid']:
+    elif opt.kind in ['dr8-south', 'dr8-south-model', 'dr8-south-resid',
+                      'dr9sv-south', 'dr9sv-south-model', 'dr9sv-south-resid']:
         if opt.maxdec is None:
             opt.maxdec = 40
         if opt.mindec is None:
@@ -884,7 +886,14 @@ def main():
                         'dr9c', 'dr9c-model', 'dr9c-resid',
                         'dr9d-south', 'dr9d-south-model', 'dr9d-south-resid',
                         'dr9d-north', 'dr9d-north-model', 'dr9d-north-resid',
-                    ] or opt.kind.startswith('dr8-test'): # or True:
+                        #
+                        'dr9e-south', 'dr9e-south-model', 'dr9e-south-resid',
+                        'dr9e-north', 'dr9e-north-model', 'dr9e-north-resid',
+                        #
+                        'dr9sv-south', 'dr9sv-south-model', 'dr9sv-south-resid',
+                        'dr9sv-north', 'dr9sv-north-model', 'dr9sv-north-resid',
+                        'dr9sv', 'dr9sv-model', 'dr9sv-resid',
+        ] or opt.kind.startswith('dr8-test'): # or True:
             from map.views import get_layer
 
             layer = get_layer(opt.kind)
