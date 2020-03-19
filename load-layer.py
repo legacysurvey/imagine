@@ -74,22 +74,36 @@ def main():
     name = 'dr8i-90p-mos'
     pretty = 'DR8i MzLS+BASS'
 
+
+
     sublayers = ['', '-model', '-resid']
     subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
     
-    #indir = '/global/cscratch1/sd/ziyaoz/dr9c/'
-    #indir = '/global/cscratch1/sd/dstn/dr9c-fpack/'
-    #rsync = True
-    indir = 'data/dr9c'
-    name = 'dr9c'
-    pretty = 'DR9c'
-    survey_dir = indir
+    # #indir = '/global/cscratch1/sd/ziyaoz/dr9c/'
+    # #indir = '/global/cscratch1/sd/dstn/dr9c-fpack/'
+    # #rsync = True
+    # indir = 'data/dr9c'
+    # name = 'dr9c'
+    # pretty = 'DR9c'
+    # survey_dir = indir
+    # 
+    # indir = '/global/cscratch1/sd/ziyaoz/dr9d-south/'
+    # #rsync = True
+    # name = 'dr9d-south'
+    # pretty = 'DR9d south'
+    # survey_dir = indir
 
-    indir = '/global/cscratch1/sd/ziyaoz/dr9d-south/'
-    rsync = True
-    name = 'dr9d-south'
-    pretty = 'DR9d south'
-    survey_dir = indir
+    
+    # indir = '/global/cscratch1/sd/ziyaoz/dr9d-north/'
+    # #rsync = True
+    # name = 'dr9d-north'
+    # pretty = 'DR9d north'
+    # survey_dir = indir
+
+    # code runs:
+    #    rsync -LRarv /global/cscratch1/sd/ziyaoz/dr9d-south//./{coadd/*/*/*-{image-,model-,ccds}*.fits*,tractor} data/dr9d-south
+    # add my image-coadds:
+    #    rsync -LRarv /global/cscratch1/sd/dstn/dr9d-coadds/./coadd/*/*/*-{image-,ccds}*.fits* data/dr9d-south
     
     # survey_dir = '/global/cscratch1/sd/desiproc/dr7'
 
@@ -99,6 +113,17 @@ def main():
     #survey_dir = '/global/cscratch1/sd/dstn/dr8-depthcut'
     #survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
 
+    #rsync = True
+    rsync = False
+    #survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurv
+
+    side = 'north'
+    #side = 'south'
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9e4/%s' % side
+    indir = survey_dir
+    name = 'dr9sv-%s' % side
+    pretty = 'DR9-SV %s' % side
 
     datadir = 'data'
 
@@ -114,9 +139,18 @@ def main():
     basedir = os.path.join(datadir, name)
 
     if rsync:
-        cmd = 'rsync -LRarv %s/./{coadd/*/*/*-{image-,model-,ccds}*.fits*,tractor} %s/%s' % (indir, datadir, name)
+        for sub in ['image-g', 'image-r', 'image-z', 'model-g', 'model-r', 'model-z', 'ccds']:
+            cmd = 'rsync -LRarv %s/./coadd/*/*/*-%s*.fits* %s/%s' % (indir, sub, datadir, name)
+            print(cmd)
+            os.system(cmd)
+
+        cmd = 'rsync -LRarv %s/./tractor %s/%s' % (indir, datadir, name)
         print(cmd)
         os.system(cmd)
+        
+        # cmd = 'rsync -LRarv %s/./{coadd/*/*/*-{image-,model-,ccds}*.fits*,tractor} %s/%s' % (indir, datadir, name)
+        # print(cmd)
+        # os.system(cmd)
 
         # ...?
         cmd = 'rsync -Rarv %s/./{images,survey-ccds*.fits} %s/%s' % (survey_dir, datadir, name)
@@ -162,7 +196,7 @@ def main():
     bricks.writeto(brickfn)
     print('Wrote', brickfn)
 
-    threads = 8
+    threads = 16
     tharg = '--threads %i ' % threads
     #tharg = ''
 
