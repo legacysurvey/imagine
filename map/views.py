@@ -3819,6 +3819,13 @@ def get_survey(name):
         south.layer = 'dr8-south'
         survey = SplitSurveyData(north, south)
 
+    elif name == 'dr9sv':
+        north = get_survey('dr9sv-north')
+        north.layer = 'dr9sv-north'
+        south = get_survey('dr9sv-south')
+        south.layer = 'dr9sv-south'
+        survey = SplitSurveyData(north, south)
+        
     #elif name in [
     #        #'decals-dr5',
     #        #'decals-dr7', 'mzls+bass-dr4', 'mzls+bass-dr6', 'eboss']:
@@ -5511,7 +5518,8 @@ if __name__ == '__main__':
     #r = c.get('/dr9sv-north/1/10/378/377.jpg')
     #r = c.get('/dr9sv-north/1/9/189/188.jpg')
     #r = c.get('/dr9sv-north/1/11/1220/823.jpg')
-    r = c.get('/dr9sv-north/1/10/396/372.jpg')
+    #r = c.get('/dr9sv-north/1/10/396/372.jpg')
+    r = c.get('/bricks/?ralo=33.5412&rahi=33.5722&declo=-2.2242&dechi=-2.2070&layer=dr9sv')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
