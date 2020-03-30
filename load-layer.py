@@ -113,17 +113,22 @@ def main():
     #survey_dir = '/global/cscratch1/sd/dstn/dr8-depthcut'
     #survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
 
-    #rsync = True
-    rsync = False
+    rsync = True
     #survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurv
 
     side = 'north'
     #side = 'south'
 
-    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9e4/%s' % side
+    #survey_dir = '/global/cscratch1/sd/ziyaoz/dr9e4/%s' % side
     indir = survey_dir
     name = 'dr9sv-%s' % side
     pretty = 'DR9-SV %s' % side
+
+    rsync = False
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    indir = '/global/cscratch1/sd/dstn/fornax'
+    name = 'fornax'
+    pretty = 'Fornax'
 
     datadir = 'data'
 

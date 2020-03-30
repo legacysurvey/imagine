@@ -797,7 +797,8 @@ def main():
     #         opt.minra = 0
     
     elif opt.kind in ['dr8-north', 'dr8-north-model', 'dr8-north-resid',
-                      'dr9sv-north', 'dr9sv-north-model', 'dr9sv-north-resid']:
+                      'dr9sv-north', 'dr9sv-north-model', 'dr9sv-north-resid',
+                      ]:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
@@ -808,7 +809,8 @@ def main():
             opt.minra = 0
 
     elif opt.kind in ['dr8-south', 'dr8-south-model', 'dr8-south-resid',
-                      'dr9sv-south', 'dr9sv-south-model', 'dr9sv-south-resid']:
+                      'dr9sv-south', 'dr9sv-south-model', 'dr9sv-south-resid',
+                      'fornax', 'fornax-model', 'fornax-resid']:
         if opt.maxdec is None:
             opt.maxdec = 40
         if opt.mindec is None:
@@ -893,6 +895,7 @@ def main():
                         'dr9sv-south', 'dr9sv-south-model', 'dr9sv-south-resid',
                         'dr9sv-north', 'dr9sv-north-model', 'dr9sv-north-resid',
                         'dr9sv', 'dr9sv-model', 'dr9sv-resid',
+                        'fornax', 'fornax-model', 'fornax-resid',
         ] or opt.kind.startswith('dr8-test'): # or True:
             from map.views import get_layer
 

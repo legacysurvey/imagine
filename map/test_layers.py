@@ -74,3 +74,8 @@ test_cats.append(("dr9d-north", "Catalog: DR9d north"))
 # 
 # test_cats.append(("dr9e-south", "Catalog: DR9-SV south"))
 
+
+test_layers.append(("fornax", "Fornax images"))
+test_layers.append(("fornax-model", "Fornax models"))
+test_layers.append(("fornax-resid", "Fornax residuals"))
+
