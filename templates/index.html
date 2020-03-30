@@ -611,6 +611,80 @@ var LSLGACatalogModel = CatalogOverlay.extend({
 
 });
 
+var MangaCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+      var label = '<a href="https://dr16.sdss.org/marvin/galaxy/' + json['plate'][i] + '-' + json['ifudsgn'][i] + '/">' + json['name'][i]
+                        + '  (' + json['plate'][i]+'-'+json['ifudsgn'][i] + ')</a>';
+        return label;
+    },
+
+    getLayer: function(result) {
+        var showlabels = (map.getZoom() >= this._labelsMinZoom);
+        var rdlist = result['rd'];
+        var group = [];
+        var clong = map.getCenter().lng;
+        var tooltipStyle = this.getTooltipStyle();
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            var style = this._style;
+  /*
+            var color = this.getColor(result, i);
+            if (color !== undefined) {
+                style = Object.assign(style, {'color':color});
+            }
+   */
+            var color = 'yellow';
+            var poly = [];
+            var jhex = result['hexes'][i];
+            console.log('Manga row ' + i + ': hex size ' + jhex.length);
+            for (var j=0, plen=jhex.length; j<plen; j++) {
+                poly.push([dec2lat(jhex[j][1]), ra2long_C(jhex[j][0], clong)]);
+            }
+            var hex = L.polygon(poly, {fill:false, color:color, weight:4});
+
+	        if (showlabels) {
+                var txt = this.getLabel(result, i);
+                if (txt.length > 0) {
+                    hex.bindTooltip(txt, tooltipStyle);
+                }
+	        }
+            var txt = this.getPopupText(result, i);
+            if (txt.length > 0) {
+                hex.popupText = txt;
+                hex.on('click', function(e) {
+                    popup.setLatLng(e.latlng)
+                         .setContent(e.target.popupText)
+                         .openOn(map);
+                    L.DomEvent.stopPropagation(e);
+                });
+            }
+
+            group.push(hex);
+
+            var fibers = [];
+            var jfibs = result['fibers'][i];
+            for (var j=0, plen=jfibs.length; j<plen; j++) {
+                circ = L.circle([dec2lat(jfibs[j][1]), ra2long_C(jfibs[j][0], clong)],
+                                arcsecToMeters(1.0),
+                                {'color':'yellow', 'fillOpacity':0.0, 'weight':1,
+                                 'opacity': 0.3});
+                fibers.push(circ);
+
+                group.push(circ);
+            }
+            //group.push(L.layerGroup(fibers));
+
+        }
+
+        return L.layerGroup(group);
+    },
+
+
+});
+
 var SdssSpectraCatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
         var label = '<a href="https://dr14.sdss.org/optical/spectrum/view?mjd=' +
@@ -3084,6 +3158,13 @@ var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
                                    'minZoom': 8,
                                    'urlTerm': 'spectra'});
 
+var manga = new MangaCatalog('manga', 'MaNGa IFU Spectra',
+                                  {'url': url,
+                                   'radius': 300,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 8,
+                                   'urlTerm': 'manga'});
+
 var specDeep2 = new Deep2SpectraCatalog('spec-deep2', 'DEEP2 Spectra',
                                   {'radius': 100,
                                    'labelsMinZoom': 11,
@@ -3198,7 +3279,7 @@ var overlays = [
     gaia2,
     sdsscat,
     {% if enable_spectra %}
-    spec, plateOverlay, specDeep2,
+    manga, spec, plateOverlay, specDeep2,
     {% endif %}
     {% if enable_desi_targets %}
     desi_sv_targets8,
@@ -3550,6 +3631,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      {% if enable_spectra %}
      { label: 'Spectroscopy',
        children: [
+           findoverlay('manga'),
            findoverlay('spec'),
            findoverlay('sdss-plates'),
            findoverlay('spec-deep2'),

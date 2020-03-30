@@ -99,6 +99,8 @@ urlpatterns = [
     # SDSS Spectroscopy
     url(r'^spec/(\d+)/cat.json', cats.cat_spec),
 
+    url(r'^manga/(\d+)/cat.json', cats.cat_manga),
+
     # Bright stars
     url(r'^bright/(\d+)/cat.json', cats.cat_bright),
 

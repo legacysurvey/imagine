@@ -5521,7 +5521,8 @@ if __name__ == '__main__':
     #r = c.get('/dr9sv-north/1/9/189/188.jpg')
     #r = c.get('/dr9sv-north/1/11/1220/823.jpg')
     #r = c.get('/dr9sv-north/1/10/396/372.jpg')
-    r = c.get('/bricks/?ralo=33.5412&rahi=33.5722&declo=-2.2242&dechi=-2.2070&layer=dr9sv')
+    #r = c.get('/bricks/?ralo=33.5412&rahi=33.5722&declo=-2.2242&dechi=-2.2070&layer=dr9sv')
+    r = c.get('/manga/1/cat.json?ralo=194.4925&rahi=194.5544&declo=29.0022&dechi=29.0325')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
