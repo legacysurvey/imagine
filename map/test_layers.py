@@ -2,35 +2,6 @@ test_layers = []
 test_cats = []
 test_ccds = []
 
-# test_layers.append(("dr8a", "DR8a (rc) images"))
-# test_layers.append(("dr8a-model", "DR8a (rc) models"))
-# test_layers.append(("dr8a-resid", "DR8a (rc) residuals"))
-# 
-# test_layers.append(("dr8b-decam", "DR8b DECam images"))
-# test_layers.append(("dr8b-decam-model", "DR8b DECam models"))
-# test_layers.append(("dr8b-decam-resid", "DR8b DECam residuals"))
-# 
-# test_layers.append(("dr8b-90p-mos", "DR8b BASS+MzLS images"))
-# test_layers.append(("dr8b-90p-mos-model", "DR8b BASS+MzLS models"))
-# test_layers.append(("dr8b-90p-mos-resid", "DR8b BASS+MzLS residuals"))
-# 
-# test_cats.append(("dr8b-decam", "Catalog: DR8b DECam"))
-# test_cats.append(("dr8b-90p-mos", "Catalog: DR8b BASS+MzLS"))
-# 
-# test_layers.append(("dr8c-90p-mos", "DR8c BASS+MzLS images"))
-# test_layers.append(("dr8c-90p-mos-model", "DR8c BASS+MzLS models"))
-# test_layers.append(("dr8c-90p-mos-resid", "DR8c BASS+MzLS residuals"))
-# 
-# test_cats.append(("dr8c-90p-mos", "Catalog: DR8c BASS+MzLS"))
-# 
-# test_layers.append(("dr8c-decam", "DR8c DECam images"))
-# test_layers.append(("dr8c-decam-model", "DR8c DECam models"))
-# test_layers.append(("dr8c-decam-resid", "DR8c DECam residuals"))
-# 
-# test_cats.append(("dr8c-decam", "Catalog: DR8c DECam"))
-# test_ccds.append(("dr8c-decam", "CCDs: DR8c DECam"))
-# 
-# 
 # test_layers.append(("dr8i-decam", "DR8i DECam images"))
 # test_layers.append(("dr8i-decam-model", "DR8i DECam models"))
 # test_layers.append(("dr8i-decam-resid", "DR8i DECam residuals"))
@@ -78,4 +49,10 @@ test_cats.append(("dr9d-north", "Catalog: DR9d north"))
 test_layers.append(("fornax", "Fornax images"))
 test_layers.append(("fornax-model", "Fornax models"))
 test_layers.append(("fornax-resid", "Fornax residuals"))
+
+test_ccds.append(("fornax", "Fornax (DR9) CCDs"))
+
+test_layers.append(("dr9-test-9.2", "DR9.2 test images"))
+test_layers.append(("dr9-test-9.2-model", "DR9.2 test models"))
+test_layers.append(("dr9-test-9.2-resid", "DR9.2 test residuals"))
 

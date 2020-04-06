@@ -2744,6 +2744,7 @@ var expOverlay9svs = new CircleOverlay('dr9sv-south-exps',
                                     });
 {% endif %}
 
+
                                                      
 var brickOverlay = new PolygonOverlay('decals-bricks', 'Legacy Surveys Bricks',
                                       {'url': bricks_url,
@@ -2868,10 +2869,6 @@ var polygonOverlays = [
     plateOverlay,
     {% endif %}
 ];
-
-for (var i=0; i<polygonOverlays.length; i++) {
-    polygonOverlays[i].on('loaded', function() { inbrickccdUpdate(); });
-}
 
 {% if enable_dr4_overlays %}
 var mzlsbasscat4 = new DecalsCatalogLayer(tileWatcher,
@@ -3321,9 +3318,16 @@ var ccds = new PolygonOverlay('{{name}}-ccds', '{{pretty}}',
                                      'detail_list': ccd_detail_list,
                                      'url_name': '{{name}}',
                                     });
-overlays.push(ccds);
+ overlays.push(ccds);
+ polygonOverlays.push(ccds);
+ 
 {% endfor %}
 
+for (var i=0; i<polygonOverlays.length; i++) {
+    polygonOverlays[i].on('loaded', function() { inbrickccdUpdate(); });
+}
+
+ 
 {% for name,pretty in test_cats %}
   var testcat = new DecalsCatalogLayer(tileWatcher,
                                        '{{name}}', '{{pretty}}',

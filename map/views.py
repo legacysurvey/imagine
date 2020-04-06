@@ -3,7 +3,6 @@ if __name__ == '__main__':
     ## NOTE, if you want to run this from the command-line, probably have to do so
     # from sgn04 node within the virtualenv.
     import sys
-    #sys.path.insert(0, 'django-1.9')
     sys.path.insert(0, 'django-2.2.4')
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
@@ -3786,7 +3785,7 @@ def get_survey(name):
         print('Cache hit for survey', name)
         return surveys[name]
 
-    if '/' in name or '.' in name:
+    if '/' in name or '..' in name:
         return None
 
     #debug('Creating LegacySurveyData() object for "%s"' % name)
@@ -3831,7 +3830,8 @@ def get_survey(name):
     #        #'decals-dr7', 'mzls+bass-dr4', 'mzls+bass-dr6', 'eboss']:
     #    survey = MyLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
-
+    print('dirnm', dirnm, 'exists?', os.path.exists(dirnm))
+    
     if survey is None and not os.path.exists(dirnm):
         return None
 
@@ -5521,7 +5521,8 @@ if __name__ == '__main__':
     #r = c.get('/dr9sv-north/1/10/396/372.jpg')
     #r = c.get('/bricks/?ralo=33.5412&rahi=33.5722&declo=-2.2242&dechi=-2.2070&layer=dr9sv')
     #r = c.get('/manga/1/cat.json?ralo=194.4925&rahi=194.5544&declo=29.0022&dechi=29.0325')
-    r = c.get('/fornax-model/1/11/1823/1233.jpg')
+    #r = c.get('/fornax-model/1/11/1823/1233.jpg')
+    r = c.get('/dr9-test-9.2/1/14/14809/8145.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

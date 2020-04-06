@@ -4,7 +4,7 @@ from map import views
 from map import cats
 from map import cutouts
 
-survey_regex = r'[\w +-]+'
+survey_regex = r'[\w\. +-]+'
 layer_regex = r'\{id\}|' + survey_regex
 
 urlpatterns = [

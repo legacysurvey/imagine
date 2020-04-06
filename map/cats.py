@@ -867,7 +867,7 @@ def _cat_lslga(req, ver, model=False):
 def query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi):
     ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
     # max radius for LSLGA entries?!
-    lslga_radius = 1.0
+    lslga_radius = 2.0
     T = cat_query_radec(fn, ra, dec, radius + lslga_radius)
     if T is None:
         return None

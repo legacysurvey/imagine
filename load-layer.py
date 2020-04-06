@@ -130,6 +130,12 @@ def main():
     name = 'fornax'
     pretty = 'Fornax'
 
+    rsync = True
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    indir = '/global/cscratch1/sd/dstn/dr9.2'
+    name = 'dr9-test-9.2'
+    pretty = 'DR9.2 test'
+
     datadir = 'data'
 
     survey = LegacySurveyData(survey_dir=survey_dir)
