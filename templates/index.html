@@ -39,6 +39,23 @@
   .gfa-label {
   border: 0px solid #666;
   }
+
+  
+.tooltipbg {
+  background: black;
+  opacity: 0.5;
+  border: 2px solid white;
+  }
+//  .leaflet-tooltip-left.tooltipbg::after {
+//  }
+  
+//.leaflet-tooltip-left.tooltipbg::before {
+ // border-left-color: cyan;
+//}
+//.leaflet-tooltip-right.tooltipbg::before {
+//  border-right-color: cyan;
+//  }
+
 </style>
 
 
@@ -545,6 +562,27 @@ var GCsPNeCatalog = CatalogOverlay.extend({
 	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
             oname.replace(' ','+') + '">' + name + '</a>';
         return name;
+    },
+});
+
+var StarMaskCatalog = CatalogOverlay.extend({
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this._style = {'fillOpacity':0,
+                       'weight':3,
+                      };
+      },
+
+    getLabel: function(json, i) {
+        return json['name'][i];
+    },
+    getPopupText: function(json, i) {
+        return '';
+    },
+    getTooltipStyle() {
+        return { permanent: false, interactive: true,
+        className: 'tooltipbg',
+      };
     },
 });
 
@@ -2978,6 +3016,11 @@ var GCsPNe = new GCsPNeCatalog('GCs-PNe', 'GCs/PNe',
                               'labelsMinZoom': 7,
                              'urlTerm': 'GCs-PNe',});
 
+var starmasks8 = new StarMaskCatalog('masks-dr8', 'Gaia star masks (DR8)',
+                             {'url_name': 'masks-dr8',
+                              'minZoom': 5,
+                              'labelsMinZoom': 7,
+                             'urlTerm': 'masks-dr8',});
 
 var lslga = new LSLGACatalog('lslga', 'LSLGA (large galaxies)',
                              {'minZoom': 5,
@@ -3270,7 +3313,7 @@ var overlays = [
     brickOverlay,
     unwiseTileOverlay,
     ccdOverlaySdss,
-    gals, lslga, lslga_model, GCsPNe, bright, tycho2,
+    gals, lslga, lslga_model, starmasks8, GCsPNe, bright, tycho2,
     {% if enable_ps1 %}
     ps1cat,
     {% endif %}
@@ -3666,6 +3709,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('gals'),
      findoverlay('lslga'),
      findoverlay('lslga-model'),
+     findoverlay('masks-dr8'),
      findoverlay('GCs-PNe'),
      findoverlay('constellations'),
  ]);

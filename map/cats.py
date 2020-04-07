@@ -57,6 +57,7 @@ catversions = {
     'phat-clusters': [1,],
     'ps1': [1,],
     'desi-tiles': [1,],
+    'masks-dr8': [1,],
 }
 
 test_cats = []
@@ -1024,6 +1025,22 @@ def cat_spec(req, ver):
     fiber = [int(x) for x in T.fiberid]
     plate = [int(x) for x in T.plate]
     return HttpResponse(json.dumps(dict(rd=rd, name=names, mjd=mjd, fiber=fiber, plate=plate)),
+                        content_type='application/json')
+
+def cat_gaia_mask(req, ver):
+    import json
+    fn = os.path.join(settings.DATA_DIR, 'gaia-mask.kd.fits')
+    tag = 'masks-dr8'
+    T = cat_kd(req, ver, tag, fn)
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[])),
+                            content_type='application/json')
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    #names = ['%s %s' % (c.strip(),i) for c,i in zip(T.ref_cat, T.ref_id)]
+    names = ['G=%.2f' % g for g in T.phot_g_mean_mag]
+    radius = [3600. * float(r) for r in T.radius]
+    #G = [float(r) for r in T.phot_g_mean_mag]
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius)),
                         content_type='application/json')
 
 def cat_kd(req, ver, tag, fn, racol=None, deccol=None):

@@ -1597,7 +1597,6 @@ class DecalsLayer(MapLayer):
         if drname is None:
             drname = name
         self.drname = drname
-        #self.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/' + self.drname
 
         self.basedir = os.path.join(settings.DATA_DIR, self.drname)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.drname)
@@ -2379,6 +2378,20 @@ class LegacySurveySplitLayer(MapLayer):
             ok,rr,dd = wcs.pixelxy2radec([1,1], [1,256])
             #print('Decs', dd)
             self.tilesplits[zoom] = y
+
+    def get_layer_for_radec(self, ra, dec):
+        if dec < self.decsplit:
+            return self.bottom
+        from astrometry.util.starutil_numpy import radectolb
+        l,b = radectolb(ra, dec)
+        ngc = (b > 0.)
+        if ngc and dec > self.decsplit:
+            return self.top
+        return self.bottom
+
+    def brick_details_body(self, brick):
+        layer = self.get_layer_for_radec(brick.ra, brick.dec)
+        return layer.brick_details_body(brick)
 
     def has_cutouts(self):
         return True
@@ -3802,7 +3815,7 @@ def get_survey(name):
     if name == 'decaps':
         survey = Decaps2LegacySurveyData(survey_dir=dirnm)
         survey.drname = 'DECaPS'
-        survey.drurl = 'https://portal.nersc.gov/project/cosmo/data/decaps/dr1'
+        survey.drurl = 'https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
 
     elif name == 'ls-dr67':
         north = get_survey('mzls+bass-dr6')
@@ -3840,16 +3853,16 @@ def get_survey(name):
         print('Creating LegacySurveyData for', name, 'with survey_dir', dirnm)
 
     names_urls = {
-        'mzls+bass-dr4': ('MzLS+BASS DR4', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr4/'),
-        'mzls+bass-dr6': ('MzLS+BASS DR6', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr6/'),
-        'decals-dr5': ('DECaLS DR5', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'),
-        'decals-dr7': ('DECaLS DR7', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr7/'),
+        'mzls+bass-dr4': ('MzLS+BASS DR4', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr4/'),
+        'mzls+bass-dr6': ('MzLS+BASS DR6', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr6/'),
+        'decals-dr5': ('DECaLS DR5', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr5/'),
+        'decals-dr7': ('DECaLS DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr7/'),
         'eboss': ('eBOSS', 'http://legacysurvey.org/'),
         'decals': ('DECaPS', 'http://legacysurvey.org/'),
-        'ls-dr67': ('Legacy Surveys DR6+DR7', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/'),
-        'dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/north'),
-        'dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/south'),
-        'dr8': ('Legacy Surveys DR8', 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/'),
+        'ls-dr67': ('Legacy Surveys DR6+DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/'),
+        'dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/north'),
+        'dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/south'),
+        'dr8': ('Legacy Surveys DR8', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/'),
         }
 
     n,u = names_urls.get(name, ('',''))
@@ -4274,9 +4287,10 @@ def brick_detail(req, brickname, get_html=False, brick=None):
     import numpy as np
 
     brickname = str(brickname)
-    layer = request_layer_name(req)
-    layer = layer_to_survey_name(layer)
-    survey = get_survey(layer)
+    layername = request_layer_name(req)
+    sname = layer_to_survey_name(layername)
+    layer = get_layer(layername)
+    survey = get_survey(sname)
     if brick is None:
         bricks = survey.get_bricks()
         I = np.flatnonzero(brickname == bricks.brickname)
@@ -4289,15 +4303,10 @@ def brick_detail(req, brickname, get_html=False, brick=None):
         html_tag + '<head><title>%s data for brick %s</title></head>' %
         (survey.drname, brickname)
         + ccds_table_css + '<body>',
-        '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
-        '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
-        '<ul>',
-        '<li><a href="%scoadd/%s/%s/%s-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, coadd_prefix, brickname),
-        '<li><a href="%scoadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
-        '<li><a href="%stractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
-        '</ul>',
         ]
-
+    brick_html = layer.brick_details_body(brick)
+    html.extend(brick_html)
+    
     ccdsfn = survey.find_file('ccds-table', brick=brickname)
     if not os.path.exists(ccdsfn):
         print('No CCDs table:', ccdsfn)
@@ -5522,7 +5531,8 @@ if __name__ == '__main__':
     #r = c.get('/bricks/?ralo=33.5412&rahi=33.5722&declo=-2.2242&dechi=-2.2070&layer=dr9sv')
     #r = c.get('/manga/1/cat.json?ralo=194.4925&rahi=194.5544&declo=29.0022&dechi=29.0325')
     #r = c.get('/fornax-model/1/11/1823/1233.jpg')
-    r = c.get('/dr9-test-9.2/1/14/14809/8145.jpg')
+    #r = c.get('/dr9-test-9.2/1/14/14809/8145.jpg')
+    r = c.get('/brick/1379p505/?layer=dr8')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

@@ -15,6 +15,8 @@ urlpatterns = [
     url(r'^ci', views.ci),
 
     url(r'^gaia-stars-for-wcs', cats.gaia_stars_for_wcs),
+
+    url(r'^masks-dr8/(\d+)/cat.json', cats.cat_gaia_mask),
     
     # PHAT cluster catalog
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
