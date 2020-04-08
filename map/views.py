@@ -4868,26 +4868,34 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     f,jpegfn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
 
+    if x1 < 0 or y1 < 0 or x0 >= W or y0 >= H:
+        # no overlap
+        img = np.zeros((size,size), np.float32)
+        kwa = dict(cmap='gray', origin='lower', vmin=0, vmax=1)
+        plt.imsave(jpegfn, img, **kwa)
+        return send_file(jpegfn, 'image/jpeg', unlink=True)
+    
     kwa = dict(cmap='gray', origin='lower')
 
+    trargs = dict(slc=slc, gaussPsf=True, old_calibs_ok=True, tiny=1)
+    
     if kind == 'image':
-        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   dq=False, invvar=False, old_calibs_ok=True)
+        tim = im.get_tractor_image(invvar=False, dq=False, **trargs)
         from legacypipe.survey import get_rgb
+        print('im=',im)
+        print('tim=',tim)
         rgb = get_rgb([tim.data], [tim.band], mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, z=0)[tim.band]
         img = rgb[:,:,index]
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'weight':
-        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   pixels=False, dq=False, invvar=True, old_calibs_ok=True)
+        tim = im.get_tractor_image(pixels=False, dq=False, invvar=True, **trargs)
         img = tim.getInvvar()
         kwa.update(vmin=0)
 
     elif kind == 'weightedimage':
-        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   dq=False, invvar=True, old_calibs_ok=True)
+        tim = im.get_tractor_image(dq=False, invvar=True, **trargs)
         from legacypipe.survey import get_rgb
         rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band], mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, z=0)[tim.band]
@@ -4895,8 +4903,7 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'dq':
-        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   pixels=False, dq=True, invvar=False, old_calibs_ok=True)
+        tim = im.get_tractor_image(pixels=False, dq=True, invvar=False, **trargs)
         img = tim.dq
         kwa.update(vmin=0)
 
@@ -5367,6 +5374,10 @@ if __name__ == '__main__':
     matplotlib.use('Agg')
     import pylab as plt
 
+    import logging
+    lvl = logging.DEBUG
+    logging.basicConfig(level=lvl, format='%(message)s', stream=sys.stdout)
+
     # dr5 = get_layer('decals-dr5')
     # dr6 = get_layer('mzls+bass-dr6')
     # split = LegacySurveySplitLayer('ls56', dr5, dr6, 32.)
@@ -5532,7 +5543,8 @@ if __name__ == '__main__':
     #r = c.get('/manga/1/cat.json?ralo=194.4925&rahi=194.5544&declo=29.0022&dechi=29.0325')
     #r = c.get('/fornax-model/1/11/1823/1233.jpg')
     #r = c.get('/dr9-test-9.2/1/14/14809/8145.jpg')
-    r = c.get('/brick/1379p505/?layer=dr8')
+    #r = c.get('/brick/1379p505/?layer=dr8')
+    r = c.get('/cutout_panels/decals-dr5/521375/N11/?ra=163.2651&dec=13.1159&size=100')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
