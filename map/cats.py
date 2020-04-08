@@ -1029,6 +1029,10 @@ def cat_spec(req, ver):
 
 def cat_gaia_mask(req, ver):
     import json
+    '''
+    fitscopy data/gaia-mask.fits"[col ra;dec;ref_cat;ref_id;radius;phot_g_mean_mag;pointsource;ismedium;isbright]" data/gaia-mask-sub.fits
+    startree -i data/gaia-mask-sub.fits -o data/gaia-mask.kd.fits -P -T -k
+    '''
     fn = os.path.join(settings.DATA_DIR, 'gaia-mask.kd.fits')
     tag = 'masks-dr8'
     T = cat_kd(req, ver, tag, fn)
@@ -1036,11 +1040,11 @@ def cat_gaia_mask(req, ver):
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[])),
                             content_type='application/json')
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
-    #names = ['%s %s' % (c.strip(),i) for c,i in zip(T.ref_cat, T.ref_id)]
     names = ['G=%.2f' % g for g in T.phot_g_mean_mag]
     radius = [3600. * float(r) for r in T.radius]
+    color = ['orange' if bright else '#3388ff' for bright in T.isbright]
     #G = [float(r) for r in T.phot_g_mean_mag]
-    return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius)),
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius, color=color)),
                         content_type='application/json')
 
 def cat_kd(req, ver, tag, fn, racol=None, deccol=None):
