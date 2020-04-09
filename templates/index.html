@@ -3071,7 +3071,11 @@ var GaiaDr2Catalog = CatalogOverlay.extend({
     },
 
     getTooltipStyle() {
-        return { permanent: false, interactive: true, };
+    return { permanent: false, interactive: true, };
+    },
+
+    getPopupText(json, i) {
+    return this.getLabel(json, i);
     },
 
 });
