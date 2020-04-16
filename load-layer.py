@@ -136,6 +136,18 @@ def main():
     name = 'dr9-test-9.2'
     pretty = 'DR9.2 test'
 
+    rsync = True
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    indir = '/global/cscratch1/sd/dstn/dr9.3'
+    name = 'dr9-test-9.3'
+    pretty = 'DR9.3 test'
+
+    rsync = True
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    indir = '/global/cscratch1/sd/dstn/dr9.3.1'
+    name = 'dr9-test-9.3.1'
+    pretty = 'DR9.3.1 test'
+    
     datadir = 'data'
 
     survey = LegacySurveyData(survey_dir=survey_dir)

@@ -3786,7 +3786,45 @@ class Decaps2LegacySurveyData(MyLegacySurveyData):
                                                               brickpre=brickpre,
                                                               band=band,
                                                               output=output)
-    
+
+class DR8LegacySurveyData(LegacySurveyData):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.image_typemap.update({
+            'decam': DR8DecamImage,
+            'mosaic': DR8MosaicImage,
+            '90prime': DR8BokImage,
+            })
+
+from legacypipe.decam import DecamImage
+class DR8DecamImage(DecamImage):
+    def __init__(self, *args):
+        super().__init__(*args)
+        calibdir = self.survey.get_calib_dir()
+        # calib/decam/splinesky-merged/00154/decam-00154069.fits
+        estr = '%08i' % self.expnum
+        self.old_merged_skyfn = os.path.join(calibdir, self.camera, 'splinesky-merged',
+                                             estr[:5], '%s-%s.fits' % (self.camera, estr))
+
+from legacypipe.mosaic import MosaicImage
+class DR8MosaicImage(DecamImage):
+    def __init__(self, *args):
+        super().__init__(*args)
+        calibdir = self.survey.get_calib_dir()
+        estr = '%08i' % self.expnum
+        self.old_merged_skyfn = os.path.join(calibdir, self.camera, 'splinesky-merged',
+                                             estr[:5], '%s-%s.fits' % (self.camera, estr))
+
+from legacypipe.bok import BokImage
+class DR8BokImage(BokImage):
+    def __init__(self, *args):
+        super().__init__(*args)
+        calibdir = self.survey.get_calib_dir()
+        estr = '%08i' % self.expnum
+        self.old_merged_skyfn = os.path.join(calibdir, self.camera, 'splinesky-merged',
+                                             estr[:5], '%s-%s.fits' % (self.camera, estr))
+
+        
 surveys = {}
 def get_survey(name):
     import numpy as np
@@ -3830,6 +3868,9 @@ def get_survey(name):
         south = get_survey('dr8-south')
         south.layer = 'dr8-south'
         survey = SplitSurveyData(north, south)
+
+    elif name in ['dr8-south', 'dr8-north', 'decals-dr5']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
     elif name == 'dr9sv':
         north = get_survey('dr9sv-north')
@@ -4878,13 +4919,16 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     kwa = dict(cmap='gray', origin='lower')
 
     trargs = dict(slc=slc, gaussPsf=True, old_calibs_ok=True, tiny=1)
+                  #readsky=False)
     
     if kind == 'image':
         tim = im.get_tractor_image(invvar=False, dq=False, **trargs)
         from legacypipe.survey import get_rgb
         print('im=',im)
         print('tim=',tim)
-        rgb = get_rgb([tim.data], [tim.band], mnmx=(-1,100.), arcsinh=1.)
+        # hack a sky sub
+        #tim.data -= np.median(tim.data)
+        rgb = get_rgb([tim.data], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, z=0)[tim.band]
         img = rgb[:,:,index]
         kwa.update(vmin=0, vmax=1)
@@ -4897,7 +4941,7 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     elif kind == 'weightedimage':
         tim = im.get_tractor_image(dq=False, invvar=True, **trargs)
         from legacypipe.survey import get_rgb
-        rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band], mnmx=(-1,100.), arcsinh=1.)
+        rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, z=0)[tim.band]
         img = rgb[:,:,index]
         kwa.update(vmin=0, vmax=1)
@@ -5544,6 +5588,10 @@ if __name__ == '__main__':
     #r = c.get('/fornax-model/1/11/1823/1233.jpg')
     #r = c.get('/dr9-test-9.2/1/14/14809/8145.jpg')
     #r = c.get('/brick/1379p505/?layer=dr8')
+    #names = ['%s %s' % (c.strip(),i) for c,i in zip(T.ref_cat, T.ref_id)]
+    #r = c.get('/cutout_panels/decals-dr7/511284/N11/?ra=163.2651&dec=13.1159&size=100')
+    #r = c.get('/jpeg-cutout?ra=144.5993113&dec=4.014711559&size=128&layer=decals-dr7-resid&pixscale=0.262&bands=grz')
+    #r = c.get('/cutout_panels/dr8-south/432043/N6/?ra=185.8736&dec=19.4258&size=100')
     r = c.get('/cutout_panels/decals-dr5/521375/N11/?ra=163.2651&dec=13.1159&size=100')
     print('r:', type(r))
 
