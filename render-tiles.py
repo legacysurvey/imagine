@@ -725,7 +725,9 @@ def main():
                        'unwise-neo4', 'unwise-cat-model',
                        'galex', 'wssa', 'vlass', 'hsc', 'hsc2']
           or 'dr8i' in opt.kind
-          or 'dr9-test' in opt.kind):
+          or 'dr9-test' in opt.kind
+          or 'dr9f' in opt.kind
+          or 'dr9g' in opt.kind):
         if opt.maxdec is None:
             opt.maxdec = 90.
         if opt.mindec is None:
@@ -904,6 +906,8 @@ def main():
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
+            or opt.kind.startswith('dr9f')
+            or opt.kind.startswith('dr9g')
             ):
             from map.views import get_layer
 

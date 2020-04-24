@@ -147,6 +147,26 @@ def main():
     indir = '/global/cscratch1/sd/dstn/dr9.3.1'
     name = 'dr9-test-9.3.1'
     pretty = 'DR9.3.1 test'
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9f/south'
+    indir = survey_dir
+    name = 'dr9f-south'
+    pretty = 'DR9f south'
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9f/north'
+    indir = survey_dir
+    name = 'dr9f-north'
+    pretty = 'DR9f north'
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9g/south'
+    indir = survey_dir
+    name = 'dr9g-south'
+    pretty = 'DR9g south'
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9g/north'
+    indir = survey_dir
+    name = 'dr9g-north'
+    pretty = 'DR9g north'
     
     datadir = 'data'
 
