@@ -5592,7 +5592,8 @@ if __name__ == '__main__':
     #r = c.get('/cutout_panels/decals-dr7/511284/N11/?ra=163.2651&dec=13.1159&size=100')
     #r = c.get('/jpeg-cutout?ra=144.5993113&dec=4.014711559&size=128&layer=decals-dr7-resid&pixscale=0.262&bands=grz')
     #r = c.get('/cutout_panels/dr8-south/432043/N6/?ra=185.8736&dec=19.4258&size=100')
-    r = c.get('/cutout_panels/decals-dr5/521375/N11/?ra=163.2651&dec=13.1159&size=100')
+    #r = c.get('/cutout_panels/decals-dr5/521375/N11/?ra=163.2651&dec=13.1159&size=100')
+    r = c.get('/masks-dr9/1/cat.json?ralo=221.3107&rahi=221.8057&declo=1.7637&dechi=2.0399')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

@@ -1027,6 +1027,90 @@ def cat_spec(req, ver):
     return HttpResponse(json.dumps(dict(rd=rd, name=names, mjd=mjd, fiber=fiber, plate=plate)),
                         content_type='application/json')
 
+def cat_masks_dr9(req, ver):
+    import json
+    import os
+    import numpy as np
+    from legacypipe.reference import get_reference_sources
+    from legacypipe.survey import LegacySurveyData
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
+    os.environ['TYCHO2_KD_DIR'] = settings.DATA_DIR
+    os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v7.0.kd.fits')
+    os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-cat')
+    os.environ['GAIA_CAT_VER'] = '2'
+    survey = LegacySurveyData(survey_dir=os.getcwd())
+    pixscale = wcs.pixel_scale()
+    T,_ = get_reference_sources(survey, wcs, pixscale, None)
+    T.about()
+    
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[])),
+                            content_type='application/json')
+
+    # sort by radius to improve the layering
+    T.cut(np.argsort(-T.radius))
+    
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    radius = [3600. * float(r) for r in T.radius]
+    color = []
+    for bright,cluster,gal,dup in zip(T.isbright, T.iscluster, T.islargegalaxy, T.donotfit):
+        if dup:
+            color.append('#aaaaaa')
+        elif cluster:
+            color.append('yellow')
+        elif bright:
+            color.append('orange')
+        elif gal:
+            color.append('#33ff88')
+        else:
+            color.append('#3388ff')
+
+    names = []
+    for bright,cluster,gal,dup,mag,zguess,freeze,refid in zip(
+            T.isbright, T.iscluster, T.islargegalaxy, T.donotfit, T.mag, T.zguess,
+            T.freezeparams, T.ref_id):
+        if dup:
+            names.append('DUP')
+        elif cluster:
+            names.append('CLUSTER')
+        elif gal:
+            # freezeparams, ref_id
+            name = 'LSLGA %i' % refid
+            # We're not pointing to the 'model' version
+            #if freeze:
+            #    name += ' (frozen)'
+            names.append(name)
+        else:
+            if bright:
+                if np.isfinite(zguess) * (zguess+1 < mag):
+                    names.append('BRIGHT mag=%.2f, zguess=%.2f' % (mag, zguess))
+                else:
+                    names.append('BRIGHT mag=%.2f' % mag)
+            else:
+                if np.isfinite(zguess) * (zguess+1 < mag):
+                    names.append('MEDIUM G=%.2f, zguess=%.2f' % (mag, zguess))
+                else:
+                    names.append('MEDIUM G=%.2f' % mag)
+
+    # default to round!
+    T.ba[T.ba == 0] = 1.
+    ab = [float(f) for f in T.ba.astype(np.float32)]
+
+    pax = T.pa.copy().astype(np.float32)
+    pax[np.logical_not(np.isfinite(pax))] = 0.
+    pax[pax < 0] += 180.
+    pax[pax >= 180.] -= 180.
+    pa = [float(90.-f) for f in pax]
+    pa_disp = [float(f) for f in pax]
+
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius, color=color,
+                                        abRatio=ab, posAngle=pa, posAngleDisplay=pa_disp)),
+                        content_type='application/json')
+
 def cat_gaia_mask(req, ver):
     import json
     '''

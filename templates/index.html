@@ -3016,7 +3016,13 @@ var GCsPNe = new GCsPNeCatalog('GCs-PNe', 'GCs/PNe',
                               'labelsMinZoom': 7,
                              'urlTerm': 'GCs-PNe',});
 
-var starmasks8 = new StarMaskCatalog('masks-dr8', 'Gaia star masks (DR8)',
+var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (DR9)',
+                             {'url_name': 'masks-dr9',
+                              'minZoom': 5,
+                              'labelsMinZoom': 7,
+                             'urlTerm': 'masks-dr9',});
+                             
+var starmasks8 = new StarMaskCatalog('masks-dr8', 'Gaia masks (DR8)',
                              {'url_name': 'masks-dr8',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
@@ -3317,7 +3323,7 @@ var overlays = [
     brickOverlay,
     unwiseTileOverlay,
     ccdOverlaySdss,
-    gals, lslga, lslga_model, starmasks8, GCsPNe, bright, tycho2,
+    gals, lslga, lslga_model, starmasks8, starmasks9, GCsPNe, bright, tycho2,
     {% if enable_ps1 %}
     ps1cat,
     {% endif %}
@@ -3713,6 +3719,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('gals'),
      findoverlay('lslga'),
      findoverlay('lslga-model'),
+     findoverlay('masks-dr9'),
      findoverlay('masks-dr8'),
      findoverlay('GCs-PNe'),
      findoverlay('constellations'),
