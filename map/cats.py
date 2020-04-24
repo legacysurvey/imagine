@@ -890,7 +890,7 @@ def query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi):
 def query_lslga_radecbox(ralo, rahi, declo, dechi):
     fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v7.0.kd.fits')
     T = query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi)
-    if len(T) == 0:
+    if T is None or len(T) == 0:
         return None
     return T
 
