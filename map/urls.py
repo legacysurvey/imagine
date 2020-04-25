@@ -93,6 +93,8 @@ urlpatterns = [
     # LSLGA galaxies
     url(r'^lslga/(\d+)/cat.json', cats.cat_lslga),
 
+    url(r'^lslga-ellipse/(\d+)/cat.json', cats.cat_lslga_ellipse),
+
     url(r'^lslga-model/(\d+)/cat.json', cats.cat_lslga_model),
 
     url(r'^GCs-PNe/(\d+)/cat.json', cats.cat_GCs_PNe),

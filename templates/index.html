@@ -3028,11 +3028,16 @@ var starmasks8 = new StarMaskCatalog('masks-dr8', 'Gaia masks (DR8)',
                               'labelsMinZoom': 7,
                              'urlTerm': 'masks-dr8',});
 
-var lslga = new LSLGACatalog('lslga', 'LSLGA (large galaxies)',
+var lslga = new LSLGACatalog('lslga', 'LSLGA (HyperLEDA)',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
                               'urlTerm': 'lslga',});
 
+var lslga_ell = new LSLGACatalog('lslga-ellipse', 'LSLGA (ellipse fit)',
+                             {'minZoom': 5,
+                              'labelsMinZoom': 7,
+                              'urlTerm': 'lslga-ellipse',});
+                              
 var lslga_model = new LSLGACatalogModel('lslga-model', 'LSLGA (DR8 models)',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
@@ -3323,7 +3328,7 @@ var overlays = [
     brickOverlay,
     unwiseTileOverlay,
     ccdOverlaySdss,
-    gals, lslga, lslga_model, starmasks8, starmasks9, GCsPNe, bright, tycho2,
+    gals, lslga, lslga_ell, lslga_model, starmasks8, starmasks9, GCsPNe, bright, tycho2,
     {% if enable_ps1 %}
     ps1cat,
     {% endif %}
@@ -3718,6 +3723,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('tycho2'),
      findoverlay('gals'),
      findoverlay('lslga'),
+     findoverlay('lslga-ellipse'),
      findoverlay('lslga-model'),
      findoverlay('masks-dr9'),
      findoverlay('masks-dr8'),

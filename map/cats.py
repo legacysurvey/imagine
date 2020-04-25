@@ -796,7 +796,11 @@ def cat_lslga(req, ver):
 def cat_lslga_model(req, ver):
     return _cat_lslga(req, ver, model=True)
 
-def _cat_lslga(req, ver, model=False):
+def cat_lslga_ellipse(req, ver):
+    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-model-v6.0.kd.fits')
+    return _cat_lslga(req, ver, ellipse=True, fn=fn)
+
+def _cat_lslga(req, ver, model=False, ellipse=False, fn=None):
     import json
     import numpy as np
     tag = 'lslga'
@@ -813,18 +817,21 @@ def _cat_lslga(req, ver, model=False):
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
     if model:
-        T = query_lslga_model_radecbox(ralo, rahi, declo, dechi)
+        T = query_lslga_model_radecbox(ralo, rahi, declo, dechi, fn=fn)
         if T is None:
             return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[],
                                                 posAngle=[], pgc=[], type=[])),
                                 content_type='application/json')
     else:
-        T = query_lslga_radecbox(ralo, rahi, declo, dechi)
+        T = query_lslga_radecbox(ralo, rahi, declo, dechi, fn=fn)
         if T is None:
             return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[],
                                                 posAngle=[], pgc=[], type=[], redshift=[])),
                                 content_type='application/json')
 
+    if not model:
+        T.cut(np.argsort(-T.radius_arcsec))
+        
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
     pgc = [int(p) for p in T.pgc]
@@ -857,7 +864,10 @@ def _cat_lslga(req, ver, model=False):
 
         pa = [float(90.-f) for f in pax]
         pa_disp = [float(f) for f in pax]
-        color = ['#3388ff']*len(T)
+        if ellipse:
+            color = ['#ff3333']*len(T)
+        else:
+            color = ['#3388ff']*len(T)
         z = [float(z) if np.isfinite(z) else -1. for z in T.z.astype(np.float32)]
 
         return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
@@ -887,16 +897,18 @@ def query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi):
         return None
     return T
 
-def query_lslga_radecbox(ralo, rahi, declo, dechi):
-    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v7.0.kd.fits')
+def query_lslga_radecbox(ralo, rahi, declo, dechi, fn=None):
+    if fn is None:
+        fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v7.0.kd.fits')
     T = query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi)
     if T is None or len(T) == 0:
         return None
     return T
 
-def query_lslga_model_radecbox(ralo, rahi, declo, dechi):
+def query_lslga_model_radecbox(ralo, rahi, declo, dechi, fn=None):
     import numpy as np
-    fn = os.path.join(settings.DATA_DIR, 'lslga', 'dr8-lslga-northsouth.kd.fits')
+    if fn is None:
+        fn = os.path.join(settings.DATA_DIR, 'lslga', 'dr8-lslga-northsouth.kd.fits')
     T = query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi)
     if len(T) == 0:
         return None
