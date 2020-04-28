@@ -829,6 +829,9 @@ def _cat_lslga(req, ver, model=False, ellipse=False, fn=None):
                                                 posAngle=[], pgc=[], type=[], redshift=[])),
                                 content_type='application/json')
 
+    if ellipse:
+        T.cut((T.lslga_id >= 0) * (T.preburned))
+
     if not model:
         T.cut(np.argsort(-T.radius_arcsec))
         
