@@ -39,6 +39,7 @@ catversions = {
     'lslga': [1,],
     'spec': [1,],
     'spec-deep2': [1,],
+    'manga': [1,],
     'bright': [1,],
     'tycho2': [1,],
     'targets-dr45': [1,],
@@ -56,6 +57,7 @@ catversions = {
     'phat-clusters': [1,],
     'ps1': [1,],
     'desi-tiles': [1,],
+    'masks-dr8': [1,],
 }
 
 test_cats = []
@@ -794,7 +796,11 @@ def cat_lslga(req, ver):
 def cat_lslga_model(req, ver):
     return _cat_lslga(req, ver, model=True)
 
-def _cat_lslga(req, ver, model=False):
+def cat_lslga_ellipse(req, ver):
+    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-model-v6.0.kd.fits')
+    return _cat_lslga(req, ver, ellipse=True, fn=fn)
+
+def _cat_lslga(req, ver, model=False, ellipse=False, fn=None):
     import json
     import numpy as np
     tag = 'lslga'
@@ -811,18 +817,24 @@ def _cat_lslga(req, ver, model=False):
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
     if model:
-        T = query_lslga_model_radecbox(ralo, rahi, declo, dechi)
+        T = query_lslga_model_radecbox(ralo, rahi, declo, dechi, fn=fn)
         if T is None:
             return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[],
                                                 posAngle=[], pgc=[], type=[])),
                                 content_type='application/json')
     else:
-        T = query_lslga_radecbox(ralo, rahi, declo, dechi)
+        T = query_lslga_radecbox(ralo, rahi, declo, dechi, fn=fn)
         if T is None:
             return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[],
                                                 posAngle=[], pgc=[], type=[], redshift=[])),
                                 content_type='application/json')
 
+    if ellipse:
+        T.cut((T.lslga_id >= 0) * (T.preburned))
+
+    if not model:
+        T.cut(np.argsort(-T.radius_arcsec))
+        
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
     pgc = [int(p) for p in T.pgc]
@@ -830,28 +842,46 @@ def _cat_lslga(req, ver, model=False):
     if model:
         radius = [float(r) for r in T.radius_model_arcsec.astype(np.float32)]
         ab = [float(f) for f in T.ba_model.astype(np.float32)]
-        pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa_model.astype(np.float32)]
+
+        pax = T.pa_model.copy().astype(np.float32)
+        pax[np.logical_not(np.isfinite(pax))] = 0.
+        pax[pax < 0] += 180.
+        pax[pax >= 180.] -= 180.
+
+        pa = [float(90.-f) for f in pax]
+        pa_disp = [float(f) for f in pax]
         color = ['#ffaa33']*len(T)
 
         return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
-                                            abRatio=ab, posAngle=pa, pgc=pgc, type=typ, color=color)),
+                                            abRatio=ab, posAngle=pa, pgc=pgc, type=typ, color=color,
+                                            posAngleDisplay=pa_disp)),
                                             content_type='application/json')
     else:
         radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
         ab = [float(f) for f in T.ba.astype(np.float32)]
-        pa = [float(90.-f) if np.isfinite(f) else 0. for f in T.pa.astype(np.float32)]
-        color = ['#3388ff']*len(T)
+
+        pax = T.pa.copy().astype(np.float32)
+        pax[np.logical_not(np.isfinite(pax))] = 0.
+        pax[pax < 0] += 180.
+        pax[pax >= 180.] -= 180.
+
+        pa = [float(90.-f) for f in pax]
+        pa_disp = [float(f) for f in pax]
+        if ellipse:
+            color = ['#ff3333']*len(T)
+        else:
+            color = ['#3388ff']*len(T)
         z = [float(z) if np.isfinite(z) else -1. for z in T.z.astype(np.float32)]
 
         return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
                                             abRatio=ab, posAngle=pa, pgc=pgc, type=typ,
-                                            redshift=z, color=color)),
+                                            redshift=z, color=color, posAngleDisplay=pa_disp)),
                                             content_type='application/json')
 
 def query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi):
     ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
     # max radius for LSLGA entries?!
-    lslga_radius = 1.0
+    lslga_radius = 2.0
     T = cat_query_radec(fn, ra, dec, radius + lslga_radius)
     if T is None:
         return None
@@ -870,16 +900,18 @@ def query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi):
         return None
     return T
 
-def query_lslga_radecbox(ralo, rahi, declo, dechi):
-    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v2.0.kd.fits')
+def query_lslga_radecbox(ralo, rahi, declo, dechi, fn=None):
+    if fn is None:
+        fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v7.0.kd.fits')
     T = query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi)
-    if len(T) == 0:
+    if T is None or len(T) == 0:
         return None
     return T
 
-def query_lslga_model_radecbox(ralo, rahi, declo, dechi):
+def query_lslga_model_radecbox(ralo, rahi, declo, dechi, fn=None):
     import numpy as np
-    fn = os.path.join(settings.DATA_DIR, 'lslga', 'dr8-lslga-northsouth.kd.fits')
+    if fn is None:
+        fn = os.path.join(settings.DATA_DIR, 'lslga', 'dr8-lslga-northsouth.kd.fits')
     T = query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi)
     if len(T) == 0:
         return None
@@ -892,23 +924,100 @@ def query_lslga_model_radecbox(ralo, rahi, declo, dechi):
             return ba, pa
             
         ba, pa = [], []
-        for Tone in T:
-            ttype = Tone.type.strip()
-            if ttype == 'DEV' or ttype == 'COMP':
-                e1, e2 = Tone.shapedev_e1, Tone.shapedev_e2
-                bai, pai = get_ba_pa(e1, e2)
-            elif ttype == 'EXP' or ttype == 'REX':
-                e1, e2 = Tone.shapeexp_e1, Tone.shapeexp_e2
-                bai, pai = get_ba_pa(e1, e2)
-            else: # PSF
-                bai, pai = np.nan, np.nan
+        cols = T.get_columns()
+        for t in T:
+            ttype = t.type.strip()
+            if 'shapedev_r' in cols:
+                if ttype == 'DEV' or ttype == 'COMP':
+                    e1, e2 = t.shapedev_e1, t.shapedev_e2
+                    bai, pai = get_ba_pa(e1, e2)
+                elif ttype == 'EXP' or ttype == 'REX':
+                    e1, e2 = t.shapeexp_e1, t.shapeexp_e2
+                    bai, pai = get_ba_pa(e1, e2)
+                else: # PSF
+                    bai, pai = np.nan, np.nan
+            else:
+                # DR9
+                if ttype in ['DEV', 'EXP', 'REX', 'SER']:
+                    bai, pai = get_ba_pa(t.shape_e1, t.shape_p2)
+                else: # PSF
+                    bai, pai = np.nan, np.nan
             ba.append(bai)
             pa.append(pai)
         
         T.pa_model = np.hstack(pa)
         T.ba_model = np.hstack(ba)
-        T.radius_model_arcsec = T.fracdev * T.shapedev_r + (1 - T.fracdev) * T.shapeexp_r
+        if 'fracdev' in cols:
+            T.radius_model_arcsec = T.fracdev * T.shapedev_r + (1 - T.fracdev) * T.shapeexp_r
+        else:
+            T.radius_model_arcsec = T.shape_r
     return T
+
+def cat_manga(req, ver):
+    import json
+    import numpy as np
+    # DR16
+    # startree -i data/manga/drpall-v2_4_3.fits -o data/manga/drpall-v2_4_3.kd.fits \
+    #     -P -T -k -R ifura -D ifudec
+    fn = os.path.join(settings.DATA_DIR, 'manga', 'drpall-v2_4_3.kd.fits')
+    tag = 'manga'
+    T = cat_kd(req, ver, tag, fn, racol='ifura', deccol='ifudec')
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],plate=[])),
+                            content_type='application/json')
+    # plate = req.GET.get('plate', None)
+    # if plate is not None:
+    #     plate = int(plate, 10)
+    #     T.cut(T.plate == plate)
+
+    rd = list((float(r),float(d)) for r,d in zip(T.ifura, T.ifudec))
+    #names = [t.strip() for t in T.label]
+    names = [t.strip() for t in T.nsa_iauname]
+    #mjd   = [int(x) for x in T.mjd]
+    #fiber = [int(x) for x in T.fiberid]
+    plate = [int(x) for x in T.plate]
+    ifudsgn = [int(x) for x in T.ifudsgn]
+    z = [float(z) for z in T.z]
+    ifusize = [int(x) for x in T.ifudesignsize]
+
+    hexes = []
+    fibers = []
+    
+    dradec = manga_ifu_offsets()
+    for sz,(r,d) in zip(ifusize, rd):
+        radius = { 127: 6,
+                   91: 5,
+                   61: 4,
+                   37: 3,
+                   19: 2 }
+        rr = radius[sz]
+        hexx = []
+        fibs = []
+        cosdec = np.cos(np.deg2rad(d))
+        # hexagon
+        for i in range(7):
+            j = (i % 6) + 1
+            hexx.append((float(r + (rr + 0.5) * dradec[j][0] / 3600. / cosdec),
+                         float(d + (rr + 0.5) * dradec[j][1] / 3600. )))
+
+        for dr,dd in dradec[:sz]:
+            fibs.append((float(r + dr / 3600. / cosdec),
+                         float(d + dd / 3600.)))
+        hexes.append(hexx)
+        fibers.append(fibs)
+
+    #ifudsgn (= plate-ifu)
+    #plateifu
+    #mangaid
+    #nsa_iauname
+    #ifudesignsize
+    #z
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, plate=plate, ifudsgn=ifudsgn, z=z,
+                                        hexes=hexes, fibers=fibers)),
+                        content_type='application/json')
+
+def manga_ifu_offsets():
+    return [(0.0, 0.0), (-1.25, -2.16506), (1.25, -2.16506), (2.5, 0.0), (1.25, 2.16506), (-1.25, 2.16506), (-2.5, 0.0), (-2.5, -4.33013), (0.0, -4.33013), (2.5, -4.33013), (3.75, -2.16506), (5.0, 0.0), (3.75, 2.16506), (2.5, 4.33013), (0.0, 4.33013), (-2.5, 4.33013), (-3.75, 2.16506), (-5.0, 0.0), (-3.75, -2.16506), (-3.75, -6.49519), (-1.25, -6.49519), (1.25, -6.49519), (3.75, -6.49519), (5.0, -4.33013), (6.25, -2.16506), (7.5, 0.0), (6.25, 2.16506), (5.0, 4.33013), (3.75, 6.49519), (1.25, 6.49519), (-1.25, 6.49519), (-3.75, 6.49519), (-5.0, 4.33013), (-6.25, 2.16506), (-7.5, 0.0), (-6.25, -2.16506), (-5.0, -4.33013), (-5.0, -8.66025), (-2.5, -8.66025), (0.0, -8.66025), (2.5, -8.66025), (5.0, -8.66025), (6.25, -6.49519), (7.5, -4.33013), (8.75, -2.16506), (10.0, 0.0), (8.75, 2.16506), (7.5, 4.33013), (6.25, 6.49519), (5.0, 8.66025), (2.5, 8.66025), (0.0, 8.66025), (-2.5, 8.66025), (-5.0, 8.66025), (-6.25, 6.49519), (-7.5, 4.33013), (-8.75, 2.16506), (-10.0, 0.0), (-8.75, -2.16506), (-7.5, -4.33013), (-6.25, -6.49519), (-6.25, -10.8253), (-3.75, -10.8253), (-1.25, -10.8253), (1.25, -10.8253), (3.75, -10.8253), (6.25, -10.8253), (7.5, -8.66025), (8.75, -6.49519), (10.0, -4.33013), (11.25, -2.16506), (12.5, 0.0), (11.25, 2.16506), (10.0, 4.33013), (8.75, 6.49519), (7.5, 8.66025), (6.25, 10.8253), (3.75, 10.8253), (1.25, 10.8253), (-1.25, 10.8253), (-3.75, 10.8253), (-6.25, 10.8253), (-7.5, 8.66025), (-8.75, 6.49519), (-10.0, 4.33013), (-11.25, 2.16506), (-12.5, 0.0), (-11.25, -2.16506), (-10.0, -4.33013), (-8.75, -6.49519), (-7.5, -8.66025), (-7.5, -12.9904), (-5.0, -12.9904), (-2.5, -12.9904), (0.0, -12.9904), (2.5, -12.9904), (5.0, -12.9904), (7.5, -12.9904), (8.75, -10.8253), (10.0, -8.66025), (11.25, -6.49519), (12.5, -4.33013), (13.75, -2.16506), (15.0, 0.0), (13.75, 2.16506), (12.5, 4.33013), (11.25, 6.49519), (10.0, 8.66025), (8.75, 10.8253), (7.5, 12.9904), (5.0, 12.9904), (2.5, 12.9904), (0.0, 12.9904), (-2.5, 12.9904), (-5.0, 12.9904), (-7.5, 12.9904), (-8.75, 10.8253), (-10.0, 8.66025), (-11.25, 6.49519), (-12.5, 4.33013), (-13.75, 2.16506), (-15.0, 0.0), (-13.75, -2.16506), (-12.5, -4.33013), (-11.25, -6.49519), (-10.0, -8.66025), (-8.75, -10.8253)]
 
 def cat_spec(req, ver):
     import json
@@ -933,7 +1042,111 @@ def cat_spec(req, ver):
     return HttpResponse(json.dumps(dict(rd=rd, name=names, mjd=mjd, fiber=fiber, plate=plate)),
                         content_type='application/json')
 
-def cat_kd(req, ver, tag, fn):
+def cat_masks_dr9(req, ver):
+    import json
+    import os
+    import numpy as np
+    from legacypipe.reference import get_reference_sources
+    from legacypipe.survey import LegacySurveyData
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
+    os.environ['TYCHO2_KD_DIR'] = settings.DATA_DIR
+    os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v7.0.kd.fits')
+    os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-cat')
+    os.environ['GAIA_CAT_VER'] = '2'
+    survey = LegacySurveyData(survey_dir=os.getcwd())
+    pixscale = wcs.pixel_scale()
+    T,_ = get_reference_sources(survey, wcs, pixscale, None)
+    T.about()
+    
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[])),
+                            content_type='application/json')
+
+    # sort by radius to improve the layering
+    T.cut(np.argsort(-T.radius))
+    
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    radius = [3600. * float(r) for r in T.radius]
+    color = []
+    for bright,cluster,gal,dup in zip(T.isbright, T.iscluster, T.islargegalaxy, T.donotfit):
+        if dup:
+            color.append('#aaaaaa')
+        elif cluster:
+            color.append('yellow')
+        elif bright:
+            color.append('orange')
+        elif gal:
+            color.append('#33ff88')
+        else:
+            color.append('#3388ff')
+
+    names = []
+    for bright,cluster,gal,dup,mag,zguess,freeze,refid in zip(
+            T.isbright, T.iscluster, T.islargegalaxy, T.donotfit, T.mag, T.zguess,
+            T.freezeparams, T.ref_id):
+        if dup:
+            names.append('DUP')
+        elif cluster:
+            names.append('CLUSTER')
+        elif gal:
+            # freezeparams, ref_id
+            name = 'LSLGA %i' % refid
+            # We're not pointing to the 'model' version
+            #if freeze:
+            #    name += ' (frozen)'
+            names.append(name)
+        else:
+            if bright:
+                if np.isfinite(zguess) * (zguess+1 < mag):
+                    names.append('BRIGHT mag=%.2f, zguess=%.2f' % (mag, zguess))
+                else:
+                    names.append('BRIGHT mag=%.2f' % mag)
+            else:
+                if np.isfinite(zguess) * (zguess+1 < mag):
+                    names.append('MEDIUM G=%.2f, zguess=%.2f' % (mag, zguess))
+                else:
+                    names.append('MEDIUM G=%.2f' % mag)
+
+    # default to round!
+    T.ba[T.ba == 0] = 1.
+    ab = [float(f) for f in T.ba.astype(np.float32)]
+
+    pax = T.pa.copy().astype(np.float32)
+    pax[np.logical_not(np.isfinite(pax))] = 0.
+    pax[pax < 0] += 180.
+    pax[pax >= 180.] -= 180.
+    pa = [float(90.-f) for f in pax]
+    pa_disp = [float(f) for f in pax]
+
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius, color=color,
+                                        abRatio=ab, posAngle=pa, posAngleDisplay=pa_disp)),
+                        content_type='application/json')
+
+def cat_gaia_mask(req, ver):
+    import json
+    '''
+    fitscopy data/gaia-mask.fits"[col ra;dec;ref_cat;ref_id;radius;phot_g_mean_mag;pointsource;ismedium;isbright]" data/gaia-mask-sub.fits
+    startree -i data/gaia-mask-sub.fits -o data/gaia-mask.kd.fits -P -T -k
+    '''
+    fn = os.path.join(settings.DATA_DIR, 'gaia-mask.kd.fits')
+    tag = 'masks-dr8'
+    T = cat_kd(req, ver, tag, fn)
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[])),
+                            content_type='application/json')
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    names = ['G=%.2f' % g for g in T.phot_g_mean_mag]
+    radius = [3600. * float(r) for r in T.radius]
+    color = ['orange' if bright else '#3388ff' for bright in T.isbright]
+    #G = [float(r) for r in T.phot_g_mean_mag]
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius, color=color)),
+                        content_type='application/json')
+
+def cat_kd(req, ver, tag, fn, racol=None, deccol=None):
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
     declo = float(req.GET['declo'])
@@ -948,6 +1161,10 @@ def cat_kd(req, ver, tag, fn):
         debug('No objects in query')
         return None
     debug(len(T), 'spectra')
+    if racol is not None:
+        T.ra = T.get(racol)
+    if deccol is not None:
+        T.dec = T.get(deccol)
     if ralo > rahi:
         # RA wrap
         T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
@@ -1146,8 +1363,13 @@ def cat_gals(req, ver):
                os.path.join(settings.DATA_DIR,'galaxy-cats.fits'))
 
 def cat_GCs_PNe(req, ver):
-    return cat(req, ver, 'GCs-PNe',
-               os.path.join(settings.DATA_DIR,'NGC-star-clusters.fits'))
+    from astrometry.util.fits import fits_table
+    import numpy as np
+    T = fits_table(os.path.join(settings.DATA_DIR,'NGC-star-clusters.fits'))
+    #T.alt_name = np.array(['' if n.startswith('N/A') else n.strip() for n in T.commonnames])
+    T.posAngle = T.pa
+    T.abRatio = T.ba
+    return cat(req, ver, 'GCs-PNe', None, T=T)
 
 def cat_ps1(req, ver):
     ralo = float(req.GET['ralo'])
@@ -1161,7 +1383,7 @@ def cat_ps1(req, ver):
     return cat(req, ver, 'ps1',
                os.path.join(settings.DATA_DIR,'ps1-cat.fits'))
 
-def cat(req, ver, tag, fn):
+def cat(req, ver, tag, fn, T=None):
     import json
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
@@ -1175,8 +1397,9 @@ def cat(req, ver, tag, fn):
     from astrometry.util.fits import fits_table
     import numpy as np
 
-    T = fits_table(fn)
-    debug(len(T), 'catalog objects')
+    if T is None:
+        T = fits_table(fn)
+        debug(len(T), 'catalog objects')
     if ralo > rahi:
         # RA wrap
         T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
@@ -1194,11 +1417,22 @@ def cat(req, ver, tag, fn):
     if 'name' in T.columns():
         names = [t.strip() for t in T.name]
         rtn['name'] = names
-    # bright stars
+    # bright stars, GCs/PNe
     if 'alt_name' in T.columns():
         rtn.update(altname = [t.strip() for t in T.alt_name])
+
+    # if 'majax' in T.columns() and 'minax' in T.columns() and 'pa' in T.columns():
+    #     # GCs/PNe catalog
+    #     T.abRatio = T.minax / T.majax
+    #     T.posAngle = T.pa
+    #     T.rename('majax', 'radius')
+
     if 'radius' in T.columns():
         rtn.update(radiusArcsec=list(float(f) for f in T.radius * 3600.))
+
+    if 'posAngle' in T.columns() and 'abRatio' in T.columns():
+        rtn.update(posAngle=list(float(f) for f in T.posAngle),
+                   abRatio =list(float(f) for f in T.abRatio))
         
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 

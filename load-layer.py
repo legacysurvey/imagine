@@ -113,8 +113,7 @@ def main():
     #survey_dir = '/global/cscratch1/sd/dstn/dr8-depthcut'
     #survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
 
-    #rsync = True
-    rsync = False
+    rsync = True
     #survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurv
 
     side = 'north'
@@ -125,6 +124,50 @@ def main():
     name = 'dr9sv-%s' % side
     pretty = 'DR9-SV %s' % side
 
+    rsync = False
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    indir = '/global/cscratch1/sd/dstn/fornax'
+    name = 'fornax'
+    pretty = 'Fornax'
+
+    rsync = True
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    indir = '/global/cscratch1/sd/dstn/dr9.2'
+    name = 'dr9-test-9.2'
+    pretty = 'DR9.2 test'
+
+    rsync = True
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    indir = '/global/cscratch1/sd/dstn/dr9.3'
+    name = 'dr9-test-9.3'
+    pretty = 'DR9.3 test'
+
+    rsync = True
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    indir = '/global/cscratch1/sd/dstn/dr9.3.1'
+    name = 'dr9-test-9.3.1'
+    pretty = 'DR9.3.1 test'
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9f/south'
+    indir = survey_dir
+    name = 'dr9f-south'
+    pretty = 'DR9f south'
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9f/north'
+    indir = survey_dir
+    name = 'dr9f-north'
+    pretty = 'DR9f north'
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9g/south'
+    indir = survey_dir
+    name = 'dr9g-south'
+    pretty = 'DR9g south'
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9g/north'
+    indir = survey_dir
+    name = 'dr9g-north'
+    pretty = 'DR9g north'
+    
     datadir = 'data'
 
     survey = LegacySurveyData(survey_dir=survey_dir)

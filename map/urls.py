@@ -4,7 +4,7 @@ from map import views
 from map import cats
 from map import cutouts
 
-survey_regex = r'[\w +-]+'
+survey_regex = r'[\w\. +-]+'
 layer_regex = r'\{id\}|' + survey_regex
 
 urlpatterns = [
@@ -15,7 +15,11 @@ urlpatterns = [
     url(r'^ci', views.ci),
 
     url(r'^gaia-stars-for-wcs', cats.gaia_stars_for_wcs),
-    
+
+    url(r'^masks-dr8/(\d+)/cat.json', cats.cat_gaia_mask),
+
+    url(r'^masks-dr9/(\d+)/cat.json', cats.cat_masks_dr9),
+
     # PHAT cluster catalog
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
 
@@ -89,6 +93,8 @@ urlpatterns = [
     # LSLGA galaxies
     url(r'^lslga/(\d+)/cat.json', cats.cat_lslga),
 
+    url(r'^lslga-ellipse/(\d+)/cat.json', cats.cat_lslga_ellipse),
+
     url(r'^lslga-model/(\d+)/cat.json', cats.cat_lslga_model),
 
     url(r'^GCs-PNe/(\d+)/cat.json', cats.cat_GCs_PNe),
@@ -98,6 +104,8 @@ urlpatterns = [
 
     # SDSS Spectroscopy
     url(r'^spec/(\d+)/cat.json', cats.cat_spec),
+
+    url(r'^manga/(\d+)/cat.json', cats.cat_manga),
 
     # Bright stars
     url(r'^bright/(\d+)/cat.json', cats.cat_bright),
