@@ -3,7 +3,6 @@ if __name__ == '__main__':
     ## NOTE, if you want to run this from the command-line, probably have to do so
     # from sgn04 node within the virtualenv.
     import sys
-    #sys.path.insert(0, 'django-1.9')
     sys.path.insert(0, 'django-2.2.4')
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
@@ -1124,7 +1123,7 @@ class MapLayer(object):
 
                 #print('Resampling', img.shape)
                 try:
-                    Yo,Xo,Yi,Xi,nil = resample_with_wcs(wcs, subwcs, [], 3)
+                    Yo,Xo,Yi,Xi,[resamp] = resample_with_wcs(wcs, subwcs, [img])
                 except OverlapError:
                     #debug('Resampling exception')
                     continue
@@ -1142,6 +1141,7 @@ class MapLayer(object):
                     Xo = Xo[I]
                     Yi = Yi[I]
                     Xi = Xi[I]
+                    resamp = resamp[I]
 
                     #print('get_brick_mask:', len(Yo), 'pixels')
 
@@ -1151,14 +1151,14 @@ class MapLayer(object):
                 #       'Yi range', Yi.min(), Yi.max(),
                 #       'subwcs shape', subwcs.shape)
 
-                if not np.all(np.isfinite(img[Yi,Xi])):
-                    ok, = np.nonzero(np.isfinite(img[Yi,Xi]))
+                #if not np.all(np.isfinite(img[Yi,Xi])):
+                if not np.all(np.isfinite(resamp)):
+                    ok, = np.nonzero(np.isfinite(resamp))
                     Yo = Yo[ok]
                     Xo = Xo[ok]
                     Yi = Yi[ok]
                     Xi = Xi[ok]
-
-                    #print('finite pixels:', len(Yo))
+                    resamp = resamp[ok]
 
                 ok = self.filter_pixels(scale, img, wcs, subwcs, Yo,Xo,Yi,Xi)
                 if ok is not None:
@@ -1166,15 +1166,12 @@ class MapLayer(object):
                     Xo = Xo[ok]
                     Yi = Yi[ok]
                     Xi = Xi[ok]
-
-                    # print('filter pixels:', len(Yo))
+                    resamp = resamp[ok]
 
                 wt = self.get_pixel_weights(band, brick, scale)
 
-                # DEBUG
-                #nz = np.sum(rw == 0)
-
-                rimg[Yo,Xo] += img[Yi,Xi] * wt
+                #rimg[Yo,Xo] += img[Yi,Xi] * wt
+                rimg[Yo,Xo] += resamp * wt
                 rw  [Yo,Xo] += wt
 
                 #print('Coadded', len(Yo), 'pixels;', (nz-np.sum(rw==0)), 'new')
@@ -1600,7 +1597,6 @@ class DecalsLayer(MapLayer):
         if drname is None:
             drname = name
         self.drname = drname
-        #self.drurl = 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/' + self.drname
 
         self.basedir = os.path.join(settings.DATA_DIR, self.drname)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.drname)
@@ -2383,6 +2379,20 @@ class LegacySurveySplitLayer(MapLayer):
             #print('Decs', dd)
             self.tilesplits[zoom] = y
 
+    def get_layer_for_radec(self, ra, dec):
+        if dec < self.decsplit:
+            return self.bottom
+        from astrometry.util.starutil_numpy import radectolb
+        l,b = radectolb(ra, dec)
+        ngc = (b > 0.)
+        if ngc and dec > self.decsplit:
+            return self.top
+        return self.bottom
+
+    def brick_details_body(self, brick):
+        layer = self.get_layer_for_radec(brick.ra, brick.dec)
+        return layer.brick_details_body(brick)
+
     def has_cutouts(self):
         return True
 
@@ -2491,7 +2501,7 @@ class LegacySurveySplitLayer(MapLayer):
 
     def get_bricks(self):
         from astrometry.util.fits import merge_tables
-        BB = merge_tables([l.get_bricks() for l in self.layers])
+        BB = merge_tables([l.get_bricks() for l in self.layers], columns='fillzero')
         return BB
 
     def bricks_touching_radec_box(self, *args, **kwargs):
@@ -3776,7 +3786,45 @@ class Decaps2LegacySurveyData(MyLegacySurveyData):
                                                               brickpre=brickpre,
                                                               band=band,
                                                               output=output)
-    
+
+class DR8LegacySurveyData(LegacySurveyData):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.image_typemap.update({
+            'decam': DR8DecamImage,
+            'mosaic': DR8MosaicImage,
+            '90prime': DR8BokImage,
+            })
+
+from legacypipe.decam import DecamImage
+class DR8DecamImage(DecamImage):
+    def __init__(self, *args):
+        super().__init__(*args)
+        calibdir = self.survey.get_calib_dir()
+        # calib/decam/splinesky-merged/00154/decam-00154069.fits
+        estr = '%08i' % self.expnum
+        self.old_merged_skyfn = os.path.join(calibdir, self.camera, 'splinesky-merged',
+                                             estr[:5], '%s-%s.fits' % (self.camera, estr))
+
+from legacypipe.mosaic import MosaicImage
+class DR8MosaicImage(DecamImage):
+    def __init__(self, *args):
+        super().__init__(*args)
+        calibdir = self.survey.get_calib_dir()
+        estr = '%08i' % self.expnum
+        self.old_merged_skyfn = os.path.join(calibdir, self.camera, 'splinesky-merged',
+                                             estr[:5], '%s-%s.fits' % (self.camera, estr))
+
+from legacypipe.bok import BokImage
+class DR8BokImage(BokImage):
+    def __init__(self, *args):
+        super().__init__(*args)
+        calibdir = self.survey.get_calib_dir()
+        estr = '%08i' % self.expnum
+        self.old_merged_skyfn = os.path.join(calibdir, self.camera, 'splinesky-merged',
+                                             estr[:5], '%s-%s.fits' % (self.camera, estr))
+
+        
 surveys = {}
 def get_survey(name):
     import numpy as np
@@ -3788,7 +3836,7 @@ def get_survey(name):
         print('Cache hit for survey', name)
         return surveys[name]
 
-    if '/' in name or '.' in name:
+    if '/' in name or '..' in name:
         return None
 
     #debug('Creating LegacySurveyData() object for "%s"' % name)
@@ -3805,7 +3853,7 @@ def get_survey(name):
     if name == 'decaps':
         survey = Decaps2LegacySurveyData(survey_dir=dirnm)
         survey.drname = 'DECaPS'
-        survey.drurl = 'https://portal.nersc.gov/project/cosmo/data/decaps/dr1'
+        survey.drurl = 'https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
 
     elif name == 'ls-dr67':
         north = get_survey('mzls+bass-dr6')
@@ -3821,6 +3869,9 @@ def get_survey(name):
         south.layer = 'dr8-south'
         survey = SplitSurveyData(north, south)
 
+    elif name in ['dr8-south', 'dr8-north', 'decals-dr5']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+
     elif name == 'dr9sv':
         north = get_survey('dr9sv-north')
         north.layer = 'dr9sv-north'
@@ -3833,7 +3884,8 @@ def get_survey(name):
     #        #'decals-dr7', 'mzls+bass-dr4', 'mzls+bass-dr6', 'eboss']:
     #    survey = MyLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
-
+    print('dirnm', dirnm, 'exists?', os.path.exists(dirnm))
+    
     if survey is None and not os.path.exists(dirnm):
         return None
 
@@ -3842,16 +3894,16 @@ def get_survey(name):
         print('Creating LegacySurveyData for', name, 'with survey_dir', dirnm)
 
     names_urls = {
-        'mzls+bass-dr4': ('MzLS+BASS DR4', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr4/'),
-        'mzls+bass-dr6': ('MzLS+BASS DR6', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr6/'),
-        'decals-dr5': ('DECaLS DR5', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr5/'),
-        'decals-dr7': ('DECaLS DR7', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/dr7/'),
+        'mzls+bass-dr4': ('MzLS+BASS DR4', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr4/'),
+        'mzls+bass-dr6': ('MzLS+BASS DR6', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr6/'),
+        'decals-dr5': ('DECaLS DR5', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr5/'),
+        'decals-dr7': ('DECaLS DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr7/'),
         'eboss': ('eBOSS', 'http://legacysurvey.org/'),
         'decals': ('DECaPS', 'http://legacysurvey.org/'),
-        'ls-dr67': ('Legacy Surveys DR6+DR7', 'http://portal.nersc.gov/project/cosmo/data/legacysurvey/'),
-        'dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/north'),
-        'dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/south'),
-        'dr8': ('Legacy Surveys DR8', 'https://portal.nersc.gov/project/cosmo/data/legacysurvey/dr8/'),
+        'ls-dr67': ('Legacy Surveys DR6+DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/'),
+        'dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/north'),
+        'dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/south'),
+        'dr8': ('Legacy Surveys DR8', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/'),
         }
 
     n,u = names_urls.get(name, ('',''))
@@ -4276,9 +4328,10 @@ def brick_detail(req, brickname, get_html=False, brick=None):
     import numpy as np
 
     brickname = str(brickname)
-    layer = request_layer_name(req)
-    layer = layer_to_survey_name(layer)
-    survey = get_survey(layer)
+    layername = request_layer_name(req)
+    sname = layer_to_survey_name(layername)
+    layer = get_layer(layername)
+    survey = get_survey(sname)
     if brick is None:
         bricks = survey.get_bricks()
         I = np.flatnonzero(brickname == bricks.brickname)
@@ -4291,15 +4344,10 @@ def brick_detail(req, brickname, get_html=False, brick=None):
         html_tag + '<head><title>%s data for brick %s</title></head>' %
         (survey.drname, brickname)
         + ccds_table_css + '<body>',
-        '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
-        '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
-        '<ul>',
-        '<li><a href="%scoadd/%s/%s/%s-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, coadd_prefix, brickname),
-        '<li><a href="%scoadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
-        '<li><a href="%stractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
-        '</ul>',
         ]
-
+    brick_html = layer.brick_details_body(brick)
+    html.extend(brick_html)
+    
     ccdsfn = survey.find_file('ccds-table', brick=brickname)
     if not os.path.exists(ccdsfn):
         print('No CCDs table:', ccdsfn)
@@ -4861,35 +4909,45 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
     f,jpegfn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
 
+    if x1 < 0 or y1 < 0 or x0 >= W or y0 >= H:
+        # no overlap
+        img = np.zeros((size,size), np.float32)
+        kwa = dict(cmap='gray', origin='lower', vmin=0, vmax=1)
+        plt.imsave(jpegfn, img, **kwa)
+        return send_file(jpegfn, 'image/jpeg', unlink=True)
+    
     kwa = dict(cmap='gray', origin='lower')
 
+    trargs = dict(slc=slc, gaussPsf=True, old_calibs_ok=True, tiny=1)
+                  #readsky=False)
+    
     if kind == 'image':
-        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   dq=False, invvar=False, old_calibs_ok=True)
+        tim = im.get_tractor_image(invvar=False, dq=False, **trargs)
         from legacypipe.survey import get_rgb
-        rgb = get_rgb([tim.data], [tim.band], mnmx=(-1,100.), arcsinh=1.)
+        print('im=',im)
+        print('tim=',tim)
+        # hack a sky sub
+        #tim.data -= np.median(tim.data)
+        rgb = get_rgb([tim.data], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, z=0)[tim.band]
         img = rgb[:,:,index]
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'weight':
-        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   pixels=False, dq=False, invvar=True, old_calibs_ok=True)
+        tim = im.get_tractor_image(pixels=False, dq=False, invvar=True, **trargs)
         img = tim.getInvvar()
         kwa.update(vmin=0)
 
     elif kind == 'weightedimage':
-        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   dq=False, invvar=True, old_calibs_ok=True)
+        tim = im.get_tractor_image(dq=False, invvar=True, **trargs)
         from legacypipe.survey import get_rgb
-        rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band], mnmx=(-1,100.), arcsinh=1.)
+        rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, z=0)[tim.band]
         img = rgb[:,:,index]
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'dq':
-        tim = im.get_tractor_image(slc=slc, gaussPsf=True, splinesky=True,
-                                   pixels=False, dq=True, invvar=False, old_calibs_ok=True)
+        tim = im.get_tractor_image(pixels=False, dq=True, invvar=False, **trargs)
         img = tim.dq
         kwa.update(vmin=0)
 
@@ -5360,6 +5418,10 @@ if __name__ == '__main__':
     matplotlib.use('Agg')
     import pylab as plt
 
+    import logging
+    lvl = logging.DEBUG
+    logging.basicConfig(level=lvl, format='%(message)s', stream=sys.stdout)
+
     # dr5 = get_layer('decals-dr5')
     # dr6 = get_layer('mzls+bass-dr6')
     # split = LegacySurveySplitLayer('ls56', dr5, dr6, 32.)
@@ -5522,7 +5584,18 @@ if __name__ == '__main__':
     #r = c.get('/dr9sv-north/1/11/1220/823.jpg')
     #r = c.get('/dr9sv-north/1/10/396/372.jpg')
     #r = c.get('/bricks/?ralo=33.5412&rahi=33.5722&declo=-2.2242&dechi=-2.2070&layer=dr9sv')
-    r = c.get('/manga/1/cat.json?ralo=194.4925&rahi=194.5544&declo=29.0022&dechi=29.0325')
+    #r = c.get('/manga/1/cat.json?ralo=194.4925&rahi=194.5544&declo=29.0022&dechi=29.0325')
+    #r = c.get('/bricks/?ralo=33.5412&rahi=33.5722&declo=-2.2242&dechi=-2.2070&layer=dr9sv')
+    #r = c.get('/manga/1/cat.json?ralo=194.4925&rahi=194.5544&declo=29.0022&dechi=29.0325')
+    #r = c.get('/fornax-model/1/11/1823/1233.jpg')
+    #r = c.get('/dr9-test-9.2/1/14/14809/8145.jpg')
+    #r = c.get('/brick/1379p505/?layer=dr8')
+    #names = ['%s %s' % (c.strip(),i) for c,i in zip(T.ref_cat, T.ref_id)]
+    #r = c.get('/cutout_panels/decals-dr7/511284/N11/?ra=163.2651&dec=13.1159&size=100')
+    #r = c.get('/jpeg-cutout?ra=144.5993113&dec=4.014711559&size=128&layer=decals-dr7-resid&pixscale=0.262&bands=grz')
+    #r = c.get('/cutout_panels/dr8-south/432043/N6/?ra=185.8736&dec=19.4258&size=100')
+    #r = c.get('/cutout_panels/decals-dr5/521375/N11/?ra=163.2651&dec=13.1159&size=100')
+    r = c.get('/masks-dr9/1/cat.json?ralo=221.3107&rahi=221.8057&declo=1.7637&dechi=2.0399')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

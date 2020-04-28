@@ -719,8 +719,15 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -25
-    elif opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
-                      'galex', 'wssa', 'vlass', 'hsc', 'hsc2'] or 'dr8i' in opt.kind:
+
+    # All-sky
+    elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
+                       'unwise-neo4', 'unwise-cat-model',
+                       'galex', 'wssa', 'vlass', 'hsc', 'hsc2']
+          or 'dr8i' in opt.kind
+          or 'dr9-test' in opt.kind
+          or 'dr9f' in opt.kind
+          or 'dr9g' in opt.kind):
         if opt.maxdec is None:
             opt.maxdec = 90.
         if opt.mindec is None:
@@ -797,7 +804,8 @@ def main():
     #         opt.minra = 0
     
     elif opt.kind in ['dr8-north', 'dr8-north-model', 'dr8-north-resid',
-                      'dr9sv-north', 'dr9sv-north-model', 'dr9sv-north-resid']:
+                      'dr9sv-north', 'dr9sv-north-model', 'dr9sv-north-resid',
+                      ]:
         if opt.maxdec is None:
             opt.maxdec = 90
         if opt.mindec is None:
@@ -808,7 +816,8 @@ def main():
             opt.minra = 0
 
     elif opt.kind in ['dr8-south', 'dr8-south-model', 'dr8-south-resid',
-                      'dr9sv-south', 'dr9sv-south-model', 'dr9sv-south-resid']:
+                      'dr9sv-south', 'dr9sv-south-model', 'dr9sv-south-resid',
+                      'fornax', 'fornax-model', 'fornax-resid']:
         if opt.maxdec is None:
             opt.maxdec = 40
         if opt.mindec is None:
@@ -876,7 +885,7 @@ def main():
 
 
         # Rebricked
-        if opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
+        if (opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                         'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
@@ -893,7 +902,13 @@ def main():
                         'dr9sv-south', 'dr9sv-south-model', 'dr9sv-south-resid',
                         'dr9sv-north', 'dr9sv-north-model', 'dr9sv-north-resid',
                         'dr9sv', 'dr9sv-model', 'dr9sv-resid',
-        ] or opt.kind.startswith('dr8-test'): # or True:
+                        'fornax', 'fornax-model', 'fornax-resid',
+        ]
+            or opt.kind.startswith('dr8-test')
+            or opt.kind.startswith('dr9-test')
+            or opt.kind.startswith('dr9f')
+            or opt.kind.startswith('dr9g')
+            ):
             from map.views import get_layer
 
             layer = get_layer(opt.kind)
