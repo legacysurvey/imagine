@@ -1166,6 +1166,7 @@ def cat_kd(req, ver, tag, fn, racol=None, deccol=None):
     if deccol is not None:
         T.dec = T.get(deccol)
     if ralo > rahi:
+        import numpy as np
         # RA wrap
         T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
     else:
