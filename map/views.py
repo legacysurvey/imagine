@@ -4951,6 +4951,10 @@ def cutout_panels(req, layer=None, expnum=None, extname=None):
         img = tim.dq
         kwa.update(vmin=0)
 
+    #print('slc', slc)
+    #print('img', img.shape)
+    #print('pad left', padleft, 'right', padright, 'top', padtop, 'bottom', padbottom)
+
     H,W = img.shape
     if padleft:
         img = np.hstack((np.zeros((H, padleft), img.dtype), img))
@@ -5596,7 +5600,8 @@ if __name__ == '__main__':
     #r = c.get('/cutout_panels/dr8-south/432043/N6/?ra=185.8736&dec=19.4258&size=100')
     #r = c.get('/cutout_panels/decals-dr5/521375/N11/?ra=163.2651&dec=13.1159&size=100')
     #r = c.get('/masks-dr9/1/cat.json?ralo=221.3107&rahi=221.8057&declo=1.7637&dechi=2.0399')
-    r = c.get('/masks-dr9/1/cat.json?ralo=359.6086&rahi=0.1037&declo=20.6203&dechi=20.8787')
+    #r = c.get('/masks-dr9/1/cat.json?ralo=359.6086&rahi=0.1037&declo=20.6203&dechi=20.8787')
+    r = c.get('/cutout_panels/dr8-north/78970148/CCD1/?ra=226.2625&dec=33.7491&size=100')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
