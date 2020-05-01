@@ -1072,7 +1072,9 @@ def cat_masks_dr9(req, ver):
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     radius = [3600. * float(r) for r in T.radius]
     color = []
-    for bright,cluster,gal,dup in zip(T.isbright, T.iscluster, T.islargegalaxy, T.donotfit):
+    for bright,cluster,gal,dup,ptsrc,aen in zip(
+            T.isbright, T.iscluster, T.islargegalaxy, T.donotfit, T.pointsource,
+            T.astrometric_excess_noise):
         if dup:
             color.append('#aaaaaa')
         elif cluster:
@@ -1081,13 +1083,15 @@ def cat_masks_dr9(req, ver):
             color.append('orange')
         elif gal:
             color.append('#33ff88')
-        else:
+        elif ptsrc:
             color.append('#3388ff')
+        else:
+            color.append('#8833ff')
 
     names = []
-    for bright,cluster,gal,dup,mag,zguess,freeze,refid in zip(
+    for bright,cluster,gal,dup,mag,zguess,freeze,refid,ptsrc,aen in zip(
             T.isbright, T.iscluster, T.islargegalaxy, T.donotfit, T.mag, T.zguess,
-            T.freezeparams, T.ref_id):
+            T.freezeparams, T.ref_id, T.pointsource, T.astrometric_excess_noise):
         if dup:
             names.append('DUP')
         elif cluster:
@@ -1101,15 +1105,16 @@ def cat_masks_dr9(req, ver):
             names.append(name)
         else:
             if bright:
-                if np.isfinite(zguess) * (zguess+1 < mag):
-                    names.append('BRIGHT mag=%.2f, zguess=%.2f' % (mag, zguess))
-                else:
-                    names.append('BRIGHT mag=%.2f' % mag)
+                name = 'BRIGHT mag=%.2f' % mag
             else:
-                if np.isfinite(zguess) * (zguess+1 < mag):
-                    names.append('MEDIUM G=%.2f, zguess=%.2f' % (mag, zguess))
-                else:
-                    names.append('MEDIUM G=%.2f' % mag)
+                name = 'MEDIUM G=%.2f' % mag
+            if np.isfinite(zguess) * (zguess+1 < mag):
+                zg = ', zguess=%.2f' % (zguess)
+                name += zg
+            if ptsrc:
+                name += ', ptsrc'
+            name += ', aen=%.2g' % aen
+            names.append(name)
 
     # default to round!
     T.ba[T.ba == 0] = 1.
