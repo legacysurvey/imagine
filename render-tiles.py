@@ -221,7 +221,8 @@ def top_levels(mp, opt):
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
                     'des-dr1',
                     'eboss',
-                    'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
+                    'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6',
+                    'unwise-cat-model',
                     'galex', 'sdss2', 'wssa',
                     'ls-dr56', 'ls-dr67'] or True:
         import pylab as plt
@@ -243,7 +244,8 @@ def top_levels(mp, opt):
         print('Bands', bands)
 
         rgbkwargs = {}
-        if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-cat-model']:
+        if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6',
+                        'unwise-cat-model']:
             bands = [1, 2]
         elif opt.kind == 'sdss2':
             bands = 'gri'
@@ -722,7 +724,7 @@ def main():
 
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
-                       'unwise-neo4', 'unwise-cat-model',
+                       'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
                        'galex', 'wssa', 'vlass', 'hsc', 'hsc2']
           or 'dr8i' in opt.kind
           or 'dr9-test' in opt.kind
@@ -888,7 +890,7 @@ def main():
         if (opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
-                        'unwise-neo3', 'unwise-neo4', 'unwise-cat-model',
+                         'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
                         'galex', 'wssa', 'des-dr1', 'hsc', 'hsc2',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
                         'dr8-south', 'dr8-south-model', 'dr8-south-resid',

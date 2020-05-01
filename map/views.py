@@ -118,6 +118,7 @@ tileversions = {
     'unwise-neo2': [1],
     'unwise-neo3': [1],
     'unwise-neo4': [1],
+    'unwise-neo6': [1],
 
     'unwise-cat-model': [1],
 
@@ -5210,6 +5211,10 @@ def get_layer(name, default=None):
         layer = RebrickedUnwise('unwise-neo4',
                                 settings.UNWISE_NEO4_DIR)
 
+    elif name == 'unwise-neo6':
+        layer = RebrickedUnwise('unwise-neo6',
+                                os.path.join(settings.DATA_DIR, 'unwise-coadds-neo6'))
+
     elif name == '2mass':
         layer = TwoMassLayer('2mass')
 
@@ -5601,7 +5606,9 @@ if __name__ == '__main__':
     #r = c.get('/cutout_panels/decals-dr5/521375/N11/?ra=163.2651&dec=13.1159&size=100')
     #r = c.get('/masks-dr9/1/cat.json?ralo=221.3107&rahi=221.8057&declo=1.7637&dechi=2.0399')
     #r = c.get('/masks-dr9/1/cat.json?ralo=359.6086&rahi=0.1037&declo=20.6203&dechi=20.8787')
-    r = c.get('/cutout_panels/dr8-north/78970148/CCD1/?ra=226.2625&dec=33.7491&size=100')
+    #r = c.get('/cutout_panels/dr8-north/78970148/CCD1/?ra=226.2625&dec=33.7491&size=100')
+    #r = c.get('/unwise-neo6/1/7/79/61.jpg')
+    r = c.get('/unwise-neo6/1/7/72/60.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

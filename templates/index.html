@@ -2032,6 +2032,11 @@ tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
                  //'urlPatterns': [ [9, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
+                {'maxNativeZoom': 12,
+                 'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
                 {'maxNativeZoom': 12,
                  'urlPatterns': [ [6, maxZoom, tile_url], ],});
@@ -3509,7 +3514,8 @@ var baseTree1 = [
         findlayer('decaps-resid'),
     ]),
     {% endif %}
-    findlayer('unwise-neo4', [
+    findlayer('unwise-neo6', [
+        findlayer('unwise-neo4'),
         findlayer('unwise-neo3'),
         findlayer('unwise-neo2'),
         findlayer('unwise-w1w2'),
@@ -3758,7 +3764,7 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
          'DECaLS DR5 images',
          'MzLS+BASS DR4 images',
          'DECaPS images',
-         'unWISE W1/W2 NEO4',
+         'unWISE W1/W2 NEO6',
          'DECaLS DR7 catalog',
          'DECaLS DR7 CCDs',
          'DECaLS DR7 Exposures',
