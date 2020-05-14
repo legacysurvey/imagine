@@ -24,3 +24,8 @@ test_cats.append(("dr9f-south", "Catalog: DR9f south"))
 test_cats.append(("dr9f-north", "Catalog: DR9f north"))
 test_cats.append(("dr9g-south", "Catalog: DR9g south"))
 test_cats.append(("dr9g-north", "Catalog: DR9g north"))
+
+test_layers.append(("dr9h-north", "DR9h north images"))
+test_layers.append(("dr9h-north-model", "DR9h north models"))
+test_layers.append(("dr9h-north-resid", "DR9h north residuals"))
+test_cats.append(("dr9h-north", "Catalog: DR9h north"))

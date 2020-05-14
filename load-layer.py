@@ -167,6 +167,12 @@ def main():
     indir = survey_dir
     name = 'dr9g-north'
     pretty = 'DR9g north'
+
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9h/north'
+    indir = survey_dir
+    name = 'dr9h-north'
+    pretty = 'DR9h north'
     
     datadir = 'data'
 
