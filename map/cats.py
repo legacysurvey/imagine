@@ -797,7 +797,7 @@ def cat_lslga_model(req, ver):
     return _cat_lslga(req, ver, model=True)
 
 def cat_lslga_ellipse(req, ver):
-    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-model-v6.0.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-ellipse-v7.0.kd.fits')
     return _cat_lslga(req, ver, ellipse=True, fn=fn)
 
 def _cat_lslga(req, ver, model=False, ellipse=False, fn=None):
