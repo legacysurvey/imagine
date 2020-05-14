@@ -1069,19 +1069,28 @@ def cat_masks_dr9(req, ver):
 
     # sort by radius to improve the layering
     T.cut(np.argsort(-T.radius))
-    
-    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
-    radius = [3600. * float(r) for r in T.radius]
+
+    rd = []
+    radius = []
     color = []
-    for bright,cluster,gal,dup,ptsrc,aen in zip(
+    ab = []
+    PA = []
+    PA_disp = []
+    names = []
+
+    for bright,cluster,gal,dup,ptsrc,aen,ra,dec,rad,mag,zguess,freeze,refid,ba,pa in zip(
             T.isbright, T.iscluster, T.islargegalaxy, T.donotfit, T.pointsource,
-            T.astrometric_excess_noise):
+            T.astrometric_excess_noise, T.ra, T.dec, T.radius,
+            T.mag, T.zguess, T.freezeparams, T.ref_id, T.ba, T.pa):
+        rd.append((float(ra), float(dec)))
+        radius.append(3600. * float(rad))
+
         if dup:
             color.append('#aaaaaa')
         elif cluster:
             color.append('yellow')
-        elif bright:
-            color.append('orange')
+        #elif bright:
+        #    color.append('orange')
         elif gal:
             color.append('#33ff88')
         elif ptsrc:
@@ -1089,10 +1098,6 @@ def cat_masks_dr9(req, ver):
         else:
             color.append('#8833ff')
 
-    names = []
-    for bright,cluster,gal,dup,mag,zguess,freeze,refid,ptsrc,aen in zip(
-            T.isbright, T.iscluster, T.islargegalaxy, T.donotfit, T.mag, T.zguess,
-            T.freezeparams, T.ref_id, T.pointsource, T.astrometric_excess_noise):
         if dup:
             names.append('DUP')
         elif cluster:
@@ -1115,21 +1120,36 @@ def cat_masks_dr9(req, ver):
             if ptsrc:
                 name += ', ptsrc'
             name += ', aen=%.2g' % aen
+            oname = name
+            if bright:
+                name = 'MED/'+name
             names.append(name)
 
-    # default to round!
-    T.ba[T.ba == 0] = 1.
-    ab = [float(f) for f in T.ba.astype(np.float32)]
+        if ba == 0.:
+            ba = 1.
+        ab.append(float(ba))
 
-    pax = T.pa.copy().astype(np.float32)
-    pax[np.logical_not(np.isfinite(pax))] = 0.
-    pax[pax < 0] += 180.
-    pax[pax >= 180.] -= 180.
-    pa = [float(90.-f) for f in pax]
-    pa_disp = [float(f) for f in pax]
+        if not np.isfinite(pa):
+            pa = 0.
+        if pa < 0:
+            pa += 180.
+        if pa >= 180.:
+            pa -= 180.
+        PA.append(float(90.-pa))
+        PA_disp.append(float(pa))
+
+        if bright:
+            # Double entry at half radius!
+            rd.append((float(ra), float(dec)))
+            radius.append(0.5 * 3600. * float(rad))
+            color.append('orange')
+            names.append(oname)
+            ab.append(float(ba))
+            PA.append(float(90.-pa))
+            PA_disp.append(float(pa))
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius, color=color,
-                                        abRatio=ab, posAngle=pa, posAngleDisplay=pa_disp)),
+                                        abRatio=ab, posAngle=PA, posAngleDisplay=PA_disp)),
                         content_type='application/json')
 
 def cat_gaia_mask(req, ver):
