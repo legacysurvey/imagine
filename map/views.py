@@ -4516,9 +4516,10 @@ def cutouts_common(req, tgz, copsf):
                 continue
 
             slc = (slice(y0, y1+1), slice(x0, x1+1))
-            tim = im.get_tractor_image(slc, pixPsf=True, splinesky=True,
+            tim = im.get_tractor_image(slc, pixPsf=True,
                                        subsky=True, nanomaggies=False,
-                                       pixels=tgz, dq=tgz, normalizePsf=copsf)
+                                       pixels=tgz, dq=tgz, normalizePsf=copsf,
+                                       old_calibs_ok=True)
             if tim is None:
                 continue
             psf = tim.getPsf()
@@ -5608,7 +5609,8 @@ if __name__ == '__main__':
     #r = c.get('/masks-dr9/1/cat.json?ralo=359.6086&rahi=0.1037&declo=20.6203&dechi=20.8787')
     #r = c.get('/cutout_panels/dr8-north/78970148/CCD1/?ra=226.2625&dec=33.7491&size=100')
     #r = c.get('/unwise-neo6/1/7/79/61.jpg')
-    r = c.get('/unwise-neo6/1/7/72/60.jpg')
+    #r = c.get('/unwise-neo6/1/7/72/60.jpg')
+    r = c.get('/cutouts-tgz/?ra=223.346&dec=43.3603&size=100&layer=dr9h-north')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

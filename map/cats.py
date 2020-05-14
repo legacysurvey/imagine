@@ -1067,6 +1067,8 @@ def cat_masks_dr9(req, ver):
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[])),
                             content_type='application/json')
 
+    from functools import reduce
+    T.cut(reduce(np.logical_or, [T.isbright, T.iscluster, T.islargegalaxy, T.ismedium]))
     # sort by radius to improve the layering
     T.cut(np.argsort(-T.radius))
 
