@@ -3804,8 +3804,11 @@ class DR8DecamImage(DecamImage):
         calibdir = self.survey.get_calib_dir()
         # calib/decam/splinesky-merged/00154/decam-00154069.fits
         estr = '%08i' % self.expnum
-        self.old_merged_skyfn = os.path.join(calibdir, self.camera, 'splinesky-merged',
-                                             estr[:5], '%s-%s.fits' % (self.camera, estr))
+        self.old_merged_skyfn = [
+            os.path.join(calibdir, self.camera, 'splinesky-merged',
+                         estr[:5], '%s-%s.fits' % (self.camera, estr)),
+            os.path.join(calibdir, self.camera, 'splinesky',
+                         estr[:5], '%s-%s.fits' % (self.camera, estr))]
 
 from legacypipe.mosaic import MosaicImage
 class DR8MosaicImage(DecamImage):
@@ -3813,8 +3816,10 @@ class DR8MosaicImage(DecamImage):
         super().__init__(*args)
         calibdir = self.survey.get_calib_dir()
         estr = '%08i' % self.expnum
-        self.old_merged_skyfn = os.path.join(calibdir, self.camera, 'splinesky-merged',
-                                             estr[:5], '%s-%s.fits' % (self.camera, estr))
+        self.old_merged_skyfn = [os.path.join(calibdir, self.camera, 'splinesky-merged',
+                                              estr[:5], '%s-%s.fits' % (self.camera, estr)),
+                                 os.path.join(calibdir, self.camera, 'splinesky',
+                                             estr[:5], '%s-%s.fits' % (self.camera, estr))]
 
 from legacypipe.bok import BokImage
 class DR8BokImage(BokImage):
@@ -3822,8 +3827,10 @@ class DR8BokImage(BokImage):
         super().__init__(*args)
         calibdir = self.survey.get_calib_dir()
         estr = '%08i' % self.expnum
-        self.old_merged_skyfn = os.path.join(calibdir, self.camera, 'splinesky-merged',
-                                             estr[:5], '%s-%s.fits' % (self.camera, estr))
+        self.old_merged_skyfn = [os.path.join(calibdir, self.camera, 'splinesky-merged',
+                                              estr[:5], '%s-%s.fits' % (self.camera, estr)),
+                                 os.path.join(calibdir, self.camera, 'splinesky',
+                                              estr[:5], '%s-%s.fits' % (self.camera, estr))]
 
         
 surveys = {}
@@ -3870,7 +3877,8 @@ def get_survey(name):
         south.layer = 'dr8-south'
         survey = SplitSurveyData(north, south)
 
-    elif name in ['dr8-south', 'dr8-north', 'decals-dr5']:
+    elif name in ['dr8-south', 'dr8-north', 'decals-dr5',
+                  'decals-dr7', 'mzls+bass-dr6']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
     elif name == 'dr9sv':
@@ -5610,7 +5618,8 @@ if __name__ == '__main__':
     #r = c.get('/cutout_panels/dr8-north/78970148/CCD1/?ra=226.2625&dec=33.7491&size=100')
     #r = c.get('/unwise-neo6/1/7/79/61.jpg')
     #r = c.get('/unwise-neo6/1/7/72/60.jpg')
-    r = c.get('/cutouts-tgz/?ra=223.346&dec=43.3603&size=100&layer=dr9h-north')
+    #r = c.get('/cutouts-tgz/?ra=223.346&dec=43.3603&size=100&layer=dr9h-north')
+    r = c.get('/cutout_panels/decals-dr7/659598/N23/?ra=328.5984&dec=15.1565&size=100')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
