@@ -169,11 +169,11 @@ def main():
     pretty = 'DR9g north'
 
 
-    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9h/north'
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9j/north'
     indir = survey_dir
-    name = 'dr9h-north'
-    pretty = 'DR9h north'
-    
+    name = 'dr9j-north'
+    pretty = 'DR9j north'
+
     datadir = 'data'
 
     survey = LegacySurveyData(survey_dir=survey_dir)

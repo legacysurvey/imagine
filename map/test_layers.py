@@ -29,3 +29,30 @@ test_layers.append(("dr9h-north", "DR9h north images"))
 test_layers.append(("dr9h-north-model", "DR9h north models"))
 test_layers.append(("dr9h-north-resid", "DR9h north residuals"))
 test_cats.append(("dr9h-north", "Catalog: DR9h north"))
+
+test_layers.append(("dr9i-north", "DR9i north images"))
+test_layers.append(("dr9i-north-model", "DR9i north models"))
+test_layers.append(("dr9i-north-resid", "DR9i north residuals"))
+test_cats.append(("dr9i-north", "Catalog: DR9i north"))
+
+test_layers.append(("dr9i-south", "DR9i south images"))
+test_layers.append(("dr9i-south-model", "DR9i south models"))
+test_layers.append(("dr9i-south-resid", "DR9i south residuals"))
+test_cats.append(("dr9i-south", "Catalog: DR9i south"))
+
+test_layers.append(("dr9j-north", "DR9j north images"))
+test_layers.append(("dr9j-north-model", "DR9j north models"))
+test_layers.append(("dr9j-north-resid", "DR9j north residuals"))
+test_cats.append(("dr9j-north", "Catalog: DR9j north"))
+
+test_layers.append(("dr9j-north", "DR9j north images"))
+
+test_layers.append(("dr9j-north-model", "DR9j north models"))
+
+test_layers.append(("dr9j-north-resid", "DR9j north residuals"))
+
+test_layers.append(("dr9j-north", "DR9j north images"))
+
+test_layers.append(("dr9j-north-model", "DR9j north models"))
+
+test_layers.append(("dr9j-north-resid", "DR9j north residuals"))

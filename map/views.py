@@ -5619,7 +5619,8 @@ if __name__ == '__main__':
     #r = c.get('/unwise-neo6/1/7/79/61.jpg')
     #r = c.get('/unwise-neo6/1/7/72/60.jpg')
     #r = c.get('/cutouts-tgz/?ra=223.346&dec=43.3603&size=100&layer=dr9h-north')
-    r = c.get('/cutout_panels/decals-dr7/659598/N23/?ra=328.5984&dec=15.1565&size=100')
+    #r = c.get('/cutout_panels/decals-dr7/659598/N23/?ra=328.5984&dec=15.1565&size=100')
+    r = c.get('/')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

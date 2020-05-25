@@ -724,13 +724,16 @@ def main():
 
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
-                       'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
-                       'galex', 'wssa', 'vlass', 'hsc', 'hsc2']
-          or 'dr8i' in opt.kind
-          or 'dr9-test' in opt.kind
-          or 'dr9f' in opt.kind
-          or 'dr9g' in opt.kind
-          or 'dr9h' in opt.kind):
+                           'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
+                           'galex', 'wssa', 'vlass', 'hsc', 'hsc2']
+              or 'dr8i' in opt.kind
+              or 'dr9-test' in opt.kind
+              or 'dr9f' in opt.kind
+              or 'dr9g' in opt.kind
+              or 'dr9h' in opt.kind
+              or 'dr9i' in opt.kind
+              or 'dr9j' in opt.kind
+    ):
         if opt.maxdec is None:
             opt.maxdec = 90.
         if opt.mindec is None:
@@ -912,6 +915,8 @@ def main():
             or opt.kind.startswith('dr9f')
             or opt.kind.startswith('dr9g')
             or opt.kind.startswith('dr9h')
+            or opt.kind.startswith('dr9i')
+            or opt.kind.startswith('dr9j')
             ):
             from map.views import get_layer
 
