@@ -3804,22 +3804,36 @@ class DR8DecamImage(DecamImage):
         calibdir = self.survey.get_calib_dir()
         # calib/decam/splinesky-merged/00154/decam-00154069.fits
         estr = '%08i' % self.expnum
-        self.old_merged_skyfn = [
+        self.old_merged_skyfns = [
             os.path.join(calibdir, self.camera, 'splinesky-merged',
                          estr[:5], '%s-%s.fits' % (self.camera, estr)),
             os.path.join(calibdir, self.camera, 'splinesky',
                          estr[:5], '%s-%s.fits' % (self.camera, estr))]
+        self.old_merged_psffns = [
+            os.path.join(calibdir, self.camera, 'psfex-merged',
+                         estr[:5], '%s-%s.fits' % (self.camera, estr)),
+            os.path.join(calibdir, self.camera, 'psfex',
+                         estr[:5], '%s-%s.fits' % (self.camera, estr))]
+    def get_fwhm(self, primhdr, imghdr):
+        if self.fwhm > 0:
+            return self.fwhm
+        return imghdr['FWHM']
 
 from legacypipe.mosaic import MosaicImage
-class DR8MosaicImage(DecamImage):
+class DR8MosaicImage(MosaicImage):
     def __init__(self, *args):
         super().__init__(*args)
         calibdir = self.survey.get_calib_dir()
         estr = '%08i' % self.expnum
-        self.old_merged_skyfn = [os.path.join(calibdir, self.camera, 'splinesky-merged',
+        self.old_merged_skyfns = [os.path.join(calibdir, self.camera, 'splinesky-merged',
                                               estr[:5], '%s-%s.fits' % (self.camera, estr)),
                                  os.path.join(calibdir, self.camera, 'splinesky',
                                              estr[:5], '%s-%s.fits' % (self.camera, estr))]
+        self.old_merged_psffns = [
+            os.path.join(calibdir, self.camera, 'psfex-merged',
+                         estr[:5], '%s-%s.fits' % (self.camera, estr)),
+            os.path.join(calibdir, self.camera, 'psfex',
+                         estr[:5], '%s-%s.fits' % (self.camera, estr))]
 
 from legacypipe.bok import BokImage
 class DR8BokImage(BokImage):
@@ -3827,10 +3841,15 @@ class DR8BokImage(BokImage):
         super().__init__(*args)
         calibdir = self.survey.get_calib_dir()
         estr = '%08i' % self.expnum
-        self.old_merged_skyfn = [os.path.join(calibdir, self.camera, 'splinesky-merged',
+        self.old_merged_skyfns = [os.path.join(calibdir, self.camera, 'splinesky-merged',
                                               estr[:5], '%s-%s.fits' % (self.camera, estr)),
                                  os.path.join(calibdir, self.camera, 'splinesky',
                                               estr[:5], '%s-%s.fits' % (self.camera, estr))]
+        self.old_merged_psffns = [
+            os.path.join(calibdir, self.camera, 'psfex-merged',
+                         estr[:5], '%s-%s.fits' % (self.camera, estr)),
+            os.path.join(calibdir, self.camera, 'psfex',
+                         estr[:5], '%s-%s.fits' % (self.camera, estr))]
 
         
 surveys = {}
@@ -5620,7 +5639,9 @@ if __name__ == '__main__':
     #r = c.get('/unwise-neo6/1/7/72/60.jpg')
     #r = c.get('/cutouts-tgz/?ra=223.346&dec=43.3603&size=100&layer=dr9h-north')
     #r = c.get('/cutout_panels/decals-dr7/659598/N23/?ra=328.5984&dec=15.1565&size=100')
-    r = c.get('/')
+    #r = c.get('/')
+    #r = c.get('/cutout_panels/decals-dr5/356224/S4/?ra=57.8589&dec=-15.4102&size=100')
+    r = c.get('/cutouts-tgz/?ra=57.8589&dec=-15.4102&size=100&layer=decals-dr5')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

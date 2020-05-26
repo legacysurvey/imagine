@@ -13,12 +13,12 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 
 REDIRECT_CUTOUTS_DECAPS = False
 
-GAIA_DR1_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr1-astrom'
-GAIA_DR2_CAT_DIR = '/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr2-astrom'
+GAIA_DR1_CAT_DIR = '/global/cfs/cdirs/cosmo/work/gaia/chunks-gaia-dr1-astrom'
+GAIA_DR2_CAT_DIR = '/global/cfs/cdirs/cosmo/work/gaia/chunks-gaia-dr2-astrom-2'
 
 SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
-SDSS_BASEDIR = '/global/project/projectdirs/cosmo/data/sdss/dr14/'
+SDSS_BASEDIR = '/global/cfs/cdirs/cosmo/data/sdss/dr14/'
 
 CREATE_GALAXY_CATALOG = True
 
