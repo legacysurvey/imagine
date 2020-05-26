@@ -797,7 +797,7 @@ def cat_lslga_model(req, ver):
     return _cat_lslga(req, ver, model=True)
 
 def cat_lslga_ellipse(req, ver):
-    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-ellipse-v7.0.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-ellipse-v3.0.kd.fits')
     return _cat_lslga(req, ver, ellipse=True, fn=fn)
 
 def _cat_lslga(req, ver, model=False, ellipse=False, fn=None):
@@ -830,7 +830,8 @@ def _cat_lslga(req, ver, model=False, ellipse=False, fn=None):
                                 content_type='application/json')
 
     if ellipse:
-        T.cut((T.lslga_id >= 0) * (T.preburned))
+        #T.cut((T.lslga_id >= 0) * (T.preburned))
+        T.cut((T.id >= 0) * (T.preburned))
 
     if not model:
         T.cut(np.argsort(-T.radius_arcsec))
@@ -838,7 +839,7 @@ def _cat_lslga(req, ver, model=False, ellipse=False, fn=None):
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
     pgc = [int(p) for p in T.pgc]
-    typ = [t.strip() if t != 'nan' else '' for t in T.get('type')]
+    typ = [t.strip() if t != 'nan' else '' for t in T.get('morphtype')]
     if model:
         radius = [float(r) for r in T.radius_model_arcsec.astype(np.float32)]
         ab = [float(f) for f in T.ba_model.astype(np.float32)]
@@ -868,10 +869,12 @@ def _cat_lslga(req, ver, model=False, ellipse=False, fn=None):
         pa = [float(90.-f) for f in pax]
         pa_disp = [float(f) for f in pax]
         if ellipse:
-            color = ['#ff3333']*len(T)
+            color = ['#377eb8']*len(T)
+            #'#ff3333'
         else:
-            color = ['#3388ff']*len(T)
-        z = [float(z) if np.isfinite(z) else -1. for z in T.z.astype(np.float32)]
+            color = ['#e41a1c']*len(T)
+            #'#3388ff'
+        z = [float(z) if np.isfinite(z) else -1. for z in T.z_leda.astype(np.float32)]
 
         return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
                                             abRatio=ab, posAngle=pa, pgc=pgc, type=typ,
@@ -888,7 +891,8 @@ def query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi):
     wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
     H,W = wcs.shape
     # cut to lslga entries possibly touching wcs box
-    T.radius_arcsec = T.d25 / 2. * 60.
+    #T.radius_arcsec = T.d25 / 2. * 60.
+    T.radius_arcsec = T.diam / 2. * 60.
     radius_pix = T.radius_arcsec / wcs.pixel_scale()
     ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
     #for x,y,name,r in zip(xx,yy,T.galaxy,radius_pix):
@@ -902,7 +906,7 @@ def query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi):
 
 def query_lslga_radecbox(ralo, rahi, declo, dechi, fn=None):
     if fn is None:
-        fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v7.0.kd.fits')
+        fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v3.0.kd.fits')
     T = query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi)
     if T is None or len(T) == 0:
         return None
@@ -1055,7 +1059,7 @@ def cat_masks_dr9(req, ver):
     wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
     os.environ['TYCHO2_KD_DIR'] = settings.DATA_DIR
     #os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v7.0.kd.fits')
-    os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-ellipse-v7.0.kd.fits')
+    os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-ellipse-v3.0.kd.fits')
     os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-cat')
     os.environ['GAIA_CAT_VER'] = '2'
     survey = LegacySurveyData(survey_dir=os.getcwd())

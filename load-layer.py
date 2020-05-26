@@ -169,10 +169,10 @@ def main():
     pretty = 'DR9g north'
 
 
-    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9j/north'
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9j/south'
     indir = survey_dir
-    name = 'dr9j-north'
-    pretty = 'DR9j north'
+    name = 'dr9j-south'
+    pretty = 'DR9j south'
 
     datadir = 'data'
 

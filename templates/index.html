@@ -3025,11 +3025,11 @@ var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (DR9)',
                               'labelsMinZoom': 7,
                              'urlTerm': 'masks-dr9',});
                              
-var starmasks8 = new StarMaskCatalog('masks-dr8', 'Gaia masks (DR8)',
-                             {'url_name': 'masks-dr8',
-                              'minZoom': 5,
-                              'labelsMinZoom': 7,
-                             'urlTerm': 'masks-dr8',});
+// var starmasks8 = new StarMaskCatalog('masks-dr8', 'Gaia masks (DR8)',
+//                              {'url_name': 'masks-dr8',
+//                               'minZoom': 5,
+//                               'labelsMinZoom': 7,
+//                              'urlTerm': 'masks-dr8',});
 
 var lslga = new LSLGACatalog('lslga', 'LSLGA (HyperLEDA)',
                              {'minZoom': 5,
@@ -3041,10 +3041,10 @@ var lslga_ell = new LSLGACatalog('lslga-ellipse', 'LSLGA (ellipse fit)',
                               'labelsMinZoom': 7,
                               'urlTerm': 'lslga-ellipse',});
                               
-var lslga_model = new LSLGACatalogModel('lslga-model', 'LSLGA (DR8 models)',
-                             {'minZoom': 5,
-                              'labelsMinZoom': 7,
-                              'urlTerm': 'lslga-model',});
+// var lslga_model = new LSLGACatalogModel('lslga-model', 'LSLGA (DR8 models)',
+//                              {'minZoom': 5,
+//                               'labelsMinZoom': 7,
+//                               'urlTerm': 'lslga-model',});
                               
 var GaiaDr1Catalog = CatalogOverlay.extend({
     getColor: function(json, i) {
@@ -3331,7 +3331,8 @@ var overlays = [
     brickOverlay,
     unwiseTileOverlay,
     ccdOverlaySdss,
-    gals, lslga, lslga_ell, lslga_model, starmasks8, starmasks9, GCsPNe, bright, tycho2,
+    gals, lslga, lslga_ell, //lslga_model, starmasks8,
+    starmasks9, GCsPNe, bright, tycho2,
     {% if enable_ps1 %}
     ps1cat,
     {% endif %}
@@ -3728,9 +3729,9 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('gals'),
      findoverlay('lslga'),
      findoverlay('lslga-ellipse'),
-     findoverlay('lslga-model'),
+     //findoverlay('lslga-model'),
      findoverlay('masks-dr9'),
-     findoverlay('masks-dr8'),
+     //findoverlay('masks-dr8'),
      findoverlay('GCs-PNe'),
      findoverlay('constellations'),
  ]);
