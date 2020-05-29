@@ -224,7 +224,8 @@ def top_levels(mp, opt):
                     'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6',
                     'unwise-cat-model',
                     'galex', 'sdss2', 'wssa',
-                    'ls-dr56', 'ls-dr67'] or True:
+                    'ls-dr56', 'ls-dr67',
+                    'vlass1.2'] or True:
         import pylab as plt
         from viewer import settings
         import fitsio
@@ -253,12 +254,14 @@ def top_levels(mp, opt):
             bands = ['n','f']
         elif opt.kind == 'wssa':
             bands = ['x']
+        elif 'vlass' in opt.kind:
+            bands = [1]
         #else:
         #    bands = 'grz'
 
         ver = tileversions.get(opt.kind, [1])[-1]
         print('Version', ver)
-        basescale = 5
+        basescale = 6
 
         pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                            '%(zoom)i', '%(x)i', '%(y)i.jpg')

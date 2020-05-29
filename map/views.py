@@ -3427,6 +3427,32 @@ class VlassLayer(RebrickedMixin, MapLayer):
         from astrometry.util.fits import fits_table
         return fits_table(os.path.join(self.basedir, 'vlass-tiles.fits'))
 
+    def get_bricks_for_scale(self, scale):
+        if scale in [0, None]:
+            return self.get_bricks()
+        scale = min(scale, self.maxscale)
+        from astrometry.util.fits import fits_table
+        fn = os.path.join(self.basedir, 'vlass-bricks-%i.fits' % scale)
+        print('vlass bricks for scale', scale, '->', fn)
+        b = fits_table(fn)
+        return b
+
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        if scale < 5:
+            size = self.pixelsize
+        elif scale == 5:
+            size = 4000
+        elif scale >= 6:
+            size = 4400
+
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+
     def get_bands(self):
         return [1]
 
@@ -3435,8 +3461,12 @@ class VlassLayer(RebrickedMixin, MapLayer):
         assert(len(imgs) == 1)
         img = imgs[0]
         H,W = img.shape
-        mn,mx = -0.0003, 0.003
+        #mn,mx = -0.0003, 0.003
+        mn,mx = -0.0001, 0.001
         gray = np.clip(255. * ((img-mn) / (mx-mn)), 0., 255.).astype(np.uint8)
+        gray[img == 0] = 64
+        #mn,mx = -0.0003, 0.01
+        #gray = (255. * np.sqrt(np.clip((img-mn) / (mx-mn), 0., 1.))).astype(np.uint8)
         rgb = np.zeros((H,W,3), np.uint8)
         rgb[:,:,:] = gray[:,:,np.newaxis]
         return rgb
@@ -3463,25 +3493,6 @@ class VlassLayer(RebrickedMixin, MapLayer):
             img = img[0,0,:,:]
         return img
 
-    def get_bricks_for_scale(self, scale):
-        if scale in [0, None]:
-            return self.get_bricks()
-        scale = min(scale, self.maxscale)
-        from astrometry.util.fits import fits_table
-        fn = os.path.join(self.basedir, 'vlass-bricks-%i.fits' % scale)
-        print('VLASS bricks for scale', scale, '->', fn)
-        b = fits_table(fn)
-        return b
-
-    def get_scaled_wcs(self, brick, band, scale):
-        from astrometry.util.util import Tan
-        size = self.pixelsize
-        pixscale = self.pixscale * 2**scale
-        cd = pixscale / 3600.
-        crpix = size/2. + 0.5
-        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
-                  float(size), float(size))
-        return wcs
 
 
 class ZeaLayer(MapLayer):
@@ -5678,7 +5689,10 @@ if __name__ == '__main__':
     #r = c.get('/cutout_panels/decals-dr5/356224/S4/?ra=57.8589&dec=-15.4102&size=100')
     #r = c.get('/cutouts-tgz/?ra=57.8589&dec=-15.4102&size=100&layer=decals-dr5')
     #r = c.get('/vlass1.2/1/14/7569/6814.jpg')
-    r = c.get('/cutouts-tgz/?ra=211.7082&dec=0.9631&size=100&layer=dr9i-south')
+    #r = c.get('/cutouts-tgz/?ra=211.7082&dec=0.9631&size=100&layer=dr9i-south')
+    #r = c.get('/vlass1.2/1/11/31/1004.jpg')
+    #r = c.get('/vlass1.2/1/6/0/30.jpg')
+    r = c.get('/vlass1.2/1/6/42/31.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
