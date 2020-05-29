@@ -4727,7 +4727,7 @@ def cutouts_common(req, tgz, copsf):
         print('CCD columns:', ccd.columns())
         ccdsx.append(('<br/>'.join(['CCD %s %i %s, %.1f sec (x,y ~ %i,%i)' % (ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
-                                    '<small>(observed %s @ %s)</small>' % (ccd.date_obs, ccd.ut),
+                                    '<small>(observed %s @ %s = MJD %.6f)</small>' % (ccd.date_obs, ccd.ut, ccd.mjd_obs),
                                     '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % format_jpl_url(req, ra, dec, ccd),]),
                       theurl))
     return render(req, 'cutouts.html',
