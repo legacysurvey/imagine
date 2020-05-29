@@ -4,13 +4,25 @@ from astrometry.util.util import * #Tan #, Sin
 import numpy as np
 import fitsio
 
+# on bbq:
+# wget -nc -r -nH --cut-dirs 2 -np -R *.rms.subim.fits -A *.subim.fits --reject-regex .*QA_REJECTED.* https://archive-new.nrao.edu/vlass/quicklook/VLASS1.2/
+# rsync -arvz --progress VLASS1.2 cori:cosmo/webapp/viewer-dev/data/vlass/VLASS1.2/
+
+# check:
+# wget https://archive-new.nrao.edu/vlass/quicklook/listing.txt
+# grep VLASS1.2 ../listing.txt | grep tt0.subim.fits | grep -v QA_ | awk '{print $2}' | sort > list.txt
+# find VLASS1.2/ -name "*.tt0.subim.fits" | sort > exist.txt
+
+
 # from desiutil.brick import Bricks
 # Bricks(2.0).to_table().write('vlass-bricks-1.fits', format='fits')
 # Bricks(4.0).to_table().write('vlass-bricks-2.fits', format='fits')
 # Bricks(8.0).to_table().write('vlass-bricks-3.fits', format='fits')
 # Bricks(16.0).to_table().write('vlass-bricks-4.fits', format='fits')
 # Bricks(32.0).to_table().write('vlass-bricks-5.fits', format='fits')
+# sys.exit(0)
 
+# 1.1:
 # wget -v -r -nH --cut-dirs 2 -np -R *.rms.subim.fits https://archive-new.nrao.edu/vlass/quicklook/VLASS1.1/T29t02/
 # (but then I moved files around, eliminating one level of subdir, sort of by accident)
 # (also, this wget doesn't work at NERSC)
@@ -19,7 +31,7 @@ import fitsio
 # cd data/vlass/VLASS1.1/T24t14 && mv */*.fits .
 
 
-fns = glob('data/vlass/VLASS1.1/T*/*/*.fits')
+fns = glob('data/vlass/VLASS1.2/T*/*/*.fits')
 fns.sort()
 print(len(fns), 'files')
 
@@ -61,5 +73,5 @@ for i,fn in enumerate(fns):
 T.tile = np.array(T.tile)
 T.brickname = np.array(T.brickname)
     
-T.writeto('data/vlass/vlass-tiles.fits')
+T.writeto('data/vlass/vlass1.2-tiles.fits')
 

@@ -2005,10 +2005,17 @@ allLayers.push(tiles);
 {% endif %}
 
 {% if enable_vlass %}
-tiles = mylayer_B('vlass', 'VLASS images',
+
+tiles = mylayer_B('vlass', 'VLASS 1.1 images',
                   {'attribution': 'NRAO',
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+
+tiles = mylayer_B('vlass1.2', 'VLASS 1.2 images',
+                  {'attribution': 'NRAO',
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 {% endif %}
 
 tiles = mylayer_B('unwise-w1w2', 'unWISE W1/W2',
@@ -3540,6 +3547,7 @@ var baseTree1 = [
             {% endif %}
             {% if enable_vlass %}
             findlayer('vlass'),
+            findlayer('vlass1.2'),
             {% endif %}
             {% comment %}
             findlayer('2mass'),

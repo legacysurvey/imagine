@@ -59,6 +59,7 @@ tileversions = {
     'hsc2': [1],
     'hsc-dr2': [1],
     'vlass': [1],
+    'vlass1.2': [1],
     'sdss2': [1,],
     '2mass': [1],
     'galex': [1],
@@ -2020,10 +2021,12 @@ class RebrickedMixin(object):
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
         bricks = self.get_bricks_for_scale(scale)
-
+        #print('scale', scale, ':', len(bricks), 'total bricks')
         I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+        #print(len(I), 'bricks overlap Dec range')
         ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
         I = I[ok]
+        #print(len(I), 'bricks overlap Dec and RA range')
         if len(I) == 0:
             print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale,
                   ': none')
@@ -3439,7 +3442,7 @@ class VlassLayer(RebrickedMixin, MapLayer):
         return rgb
 
     def get_base_filename(self, brick, band, **kwargs):
-        return os.path.join(self.basedir, brick.filename)
+        return os.path.join(self.basedir, brick.filename.strip())
 
     def get_fits_extension(self, scale, fn):
         if scale == 0:
@@ -5202,6 +5205,9 @@ def get_layer(name, default=None):
 
     elif name == 'vlass':
         layer = VlassLayer('vlass')
+
+    elif name == 'vlass1.2':
+        layer = VlassLayer('vlass1.2')
 
     elif name in ['decaps', 'decaps-model', 'decaps-resid']:
         survey = get_survey('decaps')

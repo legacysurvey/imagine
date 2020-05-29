@@ -725,7 +725,7 @@ def main():
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                            'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
-                           'galex', 'wssa', 'vlass', 'hsc', 'hsc2']
+                           'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc', 'hsc2']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
               or 'dr9f' in opt.kind
@@ -909,6 +909,7 @@ def main():
                         'dr9sv-north', 'dr9sv-north-model', 'dr9sv-north-resid',
                         'dr9sv', 'dr9sv-model', 'dr9sv-resid',
                         'fornax', 'fornax-model', 'fornax-resid',
+                         'vlass1.2',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
