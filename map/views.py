@@ -4580,21 +4580,50 @@ def cutouts_common(req, tgz, copsf):
             tim.hdr['CRPIX1'] = crpix1 - x0
             tim.hdr['CRPIX2'] = crpix2 - y0
 
+            # Work-around for fitsio error:
+            # FITSIO status = 402: bad float to string conversion
+            # Warning: the following keyword does not conform to the HIERARCH convention
+            # HIERARCH TIME_RECORDED = '2017-03-02T07:57:12.149236'
+            # Error in ffd2e: double value is a NaN or INDEF
+            #     http://legacysurvey.org/viewer-dev/cutouts-tgz/?ra=211.7082&dec=0.9631&size=100&layer=dr9i-south
+
+            def filter_header(inhdr):
+                # Go through each card in the header and try to write it...?
+                import fitsio
+                hdr = fitsio.FITSHDR()
+                for r in inhdr.records():
+                    try:
+                        temphdr = fitsio.FITSHDR()
+                        temphdr.add_record(r)
+                        tempfits = fitsio.FITS('mem://', 'rw')
+                        tempfits.write(None, header=temphdr)
+                    except:
+                        print('Failed to write header card (skipping):', r)
+                        continue
+                    #rawdata = self.fits.read_raw()
+                    ## close the fitsio file
+                    #self.fits.close()
+                    hdr.add_record(r)
+                return hdr
+
+            phdr = filter_header(tim.primhdr)
+            hdr = filter_header(tim.hdr)
+            
             outfn = '%s-%08i-%s-image.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
             imgfns.append(outfn)
             ofn = os.path.join(subdir, outfn)
-            fitsio.write(ofn, None, header=tim.primhdr, clobber=True)
-            fitsio.write(ofn, imgdata, header=tim.hdr, extname=ccd.ccdname)
+            fitsio.write(ofn, None, header=phdr, clobber=True)
+            fitsio.write(ofn, imgdata, header=hdr, extname=ccd.ccdname)
 
             outfn = '%s-%08i-%s-weight.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
             ofn = os.path.join(subdir, outfn)
-            fitsio.write(ofn, None, header=tim.primhdr, clobber=True)
-            fitsio.write(ofn, ivdata, header=tim.hdr, extname=ccd.ccdname)
+            fitsio.write(ofn, None, header=phdr, clobber=True)
+            fitsio.write(ofn, ivdata, header=hdr, extname=ccd.ccdname)
 
             outfn = '%s-%08i-%s-dq.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
             ofn = os.path.join(subdir, outfn)
-            fitsio.write(ofn, None, header=tim.primhdr, clobber=True)
-            fitsio.write(ofn, dqdata, header=tim.hdr, extname=ccd.ccdname)
+            fitsio.write(ofn, None, header=phdr, clobber=True)
+            fitsio.write(ofn, dqdata, header=hdr, extname=ccd.ccdname)
 
             outfn = '%s-%08i-%s-psfex.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
             ofn = os.path.join(subdir, outfn)
@@ -4603,7 +4632,7 @@ def cutouts_common(req, tgz, copsf):
 
             outfn = '%s-%08i-%s-psfimg.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
             ofn = os.path.join(subdir, outfn)
-            fitsio.write(ofn, psfimg, header=tim.primhdr, clobber=True)
+            fitsio.write(ofn, psfimg, header=phdr, clobber=True)
 
 
         if copsf:
@@ -5647,7 +5676,9 @@ if __name__ == '__main__':
     #r = c.get('/cutout_panels/decals-dr7/659598/N23/?ra=328.5984&dec=15.1565&size=100')
     #r = c.get('/')
     #r = c.get('/cutout_panels/decals-dr5/356224/S4/?ra=57.8589&dec=-15.4102&size=100')
-    r = c.get('/cutouts-tgz/?ra=57.8589&dec=-15.4102&size=100&layer=decals-dr5')
+    #r = c.get('/cutouts-tgz/?ra=57.8589&dec=-15.4102&size=100&layer=decals-dr5')
+    #r = c.get('/vlass1.2/1/14/7569/6814.jpg')
+    r = c.get('/cutouts-tgz/?ra=211.7082&dec=0.9631&size=100&layer=dr9i-south')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
