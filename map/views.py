@@ -3493,7 +3493,23 @@ class VlassLayer(RebrickedMixin, MapLayer):
             img = img[0,0,:,:]
         return img
 
-
+    def data_for_radec(self, req, ra, dec):
+        bricks = self.bricks_touching_radec_box(ra, ra, dec, dec, scale=0)
+        print('Bricks:', bricks)
+        html = ['<html>',
+                '<head><title>Data for VLASS (%.4f, %.4f)</title>' % (ra, dec),
+                ccds_table_css, '</head><body>']
+        html.append('<h1>Data for VLASS RA,Dec (%.4f, %.4f)</h1>' % (ra, dec))
+        html.append('<table class="ccds"><tr><th>Tile</th><th>Field</th>')
+        for brick in bricks:
+            html.append('<tr><td>%s</td>' % brick.tile)
+            #url = settings.STATIC_URL_PATH + '/data/' + brick.filename.strip()
+            dirname = '/'.join(brick.filename.strip().split('/')[:-1])
+            url = 'https://archive-new.nrao.edu/vlass/quicklook/' + dirname
+            html.append('<td><a href="%s">%s</a></td>' % (url, brick.brickname))
+        html.append('</table>')
+        html.extend(['</body>', '</html>'])
+        return HttpResponse('\n'.join(html))
 
 class ZeaLayer(MapLayer):
     def __init__(self, name, zeamap, stretch=None, vmin=0., vmax=1.,
