@@ -1,7 +1,5 @@
 from __future__ import print_function
 if __name__ == '__main__':
-    ## NOTE, if you want to run this from the command-line, probably have to do so
-    # from sgn04 node within the virtualenv.
     import sys
     sys.path.insert(0, 'django-2.2.4')
     import os
@@ -143,6 +141,11 @@ def my_reverse(req, *args, **kwargs):
     # if is_decaps(req):
     #     path = '/'
     return reverse(*args, **kwargs)
+
+def fix_hostname(req, url):
+    host = req.META.get('HTTP_HOST', None)
+    url = url.replace(settings.HOSTNAME, host)
+    return url
 
 def urls(req):
     from django.shortcuts import render
@@ -326,18 +329,21 @@ def _index(req,
 
     print('Small catalog URL:', smallcaturl)
     
+    # includes a leaflet pattern for subdomains
     tileurl = settings.TILE_URL
 
     subdomains = settings.SUBDOMAINS
     # convert to javascript
     subdomains = '[' + ','.join(["'%s'" % s for s in subdomains]) + '];'
 
-    static_tile_url = settings.STATIC_TILE_URL
+    static_tile_url = fix_hostname(req, settings.STATIC_TILE_URL)
 
+    # includes subdomain pattern
     static_tile_url_B = settings.STATIC_TILE_URL_B
     subdomains_B = settings.SUBDOMAINS_B
     subdomains_B = '[' + ','.join(["'%s'" % s for s in subdomains_B]) + '];'
 
+    # these are all relative paths
     ccdsurl = my_reverse(req, 'ccd-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
     bricksurl = my_reverse(req, 'brick-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&layer={layer}'
     expsurl = my_reverse(req, 'exposure-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
@@ -370,7 +376,6 @@ def _index(req,
             usercats = None
     #print('User catalogs:', usercats)
 
-    absurl = req.build_absolute_uri(rooturl)
     hostname_url = req.build_absolute_uri('/')
 
     test_layers = []
@@ -408,7 +413,6 @@ def _index(req,
                 maxZoom=maxZoom,
                 galname=galname,
                 layer=layer, tileurl=tileurl,
-                absurl=absurl,
                 hostname_url=hostname_url,
                 uploadurl=uploadurl,
                 caturl=caturl, bricksurl=bricksurl,
