@@ -1411,6 +1411,12 @@ function onMapClick(e) {
             linkurl += '&' + overlays[i].getLinkHere()
         }
     }
+    if ('mark' in qstr) {
+        linkurl += '&mark=' + qstr['mark'];
+    }
+    if ('poly' in qstr) {
+        linkurl += '&poly=' + qstr['poly'];
+    }
 
     var abs_cutout = hostname_url + cutout;
     var abs_link = hostname_url + '{% url 'index' %}' + linkurl;
@@ -3861,6 +3867,34 @@ if ('mark' in qstr) {
     }
     var lg = L.layerGroup(circleList);
     map.addLayer(lg);
+}
+
+if ('poly' in qstr) {
+    var coords = qstr['poly'];
+    segments = coords.split(';');
+    var bounds = L.latLngBounds([map.getCenter()]);
+    var group = [];
+    var clong = map.getCenter().lng;
+    for (var i=0; i<segments.length; i++) {
+        coords = segments[i].split(',');
+        var nc = coords.length/2;
+        var poly = [];
+        for (var j=0; j<nc; j++) {
+            var r = Number.parseFloat(coords[j*2+0]);
+            var d = Number.parseFloat(coords[j*2+1]);
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            bounds.extend(L.latLng(lat,lng));
+            poly.push([lat, lng]);
+        }
+        var color = 'orange';
+        var pline = L.polygon(poly, {fill:false, color:color, weight:4});
+        group.push(pline);
+    }
+    var lg = L.layerGroup(group);
+    map.addLayer(lg);
+    var z = map.getBoundsZoom(bounds);
+    map.setZoom(z);
 }
 
 console.log('adding layers from qstr');
