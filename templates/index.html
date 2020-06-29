@@ -3043,16 +3043,16 @@ var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (DR9)',
 //                               'labelsMinZoom': 7,
 //                              'urlTerm': 'masks-dr8',});
 
-var lslga = new LSLGACatalog('lslga', 'LSLGA (HyperLEDA)',
+var lslga = new LSLGACatalog('sga', 'SGA parent (HyperLEDA)',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
-                              'urlTerm': 'lslga',});
+                              'urlTerm': 'sga',});
 
-var lslga_ell = new LSLGACatalog('lslga-ellipse', 'LSLGA (ellipse fit)',
+var lslga_ell = new LSLGACatalog('sga-ellipse', 'SGA (ellipse fit)',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
-                              'urlTerm': 'lslga-ellipse',});
-                              
+                              'urlTerm': 'sga-ellipse',});
+
 // var lslga_model = new LSLGACatalogModel('lslga-model', 'LSLGA (DR8 models)',
 //                              {'minZoom': 5,
 //                               'labelsMinZoom': 7,
@@ -3740,8 +3740,8 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('bright'),
      findoverlay('tycho2'),
      findoverlay('gals'),
-     findoverlay('lslga'),
-     findoverlay('lslga-ellipse'),
+     findoverlay('sga'),
+     findoverlay('sga-ellipse'),
      //findoverlay('lslga-model'),
      findoverlay('masks-dr9'),
      //findoverlay('masks-dr8'),

@@ -261,7 +261,7 @@ def top_levels(mp, opt):
 
         ver = tileversions.get(opt.kind, [1])[-1]
         print('Version', ver)
-        basescale = 6
+        basescale = 5
 
         pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                            '%(zoom)i', '%(x)i', '%(y)i.jpg')
@@ -737,6 +737,7 @@ def main():
               or 'dr9i' in opt.kind
               or 'dr9j' in opt.kind
               or 'dr9-sga' in opt.kind
+              or 'dr9-sga2' in opt.kind
               or 'dr9-grid' in opt.kind
     ):
         if opt.maxdec is None:
@@ -924,6 +925,7 @@ def main():
             or opt.kind.startswith('dr9i')
             or opt.kind.startswith('dr9j')
             or opt.kind.startswith('dr9-sga')
+            or opt.kind.startswith('dr9-sga2')
             or opt.kind.startswith('dr9-grid')
             ):
             from map.views import get_layer
