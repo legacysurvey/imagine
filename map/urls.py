@@ -92,7 +92,7 @@ urlpatterns = [
 
     # SGA galaxies
     url(r'^sga-parent/(\d+)/cat.json', cats.cat_sga_parent),
-    url(r'^sga-ellipse/(\d+)/cat.json', cats.cat_sga_ellipse),
+    url(r'^sga/(\d+)/cat.json', cats.cat_sga_ellipse),
 
     # LSLGA galaxies
     url(r'^lslga/(\d+)/cat.json', cats.cat_lslga),

@@ -585,13 +585,13 @@ var StarMaskCatalog = CatalogOverlay.extend({
     },
 });
 
-var lslga_popup = function(json, i) {
+var sga_popup = function(json, i) {
         var ra = json['rd'][i][0];
         var dec = json['rd'][i][1];
         var name = json['name'][i];
         var pgc = json['pgc'][i];
 	    s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
-        // matching map/cats.py : cat_lslga
+        // matching map/cats.py : cat_sga
         d25 = json['radiusArcsec'][i] * 2 / 60.;
         s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
         s += '<br/>D(25)='+d25.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
@@ -604,13 +604,13 @@ var lslga_popup = function(json, i) {
         return s;
 }
 
-var lslga_model_popup = function(json, i) {
+var sga_model_popup = function(json, i) {
         var ra = json['rd'][i][0];
         var dec = json['rd'][i][1];
         var name = json['name'][i];
         var pgc = json['pgc'][i];
 	    s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
-        // matching map/cats.py : cat_lslga_model
+        // matching map/cats.py : cat_sga_model
         r50 = json['radiusArcsec'][i] / 60.;
         s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
         s += '<br/>r(50)='+r50.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
@@ -620,13 +620,13 @@ var lslga_model_popup = function(json, i) {
         return s;
 }
 
-var LSLGACatalog = CatalogOverlay.extend({
+var SGACatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
-        return lslga_popup(json, i);
+        return sga_popup(json, i);
     },
 
     getPopupText: function(json, i) {
-        return lslga_popup(json, i);
+        return sga_popup(json, i);
     },
 
     getTooltipStyle() {
@@ -635,13 +635,13 @@ var LSLGACatalog = CatalogOverlay.extend({
 
 });
 
-var LSLGACatalogModel = CatalogOverlay.extend({
+var SGACatalogModel = CatalogOverlay.extend({
     getLabel: function(json, i) {
-        return lslga_model_popup(json, i);
+        return sga_model_popup(json, i);
     },
 
     getPopupText: function(json, i) {
-        return lslga_model_popup(json, i);
+        return sga_model_popup(json, i);
     },
 
     getTooltipStyle() {
@@ -3043,20 +3043,20 @@ var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (DR9)',
 //                               'labelsMinZoom': 7,
 //                              'urlTerm': 'masks-dr8',});
 
-var lslga = new LSLGACatalog('sga', 'SGA parent (HyperLEDA)',
+var sga_parent = new SGACatalog('sga-parent', 'SGA parent (HyperLEDA)',
+                             {'minZoom': 5,
+                              'labelsMinZoom': 7,
+                              'urlTerm': 'sga-parent',});
+
+var sga_ell = new SGACatalog('sga', 'SGA (ellipse fit)',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga',});
 
-var lslga_ell = new LSLGACatalog('sga-ellipse', 'SGA (ellipse fit)',
-                             {'minZoom': 5,
-                              'labelsMinZoom': 7,
-                              'urlTerm': 'sga-ellipse',});
-
-// var lslga_model = new LSLGACatalogModel('lslga-model', 'LSLGA (DR8 models)',
+// var sga_model = new SGACatalogModel('sga-model', 'SGA (DR8 models)',
 //                              {'minZoom': 5,
 //                               'labelsMinZoom': 7,
-//                               'urlTerm': 'lslga-model',});
+//                               'urlTerm': 'sga-model',});
                               
 var GaiaDr1Catalog = CatalogOverlay.extend({
     getColor: function(json, i) {
@@ -3343,7 +3343,7 @@ var overlays = [
     brickOverlay,
     unwiseTileOverlay,
     ccdOverlaySdss,
-    gals, lslga, lslga_ell, //lslga_model, starmasks8,
+    gals, sga_parent, sga_ell, //lslga_model, starmasks8,
     starmasks9, GCsPNe, bright, tycho2,
     {% if enable_ps1 %}
     ps1cat,
@@ -3740,9 +3740,9 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('bright'),
      findoverlay('tycho2'),
      findoverlay('gals'),
+     findoverlay('sga-parent'),
      findoverlay('sga'),
-     findoverlay('sga-ellipse'),
-     //findoverlay('lslga-model'),
+     //findoverlay('sga-model'),
      findoverlay('masks-dr9'),
      //findoverlay('masks-dr8'),
      findoverlay('GCs-PNe'),

@@ -1070,7 +1070,7 @@ def cat_masks_dr9(req, ver):
     wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
     os.environ['TYCHO2_KD_DIR'] = settings.DATA_DIR
     #os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v7.0.kd.fits')
-    os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-ellipse-v3.0.kd.fits')
+    os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
     os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-cat')
     os.environ['GAIA_CAT_VER'] = '2'
     survey = LegacySurveyData(survey_dir=os.getcwd())

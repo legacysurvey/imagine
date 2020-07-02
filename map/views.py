@@ -5712,7 +5712,8 @@ if __name__ == '__main__':
     #r = c.get('/cutouts-tgz/?ra=211.7082&dec=0.9631&size=100&layer=dr9i-south')
     #r = c.get('/vlass1.2/1/11/31/1004.jpg')
     #r = c.get('/vlass1.2/1/6/0/30.jpg')
-    r = c.get('/vlass1.2/1/6/42/31.jpg')
+    #r = c.get('/vlass1.2/1/6/42/31.jpg')
+    r = c.get('/sga/1/cat.json?ralo=262.6500&rahi=262.7119&declo=35.7056&dechi=35.7336')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
