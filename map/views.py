@@ -1320,7 +1320,8 @@ class MapLayer(object):
         if get_images:
             return rimgs
 
-        if "lslga" in req.GET or "lslga-model" in req.GET:
+        if ("lslga" in req.GET or "lslga-model" in req.GET
+            or 'sga' in req.GET or 'sga-parent' in req.GET):
 
             from PIL import Image, ImageDraw
             img = Image.open(tilefn)
@@ -1343,13 +1344,23 @@ class MapLayer(object):
             elif req.GET.get('lslga-model', None) == '':
                 lslgacolor_default = '#ffaa33'
                 galaxies = query_lslga_model_radecbox(ralo, rahi, declo, dechi)
+            elif req.GET.get('sga', None) == '':
+                lslgacolor_default = '#3388ff'
+                fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
+                galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi, fn=fn)
+            elif req.GET.get('sga-parent', None) == '':
+                lslgacolor_default = '#ffaa33'
+                fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-parent-v3.0.kd.fits')
+                galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi, fn=fn)
             else:
                 galaxies, lslgacolor_default = None, None
 
             for r in galaxies if galaxies is not None else []:
 
                 RA, DEC = r.ra, r.dec
-                if req.GET.get('lslga', None) == '':
+                if (req.GET.get('lslga', None) == '' or
+                    req.GET.get('sga', None) == '' or
+                    req.GET.get('sga-parent', None) == ''):
                     RAD = r.radius_arcsec
                     AB = r.ba
                     PA = r.pa
@@ -1366,8 +1377,8 @@ class MapLayer(object):
                 major_axis_arcsec = RAD * 2
                 minor_axis_arcsec = major_axis_arcsec * AB
 
-                overlay_height = int(major_axis_arcsec / pixscale)
-                overlay_width = int(minor_axis_arcsec / pixscale)
+                overlay_height = int(np.abs(major_axis_arcsec / pixscale))
+                overlay_width = int(np.abs(minor_axis_arcsec / pixscale))
 
                 overlay = Image.new('RGBA', (overlay_width, overlay_height))
                 draw = ImageDraw.ImageDraw(overlay)
