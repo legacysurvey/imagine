@@ -261,7 +261,7 @@ def top_levels(mp, opt):
 
         ver = tileversions.get(opt.kind, [1])[-1]
         print('Version', ver)
-        basescale = 6
+        basescale = 5
 
         pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                            '%(zoom)i', '%(x)i', '%(y)i.jpg')

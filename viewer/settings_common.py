@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 #import secrets.django
 #import secrets.database
 
+USER_QUERY_DIR = '/tmp/viewer-user'
+
 REDIRECT_CUTOUTS_DECAPS = False
 
 ENABLE_CUTOUTS = True
