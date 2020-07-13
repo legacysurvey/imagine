@@ -174,6 +174,12 @@ def main():
     name = 'dr9j-south'
     pretty = 'DR9j south'
 
+    rsync=False
+    indir = '/home/schlegel/segsize2'
+    name = 'dr9-segsize2'
+    pretty = 'DR9 segsize2'
+    survey_dir = 'data/'+name
+
     datadir = 'data'
 
     survey = LegacySurveyData(survey_dir=survey_dir)
