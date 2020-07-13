@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 
 REDIRECT_CUTOUTS_DECAPS = False
 
+ENABLE_CUTOUTS = True
+
 GAIA_DR1_CAT_DIR = '/global/cfs/cdirs/cosmo/work/gaia/chunks-gaia-dr1-astrom'
 GAIA_DR2_CAT_DIR = '/global/cfs/cdirs/cosmo/work/gaia/chunks-gaia-dr2-astrom-2'
 
@@ -33,6 +35,8 @@ ENABLE_WL = False
 ENABLE_CUTOUTS = True
 ENABLE_SQL = False
 
+ENABLE_UNWISE = True
+
 ENABLE_DR2 = False
 ENABLE_DR3 = False
 ENABLE_DR4 = False
@@ -40,6 +44,8 @@ ENABLE_DR5 = False
 ENABLE_DR6 = True
 ENABLE_DR7 = True
 ENABLE_DR8 = True
+ENABLE_DR8_MODELS = ENABLE_DR8
+ENABLE_DR8_RESIDS = ENABLE_DR8
 ENABLE_DR9SV = True
 
 ENABLE_DR67 = True
@@ -53,6 +59,8 @@ ENABLE_EBOSS = False
 
 ENABLE_HSC_DR1 = False
 ENABLE_HSC_DR2 = True
+
+ENABLE_VLASS = True
 
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False

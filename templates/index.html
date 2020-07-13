@@ -2023,6 +2023,7 @@ allLayers.push(tiles);
 
 {% endif %}
 
+{% if enable_unwise %}
 tiles = mylayer_B('unwise-w1w2', 'unWISE W1/W2',
                 {'maxNativeZoom': 12,
                  'urlPatterns': [ [11, maxZoom, tile_url], ],});
@@ -2053,6 +2054,7 @@ tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
                 {'maxNativeZoom': 12,
                  'urlPatterns': [ [6, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+{% endif %}
 
 {% comment %}
 tiles = mylayer('2mass', '2MASS',
@@ -2916,7 +2918,9 @@ var polygonOverlays = [
     ccdOverlay9svs, expOverlay9svs,
     {% endif %}
     brickOverlay,
+    {% if enable_unwise %}
     unwiseTileOverlay,
+    {% endif %}
     ccdOverlaySdss,
     {% if enable_spectra %}
     plateOverlay,
@@ -3341,7 +3345,9 @@ var overlays = [
     {% endif %}
 
     brickOverlay,
+    {% if enable_unwise %}
     unwiseTileOverlay,
+    {% endif %}
     ccdOverlaySdss,
     gals, lslga, lslga_ell, //lslga_model, starmasks8,
     starmasks9, GCsPNe, bright, tycho2,
@@ -3466,20 +3472,32 @@ var baseTree1 = [
     {% endif %}
     {% if enable_dr8 %}
     findlayer('dr8', [
+        {% if enable_dr8_models %}
         findlayer('dr8-model'),
+        {% endif %}
+        {% if enable_dr8_resids %}
         findlayer('dr8-resid'),
+        {% endif %}
     ]),
     {% endif %}
     {% if enable_dr8_north %}
     findlayer('dr8-north', [
+        {% if enable_dr8_models %}
         findlayer('dr8-north-model'),
+        {% endif %}
+        {% if enable_dr8_resids %}
         findlayer('dr8-north-resid'),
+        {% endif %}
     ]),
     {% endif %}
     {% if enable_dr8_south %}
     findlayer('dr8-south', [
+        {% if enable_dr8_models %}
         findlayer('dr8-south-model'),
+        {% endif %}
+        {% if enable_dr8_resids %}
         findlayer('dr8-south-resid'),
+        {% endif %}
     ]),
     {% endif %}
     {% if enable_dr67 %}
@@ -3527,6 +3545,7 @@ var baseTree1 = [
         findlayer('decaps-resid'),
     ]),
     {% endif %}
+    {% if enable_unwise %}
     findlayer('unwise-neo6', [
         findlayer('unwise-neo4'),
         findlayer('unwise-neo3'),
@@ -3534,6 +3553,7 @@ var baseTree1 = [
         findlayer('unwise-w1w2'),
     ]),
     findlayer('unwise-cat-model'),
+    {% endif %}
     {
         label: 'More surveys',
         children: [
@@ -3650,7 +3670,9 @@ for (var i=0,len=overlays.length; i<len; i++) {
      ]),
      {% endif %}
      findoverlay('sdss-ccds'),
+     {% if enable_unwise %}
      findoverlay('unwise-tiles'),
+     {% endif %}
      {% if enable_dr8_south_overlays %}
      findoverlay('dr8-south-exps'),
      {% endif %}
