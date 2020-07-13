@@ -256,30 +256,30 @@ def main():
     #tharg = ''
 
     for x in sublayers:
-        cmd = 'python -u render-tiles.py --kind %s%s --bricks' % (name, x)
+        cmd = 'python3 -u render-tiles.py --kind %s%s --bricks' % (name, x)
         print(cmd)
         os.system(cmd)
 
     # images
     for scale in range(1,8):
-        cmd = 'python -u render-tiles.py --kind %s --scale --zoom %i %s' % (name, scale, tharg)
+        cmd = 'python3 -u render-tiles.py --kind %s --scale --zoom %i %s' % (name, scale, tharg)
         print(cmd)
         os.system(cmd)
 
     # models
     for scale in range(1,8):
-        cmd = 'python -u render-tiles.py --kind %s-model --scale --zoom %i %s' % (name, scale, tharg)
+        cmd = 'python3 -u render-tiles.py --kind %s-model --scale --zoom %i %s' % (name, scale, tharg)
         print(cmd)
         os.system(cmd)
 
     # resids
     for scale in range(1,8):
-        cmd = 'python -u render-tiles.py --kind %s-resid --scale --zoom %i %s' % (name, scale, tharg)
+        cmd = 'python3 -u render-tiles.py --kind %s-resid --scale --zoom %i %s' % (name, scale, tharg)
         print(cmd)
         os.system(cmd)
 
     for x in sublayers:
-        cmd = 'python -u render-tiles.py --kind %s%s --top' % (name, x)
+        cmd = 'python3 -u render-tiles.py --kind %s%s --top' % (name, x)
         print(cmd)
         os.system(cmd)
 
