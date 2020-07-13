@@ -174,6 +174,16 @@ def main():
     name = 'dr9j-south'
     pretty = 'DR9j south'
 
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    indir = '/global/cscratch1/sd/dstn/grid'
+    name = 'dr9-grid'
+    pretty = 'DR9 discretization'
+
+    survey_dir = '/global/cscratch1/sd/dstn/both-sga-2'
+    indir = survey_dir
+    name = 'dr9-sga2'
+    pretty = 'DR9 SGA-branches v2'
+
     rsync=False
     indir = '/home/schlegel/segsize2'
     name = 'dr9-segsize2'

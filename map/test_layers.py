@@ -49,3 +49,51 @@ test_layers.append(("dr9j-south", "DR9j south images"))
 test_layers.append(("dr9j-south-model", "DR9j south models"))
 test_layers.append(("dr9j-south-resid", "DR9j south residuals"))
 test_cats.append(("dr9j-south", "Catalog: DR9j south"))
+
+test_layers.append(("dr9-sga", "DR9 SGA-branches images"))
+
+test_layers.append(("dr9-sga-model", "DR9 SGA-branches models"))
+
+test_layers.append(("dr9-sga-resid", "DR9 SGA-branches residuals"))
+
+test_layers.append(("dr9-sga", "DR9 SGA-branches images"))
+
+test_layers.append(("dr9-sga-model", "DR9 SGA-branches models"))
+
+test_layers.append(("dr9-sga-resid", "DR9 SGA-branches residuals"))
+
+test_layers.append(("dr9-sga", "DR9 SGA-branches images"))
+
+test_layers.append(("dr9-sga-model", "DR9 SGA-branches models"))
+
+test_layers.append(("dr9-sga-resid", "DR9 SGA-branches residuals"))
+
+test_layers.append(("dr9-grid", "DR9 discretization images"))
+
+test_layers.append(("dr9-grid-model", "DR9 discretization models"))
+
+test_layers.append(("dr9-grid-resid", "DR9 discretization residuals"))
+
+test_layers.append(("dr9-grid", "DR9 discretization images"))
+
+test_layers.append(("dr9-grid-model", "DR9 discretization models"))
+
+test_layers.append(("dr9-grid-resid", "DR9 discretization residuals"))
+
+test_layers.append(("dr9-sga2", "DR9 SGA-branches v2 images"))
+
+test_layers.append(("dr9-sga2-model", "DR9 SGA-branches v2 models"))
+
+test_layers.append(("dr9-sga2-resid", "DR9 SGA-branches v2 residuals"))
+
+test_layers.append(("dr9-sga2", "DR9 SGA-branches v2 images"))
+
+test_layers.append(("dr9-sga2-model", "DR9 SGA-branches v2 models"))
+
+test_layers.append(("dr9-sga2-resid", "DR9 SGA-branches v2 residuals"))
+
+test_layers.append(("dr9-sga2", "DR9 SGA-branches v2 images"))
+
+test_layers.append(("dr9-sga2-model", "DR9 SGA-branches v2 models"))
+
+test_layers.append(("dr9-sga2-resid", "DR9 SGA-branches v2 residuals"))
