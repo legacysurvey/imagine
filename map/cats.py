@@ -1083,7 +1083,8 @@ def cat_masks_dr9(req, ver):
                             content_type='application/json')
 
     from functools import reduce
-    T.cut(reduce(np.logical_or, [T.isbright, T.iscluster, T.islargegalaxy, T.ismedium]))
+    #T.cut(reduce(np.logical_or, [T.isbright, T.iscluster, T.islargegalaxy, T.ismedium]))
+    T.cut(reduce(np.logical_or, [T.isbright, T.iscluster, T.islargegalaxy, T.ismedium, T.isgaia]))
     # sort by radius to improve the layering
     T.cut(np.argsort(-T.radius))
 
@@ -1095,8 +1096,8 @@ def cat_masks_dr9(req, ver):
     PA_disp = []
     names = []
 
-    for bright,cluster,gal,dup,ptsrc,aen,ra,dec,rad,mag,zguess,freeze,refid,ba,pa in zip(
-            T.isbright, T.iscluster, T.islargegalaxy, T.donotfit, T.pointsource,
+    for medium, bright,cluster,gal,dup,ptsrc,aen,ra,dec,rad,mag,zguess,freeze,refid,ba,pa in zip(
+            T.ismedium, T.isbright, T.iscluster, T.islargegalaxy, T.donotfit, T.pointsource,
             T.astrometric_excess_noise, T.ra, T.dec, T.radius,
             T.mag, T.zguess, T.freezeparams, T.ref_id, T.ba, T.pa):
         rd.append((float(ra), float(dec)))
@@ -1110,10 +1111,12 @@ def cat_masks_dr9(req, ver):
         #    color.append('orange')
         elif gal:
             color.append('#33ff88')
-        elif ptsrc:
+        elif medium and ptsrc:
             color.append('#3388ff')
-        else:
+        elif medium:
             color.append('#8833ff')
+        else:
+            color.append('#888888')
 
         if dup:
             names.append('DUP')
@@ -1126,7 +1129,7 @@ def cat_masks_dr9(req, ver):
             #if freeze:
             #    name += ' (frozen)'
             names.append(name)
-        else:
+        elif medium:
             if bright:
                 name = 'BRIGHT mag=%.2f' % mag
             else:
@@ -1141,6 +1144,11 @@ def cat_masks_dr9(req, ver):
             if bright:
                 name = 'MED/'+name
             names.append(name)
+        else:
+            if ptsrc:
+                names.append('ptsrc')
+            else:
+                names.append('')
 
         if ba == 0.:
             ba = 1.
