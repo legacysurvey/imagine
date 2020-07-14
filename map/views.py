@@ -4763,10 +4763,6 @@ def exposures_common(req, tgz, copsf):
     # Deployment: http://{s}.DOMAIN/...
     url = url.replace('://www.', '://')
     url = url.replace('://', '://%s.')
-
-    ### HACK -- until Spin is fixed for https on subdomains...
-    url = url.replace('https', 'http')
-    
     domains = settings.SUBDOMAINS
 
     ccdsx = []
