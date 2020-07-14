@@ -96,9 +96,7 @@ urlpatterns = [
 
     # LSLGA galaxies
     url(r'^lslga/(\d+)/cat.json', cats.cat_lslga),
-
     url(r'^lslga-ellipse/(\d+)/cat.json', cats.cat_lslga_ellipse),
-
     url(r'^lslga-model/(\d+)/cat.json', cats.cat_lslga_model),
 
     url(r'^GCs-PNe/(\d+)/cat.json', cats.cat_GCs_PNe),
@@ -132,20 +130,19 @@ urlpatterns = [
     ## hackish -- the pattern (using leaflet's template format) for cat-json-tiled
     url(r'^\{id\}/\{ver\}/\{z\}/\{x\}/\{y\}.cat.json', cats.any_cat, name='cat-json-tiled-pattern'),
 
-    # Cutouts html
-    url(r'^cutouts/', views.cutouts, name='cutouts'),
+    # Single exposures html
+    url(r'^exposures/', views.exposures, name='exposures'),
     # Cutouts panel plots
-    url(r'^cutout_panels/(?P<layer>.*)/(?P<expnum>\d+)/(?P<extname>\w+)/', views.cutout_panels, name='cutout_panels'),
-    # Scatterplot of nearby sources for cutouts page
-    #url(r'^cat_plot/', views.cat_plot, name='cat_plot'),
+    url(r'^exposure_panels/(?P<layer>.*)/(?P<expnum>\d+)/(?P<extname>\w+)/', views.exposure_panels,
+        name='exposure_panels'),
 
     # PSF for a single expnum/ccdname -- half-finished.
     #url(r'^cutout_psf/(?P<layer>.*)/(?P<expnum>\d+)/(?P<extname>\w+)/', views.cutout_psf,
     #name='cutout_psf'),
 
-    url(r'^cutouts-tgz/', views.cutouts_tgz, name='cutouts_tgz'),
+    url(r'^exposures-tgz/', views.exposures_tgz, name='exposures_tgz'),
 
-    url(r'^coadd-psf/', views.cutouts_coadd_psf, name='coadd_psf'),
+    url(r'^coadd-psf/', views.coadd_psf, name='coadd_psf'),
 
     # Look up this position, date, observatory in JPL Small Bodies database
     url(r'^jpl_lookup/?$', views.jpl_lookup),

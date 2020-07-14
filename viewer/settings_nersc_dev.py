@@ -19,7 +19,7 @@ FORCE_SCRIPT_NAME = ROOT_URL
 STATIC_URL = STATIC_URL_PATH
 TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
-STATIC_TILE_URL = 'http://{s}.%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, STATIC_URL_PATH)
+STATIC_TILE_URL = 'http://{s}.%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (DOMAIN, STATIC_URL_PATH)
 
 STATIC_TILE_URL_B = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 SUBDOMAINS_B = SUBDOMAINS

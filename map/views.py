@@ -336,8 +336,9 @@ def _index(req,
     # convert to javascript
     subdomains = '[' + ','.join(["'%s'" % s for s in subdomains]) + '];'
 
-    static_tile_url = fix_hostname(req, settings.STATIC_TILE_URL)
-
+    #static_tile_url = fix_hostname(req, settings.STATIC_TILE_URL)
+    static_tile_url = settings.STATIC_TILE_URL
+    
     # includes subdomain pattern
     static_tile_url_B = settings.STATIC_TILE_URL_B
     subdomains_B = settings.SUBDOMAINS_B
@@ -4497,16 +4498,16 @@ def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None):
     html.append('</tbody></table>')
     return html
 
-def cutouts_coadd_psf(req):
-    return cutouts_common(req, False, True)
+def coadd_psf(req):
+    return exposures_common(req, False, True)
 
-def cutouts_tgz(req):
-    return cutouts_common(req, True, False)
+def exposures_tgz(req):
+    return exposures_common(req, True, False)
 
-def cutouts(req):
-    return cutouts_common(req, False, False)
+def exposures(req):
+    return exposures_common(req, False, False)
 
-def cutouts_common(req, tgz, copsf):
+def exposures_common(req, tgz, copsf):
     from astrometry.util.util import Tan
     from astrometry.util.starutil_numpy import degrees_between
     import numpy as np
@@ -4755,10 +4756,16 @@ def cutouts_common(req, tgz, copsf):
     
     from django.shortcuts import render
 
-    url = req.build_absolute_uri('/') + settings.ROOT_URL + '/cutout_panels/%s/%i/%s/'
+    url = my_reverse(req, 'exposure_panels', args=('LAYER', '12345', 'EXTNAME'))
+    url = url.replace('LAYER', '%s').replace('12345', '%i').replace('EXTNAME', '%s')
+    url = req.build_absolute_uri(url)
     # Deployment: http://{s}.DOMAIN/...
     url = url.replace('://www.', '://')
     url = url.replace('://', '://%s.')
+
+    ### HACK -- until Spin is fixed for https on subdomains...
+    url = url.replace('https', 'http')
+    
     domains = settings.SUBDOMAINS
 
     ccdsx = []
@@ -4766,13 +4773,13 @@ def cutouts_common(req, tgz, copsf):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
         ccdlayer = getattr(ccd, 'layer', layername)
         theurl = url % (domains[i%len(domains)], ccdlayer, int(ccd.expnum), ccd.ccdname.strip()) + '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
-        print('CCD columns:', ccd.columns())
-        ccdsx.append(('<br/>'.join(['CCD %s %i %s, %.1f sec (x,y ~ %i,%i)' % (ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
+        expurl = my_reverse(req, 'ccd_detail', args=(layername, '%s-%i-%s' % (ccd.camera.strip(), int(ccd.expnum), ccd.ccdname.strip())))
+        ccdsx.append(('<br/>'.join(['CCD <a href="%s">%s %s %i %s</a>, %.1f sec (x,y ~ %i,%i)' % (expurl, ccd.camera, ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
                                     '<small>(observed %s @ %s = MJD %.6f)</small>' % (ccd.date_obs, ccd.ut, ccd.mjd_obs),
                                     '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % format_jpl_url(req, ra, dec, ccd),]),
                       theurl))
-    return render(req, 'cutouts.html',
+    return render(req, 'exposures.html',
                   dict(ra=ra, dec=dec, ccds=ccdsx, name=layername, layer=layername,
                        drname=getattr(survey, 'drname', layername),
                        brick=brick, brickx=brickx, bricky=bricky, size=W))
@@ -4962,7 +4969,7 @@ def cutout_psf(req, layer=None, expnum=None, extname=None):
 
 
 
-def cutout_panels(req, layer=None, expnum=None, extname=None):
+def exposure_panels(req, layer=None, expnum=None, extname=None):
     import pylab as plt
     import numpy as np
 
@@ -5724,7 +5731,8 @@ if __name__ == '__main__':
     #r = c.get('/vlass1.2/1/11/31/1004.jpg')
     #r = c.get('/vlass1.2/1/6/0/30.jpg')
     #r = c.get('/vlass1.2/1/6/42/31.jpg')
-    r = c.get('/sga/1/cat.json?ralo=262.6500&rahi=262.7119&declo=35.7056&dechi=35.7336')
+    #r = c.get('/sga/1/cat.json?ralo=262.6500&rahi=262.7119&declo=35.7056&dechi=35.7336')
+    r = c.get('/exposures/?ra=129.3671&dec=24.9471&layer=dr8')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

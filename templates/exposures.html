@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>{{ drname }} cutouts around RA,Dec = {{ ra }}, {{ dec }}</h1>
+<h1>{{ drname }} exposures around RA,Dec = {{ ra }}, {{ dec }}</h1>
 
 <p>
-<a href="{% url 'cutouts_tgz' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}">Download a tarball of data</a>
+<a href="{% url 'exposures_tgz' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}">Download a tarball of data</a>
 </p>
 
 <p>
@@ -26,26 +26,6 @@ The "DQ" maps are flags raised by the Community Pipeline during processing for, 
 bad pixels, etc.
 </p>
 
-{% comment %}
-<table>
-<tr>
-<th>DR1 sources</th>
-<td rowspan="2">
-Point sources: green<br />
-deV galaxies: red<br />
-exp galaxies: blue<br />
-composite galaxies: magenta<br />
-SDSS objects: X
-</td>
-</tr>
-<tr>
-<td>
-<img src="{% url 'cat_plot' %}?ra={{ ra }}&dec={{ dec }}{% if name %}&name={{name}}{% endif %}" />
-</td>
-</tr>
-</table>
-{% endcomment %}
-
 <table>
 <tr>
 <th>CCD</th>
@@ -53,13 +33,6 @@ SDSS objects: X
 <th>Weight</th>
 <th>Image * (Weight>0)</th>
 <th>DQ</th>
-
-{% comment %}
-<th>Model (DR1)</th>
-<th>Resid (DR1)</th>
-<th>PSF fit</th>
-<th>PsfEx</th>
-{% endcomment %}
 </tr>
 
 {% for ccdstr,ccdurl in ccds %}
@@ -67,11 +40,6 @@ SDSS objects: X
 <td>
 {{ ccdstr|safe }}
 </td>
-
-{% comment %}
-<td colspan="5">
-<img src="{{ ccdurl}}" width="500" height="100" />
-{% endcomment %}
 
 <td>
 <img src="{{ ccdurl }}" width="{{ size }}" height="{{ size }}" />
@@ -91,6 +59,7 @@ SDSS objects: X
 
 </tr>
 {% endfor %}
+
 </table>
 {% endblock %}
 

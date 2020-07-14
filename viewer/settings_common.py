@@ -69,6 +69,7 @@ ROOT_URL = '/viewer'
 
 HOSTNAME = 'legacysurvey.org'
 SUBDOMAINS = ['a','b','c','d']
+DOMAIN = HOSTNAME
 
 STATIC_URL_PATH = '/static/'
 #STATIC_URL = 'http://%s%s%s' % (HOSTNAME, ROOT_URL, STATIC_URL_PATH)

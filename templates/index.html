@@ -1306,13 +1306,13 @@ function fluxToMag(f) {
     return -2.5 * (Math.log(f)/Math.log(10.) - 9);
 }
 
-function cutout_radec_url(ra, dec) {
-    return '{% url 'cutouts' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + layer_name;
+function exposures_radec_url(ra, dec) {
+    return '{% url 'exposures' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + layer_name;
 }
 
-function cutout_radec_link(ra, dec) {
+function exposures_radec_link(ra, dec) {
     {% if enable_cutouts %}
-    url = cutout_radec_url(ra, dec);
+    url = exposures_radec_url(ra, dec);
     return '<a href="' + url + '">' +
         ra.toFixed(4) + ', ' + dec.toFixed(4) + '</a>';
     {% else %}
@@ -1345,7 +1345,7 @@ function onSourceClick(e) {
     if ('z' in src.nobs) {
 	    nobs_z = src.nobs.z;
     }
-    txt = 'Source RA,Dec = ' + cutout_radec_link(src.ra, src.dec) +
+    txt = 'Source RA,Dec = ' + exposures_radec_link(src.ra, src.dec) +
         '<br/>Source type: ' + src.type +
         '<br/>Mags: ' + fluxstr +
         '<br/>Brick: ' + src.brickname + ', Objid: ' + src.objid +
@@ -1445,7 +1445,7 @@ function onMapClick(e) {
         '<a href="' + datalink + '">Data</a>' + spacer +
         '<a href="' + cutout + '">Cutout</a> (<a href="' + cutout_fits + '">FITS</a>)' + spacer +
     {% if enable_cutouts %}
-        '<a href="' + cutout_radec_url(ra,dec) + '">Single Exposures</a>' + spacer +
+        '<a href="' + exposures_radec_url(ra,dec) + '">Single Exposures</a>' + spacer +
     {% endif %}
         '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?Coord=' + ra.toFixed(4) + 'd' + dec.toFixed(4) + 'd' + '&CooFrame=ICRS&CooEpoch=2000&CooEqui=2000&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=">Look up in Simbad</a>'
         + spacer +
