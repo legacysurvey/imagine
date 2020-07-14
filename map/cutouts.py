@@ -31,13 +31,16 @@ if not settings.DEBUG_LOGGING:
         pass
 
 def jpeg_cutout(req):
+    from django.http import HttpResponseRedirect, HttpResponse
+    if not settings.ENABLE_CUTOUTS:
+        return HttpResponse('No cutouts enabled')
+
     name = req.GET.get('layer', 'dr8')
     name = layer_name_map(name)
 
     # Sanjaya : redirect to NERSC
     if (settings.REDIRECT_CUTOUTS_DECAPS and
         name in ['decaps', 'decaps-model', 'decaps-resid']):
-        from django.http import HttpResponseRedirect
         return HttpResponseRedirect('http://legacysurvey.org/viewer' + req.path + '?' + urlencode(req.GET))
 
     #print('jpeg_cutout: name', name)
@@ -53,13 +56,16 @@ def jpeg_cutout(req):
         return rtn
 
 def fits_cutout(req):
+    from django.http import HttpResponseRedirect, HttpResponse
+    if not settings.ENABLE_CUTOUTS:
+        return HttpResponse('No cutouts enabled')
+
     name = req.GET.get('layer', 'decals-dr3')
     name = layer_name_map(name)
 
     # Sanjaya : redirect to NERSC
     if (settings.REDIRECT_CUTOUTS_DECAPS and
         name in ['decaps', 'decaps-model', 'decaps-resid']):
-        from django.http import HttpResponseRedirect
         return HttpResponseRedirect('http://legacysurvey.org/viewer' + req.path + '?' + urlencode(req.GET))
 
     from map.views import get_layer

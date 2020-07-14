@@ -10,6 +10,26 @@ ENABLE_VCC  = False
 ENABLE_WL   = False
 #ENABLE_DR2  = True
 
+ENABLE_DEV = True
+ENABLE_DR9SV = False
+ENABLE_DR5 = False
+ENABLE_DR6 = False
+ENABLE_DR7 = False
+
+ENABLE_DR67 = False
+ENABLE_DR8_MODELS = False
+ENABLE_DR8_RESIDS = False
+ENABLE_DECAPS = False
+
+ENABLE_UNWISE = False
+
+ENABLE_DES_DR1 = False
+ENABLE_HSC_DR2 = False
+
+ENABLE_VLASS = False
+
+ENABLE_CUTOUTS = False
+
 HOSTNAME = 'imagine.legacysurvey.org'
 ROOT_URL = ''
 SUBDOMAINS = ['a','b','c','d']

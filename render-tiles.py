@@ -3,7 +3,7 @@ import os
 import sys
 from glob import glob
 
-sys.path.insert(0, 'django-1.9')
+#sys.path.insert(0, 'django-1.9')
 import django
 os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
 
@@ -739,6 +739,7 @@ def main():
               or 'dr9-sga' in opt.kind
               or 'dr9-sga2' in opt.kind
               or 'dr9-grid' in opt.kind
+              or 'dr9-segsize2' in opt.kind
     ):
         if opt.maxdec is None:
             opt.maxdec = 90.
@@ -927,6 +928,7 @@ def main():
             or opt.kind.startswith('dr9-sga')
             or opt.kind.startswith('dr9-sga2')
             or opt.kind.startswith('dr9-grid')
+            or opt.kind.startswith('dr9-segsize2')
             ):
             from map.views import get_layer
 
@@ -945,7 +947,7 @@ def main():
                         rstep = step / np.maximum(0.05, np.cos(np.deg2rad((declo+dechi)/2.)))
                         ras = np.arange(opt.minra, opt.maxra+rstep, rstep)
                         for ralo,rahi in zip(ras, np.clip(ras[1:], opt.minra, opt.maxra)):
-                            cmd = ('python render-tiles.py --kind %s --scale --minra %f --maxra %f --mindec %f --maxdec %f -z %i' %
+                            cmd = ('python3 render-tiles.py --kind %s --scale --minra %f --maxra %f --mindec %f --maxdec %f -z %i' %
                                    (opt.kind, ralo, rahi, declo, dechi, zoom))
                             print(cmd)
                 sys.exit(0)
@@ -1214,7 +1216,7 @@ def main():
             dd = np.arange(opt.mindec, opt.maxdec+1)
             for rlo,rhi in zip(rr, rr[1:]):
                 for dlo,dhi in zip(dd, dd[1:]):
-                    print('time python render-tiles.py --kind sdss --coadd --minra %f --maxra %f --mindec %f --maxdec %f' % (rlo, rhi, dlo, dhi))
+                    print('time python3 render-tiles.py --kind sdss --coadd --minra %f --maxra %f --mindec %f --maxdec %f' % (rlo, rhi, dlo, dhi))
             sys.exit(0)
 
         if opt.grass:
@@ -1436,7 +1438,7 @@ def main():
                         continue
                     
                 
-                cmd = 'python -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s --mindec %f --maxdec %f' % (zoom, y, y+1, opt.kind, opt.mindec, opt.maxdec)
+                cmd = 'python3 -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s --mindec %f --maxdec %f' % (zoom, y, y+1, opt.kind, opt.mindec, opt.maxdec)
                 cmd += ' --threads 32'
                 if opt.near_ccds:
                     cmd += ' --near-ccds'
