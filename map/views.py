@@ -5729,7 +5729,8 @@ if __name__ == '__main__':
     #r = c.get('/vlass1.2/1/6/0/30.jpg')
     #r = c.get('/vlass1.2/1/6/42/31.jpg')
     #r = c.get('/sga/1/cat.json?ralo=262.6500&rahi=262.7119&declo=35.7056&dechi=35.7336')
-    r = c.get('/exposures/?ra=129.3671&dec=24.9471&layer=dr8')
+    #r = c.get('/exposures/?ra=129.3671&dec=24.9471&layer=dr8')
+    r = c.get('/namequery/?obj=NGC 5614')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
