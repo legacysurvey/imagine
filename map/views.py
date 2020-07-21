@@ -521,6 +521,31 @@ def phat(req):
                   maxZoom=18,
               )
 
+def query_simbad(q):
+    # py3
+    from urllib.request import urlopen
+    from urllib.parse import urlencode
+
+    url = 'http://simbad.u-strasbg.fr/simbad/sim-id?output.format=votable&output.params=coo(d)&output.max=1&Ident='
+    url += urlencode(dict(q=q)).replace('q=','')
+    print('URL', url)
+    f = urlopen(url)
+    code = f.getcode()
+    print('Code', code)
+    # txt = f.read()
+    # print('Got:', txt)
+    # txt = txt.decode()
+    # print('Got:', txt)
+    from astrometry.util.siap import siap_parse_result
+    #T = siap_parse_result(txt=txt)
+    # file handle works for fn
+    T = siap_parse_result(fn=f)
+    T.about()
+    if len(T) == 0:
+        return False, 'Not found'
+    t = T[0]
+    return True, (t.ra_d, t.dec_d)
+
 def query_ned(q):
     try:
         # py2
@@ -595,7 +620,8 @@ def name_query(req):
             pass
 
     try:
-        result,val = query_ned(obj)
+        #result,val = query_ned(obj)
+        result,val = query_simbad(obj)
         if result:
             ra,dec = val
             return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=obj)),
