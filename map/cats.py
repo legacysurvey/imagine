@@ -835,46 +835,29 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', sga=False):
     names = [t.strip() for t in T.galaxy]
     pgc = [int(p) for p in T.pgc]
     typ = [t.strip() if t != 'nan' else '' for t in T.get('morphtype')]
-    if model:
-        radius = [float(r) for r in T.radius_model_arcsec.astype(np.float32)]
-        ab = [float(f) for f in T.ba_model.astype(np.float32)]
 
-        pax = T.pa_model.copy().astype(np.float32)
-        pax[np.logical_not(np.isfinite(pax))] = 0.
-        pax[pax < 0] += 180.
-        pax[pax >= 180.] -= 180.
+    radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
+    ab = [float(f) for f in T.ba.astype(np.float32)]
 
-        pa = [float(90.-f) for f in pax]
-        pa_disp = [float(f) for f in pax]
-        color = ['#ffaa33']*len(T)
+    pax = T.pa.copy().astype(np.float32)
+    pax[np.logical_not(np.isfinite(pax))] = 0.
+    pax[pax < 0] += 180.
+    pax[pax >= 180.] -= 180.
 
-        return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
-                                            abRatio=ab, posAngle=pa, pgc=pgc, type=typ, color=color,
-                                            posAngleDisplay=pa_disp)),
-                                            content_type='application/json')
+    pa = [float(90.-f) for f in pax]
+    pa_disp = [float(f) for f in pax]
+    if ellipse:
+        color = ['#377eb8']*len(T)
+        #'#ff3333'
     else:
-        radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
-        ab = [float(f) for f in T.ba.astype(np.float32)]
+        color = ['#e41a1c']*len(T)
+        #'#3388ff'
+    z = [float(z) if np.isfinite(z) else -1. for z in T.z_leda.astype(np.float32)]
 
-        pax = T.pa.copy().astype(np.float32)
-        pax[np.logical_not(np.isfinite(pax))] = 0.
-        pax[pax < 0] += 180.
-        pax[pax >= 180.] -= 180.
-
-        pa = [float(90.-f) for f in pax]
-        pa_disp = [float(f) for f in pax]
-        if ellipse:
-            color = ['#377eb8']*len(T)
-            #'#ff3333'
-        else:
-            color = ['#e41a1c']*len(T)
-            #'#3388ff'
-        z = [float(z) if np.isfinite(z) else -1. for z in T.z_leda.astype(np.float32)]
-
-        return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
-                                            abRatio=ab, posAngle=pa, pgc=pgc, type=typ,
-                                            redshift=z, color=color, posAngleDisplay=pa_disp)),
-                                            content_type='application/json')
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
+                                        abRatio=ab, posAngle=pa, pgc=pgc, type=typ,
+                                        redshift=z, color=color, posAngleDisplay=pa_disp)),
+                        content_type='application/json')
 
 def query_sga_radecbox(fn, ralo, rahi, declo, dechi):
     ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
@@ -886,15 +869,11 @@ def query_sga_radecbox(fn, ralo, rahi, declo, dechi):
     wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
     H,W = wcs.shape
     # cut to sga entries possibly touching wcs box
-    #T.radius_arcsec = T.d25 / 2. * 60.
     T.radius_arcsec = T.diam / 2. * 60.
     radius_pix = T.radius_arcsec / wcs.pixel_scale()
     ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
-    #for x,y,name,r in zip(xx,yy,T.galaxy,radius_pix):
-    #    print('  ', name, 'at', x,y, 'radius', r)
     T.cut((xx > -radius_pix) * (xx < W+radius_pix) *
           (yy > -radius_pix) * (yy < H+radius_pix))
-    #print('Cut to', len(T), 'SGA possibly touching WCS:', T.galaxy)
     if len(T) == 0:
         return None
     return T
