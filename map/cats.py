@@ -793,26 +793,19 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
 
 def cat_sga_parent(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-parent-v3.0.kd.fits')
-    return _cat_lslga(req, ver, fn=fn, tag='sga', sga=True)
+    return _cat_sga(req, ver, fn=fn, tag='sga', sga=True)
 
 def cat_sga_ellipse(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
-    return _cat_lslga(req, ver, ellipse=True, fn=fn, tag='sga', sga=True)
+    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga', sga=True)
 
-def cat_lslga(req, ver):
-    return _cat_lslga(req, ver)
+def cat_sga(req, ver):
+    return _cat_sga(req, ver)
 
-def cat_lslga_model(req, ver):
-    return _cat_lslga(req, ver, model=True)
-
-def cat_lslga_ellipse(req, ver):
-    fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-ellipse-v3.0.kd.fits')
-    return _cat_lslga(req, ver, ellipse=True, fn=fn)
-
-def _cat_lslga(req, ver, model=False, ellipse=False, fn=None, tag='lslga', sga=False):
+def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', sga=False):
     import json
     import numpy as np
-    # The LSLGA catalog includes radii for the galaxies, and we want galaxies
+    # The SGA catalog includes radii for the galaxies, and we want galaxies
     # that touch our RA,Dec box, so can't use the standard method...
     #T = cat_kd(req, ver, tag, fn)
 
@@ -824,29 +817,20 @@ def _cat_lslga(req, ver, model=False, ellipse=False, fn=None, tag='lslga', sga=F
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    if model:
-        T = query_lslga_model_radecbox(ralo, rahi, declo, dechi, fn=fn)
-        if T is None:
-            return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[],
-                                                posAngle=[], pgc=[], type=[])),
-                                content_type='application/json')
-    else:
-        T = query_lslga_radecbox(ralo, rahi, declo, dechi, fn=fn)
-        if T is None:
-            return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[],
-                                                posAngle=[], pgc=[], type=[], redshift=[])),
-                                content_type='application/json')
+    T = query_sga_radecbox(fn, ralo, rahi, declo, dechi)
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[],
+                                            posAngle=[], pgc=[], type=[], redshift=[])),
+                            content_type='application/json')
 
     if ellipse:
-        #T.cut((T.lslga_id >= 0) * (T.preburned))
         if sga:
             T.cut((T.sga_id >= 0) * (T.preburned))
         else:
             T.cut((T.id >= 0) * (T.preburned))
 
-    if not model:
-        T.cut(np.argsort(-T.radius_arcsec))
-        
+    T.cut(np.argsort(-T.radius_arcsec))
+
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
     names = [t.strip() for t in T.galaxy]
     pgc = [int(p) for p in T.pgc]
@@ -892,16 +876,16 @@ def _cat_lslga(req, ver, model=False, ellipse=False, fn=None, tag='lslga', sga=F
                                             redshift=z, color=color, posAngleDisplay=pa_disp)),
                                             content_type='application/json')
 
-def query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi):
+def query_sga_radecbox(fn, ralo, rahi, declo, dechi):
     ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
-    # max radius for LSLGA entries?!
-    lslga_radius = 2.0
-    T = cat_query_radec(fn, ra, dec, radius + lslga_radius)
+    # max radius for SGA entries?!
+    sga_radius = 2.0
+    T = cat_query_radec(fn, ra, dec, radius + sga_radius)
     if T is None:
         return None
     wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
     H,W = wcs.shape
-    # cut to lslga entries possibly touching wcs box
+    # cut to sga entries possibly touching wcs box
     #T.radius_arcsec = T.d25 / 2. * 60.
     T.radius_arcsec = T.diam / 2. * 60.
     radius_pix = T.radius_arcsec / wcs.pixel_scale()
@@ -910,62 +894,9 @@ def query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi):
     #    print('  ', name, 'at', x,y, 'radius', r)
     T.cut((xx > -radius_pix) * (xx < W+radius_pix) *
           (yy > -radius_pix) * (yy < H+radius_pix))
-    #print('Cut to', len(T), 'LSLGA possibly touching WCS:', T.galaxy)
+    #print('Cut to', len(T), 'SGA possibly touching WCS:', T.galaxy)
     if len(T) == 0:
         return None
-    return T
-
-def query_lslga_radecbox(ralo, rahi, declo, dechi, fn=None):
-    if fn is None:
-        fn = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v3.0.kd.fits')
-    T = query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi)
-    if T is None or len(T) == 0:
-        return None
-    return T
-
-def query_lslga_model_radecbox(ralo, rahi, declo, dechi, fn=None):
-    import numpy as np
-    if fn is None:
-        fn = os.path.join(settings.DATA_DIR, 'lslga', 'dr8-lslga-northsouth.kd.fits')
-    T = query_lslga_radecbox_any(fn, ralo, rahi, declo, dechi)
-    if len(T) == 0:
-        return None
-    else:
-        # convert Tractor model parameters to ellipse geometry
-        def get_ba_pa(e1, e2):
-            ee = np.hypot(e1, e2)
-            ba = (1 - ee) / (1 + ee)
-            pa = 180 - (-np.rad2deg(np.arctan2(e2, e1) / 2))
-            return ba, pa
-            
-        ba, pa = [], []
-        cols = T.get_columns()
-        for t in T:
-            ttype = t.type.strip()
-            if 'shapedev_r' in cols:
-                if ttype == 'DEV' or ttype == 'COMP':
-                    e1, e2 = t.shapedev_e1, t.shapedev_e2
-                    bai, pai = get_ba_pa(e1, e2)
-                elif ttype == 'EXP' or ttype == 'REX':
-                    e1, e2 = t.shapeexp_e1, t.shapeexp_e2
-                    bai, pai = get_ba_pa(e1, e2)
-                else: # PSF
-                    bai, pai = np.nan, np.nan
-            else:
-                # DR9
-                if ttype in ['DEV', 'EXP', 'REX', 'SER']:
-                    bai, pai = get_ba_pa(t.shape_e1, t.shape_p2)
-                else: # PSF
-                    bai, pai = np.nan, np.nan
-            ba.append(bai)
-            pa.append(pai)
-        
-        T.pa_model = np.hstack(pa)
-        T.ba_model = np.hstack(ba)
-        if 'fracdev' in cols:
-            T.radius_model_arcsec = T.fracdev * T.shapedev_r + (1 - T.fracdev) * T.shapeexp_r
-        else:
-            T.radius_model_arcsec = T.shape_r
     return T
 
 def cat_manga(req, ver):
@@ -1069,7 +1000,7 @@ def cat_masks_dr9(req, ver):
     dechi = float(req.GET['dechi'])
     wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
     os.environ['TYCHO2_KD_DIR'] = settings.DATA_DIR
-    #os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'lslga', 'LSLGA-v7.0.kd.fits')
+    #os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'sga', 'SGA-v7.0.kd.fits')
     os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
     os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-cat')
     os.environ['GAIA_CAT_VER'] = '2'
@@ -1124,7 +1055,7 @@ def cat_masks_dr9(req, ver):
             names.append('CLUSTER')
         elif gal:
             # freezeparams, ref_id
-            name = 'LSLGA %i' % refid
+            name = 'SGA %i' % refid
             # We're not pointing to the 'model' version
             #if freeze:
             #    name += ' (frozen)'
@@ -1613,8 +1544,8 @@ if __name__ == '__main__':
 
     from django.test import Client
     c = Client()
-    #r = c.get('/lslga/1/cat.json?ralo=259.2787&rahi=259.7738&declo=35.9422&dechi=36.1656')
-    #r = c.get('/lslga/1/cat.json?ralo=259.5726&rahi=260.0677&declo=35.9146&dechi=36.1382')
+    #r = c.get('/sga/1/cat.json?ralo=259.2787&rahi=259.7738&declo=35.9422&dechi=36.1656')
+    #r = c.get('/sga/1/cat.json?ralo=259.5726&rahi=260.0677&declo=35.9146&dechi=36.1382')
     #r = c.get('/usercatalog/1/cat.json?ralo=350.0142&rahi=350.0761&declo=-9.6430&dechi=-9.6090&cat=tmppboi50xv')
     ## should contain NGC 6349
 
