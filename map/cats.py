@@ -853,8 +853,10 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', sga=False):
         color = ['#e41a1c']*len(T)
         #'#3388ff'
     z = [float(z) if np.isfinite(z) else -1. for z in T.z_leda.astype(np.float32)]
+    groupnames = [t.strip() for t in T.group_name]
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
+                                        groupname=groupnames,
                                         abRatio=ab, posAngle=pa, pgc=pgc, type=typ,
                                         redshift=z, color=color, posAngleDisplay=pa_disp)),
                         content_type='application/json')
