@@ -190,6 +190,12 @@ def main():
     pretty = 'DR9 segsize2'
     survey_dir = 'data/'+name
 
+    rsync = True
+    indir = '/global/cscratch1/sd/ziyaoz/dr9k/north/'
+    name = 'dr9k-north'
+    pretty = 'DR9k-north'
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9k'
+
     datadir = 'data'
 
     survey = LegacySurveyData(survey_dir=survey_dir)

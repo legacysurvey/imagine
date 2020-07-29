@@ -740,6 +740,7 @@ def main():
               or 'dr9-sga2' in opt.kind
               or 'dr9-grid' in opt.kind
               or 'dr9-segsize2' in opt.kind
+              or 'dr9k' in opt.kind
     ):
         if opt.maxdec is None:
             opt.maxdec = 90.
@@ -929,6 +930,7 @@ def main():
             or opt.kind.startswith('dr9-sga2')
             or opt.kind.startswith('dr9-grid')
             or opt.kind.startswith('dr9-segsize2')
+            or opt.kind.startswith('dr9k')
             ):
             from map.views import get_layer
 
