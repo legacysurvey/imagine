@@ -191,9 +191,9 @@ def main():
     survey_dir = 'data/'+name
 
     rsync = True
-    indir = '/global/cscratch1/sd/ziyaoz/dr9k/north/'
-    name = 'dr9k-north'
-    pretty = 'DR9k-north'
+    indir = '/global/cscratch1/sd/ziyaoz/dr9k/south/'
+    name = 'dr9k-south'
+    pretty = 'DR9k-south'
     survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9k'
 
     datadir = 'data'
