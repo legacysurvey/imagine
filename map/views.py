@@ -5348,7 +5348,7 @@ def get_layer(name, default=None):
 
     elif name == 'unwise-neo6':
         layer = RebrickedUnwise('unwise-neo6',
-                                os.path.join(settings.DATA_DIR, 'unwise-coadds-neo6'))
+                                os.path.join(settings.DATA_DIR, 'unwise-neo6'))
 
     elif name == '2mass':
         layer = TwoMassLayer('2mass')
