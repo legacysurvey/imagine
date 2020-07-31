@@ -1,7 +1,5 @@
 from viewer.settings_common import *
 
-#ENABLE_SQL = True
-
 DEBUG_LOGGING = True
 
 USER_QUERY_DIR = '/tmp/viewer-dev-user'
@@ -24,7 +22,6 @@ SUBDOMAINS_B = SUBDOMAINS
 # no CORS -- so don't use subdomains, or specify hostname (www.legacysurvey.org vs legacysurvey.org)
 CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
-#ENABLE_SQL = True
 ENABLE_DEV = True
 
 ENABLE_DR2  = False

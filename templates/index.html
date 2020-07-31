@@ -106,10 +106,6 @@ var max_aws_zoom = 14;
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
 
-{% if enable_sql %}
-var sql_url = '{{sqlurl|safe}}';
-{% endif %}
-
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
     var terms = window.location.search.substr(1).split('&');
@@ -1260,53 +1256,6 @@ var DecalsCatalogLayer = TiledOverlay.extend({
 // User catalog
 {% include "user-cat.js" %}
 
-{% if enable_sql %}
-var SqlCatalogOverlay = CatalogOverlay.extend({
-
-    initialize: function(name, pretty, kwargs) {
-        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
-        this._jsonQuery = null;
-    },
-
-    newQuery: function() {
-        this._show = true;
-        this.load();
-    },
-
-    overlayAdded: function() {
-    },
-
-    ready: function() {
-        // find it with jQuery
-        this._status = $('#sqlquery_status');
-    },
-
-    load: function() {
-        if (this._jsonQuery) {
-            this._jsonQuery.abort();
-        }
-        var sqlQueryString = $('#sqlquery').val();
-        var b = map.getBounds();
-        var url = L.Util.template(this._url, L.extend({
-            s: subdomains[0],
-	        east: long2ra(b.getEast()).toFixed(4),
-	        west: long2ra(b.getWest()).toFixed(4),
-	        south: lat2dec(b.getSouth()).toFixed(4),
-	        north: lat2dec(b.getNorth()).toFixed(4),
-            q: sqlQueryString,
-        }));
-        this._counter += 1;
-        this._status && this._status.html('loading...');
-        this._jsonQuery =$.getJSON(url, this.loaded.bind(this, this._counter));
-    },
-
-    getLabel: function(json, i) {
-        return '';
-    },
-
-});
-{% endif %}
-
 function getkeys(obj) {
     var s = '';
     for (var k in obj) {
@@ -2207,17 +2156,6 @@ disableMouseEventPropagation(info);
 var container = info.getContainer();
 L.DomEvent.on(container, 'click', infoBoxClicked);
 
-{% if enable_sql %}
-// SQL query input field
-var query = L.control({'position':'bottomleft'});
-query.onAdd = function (map) {
-    this._div = L.DomUtil.create('div', 'query');
-    this._div.innerHTML = 'SQL catalog query: <input type="text" id="sqlquery" value="rflux > 100" size="50"/> <span id="sqlquery_status"></span>'
-    return this._div;
-};
-query.addTo(map);
-{% endif %}
-
 // upload catalog input field
 var upload = L.control({'position':'bottomleft'});
 upload.onAdd = function (map) {
@@ -2293,21 +2231,6 @@ function objQueryLoaded(result) {
 }
 
 $(document).ready(function() {
-
-{% if enable_sql %}
-    $('#sqlquery').keydown(function(event) {
-        // when Enter is hit in the SQL box
-        if (event.keyCode == 13) {
-            sqlOverlay.newQuery();
-            return false;
-        }
-    });
-
-    // stop event propagation to the map layer
-    $('#sqlquery').click(function(event) {
-        return false;
-    });
-{% endif %}
 
     $('#objquery').keydown(function(event) {
         // when Enter is hit in the Object name search box
@@ -3264,11 +3187,6 @@ var specDeep2 = new Deep2SpectraCatalog('spec-deep2', 'DEEP2 Spectra',
                                    'urlTerm': 'spectra-deep2'});
 {% endif %}
 
-{% if enable_sql %}
-var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
-                                       {'url': sql_url, 'radius': 300,});
-{% endif %}
-
 // Constellations
 var conGroup = L.layerGroup([]);
 var constellations = {
@@ -3880,10 +3798,6 @@ function onMapZoomEnd(e) {
 
 map.setView([ dec2lat(dec_initial), ra2long_C(ra_initial, 180.) ], zoom_initial);
 var lastLatLng = map.getCenter();
-
-{% if enable_sql %}
-map.addLayer(sqlOverlay.getGroup());
-{% endif %}
 
 if ('mark' in qstr) {
     var coords = qstr['mark'];

@@ -31,7 +31,6 @@ APPEND_SLASH = False
 ENABLE_DEV = False
 
 ENABLE_CUTOUTS = True
-ENABLE_SQL = False
 
 ENABLE_UNWISE = True
 
