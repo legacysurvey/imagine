@@ -1941,13 +1941,6 @@ tiles = mylayer_B('ps1', 'PS1 images',
 allLayers.push(tiles);
 {% endif %}
 
-{% if enable_hsc_dr1 %}
-tiles = mylayer_B('hsc', 'HSC DR1 images',
-                  {//'attribution': sdss_attrib,
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
 {% if enable_hsc_dr2 %}
 tiles = mylayer_B('hsc2', 'HSC DR2 images',
                   {//'attribution': sdss_attrib,
@@ -3427,14 +3420,10 @@ var baseTree1 = [
             {% if enable_ps1 %}
             findlayer('ps1'),
             {% endif %}
-            {% if enable_hsc_dr1 %}
-            findlayer('hsc'),
-            {% endif %}
             {% if enable_hsc_dr2 %}
             findlayer('hsc2'),
             {% endif %}
             {% if enable_vlass %}
-            //findlayer('vlass'),
             findlayer('vlass1.2'),
             {% endif %}
             {% comment %}

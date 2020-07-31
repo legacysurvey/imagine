@@ -53,7 +53,6 @@ tileversions = {
     'sdss': [1,],
     'sdssco': [1,],
     'ps1': [1],
-    'hsc': [1],
     'hsc2': [1],
     'hsc-dr2': [1],
     'vlass': [1],
@@ -244,7 +243,6 @@ def _index(req,
         enable_dr6_overlays = settings.ENABLE_DR6,
         enable_dr7_overlays = settings.ENABLE_DR7,
         enable_eboss = settings.ENABLE_EBOSS,
-        enable_hsc_dr1 = settings.ENABLE_HSC_DR1,
         enable_hsc_dr2 = settings.ENABLE_HSC_DR2,
         enable_desi_targets = True,
         enable_desi_footprint = True,
@@ -5363,9 +5361,6 @@ def get_layer(name, default=None):
     #         layers[basename + '-resid'] = resid
     #         layer = layers[name]
 
-    elif name == 'hsc':
-        layer = HscLayer('hsc')
-
     elif name == 'hsc2':
         layer = HscLayer('hsc-dr2')
     
@@ -5626,10 +5621,6 @@ if __name__ == '__main__':
     #r = c.get('/cutout-wcs/?crval1=0.00000&crval2=0.00000&crpix1=384.5&crpix2=256.5&cd11=1.4812e-4&cd12=0&cd21=0&cd22=-1.4812e-4&imagew=768&imageh=512&layer=ls-dr67')
     #r = c.get('/dr8-test10/1/9/462/260.jpg')
     #r = c.get('/dr8-test10/1/13/7395/4163.jpg')
-    #r = c.get('/hsc/1/15/29582/16839.jpg')
-    #r = c.get('/hsc/1/12/1321/1505.jpg')
-    #r = c.get('/hsc/1/11/660/752.jpg')
-    #r = c.get('/hsc/1/8/82/93.jpg')
     #r = c.get('/cutout_panels/decals-dr7/634843/S24/?x=1658&y=799&size=100')
     #r = c.get('/hsc/1/7/41/40.jpg')
     #r = c.get('/cutout_panels/decals-dr7/634843/S24/?x=1658&y=799&size=100')
