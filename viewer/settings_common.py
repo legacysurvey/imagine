@@ -8,9 +8,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
-#import secrets.django
-#import secrets.database
-
 USER_QUERY_DIR = '/tmp/viewer-user'
 
 REDIRECT_CUTOUTS_DECAPS = False
@@ -24,7 +21,7 @@ SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
 SDSS_BASEDIR = '/global/cfs/cdirs/cosmo/data/sdss/dr14/'
 
-CREATE_GALAXY_CATALOG = True
+CREATE_GALAXY_CATALOG = False
 
 APPEND_SLASH = False
 
