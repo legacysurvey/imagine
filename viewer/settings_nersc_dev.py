@@ -3,10 +3,8 @@ from viewer.settings_common import *
 #ENABLE_SQL = True
 
 DEBUG_LOGGING = True
-#DEBUG_LOGGING = False
 
 USER_QUERY_DIR = '/tmp/viewer-dev-user'
-#USER_CATALOG_DIR = USER_QUERY_DIR
 
 READ_ONLY_BASEDIR = True
 
@@ -15,7 +13,6 @@ STATIC_URL_PATH = '/viewer-dev/static'
 
 FORCE_SCRIPT_NAME = ROOT_URL
 
-#STATIC_URL = 'http://%s%s/' % (HOSTNAME, STATIC_URL_PATH)
 STATIC_URL = STATIC_URL_PATH
 TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
@@ -28,8 +25,6 @@ SUBDOMAINS_B = SUBDOMAINS
 CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
 #ENABLE_SQL = True
-#ENABLE_MZLS = True
-
 ENABLE_DEV = True
 
 ENABLE_DR2  = False
@@ -39,8 +34,6 @@ ENABLE_DR3 = False
 ENABLE_DR4 = False
 ENABLE_DR5 = True
 ENABLE_PS1 = True
-#ENABLE_DR6 = True
-#ENABLE_DR7 = True
 ENABLE_DR8 = True
 ENABLE_DR9SV = True
 ENABLE_DES_DR1 = True

@@ -30,10 +30,6 @@ APPEND_SLASH = False
 
 ENABLE_DEV = False
 
-# Enable Virgo Cluster Catalog layer?
-ENABLE_VCC = False
-# Enable DECaLS Weak Lensing map?
-ENABLE_WL = False
 ENABLE_CUTOUTS = True
 ENABLE_SQL = False
 
@@ -82,7 +78,6 @@ SUBDOMAINS = ['a','b','c','d']
 DOMAIN = HOSTNAME
 
 STATIC_URL_PATH = '/static/'
-#STATIC_URL = 'http://%s%s%s' % (HOSTNAME, ROOT_URL, STATIC_URL_PATH)
 STATIC_URL = ROOT_URL + STATIC_URL_PATH
 
 TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
@@ -137,7 +132,6 @@ TEMPLATE_CONTEXT_PROCESSORS = [
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        #'APP_DIRS': True,
         'APP_DIRS': False,
         'DIRS': [os.path.join(WEB_DIR, 'templates')],
         'OPTIONS': {
@@ -170,10 +164,10 @@ INSTALLED_APPS = (
     # 'django.contrib.admin',
     # 'django.contrib.auth',
     'django.contrib.contenttypes',
-    #'django.contrib.sessions',
-    #    'django.contrib.messages',
+    # 'django.contrib.sessions',
+    # 'django.contrib.messages',
     'django.contrib.staticfiles',
-    'cat',
+    # 'cat',
 )
 
 MIDDLEWARE_CLASSES = (

@@ -5,11 +5,6 @@ REDIRECT_CUTOUTS_DECAPS = True
 MAX_NATIVE_ZOOM = 15
 SAVE_CACHE = False
 
-ENABLE_NEXP = False
-ENABLE_VCC  = False
-ENABLE_WL   = False
-#ENABLE_DR2  = True
-
 ENABLE_DEV = True
 ENABLE_DR9SV = False
 ENABLE_DR5 = False
@@ -44,6 +39,3 @@ STATIC_TILE_URL = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{
 
 STATIC_TILE_URL_B = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 SUBDOMAINS_B = SUBDOMAINS
-
-#os.environ['DECALS_DIR'] = os.path.join(DATA_DIR, 'decals-dr1')
-
