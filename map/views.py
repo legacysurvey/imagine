@@ -186,7 +186,7 @@ def is_m33(req):
     return (host == 'm33.legacysurvey.org')
 
 def index(req, **kwargs):
-    print('Host is', req.META.get('HTTP_HOST', None))
+    #print('Host is', req.META.get('HTTP_HOST', None))
     if is_decaps(req):
         return decaps(req)
     if is_m33(req):
@@ -327,8 +327,6 @@ def _index(req,
     from urllib.parse import unquote
     caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
     smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
-
-    print('Small catalog URL:', smallcaturl)
     
     # includes a leaflet pattern for subdomains
     tileurl = settings.TILE_URL
@@ -5756,7 +5754,8 @@ if __name__ == '__main__':
     #r = c.get('/vlass1.2/1/6/42/31.jpg')
     #r = c.get('/sga/1/cat.json?ralo=262.6500&rahi=262.7119&declo=35.7056&dechi=35.7336')
     #r = c.get('/exposures/?ra=129.3671&dec=24.9471&layer=dr8')
-    r = c.get('/namequery/?obj=NGC 5614')
+    #r = c.get('/namequery/?obj=NGC 5614')
+    r = c.get('/')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
