@@ -1525,9 +1525,6 @@ map.attributionControl.options.prefix = '<a href="http://legacysurvey.org/svtips
 // default to 1.
 var tileversions = {
     'sfd':2,
-    'mzls+bass-dr4': 2,
-    'mzls+bass-dr4-model': 2,
-    'mzls+bass-dr4-resid': 2,
     'decaps2': 2,
     'decaps2-model': 2,
     'decaps2-resid': 2,
@@ -1889,27 +1886,6 @@ allLayers.push(tiles);
 {% if enable_dr5_resids %}
 tiles = mylayer_B('decals-dr5-resid', 'DECaLS DR5 residuals',
                 {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-{% if enable_dr4 %}
-tiles = mylayer_B('mzls+bass-dr4', 'MzLS+BASS DR4 images',
-                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-if (defaultTile == null) {
-    defaultTile = tiles;
-}
-
-{% if enable_dr4_models %}
-tiles = mylayer_B('mzls+bass-dr4-model', 'MzLS+BASS DR4 models',
-                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-                                            
-{% if enable_dr4_resids %}
-tiles = mylayer_B('mzls+bass-dr4-resid', 'MzLS+BASS DR4 residuals',
-                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 {% endif %}
@@ -2565,20 +2541,6 @@ var plate_detail_list = function(ov, objs) {
 };
 
 
-{% if enable_dr4_overlays %}
-var ccdOverlay4 = new PolygonOverlay('mzls+bass-dr4-ccds',
-                                     'MzLS+BASS DR4 CCDs',
-                                    {'url':ccds_url,
-                                     'minZoom': 8,
-                                     'labelMinZoom': 100,
-                                     'urlTerm': 'ccds4',
-                                     'detail': ccd_detail,
-                                     'detail_list': ccd_detail_list,
-                                     'url_name': 'mzls+bass-dr4',
-                                     'dr_name': 'DR4',
-                                    });
-{% endif %}
-
 {% if enable_dr5_overlays %}
 var ccdOverlay5 = new PolygonOverlay('decals-dr5-ccds',
                                      'DECaLS DR5 CCDs',
@@ -2831,9 +2793,6 @@ and entries in the "in brick/ccd" panel.
 {% endcomment %}
 
 var polygonOverlays = [ 
-    {% if enable_dr4_overlays %}
-    ccdOverlay4,
-    {% endif %}
     {% if enable_dr5_overlays %}
     ccdOverlay5, expOverlay5,
     {% endif %}
@@ -2870,15 +2829,6 @@ var polygonOverlays = [
     plateOverlay,
     {% endif %}
 ];
-
-{% if enable_dr4_overlays %}
-var mzlsbasscat4 = new DecalsCatalogLayer(tileWatcher,
-                                          'mzls+bass-dr4',
-                                          'MzLS+BASS DR4 Catalog',
-                                          {'url': cat_url,
-                                           'minZoom': 12,
-                                           'urlTerm': 'sources-dr4'});
-{% endif %}
 
 {% if enable_dr5_overlays %}
 var decalscat5 = new DecalsCatalogLayer(tileWatcher,
@@ -3209,9 +3159,6 @@ var overlays = [
     {% if enable_phat %}
     phat_clusters,
     {% endif %}    
-    {% if enable_dr4_overlays %}
-    mzlsbasscat4,
-    {% endif %}
     {% if enable_dr5_overlays %}
     decalscat5,
     {% endif %}
@@ -3238,9 +3185,6 @@ var overlays = [
     {% endif %}
     {% if enable_dr9sv_south_overlays %}
     dr9svsouthcat,
-    {% endif %}
-    {% if enable_dr4_overlays %}
-    ccdOverlay4,
     {% endif %}
     {% if enable_dr5_overlays %}
     ccdOverlay5,
@@ -3460,16 +3404,6 @@ var baseTree1 = [
         {% endif %}
     ]),
     {% endif %}
-    {% if enable_dr4 %}
-    findlayer('mzls+bass-dr4', [
-        {% if enable_dr4_model %}
-        findlayer('mzls+bass-dr4-model'),
-        {% endif %}
-        {% if enable_dr4_resid %}
-        findlayer('mzls+bass-dr4-resid'),
-        {% endif %}
-    ]),
-    {% endif %}
     {% if enable_eboss %}
     findlayer('eboss'),
     {% endif %}
@@ -3598,9 +3532,6 @@ for (var i=0,len=overlays.length; i<len; i++) {
          {% if enable_dr5_overlays %}
          findoverlay('decals-dr5-ccds'),
          {% endif %}
-         {% if enable_dr4_overlays %}
-         findoverlay('mzls+bass-dr4-ccds'),
-         {% endif %}
      ]),
      {% endif %}
      findoverlay('sdss-ccds'),
@@ -3649,9 +3580,6 @@ for (var i=0,len=overlays.length; i<len; i++) {
            {% endif %}
            {% if enable_dr5_overlays %}
            findoverlay('decals-dr5'),
-           {% endif %}
-           {% if enable_dr4_overlays %}
-           findoverlay('mzls+bass-dr4'),
            {% endif %}
        ],
      },
@@ -3732,7 +3660,6 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
          'DECaLS DR7 images',
          'MzLS+BASS DR6 images',
          'DECaLS DR5 images',
-         'MzLS+BASS DR4 images',
          'DECaPS images',
          'unWISE W1/W2 NEO6',
          'DECaLS DR7 catalog',

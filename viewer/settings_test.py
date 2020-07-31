@@ -1,8 +1,5 @@
 from viewer.settings_common import *
 
-ENABLE_DR2 = False
-ENABLE_DR3 = False
-ENABLE_DR4 = False
 ENABLE_DR5 = True
 ENABLE_DR6 = True
 ENABLE_DR7 = True

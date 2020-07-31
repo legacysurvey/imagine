@@ -24,11 +24,8 @@ CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
 ENABLE_DEV = True
 
-ENABLE_DR2  = False
 ENABLE_DECAPS = True
 ENABLE_EBOSS = True
-ENABLE_DR3 = False
-ENABLE_DR4 = False
 ENABLE_DR5 = True
 ENABLE_PS1 = True
 ENABLE_DR8 = True

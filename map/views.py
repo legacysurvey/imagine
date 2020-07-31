@@ -109,10 +109,6 @@ tileversions = {
     'decals-dr5-model': [1],
     'decals-dr5-resid': [1],
 
-    'mzls+bass-dr4': [1,2],
-    'mzls+bass-dr4-model': [1,2],
-    'mzls+bass-dr4-resid': [1,2],
-
     'unwise-w1w2': [1],
     'unwise-neo2': [1],
     'unwise-neo3': [1],
@@ -208,7 +204,6 @@ def _index(req,
         enable_cutouts = settings.ENABLE_CUTOUTS,
         enable_dr67 = settings.ENABLE_DR67,
         enable_dr56 = settings.ENABLE_DR56,
-        enable_dr4 = settings.ENABLE_DR4,
         enable_dr5 = settings.ENABLE_DR5,
         enable_dr6 = settings.ENABLE_DR6,
         enable_dr7 = settings.ENABLE_DR7,
@@ -239,15 +234,12 @@ def _index(req,
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         enable_des_dr1 = settings.ENABLE_DES_DR1,
-        enable_dr4_models = settings.ENABLE_DR4,
-        enable_dr4_resids = settings.ENABLE_DR4,
         enable_dr5_models = settings.ENABLE_DR5,
         enable_dr5_resids = settings.ENABLE_DR5,
         enable_dr6_models = settings.ENABLE_DR6,
         enable_dr6_resids = settings.ENABLE_DR6,
         enable_dr7_models = settings.ENABLE_DR7,
         enable_dr7_resids = settings.ENABLE_DR7,
-        enable_dr4_overlays = settings.ENABLE_DR4,
         enable_dr5_overlays = settings.ENABLE_DR5,
         enable_dr6_overlays = settings.ENABLE_DR6,
         enable_dr7_overlays = settings.ENABLE_DR7,
@@ -445,13 +437,10 @@ def _index(req,
 def decaps(req):
     return _index(req,
                   enable_decaps=True,
-                  enable_dr4_models=False,
-                  enable_dr4_resids=False,
                   enable_dr5_models=False,
                   enable_dr5_resids=False,
                   enable_dr5=True,
                   enable_ps1=False,
-                  enable_dr4_overlays=False,
                   enable_dr5_overlays=False,
                   enable_desi_targets=False,
                   enable_spectra=False,
@@ -487,14 +476,10 @@ def m33(req):
                   enable_dr7=False,
                   enable_dr6=False,
                   enable_dr5=False,
-                  enable_dr4=False,
                   enable_dr56=False,
-                  enable_dr4_models=False,
-                  enable_dr4_resids=False,
                   enable_dr5_models=False,
                   enable_dr5_resids=False,
                   enable_ps1=False,
-                  enable_dr4_overlays=False,
                   enable_dr5_overlays=False,
                   enable_dr7_overlays=False,
                   enable_desi_footprint=False,
@@ -3632,12 +3617,7 @@ def sdss_rgb(rimgs, bands, scales=None,
 
 
 def layer_name_map(name):
-    return {#'decals-bricks': 'decals-dr2',
-            'mzls bass-dr4': 'mzls+bass-dr4',
-            'mzls bass-dr4-model': 'mzls+bass-dr4-model',
-            'mzls bass-dr4-resid': 'mzls+bass-dr4-resid',
-
-            'mzls bass-dr6': 'mzls+bass-dr6',
+    return {'mzls bass-dr6': 'mzls+bass-dr6',
             'mzls bass-dr6-model': 'mzls+bass-dr6-model',
             'mzls bass-dr6-resid': 'mzls+bass-dr6-resid',
 
@@ -3976,11 +3956,6 @@ def get_survey(name):
         south = get_survey('dr9sv-south')
         south.layer = 'dr9sv-south'
         survey = SplitSurveyData(north, south)
-        
-    #elif name in [
-    #        #'decals-dr5',
-    #        #'decals-dr7', 'mzls+bass-dr4', 'mzls+bass-dr6', 'eboss']:
-    #    survey = MyLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
     print('dirnm', dirnm, 'exists?', os.path.exists(dirnm))
     
@@ -3992,7 +3967,6 @@ def get_survey(name):
         print('Creating LegacySurveyData for', name, 'with survey_dir', dirnm)
 
     names_urls = {
-        'mzls+bass-dr4': ('MzLS+BASS DR4', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr4/'),
         'mzls+bass-dr6': ('MzLS+BASS DR6', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr6/'),
         'decals-dr5': ('DECaLS DR5', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr5/'),
         'decals-dr7': ('DECaLS DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr7/'),
@@ -5316,18 +5290,6 @@ def get_layer(name, default=None):
         layers['decaps'] = image
         layers['decaps-model'] = model
         layers['decaps-resid'] = resid
-        layer = layers[name]
-
-    elif name in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
-        survey = get_survey('mzls+bass-dr4')
-        image = DecalsDr3Layer('mzls+bass-dr4', 'image', survey, drname='mzls+bass-dr4')
-        model = DecalsDr3Layer('mzls+bass-dr4-model', 'model', survey,
-                            drname='mzls+bass-dr4')
-        resid = DecalsResidLayer(image, model, 'mzls+bass-dr4-resid', 'resid', survey,
-                                 drname='mzls+bass-dr4')
-        layers['mzls+bass-dr4'] = image
-        layers['mzls+bass-dr4-model'] = model
-        layers['mzls+bass-dr4-resid'] = resid
         layer = layers[name]
 
     elif name == 'unwise-w1w2':

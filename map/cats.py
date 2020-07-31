@@ -33,7 +33,6 @@ catversions = {
     'decals-dr7': [1,],
     'mzls+bass-dr6': [1,],
     'decals-dr5': [1,],
-    'mzls+bass-dr4': [1,],
     'ngc': [1,],
     'GCs-PNe': [1,],
     'lslga': [1,],
@@ -344,12 +343,9 @@ def get_random_galaxy(layer=None):
         layer = layer_to_survey_name(layer)
 
     global galaxycats
-    if layer == 'mzls+bass-dr4':
-        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr4.fits')
-        drnum = 4
-    elif layer == 'mzls+bass-dr6':
+    if layer == 'mzls+bass-dr6':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr6.fits')
-        drnum = 4
+        drnum = 6
     elif layer == 'decals-dr7':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr7.fits')
         drnum = 7
@@ -438,10 +434,7 @@ def create_galaxy_catalog(galfn, drnum, layer=None):
         survey = None
     else:
         name = 'dr%i' % drnum
-        if drnum == 4:
-            survey = get_survey('mzls+bass-dr4')
-            bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-in-dr4.fits'))
-        elif drnum == 6:
+        if drnum == 6:
             survey = get_survey('mzls+bass-dr6')
             bricks = survey.get_bricks()
             bricks.cut(bricks.has_g * bricks.has_r * bricks.has_z)
@@ -449,8 +442,6 @@ def create_galaxy_catalog(galfn, drnum, layer=None):
             survey = get_survey('decals-dr5')
         elif drnum == 7:
             survey = get_survey('decals-dr7')
-        #elif drnum == 8:
-        #    survey = get_survey('dr8')
 
     if bricks is None:
         bricks = survey.get_bricks()
@@ -459,27 +450,7 @@ def create_galaxy_catalog(galfn, drnum, layer=None):
     print('Matched', len(I), 'bricks near NGC objects')
     bricks.cut(I)
 
-        # bricks = fits_table(os.path.join(settings.DATA_DIR, 'survey-bricks-dr4.fits'))
-        # bricks.cut((bricks.nexp_g > 0) *
-        #            (bricks.nexp_r > 0) *
-        #            (bricks.nexp_z > 0))
-        # print(len(bricks), 'bricks with grz')
-        # 
-        # sbricks = survey.get_bricks()
-        # binds = dict([(b,i) for i,b in enumerate(sbricks.brickname)])
-        # I = np.array([binds[b] for b in bricks.brickname])
-        # bricks.ra1  = sbricks.ra1[I]
-        # bricks.ra2  = sbricks.ra2[I]
-        # bricks.dec1 = sbricks.dec1[I]
-        # bricks.dec2 = sbricks.dec2[I]
-        # 
-        # fn = '/tmp/survey-bricks-in-dr4.fits'
-        # bricks.writeto(fn)
-        # print('Wrote', fn)
-
-
     for brick in bricks:
-
         I = np.flatnonzero((T.ra  >= brick.ra1 ) * (T.ra  < brick.ra2 ) *
                            (T.dec >= brick.dec1) * (T.dec < brick.dec2))
         print('Brick', brick.brickname, 'has', len(I), 'galaxies')
@@ -1453,21 +1424,10 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     else:
         rd = list(zip(cat.ra, cat.dec))
         types = list([t[0] for t in cat.get('type')])
-
-        if 'decam_flux' in cat.get_columns():
-            fluxes = [dict(g=float(g), r=float(r), z=float(z))
-                      for g,r,z in zip(cat.decam_flux[:,1], cat.decam_flux[:,2],
-                                       cat.decam_flux[:,4])]
-            nobs = [dict(g=int(g), r=int(r), z=int(z))
-                    for g,r,z in zip(cat.decam_nobs[:,1], cat.decam_nobs[:,2],
-                                     cat.decam_nobs[:,4])]
-        else:
-            # DR4+
-            fluxes = [dict(g=float(g), r=float(r), z=float(z))
-                      for g,r,z in zip(cat.flux_g, cat.flux_r, cat.flux_z)]
-            nobs = [dict(g=int(g), r=int(r), z=int(z))
-                    for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
-
+        fluxes = [dict(g=float(g), r=float(r), z=float(z))
+                  for g,r,z in zip(cat.flux_g, cat.flux_r, cat.flux_z)]
+        nobs = [dict(g=int(g), r=int(r), z=int(z))
+                for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
         bricknames = list(cat.brickname)
         objids = [int(x) for x in cat.objid]
 
