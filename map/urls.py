@@ -23,8 +23,6 @@ urlpatterns = [
     # PHAT cluster catalog
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
 
-    # DR4/5 DESI targets
-    url(r'^targets-dr45/(\d+)/cat.json', cats.cat_targets_dr45),
      # DR6/7 DESI targets
     url(r'^targets-dr67/(\d+)/cat.json', cats.cat_targets_dr67),
 

@@ -42,7 +42,6 @@ catversions = {
     'manga': [1,],
     'bright': [1,],
     'tycho2': [1,],
-    'targets-dr45': [1,],
     'targets-dr67': [1,],
     'targets-bgs-dr67': [1,],
     'targets-sky-dr67': [1,],
@@ -499,12 +498,6 @@ def cat_targets_cmx_dr7(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-cmx-0.27.0.kd.fits'),
         ], tag='targets-cmx-dr7', color_name_func=desi_cmx_color_names)
-
-def cat_targets_dr45(req, ver):
-    return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-dr5-0.20.0.kd.fits'),
-        os.path.join(settings.DATA_DIR, 'targets-dr4-0.20.0.kd.fits'),
-    ], tag = 'targets-dr45')
 
 def cat_targets_dr67(req, ver):
     return cat_targets_drAB(req, ver, cats=[

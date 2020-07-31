@@ -3065,11 +3065,6 @@ var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
 {% endif %}
 
 {% if enable_desi_targets %}
-var desi_targets45 = new DesiTargetCatalog('targets-dr45', 'DESI Targets (DR4/DR5)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
 var desi_targets67 = new DesiTargetCatalog('targets-dr67', 'DESI Targets (DR6/DR7)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
@@ -3614,7 +3609,6 @@ for (var i=0,len=overlays.length; i<len; i++) {
            findoverlay('targets-sky-dr67'),
            findoverlay('targets-bright-dr67'),
            findoverlay('targets-dark-dr67'),
-           findoverlay('targets-dr45'),
      ]),
      {% endif %}
      {% if enable_desi_footprint %}
