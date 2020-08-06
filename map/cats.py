@@ -75,7 +75,7 @@ def gaia_stars_for_wcs(req):
     import os
     import numpy as np
     
-    os.environ['GAIA_CAT_DIR'] = '/global/project/projectdirs/cosmo/work/gaia/chunks-gaia-dr2-astrom-2/'
+    os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-dr2')
 
     J = json.loads(req.POST['wcs'])
     print('Got WCS values:', J)
@@ -171,7 +171,7 @@ def cat_gaia_dr2(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    os.environ['GAIA_CAT_DIR'] = settings.GAIA_DR2_CAT_DIR
+    os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-dr2')
     gaia = GaiaCatalog()
     cat = gaia.get_catalog_radec_box(ralo, rahi, declo, dechi)
 
@@ -947,7 +947,7 @@ def cat_masks_dr9(req, ver):
     os.environ['TYCHO2_KD_DIR'] = settings.DATA_DIR
     #os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'sga', 'SGA-v7.0.kd.fits')
     os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
-    os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-cat')
+    os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-dr2')
     os.environ['GAIA_CAT_VER'] = '2'
     survey = LegacySurveyData(survey_dir=os.getcwd())
     pixscale = wcs.pixel_scale()

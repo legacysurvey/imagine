@@ -15,7 +15,6 @@ REDIRECT_CUTOUTS_DECAPS = False
 ENABLE_CUTOUTS = True
 
 GAIA_DR1_CAT_DIR = '/global/cfs/cdirs/cosmo/work/gaia/chunks-gaia-dr1-astrom'
-GAIA_DR2_CAT_DIR = '/global/cfs/cdirs/cosmo/work/gaia/chunks-gaia-dr2-astrom-2'
 
 SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
