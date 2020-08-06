@@ -42,7 +42,6 @@ urlpatterns = [
     url(r'^targets-sv-dr8/(\d+)/cat.json', cats.cat_targets_sv_dr8),
 
     # Gaia catalog
-    url(r'^gaia-dr1/(\d+)/cat.json', cats.cat_gaia_dr1),
     url(r'^gaia-dr2/(\d+)/cat.json', cats.cat_gaia_dr2),
 
     # Upload user catalog

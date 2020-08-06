@@ -131,31 +131,6 @@ def cat_phat_clusters(req, ver):
     )),
                         content_type='application/json')
 
-
-def cat_gaia_dr1(req, ver):
-    import json
-    from legacypipe.gaiacat import GaiaCatalog
-
-    tag = 'gaia-dr1'
-    ralo = float(req.GET['ralo'])
-    rahi = float(req.GET['rahi'])
-    declo = float(req.GET['declo'])
-    dechi = float(req.GET['dechi'])
-
-    ver = int(ver)
-    if not ver in catversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-
-    os.environ['GAIA_CAT_DIR'] = settings.GAIA_DR1_CAT_DIR
-    gaia = GaiaCatalog()
-    cat = gaia.get_catalog_radec_box(ralo, rahi, declo, dechi)
-
-    return HttpResponse(json.dumps(dict(
-                rd=[(float(o.ra),float(o.dec)) for o in cat],
-                gmag=[float(o.phot_g_mean_mag) for o in cat],
-                )),
-                        content_type='application/json')
-
 def cat_gaia_dr2(req, ver):
     import json
     from legacypipe.gaiacat import GaiaCatalog
