@@ -74,11 +74,6 @@ def _one_tile(X):
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
                               **kwargs)
         
-    elif kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
-        v = 2
-        layer = get_layer(kind)
-        return layer.get_tile(req, v, zoom, x, y, savecache=True, return_if_not_found=True, **kwargs)
-
     elif kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
         v = 2
         layer = get_layer(kind)
@@ -86,25 +81,6 @@ def _one_tile(X):
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
                               get_images=get_images, ignoreCached=True)
         
-    elif kind in ['decals-dr3', 'decals-dr3-model', 'decals-dr3-resid']:
-        v = 1
-        layer = get_layer(kind)
-        layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True)
-
-    elif kind in ['decals-dr2', 'decals-dr2-model', 'decals-dr2-resid']:
-        v = 2
-        kwa = {}
-        if 'model' in kind:
-            v = 1
-            kwa.update(model=True, add_gz=True)
-        if 'resid' in kind:
-            v = 1
-            kwa.update(resid=True, model_gz=True)
-
-        print('map_decals_dr2 kwargs:', kwa)
-        map_decals_dr2(req, v, zoom, x, y, savecache=True, forcecache=True,
-                       hack_jpeg=True, drname='decals-dr2', **kwa)
-
     elif kind == 'sfd':
         v = 2
         layer = sfd_layer
@@ -215,7 +191,6 @@ def top_levels(mp, opt):
     from map.views import save_jpeg, trymakedirs
 
     if opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid',
-                    'mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid',
                     'decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
                     'decals-dr7', 'decals-dr7-model', 'decals-dr7-resid',
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
@@ -728,7 +703,7 @@ def main():
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                            'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
-                           'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc', 'hsc2']
+                           'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
               or 'dr9f' in opt.kind
@@ -740,6 +715,7 @@ def main():
               or 'dr9-sga2' in opt.kind
               or 'dr9-grid' in opt.kind
               or 'dr9-segsize2' in opt.kind
+              or 'dr9k' in opt.kind
     ):
         if opt.maxdec is None:
             opt.maxdec = 90.
@@ -787,15 +763,6 @@ def main():
         if opt.minra is None:
             opt.minra = 0
 
-    elif opt.kind in ['mzls+bass-dr4', 'mzls+bass-dr4-model', 'mzls+bass-dr4-resid']:
-        if opt.maxdec is None:
-            opt.maxdec = 90
-        if opt.mindec is None:
-            opt.mindec = 30
-        if opt.maxra is None:
-            opt.maxra = 54
-        if opt.minra is None:
-            opt.minra = 301
     elif opt.kind in ['mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
         if opt.maxdec is None:
             opt.maxdec = 90
@@ -902,7 +869,7 @@ def main():
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                          'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
-                        'galex', 'wssa', 'des-dr1', 'hsc', 'hsc2',
+                        'galex', 'wssa', 'des-dr1', 'hsc2',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
                         'dr8-south', 'dr8-south-model', 'dr8-south-resid',
                         'dr9c', 'dr9c-model', 'dr9c-resid',
@@ -929,6 +896,7 @@ def main():
             or opt.kind.startswith('dr9-sga2')
             or opt.kind.startswith('dr9-grid')
             or opt.kind.startswith('dr9-segsize2')
+            or opt.kind.startswith('dr9k')
             ):
             from map.views import get_layer
 
@@ -992,21 +960,13 @@ def main():
             sys.exit(0)
                 
         
-        if (opt.kind in ['decals-dr3', 'decals-dr3-model',
-                         'mzls+bass-dr4', 'mzls+bass-dr4-model',
-                         'decaps2', 'decaps2-model', 'eboss', 'ps1']
+        if (opt.kind in ['decaps2', 'decaps2-model', 'eboss', 'ps1']
             or 'dr8b' in opt.kind
             or 'dr8c' in opt.kind
             or 'dr8i' in opt.kind):
 
             from map.views import get_survey, get_layer
-
             surveyname = opt.kind
-            # *-model -> *
-            # for prefix in ['decals-dr3', 'mzls+bass-dr4', 'decaps2', 'decals-dr5']:
-            #     if prefix in surveyname:
-            #         surveyname = prefix
-
             for suffix in ['-model', '-resid']:
                 if surveyname.endswith(suffix):
                     surveyname = surveyname[:-len(suffix)]

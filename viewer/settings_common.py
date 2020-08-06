@@ -8,9 +8,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
-#import secrets.django
-#import secrets.database
-
 USER_QUERY_DIR = '/tmp/viewer-user'
 
 REDIRECT_CUTOUTS_DECAPS = False
@@ -18,30 +15,21 @@ REDIRECT_CUTOUTS_DECAPS = False
 ENABLE_CUTOUTS = True
 
 GAIA_DR1_CAT_DIR = '/global/cfs/cdirs/cosmo/work/gaia/chunks-gaia-dr1-astrom'
-GAIA_DR2_CAT_DIR = '/global/cfs/cdirs/cosmo/work/gaia/chunks-gaia-dr2-astrom-2'
 
 SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
 SDSS_BASEDIR = '/global/cfs/cdirs/cosmo/data/sdss/dr14/'
 
-CREATE_GALAXY_CATALOG = True
+CREATE_GALAXY_CATALOG = False
 
 APPEND_SLASH = False
 
 ENABLE_DEV = False
 
-# Enable Virgo Cluster Catalog layer?
-ENABLE_VCC = False
-# Enable DECaLS Weak Lensing map?
-ENABLE_WL = False
 ENABLE_CUTOUTS = True
-ENABLE_SQL = False
 
 ENABLE_UNWISE = True
 
-ENABLE_DR2 = False
-ENABLE_DR3 = False
-ENABLE_DR4 = False
 ENABLE_DR5 = False
 ENABLE_DR6 = True
 ENABLE_DR7 = True
@@ -50,8 +38,8 @@ ENABLE_DR8_MODELS = ENABLE_DR8
 ENABLE_DR8_RESIDS = ENABLE_DR8
 ENABLE_DR9SV = True
 
-ENABLE_DR67 = True
 ENABLE_DR56 = False
+ENABLE_DR67 = True
 
 ENABLE_DECAPS = True
 ENABLE_PS1 = False
@@ -59,7 +47,6 @@ ENABLE_DES_DR1 = True
 
 ENABLE_EBOSS = False
 
-ENABLE_HSC_DR1 = False
 ENABLE_HSC_DR2 = True
 
 ENABLE_VLASS = True
@@ -82,7 +69,6 @@ SUBDOMAINS = ['a','b','c','d']
 DOMAIN = HOSTNAME
 
 STATIC_URL_PATH = '/static/'
-#STATIC_URL = 'http://%s%s%s' % (HOSTNAME, ROOT_URL, STATIC_URL_PATH)
 STATIC_URL = ROOT_URL + STATIC_URL_PATH
 
 TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
@@ -137,7 +123,6 @@ TEMPLATE_CONTEXT_PROCESSORS = [
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        #'APP_DIRS': True,
         'APP_DIRS': False,
         'DIRS': [os.path.join(WEB_DIR, 'templates')],
         'OPTIONS': {
@@ -170,10 +155,10 @@ INSTALLED_APPS = (
     # 'django.contrib.admin',
     # 'django.contrib.auth',
     'django.contrib.contenttypes',
-    #'django.contrib.sessions',
-    #    'django.contrib.messages',
+    # 'django.contrib.sessions',
+    # 'django.contrib.messages',
     'django.contrib.staticfiles',
-    'cat',
+    # 'cat',
 )
 
 MIDDLEWARE_CLASSES = (

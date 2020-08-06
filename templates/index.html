@@ -106,10 +106,6 @@ var max_aws_zoom = 14;
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
 
-{% if enable_sql %}
-var sql_url = '{{sqlurl|safe}}';
-{% endif %}
-
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
     var terms = window.location.search.substr(1).split('&');
@@ -590,7 +586,9 @@ var sga_popup = function(json, i) {
         var dec = json['rd'][i][1];
         var name = json['name'][i];
         var pgc = json['pgc'][i];
-	    s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
+    var groupname = json['groupname'][i];
+	s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
+    s += '<br/>Group: ' + groupname;
         // matching map/cats.py : cat_sga
         d25 = json['radiusArcsec'][i] * 2 / 60.;
         s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
@@ -601,22 +599,6 @@ var sga_popup = function(json, i) {
             s += 'Type: '+t+' ';
         if (z != -1.0)
             s += ', Redshift='+z.toFixed(4);
-        return s;
-}
-
-var sga_model_popup = function(json, i) {
-        var ra = json['rd'][i][0];
-        var dec = json['rd'][i][1];
-        var name = json['name'][i];
-        var pgc = json['pgc'][i];
-	    s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
-        // matching map/cats.py : cat_sga_model
-        r50 = json['radiusArcsec'][i] / 60.;
-        s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
-        s += '<br/>r(50)='+r50.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
-        t = json['type'][i];
-        if (t.length > 0)
-            s += 'Type: '+t+' ';
         return s;
 }
 
@@ -683,21 +665,6 @@ var SGACatalog = CatalogOverlay.extend({
     },
 
 });
-
-// var SGACatalogModel = CatalogOverlay.extend({
-//     getLabel: function(json, i) {
-//         return sga_model_popup(json, i);
-//     },
-// 
-//     getPopupText: function(json, i) {
-//         return sga_model_popup(json, i);
-//     },
-// 
-//     getTooltipStyle() {
-//         return { permanent: false, interactive: true, };
-//     },
-// 
-// });
 
 var MangaCatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
@@ -1289,53 +1256,6 @@ var DecalsCatalogLayer = TiledOverlay.extend({
 // User catalog
 {% include "user-cat.js" %}
 
-{% if enable_sql %}
-var SqlCatalogOverlay = CatalogOverlay.extend({
-
-    initialize: function(name, pretty, kwargs) {
-        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
-        this._jsonQuery = null;
-    },
-
-    newQuery: function() {
-        this._show = true;
-        this.load();
-    },
-
-    overlayAdded: function() {
-    },
-
-    ready: function() {
-        // find it with jQuery
-        this._status = $('#sqlquery_status');
-    },
-
-    load: function() {
-        if (this._jsonQuery) {
-            this._jsonQuery.abort();
-        }
-        var sqlQueryString = $('#sqlquery').val();
-        var b = map.getBounds();
-        var url = L.Util.template(this._url, L.extend({
-            s: subdomains[0],
-	        east: long2ra(b.getEast()).toFixed(4),
-	        west: long2ra(b.getWest()).toFixed(4),
-	        south: lat2dec(b.getSouth()).toFixed(4),
-	        north: lat2dec(b.getNorth()).toFixed(4),
-            q: sqlQueryString,
-        }));
-        this._counter += 1;
-        this._status && this._status.html('loading...');
-        this._jsonQuery =$.getJSON(url, this.loaded.bind(this, this._counter));
-    },
-
-    getLabel: function(json, i) {
-        return '';
-    },
-
-});
-{% endif %}
-
 function getkeys(obj) {
     var s = '';
     for (var k in obj) {
@@ -1605,9 +1525,6 @@ map.attributionControl.options.prefix = '<a href="http://legacysurvey.org/svtips
 // default to 1.
 var tileversions = {
     'sfd':2,
-    'mzls+bass-dr4': 2,
-    'mzls+bass-dr4-model': 2,
-    'mzls+bass-dr4-resid': 2,
     'decaps2': 2,
     'decaps2-model': 2,
     'decaps2-resid': 2,
@@ -1973,27 +1890,6 @@ allLayers.push(tiles);
 {% endif %}
 {% endif %}
 
-{% if enable_dr4 %}
-tiles = mylayer_B('mzls+bass-dr4', 'MzLS+BASS DR4 images',
-                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-if (defaultTile == null) {
-    defaultTile = tiles;
-}
-
-{% if enable_dr4_models %}
-tiles = mylayer_B('mzls+bass-dr4-model', 'MzLS+BASS DR4 models',
-                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-                                            
-{% if enable_dr4_resids %}
-tiles = mylayer_B('mzls+bass-dr4-resid', 'MzLS+BASS DR4 residuals',
-                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
 {% if enable_decaps %}
 tiles = mylayer_B('decaps', 'DECaPS images',
                   {//'maxNativeZoom': 13,
@@ -2042,13 +1938,6 @@ tiles = mylayer_B('ps1', 'PS1 images',
                   {'attribution': ps1_attrib,
                    'urlPatterns': [ [8, maxZoom, tile_url], ],});
                   //'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-{% if enable_hsc_dr1 %}
-tiles = mylayer_B('hsc', 'HSC DR1 images',
-                  {//'attribution': sdss_attrib,
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
@@ -2236,17 +2125,6 @@ disableMouseEventPropagation(info);
 var container = info.getContainer();
 L.DomEvent.on(container, 'click', infoBoxClicked);
 
-{% if enable_sql %}
-// SQL query input field
-var query = L.control({'position':'bottomleft'});
-query.onAdd = function (map) {
-    this._div = L.DomUtil.create('div', 'query');
-    this._div.innerHTML = 'SQL catalog query: <input type="text" id="sqlquery" value="rflux > 100" size="50"/> <span id="sqlquery_status"></span>'
-    return this._div;
-};
-query.addTo(map);
-{% endif %}
-
 // upload catalog input field
 var upload = L.control({'position':'bottomleft'});
 upload.onAdd = function (map) {
@@ -2322,21 +2200,6 @@ function objQueryLoaded(result) {
 }
 
 $(document).ready(function() {
-
-{% if enable_sql %}
-    $('#sqlquery').keydown(function(event) {
-        // when Enter is hit in the SQL box
-        if (event.keyCode == 13) {
-            sqlOverlay.newQuery();
-            return false;
-        }
-    });
-
-    // stop event propagation to the map layer
-    $('#sqlquery').click(function(event) {
-        return false;
-    });
-{% endif %}
 
     $('#objquery').keydown(function(event) {
         // when Enter is hit in the Object name search box
@@ -2671,20 +2534,6 @@ var plate_detail_list = function(ov, objs) {
 };
 
 
-{% if enable_dr4_overlays %}
-var ccdOverlay4 = new PolygonOverlay('mzls+bass-dr4-ccds',
-                                     'MzLS+BASS DR4 CCDs',
-                                    {'url':ccds_url,
-                                     'minZoom': 8,
-                                     'labelMinZoom': 100,
-                                     'urlTerm': 'ccds4',
-                                     'detail': ccd_detail,
-                                     'detail_list': ccd_detail_list,
-                                     'url_name': 'mzls+bass-dr4',
-                                     'dr_name': 'DR4',
-                                    });
-{% endif %}
-
 {% if enable_dr5_overlays %}
 var ccdOverlay5 = new PolygonOverlay('decals-dr5-ccds',
                                      'DECaLS DR5 CCDs',
@@ -2937,9 +2786,6 @@ and entries in the "in brick/ccd" panel.
 {% endcomment %}
 
 var polygonOverlays = [ 
-    {% if enable_dr4_overlays %}
-    ccdOverlay4,
-    {% endif %}
     {% if enable_dr5_overlays %}
     ccdOverlay5, expOverlay5,
     {% endif %}
@@ -2976,15 +2822,6 @@ var polygonOverlays = [
     plateOverlay,
     {% endif %}
 ];
-
-{% if enable_dr4_overlays %}
-var mzlsbasscat4 = new DecalsCatalogLayer(tileWatcher,
-                                          'mzls+bass-dr4',
-                                          'MzLS+BASS DR4 Catalog',
-                                          {'url': cat_url,
-                                           'minZoom': 12,
-                                           'urlTerm': 'sources-dr4'});
-{% endif %}
 
 {% if enable_dr5_overlays %}
 var decalscat5 = new DecalsCatalogLayer(tileWatcher,
@@ -3107,11 +2944,6 @@ var sga_ell = new SGACatalog('sga', 'SGA (ellipse fit)',
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga',});
 
-// var sga_model = new SGACatalogModel('sga-model', 'SGA (DR8 models)',
-//                              {'minZoom': 5,
-//                               'labelsMinZoom': 7,
-//                               'urlTerm': 'sga-model',});
-                              
 var GaiaDr1Catalog = CatalogOverlay.extend({
     getColor: function(json, i) {
         return '#bbbbff';
@@ -3226,11 +3058,6 @@ var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
 {% endif %}
 
 {% if enable_desi_targets %}
-var desi_targets45 = new DesiTargetCatalog('targets-dr45', 'DESI Targets (DR4/DR5)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
 var desi_targets67 = new DesiTargetCatalog('targets-dr67', 'DESI Targets (DR6/DR7)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
@@ -3298,11 +3125,6 @@ var specDeep2 = new Deep2SpectraCatalog('spec-deep2', 'DEEP2 Spectra',
                                    'urlTerm': 'spectra-deep2'});
 {% endif %}
 
-{% if enable_sql %}
-var sqlOverlay = new SqlCatalogOverlay('sql', 'SQL query',
-                                       {'url': sql_url, 'radius': 300,});
-{% endif %}
-
 // Constellations
 var conGroup = L.layerGroup([]);
 var constellations = {
@@ -3325,9 +3147,6 @@ var overlays = [
     {% if enable_phat %}
     phat_clusters,
     {% endif %}    
-    {% if enable_dr4_overlays %}
-    mzlsbasscat4,
-    {% endif %}
     {% if enable_dr5_overlays %}
     decalscat5,
     {% endif %}
@@ -3354,9 +3173,6 @@ var overlays = [
     {% endif %}
     {% if enable_dr9sv_south_overlays %}
     dr9svsouthcat,
-    {% endif %}
-    {% if enable_dr4_overlays %}
-    ccdOverlay4,
     {% endif %}
     {% if enable_dr5_overlays %}
     ccdOverlay5,
@@ -3413,7 +3229,6 @@ var overlays = [
     {% if enable_desi_targets %}
     desi_sv_targets8,
     desi_targets8,
-    desi_targets45,
     desi_targets67,
     desi_bgs_targets67,
     desi_sky_targets67,
@@ -3576,16 +3391,6 @@ var baseTree1 = [
         {% endif %}
     ]),
     {% endif %}
-    {% if enable_dr4 %}
-    findlayer('mzls+bass-dr4', [
-        {% if enable_dr4_model %}
-        findlayer('mzls+bass-dr4-model'),
-        {% endif %}
-        {% if enable_dr4_resid %}
-        findlayer('mzls+bass-dr4-resid'),
-        {% endif %}
-    ]),
-    {% endif %}
     {% if enable_eboss %}
     findlayer('eboss'),
     {% endif %}
@@ -3614,14 +3419,10 @@ var baseTree1 = [
             {% if enable_ps1 %}
             findlayer('ps1'),
             {% endif %}
-            {% if enable_hsc_dr1 %}
-            findlayer('hsc'),
-            {% endif %}
             {% if enable_hsc_dr2 %}
             findlayer('hsc2'),
             {% endif %}
             {% if enable_vlass %}
-            //findlayer('vlass'),
             findlayer('vlass1.2'),
             {% endif %}
             {% comment %}
@@ -3714,9 +3515,6 @@ for (var i=0,len=overlays.length; i<len; i++) {
          {% if enable_dr5_overlays %}
          findoverlay('decals-dr5-ccds'),
          {% endif %}
-         {% if enable_dr4_overlays %}
-         findoverlay('mzls+bass-dr4-ccds'),
-         {% endif %}
      ]),
      {% endif %}
      findoverlay('sdss-ccds'),
@@ -3766,9 +3564,6 @@ for (var i=0,len=overlays.length; i<len; i++) {
            {% if enable_dr5_overlays %}
            findoverlay('decals-dr5'),
            {% endif %}
-           {% if enable_dr4_overlays %}
-           findoverlay('mzls+bass-dr4'),
-           {% endif %}
        ],
      },
      {% endif %}
@@ -3802,7 +3597,6 @@ for (var i=0,len=overlays.length; i<len; i++) {
            findoverlay('targets-sky-dr67'),
            findoverlay('targets-bright-dr67'),
            findoverlay('targets-dark-dr67'),
-           findoverlay('targets-dr45'),
      ]),
      {% endif %}
      {% if enable_desi_footprint %}
@@ -3848,7 +3642,6 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
          'DECaLS DR7 images',
          'MzLS+BASS DR6 images',
          'DECaLS DR5 images',
-         'MzLS+BASS DR4 images',
          'DECaPS images',
          'unWISE W1/W2 NEO6',
          'DECaLS DR7 catalog',
@@ -3914,10 +3707,6 @@ function onMapZoomEnd(e) {
 
 map.setView([ dec2lat(dec_initial), ra2long_C(ra_initial, 180.) ], zoom_initial);
 var lastLatLng = map.getCenter();
-
-{% if enable_sql %}
-map.addLayer(sqlOverlay.getGroup());
-{% endif %}
 
 if ('mark' in qstr) {
     var coords = qstr['mark'];
