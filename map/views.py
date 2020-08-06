@@ -119,13 +119,18 @@ tileversions = {
     'cutouts': [1],
 
     'ls-dr67': [1],
+
+    'dr9k-north': [1, 2],
+    'dr9k-north-model': [1, 2],
+    'dr9k-north-resid': [1, 2],
     }
 
 test_layers = []
 try:
     from map.test_layers import test_layers as tl
     for key,pretty in tl:
-        tileversions[key] = [1,]
+        if not key in tileversions:
+            tileversions[key] = [1,]
 except:
     pass
 

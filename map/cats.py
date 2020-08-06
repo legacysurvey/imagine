@@ -394,7 +394,7 @@ def create_galaxy_catalog(galfn, drnum, layer=None):
     #T.writeto(os.path.join(settings.DATA_DIR, 'galaxy-cats.fits'))
 
     T = merge_tables([NGC, IC])
-    T.writeto(os.path.join('/tmp/galaxy-cats.fits'))
+    T.writeto(os.path.join('/tmp/ngcic.fits'))
     
     keep = np.zeros(len(T), bool)
 
@@ -1261,9 +1261,9 @@ def cat_tycho2(req, ver):
     return cat(req, ver, 'tycho2',
                os.path.join(settings.DATA_DIR, 'tycho2.fits'))
 
-def cat_gals(req, ver):
+def cat_ngc(req, ver):
     return cat(req, ver, 'ngc',
-               os.path.join(settings.DATA_DIR,'galaxy-cats.fits'))
+               os.path.join(settings.DATA_DIR, 'ngcic.fits'))
 
 def cat_GCs_PNe(req, ver):
     from astrometry.util.fits import fits_table

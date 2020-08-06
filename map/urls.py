@@ -85,7 +85,7 @@ urlpatterns = [
     url(r'^fits-cutout', cutouts.fits_cutout),
 
     # NGC/IC/UGC galaxies
-    url(r'^ngc/(\d+)/cat.json', cats.cat_gals),
+    url(r'^ngc/(\d+)/cat.json', cats.cat_ngc),
 
     # SGA galaxies
     url(r'^sga-parent/(\d+)/cat.json', cats.cat_sga_parent),
