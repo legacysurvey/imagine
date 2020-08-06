@@ -14,8 +14,6 @@ REDIRECT_CUTOUTS_DECAPS = False
 
 ENABLE_CUTOUTS = True
 
-GAIA_DR1_CAT_DIR = '/global/cfs/cdirs/cosmo/work/gaia/chunks-gaia-dr1-astrom'
-
 SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
 SDSS_BASEDIR = '/global/cfs/cdirs/cosmo/data/sdss/dr14/'

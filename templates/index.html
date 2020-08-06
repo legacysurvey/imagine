@@ -2944,19 +2944,6 @@ var sga_ell = new SGACatalog('sga', 'SGA (ellipse fit)',
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga',});
 
-var GaiaDr1Catalog = CatalogOverlay.extend({
-    getColor: function(json, i) {
-        return '#bbbbff';
-    }
-});
-
-var gaia = new GaiaDr1Catalog('gaia-dr1', 'Gaia DR1 catalog',
-                             {'url_name': 'gaia-dr1',
-                              'minZoom': 11,
-                              'labelsMinZoom': 99,
-                              'urlTerm': 'gaia-dr1',
-                              'radius': 260, });
-
 var GaiaDr2Catalog = CatalogOverlay.extend({
     getColor: function(json, i) {
         return '#8888ff';
@@ -3220,7 +3207,6 @@ var overlays = [
     {% if enable_ps1 %}
     ps1cat,
     {% endif %}
-    gaia,
     gaia2,
     sdsscat,
     {% if enable_spectra %}
@@ -3568,15 +3554,10 @@ for (var i=0,len=overlays.length; i<len; i++) {
      },
      {% endif %}
      findoverlay('gaia-dr2'),
-     { label: 'Other catalogs',
-       children: [
-           {% if enable_ps1 %}
-           findoverlay('ps1-cat'),
-           {% endif %}
-           findoverlay('gaia-dr1'),
-           findoverlay('sdss-cat'),
-       ],
-     },
+     {% if enable_ps1 %}
+     findoverlay('ps1-cat'),
+     {% endif %}
+     findoverlay('sdss-cat'),
      {% if enable_spectra %}
      { label: 'Spectroscopy',
        children: [
