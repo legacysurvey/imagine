@@ -123,7 +123,11 @@ tileversions = {
     'dr9k-north': [1, 2],
     'dr9k-north-model': [1, 2],
     'dr9k-north-resid': [1, 2],
-    }
+
+    'dr9k-south': [1, 2],
+    'dr9k-south-model': [1, 2],
+    'dr9k-south-resid': [1, 2],
+}
 
 test_layers = []
 try:
@@ -757,7 +761,7 @@ class MapLayer(object):
             r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
             dlo = min(d1, d2)
             dhi = max(d1, d2)
-            print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
+            #print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
             return self.bricks_touching_radec_box(rlo, rhi, dlo, dhi, scale=scale)
 
         from astrometry.util.miscutils import polygons_intersect
@@ -1972,16 +1976,16 @@ class RebrickedMixin(object):
         from astrometry.libkd.spherematch import match_radec
 
         fn = os.path.join(self.basedir, 'survey-bricks-%i.fits.gz' % scale)
-        print(self, 'Brick file:', fn, 'exists?', os.path.exists(fn))
+        #print(self, 'Brick file:', fn, 'exists?', os.path.exists(fn))
         if os.path.exists(fn):
             return fits_table(fn)
         bsmall = self.get_bricks_for_scale(scale - 1)
         # Find generic bricks for scale...
         afn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % scale)
-        print('Generic brick file:', afn)
+        #print('Generic brick file:', afn)
         assert(os.path.exists(afn))
         allbricks = fits_table(afn)
-        print('Generic bricks:', len(allbricks))
+        #print('Generic bricks:', len(allbricks))
         
         # Brick side lengths
         brickside = self.get_brick_size_for_scale(scale)
@@ -1994,7 +1998,7 @@ class RebrickedMixin(object):
                            indexlist=True)
 
         haves = np.all(['has_%s' % band in bsmall.get_columns() for band in self.bands])
-        print('Does bsmall have has_<band> columns:', haves)
+        #print('Does bsmall have has_<band> columns:', haves)
         if haves:
             for b in self.bands:
                 allbricks.set('has_%s' % b, np.zeros(len(allbricks), bool))
@@ -2012,13 +2016,13 @@ class RebrickedMixin(object):
                                     (bsmall.dec1[I] <= allbricks.dec2[ia]) *
                                     (bsmall.ra2[I] >= allbricks.ra1[ia]) *
                                     (bsmall.ra1[I] <= allbricks.ra2[ia])]
-                print('Brick', allbricks.brickname[ia], ':', len(I), 'spherematches', len(Igood), 'in box')
+                #print('Brick', allbricks.brickname[ia], ':', len(I), 'spherematches', len(Igood), 'in box')
                 if len(Igood) == 0:
                     continue
                 hasany = False
                 for b in self.bands:
                     hasband = np.any(bsmall.get('has_%s' % b)[Igood])
-                    print('  has', b, '?', hasband)
+                    #print('  has', b, '?', hasband)
                     if not hasband:
                         continue
                     hasany = True
@@ -2046,9 +2050,11 @@ class RebrickedMixin(object):
     def get_brick_size_for_scale(self, scale):
         return 0.25 * 2**scale
 
-    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
+    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None,
+                                  bricks=None):
         import numpy as np
-        bricks = self.get_bricks_for_scale(scale)
+        if bricks is None:
+            bricks = self.get_bricks_for_scale(scale)
         #print('scale', scale, ':', len(bricks), 'total bricks')
         I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
         #print(len(I), 'bricks overlap Dec range')
@@ -2056,31 +2062,12 @@ class RebrickedMixin(object):
         I = I[ok]
         #print(len(I), 'bricks overlap Dec and RA range')
         if len(I) == 0:
-            print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale,
-                  ': none')
+            #print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale,
+            #      ': none')
             return None
-        print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale, ': ',
-              ', '.join(bricks.brickname[I]))
-
+        #print('Bricks touching RA,Dec box', ralo, rahi, 'Dec', declo, dechi, 'scale', scale, ': ',
+        #      ', '.join(bricks.brickname[I]))
         return bricks[I]
-
-        # # Hacky margin
-        # m = { 7: 1. }.get(scale, 0.)
-        # print(len(bricks), 'candidate bricks.  ra1,ra2 pairs:', listzip(bricks.ra1, bricks.ra2))
-        # if rahi < ralo:
-        #     I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
-        #                                   bricks.ra1 <= rahi) *
-        #                     (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-        # else:
-        #     I, = np.nonzero((bricks.ra1  <= rahi +m) * (bricks.ra2  >= ralo -m) *
-        #                     (bricks.dec1 <= dechi+m) * (bricks.dec2 >= declo-m))
-        # print('Returning', len(I), 'bricks')
-        # #for i in I:
-        # #    print('  Brick', bricks.brickname[i], 'RA', bricks.ra1[i], bricks.ra2[i], 'Dec', bricks.dec1[i], bricks.dec2[i])
-        # if len(I) == 0:
-        #     return None
-        # return bricks[I]
-
 
         
 class Decaps2Layer(DecalsDr3Layer):
@@ -5711,7 +5698,9 @@ if __name__ == '__main__':
     #r = c.get('/vlass1.2/1/6/42/31.jpg')
     #r = c.get('/sga/1/cat.json?ralo=262.6500&rahi=262.7119&declo=35.7056&dechi=35.7336')
     #r = c.get('/exposures/?ra=129.3671&dec=24.9471&layer=dr8')
-    r = c.get('/namequery/?obj=NGC 5614')
+    #r = c.get('/namequery/?obj=NGC 5614')
+    #r = c.get('/dr9k-south/2/7/33/57.jpg')
+    r = c.get('/dr9k-south/2/14/7054/7872.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
