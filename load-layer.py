@@ -153,8 +153,8 @@ def main():
         pretty = 'DR9k-south'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9k'
 
-    update = True
-    #update = False
+    #update = True
+    update = False
 
     datadir = 'data'
 

@@ -87,3 +87,9 @@ test_layers.append(("dr9m-north", "DR9m-north images"))
 test_layers.append(("dr9m-north-model", "DR9m-north models"))
 
 test_layers.append(("dr9m-north-resid", "DR9m-north residuals"))
+
+test_layers.append(("dr9m-north", "DR9m-north images"))
+
+test_layers.append(("dr9m-north-model", "DR9m-north models"))
+
+test_layers.append(("dr9m-north-resid", "DR9m-north residuals"))

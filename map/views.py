@@ -4319,6 +4319,19 @@ def ccd_detail(req, layer, ccd):
                  (ccd, c.cpimage, c.cpimage_hdu, c.exptime, c.fwhm*0.262))
         return HttpResponse(about)
 
+    rect = req.GET.get('rect', None)
+    if rect is not None:
+        words = rect.split(',')
+        if len(words) == 4:
+            try:
+                x = int(words[0], 10)
+                y = int(words[1], 10)
+                w = int(words[2], 10)
+                h = int(words[3], 10)
+                rect = (x,y,w,h)
+            except:
+                pass
+
     imgurl   = my_reverse(req, 'image_data', args=[layer, ccd])
     dqurl    = my_reverse(req, 'dq_data', args=[layer, ccd])
     ivurl    = my_reverse(req, 'iv_data', args=[layer, ccd])
@@ -4357,15 +4370,33 @@ Observed MJD %.3f, %s %s UT
 <li>weight or inverse-variance: <a href="%s">%s</a>
 <li>data quality (flags): <a href="%s">%s</a>
 </ul>
-<img src="%s" />
+<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
+    width="%i" height="%i">
+    <image x="0" y="0" xlink:href="%s" />
+    <g transform="scale(1,-1)" transform-origin="center">
+      %s
+    </g>
+</svg>
 </body></html>
 '''
+    # <img src="%s" />
+    image_stamp_scale = 4
+    sw = c.width  // image_stamp_scale
+    sh = c.height // image_stamp_scale
+    rectsvg = ''
+    if rect is not None:
+        x,y,w,h = rect
+        s = image_stamp_scale
+        rectsvg = (('<rect x="%i" y="%i" width="%i" height="%i" stroke="orange" ' +
+                   'fill="transparent" stroke-width="2" />')
+                   % (x//s, y//s, w//s, h//s))
+
     args = (ccd, c.image_filename.strip(), c.image_hdu, c.exptime, c.seeing, c.fwhm,
             c.filter, settings.ROOT_URL, c.ra, c.dec, c.ra, c.dec,
             flags,
             c.mjd_obs, c.date_obs, c.ut,
             imgurl, ccd,
-            ooitext, ivurl, ccd, dqurl, ccd, imgstamp)
+            ooitext, ivurl, ccd, dqurl, ccd, sw, sh, imgstamp, rectsvg)
     about = about % args
 
     return HttpResponse(about)
@@ -4758,6 +4789,7 @@ def exposures_common(req, tgz, copsf):
         ccdlayer = getattr(ccd, 'layer', layername)
         theurl = url % (domains[i%len(domains)], ccdlayer, int(ccd.expnum), ccd.ccdname.strip()) + '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
         expurl = my_reverse(req, 'ccd_detail', args=(layername, '%s-%i-%s' % (ccd.camera.strip(), int(ccd.expnum), ccd.ccdname.strip())))
+        expurl += '?rect=%i,%i,%i,%i' % (x-size, y-size, W, H)
         ccdsx.append(('<br/>'.join(['CCD <a href="%s">%s %s %i %s</a>, %.1f sec (x,y ~ %i,%i)' % (expurl, ccd.camera, ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
                                     '<small>(observed %s @ %s = MJD %.6f)</small>' % (ccd.date_obs, ccd.ut, ccd.mjd_obs),
@@ -5146,8 +5178,8 @@ def image_stamp(req, surveyname, ccd):
     import pylab as plt
     import numpy as np
     H,W = pix.shape
-    if H > W:
-        pix = pix.T
+    #if H > W:
+    #    pix = pix.T
     #if 'decals' in surveyname:
     #    # rotate image
     #    pix = pix.T
