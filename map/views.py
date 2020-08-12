@@ -4382,7 +4382,23 @@ def ccd_detail(req, layer, ccd):
 PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
 "DTD/xhtml1-transitional.dtd">
 '''
+    axspace = 50
+    axis1 = '<polyline points="0,{sw} 0,0 {sh},0" stroke="gray" fill="transparent" stroke-width="2" />'.format(sw=sw, sh=sh)
+    axstep = 500
+    for x in range(axstep, c.width, axstep):
+        axis1 += '<polyline points="{sx},0 {sx},-20" stroke="gray" fill="transparent" stroke-width="1" />'.format(sx=x//image_stamp_scale)
+    for y in range(axstep, c.height, axstep):
+        axis1 += '<polyline points="0,{sy} -20,{sy}" stroke="gray" fill="transparent" stroke-width="1" />'.format(sy=y//image_stamp_scale)
 
+    axis2 = '<g transform="translate({axspace} {sh})">'.format(axspace=axspace, sh=sh)
+    for x in range(axstep, c.width, axstep):
+      axis2 += '<text x="{sx}" y="40" text-anchor="middle" dominant-baseline="bottom">{x}</text>'.format(
+          sx=x//image_stamp_scale, x=x)
+    for y in range(axstep, c.height, axstep):
+        axis2 += '<text x="-20" y="-{sy}" text-anchor="end" dominant-baseline="middle">{y}</text>'.format(
+            sy=y//image_stamp_scale, y=y)
+    axis2 += '</g>'
+    
     about = dtd_tag + html_tag + '''<title>CCD details for {ccd}</title>
 </head>
 <body>
@@ -4397,11 +4413,15 @@ Observed MJD {c.mjd_obs:.3f}, {c.date_obs} {c.ut} UT
 <li>data quality (flags): <a href="{dqurl}">{ccd}</a></li>
 </ul>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
-    width="{sw}" height="{sh}">
+  width="{swa}" height="{sha}">
+  <g transform="translate({axspace} 0)">
     <image x="0" y="0" width="{sw}" height="{sh}" href="{imgstamp}" />
     <g transform="translate(0 {sh}) scale(1 -1)">
-      {rectsvg}
+    {rectsvg}
+    {axis1}
     </g>
+  </g>
+  {axis2}
 </svg>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
     width="{sw}" height="{sh}">
@@ -4418,7 +4438,9 @@ Observed MJD {c.mjd_obs:.3f}, {c.date_obs} {c.ut} UT
     </g>
 </svg>
 </body></html>
-'''.format(ccd=ccd, c=c, sw=sw, sh=sh, rectsvg=rectsvg, rectsvg2=rectsvg2, viewer_url=viewer_url,
+'''.format(ccd=ccd, c=c, sw=sw, sh=sh, swa=sw+axspace, sha=sh+axspace,
+           axspace=axspace, axis1=axis1, axis2=axis2,
+           rectsvg=rectsvg, rectsvg2=rectsvg2, viewer_url=viewer_url,
            flags=flags, imgurl=imgurl, ooitext=ooitext, ivurl=ivurl, dqurl=dqurl,
            imgstamp=imgstamp, ivstamp=ivstamp, dqstamp=dqstamp)
 
@@ -5782,10 +5804,10 @@ if __name__ == '__main__':
     #r = c.get('/namequery/?obj=NGC 5614')
     #r = c.get('/dr9k-south/2/7/33/57.jpg')
     #r = c.get('/dr9k-south/2/14/7054/7872.jpg')
-    #r = c.get('/ccd/dr9k-south/decam-764080-N11.xhtml?rect=907,493,200,200')
+    r = c.get('/ccd/dr9k-south/decam-764080-N11.xhtml?rect=907,493,200,200')
     #r = c.get('/exposure_panels/dr8-south/702779/N5/?ra=36.5587&dec=-4.0677&size=100')
     #r = c.get('/iv-stamp/dr8/decam-361654-S31.jpg')
-    r = c.get('/dq-stamp/dr8/decam-361654-S31.jpg')
+    #r = c.get('/dq-stamp/dr8/decam-361654-S31.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
