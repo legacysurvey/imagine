@@ -4788,7 +4788,7 @@ def exposures_common(req, tgz, copsf):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
         ccdlayer = getattr(ccd, 'layer', layername)
         theurl = url % (domains[i%len(domains)], ccdlayer, int(ccd.expnum), ccd.ccdname.strip()) + '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
-        expurl = my_reverse(req, 'ccd_detail', args=(layername, '%s-%i-%s' % (ccd.camera.strip(), int(ccd.expnum), ccd.ccdname.strip())))
+        expurl = my_reverse(req, 'ccd_detail_xhtml', args=(layername, '%s-%i-%s' % (ccd.camera.strip(), int(ccd.expnum), ccd.ccdname.strip())))
         expurl += '?rect=%i,%i,%i,%i' % (x-size, y-size, W, H)
         ccdsx.append(('<br/>'.join(['CCD <a href="%s">%s %s %i %s</a>, %.1f sec (x,y ~ %i,%i)' % (expurl, ccd.camera, ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
@@ -5732,7 +5732,8 @@ if __name__ == '__main__':
     #r = c.get('/exposures/?ra=129.3671&dec=24.9471&layer=dr8')
     #r = c.get('/namequery/?obj=NGC 5614')
     #r = c.get('/dr9k-south/2/7/33/57.jpg')
-    r = c.get('/dr9k-south/2/14/7054/7872.jpg')
+    #r = c.get('/dr9k-south/2/14/7054/7872.jpg')
+    r = c.get('/ccd/dr9k-south/decam-764080-N11.xhtml?rect=907,493,200,200')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

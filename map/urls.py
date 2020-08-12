@@ -153,6 +153,8 @@ urlpatterns = [
     url(r'^brick/', views.nil, name='brick_detail_blank'),
     # CCD details
     url(r'^ccd/(%s)/([\w-]+)' % survey_regex, views.ccd_detail, name='ccd_detail'),
+    # hahahah, Safari cares what the filename suffix is
+    url(r'^ccd/(%s)/([\w-]+).xhtml' % survey_regex, views.ccd_detail, name='ccd_detail_xhtml'),
     # this one is here to provide a name for the javascript to refer to.
     url(r'^ccd/', views.nil, name='ccd_detail_blank'),
     # Exposure details
