@@ -4311,6 +4311,7 @@ def get_ccd_object(survey, ccd):
     return survey, c
 
 def ccd_detail(req, layer, ccd):
+    layer_name = layer
     layer = layer_name_map(layer)
     survey, c = get_ccd_object(layer, ccd)
 
@@ -4337,6 +4338,8 @@ def ccd_detail(req, layer, ccd):
     dqurl    = my_reverse(req, 'dq_data', args=[layer, ccd])
     ivurl    = my_reverse(req, 'iv_data', args=[layer, ccd])
     imgstamp = my_reverse(req, 'image_stamp', args=[layer, ccd])
+    ivstamp = my_reverse(req, 'iv_stamp', args=[layer, ccd])
+    dqstamp = my_reverse(req, 'dq_stamp', args=[layer, ccd])
     flags = ''
     cols = c.columns()
     if 'photometric' in cols and 'blacklist_ok' in cols:
@@ -4359,34 +4362,6 @@ def ccd_detail(req, layer, ccd):
         c.date_obs = date
         c.ut = time[:12]
 
-    dtd_tag = '''<!DOCTYPE html
-PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-"DTD/xhtml1-transitional.dtd">
-'''
-
-    about = dtd_tag + html_tag + '''<title>CCD details for %s</title>
-</head>
-<body>
-CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix, band %s, RA,Dec <a href="%s">%.4f, %.4f</a>
-<br />
-%s
-Observed MJD %.3f, %s %s UT
-<ul>
-<li>image: <a href="%s">%s</a>
-%s</li>
-<li>weight or inverse-variance: <a href="%s">%s</a></li>
-<li>data quality (flags): <a href="%s">%s</a></li>
-</ul>
-<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
-    width="%i" height="%i">
-    <image x="0" y="0" width="%i" height="%i" href="%s" />
-    <g transform="translate(0 %i) scale(1 -1)">
-      %s
-    </g>
-</svg>
-</body></html>
-'''
-    # <img src="%s" />
     image_stamp_scale = 4
     sw = c.width  // image_stamp_scale
     sh = c.height // image_stamp_scale
@@ -4397,16 +4372,56 @@ Observed MJD %.3f, %s %s UT
         rectsvg = (('<rect x="%i" y="%i" width="%i" height="%i" stroke="orange" ' +
                    'fill="transparent" stroke-width="2" />')
                    % (x//s, y//s, w//s, h//s))
+        rectsvg2 = (('<rect x="%i" y="%i" width="%i" height="%i" stroke="blue" ' +
+                   'fill="transparent" stroke-width="2" />')
+                   % (x//s, y//s, w//s, h//s))
     from urllib.parse import quote
-    base_url = settings.ROOT_URL + quote('/?ra=%.4f&dec=%.4f' % (c.ra, c.dec))
+    viewer_url = settings.ROOT_URL + quote('/?ra=%.4f&dec=%.4f&layer=%s' % (c.ra, c.dec, layer_name))
 
-    args = (ccd, ccd, c.image_filename.strip(), c.image_hdu, c.exptime, c.seeing, c.fwhm,
-            c.filter, base_url, c.ra, c.dec,
-            flags,
-            c.mjd_obs, c.date_obs, c.ut,
-            imgurl, ccd,
-            ooitext, ivurl, ccd, dqurl, ccd, sw, sh, sw, sh, imgstamp, sh, rectsvg)
-    about = about % args
+    dtd_tag = '''<!DOCTYPE html
+PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"DTD/xhtml1-transitional.dtd">
+'''
+
+    about = dtd_tag + html_tag + '''<title>CCD details for {ccd}</title>
+</head>
+<body>
+CCD {ccd}, image {c.image_filename}, hdu {c.image_hdu}; exptime {c.exptime:.1f} sec, seeing {c.seeing:.1f} arcsec, fwhm {c.fwhm:.1f} pix, band {c.filter}, RA,Dec <a href="{viewer_url}">{c.ra:.4f}, {c.dec:.4f}</a>
+<br />
+{flags}
+Observed MJD {c.mjd_obs:.3f}, {c.date_obs} {c.ut} UT
+<ul>
+<li>image: <a href="{imgurl}">{ccd}</a>
+{ooitext}</li>
+<li>weight or inverse-variance: <a href="{ivurl}">{ccd}</a></li>
+<li>data quality (flags): <a href="{dqurl}">{ccd}</a></li>
+</ul>
+<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
+    width="{sw}" height="{sh}">
+    <image x="0" y="0" width="{sw}" height="{sh}" href="{imgstamp}" />
+    <g transform="translate(0 {sh}) scale(1 -1)">
+      {rectsvg}
+    </g>
+</svg>
+<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
+    width="{sw}" height="{sh}">
+    <image x="0" y="0" width="{sw}" height="{sh}" href="{ivstamp}" />
+    <g transform="translate(0 {sh}) scale(1 -1)">
+      {rectsvg2}
+    </g>
+</svg>
+<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
+    width="{sw}" height="{sh}">
+    <image x="0" y="0" width="{sw}" height="{sh}" href="{dqstamp}" />
+    <g transform="translate(0 {sh}) scale(1 -1)">
+      {rectsvg}
+    </g>
+</svg>
+</body></html>
+'''.format(ccd=ccd, c=c, sw=sw, sh=sh, rectsvg=rectsvg, rectsvg2=rectsvg2, viewer_url=viewer_url,
+           flags=flags, imgurl=imgurl, ooitext=ooitext, ivurl=ivurl, dqurl=dqurl,
+           imgstamp=imgstamp, ivstamp=ivstamp, dqstamp=dqstamp)
+
     return HttpResponse(about, content_type='application/xhtml+xml')
 
 def exposure_detail(req, name, exp):
@@ -5174,38 +5189,61 @@ def iv_data(req, survey, ccd):
     fits.close()
     return send_file(tmpfn, 'image/fits', unlink=True, filename='iv-%s.fits.gz' % ccd)
 
-
-def image_stamp(req, surveyname, ccd):
+def image_stamp(req, surveyname, ccd, iv=False, dq=False):
     import fitsio
+    import tempfile
+    import pylab as plt
+    import numpy as np
     survey, c = get_ccd_object(surveyname, ccd)
     im = survey.get_image_object(c) #, makeNewWeightMap=False)
     fn = im.imgfn
-    print('Opening', fn)
-    import tempfile
     ff,tmpfn = tempfile.mkstemp(suffix='.jpg')
     os.close(ff)
-    pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
     os.unlink(tmpfn)
-    import pylab as plt
-    import numpy as np
-    H,W = pix.shape
-    #if H > W:
-    #    pix = pix.T
-    #if 'decals' in surveyname:
-    #    # rotate image
-    #    pix = pix.T
 
-    mn,mx = np.percentile(pix.ravel(), [25, 99])
-    h,w = pix.shape
-    plt.figure(num=1, figsize=(w/(4*100.), h/(4*100.)), dpi=100)
-    plt.clf()
-    plt.subplots_adjust(left=0.005, right=0.995, bottom=0.005, top=0.995)
-    plt.imshow(pix, interpolation='nearest', origin='lower', cmap='gray',
-               vmin=mn, vmax=mx)
-    plt.xticks([]); plt.yticks([])
-    plt.savefig(tmpfn)
-    #plt.imsave(tmpfn, pix, vmin=mn, vmax=mx, cmap='gray')
+    kwa = dict(origin='lower')
+
+    cmap = 'gray'
+    if iv:
+        fn = fn.replace('_ooi_', '_oow_')
+        cmap = 'hot'
+    elif dq:
+        fn = fn.replace('_ooi_', '_ood_')
+        cmap = 'tab10'
+    print('Reading', fn)
+
+    pix = fitsio.read(fn, ext=c.image_hdu)
+    H,W = pix.shape
+
+    # BIN
+    scale = 4
+    sw,sh = W//scale, H//scale
+
+    if dq:
+        # Assume DQ codes (not bitmask)
+        out = np.zeros((sh,sw), np.uint8)
+        for i in range(scale):
+            for j in range(scale):
+                out = np.maximum(out, pix[i::scale, j::scale][:sh,:sw])
+    else:
+        out = np.zeros((sh,sw), np.float32)
+        for i in range(scale):
+            for j in range(scale):
+                out += pix[i::scale, j::scale][:sh,:sw]
+        out /= scale**2
+        if iv:
+            mn,mx = 0,np.percentile(out.ravel(), 99)
+        else:
+            mn,mx = np.percentile(out.ravel(), [25, 99])
+        kwa.update(vmin=mn, vmax=mx)
+
+    plt.imsave(tmpfn, out, cmap=cmap, **kwa)
     return send_file(tmpfn, 'image/jpeg', unlink=True)
+
+def iv_stamp(req, surveyname, ccd):
+    return image_stamp(req, surveyname, ccd, iv=True)
+def dq_stamp(req, surveyname, ccd):
+    return image_stamp(req, surveyname, ccd, dq=True)
 
 layers = {}
 def get_layer(name, default=None):
@@ -5745,7 +5783,9 @@ if __name__ == '__main__':
     #r = c.get('/dr9k-south/2/7/33/57.jpg')
     #r = c.get('/dr9k-south/2/14/7054/7872.jpg')
     #r = c.get('/ccd/dr9k-south/decam-764080-N11.xhtml?rect=907,493,200,200')
-    r = c.get('/exposure_panels/dr8-south/702779/N5/?ra=36.5587&dec=-4.0677&size=100')
+    #r = c.get('/exposure_panels/dr8-south/702779/N5/?ra=36.5587&dec=-4.0677&size=100')
+    #r = c.get('/iv-stamp/dr8/decam-361654-S31.jpg')
+    r = c.get('/dq-stamp/dr8/decam-361654-S31.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

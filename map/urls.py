@@ -168,6 +168,8 @@ urlpatterns = [
     url(r'^iv-data/(%s)/([\w-]+)' % survey_regex, views.iv_data, name='iv_data'),
 
     url(r'^image-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.image_stamp, name='image_stamp'),
+    url(r'^iv-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.iv_stamp, name='iv_stamp'),
+    url(r'^dq-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.dq_stamp, name='dq_stamp'),
 
     # Special DECaPS version of viewer.
     url(r'decaps', views.decaps),
