@@ -643,6 +643,7 @@ ccds_table_css = '''<style type="text/css">
 </style>'''
 
 html_tag = '''<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
 <link rel="icon" type="image/png" href="%s/favicon.png" />
 <link rel="shortcut icon" href="%s/favicon.ico" />
 ''' % (settings.STATIC_URL, settings.STATIC_URL)
@@ -1652,7 +1653,7 @@ class DecalsLayer(MapLayer):
 
         html = [
             html_tag,
-            '<head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
+            '<title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
                     (self.drname, ra, dec),
             ccds_table_css + '<body>',
         ]
@@ -2196,7 +2197,7 @@ class SdssLayer(MapLayer):
         if T is None:
             return HttpResponse('No SDSS data near RA,Dec = (%.3f, %.3f)' % (ra,dec))
         
-        html = [html_tag + '<head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
+        html = [html_tag + '<title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
                 ('SDSS', ra, dec),
                 ccds_table_css + '<body>',
                 '<h1>%s data for RA,Dec = (%.4f, %.4f): CCDs overlapping</h1>' %
@@ -2419,7 +2420,7 @@ class LegacySurveySplitLayer(MapLayer):
         import numpy as np
         html = [
             html_tag,
-            '<head><title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
+            '<title>%s data for RA,Dec (%.4f, %.4f)</title></head>' %
                     (self.drname, ra, dec),
             ccds_table_css + '<body>',
         ]
@@ -4358,22 +4359,28 @@ def ccd_detail(req, layer, ccd):
         c.date_obs = date
         c.ut = time[:12]
 
-    about = html_tag + '''
+    dtd_tag = '''<!DOCTYPE html
+PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"DTD/xhtml1-transitional.dtd">
+'''
+
+    about = dtd_tag + html_tag + '''<title>CCD details for %s</title>
+</head>
 <body>
-CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix, band %s, RA,Dec <a href="%s/?ra=%.4f&dec=%.4f">%.4f, %.4f</a>
+CCD %s, image %s, hdu %i; exptime %.1f sec, seeing %.1f arcsec, fwhm %.1f pix, band %s, RA,Dec <a href="%s">%.4f, %.4f</a>
 <br />
 %s
 Observed MJD %.3f, %s %s UT
 <ul>
 <li>image: <a href="%s">%s</a>
-%s
-<li>weight or inverse-variance: <a href="%s">%s</a>
-<li>data quality (flags): <a href="%s">%s</a>
+%s</li>
+<li>weight or inverse-variance: <a href="%s">%s</a></li>
+<li>data quality (flags): <a href="%s">%s</a></li>
 </ul>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
     width="%i" height="%i">
-    <image x="0" y="0" xlink:href="%s" />
-    <g transform="scale(1,-1)" transform-origin="center">
+    <image x="0" y="0" width="%i" height="%i" href="%s" />
+    <g transform="translate(0 %i) scale(1 -1)">
       %s
     </g>
 </svg>
@@ -4390,16 +4397,17 @@ Observed MJD %.3f, %s %s UT
         rectsvg = (('<rect x="%i" y="%i" width="%i" height="%i" stroke="orange" ' +
                    'fill="transparent" stroke-width="2" />')
                    % (x//s, y//s, w//s, h//s))
+    from urllib.parse import quote
+    base_url = settings.ROOT_URL + quote('/?ra=%.4f&dec=%.4f' % (c.ra, c.dec))
 
-    args = (ccd, c.image_filename.strip(), c.image_hdu, c.exptime, c.seeing, c.fwhm,
-            c.filter, settings.ROOT_URL, c.ra, c.dec, c.ra, c.dec,
+    args = (ccd, ccd, c.image_filename.strip(), c.image_hdu, c.exptime, c.seeing, c.fwhm,
+            c.filter, base_url, c.ra, c.dec,
             flags,
             c.mjd_obs, c.date_obs, c.ut,
             imgurl, ccd,
-            ooitext, ivurl, ccd, dqurl, ccd, sw, sh, imgstamp, rectsvg)
+            ooitext, ivurl, ccd, dqurl, ccd, sw, sh, sw, sh, imgstamp, sh, rectsvg)
     about = about % args
-
-    return HttpResponse(about)
+    return HttpResponse(about, content_type='application/xhtml+xml')
 
 def exposure_detail(req, name, exp):
     import numpy as np
