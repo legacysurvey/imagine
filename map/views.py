@@ -4997,9 +4997,6 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
     import pylab as plt
     import numpy as np
 
-    #x = int(req.GET['x'], 10)
-    #y = int(req.GET['y'], 10)
-
     ra = float(req.GET['ra'])
     dec = float(req.GET['dec'])
 
@@ -5016,13 +5013,18 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
     print('cutout_panels: survey is', survey)
     ccd = _get_ccd(expnum, extname, survey=survey)
     print('CCD:', ccd)
+    print('CCD table: expnum,ccdname', ccd.expnum, ccd.ccdname)
     im = survey.get_image_object(ccd)
     print('Image object:', im)
-
+    print('CCD center: RA,Dec', ccd.ra, ccd.dec, 'and query RA,Dec', ra, dec)
+    print('File:', ccd.image_filename, 'HDU:', ccd.image_hdu, 'CCDname:', ccd.ccdname)
+    
     wcs = im.get_wcs()
     ok,x,y = wcs.radec2pixelxy(ra, dec)
     x = int(x-1)
     y = int(y-1)
+    if not ok:
+        print('RA,Dec', ra,dec, 'not in image')
 
     H,W = im.shape
     x0 = x - size//2
@@ -5045,6 +5047,7 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
 
     if x1 < 0 or y1 < 0 or x0 >= W or y0 >= H:
         # no overlap
+        print('No overlap: x,y [', x0, x1, '], [', y0, y1, ']')
         img = np.zeros((size,size), np.float32)
         kwa = dict(cmap='gray', origin='lower', vmin=0, vmax=1)
         plt.imsave(jpegfn, img, **kwa)
@@ -5741,7 +5744,8 @@ if __name__ == '__main__':
     #r = c.get('/namequery/?obj=NGC 5614')
     #r = c.get('/dr9k-south/2/7/33/57.jpg')
     #r = c.get('/dr9k-south/2/14/7054/7872.jpg')
-    r = c.get('/ccd/dr9k-south/decam-764080-N11.xhtml?rect=907,493,200,200')
+    #r = c.get('/ccd/dr9k-south/decam-764080-N11.xhtml?rect=907,493,200,200')
+    r = c.get('/exposure_panels/dr8-south/702779/N5/?ra=36.5587&dec=-4.0677&size=100')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
