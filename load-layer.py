@@ -153,8 +153,8 @@ def main():
         pretty = 'DR9k-south'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9k'
 
-    #update = True
-    update = False
+    update = True
+    #update = False
 
     datadir = 'data'
 
@@ -221,9 +221,10 @@ def main():
         for i in range(100):
             old_bricks_dir = os.path.join(basedir, 'old-bricks-%i' % i)
             if os.path.exists(old_bricks_dir):
-                print('exists:', old_bricks_dir)
+                #print('exists:', old_bricks_dir)
                 continue
             os.makedirs(old_bricks_dir)
+            print('Created', old_bricks_dir)
             break
         if old_bricks_dir is None:
             sys.exit(-1)
@@ -277,6 +278,7 @@ def main():
                     os.symlink(os.path.join(indir, fn), os.path.join(basedir, fn), target_is_directory=False)
 
     # Find new available bricks
+    print('Searching for new coadd image files...')
     imagefns = glob(os.path.join(basedir, 'coadd', '*', '*', '*-image-*.fits*'))
     extraimagefns = glob(os.path.join(basedir, 'extra-images', 'coadd', '*', '*', '*-image-*.fits*'))
     print('Image filenames:', len(imagefns), 'plus', len(extraimagefns), 'extras')
@@ -302,10 +304,10 @@ def main():
 
     if update:
         # Find and remove existing scaled images touching new bricks.
-        old = old_bricks[scale]
-        old_names = set([b for b in old.brickname])
+        old = old_bricks[0]
+        old_names = set([str(b) for b in old.brickname])
         I_new = np.array([i for i,b in enumerate(bricks.brickname)
-                          if not b in old_names])
+                          if not str(b) in old_names])
         # Newly added bricks
         new_bricks = bricks[I_new]
         print('Added', len(new_bricks), 'bricks')
