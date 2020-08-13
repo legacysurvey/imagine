@@ -520,26 +520,30 @@ var buildConstellationBoundaries = function() {
     conBoundaryGroup.clearLayers();
 
     for (var i in constellation_boundaries) {
-        var lines = constellation_boundaries[i];
-        var latlngs = [];
+        var segments = constellation_boundaries[i];
         var clong = map.getCenter().lng;
-        for (var j=0; j<=lines.length/2; j++) {
-    	    var j1 = 2*j;
-    	    var j2 = 2*(j % (lines.length/2))+1;
-    	    var ra1  = constellation_boundaries[2*j1];
-    	    var dec1 = constellation_boundaries[2*j1+1];
-    	    var ra2  = constellation_boundaries[2*j2];
-    	    var dec2 = constellation_boundaries[2*j2+1];
-            var latlng1 = L.latLng(dec2lat(dec1), ra2long_C(ra1, long1));
-            var latlng2 = L.latLng(dec2lat(dec2), ra2long_C(ra2, long1));
-    	    latlngs.push([ latlng1, latlng2 ]);
+        for (var j in segments) {
+            var lines = segments[j];
+            var ra1  = lines[0];
+            var long1 = ra2long_C(ra1, clong);
+            var latlngs = [];
+            for (var k=0; k<=lines.length/2; k++) {
+    	        var k1 = k % (lines.length/2);
+    	        var ra1  = lines[2*k1];
+    	        var dec1 = lines[2*k1+1];
+                var latlng1 = L.latLng(dec2lat(dec1), ra2long_C(ra1, long1));
+                //console.log('Latlong: ' + latlng1);
+    	        latlngs.push(latlng1);
+            }
+            var mpl = L.polyline(latlngs, {'color': constellation_colors[i]});
+            conBoundaryGroup.addLayer(mpl);
         }
-        var mpl = L.polyline(latlngs, {'color': constellation_colors[i]});
-        conBoundaryGroup.addLayer(mpl);
     }
-    
 };
 
-buildConstellations();
-buildConstellationBoundaries();
-conGroup.addLayer(conBoundaryGroup);
+var rebuildConstellations = function() {
+    buildConstellations();
+    buildConstellationBoundaries();
+    conGroup.addLayer(conBoundaryGroup);
+};
+rebuildConstellations();

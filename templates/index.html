@@ -3775,7 +3775,7 @@ map.on('click', onMapClick);
 map.on('zoomend', onMapZoomEnd);
 
 map.on('moveend', function(e) {
-    buildConstellations();
+  rebuildConstellations();
 });
 
 map.on('baselayerchange', function(e) {
