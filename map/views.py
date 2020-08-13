@@ -4400,6 +4400,7 @@ PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
     axis2 += '</g>'
     
     about = dtd_tag + html_tag + '''<title>CCD details for {ccd}</title>
+<script src="{static}/jquery-2.1.1.min.js"></script>
 </head>
 <body>
 CCD {ccd}, image {c.image_filename}, hdu {c.image_hdu}; exptime {c.exptime:.1f} sec, seeing {c.seeing:.1f} arcsec, fwhm {c.fwhm:.1f} pix, band {c.filter}, RA,Dec <a href="{viewer_url}">{c.ra:.4f}, {c.dec:.4f}</a>
@@ -4412,10 +4413,11 @@ Observed MJD {c.mjd_obs:.3f}, {c.date_obs} {c.ut} UT
 <li>weight or inverse-variance: <a href="{ivurl}">{ccd}</a></li>
 <li>data quality (flags): <a href="{dqurl}">{ccd}</a></li>
 </ul>
+<div>Mouse: <span id="image_coords"></span>  Click: <span id="image_click"></span></div><br/>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
   width="{swa}" height="{sha}">
   <g transform="translate({axspace} 0)">
-    <image x="0" y="0" width="{sw}" height="{sh}" href="{imgstamp}" />
+    <image x="0" y="0" width="{sw}" height="{sh}" href="{imgstamp}" id="image_stamp" />
     <g transform="translate(0 {sh}) scale(1 -1)">
     {rectsvg}
     {axis1}
@@ -4423,26 +4425,52 @@ Observed MJD {c.mjd_obs:.3f}, {c.date_obs} {c.ut} UT
   </g>
   {axis2}
 </svg>
+<br />
+<div>Mouse: <span id="iv_coords"></span>  Click: <span id="iv_click"></span></div><br/>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
-    width="{sw}" height="{sh}">
-    <image x="0" y="0" width="{sw}" height="{sh}" href="{ivstamp}" />
-    <g transform="translate(0 {sh}) scale(1 -1)">
-      {rectsvg2}
-    </g>
+  width="{sw}" height="{sh}">
+  <image x="0" y="0" width="{sw}" height="{sh}" href="{ivstamp}" id="iv_stamp" />
+  <g transform="translate(0 {sh}) scale(1 -1)">
+    {rectsvg2}
+    {axis1}
+  </g>
+  {axis2}
 </svg>
+<br />
+<div>Mouse: <span id="dq_coords"></span>  Click: <span id="dq_click"></span></div><br/>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
-    width="{sw}" height="{sh}">
-    <image x="0" y="0" width="{sw}" height="{sh}" href="{dqstamp}" />
-    <g transform="translate(0 {sh}) scale(1 -1)">
-      {rectsvg}
-    </g>
+  width="{sw}" height="{sh}">
+  <image x="0" y="0" width="{sw}" height="{sh}" href="{dqstamp}" id="dq_stamp" />
+  <g transform="translate(0 {sh}) scale(1 -1)">
+    {rectsvg}
+    {axis1}
+  </g>
+  {axis2}
 </svg>
-</body></html>
+<script>
+  function mouse(e, target) {{
+    imx = e.offsetX * {scale};
+    imy = ({sh} - e.offsetY) * {scale};
+    $(target).html('(' + imx + ', ' + imy + ')');
+  }}
+
+  $(document).ready(function() {{
+    $("#image_stamp").on('mousemove', function(e) {{ return mouse(e, "#image_coords"); }});
+    $("#image_stamp").on('click', function(e) {{ return mouse(e, "#image_click"); }});
+    $("#iv_stamp").on('mousemove', function(e) {{ return mouse(e, "#iv_coords"); }});
+    $("#iv_stamp").on('click', function(e) {{ return mouse(e, "#iv_click"); }});
+    $("#dq_stamp").on('mousemove', function(e) {{ return mouse(e, "#dq_coords"); }});
+    $("#dq_stamp").on('click', function(e) {{ return mouse(e, "#dq_click"); }});
+  }});
+</script>
+</body>
+</html>
 '''.format(ccd=ccd, c=c, sw=sw, sh=sh, swa=sw+axspace, sha=sh+axspace,
            axspace=axspace, axis1=axis1, axis2=axis2,
            rectsvg=rectsvg, rectsvg2=rectsvg2, viewer_url=viewer_url,
            flags=flags, imgurl=imgurl, ooitext=ooitext, ivurl=ivurl, dqurl=dqurl,
-           imgstamp=imgstamp, ivstamp=ivstamp, dqstamp=dqstamp)
+           imgstamp=imgstamp, ivstamp=ivstamp, dqstamp=dqstamp,
+           static=settings.STATIC_URL, scale=image_stamp_scale)
 
     return HttpResponse(about, content_type='application/xhtml+xml')
 
