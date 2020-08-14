@@ -537,7 +537,8 @@ var buildConstellationBoundaries = function() {
             // extra layer of list because Polygon allows holes
             latlngs.push([seglatlngs]);
         }
-        var mpl = L.polygon(latlngs, {'color': constellation_colors[i]});
+        var mpl = L.polygon(latlngs, {'color': constellation_colors[i],
+                                      'fillOpacity': 0});
         conBoundaryGroup.addLayer(mpl);
     }
 };
