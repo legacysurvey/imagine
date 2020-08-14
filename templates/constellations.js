@@ -228,7 +228,13 @@ var constellation_boundaries = [
     ],
     // Oct
     [
-        [ 0.800646,-89.303902, 1.533391,-81.803955, 50.091655,-82.064453, 48.232920,-84.555382, 109.019709,-85.261444, 111.652115,-82.775886, 209.111109,-83.120071, 276.865998,-82.458275, 274.195060,-74.974518, 323.184757,-74.454468, 351.997833,-74.312462, 1.566306,-74.303963, 0.800646,-89.303902, 0.800652,-89.303894, ],
+        //[ 1.533391,-81.803955, 50.091655,-82.064453, 48.232920,-84.555382, 109.019709,-85.261444, 111.652115,-82.775886, 209.111109,-83.120071, 276.865998,-82.458275, 274.195060,-74.974518, 323.184757,-74.454468, 351.997833,-74.312462, 1.566306,-74.303963, ],
+        // Hand-edited and WRONG
+        [ 0., -90., 0.,-81.803955,
+          1.533391,-81.803955, 50.091655,-82.064453, 48.232920,-84.555382, 109.019709,-85.261444, 111.652115,-82.775886, 209.111109,-83.120071, 276.865998,-82.458275, 274.195060,-74.974518, 323.184757,-74.454468, 351.997833,-74.312462, //1.566306,-74.303963,
+          359.999999,-74.303963,
+          359.999999,-90.0,
+        ],
     ],
     // Aps
     [
@@ -479,6 +485,9 @@ var buildConstellations = function() {
     	    var dec1 = constellation_stars[2*s1+1];
     	    var ra2  = constellation_stars[2*s2];
     	    var dec2 = constellation_stars[2*s2+1];
+            if ((Math.abs(dec1) > 85) && (Math.abs(dec2) > 85)) {
+                continue;
+            }
             var latlng1 = L.latLng(dec2lat(dec1), ra2long_C(ra1, long1));
             var latlng2 = L.latLng(dec2lat(dec2), ra2long_C(ra2, long1));
     	    latlngs.push([ latlng1, latlng2 ]);
@@ -522,29 +531,95 @@ var buildConstellationBoundaries = function() {
     conBoundaryGroup.clearLayers();
     var geojs = [];
 
+    // var bb = map.getBounds();
+    // var westmost = bb.getWest();
+    // var eastmost = bb.getWest();
+
     for (var i in constellation_boundaries) {
+        //if (constellation_shortnames[i] != 'Oct') {
+        //    continue;
+        //}
+        //console.log('Boundary of ' + constellation_longnames[i]);
         var segments = constellation_boundaries[i];
         var clong = map.getCenter().lng;
         var latlngs = [];
+        var display_latlngs = [];
         for (var j in segments) {
-            var seglatlngs = [];
             var lines = segments[j];
-            var ra1  = lines[0];
-            var long1 = ra2long_C(ra1, clong);
+            var seglatlngs = [];
+            var d_seglatlngs = [];
+
+            // Average RA,Dec via xyz
+            var x=0.0;
+            var y=0.0;
+            var N = lines.length/2;
+            for (var k=0; k<N; k++) {
+    	        var r = lines[2*k]   * Math.PI / 180.0;
+    	        var d = lines[2*k+1] * Math.PI / 180.0;
+                x += Math.cos(d) * Math.cos(r);
+                y += Math.cos(d) * Math.sin(r);
+            }
+            var rac = Math.atan2(y, x) * 180.0 / Math.PI;
+            if (rac < 0)
+                rac += 360;
+            // South pole special-case!
+            if (constellation_shortnames[i] == 'Oct')
+                rac = 180.;
+
+            var long1 = ra2long_C(rac, 0.);
+            //console.log('Avg RA:', rac);
+            //console.log('Avg longitude: ' + long1);
+            // assume they all start in...
+            var inbounds = true;
+            var last_latlng = false;
             for (var k=0; k<lines.length/2; k++) {
     	        var ra1  = lines[2*k];
     	        var dec1 = lines[2*k+1];
-                var latlng1 = L.latLng(dec2lat(dec1), ra2long_C(ra1, long1));
+                var lng = ra2long_C(ra1, long1);
+                var latlng1 = L.latLng(dec2lat(dec1), lng);
+                //console.log('RA,Dec ' + ra1 + ', ' + dec1);
+                var LIM = 85;
+                if (inbounds && Math.abs(dec1) > LIM) {
+                    // add the first out-of-bounds one
+                    d_seglatlngs.push(latlng1);
+                    inbounds = false;
+                    //console.log('Going out of bounds.');
+                } else if (!inbounds && Math.abs(dec1 < LIM)) {
+                    // add the previous out-of-bounds one
+                    d_seglatlngs.push(last_latlng);
+                    //console.log('Coming back into bounds.');
+                    inbounds = true;
+                }
+                if (inbounds)
+                    d_seglatlngs.push(latlng1);
     	        seglatlngs.push(latlng1);
+                last_latlng = latlng1;
             }
-            // extra layer of list because Polygon allows holes
-            latlngs.push([seglatlngs]);
+            // Wrapped-around copies!
+            //latlngs.push([seglatlngs]);
+            //display_latlngs.push([d_seglatlngs]);
+            for (var w=-1; w<=1; w++) {
+                wll = []
+                for (var k in seglatlngs) {
+                    ll = seglatlngs[k];
+                    wll.push(L.latLng(ll.lat, ll.lng + 360*w));
+                }
+                // extra layer of list because Polygon allows holes
+                latlngs.push([wll]);
+                wll = []
+                for (var k in d_seglatlngs) {
+                    ll = d_seglatlngs[k];
+                    wll.push(L.latLng(ll.lat, ll.lng + 360*w));
+                }
+                display_latlngs.push([wll]);
+            }
         }
-        var mpl = L.polygon(latlngs, {'color': constellation_colors[i],
-                                      'fillOpacity': 0});
+        var mpl = L.polygon(display_latlngs, {'color': constellation_colors[i],
+                                              'fillOpacity': 0});
         conBoundaryGroup.addLayer(mpl);
 
         // for getConstellation()
+        mpl = L.polygon(latlngs);
         var geoj = mpl.toGeoJSON();
         geoj.properties['name'] = constellation_longnames[i];
         geojs.push(geoj);
@@ -557,6 +632,9 @@ var buildConstellationBoundaries = function() {
 var getConstellation = function(ra, dec) {
     var clong = map.getCenter().lng;
     var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
+    return getConstellationLatLng(latlng);
+};
+var getConstellationLatLng = function(latlng) {
     var inside = leafletPip.pointInLayer(latlng, boundaryGeoJ);
     // should be exactly one match...
     for (var i=0; i<inside.length; i++) {

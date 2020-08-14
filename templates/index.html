@@ -954,8 +954,6 @@ var maskOverlay = L.imageOverlay(url, map.getBounds(), { opacity: 0.5,
  maskOverlay.on('load', function(e){});
  maskOverlay.setUrl();
  maskOverlay.setBounds();
- map.on('moveend', function(e) {
- });
  map.on('overlayadd', overlayAdded);
  map.on('overlayremove', overlayRemoved);
 {% endcomment %}
@@ -1516,6 +1514,7 @@ var inbrickccdAdded = false;
 var map = L.map('map', {
     zoomsliderControl: false,
     zoomControl: false,
+    worldCopyJump: true,
 });
 var popup = L.popup();
 
@@ -1648,7 +1647,7 @@ function split_layer(name, pretty, decsplit,
         y = Math.pow(2, zoom) / (2. * Math.PI) *
             (Math.PI - Math.log(Math.tan(Math.PI/4. + (Math.PI / 180. * decsplit) / 2.)));
         ysplits[zoom] = Math.floor(y);
-        console.log('Dec split', decsplit, 'zoom', zoom, '-> y', ysplits[zoom]);
+        //console.log('Dec split', decsplit, 'zoom', zoom, '-> y', ysplits[zoom]);
     }
     var tiles = new SplitTileLayer(tile_url, args, ysplits,
                                    north_args, mid_args, south_args);
@@ -3138,12 +3137,25 @@ var Constellations = L.LayerGroup.extend({
     },
     _name: 'const',
     _pretty: 'Constellations',
+    _url_term: 'const',
     //getGroup: function() { return conGroup; },
     getGroup: function() { return this; },
     getLinkHere: function() { return 'const'; },
     initLinkHere: function(val) {},
+    under: function(latlng) {
+        if (!this._show) {
+            return [];
+        }
+        var name = getConstellationLatLng(latlng);
+        return [name];
+    },
+    // popup menu addition
+    _detail: function(urlname, obj, s) { return ''; },
+    _detail_list: function(me, objs) { return objs; },
 });
 var constellations = new Constellations();
+
+polygonOverlays.push(constellations);
 
 {% include "desi-footprint.js" %}
 
@@ -3762,21 +3774,6 @@ if ('poly' in qstr) {
     map.setZoom(z);
 }
 
-console.log('adding layers from qstr');
-for (var i=0,len=overlays.length; i<len; i++) {
-    ov = overlays[i]
-    if (ov._url_term in qstr) {
-        console.log('adding layer ' + ov._url_term + ', ' + ov._pretty + ': ' + qstr[ov._url_term]);
-        ov.initLinkHere(qstr[ov._url_term]);
-        map.addLayer(ov.getGroup());
-    }
-}
-console.log('done adding layers from qstr');
-
-if ('const' in qstr) {
-  map.addLayer(constellations);
-}
-
 function onViewReset(e) {
     updateInfoBox(map.getCenter());
 }
@@ -3787,10 +3784,6 @@ map.on('overlayadd', overlayAdded);
 map.on('overlayremove', overlayRemoved);
 map.on('click', onMapClick);
 map.on('zoomend', onMapZoomEnd);
-
-map.on('moveend', function(e) {
-  rebuildConstellations();
-});
 
 map.on('baselayerchange', function(e) {
     console.log('baselayerchange: ' + e);
@@ -3838,8 +3831,6 @@ function keyDown(e) {
 document.addEventListener('keydown', keyDown);
 //map.getContainer().addEventListener('keypress', keyDown);
 
-{% include "constellations.js" %}
-
 // A scale bar that shows arcsec / arcmin / degrees rather than meters
 var AstroControl = L.Control.Scale.extend({
     options: {
@@ -3878,6 +3869,19 @@ var AstroControl = L.Control.Scale.extend({
 });
 
 new AstroControl().addTo(map);
+
+console.log('adding layers from qstr');
+for (var i=0,len=overlays.length; i<len; i++) {
+    ov = overlays[i]
+    if (ov._url_term in qstr) {
+        console.log('adding layer ' + ov._url_term + ', ' + ov._pretty + ': ' + qstr[ov._url_term]);
+        ov.initLinkHere(qstr[ov._url_term]);
+        map.addLayer(ov.getGroup());
+    }
+}
+console.log('done adding layers from qstr');
+
+{% include "constellations.js" %}
 
 {% comment %}
 AstroPolylineMeasure = L.Polyline.Measure.extend({
