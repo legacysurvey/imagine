@@ -1475,7 +1475,7 @@ function inbrickccdUpdate(props) {
 // "Bricks", "CCDs", etc button checked
 function overlayAdded(e) {
     //console.log('OverlayAdded:', e);
-    //console.log('  overlay name: ' + e.layer._name);
+    console.log('  added overlay name: ' + e.layer._name);
     if (inbrickccdAdded) {
         return;
     }
@@ -3120,16 +3120,30 @@ var specDeep2 = new Deep2SpectraCatalog('spec-deep2', 'DEEP2 Spectra',
 
 // Constellations
 var conGroup = L.layerGroup([]);
-var constellations = {
-    _name: 'constellations',
-    _pretty: 'Constellations',
-    getGroup: function() { return conGroup; },
-    getLinkHere: function() { return 'constellations'; },
-    initLinkHere: function(val) {},
-};
-
 var conBoundaryGroup = L.layerGroup([]);
 
+var Constellations = L.LayerGroup.extend({
+    initialize: function() {
+      L.LayerGroup.prototype.initialize.call(this);
+      this.addLayer(conGroup);
+      this._show = false;
+      this.on('add', function(e) {
+        console.log('Constellations added.');
+        this._show = true;
+      });
+      this.on('remove', function(e) {
+        console.log('Constellations removed.');
+        this._show = false;
+      });
+    },
+    _name: 'const',
+    _pretty: 'Constellations',
+    //getGroup: function() { return conGroup; },
+    getGroup: function() { return this; },
+    getLinkHere: function() { return 'const'; },
+    initLinkHere: function(val) {},
+});
+var constellations = new Constellations();
 
 {% include "desi-footprint.js" %}
 
@@ -3602,7 +3616,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('masks-dr9'),
      //findoverlay('masks-dr8'),
      findoverlay('GCs-PNe'),
-     findoverlay('constellations'),
+     findoverlay('const'),
  ]);
 
 L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
@@ -3759,8 +3773,8 @@ for (var i=0,len=overlays.length; i<len; i++) {
 }
 console.log('done adding layers from qstr');
 
-if ('constel' in qstr) {
-  map.addLayer(conGroup);
+if ('const' in qstr) {
+  map.addLayer(constellations);
 }
 
 function onViewReset(e) {

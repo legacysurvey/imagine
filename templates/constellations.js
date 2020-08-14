@@ -572,5 +572,10 @@ var rebuildConstellations = function() {
 };
 rebuildConstellations();
 
-
 console.log('Constellation(0,0): ' + getConstellation(0, 0));
+console.log('Constellation(359,45): ' + getConstellation(359, 45));
+console.log('Constellation(1,45): ' + getConstellation(1, 45));
+console.log('Constellation(0,90): ' + getConstellation(0, 90));
+console.log('Constellation(0,-90): ' + getConstellation(0, -90));
+console.log('Constellation(0,84): ' + getConstellation(0, 84));
+console.log('Constellation(0,-84): ' + getConstellation(0, -84));
