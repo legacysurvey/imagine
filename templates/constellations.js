@@ -522,22 +522,23 @@ var buildConstellationBoundaries = function() {
     for (var i in constellation_boundaries) {
         var segments = constellation_boundaries[i];
         var clong = map.getCenter().lng;
+        var latlngs = [];
         for (var j in segments) {
+            var seglatlngs = [];
             var lines = segments[j];
             var ra1  = lines[0];
             var long1 = ra2long_C(ra1, clong);
-            var latlngs = [];
-            for (var k=0; k<=lines.length/2; k++) {
-    	        var k1 = k % (lines.length/2);
-    	        var ra1  = lines[2*k1];
-    	        var dec1 = lines[2*k1+1];
+            for (var k=0; k<lines.length/2; k++) {
+    	        var ra1  = lines[2*k];
+    	        var dec1 = lines[2*k+1];
                 var latlng1 = L.latLng(dec2lat(dec1), ra2long_C(ra1, long1));
-                //console.log('Latlong: ' + latlng1);
-    	        latlngs.push(latlng1);
+    	        seglatlngs.push(latlng1);
             }
-            var mpl = L.polyline(latlngs, {'color': constellation_colors[i]});
-            conBoundaryGroup.addLayer(mpl);
+            // extra layer of list because Polygon allows holes
+            latlngs.push([seglatlngs]);
         }
+        var mpl = L.polygon(latlngs, {'color': constellation_colors[i]});
+        conBoundaryGroup.addLayer(mpl);
     }
 };
 
