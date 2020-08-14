@@ -516,8 +516,11 @@ var buildConstellations = function() {
     }
 };
 
+var boundaryGeoJ = 0;
+
 var buildConstellationBoundaries = function() {
     conBoundaryGroup.clearLayers();
+    var geojs = [];
 
     for (var i in constellation_boundaries) {
         var segments = constellation_boundaries[i];
@@ -539,7 +542,26 @@ var buildConstellationBoundaries = function() {
         }
         var mpl = L.polygon(latlngs, {'color': constellation_colors[i]});
         conBoundaryGroup.addLayer(mpl);
+
+        // for getConstellation()
+        var geoj = mpl.toGeoJSON();
+        geoj.properties['name'] = constellation_longnames[i];
+        geojs.push(geoj);
     }
+
+    var geo = {type:'FeatureCollection', features:geojs};
+    boundaryGeoJ = L.geoJson(geo);
+};
+
+var getConstellation = function(ra, dec) {
+    var clong = map.getCenter().lng;
+    var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
+    var inside = leafletPip.pointInLayer(latlng, boundaryGeoJ);
+    // should be exactly one match...
+    for (var i=0; i<inside.length; i++) {
+        return inside[i].feature.properties.name;
+    }
+    return '(none)';
 };
 
 var rebuildConstellations = function() {
@@ -548,3 +570,6 @@ var rebuildConstellations = function() {
     conGroup.addLayer(conBoundaryGroup);
 };
 rebuildConstellations();
+
+
+console.log('Constellation(0,0): ' + getConstellation(0, 0));
