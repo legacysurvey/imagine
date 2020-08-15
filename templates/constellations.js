@@ -1,6 +1,8 @@
 // These are from the IAU boundary definitions
 // http://vizier.cfa.harvard.edu/viz-bin/VizieR-3?-source=VI/49/bound_20
 // This is parallel to the constellation_shortnames array below.
+// With patches for UMi, Oct from
+// https://www.iau.org/public/themes/constellations/#umi
 var constellation_boundaries = [
     // Aql
     [

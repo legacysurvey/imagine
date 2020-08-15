@@ -153,9 +153,11 @@ def main():
         pretty = 'DR9k-south'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9k'
 
-    update = True
-    #update = False
+    #update = True
+    update = False
 
+    queue = True
+    
     datadir = 'data'
 
     survey = LegacySurveyData(survey_dir=survey_dir)
@@ -364,6 +366,21 @@ def main():
     threads = 32
     tharg = '--threads %i ' % threads
     #tharg = ''
+
+    if queue:
+
+        # from map.views import get_layer
+        # imglayer = get_layer(name)
+        # modlayer = get_layer(name + '-model')
+
+        ras = np.linspace(0, 360, 361)
+        for scale in range(1,8):
+            #for layer,layerobj in [(name,imglayer), (name+'-model',modlayer)]:
+            for layer in [name, name+'-model']:
+                for ralo,rahi in zip(ras, ras[1:]):
+                    cmd = 'python3 -u render-tiles.py --kind %s --scale --zoom %i --minra %f --maxra %f' % (layer, scale, ralo, rahi)
+                    print(cmd)
+        return
 
     # images
     for scale in range(1,8):
