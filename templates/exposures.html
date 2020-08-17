@@ -7,9 +7,11 @@
 <a href="{% url 'exposures_tgz' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}">Download a tarball of data</a>
 </p>
 
+{% if brick %}
 <p>
 Brick {{ brick.brickname }} with RA,Dec center {{ brick.ra|floatformat:4 }}, {{ brick.dec|floatformat:4 }}.  Brick pixel coords: {{ brickx|floatformat:1 }}, {{ bricky|floatformat:1 }}
 </p>
+{% endif %}
 
 <p>
 These are postage stamps from the calibrated image files

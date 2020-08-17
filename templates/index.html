@@ -742,9 +742,15 @@ var MangaCatalog = CatalogOverlay.extend({
 
 var SdssSpectraCatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
+        zw = '';
+        zwval = json['zwarning'][i];
+        //console.log('zwarning: ' + zwval);
+        if (zwval > 0) {
+            zw = ' (Zwarn=0x' + zwval.toString(16) + ')';
+        }
         var label = '<a href="https://dr14.sdss.org/optical/spectrum/view?mjd=' +
             json['mjd'][i] + '&fiberid=' + json['fiber'][i] + '&plateid=' +
-            json['plate'][i] + '">' + json.name[i] + '</a>';
+            json['plate'][i] + '&zwarning=0&matches=any">' + json.name[i] + zw + '</a>';
         return label;
     },
 

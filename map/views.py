@@ -4841,11 +4841,15 @@ def exposures_common(req, tgz, copsf):
     B = survey.get_bricks_readonly()
     I = np.flatnonzero((B.ra1  <= ra)  * (B.ra2  >= ra) *
                        (B.dec1 <= dec) * (B.dec2 >= dec))
-    brick = B[I[0]]
-    bwcs = wcs_for_brick(brick)
-    ok,brickx,bricky = bwcs.radec2pixelxy(ra, dec)
-    brick = brick.to_dict()
-    
+    if len(I):
+        brick = B[I[0]]
+        bwcs = wcs_for_brick(brick)
+        ok,brickx,bricky = bwcs.radec2pixelxy(ra, dec)
+        brick = brick.to_dict()
+    else:
+        brick = None
+        brickx = bricky = []
+
     from django.shortcuts import render
 
     url = my_reverse(req, 'exposure_panels', args=('LAYER', '12345', 'EXTNAME'))
@@ -5832,10 +5836,11 @@ if __name__ == '__main__':
     #r = c.get('/namequery/?obj=NGC 5614')
     #r = c.get('/dr9k-south/2/7/33/57.jpg')
     #r = c.get('/dr9k-south/2/14/7054/7872.jpg')
-    r = c.get('/ccd/dr9k-south/decam-764080-N11.xhtml?rect=907,493,200,200')
+    #r = c.get('/ccd/dr9k-south/decam-764080-N11.xhtml?rect=907,493,200,200')
     #r = c.get('/exposure_panels/dr8-south/702779/N5/?ra=36.5587&dec=-4.0677&size=100')
     #r = c.get('/iv-stamp/dr8/decam-361654-S31.jpg')
     #r = c.get('/dq-stamp/dr8/decam-361654-S31.jpg')
+    r = c.get('/exposures/?ra=190.1624&dec=63.0288&layer=dr9m-north')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

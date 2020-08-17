@@ -891,7 +891,8 @@ def cat_spec(req, ver):
     tag = 'spec'
     T = cat_kd(req, ver, tag, fn)
     if T is None:
-        return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],plate=[])),
+        return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],
+                                            plate=[], zwarning=[])),
                             content_type='application/json')
     plate = req.GET.get('plate', None)
     if plate is not None:
@@ -905,7 +906,9 @@ def cat_spec(req, ver):
     mjd   = [int(x) for x in T.mjd]
     fiber = [int(x) for x in T.fiberid]
     plate = [int(x) for x in T.plate]
-    return HttpResponse(json.dumps(dict(rd=rd, name=names, mjd=mjd, fiber=fiber, plate=plate)),
+    zwarning = [int(x) for x in T.zwarning]
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, mjd=mjd, fiber=fiber, plate=plate,
+                                        zwarning=zwarning)),
                         content_type='application/json')
 
 def cat_masks_dr9(req, ver):
