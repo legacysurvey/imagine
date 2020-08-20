@@ -4020,13 +4020,19 @@ def brick_list(req):
 
     layername = request_layer_name(req)
     survey = get_survey(layername)
-    if survey is None:
+    B = None
+    if survey is not None:
+        try:
+            B = survey.get_bricks_readonly()
+        except:
+            pass
+    if B is None:
         # Generic all-sky legacy surveys bricks
         survey = LegacySurveyData(survey_dir=settings.DATA_DIR)
+        B = survey.get_bricks_readonly()
         #B = fits_table(os.path.join(settings.DATA_DIR, 'bricks-0.fits'),
         #columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2', 'ra', 'dec'])
 
-    B = survey.get_bricks_readonly()
     I = survey.bricks_touching_radec_box(B, east, west, south, north)
     # Limit result size...
     #if len(I) > 10000:
