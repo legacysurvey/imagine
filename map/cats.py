@@ -1343,12 +1343,11 @@ def cat(req, ver, tag, fn, T=None):
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def any_cat(req, name, ver, zoom, x, y, **kwargs):
-    from map.views import layer_name_map, get_layer
-    print('any_cat(', name, ver, zoom, x, y, ')')
-    name = layer_name_map(name)
+    from map.views import get_layer
+    #print('any_cat(', name, ver, zoom, x, y, ')')
     layer = get_layer(name)
     if layer is None:
-        return HttpResponse('no such layer: ' + name)
+        return HttpResponse('no such layer')
     return cat_decals(req, ver, zoom, x, y, tag=name, docache=False)
 
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
@@ -1383,7 +1382,9 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         os.close(f)
         sendfile_kwargs.update(unlink=True)
 
-    cat,hdr = _get_decals_cat(wcs, tag=tag)
+    from map.views import get_layer
+    layer = get_layer(tag)
+    cat,hdr = layer.get_catalog_in_wcs(wcs)
 
     if cat is None:
         rd = []
@@ -1438,12 +1439,6 @@ def get_desi_tile_radec(tile_id):
         return ra, dec
     else:
         raise RuntimeError("DESI tile not found")
-
-def _get_decals_cat(wcs, tag='decals'):
-    from map.views import get_layer
-    layer = get_layer(tag)
-    return layer.get_catalog_in_wcs(wcs)
-
 
 if __name__ == '__main__':
     import sys

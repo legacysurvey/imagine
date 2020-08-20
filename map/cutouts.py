@@ -11,8 +11,7 @@ import fitsio
 import numpy as np
 
 from map.utils import send_file
-
-from map.views import dr2_rgb, layer_name_map
+from map.views import needs_layer
 
 from viewer import settings
 
@@ -30,53 +29,31 @@ if not settings.DEBUG_LOGGING:
     def debug(*args, **kwargs):
         pass
 
-def jpeg_cutout(req):
+@needs_layer()
+def _cutout(req, jpeg=True):
     from django.http import HttpResponseRedirect, HttpResponse
     if not settings.ENABLE_CUTOUTS:
         return HttpResponse('No cutouts enabled')
 
-    name = req.GET.get('layer', 'dr8')
-    name = layer_name_map(name)
-
     # Sanjaya : redirect to NERSC
     if (settings.REDIRECT_CUTOUTS_DECAPS and
-        name in ['decaps', 'decaps-model', 'decaps-resid']):
+        req.layer_name in ['decaps', 'decaps-model', 'decaps-resid']):
         return HttpResponseRedirect('http://legacysurvey.org/viewer' + req.path + '?' + urlencode(req.GET))
 
-    #print('jpeg_cutout: name', name)
-    from map.views import get_layer
-    layer = get_layer(name)
-    print('layer:', layer)
-    if layer is not None:
-        tempfiles = []
-        rtn = layer.get_cutout(req, jpeg=True, tempfiles=tempfiles)
-        for fn in tempfiles:
-            print('Deleting temp file', fn)
-            os.unlink(fn)
-        return rtn
+    tempfiles = []
+    if jpeg:
+        rtn = req.layer.get_cutout(req, jpeg=True, tempfiles=tempfiles)
+    else:
+        rtn = req.layer.get_cutout(req, fits=True, tempfiles=tempfiles)
+    for fn in tempfiles:
+        os.unlink(fn)
+    return rtn
+
+def jpeg_cutout(req):
+    return _cutout(req)
 
 def fits_cutout(req):
-    from django.http import HttpResponseRedirect, HttpResponse
-    if not settings.ENABLE_CUTOUTS:
-        return HttpResponse('No cutouts enabled')
-
-    name = req.GET.get('layer', 'decals-dr3')
-    name = layer_name_map(name)
-
-    # Sanjaya : redirect to NERSC
-    if (settings.REDIRECT_CUTOUTS_DECAPS and
-        name in ['decaps', 'decaps-model', 'decaps-resid']):
-        return HttpResponseRedirect('http://legacysurvey.org/viewer' + req.path + '?' + urlencode(req.GET))
-
-    from map.views import get_layer
-    layer = get_layer(name)
-    if layer is not None:
-        tempfiles = []
-        rtn = layer.get_cutout(req, fits=True, tempfiles=tempfiles)
-        for fn in tempfiles:
-            print('Deleting temp file', fn)
-            os.unlink(fn)
-        return rtn
+    return _cutout(req, jpeg=False)
 
 if __name__ == '__main__':
     import os
