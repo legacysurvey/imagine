@@ -4404,6 +4404,7 @@ def ccd_detail(req, layer_name, ccd):
     sw = c.width  // image_stamp_scale
     sh = c.height // image_stamp_scale
     rectsvg = ''
+    rectsvg2 = ''
     if rect is not None:
         x,y,w,h = rect
         s = image_stamp_scale

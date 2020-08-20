@@ -1065,7 +1065,7 @@ def cat_kd(req, ver, tag, fn, racol=None, deccol=None):
     if T is None:
         debug('No objects in query')
         return None
-    debug(len(T), 'spectra')
+    #debug(len(T), 'spectra')
     if racol is not None:
         T.ra = T.get(racol)
     if deccol is not None:
@@ -1076,8 +1076,7 @@ def cat_kd(req, ver, tag, fn, racol=None, deccol=None):
         T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
     else:
         T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
-    debug(len(T), 'in cut')
-
+    #debug(len(T), 'in cut')
     return T
 
 def radecbox_to_wcs(ralo, rahi, declo, dechi):
@@ -1261,8 +1260,19 @@ def cat_bright(req, ver):
                os.path.join(settings.DATA_DIR, 'bright.fits'))
 
 def cat_tycho2(req, ver):
-    return cat(req, ver, 'tycho2',
-               os.path.join(settings.DATA_DIR, 'tycho2.fits'))
+    #return cat(req, ver, 'tycho2',
+    #           os.path.join(settings.DATA_DIR, 'tycho2.fits'))
+    import json
+    T = cat_kd(req, ver, 'tycho2', os.path.join(settings.DATA_DIR, 'tycho2-sub.kd.fits'))
+    if T is None:
+        rtn = dict(rd=[], name=[])
+    else:
+        rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+        rtn = dict(rd=rd)
+        if 'name' in T.columns():
+            names = [t.strip() for t in T.name]
+            rtn['name'] = names
+    return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def cat_ngc(req, ver):
     return cat(req, ver, 'ngc',
