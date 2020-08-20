@@ -27,9 +27,9 @@ catversions = {
     'dr9sv': [1,],
     'dr9sv-north': [1,],
     'dr9sv-south': [1,],
-    'dr8': [1,],
-    'dr8-north': [1,],
-    'dr8-south': [1,],
+    'ls-dr8': [1,],
+    'ls-dr8-north': [1,],
+    'ls-dr8-south': [1,],
     'decals-dr7': [1,],
     'mzls+bass-dr6': [1,],
     'decals-dr5': [1,],
@@ -891,7 +891,8 @@ def cat_spec(req, ver):
     tag = 'spec'
     T = cat_kd(req, ver, tag, fn)
     if T is None:
-        return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],plate=[])),
+        return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],
+                                            plate=[], zwarning=[])),
                             content_type='application/json')
     plate = req.GET.get('plate', None)
     if plate is not None:
@@ -905,7 +906,9 @@ def cat_spec(req, ver):
     mjd   = [int(x) for x in T.mjd]
     fiber = [int(x) for x in T.fiberid]
     plate = [int(x) for x in T.plate]
-    return HttpResponse(json.dumps(dict(rd=rd, name=names, mjd=mjd, fiber=fiber, plate=plate)),
+    zwarning = [int(x) for x in T.zwarning]
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, mjd=mjd, fiber=fiber, plate=plate,
+                                        zwarning=zwarning)),
                         content_type='application/json')
 
 def cat_masks_dr9(req, ver):
@@ -1340,12 +1343,11 @@ def cat(req, ver, tag, fn, T=None):
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def any_cat(req, name, ver, zoom, x, y, **kwargs):
-    from map.views import layer_name_map, get_layer
-    print('any_cat(', name, ver, zoom, x, y, ')')
-    name = layer_name_map(name)
+    from map.views import get_layer
+    #print('any_cat(', name, ver, zoom, x, y, ')')
     layer = get_layer(name)
     if layer is None:
-        return HttpResponse('no such layer: ' + name)
+        return HttpResponse('no such layer')
     return cat_decals(req, ver, zoom, x, y, tag=name, docache=False)
 
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
@@ -1380,7 +1382,9 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         os.close(f)
         sendfile_kwargs.update(unlink=True)
 
-    cat,hdr = _get_decals_cat(wcs, tag=tag)
+    from map.views import get_layer
+    layer = get_layer(tag)
+    cat,hdr = layer.get_catalog_in_wcs(wcs)
 
     if cat is None:
         rd = []
@@ -1435,12 +1439,6 @@ def get_desi_tile_radec(tile_id):
         return ra, dec
     else:
         raise RuntimeError("DESI tile not found")
-
-def _get_decals_cat(wcs, tag='decals'):
-    from map.views import get_layer
-    layer = get_layer(tag)
-    return layer.get_catalog_in_wcs(wcs)
-
 
 if __name__ == '__main__':
     import sys
