@@ -50,13 +50,9 @@ tileversions = {
     'halpha': [1,],
     'wssa': [1,],
     'sdss': [1,],
-    'sdssco': [1,],
     'ps1': [1],
-    'hsc2': [1],
     'hsc-dr2': [1],
-    'vlass': [1],
     'vlass1.2': [1],
-    'sdss2': [1,],
     '2mass': [1],
     'galex': [1],
     'des-dr1': [1],
@@ -78,34 +74,35 @@ tileversions = {
     'dr9sv-model': [1],
     'dr9sv-resid': [1],
 
-    'dr8-north': [1],
-    'dr8-north-model': [1],
-    'dr8-north-resid': [1],
+    'ls-dr8-north': [1],
+    'ls-dr8-north-model': [1],
+    'ls-dr8-north-resid': [1],
 
-    'dr8-south': [1],
-    'dr8-south-model': [1],
-    'dr8-south-resid': [1],
+    'ls-dr8-south': [1],
+    'ls-dr8-south-model': [1],
+    'ls-dr8-south-resid': [1],
 
-    'dr8': [1],
-    'dr8-model': [1],
-    'dr8-resid': [1],
+    'ls-dr8': [1],
+    'ls-dr8-model': [1],
+    'ls-dr8-resid': [1],
+
+    'ls-dr67': [1],
 
     'decals-dr7': [1],
     'decals-dr7-model': [1],
     'decals-dr7-resid': [1],
-    'decals-dr7-invvar': [1],
 
     'mzls+bass-dr6': [1],
     'mzls+bass-dr6-model': [1],
     'mzls+bass-dr6-resid': [1],
 
-    'decaps': [1, 2],
-    'decaps-model': [1, 2],
-    'decaps-resid': [1, 2],
-
     'decals-dr5': [1],
     'decals-dr5-model': [1],
     'decals-dr5-resid': [1],
+
+    'decaps': [1, 2],
+    'decaps-model': [1, 2],
+    'decaps-resid': [1, 2],
 
     'unwise-w1w2': [1],
     'unwise-neo2': [1],
@@ -116,8 +113,6 @@ tileversions = {
     'unwise-cat-model': [1],
 
     'cutouts': [1],
-
-    'ls-dr67': [1],
 
     'dr9k-north': [1, 2],
     'dr9k-north-model': [1, 2],
@@ -244,7 +239,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'dr8',
+           default_layer = 'ls-dr8',
            default_radec = (None,None),
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
@@ -332,7 +327,7 @@ def _index(req,
         T.cut(T.plate == plate)
         ra,dec = float(T.racen), float(T.deccen)
         zoom = 8
-        layer = 'sdss2'
+        layer = 'sdss'
 
     try:
         zoom = int(req.GET.get('zoom', zoom))
@@ -388,9 +383,9 @@ def _index(req,
     subdomains_B = '[' + ','.join(["'%s'" % s for s in subdomains_B]) + '];'
 
     # these are all relative paths
-    ccdsurl = my_reverse(req, 'ccd-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    ccdsurl = my_reverse(req, 'ccd-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&layer={id}'
     bricksurl = my_reverse(req, 'brick-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&layer={layer}'
-    expsurl = my_reverse(req, 'exposure-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&id={id}'
+    expsurl = my_reverse(req, 'exposure-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&layer={id}'
     platesurl = my_reverse(req, 'sdss-plate-list') + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}'
     namequeryurl = my_reverse(req, 'object-query') + '?obj={obj}'
     uploadurl = my_reverse(req, 'upload-cat')
@@ -3965,14 +3960,14 @@ def get_survey(name):
         south.layer = 'decals-dr7'
         survey = SplitSurveyData(north, south)
 
-    elif name == 'dr8':
-        north = get_survey('dr8-north')
-        north.layer = 'dr8-north'
-        south = get_survey('dr8-south')
-        south.layer = 'dr8-south'
+    elif name == 'ls-dr8':
+        north = get_survey('ls-dr8-north')
+        north.layer = 'ls-dr8-north'
+        south = get_survey('ls-dr8-south')
+        south.layer = 'ls-dr8-south'
         survey = SplitSurveyData(north, south)
 
-    elif name in ['dr8-south', 'dr8-north', 'decals-dr5',
+    elif name in ['ls-dr8-south', 'ls-dr8-north', 'decals-dr5',
                   'decals-dr7', 'mzls+bass-dr6']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
@@ -3999,9 +3994,9 @@ def get_survey(name):
         'eboss': ('eBOSS', 'http://legacysurvey.org/'),
         'decals': ('DECaPS', 'http://legacysurvey.org/'),
         'ls-dr67': ('Legacy Surveys DR6+DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/'),
-        'dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/north'),
-        'dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/south'),
-        'dr8': ('Legacy Surveys DR8', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/'),
+        'ls-dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/north'),
+        'ls-dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/south'),
+        'ls-dr8': ('Legacy Surveys DR8', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/'),
         }
 
     n,u = names_urls.get(name, ('',''))
@@ -5293,7 +5288,7 @@ def get_layer(name, default=None):
         (all on sanjaya)
 
         '''
-        layer = ReSdssLayer('sdss2')
+        layer = ReSdssLayer('sdss')
 
     elif name == 'ls-dr67':
         dr7 = get_layer('decals-dr7')
@@ -5301,10 +5296,10 @@ def get_layer(name, default=None):
         layer = LegacySurveySplitLayer(name, dr6, dr7, 32.)
         layer.drname = 'Legacy Surveys DR6+DR7'
 
-    elif name in ['dr8', 'dr8-model', 'dr8-resid']:
-        suff = name[3:]
-        north = get_layer('dr8-north' + suff)
-        south = get_layer('dr8-south' + suff)
+    elif name in ['ls-dr8', 'ls-dr8-model', 'ls-dr8-resid']:
+        suff = name.replace('ls-dr8', '')
+        north = get_layer('ls-dr8-north' + suff)
+        south = get_layer('ls-dr8-south' + suff)
         ### NOTE, must also change the javascript in template/index.html !
         layer = LegacySurveySplitLayer(name, north, south, 32.375)
         layer.drname = 'Legacy Surveys DR8'
@@ -5418,7 +5413,7 @@ def get_layer(name, default=None):
     #         layers[basename + '-resid'] = resid
     #         layer = layers[name]
 
-    elif name == 'hsc2':
+    elif name == 'hsc-dr2':
         layer = HscLayer('hsc-dr2')
     
     if layer is None:
