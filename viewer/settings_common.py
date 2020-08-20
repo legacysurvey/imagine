@@ -81,13 +81,6 @@ BASE_DIR   = os.path.dirname(__file__)
 WEB_DIR    = os.path.dirname(BASE_DIR)
 DATA_DIR   = os.path.join(WEB_DIR, 'data')
 DUST_DIR   = os.path.join(DATA_DIR, 'dust')
-HALPHA_DIR = os.path.join(DATA_DIR, 'halpha')
-UNWISE_DIR = os.path.join(DATA_DIR, 'unwise-coadds')
-UNWISE_NEO1_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo1')
-UNWISE_NEO2_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo2')
-UNWISE_NEO3_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo3')
-UNWISE_NEO4_DIR = os.path.join(DATA_DIR, 'unwise-coadds-neo4')
-SDSS_DIR   = os.path.join(DATA_DIR, 'sdss')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/

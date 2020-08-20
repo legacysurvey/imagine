@@ -5350,17 +5350,16 @@ def get_layer(name, default=None):
 
     elif name == 'unwise-w1w2':
         layer = UnwiseLayer('unwise-w1w2',
-                            settings.UNWISE_DIR)
+                            os.path.join(settings.DATA_DIR, 'unwise-w1w2'))
     elif name == 'unwise-neo2':
         layer = UnwiseLayer('unwise-neo2',
-                            settings.UNWISE_NEO2_DIR)
+                            os.path.join(settings.DATA_DIR, 'unwise-neo2'))
     elif name == 'unwise-neo3':
         layer = RebrickedUnwise('unwise-neo3',
-                                settings.UNWISE_NEO3_DIR)
+                            os.path.join(settings.DATA_DIR, 'unwise-neo3'))
     elif name == 'unwise-neo4':
         layer = RebrickedUnwise('unwise-neo4',
-                                settings.UNWISE_NEO4_DIR)
-
+                            os.path.join(settings.DATA_DIR, 'unwise-neo4'))
     elif name == 'unwise-neo6':
         layer = RebrickedUnwise('unwise-neo6',
                                 os.path.join(settings.DATA_DIR, 'unwise-neo6'))
@@ -5381,8 +5380,8 @@ def get_layer(name, default=None):
     elif name == 'halpha':
         from tractor.sfd import SFDMap
         halpha = SFDMap(
-            ngp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_ngp.fits'),
-            sgp_filename=os.path.join(settings.HALPHA_DIR,'Halpha_4096_sgp.fits'))
+            ngp_filename=os.path.join(settings.DATA_DIR, 'halpha', 'Halpha_4096_ngp.fits'),
+            sgp_filename=os.path.join(settings.DATA_DIR, 'halpha', 'Halpha_4096_sgp.fits'))
         # Doug says: np.log10(halpha + 5) stretched to 0.5 to 2.5
         def stretch_halpha(x):
             import numpy as np

@@ -1958,19 +1958,13 @@ allLayers.push(tiles);
 {% endif %}
 
 {% if enable_hsc_dr2 %}
-tiles = mylayer_B('hsc2', 'HSC DR2 images',
+tiles = mylayer_B('hsc-dr2', 'HSC DR2 images',
                   {//'attribution': sdss_attrib,
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
 {% if enable_vlass %}
-
-tiles = mylayer_B('vlass', 'VLASS 1.1 images',
-                  {'attribution': 'NRAO',
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
 tiles = mylayer_B('vlass1.2', 'VLASS 1.2 images',
                   {'attribution': 'NRAO',
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
@@ -1979,25 +1973,9 @@ allLayers.push(tiles);
 {% endif %}
 
 {% if enable_unwise %}
-tiles = mylayer_B('unwise-w1w2', 'unWISE W1/W2',
-                {'maxNativeZoom': 12,
-                 'urlPatterns': [ [11, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('unwise-neo2', 'unWISE W1/W2 NEO2',
-                {'maxNativeZoom': 12,
-                 'urlPatterns': [ [11, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('unwise-neo3', 'unWISE W1/W2 NEO3',
-                {'maxNativeZoom': 12,
-                 'urlPatterns': [ [10, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
 tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
                 {'maxNativeZoom': 12,
                  'urlPatterns': [ [6, maxZoom, tile_url], ],});
-                 //'urlPatterns': [ [9, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
@@ -2751,7 +2729,6 @@ var unwise_tile_detail_list = function(ov, objs) {
         nin += 1;
     }
     return txt;
-    //return '';
 }
     
 var unwiseTileOverlay = new PolygonOverlay('unwise-tiles',
@@ -3435,9 +3412,6 @@ var baseTree1 = [
     {% if enable_unwise %}
     findlayer('unwise-neo6', [
         findlayer('unwise-neo4'),
-        findlayer('unwise-neo3'),
-        findlayer('unwise-neo2'),
-        findlayer('unwise-w1w2'),
     ]),
     findlayer('unwise-cat-model'),
     {% endif %}
@@ -3452,7 +3426,7 @@ var baseTree1 = [
             findlayer('ps1'),
             {% endif %}
             {% if enable_hsc_dr2 %}
-            findlayer('hsc2'),
+            findlayer('hsc-dr2'),
             {% endif %}
             {% if enable_vlass %}
             findlayer('vlass1.2'),
