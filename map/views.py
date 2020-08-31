@@ -56,7 +56,8 @@ tileversions = {
     '2mass': [1],
     'galex': [1],
     'des-dr1': [1],
-
+    'ztf': [1],
+    
     'eboss': [1,],
 
     'phat': [1,],
@@ -3568,6 +3569,108 @@ class VlassLayer(RebrickedMixin, MapLayer):
         html.extend(['</body>', '</html>'])
         return HttpResponse('\n'.join(html))
 
+class ZtfLayer(RebrickedMixin, MapLayer):
+    def __init__(self, name):
+        super(ZtfLayer, self).__init__(name, nativescale=12)
+        self.pixscale = 1.0
+        self.bands = self.get_bands()
+        self.pixelsize = 3744 # 3600 * 1.04
+        self.maxscale = 6
+
+    def get_bricks(self):
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        T = fits_table(os.path.join(self.basedir, 'ztf-tiles.kd.fits'))
+        T.brickname = np.array(['%06i-%02i-%02i' % (f,c,q)
+                                for f,c,q in zip(T.field, T.chip, T.quad)])
+        T.ra  = T.crval1
+        T.dec = T.crval2
+        return T
+
+    def get_bricks_for_scale(self, scale):
+        if scale in [0, None]:
+            return self.get_bricks()
+        scale = min(scale, self.maxscale)
+        from astrometry.util.fits import fits_table
+        # just copied vlass bricks
+        fn = os.path.join(self.basedir, 'ztf-bricks-%i.fits' % scale)
+        #print('ZTF bricks for scale', scale, '->', fn)
+        b = fits_table(fn)
+        return b
+
+    def bricks_for_band(self, bricks, band):
+        #print('ZTF bricks for band: bricks', len(bricks), 'band', band)
+        bb = bricks[bricks.filter == ('z'+band)]
+        return bb
+
+    def bricks_within_range(self, ra, dec, radius, scale=None):
+        from astrometry.libkd.spherematch import match_radec, tree_open, tree_search_radec
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        if scale > 0:
+            return None
+        fn = os.path.join(self.basedir, 'ztf-tiles.kd.fits')
+        kd = tree_open(fn)
+        # 0.65 ~ 3200/2 * sqrt(2) * 1"/pix
+        I = tree_search_radec(kd, ra, dec, radius + 0.65)
+        #print('Bricks_within_range: radius=', radius, 'RA,Dec', ra,dec, '=', len(I))
+        T = fits_table(fn, rows=I)
+        T.brickname = np.array(['%06i-%02i-%02i' % (f,c,q)
+                                for f,c,q in zip(T.field, T.chip, T.quad)])
+        T.ra  = T.crval1
+        T.dec = T.crval2
+        return T
+
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        if scale < 5:
+            size = self.pixelsize
+        elif scale == 5:
+            size = 4000
+        elif scale >= 6:
+            size = 4400
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+
+    def get_bands(self):
+        return 'gri'
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        #print('ZTF get_rgb: bands', bands)
+        scales = dict(g=(2,3.0), r=(1,2.0), i=(0,0.8))
+        #for im,band in zip(imgs,bands):
+        #    print('band', band, ': pcts', np.percentile(im[np.isfinite(im)], [0,25,50,75,100]))
+        rgb = sdss_rgb(imgs, bands, scales=scales)
+        return rgb
+
+    def get_base_filename(self, brick, band, **kwargs):
+        return os.path.join(self.basedir, 'ref-images', brick.filename.strip())
+
+    def get_fits_extension(self, scale, fn):
+        if scale == 0:
+            return 0
+        return 1
+
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+                            '%(scale)i%(band)s', '%(brickname).3s',
+                            'ztf-%(brickname)s-$(band)s.fits')
+
+    def read_image(self, brick, band, scale, slc, fn=None):
+        #print('ZTF read_image: brick filter:', brick.filter)
+        img = super(ZtfLayer, self).read_image(brick, band, scale, slc, fn=fn)
+        if scale > 0:
+            return img
+        # Subtract & scale
+        zpscale = 10.**((brick.magzp - 22.5) / 2.5)
+        img = (img - brick.globmed) / zpscale
+        return img
+    
 class ZeaLayer(MapLayer):
     def __init__(self, name, zeamap, stretch=None, vmin=0., vmax=1.,
                  cmap=None):
@@ -5300,7 +5403,10 @@ def get_layer(name, default=None):
     if '/' in name or '..' in name:
         pass
 
-    if name == 'sdss':
+    if name == 'ztf':
+        layer = ZtfLayer('ztf')
+
+    elif name == 'sdss':
         '''
         "Rebricked" SDSS images.
         - top-level tiles are from sdss2
@@ -5776,7 +5882,12 @@ if __name__ == '__main__':
     #r = c.get('/exposure_panels/dr8-south/702779/N5/?ra=36.5587&dec=-4.0677&size=100')
     #r = c.get('/iv-stamp/dr8/decam-361654-S31.jpg')
     #r = c.get('/dq-stamp/dr8/decam-361654-S31.jpg')
-    r = c.get('/exposures/?ra=190.1624&dec=63.0288&layer=dr9m-north')
+    #r = c.get('/exposures/?ra=190.1624&dec=63.0288&layer=dr9m-north')
+    #r = c.get('/cutout.jpg?ra=239.6286&dec=-3.7784&layer=unwise-neo4&pixscale=0.13')
+    #r = c.get('/masks-dr9/1/cat.json?ralo=14.4361&rahi=14.4980&declo=-35.8660&dechi=-35.8380')
+    #r = c.get('/ztf/1/14/7281/6759.jpg')
+    #r = c.get('/cutout.jpg?ra=199.68&dec=29.42&layer=ztf&pixscale=1.0&size=1000')
+    r = c.get('/cutout.jpg?ra=200.0108&dec=30.0007&layer=ztf&pixscale=0.25')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

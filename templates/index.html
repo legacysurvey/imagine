@@ -1949,6 +1949,11 @@ tiles = mylayer_B('sdss', 'SDSS images',
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+tiles = mylayer_B('ztf', 'ZTF images',
+                  {'attribution': 'ZTF',
+                   'urlPatterns': [ [12, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 {% if enable_ps1 %}
 tiles = mylayer_B('ps1', 'PS1 images',
                   {'attribution': ps1_attrib,
@@ -3419,6 +3424,7 @@ var baseTree1 = [
         label: 'More surveys',
         children: [
             findlayer('sdss'),
+            findlayer('ztf'),
             {% if enable_des_dr1 %}
             findlayer('des-dr1'),
             {% endif %}
