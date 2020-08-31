@@ -4583,22 +4583,26 @@ Observed MJD {c.mjd_obs:.3f}, {c.date_obs} {c.ut} UT
 <br />
 <div>Mouse: <span id="iv_coords"></span>  Click: <span id="iv_click"></span></div><br/>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
-  width="{sw}" height="{sh}">
-  <image x="0" y="0" width="{sw}" height="{sh}" href="{ivstamp}" id="iv_stamp" />
-  <g transform="translate(0 {sh}) scale(1 -1)">
-    {rectsvg2}
-    {axis1}
+  width="{swa}" height="{sha}">
+  <g transform="translate({axspace} 0)">
+    <image x="0" y="0" width="{sw}" height="{sh}" href="{ivstamp}" id="iv_stamp" />
+    <g transform="translate(0 {sh}) scale(1 -1)">
+      {rectsvg2}
+      {axis1}
+    </g>
   </g>
   {axis2}
 </svg>
 <br />
 <div>Mouse: <span id="dq_coords"></span>  Click: <span id="dq_click"></span></div><br/>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
-  width="{sw}" height="{sh}">
-  <image x="0" y="0" width="{sw}" height="{sh}" href="{dqstamp}" id="dq_stamp" />
-  <g transform="translate(0 {sh}) scale(1 -1)">
-    {rectsvg}
-    {axis1}
+  width="{swa}" height="{sha}">
+  <g transform="translate({axspace} 0)">
+    <image x="0" y="0" width="{sw}" height="{sh}" href="{dqstamp}" id="dq_stamp" />
+    <g transform="translate(0 {sh}) scale(1 -1)">
+      {rectsvg}
+      {axis1}
+    </g>
   </g>
   {axis2}
 </svg>
