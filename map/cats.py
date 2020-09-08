@@ -329,6 +329,7 @@ def get_random_galaxy(layer=None):
     elif layer == 'hsc2':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
     else:
+        drnum = 8
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr8.fits')
 
 
