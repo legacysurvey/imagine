@@ -1944,6 +1944,11 @@ tiles = mylayer_B('m33', 'M33 image',
 allLayers.push(tiles);
 {% endif %}
 
+tiles = mylayer_B('cfis-r', 'CFIS-r images',
+                  {'attribution': 'CFIS',
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+  
 tiles = mylayer_B('sdss', 'SDSS images',
                   {'attribution': sdss_attrib,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
@@ -3423,6 +3428,7 @@ var baseTree1 = [
     {
         label: 'More surveys',
         children: [
+	    findlayer('cfis-r'),
             findlayer('sdss'),
             findlayer('ztf'),
             {% if enable_des_dr1 %}

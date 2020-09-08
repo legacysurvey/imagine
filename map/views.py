@@ -57,7 +57,8 @@ tileversions = {
     'galex': [1],
     'des-dr1': [1],
     'ztf': [1],
-    
+    'cfis-r': [1],
+
     'eboss': [1,],
 
     'phat': [1,],
@@ -804,7 +805,7 @@ class MapLayer(object):
             r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
             dlo = min(d1, d2)
             dhi = max(d1, d2)
-            #print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
+            print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
             return self.bricks_touching_radec_box(rlo, rhi, dlo, dhi, scale=scale)
 
         from astrometry.util.miscutils import polygons_intersect
@@ -820,6 +821,7 @@ class MapLayer(object):
             plt.clf()
             plt.plot(xy[:,0], xy[:,1], 'k-')
 
+        #print('Checking', len(B), 'possible bricks')
         for i,brick in enumerate(B):
             bwcs = self.get_scaled_wcs(brick, None, scale)
             bh,bw = bwcs.shape
@@ -828,35 +830,19 @@ class MapLayer(object):
             yl,ym,yh = 0.5, (bh+1)/2., bh+0.5
             rr,dd = bwcs.pixelxy2radec([xl, xm, xh, xh, xh, xm, xl, xl, xl],
                                        [yl, yl, yl, ym, yh, yh, yh, ym, yl])
-            #try:
-            #    ok,bx,by = wcs.radec2pixelxy(rr, dd, wrap=False)
-            #except:
+            #print('Brick', brick.brickname, 'shape', bh,bw, 'RA,Dec points:', rr, dd)
             ok,bx,by = wcs.radec2pixelxy(rr, dd)
-
-            # xx1 = np.linspace(xl, xh, 100)
-            # yy1 = np.array([yl]*100)
-            # xx2 = np.array([xh]*100)
-            # yy2 = np.linspace(yl, yh, 100)
-            # xx3 = np.linspace(xh, xl, 100)
-            # yy3 = np.array([yh]*100)
-            # xx4 = np.array([xl]*100)
-            # yy4 = np.linspace(yh, yl, 100)
-            # rr,dd = bwcs.pixelxy2radec(np.hstack((xx1,xx2,xx3,xx4)), np.hstack((yy1,yy2,yy3,yy4)))
-            # try:
-            #     ok,bx,by = wcs.radec2pixelxy(rr, dd, wrap=False)
-            # except:
-            #     ok,bx,by = wcs.radec2pixelxy(rr, dd)
-
             bx = bx[ok]
             by = by[ok]
             if len(bx) == 0:
+                #print('No "ok" pixel-to-radec-to-pixel points')
                 continue
+            #print('Brick', brick.brickname, 'X range [%.1f,%.1f]' % (bx.min(), bx.max()), 'Y range [%.1f, %.1f]' % (by.min(), by.max()))
             if polygons_intersect(xy, np.vstack((bx, by)).T):
                 if debug_ps is not None:
                     plt.plot(bx, by, '-')
                 keep.append(i)
-            #else:
-            #    plt.plot(bx, by, 'r-')
+
         if debug_ps is not None:
             debug_ps.savefig()
                 
@@ -867,7 +853,7 @@ class MapLayer(object):
             rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
             r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
             r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
-            #print('Approx RA,Dec range', rlo,rhi, 'Dec', d1,d2)
+            print('Approx RA,Dec range', rlo,rhi, 'Dec', d1,d2)
 
         #print('Bricks within range:', B.brickname)
         if len(keep) == 0:
@@ -943,7 +929,7 @@ class MapLayer(object):
         if scale == 0:
             return self.get_base_filename(brick, band)
         fn = self.get_scaled_filename(brick, band, scale)
-        #print('Filename:', fn)
+        print('Target filename:', fn)
         if os.path.exists(fn):
             return fn
         #print('Creating', fn)
@@ -2013,7 +1999,7 @@ class RebrickedMixin(object):
             return super(RebrickedMixin, self).get_filename(brick, band, scale,
                                                             tempfiles=tempfiles)
         fn = self.get_scaled_filename(brick, band, scale)
-        #print('Filename:', fn)
+        print('Target filename:', fn)
         if os.path.exists(fn):
             return fn
         fn = self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
@@ -3683,6 +3669,104 @@ class ZtfLayer(RebrickedMixin, MapLayer):
         # Subtract & scale
         zpscale = 10.**((brick.magzp - 22.5) / 2.5)
         img = (img - brick.globmed) / zpscale
+        return img
+
+
+class CFISLayer(RebrickedMixin, MapLayer):
+    def __init__(self, name):
+        super(CFISLayer, self).__init__(name, nativescale=14)
+        self.pixscale = 0.186
+        self.bands = self.get_bands()
+        self.pixelsize = 5300
+        self.maxscale = 8
+
+    def get_bricks(self):
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        T = fits_table(os.path.join(self.basedir, 'cfis-tiles.kd.fits'))
+        T.brickname = np.array(['%s.%s' % (g1,g2)
+                                for g1,g2 in zip(T.grid1, T.grid2)])
+        T.ra  = T.crval1
+        T.dec = T.crval2
+        return T
+
+    def get_bricks_for_scale(self, scale):
+        if scale in [0, None]:
+            return self.get_bricks()
+        scale = min(scale, self.maxscale)
+        from astrometry.util.fits import fits_table
+        fn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % scale)
+        b = fits_table(fn)
+        return b
+
+    def bricks_within_range(self, ra, dec, radius, scale=None):
+        from astrometry.libkd.spherematch import match_radec, tree_open, tree_search_radec
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        if scale > 0:
+            return None
+        fn = os.path.join(self.basedir, 'cfis-tiles.kd.fits')
+        kd = tree_open(fn)
+        # 0.4 ~ 10k / 2 * sqrt(2) x 186"/pix
+        I = tree_search_radec(kd, ra, dec, radius + 0.4)
+        T = fits_table(fn, rows=I)
+        T.brickname = np.array(['%s.%s' % (g1,g2)
+                                for g1,g2 in zip(T.grid1, T.grid2)])
+        T.ra  = T.crval1
+        T.dec = T.crval2
+        return T
+
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        if scale == 0:
+            size = 10000
+        elif scale < 7:
+            size = self.pixelsize
+        elif scale == 7:
+            size = int(self.pixelsize * 1.1)
+        elif scale >= 8:
+            size = int(self.pixelsize * 1.2)
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+
+    def get_bands(self):
+        return 'R'
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        #scales = dict(g=(2,3.0), r=(1,2.0), i=(0,0.8))
+
+        scales = dict(R=(1, 10.))
+        rgb = sdss_rgb(imgs, bands, scales=scales)
+        rgb[:,:,0] = rgb[:,:,2] = rgb[:,:,1]
+        return rgb
+
+    def get_base_filename(self, brick, band, **kwargs):
+        return os.path.join(self.basedir, brick.filename.strip())
+
+    def get_fits_extension(self, scale, fn):
+        # if scale == 0:
+        #     return 0
+        return 1
+
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+                            '%(scale)i%(band)s', '%(brickname).3s',
+                            'cfis-%(brickname)s-%(band)s.fits')
+
+    def read_image(self, brick, band, scale, slc, fn=None):
+        #print('Read CFIS image: brick', brick, 'band', band, 'scale', scale, 'slice', slc)
+        img = super(CFISLayer, self).read_image(brick, band, scale, slc, fn=fn)
+        if scale > 0:
+            return img
+
+        # scale
+        zpscale = 10.**((30 - 22.5) / 2.5)
+        img = img / zpscale
         return img
     
 class ZeaLayer(MapLayer):
@@ -5421,7 +5505,10 @@ def get_layer(name, default=None):
     if '/' in name or '..' in name:
         pass
 
-    if name == 'ztf':
+    if name == 'cfis-r':
+        layer = CFISLayer('cfis-r')
+
+    elif name == 'ztf':
         layer = ZtfLayer('ztf')
 
     elif name == 'sdss':
@@ -5707,6 +5794,25 @@ if __name__ == '__main__':
     lvl = logging.DEBUG
     logging.basicConfig(level=lvl, format='%(message)s', stream=sys.stdout)
 
+    # import numpy as np
+    # c = get_layer('cfis-r')
+    # B = c.get_bricks_for_scale(1)
+    # print(len(B), 'bricks for scale', 1)
+    # B.cut(B.dec > 29)
+    # B.cut(np.lexsort((B.ra, B.dec)))
+    # b1 = B[0]
+    # b2 = B[1]
+    # print('Bricks', b1.brickname, b2.brickname)
+    # band = 'R'
+    # wcs1 = c.get_scaled_wcs(b1, band, 1)
+    # wcs2 = c.get_scaled_wcs(b2, band, 1)
+    # print('WCS', wcs1, wcs2)
+    # bounds = wcs1.radec_bounds()
+    # print('WCS1 RA,Dec bounds', bounds)
+    # bounds = wcs2.radec_bounds()
+    # print('WCS2 RA,Dec bounds', bounds)
+    # sys.exit(0)
+    
     # dr5 = get_layer('decals-dr5')
     # dr6 = get_layer('mzls+bass-dr6')
     # split = LegacySurveySplitLayer('ls56', dr5, dr6, 32.)
@@ -5905,7 +6011,11 @@ if __name__ == '__main__':
     #r = c.get('/masks-dr9/1/cat.json?ralo=14.4361&rahi=14.4980&declo=-35.8660&dechi=-35.8380')
     #r = c.get('/ztf/1/14/7281/6759.jpg')
     #r = c.get('/cutout.jpg?ra=199.68&dec=29.42&layer=ztf&pixscale=1.0&size=1000')
-    r = c.get('/cutout.jpg?ra=200.0108&dec=30.0007&layer=ztf&pixscale=0.25')
+    #r = c.get('/cutout.jpg?ra=200.0108&dec=30.0007&layer=ztf&pixscale=0.25')
+    #r = c.get('/cfis-r/1/14/16383/6759.jpg')
+    #r = c.get('/cfis-r/1/15/14107/13466.jpg')
+    #r = c.get('/cfis-r/1/14/7032/6732.jpg')
+    r = c.get('/cfis-r/1/13/3518/3368.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
