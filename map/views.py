@@ -249,6 +249,7 @@ def _index(req,
            **kwargs):
     kwkeys = dict(
         enable_unwise = settings.ENABLE_UNWISE,
+        enable_unwise_cat = settings.ENABLE_UNWISE_CATALOG,
         enable_vlass = settings.ENABLE_VLASS,
         enable_dev = settings.ENABLE_DEV,
         enable_m33 = False,
@@ -262,14 +263,14 @@ def _index(req,
         enable_dr8_overlays = settings.ENABLE_DR8,
         enable_dr8_models = settings.ENABLE_DR8_MODELS,
         enable_dr8_resids = settings.ENABLE_DR8_RESIDS,
-        enable_dr8_north = settings.ENABLE_DR8,
-        enable_dr8_north_models = settings.ENABLE_DR8_MODELS,
-        enable_dr8_north_resids = settings.ENABLE_DR8_RESIDS,
-        enable_dr8_north_overlays = settings.ENABLE_DR8,
-        enable_dr8_south = settings.ENABLE_DR8,
-        enable_dr8_south_models = settings.ENABLE_DR8_MODELS,
-        enable_dr8_south_resids = settings.ENABLE_DR8_RESIDS,
-        enable_dr8_south_overlays = settings.ENABLE_DR8,
+        enable_dr8_north = settings.ENABLE_DR8_NORTH,
+        enable_dr8_north_models = settings.ENABLE_DR8_NORTH_MODELS,
+        enable_dr8_north_resids = settings.ENABLE_DR8_NORTH_RESIDS,
+        enable_dr8_north_overlays = settings.ENABLE_DR8_NORTH,
+        enable_dr8_south = settings.ENABLE_DR8_SOUTH,
+        enable_dr8_south_models = settings.ENABLE_DR8_SOUTH_MODELS,
+        enable_dr8_south_resids = settings.ENABLE_DR8_SOUTH_RESIDS,
+        enable_dr8_south_overlays = settings.ENABLE_DR8_SOUTH,
         enable_dr9sv = settings.ENABLE_DR9SV,
         enable_dr9sv_overlays = settings.ENABLE_DR9SV,
         enable_dr9sv_models = settings.ENABLE_DR9SV,
@@ -364,7 +365,8 @@ def _index(req,
         ra,dec,galname = get_random_galaxy(layer=layer)
 
     from urllib.parse import unquote
-    caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
+    #caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
+    caturl = settings.CAT_URL
     smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
 
     print('Small catalog URL:', smallcaturl)
@@ -378,6 +380,8 @@ def _index(req,
 
     #static_tile_url = fix_hostname(req, settings.STATIC_TILE_URL)
     static_tile_url = settings.STATIC_TILE_URL
+
+    nersc_tile_url = settings.NERSC_TILE_URL
     
     # includes subdomain pattern
     static_tile_url_B = settings.STATIC_TILE_URL_B
@@ -467,6 +471,8 @@ def _index(req,
 
                 static_tile_url_B=static_tile_url_B,
                 subdomains_B=subdomains_B,
+
+                nersc_tile_url=nersc_tile_url,
 
                 usercatalogs = usercats,
                 usercatalogurl = usercatalogurl,
@@ -1999,7 +2005,7 @@ class RebrickedMixin(object):
             return super(RebrickedMixin, self).get_filename(brick, band, scale,
                                                             tempfiles=tempfiles)
         fn = self.get_scaled_filename(brick, band, scale)
-        print('Target filename:', fn)
+        print('Target filename (rebricked):', fn)
         if os.path.exists(fn):
             return fn
         fn = self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
@@ -3678,7 +3684,7 @@ class CFISLayer(RebrickedMixin, MapLayer):
         self.pixscale = 0.186
         self.bands = self.get_bands()
         self.pixelsize = 5300
-        self.maxscale = 8
+        self.maxscale = 7
 
     def get_bricks(self):
         from astrometry.util.fits import fits_table
@@ -3690,12 +3696,20 @@ class CFISLayer(RebrickedMixin, MapLayer):
         T.dec = T.crval2
         return T
 
+    def get_pixel_coord_type(self, scale):
+        import numpy as np
+        return np.int16
+
     def get_bricks_for_scale(self, scale):
         if scale in [0, None]:
             return self.get_bricks()
         scale = min(scale, self.maxscale)
         from astrometry.util.fits import fits_table
-        fn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % scale)
+        # cut to existing bricks
+        fn = os.path.join(self.basedir, 'bricks-%i.fits' % scale)
+        if not os.path.exists(fn):
+            # generic
+            fn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % scale)
         b = fits_table(fn)
         return b
 

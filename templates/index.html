@@ -84,6 +84,8 @@ var usercat_url = '{{ usercatalogurl|safe }}';
 var tile_url = '{{ tileurl|safe }}';
 var maxNativeZoom = {{ maxNativeZoom }};
 
+var nersc_tile_url = '{{ nersc_tile_url|safe }}';
+
 var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
 
 var ccds_url = '{{ ccdsurl|safe }}';
@@ -1951,14 +1953,18 @@ allLayers.push(tiles);
   
 tiles = mylayer_B('sdss', 'SDSS images',
                   {'attribution': sdss_attrib,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
+                   //'urlPatterns': [ [14, maxZoom, tile_url], ],
+                   'urlPatterns': [ [14, maxZoom, nersc_tile_url], ],
+		  });
 allLayers.push(tiles);
 
-tiles = mylayer_B('ztf', 'ZTF images',
+  {% comment %}
+  tiles = mylayer_B('ztf', 'ZTF images',
                   {'attribution': 'ZTF',
                    'urlPatterns': [ [12, maxZoom, tile_url], ],});
 allLayers.push(tiles);
-
+  {% endcomment %}
+  
 {% if enable_ps1 %}
 tiles = mylayer_B('ps1', 'PS1 images',
                   {'attribution': ps1_attrib,
@@ -1985,12 +1991,16 @@ allLayers.push(tiles);
 {% if enable_unwise %}
 tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
                 {'maxNativeZoom': 12,
-                 'urlPatterns': [ [6, maxZoom, tile_url], ],});
+                 //'urlPatterns': [ [6, maxZoom, tile_url], ],
+                 'urlPatterns': [ [1, maxZoom, nersc_tile_url], ],
+		});
 allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
                 {'maxNativeZoom': 12,
-                 'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                 //'urlPatterns': [ [1, maxZoom, tile_url], ],
+                 'urlPatterns': [ [1, maxZoom, nersc_tile_url], ],
+		});
 allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
@@ -3330,6 +3340,7 @@ var testTree = [];
 console.log('testTree:', testTree);
 
 var baseTree1 = [
+    findlayer('cfis-r'),
     {% if enable_m33 %}
     findlayer('m33'),
     {% endif %}
@@ -3423,14 +3434,15 @@ var baseTree1 = [
     findlayer('unwise-neo6', [
         findlayer('unwise-neo4'),
     ]),
+    {% endif %}
+    {% if enable_unwise_cat %}
     findlayer('unwise-cat-model'),
     {% endif %}
     {
         label: 'More surveys',
         children: [
-	    findlayer('cfis-r'),
             findlayer('sdss'),
-            findlayer('ztf'),
+            //findlayer('ztf'),
             {% if enable_des_dr1 %}
             findlayer('des-dr1'),
             {% endif %}

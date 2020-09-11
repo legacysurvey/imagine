@@ -20,14 +20,23 @@ ENABLE_DR7 = False
 ENABLE_DR67 = False
 ENABLE_DR8_MODELS = False
 ENABLE_DR8_RESIDS = False
+
+ENABLE_DR8_NORTH = False
+ENABLE_DR8_NORTH_MODELS = ENABLE_DR8_NORTH
+ENABLE_DR8_NORTH_RESIDS = ENABLE_DR8_NORTH
+ENABLE_DR8_SOUTH = False
+ENABLE_DR8_SOUTH_MODELS = ENABLE_DR8_SOUTH
+ENABLE_DR8_SOUTH_RESIDS = ENABLE_DR8_SOUTH
+
 ENABLE_DECAPS = False
 
-ENABLE_UNWISE = False
+ENABLE_UNWISE = True
+ENABLE_UNWISE_CATALOG = False
 
 ENABLE_DES_DR1 = False
-ENABLE_HSC_DR2 = False
+ENABLE_HSC_DR2 = True
 
-ENABLE_VLASS = False
+ENABLE_VLASS = True
 
 ENABLE_CUTOUTS = True
 
@@ -42,8 +51,13 @@ STATIC_URL = 'http://%s%s/static/' % (HOSTNAME, ROOT_URL)
 # STATIC_TILE_URL = 'http://{s}.cloud.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 
 TILE_URL = 'http://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
-CAT_URL = 'http://%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
+
+#CAT_URL = 'http://%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
+CAT_URL = 'http://www.legacysurvey.org/viewer-dev/{id}/{ver}/{z}/{x}/{y}.cat.json'
+
 STATIC_TILE_URL = 'http://cloud.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 
+NERSC_TILE_URL = 'http://www.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
+
 STATIC_TILE_URL_B = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
-SUBDOMAINS_B = SUBDOMAINS
+SUBDOMAINS_B = ['a','b','c','d']

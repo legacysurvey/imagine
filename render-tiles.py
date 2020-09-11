@@ -625,8 +625,13 @@ def _layer_get_filename(args):
         if os.path.exists(fn):
             os.remove(fn)
 
-    fn = layer.get_filename(brick, band, scale)
-    print(fn)
+    print('Running band', band, 'scale', scale, 'brick', brick.brickname)
+    try:
+        fn = layer.get_filename(brick, band, scale)
+    except:
+        import traceback
+        print('Error running band', band, 'scale', scale, 'brick', brick.brickname)
+        traceback.print_exc()
 
 def main():
     import optparse
@@ -698,7 +703,7 @@ def main():
         if opt.bands is None:
             opt.bands = 'R'
         if opt.mindec is None:
-            opt.mindec = 29
+            opt.mindec = 28
         if opt.maxdec is None:
             opt.maxdec = 90
 
@@ -968,8 +973,11 @@ def main():
                 print(len(args), 'bricks for scale', scale)
                 mp.map(_layer_get_filename, args)
 
+            if mp.pool is not None:
+                mp.pool.close()
+                mp.pool.join()
+            #mp.close()
             sys.exit(0)
-                
         
         if (opt.kind in ['decaps2', 'decaps2-model', 'eboss', 'ps1']
             or 'dr8b' in opt.kind
