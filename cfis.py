@@ -5,7 +5,8 @@ from astrometry.util.fits import *
 # Download tiles via
 #vcp -v --quick vos:cfis/tiles_DR2/CFIS.39*.r.weight.fits.fz . &
 
-fns = glob('tiles-dr2/CFIS*.r.fits')
+#fns = glob('tiles-dr2/CFIS*.r.fits')
+fns = glob('tiles-dr2/CFIS*.u.fits')
 fns.sort()
 print(len(fns), 'files')
 #fns = fns[:10]
@@ -31,4 +32,4 @@ for i,fn in enumerate(fns):
     T.grid2.append(grid2)
 
 T.to_np_arrays()
-T.writeto('cfis-files.fits')
+T.writeto('cfis-files-u.fits')

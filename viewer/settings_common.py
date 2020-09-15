@@ -8,6 +8,23 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
+maxZoom = 16
+abcd = ['a','b','c','d']
+nersc = 'https://{s}.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
+nersc_sub = abcd
+ima = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+ima_sub = abcd
+#me = 'TILE_URL'
+#me_sub = 'SUBDOMAINS'
+
+TILE_URLS = {
+        'sdss': [ [1, 13, ima, ima_sub],
+                  [14, maxZoom, nersc, nersc_sub], ],
+        'cfis_r': [ ],# [1, maxZoom, tileurl, []], ],
+        'cfis_u': [ ],# [1, maxZoom, tileurl, []], ],
+    }
+
+
 USER_QUERY_DIR = '/tmp/viewer-user'
 
 REDIRECT_CUTOUTS_DECAPS = False

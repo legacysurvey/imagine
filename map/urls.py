@@ -16,6 +16,8 @@ urlpatterns = [
 
     url(r'^gaia-stars-for-wcs', cats.gaia_stars_for_wcs),
 
+    url(r'^cfis-dr2/(\d+)/cat.json', cats.cat_cfis),
+    
     url(r'^masks-dr8/(\d+)/cat.json', cats.cat_gaia_mask),
 
     url(r'^masks-dr9/(\d+)/cat.json', cats.cat_masks_dr9),
@@ -184,6 +186,8 @@ urlpatterns = [
 
     # PHAT version of the viewer.
     url(r'^phat/?$', views.phat),
+
+    url(r'test', views.test),
 
     # fall-through
     url(r'', views.index, name='index'),

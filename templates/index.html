@@ -189,6 +189,52 @@ var ZoomRangeTileLayer = MyTileLayer.extend({
     },
 });
 
+// Second try -- no default; accepts list of layers incl. subdomains.
+var ZoomRangeTileLayer2 = MyTileLayer.extend({
+    getTileUrl: function(tile) {
+        var urlpat = '';
+	var subs = [];
+        for (var i=0; i<this.options.urlPatterns.length; i++) {
+            var zlo  = this.options.urlPatterns[i][0];
+            var zhi  = this.options.urlPatterns[i][1];
+            if ((tile.z >= zlo) && (tile.z <= zhi)) {
+                urlpat = this.options.urlPatterns[i][2];
+		subs   = this.options.urlPatterns[i][3];
+		break;
+            }
+        }
+	if (urlpat.length == 0) {
+	    return 'none';
+	}
+	args = L.extend({z: tile.z,
+			 x: tile.x,
+			 y: tile.y}, this.options);
+	if (subs.length > 0) {
+	    var s = this._getSubdomain(tile);
+	    args = L.extend(args, {s: s});
+	}
+	return L.Util.template(urlpat, args);
+    },
+});
+var mylayer_2 = function (name, pretty, kwargs) {
+    var args = {
+        maxZoom: maxZoom,
+        minZoom: minZoom,
+        maxNativeZoom: maxNativeZoom,
+        attribution: decals_attrib,
+        id: name,
+        ver: getversion(name),
+        unloadInvisibleTiles: true,
+    };
+    for (var key in kwargs) {
+        args[key] = kwargs[key];
+    }
+    var tiles = new ZoomRangeTileLayer2('', args);
+    tiles.name = name;
+    tiles.pretty = pretty;
+    return tiles;
+};
+  
 var SplitTileLayer = MyTileLayer.extend({
 
     // new SplitTileLayer(static_tile_url_B, ysplits,
@@ -1946,15 +1992,21 @@ tiles = mylayer_B('m33', 'M33 image',
 allLayers.push(tiles);
 {% endif %}
 
-tiles = mylayer_B('cfis-r', 'CFIS-r images',
+tiles = mylayer_2('cfis-r', 'CFIS-r images',
                   {'attribution': 'CFIS',
-                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+		   'urlPatterns': {{ tileurls.cfis_r|safe }},
+		  });
 allLayers.push(tiles);
-  
-tiles = mylayer_B('sdss', 'SDSS images',
+
+tiles = mylayer_2('cfis-u', 'CFIS-u images',
+                  {'attribution': 'CFIS',
+		   'urlPatterns': {{ tileurls.cfis_u|safe }},
+		  });
+allLayers.push(tiles);
+
+tiles = mylayer_2('sdss', 'SDSS images',
                   {'attribution': sdss_attrib,
-                   //'urlPatterns': [ [14, maxZoom, tile_url], ],
-                   'urlPatterns': [ [14, maxZoom, nersc_tile_url], ],
+		   'urlPatterns': {{ tileurls.sdss|safe }},
 		  });
 allLayers.push(tiles);
 
@@ -1976,14 +2028,14 @@ allLayers.push(tiles);
 {% if enable_hsc_dr2 %}
 tiles = mylayer_B('hsc-dr2', 'HSC DR2 images',
                   {//'attribution': sdss_attrib,
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
+                   'urlPatterns': [ [0, maxZoom, nersc_tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
 {% if enable_vlass %}
 tiles = mylayer_B('vlass1.2', 'VLASS 1.2 images',
                   {'attribution': 'NRAO',
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
+                   'urlPatterns': [ [0, maxZoom, nersc_tile_url], ],});
 allLayers.push(tiles);
 
 {% endif %}
@@ -2018,22 +2070,22 @@ allLayers.push(tiles);
 
 tiles = mylayer_B('galex', 'GALEX',
                 {'maxNativeZoom': 12,
-                 'urlPatterns': [ [10, maxZoom, tile_url], ],});
+                 'urlPatterns': [ [10, maxZoom, nersc_tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('sfd', 'SFD dust map',
                 {'maxNativeZoom':10,
-                 'urlPatterns': [ [7, 10, tile_url],], });
+                 'urlPatterns': [ [7, 10, nersc_tile_url],], });
 allLayers.push(tiles);
 
 tiles = mylayer_B('wssa', 'WISE 12-micron dust map',
                 {'maxNativeZoom':10,
-                 'urlPatterns': [ [9, 10, tile_url],], });
+                 'urlPatterns': [ [9, 10, nersc_tile_url],], });
 allLayers.push(tiles);
 
 tiles = mylayer_B('halpha', 'Halpha map',
                 {'maxNativeZoom':10,
-                 'urlPatterns': [ [7, 10, tile_url],],});
+                 'urlPatterns': [ [7, 10, nersc_tile_url],],});
 allLayers.push(tiles);
 
 
@@ -3002,6 +3054,27 @@ var gaia2 = new GaiaDr2Catalog('gaia-dr2', 'Gaia DR2 catalog',
                               });
 
 
+  var CFISCatalog = CatalogOverlay.extend({
+      getLabel: function(json, i) {
+          var ra = json['rd'][i][0];
+          var dec = json['rd'][i][1];
+	  var txt = 'CFIS ' + json['cfis_id'][i] + '<br>' +
+	      'RA,Dec ' + ra.toFixed(4) + ', ' + dec.toFixed(4) + '<br>' +
+	      'Tile ' + json['tile'][i] + '<br>' +
+	      'Flags: r=' + json['r_flags'][i] + ', u=' + json['u_flags'][i] + '<br>' +
+	      'Mag_auto: r=' + json['r_mag_auto'][i].toFixed(3) + ', u=' + json['u_mag_auto'][i].toFixed(3);
+	  return txt;
+      },
+      getTooltipStyle() {
+	  return { permanent: false, interactive: true, };
+      },
+      getPopupText(json, i) {
+	  return this.getLabel(json, i);
+      },
+
+  });
+  
+  
 var SdssCatalog = CatalogOverlay.extend({
 
     getColor: function(json, i) {
@@ -3048,6 +3121,16 @@ var sdsscat = new SdssCatalog('sdss-cat', 'SDSS catalog',
                               'radius': 100,
                               });
 
+  var cfiscat = new CFISCatalog('cfis-dr2', 'CFIS DR2 catalog',
+                             {'url_name': 'cfis-dr2',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'cfis-dr2',
+                              'radius': 100,
+			      'url': '{{cfis_cat_url|safe}}',
+                              });
+
+  
 {% if enable_phat %}
 var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
                              {'url_name': 'phat-clusters',
@@ -3174,6 +3257,8 @@ desifiber._url_term = 'desifiber';
 // TODO: Make url terms a constant
 
 var overlays = [
+    cfiscat,
+
     {% if enable_phat %}
     phat_clusters,
     {% endif %}    
@@ -3341,6 +3426,7 @@ console.log('testTree:', testTree);
 
 var baseTree1 = [
     findlayer('cfis-r'),
+    findlayer('cfis-u'),
     {% if enable_m33 %}
     findlayer('m33'),
     {% endif %}
@@ -3512,6 +3598,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
 {% endif %}
 
  overlayTree = overlayTree.concat([
+     findoverlay('cfis-dr2'),
      {% if enable_phat %}
      findoverlay('phat-clusters'),
      {% endif %}    

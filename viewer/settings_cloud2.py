@@ -54,6 +54,7 @@ TILE_URL = 'http://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
 #CAT_URL = 'http://%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
 CAT_URL = 'http://www.legacysurvey.org/viewer-dev/{id}/{ver}/{z}/{x}/{y}.cat.json'
+SMALL_CAT_URL = 'http://www.legacysurvey.org/viewer-dev/{id}/{ver}/cat.json?ralo=\{ralo\}&rahi=\{rahi\}&declo=\{declo\}&dechi=\{dechi\}'
 
 STATIC_TILE_URL = 'http://cloud.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 

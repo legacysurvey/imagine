@@ -58,6 +58,7 @@ tileversions = {
     'des-dr1': [1],
     'ztf': [1],
     'cfis-r': [1],
+    'cfis-u': [1],
 
     'eboss': [1,],
 
@@ -240,6 +241,35 @@ def index(req, **kwargs):
         return m33(req)
     return _index(req, **kwargs)
 
+def test(req):
+    maxZoom = 16
+    abcd = ['a','b','c','d']
+    #nersc = settings.NERSC_TILE_URL
+    nersc = 'http://{s}.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
+    nersc_sub = abcd
+    ima = settings.STATIC_TILE_URL_B
+    ima_sub = abcd
+    tileurl = settings.TILE_URL
+    
+    tileurls = {
+        'sdss': [ [1, 13, ima, ima_sub],
+                  [14, maxZoom, nersc, nersc_sub], ],
+        'cfis_r': [ [1, maxZoom, tileurl, []], ],
+        'cfis_u': [ [1, maxZoom, tileurl, []], ],
+    }
+
+    args = dict(
+        tileurls=tileurls,
+        zoom = 13,
+        layer = 'sdss',
+        ra = 227.017,
+        dec = 42.819,
+        maxZoom = 16,
+        maxNativeZoom = 16,
+    )
+    from django.shortcuts import render
+    return render(req, 'test.html', args)
+    
 def _index(req,
            default_layer = 'ls-dr8',
            default_radec = (None,None),
@@ -367,9 +397,11 @@ def _index(req,
     from urllib.parse import unquote
     #caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
     caturl = settings.CAT_URL
-    smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
+    #smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
+    smallcaturl = settings.SMALL_CAT_URL
+    cfis_cat_url = unquote(my_reverse(req, 'cat-json-pattern'))
 
-    print('Small catalog URL:', smallcaturl)
+    #print('Small catalog URL:', smallcaturl)
     
     # includes a leaflet pattern for subdomains
     tileurl = settings.TILE_URL
@@ -453,15 +485,21 @@ def _index(req,
         import traceback
         traceback.print_exc()
 
+    #tileurls = settings.TILE_URLS
+    tileurls = {}
+    for k,v in settings.TILE_URLS.items():
+        tileurls[k] = v + [[1, maxZoom, settings.TILE_URL, settings.SUBDOMAINS]]
 
     args = dict(ra=ra, dec=dec, zoom=zoom,
                 maxZoom=maxZoom,
                 galname=galname,
                 layer=layer, tileurl=tileurl,
+                tileurls=tileurls,
                 hostname_url=hostname_url,
                 uploadurl=uploadurl,
                 caturl=caturl, bricksurl=bricksurl,
                 smallcaturl=smallcaturl,
+                cfis_cat_url=cfis_cat_url,
                 namequeryurl=namequeryurl,
                 ccdsurl=ccdsurl,
                 expsurl=expsurl,
@@ -3679,10 +3717,10 @@ class ZtfLayer(RebrickedMixin, MapLayer):
 
 
 class CFISLayer(RebrickedMixin, MapLayer):
-    def __init__(self, name):
+    def __init__(self, name, band):
         super(CFISLayer, self).__init__(name, nativescale=14)
         self.pixscale = 0.186
-        self.bands = self.get_bands()
+        self.bands = [band]
         self.pixelsize = 5300
         self.maxscale = 7
 
@@ -3748,13 +3786,13 @@ class CFISLayer(RebrickedMixin, MapLayer):
         return wcs
 
     def get_bands(self):
-        return 'R'
+        return self.bands
 
     def get_rgb(self, imgs, bands, **kwargs):
         import numpy as np
         #scales = dict(g=(2,3.0), r=(1,2.0), i=(0,0.8))
 
-        scales = dict(R=(1, 10.))
+        scales = dict(R=(1, 10.), U=(1, 10.))
         rgb = sdss_rgb(imgs, bands, scales=scales)
         rgb[:,:,0] = rgb[:,:,2] = rgb[:,:,1]
         return rgb
@@ -5520,7 +5558,11 @@ def get_layer(name, default=None):
         pass
 
     if name == 'cfis-r':
-        layer = CFISLayer('cfis-r')
+        layer = CFISLayer('cfis-r', 'R')
+    elif name == 'cfis-u':
+        layer = CFISLayer('cfis-u', 'U')
+    elif name == 'cfis-dr2':
+        layer = CFISLayer('cfis-dr2', '')
 
     elif name == 'ztf':
         layer = ZtfLayer('ztf')
@@ -6029,7 +6071,10 @@ if __name__ == '__main__':
     #r = c.get('/cfis-r/1/14/16383/6759.jpg')
     #r = c.get('/cfis-r/1/15/14107/13466.jpg')
     #r = c.get('/cfis-r/1/14/7032/6732.jpg')
-    r = c.get('/cfis-r/1/13/3518/3368.jpg')
+    #r = c.get('/cfis-r/1/13/3518/3368.jpg')
+    #r = c.get('/cfis-u/1/14/16383/8214.jpg')
+    #r = c.get('/cfis-dr2/1/cat.json?ralo=0.0988&rahi=0.2226&declo=-0.3704&dechi=-0.3014#IC 3478')
+    r = c.get('/cfis-dr2/1/cat.json?ralo=359.9691&rahi=0.0309&declo=31.9854&dechi=32.0147')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
