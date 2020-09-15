@@ -115,8 +115,18 @@ def cat_cfis(req, ver, tag='cfis-dr2'):
     print('Total of', len(T))
     T = T[:1000]
 
+    color = []
+    for rflag,uflag in zip(T.r_flags, T.u_flags):
+        # -99, 0, or >0
+        ok = not((rflag > 0) or (uflag > 0))
+        if ok:
+            color.append('skyblue')
+        else:
+            color.append('gray')
+
     return HttpResponse(json.dumps(dict(
         rd=[(float(r), float(d)) for r,d in zip(T.ra, T.dec)],
+        color=color,
         r_flags=[int(i) for i in T.r_flags],
         u_flags=[int(i) for i in T.u_flags],
         cfis_id=[int(i) for i in T.cfis_id],
