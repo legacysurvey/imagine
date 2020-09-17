@@ -870,9 +870,9 @@ class MapLayer(object):
         #     #print('Approx RA,Dec range', rlo,rhi, 'Dec', d1,d2)
 
         #print('Bricks within range:', B.brickname)
-        #print('Bricks touching:', B.brickname[np.array(keep)])
         if len(keep) == 0:
             return None
+        #print('Bricks touching:', B.brickname[np.array(keep)])
         B.cut(keep)
         return B
 
@@ -1044,6 +1044,10 @@ class MapLayer(object):
         ext = self.get_fits_extension(scale, fn)
         return read_tan_wcs(fn, ext)
 
+    def get_pixel_coord_type(self, scale):
+        import numpy as np
+        return np.int16
+
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
                         scale=None, tempfiles=None):
         import numpy as np
@@ -1079,6 +1083,8 @@ class MapLayer(object):
         #     for brick in bandbricks:
         #         brickname = brick.brickname
         #         print('Will read', brickname, 'for band', band, 'scale', scale)
+
+        coordtype = self.get_pixel_coord_type(scale)
 
         rimgs = []
         for band in bands:
@@ -1188,10 +1194,15 @@ class MapLayer(object):
 
                 #print('BWCS shape', bwcs.shape, 'desired subimage shape', yhi-ylo, xhi-xlo,
                 #'subwcs shape', subwcs.shape, 'img shape', img.shape)
+                ih,iw = subwcs.shape
+                assert(np.iinfo(coordtype).max > max(ih,iw))
+                oh,ow = wcs.shape
+                assert(np.iinfo(coordtype).max > max(oh,ow))
 
                 #print('Resampling', img.shape)
                 try:
-                    Yo,Xo,Yi,Xi,[resamp] = resample_with_wcs(wcs, subwcs, [img])
+                    Yo,Xo,Yi,Xi,[resamp] = resample_with_wcs(wcs, subwcs, [img],
+                                                             intType=coordtype)
                 except OverlapError:
                     #debug('Resampling exception')
                     continue
@@ -1959,6 +1970,7 @@ class RebrickedMixin(object):
         if imgs is None:
             return None
         img = imgs[0]
+        del imgs
 
         H,W = img.shape
         # make even size
