@@ -5892,7 +5892,9 @@ if __name__ == '__main__':
     #r = c.get('/masks-dr9/1/cat.json?ralo=14.4361&rahi=14.4980&declo=-35.8660&dechi=-35.8380')
     #r = c.get('/ztf/1/14/7281/6759.jpg')
     #r = c.get('/cutout.jpg?ra=199.68&dec=29.42&layer=ztf&pixscale=1.0&size=1000')
-    r = c.get('/cutout.jpg?ra=200.0108&dec=30.0007&layer=ztf&pixscale=0.25')
+    #r = c.get('/cutout.jpg?ra=200.0108&dec=30.0007&layer=ztf&pixscale=0.25')
+    #r = c.get('/ztf/1/12/1823/2048.jpg')
+    r = c.get('/ztf/1/11/911/1023.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
