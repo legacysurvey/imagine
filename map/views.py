@@ -3601,6 +3601,8 @@ class ZtfLayer(RebrickedMixin, MapLayer):
 
     def bricks_for_band(self, bricks, band):
         #print('ZTF bricks for band: bricks', len(bricks), 'band', band)
+        if not 'filter' in bricks.get_columns():
+            return bricks
         bb = bricks[bricks.filter == ('z'+band)]
         return bb
 
@@ -3660,7 +3662,7 @@ class ZtfLayer(RebrickedMixin, MapLayer):
     def get_scaled_pattern(self):
         return os.path.join(self.scaleddir,
                             '%(scale)i%(band)s', '%(brickname).3s',
-                            'ztf-%(brickname)s-$(band)s.fits')
+                            'ztf-%(brickname)s-%(band)s.fits')
 
     def read_image(self, brick, band, scale, slc, fn=None):
         #print('ZTF read_image: brick filter:', brick.filter)

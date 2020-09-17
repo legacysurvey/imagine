@@ -1951,7 +1951,8 @@ allLayers.push(tiles);
 
 tiles = mylayer_B('ztf', 'ZTF images',
                   {'attribution': 'ZTF',
-                   'urlPatterns': [ [12, maxZoom, tile_url], ],});
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],
+                   'maxNativeZoom': 12,});
 allLayers.push(tiles);
 
 {% if enable_ps1 %}
