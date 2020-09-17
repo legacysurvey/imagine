@@ -859,18 +859,20 @@ class MapLayer(object):
             #    plt.plot(bx, by, 'r-')
         if debug_ps is not None:
             debug_ps.savefig()
-                
-        print('Looking for bricks touching WCS', wcs)
-        # DEBUG
-        if True:
-            rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
-            rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
-            r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
-            r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
-            #print('Approx RA,Dec range', rlo,rhi, 'Dec', d1,d2)
+
+        # print('Looking for bricks touching WCS', wcs)
+        # # DEBUG
+        # if True:
+        #     rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
+        #     rhi,d = wcs.pixelxy2radec(1, H/2)[-2:]
+        #     r,d1 = wcs.pixelxy2radec(W/2, 1)[-2:]
+        #     r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
+        #     #print('Approx RA,Dec range', rlo,rhi, 'Dec', d1,d2)
 
         #print('Bricks within range:', B.brickname)
-        print('Bricks touching:', B.brickname[np.array(keep)])
+        #print('Bricks touching:', B.brickname[np.array(keep)])
+        if len(keep) == 0:
+            return None
         B.cut(keep)
         return B
 
@@ -1949,10 +1951,9 @@ class RebrickedMixin(object):
         # as big but with half the scale of the image we need, then
         # smooth & bin the image and scale the WCS.
         finalwcs = self.get_scaled_wcs(brick, band, scale)
-        print('Scaled WCS:', finalwcs)
+        #print('Scaled WCS:', finalwcs)
         wcs = finalwcs.scale(2.)
-        print('Double-size WCS:', wcs)
-        
+        #print('Double-size WCS:', wcs)
         imgs = self.render_into_wcs(wcs, None, 0, 0, bands=[band], scale=scale-1,
                                     tempfiles=tempfiles)
         if imgs is None:
