@@ -2387,7 +2387,7 @@ class HscLayer(RebrickedMixin, MapLayer):
         from tractor.brightness import NanoMaggies
         zpscale = NanoMaggies.zeropointToScale(27.0)
         rgb = sdss_rgb([im/zpscale for im in imgs], bands,
-                       scales=dict(g=6.0*5., r=3.4*5., z=2.2*5.), m=0.03)
+                       scales=dict(g=(2,6.0*5.), r=(1,3.4*5.), z=(0,2.2*5.)), m=0.03)
         return rgb
 
     def get_base_filename(self, brick, band, **kwargs):

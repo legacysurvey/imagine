@@ -3026,6 +3026,24 @@ var SdssCatalog = CatalogOverlay.extend({
     
 });
 
+var HscCatalog = CatalogOverlay.extend({
+    getTooltipStyle() {
+    return { permanent: false, interactive: true, };
+    },
+    getPopupText(json, i) {
+    return this.getLabel(json, i);
+    },
+
+});
+
+var hsccosmos = new HscCatalog('hsc-dr2-cosmos', 'HSC DR2 COSMOS catalog',
+                             {'url_name': 'hsc-dr2-cosmos',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'hsc-dr2-cosmos',
+                              'radius': 100,
+                              });
+
 var sdsscat = new SdssCatalog('sdss-cat', 'SDSS catalog',
                              {'url_name': 'sdss-cat',
                               'minZoom': 11,
@@ -3237,6 +3255,7 @@ var overlays = [
     ps1cat,
     {% endif %}
     gaia2,
+    hsccosmos,
     sdsscat,
     {% if enable_spectra %}
     manga, spec, plateOverlay, specDeep2,
@@ -3584,6 +3603,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      {% if enable_ps1 %}
      findoverlay('ps1-cat'),
      {% endif %}
+     findoverlay('hsc-dr2-cosmos'),
      findoverlay('sdss-cat'),
      {% if enable_spectra %}
      { label: 'Spectroscopy',
