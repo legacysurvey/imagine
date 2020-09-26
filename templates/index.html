@@ -11,13 +11,13 @@
   ga('create', 'UA-5565065-29', 'auto');
   ga('send', 'pageview');
 </script>
-<link rel="stylesheet" href="{% static "leaflet-1.5.1.css" %}" />
-<script src="{% static "leaflet-src-1.5.1.js" %}"></script>
+<link rel="stylesheet" href="{% static "leaflet-1.7.1.css" %}" />
+<script src="{% static "leaflet-1.7.1.js" %}"></script>
 {# From https://github.com/mapbox/leaflet-pip #}
 <script src="{% static "leaflet-pip-20170913.js" %}"></script>
 {# From https://github.com/jjimenezshaw/Leaflet.Control.Layers.Tree #}
-<script src="{% static "L.Control.Layers.Tree.js" %}"></script>
-<link rel="stylesheet" href="{% static "L.Control.Layers.Tree.css" %}" />
+<script src="{% static "L.Control.Layers.Tree-1.0.0.js" %}"></script>
+<link rel="stylesheet" href="{% static "L.Control.Layers.Tree-1.0.0.css" %}" />
 <script src="{% static "jquery-3.5.1.min.js" %}"></script>
 {# From http://kartena.github.io/Leaflet.zoomslider #}
 <script src="{% static "leaflet-zoomslider-0.7.1.js" %}"></script>
@@ -999,11 +999,15 @@ var TileWatcher = L.Evented.extend({
 
     tileLoadStart: function(e) {
         var key = this._eventToKey(e);
-        //console.log('Tile load start: ' + key);
+        console.log('Tile load start: ' + key);
         if (key in this._visibleTiles) {
             //console.log('tile was already in visible tiles');
         } else {
             e.key = key;
+
+            var maxtile = 1 << e.coords.z;
+            e.coords.wrapx = e.coords.x % maxtile;
+
             //console.log('firing tilevisible: ' + key + ', event ', e);
             this._visibleTiles[key] = true;
             this.fire('tilevisible', e);
@@ -1050,15 +1054,16 @@ var TiledOverlay = CatalogOverlay.extend({
         if (!this._show) {
             return;
         }
-        console.log('Layer ' + this._name + ': tile visible');
         var coords = e.coords;
+        console.log('Layer ' + this._name + ': tile visible: z ' + coords.z + ', x,y' +
+                           coords.wrapx + ', ' + coords.y);
         if (coords.z === undefined) {
             return;
         }
         if (coords.z < this._minZoom) {
             return;
         }
-        this.load(coords.z, coords.x, coords.y);
+        this.load(coords.z, coords.wrapx, coords.y);
     },
 
     load: function(zoom, x, y) {
