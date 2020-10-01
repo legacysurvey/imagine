@@ -11,17 +11,17 @@
   ga('create', 'UA-5565065-29', 'auto');
   ga('send', 'pageview');
 </script>
-<link rel="stylesheet" href="{% static "leaflet-1.5.1.css" %}" />
-<script src="{% static "leaflet-src-1.5.1.js" %}"></script>
+<link rel="stylesheet" href="{% static "leaflet-1.7.1.css" %}" />
+<script src="{% static "leaflet-1.7.1.js" %}"></script>
 {# From https://github.com/mapbox/leaflet-pip #}
 <script src="{% static "leaflet-pip-20170913.js" %}"></script>
 {# From https://github.com/jjimenezshaw/Leaflet.Control.Layers.Tree #}
-<script src="{% static "L.Control.Layers.Tree.js" %}"></script>
-<link rel="stylesheet" href="{% static "L.Control.Layers.Tree.css" %}" />
-<script src="{% static "jquery-2.1.1.min.js" %}"></script>
+<script src="{% static "L.Control.Layers.Tree-1.0.0.js" %}"></script>
+<link rel="stylesheet" href="{% static "L.Control.Layers.Tree-1.0.0.css" %}" />
+<script src="{% static "jquery-3.5.1.min.js" %}"></script>
 {# From http://kartena.github.io/Leaflet.zoomslider #}
-<script src="{% static "leaflet-zoomslider-0.7.1.js" %}"></script>
 <link rel="stylesheet" href="{% static "leaflet-zoomslider-0.7.1.css" %}" />
+<script src="{% static "leaflet-zoomslider-0.7.1.js" %}"></script>
 {# https://github.com/jdfergason/Leaflet.Ellipse #}
 <script src="{% static "l.ellipse.js" %}"></script>
 <script src="{% static "utils.js" %}"></script>
@@ -999,11 +999,15 @@ var TileWatcher = L.Evented.extend({
 
     tileLoadStart: function(e) {
         var key = this._eventToKey(e);
-        //console.log('Tile load start: ' + key);
+        console.log('Tile load start: ' + key);
         if (key in this._visibleTiles) {
             //console.log('tile was already in visible tiles');
         } else {
             e.key = key;
+
+            var maxtile = 1 << e.coords.z;
+            e.coords.wrapx = e.coords.x % maxtile;
+
             //console.log('firing tilevisible: ' + key + ', event ', e);
             this._visibleTiles[key] = true;
             this.fire('tilevisible', e);
@@ -1050,15 +1054,16 @@ var TiledOverlay = CatalogOverlay.extend({
         if (!this._show) {
             return;
         }
-        console.log('Layer ' + this._name + ': tile visible');
         var coords = e.coords;
+        console.log('Layer ' + this._name + ': tile visible: z ' + coords.z + ', x,y' +
+                           coords.wrapx + ', ' + coords.y);
         if (coords.z === undefined) {
             return;
         }
         if (coords.z < this._minZoom) {
             return;
         }
-        this.load(coords.z, coords.x, coords.y);
+        this.load(coords.z, coords.wrapx, coords.y);
     },
 
     load: function(zoom, x, y) {
@@ -1524,7 +1529,7 @@ var map = L.map('map', {
 });
 var popup = L.popup();
 
-map.attributionControl.options.prefix = '<a href="http://legacysurvey.org/svtips/">Tips &amp; Tricks | ' +
+map.attributionControl.options.prefix = '<a href="https://www.legacysurvey.org/svtips/">Tips &amp; Tricks | ' +
      map.attributionControl.options.prefix + ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
 
 // default to 1.
@@ -1562,12 +1567,12 @@ function getcatversion(layer) {
 
 var allLayers = [];
 
-var decals_attrib = '<a href="http://legacysurvey.org">Legacy Survey</a>,' +
-    '<a href="https://www.noao.edu/image_gallery/copyright.html">&copy;</a>' +
-    ' <a href="http://noao.edu">NOAO</a>/<a href="http://www.aura-astronomy.org/">AURA</a>/<a href="http://www.nsf.gov/">NSF</a>';
-var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">(c)</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
-
-var ps1_attrib = 'Pan-STARRS1';
+var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; D.Lang / Perimeter Institute; Legacy Surveys</a>,';
+var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
+var des_attrib = '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">Dark Energy Survey</a>';
+var hsc_attrib = '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>';
+var vlass_attrib = '<a href="https://public.nrao.edu/media-use/">&copy;</a> <a href="https://public.nrao.edu/vlass/">NRAO / VLA Sky Survey</a>';
+ var ps1_attrib = 'Pan-STARRS1';
 
 var mylayer = function (name, pretty, kwargs) {
     var args = {
@@ -1666,7 +1671,8 @@ function split_layer(name, pretty, decsplit,
 };
                                             
 tiles = mylayer_B('des-dr1', 'DES DR1',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+                  {'attribution': des_attrib,
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 
@@ -1949,6 +1955,12 @@ tiles = mylayer_B('sdss', 'SDSS images',
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+tiles = mylayer_B('ztf', 'ZTF images',
+                  {'attribution': 'ZTF',
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],
+                   'maxNativeZoom': 12,});
+allLayers.push(tiles);
+
 {% if enable_ps1 %}
 tiles = mylayer_B('ps1', 'PS1 images',
                   {'attribution': ps1_attrib,
@@ -1959,14 +1971,14 @@ allLayers.push(tiles);
 
 {% if enable_hsc_dr2 %}
 tiles = mylayer_B('hsc-dr2', 'HSC DR2 images',
-                  {//'attribution': sdss_attrib,
+                  {'attribution': hsc_attrib,
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
 {% if enable_vlass %}
 tiles = mylayer_B('vlass1.2', 'VLASS 1.2 images',
-                  {'attribution': 'NRAO',
+                  {'attribution': vlass_attrib,
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
@@ -3020,6 +3032,24 @@ var SdssCatalog = CatalogOverlay.extend({
     
 });
 
+var HscCatalog = CatalogOverlay.extend({
+    getTooltipStyle() {
+    return { permanent: false, interactive: true, };
+    },
+    getPopupText(json, i) {
+    return this.getLabel(json, i);
+    },
+
+});
+
+var hsccosmos = new HscCatalog('hsc-dr2-cosmos', 'HSC DR2 COSMOS catalog',
+                             {'url_name': 'hsc-dr2-cosmos',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'hsc-dr2-cosmos',
+                              'radius': 100,
+                              });
+
 var sdsscat = new SdssCatalog('sdss-cat', 'SDSS catalog',
                              {'url_name': 'sdss-cat',
                               'minZoom': 11,
@@ -3231,6 +3261,7 @@ var overlays = [
     ps1cat,
     {% endif %}
     gaia2,
+    hsccosmos,
     sdsscat,
     {% if enable_spectra %}
     manga, spec, plateOverlay, specDeep2,
@@ -3419,6 +3450,7 @@ var baseTree1 = [
         label: 'More surveys',
         children: [
             findlayer('sdss'),
+            findlayer('ztf'),
             {% if enable_des_dr1 %}
             findlayer('des-dr1'),
             {% endif %}
@@ -3577,6 +3609,7 @@ for (var i=0,len=overlays.length; i<len; i++) {
      {% if enable_ps1 %}
      findoverlay('ps1-cat'),
      {% endif %}
+     findoverlay('hsc-dr2-cosmos'),
      findoverlay('sdss-cat'),
      {% if enable_spectra %}
      { label: 'Spectroscopy',

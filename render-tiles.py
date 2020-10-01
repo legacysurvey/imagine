@@ -198,7 +198,7 @@ def top_levels(mp, opt):
                     'eboss',
                     'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6',
                     'unwise-cat-model',
-                    'galex', 'sdss2', 'wssa',
+                    'galex', 'sdss2', 'wssa', 'ztf',
                     'ls-dr56', 'ls-dr67',
                     'vlass1.2'] or True:
         import pylab as plt
@@ -227,6 +227,8 @@ def top_levels(mp, opt):
             bands = 'gri'
         elif opt.kind == 'galex':
             bands = ['n','f']
+        elif opt.kind == 'ztf':
+            bands = 'gri'
         elif opt.kind == 'wssa':
             bands = ['x']
         elif 'vlass' in opt.kind:
@@ -703,7 +705,7 @@ def main():
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                            'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
-                           'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2']
+                           'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'ztf']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
               or 'dr9f' in opt.kind
@@ -731,6 +733,8 @@ def main():
             opt.bands = 'nf'
         if 'unwise' in opt.kind and opt.bands is None:
             opt.bands = '12'
+        if 'ztf' in opt.kind and opt.bands is None:
+            opt.bands = 'gri'
         if 'vlass' in opt.kind:
             opt.bands = [1]
 
@@ -884,7 +888,7 @@ def main():
                         'dr9sv-north', 'dr9sv-north-model', 'dr9sv-north-resid',
                         'dr9sv', 'dr9sv-model', 'dr9sv-resid',
                         'fornax', 'fornax-model', 'fornax-resid',
-                         'vlass1.2',
+                         'vlass1.2', 'ztf',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')

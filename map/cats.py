@@ -24,6 +24,7 @@ if not settings.DEBUG_LOGGING:
         pass
 
 catversions = {
+    'hsc-dr2-cosmos': [1,],
     'dr9sv': [1,],
     'dr9sv-north': [1,],
     'dr9sv-south': [1,],
@@ -329,6 +330,7 @@ def get_random_galaxy(layer=None):
     elif layer == 'hsc2':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
     else:
+        drnum = 8
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr8.fits')
 
 
@@ -1051,6 +1053,40 @@ def cat_gaia_mask(req, ver):
     return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius, color=color)),
                         content_type='application/json')
 
+def cat_hsc_dr2_cosmos(req, ver):
+    import json
+    import numpy as np
+    fn = os.path.join(settings.DATA_DIR, 'hsc-dr2', 'cosmos-cat.kd.fits')
+    T = cat_kd(req, ver, 'hsc-dr2-cosmos', fn)
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])),
+                            content_type='application/json')
+
+    if len(T) > 5000:
+        T = T[:5000]
+
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    names = []
+    psf_g = 30. -2.5*np.log10(T.g_psfflux_flux)
+    psf_r = 30. -2.5*np.log10(T.r_psfflux_flux)
+    psf_i = 30. -2.5*np.log10(T.i_psfflux_flux)
+    psf_z = 30. -2.5*np.log10(T.z_psfflux_flux)
+    cm_g = 30. -2.5*np.log10(T.g_cmodel_flux)
+    cm_r = 30. -2.5*np.log10(T.r_cmodel_flux)
+    cm_i = 30. -2.5*np.log10(T.i_cmodel_flux)
+    cm_z = 30. -2.5*np.log10(T.z_cmodel_flux)
+    # in the cosmos region it only takes values 0.0 and 1.0
+    e = (T.i_extendedness_value > 0.5)
+    color = ['orange' if ext else '#3388ff' for ext in e]
+    g = np.where(e, cm_g, psf_g)
+    r = np.where(e, cm_r, psf_r)
+    i = np.where(e, cm_i, psf_i)
+    z = np.where(e, cm_z, psf_z)
+    for ext,gg,rr,ii,zz in zip(e,g,r,i,z):
+        names.append('%s g=%.2f, r=%.2f, i=%.2f, z=%.2f' % ('Galaxy' if ext else 'Star', gg, rr, ii, zz))
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, color=color)),
+                        content_type='application/json')
+
 def cat_kd(req, ver, tag, fn, racol=None, deccol=None):
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
@@ -1065,7 +1101,7 @@ def cat_kd(req, ver, tag, fn, racol=None, deccol=None):
     if T is None:
         debug('No objects in query')
         return None
-    debug(len(T), 'spectra')
+    #debug(len(T), 'spectra')
     if racol is not None:
         T.ra = T.get(racol)
     if deccol is not None:
@@ -1076,8 +1112,7 @@ def cat_kd(req, ver, tag, fn, racol=None, deccol=None):
         T.cut(np.logical_or(T.ra > ralo, T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
     else:
         T.cut((T.ra > ralo) * (T.ra < rahi) * (T.dec > declo) * (T.dec < dechi))
-    debug(len(T), 'in cut')
-
+    #debug(len(T), 'in cut')
     return T
 
 def radecbox_to_wcs(ralo, rahi, declo, dechi):
@@ -1261,8 +1296,19 @@ def cat_bright(req, ver):
                os.path.join(settings.DATA_DIR, 'bright.fits'))
 
 def cat_tycho2(req, ver):
-    return cat(req, ver, 'tycho2',
-               os.path.join(settings.DATA_DIR, 'tycho2.fits'))
+    #return cat(req, ver, 'tycho2',
+    #           os.path.join(settings.DATA_DIR, 'tycho2.fits'))
+    import json
+    T = cat_kd(req, ver, 'tycho2', os.path.join(settings.DATA_DIR, 'tycho2-sub.kd.fits'))
+    if T is None:
+        rtn = dict(rd=[], name=[])
+    else:
+        rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+        rtn = dict(rd=rd)
+        if 'name' in T.columns():
+            names = [t.strip() for t in T.name]
+            rtn['name'] = names
+    return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def cat_ngc(req, ver):
     return cat(req, ver, 'ngc',

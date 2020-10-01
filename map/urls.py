@@ -14,6 +14,8 @@ urlpatterns = [
     url(r'^gfas', views.gfas),
     url(r'^ci', views.ci),
 
+    url(r'^hsc-dr2-cosmos/(\d+)/cat.json', cats.cat_hsc_dr2_cosmos),
+
     url(r'^gaia-stars-for-wcs', cats.gaia_stars_for_wcs),
 
     url(r'^masks-dr8/(\d+)/cat.json', cats.cat_gaia_mask),
