@@ -1529,7 +1529,7 @@ var map = L.map('map', {
 });
 var popup = L.popup();
 
-map.attributionControl.options.prefix = '<a href="http://legacysurvey.org/svtips/">Tips &amp; Tricks | ' +
+map.attributionControl.options.prefix = '<a href="https://www.legacysurvey.org/svtips/">Tips &amp; Tricks | ' +
      map.attributionControl.options.prefix + ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
 
 // default to 1.
@@ -1567,12 +1567,12 @@ function getcatversion(layer) {
 
 var allLayers = [];
 
-var decals_attrib = '<a href="http://legacysurvey.org">Legacy Survey</a>,' +
-    '<a href="https://www.noao.edu/image_gallery/copyright.html">&copy;</a>' +
-    ' <a href="http://noao.edu">NOAO</a>/<a href="http://www.aura-astronomy.org/">AURA</a>/<a href="http://www.nsf.gov/">NSF</a>';
-var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">(c)</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
-
-var ps1_attrib = 'Pan-STARRS1';
+var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; D.Lang / Perimeter Institute; Legacy Surveys</a>,';
+var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
+var des_attrib = '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">Dark Energy Survey</a>';
+var hsc_attrib = '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>';
+var vlass_attrib = '<a href="https://public.nrao.edu/media-use/">&copy;</a> <a href="https://public.nrao.edu/vlass/">NRAO / VLA Sky Survey</a>';
+ var ps1_attrib = 'Pan-STARRS1';
 
 var mylayer = function (name, pretty, kwargs) {
     var args = {
@@ -1671,7 +1671,8 @@ function split_layer(name, pretty, decsplit,
 };
                                             
 tiles = mylayer_B('des-dr1', 'DES DR1',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+                  {'attribution': des_attrib,
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 
@@ -1970,14 +1971,14 @@ allLayers.push(tiles);
 
 {% if enable_hsc_dr2 %}
 tiles = mylayer_B('hsc-dr2', 'HSC DR2 images',
-                  {//'attribution': sdss_attrib,
+                  {'attribution': hsc_attrib,
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
 {% if enable_vlass %}
 tiles = mylayer_B('vlass1.2', 'VLASS 1.2 images',
-                  {'attribution': 'NRAO',
+                  {'attribution': vlass_attrib,
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
