@@ -100,7 +100,7 @@ var subdomains = {{ subdomains|safe }};
 var static_tile_url_B = '{{ static_tile_url_B|safe }}';
 var subdomains_B = {{ subdomains_B|safe }};
 
-var aws_tile_url = 'http://{id}.legacysurvey.org/{z}/{x}/{y}.jpg';
+var aws_tile_url = 'https://s3.us-west-1.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg';
 var max_aws_zoom = 14;
 
 var minZoom = 1;
