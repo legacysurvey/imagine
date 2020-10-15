@@ -1144,7 +1144,7 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 });
 
-var decals_getLayer = function(result, radius, defaultcolor) {
+var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
     var rdlist = result['rd'];
     var objtype = result['sourcetype'];
     var fluxes = result['fluxes'];
@@ -1180,15 +1180,15 @@ var decals_getLayer = function(result, radius, defaultcolor) {
             // PSF
             if (objtype[i] == 'P') {
                 color = '#9AFE2E'; //#D8F781'; //'green';
-            } else if ((objtype[i] == 'S') || (objtype[i] == 'R')) {
-	            // Simple / Rex
+            } else if (objtype[i] == 'R') {
+	            // Rex
                 color = 'orange';
-                //if (objtype[i] == 'S') {
             } else if (objtype[i] == 'D') {
                 color = 'red';
             } else if (objtype[i] == 'E') {
                 color = '#58ACFA'; // blue
-            } else if (objtype[i] == 'C') {
+            } else if ((objtype[i] == 'C') || (objtype[i] == 'S')) {
+                // COMP / SER
                 color = '#DA81F5'; // magenta
             }
         }
@@ -1211,8 +1211,13 @@ var decals_getLayer = function(result, radius, defaultcolor) {
         if (labels === undefined) {
         } else {
             var txt = labels[i];
+            if (typeof(tooltipStyle) != 'undefined') {
+              ttstyle = tooltipStyle;
+            } else {
+              ttstyle = { permanent: true, interactive: true };
+            }
             if (txt.length > 0) {
-                circ.bindTooltip(txt, { permanent: true, interactive: true });
+                circ.bindTooltip(txt, ttstyle);
             }
         }
 
