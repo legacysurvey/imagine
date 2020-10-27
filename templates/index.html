@@ -1574,10 +1574,13 @@ var allLayers = [];
 
 var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; D.Lang / Perimeter Institute; Legacy Surveys</a>,';
 var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
-var des_attrib = '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">Dark Energy Survey</a>';
+var des_attrib = '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">The Dark Energy Survey Data Release 1</a>';
 var hsc_attrib = '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>';
 var vlass_attrib = '<a href="https://public.nrao.edu/media-use/">&copy;</a> <a href="https://public.nrao.edu/vlass/">NRAO / VLA Sky Survey</a>';
- var ps1_attrib = 'Pan-STARRS1';
+var galex_attrib = '<a href="https://www.jpl.nasa.gov/imagepolicy/">&copy;</a> <a href="http://www.galex.caltech.edu/">GALEX, Courtesy NASA/JPL-Caltech</a>';
+var halpha_attrib = '<a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">&copy;</a> <a href="https://amundsen.swarthmore.edu/SHASSA/">SHASSA</a>/<a href="https://www1.phys.vt.edu/~halpha/">VTSS</a>/<a href="http://www.astro.wisc.edu/wham-site/">WHAM</a> <a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">composite by Doug Finkbeiner (skymaps.info)</a>';
+var sfd_attrib = '<a href="https://dustmaps.readthedocs.io/en/latest/maps.html#sfd">&copy; SFD</a>';
+var ps1_attrib = 'Pan-STARRS1';
 
 var mylayer = function (name, pretty, kwargs) {
     var args = {
@@ -2015,11 +2018,13 @@ allLayers.push(tiles);
 
 tiles = mylayer_B('galex', 'GALEX',
                 {'maxNativeZoom': 12,
+                 'attribution': galex_attrib,
                  'urlPatterns': [ [10, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('sfd', 'SFD dust map',
                 {'maxNativeZoom':10,
+                 'attribution': sfd_attrib,
                  'urlPatterns': [ [7, 10, tile_url],], });
 allLayers.push(tiles);
 
@@ -2030,6 +2035,7 @@ allLayers.push(tiles);
 
 tiles = mylayer_B('halpha', 'Halpha map',
                 {'maxNativeZoom':10,
+                 'attribution': halpha_attrib,
                  'urlPatterns': [ [7, 10, tile_url],],});
 allLayers.push(tiles);
 
