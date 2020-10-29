@@ -1572,7 +1572,8 @@ function getcatversion(layer) {
 
 var allLayers = [];
 
-var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang / Perimeter Institute</a>';
+var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>';
+var unwise_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; unWISE / NASA/JPL-Caltech / D.Lang (Perimeter Institute)</a>';
 var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
 var des_attrib = '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">The Dark Energy Survey Data Release 1</a>';
 var hsc_attrib = '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>';
@@ -1995,16 +1996,19 @@ allLayers.push(tiles);
 {% if enable_unwise %}
 tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
                 {'maxNativeZoom': 12,
+                 'attribution': unwise_attrib,
                  'urlPatterns': [ [6, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
                 {'maxNativeZoom': 12,
+                 'attribution': unwise_attrib,
                  'urlPatterns': [ [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
                 {'maxNativeZoom': 12,
+                 'attribution': unwise_attrib,
                  'urlPatterns': [ [6, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
