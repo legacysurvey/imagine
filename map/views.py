@@ -233,19 +233,25 @@ def is_m33(req):
     host = req.META.get('HTTP_HOST', None)
     return (host == 'm33.legacysurvey.org')
 
+def is_unions(req):
+    host = req.META.get('HTTP_HOST', None)
+    return (host == 'unions.legacysurvey.org') or (host == 'cloud.legacysurvey.org')
+
 def index(req, **kwargs):
     print('Host is', req.META.get('HTTP_HOST', None))
     if is_decaps(req):
         return decaps(req)
     if is_m33(req):
         return m33(req)
+    if is_unions(req):
+        return unions(req)
     return _index(req, **kwargs)
 
 def test(req):
     maxZoom = 16
     abcd = ['a','b','c','d']
     #nersc = settings.NERSC_TILE_URL
-    nersc = 'http://{s}.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
+    nersc = 'https://{s}.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
     nersc_sub = abcd
     ima = settings.STATIC_TILE_URL_B
     ima_sub = abcd
@@ -527,6 +533,19 @@ def _index(req,
     # (it's not supposed to be **args, trust me)
     return render(req, 'index.html', args)
 
+def unions(req):
+    return _index(req,
+                  default_layer='cfis-r',
+                  #default_radec=(211.389, 54.461),
+                  default_radec=(226.4879, 42.2253),
+                  default_zoom=14,
+                  maxZoom=16,
+                  maxNativeZoom = 16,
+                  #rooturl=settings.ROOT_URL + '/m33',
+                  enable_desi_footprint=False,
+                  enable_desi_targets=False,
+                  #enable_spectra=False,
+    )
 
 def decaps(req):
     return _index(req,
