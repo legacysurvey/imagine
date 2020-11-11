@@ -122,6 +122,10 @@ tileversions = {
     'dr9k-south': [1, 2],
     'dr9k-south-model': [1, 2],
     'dr9k-south-resid': [1, 2],
+
+    'ls-dr9-north': [1],
+    'ls-dr9-north-model': [1],
+    'ls-dr9-north-resid': [1],
 }
 
 test_layers = []
@@ -132,6 +136,22 @@ try:
             tileversions[key] = [1,]
 except:
     pass
+
+# tileversions['dr9m-north'].append(2)
+# tileversions['dr9m-north-model'].append(2)
+# tileversions['dr9m-north-resid'].append(2)
+
+def tst(req):
+    from django.shortcuts import render
+    return render(req, 'tst.html')
+
+def tst(req):
+    from django.shortcuts import render
+    return render(req, 'tst.html')
+
+def cat(req):
+    from django.shortcuts import render
+    return render(req, 'cat.html')
 
 def my_reverse(req, *args, **kwargs):
     ### FIXME -- does this work for decaps.legacysurvey.org ??
@@ -281,6 +301,20 @@ def _index(req,
         enable_dr9sv_south_models = settings.ENABLE_DR9SV,
         enable_dr9sv_south_resids = settings.ENABLE_DR9SV,
         enable_dr9sv_south_overlays = settings.ENABLE_DR9SV,
+
+        enable_dr9 = settings.ENABLE_DR9,
+        enable_dr9_overlays = settings.ENABLE_DR9,
+        enable_dr9_models = settings.ENABLE_DR9_MODELS,
+        enable_dr9_resids = settings.ENABLE_DR9_RESIDS,
+        enable_dr9_north = settings.ENABLE_DR9_NORTH,
+        enable_dr9_north_models = settings.ENABLE_DR9_NORTH_MODELS,
+        enable_dr9_north_resids = settings.ENABLE_DR9_NORTH_RESIDS,
+        enable_dr9_north_overlays = settings.ENABLE_DR9_NORTH,
+        enable_dr9_south = settings.ENABLE_DR9_SOUTH,
+        enable_dr9_south_models = settings.ENABLE_DR9_SOUTH_MODELS,
+        enable_dr9_south_resids = settings.ENABLE_DR9_SOUTH_RESIDS,
+        enable_dr9_south_overlays = settings.ENABLE_DR9_SOUTH,
+
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         enable_des_dr1 = settings.ENABLE_DES_DR1,
@@ -4102,6 +4136,9 @@ def get_survey(name):
                   'decals-dr7', 'mzls+bass-dr6']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
+    elif name in ['ls-dr9-north', 'ls-dr9-south']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+
     elif name == 'dr9sv':
         north = get_survey('dr9sv-north')
         north.layer = 'dr9sv-north'
@@ -5908,7 +5945,9 @@ if __name__ == '__main__':
     #r = c.get('/cutout.jpg?ra=199.68&dec=29.42&layer=ztf&pixscale=1.0&size=1000')
     #r = c.get('/cutout.jpg?ra=200.0108&dec=30.0007&layer=ztf&pixscale=0.25')
     #r = c.get('/ztf/1/12/1823/2048.jpg')
-    r = c.get('/ztf/1/11/911/1023.jpg')
+    #r = c.get('/ztf/1/11/911/1023.jpg')
+    #r = c.get('/dr9m-north/1/12/2478/1493.jpg')
+    r = c.get('/dr9m-north/1/13/3520/3006.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

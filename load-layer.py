@@ -143,15 +143,16 @@ def main():
 
     rsync = False
     if True:
-        indir = '/global/cscratch1/sd/ziyaoz/dr9m/north/'
+        #indir = '/global/cscratch1/sd/ziyaoz/dr9m/north/'
+        indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/north'
         name = 'dr9m-north'
         pretty = 'DR9m-north'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
     else:
-        indir = '/global/cscratch1/sd/ziyaoz/dr9k/south/'
-        name = 'dr9k-south'
-        pretty = 'DR9k-south'
-        survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9k'
+        indir = '/global/cscratch1/sd/ziyaoz/dr9m/south/'
+        name = 'dr9m-south'
+        pretty = 'DR9m-south'
+        survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
 
     #update = True
     update = False

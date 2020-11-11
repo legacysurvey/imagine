@@ -1531,6 +1531,7 @@ var map = L.map('map', {
     zoomsliderControl: false,
     zoomControl: false,
     //worldCopyJump: true,
+    tap: false,
 });
 var popup = L.popup();
 
@@ -1552,6 +1553,9 @@ var tileversions = {
     'dr9k-south': 2,
     'dr9k-south-model': 2,
     'dr9k-south-resid': 2,
+    //'ls-dr9-north': 2,
+    //'ls-dr9-north-model': 2,
+    //'ls-dr9-north-resid': 2,
 };
 var catversions  = {
 };
@@ -1679,6 +1683,96 @@ tiles = mylayer_B('des-dr1', 'DES DR1',
                   {'attribution': des_attrib,
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+
+
+
+
+
+{% if enable_dr9 %}
+tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
+                    32.375,
+                    // North
+                    //'dr9-north', [ [0, maxZoom, tile_url], ],
+                    'ls-dr9-north', [ [0, max_aws_zoom, aws_tile_url], ], {'id':'dr9-north'},
+                    // Mid
+		            //'dr9', [ [0, maxZoom, tile_url], ],
+		            'ls-dr9', [ [0, max_aws_zoom, aws_tile_url], ], {'id':'dr9'},
+                    // South
+                    //'dr9-south', [ [0, maxZoom, tile_url], ]
+                    'ls-dr9-south', [ [0, max_aws_zoom, aws_tile_url], ], {'id':'dr9-south'},
+                    { 'maxNativeZoom': max_aws_zoom }
+                   );
+allLayers.push(tiles);
+{% if enable_dr9_models %}
+tiles = split_layer('ls-dr9-model', 'Legacy Surveys DR9 models',
+                    32.375,
+                    // North
+                    'ls-dr9-north-model', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'ls-dr9-model', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'ls-dr9-south-model', [ [0, maxZoom, tile_url], ], {},
+                    { 'maxNativeZoom': max_aws_zoom }
+                   );
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr9_resids %}
+tiles = split_layer('ls-dr9-resid', 'Legacy Surveys DR9 residuals',
+                    32.375,
+                    // North
+                    'ls-dr9-north-resid', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'ls-dr9-resid', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'ls-dr9-south-resid', [ [0, maxZoom, tile_url], ], {},
+                    { 'maxNativeZoom': max_aws_zoom, },
+                   );
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+{% if enable_dr9_north %}
+tiles = mylayer_B('ls-dr9-north', 'Legacy Surveys DR9-north images',
+                  {
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],
+                   //'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
+                   //'maxNativeZoom':max_aws_zoom,
+                   //'id': 'dr9-north'
+                  });
+allLayers.push(tiles);
+{% if enable_dr9_north_models %}
+tiles = mylayer_B('ls-dr9-north-model', 'Legacy Surveys DR9-north models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr9_north_resids %}
+tiles = mylayer_B('ls-dr9-north-resid', 'Legacy Surveys DR9-north residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+{% if enable_dr9_south %}
+tiles = mylayer_B('ls-dr9-south', 'Legacy Surveys DR9-south images',
+                  {'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
+                   'maxNativeZoom':max_aws_zoom,
+                   'id': 'dr9-south'});
+allLayers.push(tiles);
+{% if enable_dr9_south_models %}
+tiles = mylayer_B('ls-dr9-south-model', 'Legacy Surveys DR9-south models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr9_south_resids %}
+tiles = mylayer_B('ls-dr9-south-resid', 'Legacy Surveys DR9-south residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+
+
+
 
 
 {% if enable_dr9sv %}
@@ -3361,6 +3455,24 @@ var baseTree1 = [
     {% endif %}
     {% if enable_phat %}
     findlayer('phat'),
+    {% endif %}
+    {% if enable_dr9 %}
+    findlayer('ls-dr9', [
+        findlayer('ls-dr9-model'),
+        findlayer('ls-dr9-resid'),
+    ]),
+    {% endif %}
+    {% if enable_dr9_north %}
+    findlayer('ls-dr9-north', [
+        findlayer('ls-dr9-north-model'),
+        findlayer('ls-dr9-north-resid'),
+    ]),
+    {% endif %}
+    {% if enable_dr9_south %}
+    findlayer('ls-dr9-south', [
+        findlayer('ls-dr9-south-model'),
+        findlayer('ls-dr9-south-resid'),
+    ]),
     {% endif %}
     {% if enable_dr9sv %}
     findlayer('dr9sv', [
