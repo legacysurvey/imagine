@@ -1,12 +1,12 @@
-# DECaLS-web
+# Imagine Sky Viewer
 
 A web service to allow interactive browsing of data from the DESI
 Imaging Legacy Surveys (and other surveys) data releases.
 
-Uses LeafletJS on the client side, Django on the server side, and a
-whack of javascript in between.
+Uses the LeafletJS library on the client side, the Django Python web framework on the server side, and a
+whack of code in between.
 
-Running at http://legacysurvey.org/viewer
+Running at https://www.legacysurvey.org/viewer
 
 
 ## Running a copy
