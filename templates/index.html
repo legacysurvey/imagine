@@ -2157,7 +2157,7 @@ if (!added) {
 // may be overridden by 'qstr' below.
 var last_layer_name = layer_name;
 
-function doGoto() {
+function doGoto(fly) {
     ra  = $('#gotora').val();
     dec = $('#gotodec').val();
     zoom = $('#gotozoom').val();
@@ -2166,13 +2166,30 @@ function doGoto() {
     dec = parseFloat(dec);
     zoom = parseInt(zoom);
     console.log('RA ' + ra + ', Dec ' + dec + ', Zoom ' + zoom);
-    map.setView(L.latLng(dec2lat(dec), ra2long_C(ra, 0)), zoom);
+    if (fly) {
+      ra_c = long2ra(map.getCenter().lng);
+      duration = $('#gotodur').val();
+      dest = L.latLng(dec2lat(dec), ra2long_C(ra, ra_c));
+      console.log('Fly from', map.getCenter(), 'to', dest, 'zoom', zoom, 'duration', duration);
+      updateInfoBox(map.getCenter());
+      map.flyTo(dest, zoom,
+                { animate:true, duration:duration });
+    } else {
+      map.setView(L.latLng(dec2lat(dec), ra2long_C(ra, 0)), zoom);
+    }
 }
 
 function submitGoto(e) {
     console.log('submit goto ' + typeof(e) + getkeys(e));
     e.stopPropagation();
-    doGoto();
+    doGoto(false);
+}
+
+function submitGotoFly(e) {
+    console.log('submit goto fly ' + typeof(e) + getkeys(e));
+    e.stopPropagation();
+    infoBoxActive = true;
+    doGoto(true);
 }
 
 function cancelGoto(e) {
@@ -2185,7 +2202,13 @@ function cancelGoto(e) {
 function gotoKeypress(e) {
     if (e.which == 13) {
 	    // Enter key
-	    doGoto();
+	    doGoto(false);
+    }
+}
+function gotoDurKeypress(e) {
+    if (e.which == 13) {
+	    // Enter key (in Duration box)
+	    doGoto(true);
     }
 }
 
@@ -2214,14 +2237,19 @@ function infoBoxClicked(e) {
 	    + '" size=6>, '
 	    + 'zoom <input name="zoom" id="gotozoom" value="' + map.getZoom() + '" size=4>'
 	    + '<br/><br/>'
-	    + '<input type="button" value="Go" id="gotosubmit">'
-	    + '<input type="button" value="Cancel" id="gotocancel">'
+	    + '<input type="button" value="Go" class="gotobutton" id="gotosubmit">'
+	    + '<input type="button" value="Cancel" class="gotobutton" id="gotocancel">'
+        + '<br/><br/>'
+	    + 'Duration: <input name="dur" id="gotodur" value="5" size="4"> '
+        + '<input type="button" value="Fly" class="gotobutton" id="gotofly">'
 	    + '</form></center>';
     $('#gotosubmit').click(submitGoto);
+    $('#gotofly').click(submitGotoFly);
     $('#gotocancel').click(cancelGoto);
     $('#gotora').keypress(gotoKeypress);
     $('#gotodec').keypress(gotoKeypress);
     $('#gotozoom').keypress(gotoKeypress);
+    $('#gotodur').keypress(gotoDurKeypress);
 }
 
 var infoBoxActive = true;

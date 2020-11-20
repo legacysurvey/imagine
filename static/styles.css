@@ -50,10 +50,7 @@
 }
 */
 
-#gotosubmit {
-    font-size: 100%;
-}
-#gotocancel {
+.gotobutton {
     font-size: 100%;
 }
 
