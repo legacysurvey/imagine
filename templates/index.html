@@ -2167,9 +2167,9 @@ function doGoto(fly) {
     zoom = parseInt(zoom);
     console.log('RA ' + ra + ', Dec ' + dec + ', Zoom ' + zoom);
     if (fly) {
-      ra_c = long2ra(map.getCenter().lng);
+      clong = map.getCenter().lng;
       duration = $('#gotodur').val();
-      dest = L.latLng(dec2lat(dec), ra2long_C(ra, ra_c));
+      dest = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
       console.log('Fly from', map.getCenter(), 'to', dest, 'zoom', zoom, 'duration', duration);
       updateInfoBox(map.getCenter());
       map.flyTo(dest, zoom,
