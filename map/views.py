@@ -1127,7 +1127,7 @@ class MapLayer(object):
             bandbricks = self.bricks_for_band(bricks, band)
             for brick in bandbricks:
                 brickname = brick.brickname
-                print('Reading', brickname, 'band', band, 'scale', scale)
+                #print('Reading', brickname, 'band', band, 'scale', scale)
                 # call get_filename to possibly generate scaled version
                 fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
                 print('Reading', brickname, 'band', band, 'scale', scale, '-> fn', fn)
@@ -2501,7 +2501,7 @@ class LegacySurveySplitLayer(MapLayer):
         for zoom in range(0, 18):
             n = 2**zoom
             y = int(fy * n)
-            print('Zoom', zoom, '-> y', y)
+            #print('Zoom', zoom, '-> y', y)
             X = get_tile_wcs(zoom, 0, y)
             wcs = X[0]
             ok,rr,dd = wcs.pixelxy2radec([1,1], [1,256])
