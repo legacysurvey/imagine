@@ -81,3 +81,9 @@ test_layers.append(("dr9m-south-model", "DR9m-south models"))
 test_layers.append(("dr9m-south-resid", "DR9m-south residuals"))
 test_cats.append(("dr9m-south", "Catalog: DR9m south"))
 
+
+test_layers.append(("dr9m-south", "DR9m-south images"))
+
+test_layers.append(("dr9m-south-model", "DR9m-south models"))
+
+test_layers.append(("dr9m-south-resid", "DR9m-south residuals"))

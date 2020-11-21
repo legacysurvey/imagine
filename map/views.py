@@ -1540,58 +1540,34 @@ class MapLayer(object):
                 return None
         return bb
 
-    def get_cutout(self, req, fits=False, jpeg=False, outtag=None, tempfiles=None):
+    def write_cutout(self, ra, dec, pixscale, width, height, out_fn,
+                     bands=None,
+                     fits=False, jpeg=False,
+                     subimage=False,
+                     tempfiles=None):
+        import numpy as np
+        import fitsio
+        native_pixscale = self.pixscale
+        native_zoom = self.nativescale
         hdr = None
         if fits:
             import fitsio
             hdr = fitsio.FITSHDR()
             self.populate_fits_cutout_header(hdr)
 
-        native_pixscale = self.pixscale
-        native_zoom = self.nativescale
-
-        ra  = float(req.GET['ra'])
-        dec = float(req.GET['dec'])
-        pixscale = float(req.GET.get('pixscale', self.pixscale))
-        maxsize = 3000
-        size   = min(int(req.GET.get('size',    256)), maxsize)
-        width  = min(int(req.GET.get('width',  size)), maxsize)
-        height = min(int(req.GET.get('height', size)), maxsize)
-        bands = req.GET.get('bands', None)
-
-        # For retrieving a single-CCD cutout, not coadd
-        #ccd = req.GET.get('ccd', None)
-        #decam-432057-S26
-
-        if not 'pixscale' in req.GET and 'zoom' in req.GET:
-            zoom = int(req.GET.get('zoom'))
-            pixscale = pixscale * 2**(native_zoom - zoom)
-            print('Request has zoom=', zoom, ': setting pixscale=', pixscale)
-
-        if bands is not None:
-            bands = self.parse_bands(bands)
-        if bands is None:
-            bands = self.get_bands()
-
-
-        if 'subimage' in req.GET:
+        if subimage:
             from astrometry.libkd.spherematch import match_radec
-            import tempfile
-            import numpy as np
-            import fitsio
             bricks = self.get_bricks()
             # HACK
             #brickrad = 3600. * 0.262 / 2 * np.sqrt(2.) / 3600.
             I,J,d = match_radec(ra, dec, bricks.ra, bricks.dec, 1., nearest=True)
             if len(I) == 0:
-                return HttpResponse('no overlap')
+                raise RuntimeError('no overlap')
             brick = bricks[J[0]]
             print('RA,Dec', ra,dec, 'in brick', brick.brickname)
             scale = 0
-            f,outfn = tempfile.mkstemp(suffix='.fits')
-            os.close(f)
-            os.unlink(outfn)
-            fitsio.write(outfn, None, header=hdr, clobber=True)
+
+            fitsio.write(out_fn, None, header=hdr, clobber=True)
             for band in bands:
                 fn = self.get_filename(brick, band, scale)
                 print('Image filename', fn)
@@ -1622,18 +1598,13 @@ class MapLayer(object):
                 hdr['BAND'] = band
                 subwcs.add_to_header(hdr)
                 # Append image to FITS file
-                fitsio.write(outfn, img, header=hdr)
+                fitsio.write(out_fn, img, header=hdr)
                 # Add invvar
                 hdr['IMAGETYP'] = 'invvar'
-                fitsio.write(outfn, iv, header=hdr)
-            fn = 'cutout_%.4f_%.4f.fits' % (ra,dec)
-            return send_file(outfn, 'image/fits', unlink=True, filename=fn)
-
+                fitsio.write(out_fn, iv, header=hdr)
+            return
 
         from astrometry.util.util import Tan
-        import numpy as np
-        import fitsio
-        import tempfile
     
         ps = pixscale / 3600.
         raps = -ps
@@ -1648,21 +1619,23 @@ class MapLayer(object):
 
         xtile = ytile = -1
 
-        rtn = self.get_tile(req, None, zoom, xtile, ytile, wcs=wcs, get_images=fits,
-                             savecache=False, bands=bands, tempfiles=tempfiles)
-        if jpeg:
-            return rtn
-        ims = rtn
+        #rtn = self.get_tile(req, None, zoom, xtile, ytile, wcs=wcs, get_images=fits,
+        #                     savecache=False, bands=bands, tempfiles=tempfiles)
+
+        ims = self.render_into_wcs(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
         if ims is None:
-            # ...?
-            print('ims is None')
-    
+            raise RuntimeError('No overlap')
+        
+        if jpeg:
+            rgb = self.get_rgb(ims, bands)
+            self.write_jpeg(out_fn, rgb)
+            return
+
         if hdr is not None:
             hdr['BANDS'] = ''.join([str(b) for b in bands])
             for i,b in enumerate(bands):
                 hdr['BAND%i' % i] = b
             wcs.add_to_header(hdr)
-
         if ims is None:
             hdr['OVERLAP'] = False
             cube = None
@@ -1673,16 +1646,63 @@ class MapLayer(object):
         else:
             cube = ims[0]
         del ims
+        fitsio.write(out_fn, cube, clobber=True, header=hdr)
 
-        f,tmpfn = tempfile.mkstemp(suffix='.fits')
-        os.close(f)
-        os.unlink(tmpfn)
-        fitsio.write(tmpfn, cube, clobber=True, header=hdr)
-        if outtag is None:
-            fn = 'cutout_%.4f_%.4f.fits' % (ra,dec)
+    def get_cutout(self, req, fits=False, jpeg=False, outtag=None, tempfiles=None):
+        native_pixscale = self.pixscale
+        native_zoom = self.nativescale
+
+        ra  = float(req.GET['ra'])
+        dec = float(req.GET['dec'])
+        pixscale = float(req.GET.get('pixscale', self.pixscale))
+        maxsize = 3000
+        size   = min(int(req.GET.get('size',    256)), maxsize)
+        width  = min(int(req.GET.get('width',  size)), maxsize)
+        height = min(int(req.GET.get('height', size)), maxsize)
+        bands = req.GET.get('bands', None)
+
+        # For retrieving a single-CCD cutout, not coadd
+        #ccd = req.GET.get('ccd', None)
+        #decam-432057-S26
+
+        if not 'pixscale' in req.GET and 'zoom' in req.GET:
+            zoom = int(req.GET.get('zoom'))
+            pixscale = pixscale * 2**(native_zoom - zoom)
+            print('Request has zoom=', zoom, ': setting pixscale=', pixscale)
+
+        if bands is not None:
+            bands = self.parse_bands(bands)
+        if bands is None:
+            bands = self.get_bands()
+
+        subimage = ('subimage' in req.GET)
+
+        if fits:
+            suff = '.fits'
+            filetype = 'image/fits'
         else:
-            fn = 'cutout_%s_%.4f_%.4f.fits' % (outtag, ra,dec)
-        return send_file(tmpfn, 'image/fits', unlink=True, filename=fn)
+            suff = '.jpg'
+            filetype = 'image/jpeg'
+
+        nice_fn = None
+        if fits:
+            if outtag is None:
+                nice_fn = 'cutout_%.4f_%.4f%s' % (ra, dec, suff)
+            else:
+                nice_fn = 'cutout_%s_%.4f_%.4f%s' % (outtag, ra, dec, suff)
+
+        import tempfile
+        f,out_fn = tempfile.mkstemp(suffix=suff)
+        os.close(f)
+        os.unlink(out_fn)
+        
+        try:
+            self.write_cutout(ra, dec, pixscale, width, height, out_fn, bands=bands,
+                              fits=fits, jpeg=jpeg, subimage=subimage, tempfiles=tempfiles)
+        except RuntimeError as e:
+            return HttpResponse(e)
+
+        return send_file(out_fn, filetype, unlink=True, filename=nice_fn)
 
     # Note, see cutouts.py : jpeg_cutout, which calls get_cutout directly!
     def get_jpeg_cutout_view(self):

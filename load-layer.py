@@ -142,20 +142,21 @@ def main():
     pretty = 'DR9j south'
 
     rsync = False
-    if True:
+    if False:
         #indir = '/global/cscratch1/sd/ziyaoz/dr9m/north/'
         indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/north'
         name = 'dr9m-north'
         pretty = 'DR9m-north'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
     else:
-        indir = '/global/cscratch1/sd/ziyaoz/dr9m/south/'
+        #indir = '/global/cscratch1/sd/ziyaoz/dr9m/south/'
+        indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/south'
         name = 'dr9m-south'
         pretty = 'DR9m-south'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
 
-    #update = True
-    update = False
+    update = True
+    #update = False
 
     queue = True
     
@@ -167,59 +168,7 @@ def main():
 
     from astrometry.util.fits import fits_table
     
-    if False:
-        from astrometry.util.fits import fits_table
-        bricks = fits_table(os.path.join(basedir, 'survey-bricks.fits.gz'))
-        print(len(bricks), 'bricks')
-        old_bricks = fits_table('old-bricks.fits')
-        print(len(old_bricks), 'old bricks')
-        old_brickset = set(old_bricks.brickname)
-        I_newbrick = [i for i,b in enumerate(bricks.brickname) if not b in old_brickset]
-        print(len(I_newbrick), 'new bricks')
-        new_bricks = bricks[np.array(I_newbrick)]
-        from map.views import get_layer
-        layer = get_layer(name)
-        print('Got layer:', layer)
-        for scale in range(1, 8):
-            print('Scale', scale)
-            sbricks = set()
-            for b in new_bricks:
-                SB = layer.bricks_touching_radec_box(b.ra1, b.ra2, b.dec1, b.dec2, scale=scale)
-                if SB is None:
-                    print('NO scaled bricks touching new brick', b.brickname, '......')
-                    continue
-                for band in ['g','r','z']:
-                    for sb in SB:
-                        fn = layer.get_scaled_filename(sb, band, scale)
-                        sbricks.add(fn)
-            print(len(sbricks), 'scaled brick files at scale', scale, 'touch new bricks')
-            for fn in sbricks:
-                if os.path.exists(fn):
-                    print('Removing', fn)
-                    os.remove(fn)
-
-    
     if update:
-        # old_brickset = set()
-        # if rsync:
-        #     old_imagefns = glob(os.path.join(basedir, 'coadd', '*', '*', '*-image-*.fits*'))
-        #     old_modelfns = glob(os.path.join(basedir, 'coadd', '*', '*', '*-model-*.fits*'))
-        #     old_extraimagefns = glob(os.path.join(basedir, 'extra-images', 'coadd', '*', '*', '*-image-*.fits*'))
-        #     for fn in old_imagefns + old_modelfns + old_extraimagefns:
-        #         dirs = fn.split('/')
-        #         brickname = dirs[-2]
-        #         old_brickset.add(brickname)
-        #else:
-        # old_bricks = fits_table(os.path.join(basedir, 'survey-bricks.fits.gz'))
-        # print(Read, len(old_bricks), 'bricks from old survey-bricks.fits.gz file')
-        # for b in old_bricks.brickname:
-        #     old_brickset.add(b)
-        # 
-        # print(len(old_brickset), 'old bricks found')
-        # I, = np.nonzero([b in old_brickset for b in allbricks.brickname])
-        # old_bricks = allbricks[I]
-        # old_bricks.writeto('old-bricks.fits')
-
         old_bricks_dir = None
         for i in range(100):
             old_bricks_dir = os.path.join(basedir, 'old-bricks-%i' % i)
@@ -356,7 +305,6 @@ def main():
                                   if b in sbricks])
             new_bricks = allbricks[I_touched]
 
-    
     fn = 'map/test_layers.py'
     txt = open(fn).read()
     for x in sublayers:
