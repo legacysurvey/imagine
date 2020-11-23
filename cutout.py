@@ -13,8 +13,12 @@ def main():
     parser.add_argument('--height', type=int, default=None, help='Pixel height of output')
     parser.add_argument('--bands', default='grz', help='Bands to select for output')
     parser.add_argument('--layer', default='ls-dr8', help='Map layer to render')
+    parser.add_argument('--force', default=False, help='Overwrite existing output file?  Default is to quit.')
 
     opt = parser.parse_args()
+    if os.path.exists(opt.output) and not opt.force:
+        print('Exists:', opt.output)
+        return 0
     H = opt.size
     if opt.height is not None:
         H = opt.height
