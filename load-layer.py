@@ -148,7 +148,7 @@ def main():
         name = 'dr9m-north'
         pretty = 'DR9m-north'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
-    else:
+    if False:
         #indir = '/global/cscratch1/sd/ziyaoz/dr9m/south/'
         indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/south'
         name = 'dr9m-south'
@@ -157,8 +157,16 @@ def main():
 
     update = True
     #update = False
-
     queue = True
+
+    rsync = True
+    update = False
+    queue = False
+    indir = '/global/cscratch1/sd/dstn/m33-2/south/'
+    name = 'dr9-m33'
+    pretty = 'DR9m-M33'
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
+    
     
     datadir = 'data'
 
@@ -230,9 +238,11 @@ def main():
                     os.symlink(os.path.join(indir, fn), os.path.join(basedir, fn), target_is_directory=False)
 
     # Find new available bricks
+    print('Searching for new extra-image files...')
+    extraimagefns = glob(os.path.join(basedir, 'extra-images', 'coadd', '*', '*', '*-image-*.fits*'))
+    print('Found', len(extraimagefns), 'extra images')
     print('Searching for new coadd image files...')
     imagefns = glob(os.path.join(basedir, 'coadd', '*', '*', '*-image-*.fits*'))
-    extraimagefns = glob(os.path.join(basedir, 'extra-images', 'coadd', '*', '*', '*-image-*.fits*'))
     print('Image filenames:', len(imagefns), 'plus', len(extraimagefns), 'extras')
     imagefns += extraimagefns
 

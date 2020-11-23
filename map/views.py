@@ -1033,7 +1033,7 @@ class MapLayer(object):
         fitsio.write(tmpfn, I2, header=hdr, clobber=True)
         if not ro:
             os.rename(tmpfn, fn)
-            debug('Wrote', fn)
+            info('Wrote', fn)
         else:
             print('Leaving temp file for get_scaled:', fn, '->', tmpfn)
             # import traceback
@@ -1061,7 +1061,7 @@ class MapLayer(object):
         import fitsio
         if fn is None:
             fn = self.get_filename(brick, band, scale)
-        print('Reading image from', fn)
+        debug('Reading image from', fn)
         ext = self.get_fits_extension(scale, fn)
         f = fitsio.FITS(fn)[ext]
         if slc is None:
@@ -1985,7 +1985,7 @@ class RebrickedMixin(object):
             return 1
         import fitsio
         F = fitsio.FITS(fn)
-        print('File', fn, 'has', len(F), 'hdus')
+        debug('File', fn, 'has', len(F), 'hdus')
         if len(F) == 1:
             return 0
         return 1
@@ -4130,7 +4130,7 @@ def get_survey(name):
     survey = None
 
     cachedir = None
-    if 'dr8' in name or 'dr7' in name:
+    if 'dr8' in name or 'dr7' in name or 'dr9' in name:
         cachedir = os.path.join(dirnm, 'extra-images')
 
     if name == 'decaps':
