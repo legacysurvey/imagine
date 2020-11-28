@@ -5,6 +5,50 @@ import numpy as np
 from astrometry.util.file import read_file
 from legacypipe.survey import LegacySurveyData
 
+def delete_scaled_images(name, old_bricks, new_bricks):
+    from map.views import get_layer
+    layer = get_layer(name)
+    modlayer = get_layer(name + '-model')
+    print('Got layer:', layer)
+    print('Got model layer:', modlayer)
+    for scale in range(1, 8):
+        if scale >= len(old_bricks):
+            print('No old bricks for scale', scale)
+            break
+        sbricks = set()
+        delfiles = set()
+        scale_bricks = layer.get_bricks_for_scale(scale)
+        for b in new_bricks:
+            SB = layer.bricks_touching_radec_box(b.ra1, b.ra2, b.dec1, b.dec2,
+                                                 scale=scale, bricks=scale_bricks)
+            #band = 'r'
+            #bwcs = layer.get_scaled_wcs(b, band, scale-1)
+            #SB = layer.bricks_touching_aa_wcs(bwcs, scale=scale)
+            for sb in SB.brickname:
+                sbricks.add(sb)
+            for sb in SB:
+                for band in ['g','r','z']:
+                    fn = layer.get_scaled_filename(sb, band, scale)
+                    delfiles.add(fn)
+                    fn = modlayer.get_scaled_filename(sb, band, scale)
+                    delfiles.add(fn)
+
+        print(len(sbricks), 'scaled bricks at scale', scale, 'are updated')
+        print('Deleting', len(delfiles), 'scaled files (if they exist!)')
+        ndel = 0
+        for fn in delfiles:
+            if os.path.exists(fn):
+                #print('  Removing', fn)
+                os.remove(fn)
+                ndel += 1
+        print('Actually deleted', ndel, 'scaled files at scale', scale)
+        allbricks = layer.get_bricks_for_scale(scale)
+        I_touched = np.array([i for i,b in enumerate(allbricks.brickname)
+                              if b in sbricks])
+        new_bricks = allbricks[I_touched]
+
+
+
 def main():
 
     # indir = '/global/cscratch1/sd/dstn/dr8test-1'
@@ -148,7 +192,7 @@ def main():
         name = 'dr9m-north'
         pretty = 'DR9m-north'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
-    if False:
+    if True:
         #indir = '/global/cscratch1/sd/ziyaoz/dr9m/south/'
         indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/south'
         name = 'dr9m-south'
@@ -159,13 +203,13 @@ def main():
     #update = False
     queue = True
 
-    rsync = True
-    update = False
-    queue = False
-    indir = '/global/cscratch1/sd/dstn/m33-2/south/'
-    name = 'dr9-m33'
-    pretty = 'DR9m-M33'
-    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
+    # rsync = True
+    # update = False
+    # queue = False
+    # indir = '/global/cscratch1/sd/dstn/m33-2/south/'
+    # name = 'dr9-m33'
+    # pretty = 'DR9m-M33'
+    # survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
     
     
     datadir = 'data'
@@ -200,7 +244,7 @@ def main():
                 T = fits_table(pathfn)
                 print('Read', len(T), 'old bricks from', pathfn)
                 old_bricks.append(T)
-                os.rename(pathfn, os.path.join(old_bricks_dir, fn))
+                #### os.rename(pathfn, os.path.join(old_bricks_dir, fn))
 
     if rsync:
         for sub in ['image-g', 'image-r', 'image-z', 'model-g', 'model-r', 'model-z', 'ccds']:
@@ -241,6 +285,20 @@ def main():
     print('Searching for new extra-image files...')
     extraimagefns = glob(os.path.join(basedir, 'extra-images', 'coadd', '*', '*', '*-image-*.fits*'))
     print('Found', len(extraimagefns), 'extra images')
+
+    # Update all bricks in extra-images...
+    if True:
+        brickset = set()
+        for fn in extraimagefns:
+            dirs = fn.split('/')
+            brickname = dirs[-2]
+            brickset.add(brickname)
+        print(len(brickset), 'bricks found')
+        I, = np.nonzero([b in brickset for b in allbricks.brickname])
+        bricks = allbricks[I]
+        delete_scaled_images(name, old_bricks, bricks)
+        sys.exit(0)
+
     print('Searching for new coadd image files...')
     imagefns = glob(os.path.join(basedir, 'coadd', '*', '*', '*-image-*.fits*'))
     print('Image filenames:', len(imagefns), 'plus', len(extraimagefns), 'extras')
@@ -274,46 +332,7 @@ def main():
         new_bricks = bricks[I_new]
         print('Added', len(new_bricks), 'bricks')
 
-        from map.views import get_layer
-        layer = get_layer(name)
-        modlayer = get_layer(name + '-model')
-        print('Got layer:', layer)
-        print('Got model layer:', modlayer)
-        for scale in range(1, 8):
-            if scale >= len(old_bricks):
-                print('No old bricks for scale', scale)
-                break
-            sbricks = set()
-            delfiles = set()
-            scale_bricks = layer.get_bricks_for_scale(scale)
-            for b in new_bricks:
-                SB = layer.bricks_touching_radec_box(b.ra1, b.ra2, b.dec1, b.dec2,
-                                                     scale=scale, bricks=scale_bricks)
-                #band = 'r'
-                #bwcs = layer.get_scaled_wcs(b, band, scale-1)
-                #SB = layer.bricks_touching_aa_wcs(bwcs, scale=scale)
-                for sb in SB.brickname:
-                    sbricks.add(sb)
-                for sb in SB:
-                    for band in ['g','r','z']:
-                        fn = layer.get_scaled_filename(sb, band, scale)
-                        delfiles.add(fn)
-                        fn = modlayer.get_scaled_filename(sb, band, scale)
-                        delfiles.add(fn)
-
-            print(len(sbricks), 'scaled bricks at scale', scale, 'are updated')
-            print('Deleting', len(delfiles), 'scaled files (if they exist!)')
-            ndel = 0
-            for fn in delfiles:
-                if os.path.exists(fn):
-                    #print('  Removing', fn)
-                    os.remove(fn)
-                    ndel += 1
-            print('Actually deleted', ndel, 'scaled files at scale', scale)
-            allbricks = layer.get_bricks_for_scale(scale)
-            I_touched = np.array([i for i,b in enumerate(allbricks.brickname)
-                                  if b in sbricks])
-            new_bricks = allbricks[I_touched]
+        delete_scaled_images(name, old_bricks, new_bricks)
 
     fn = 'map/test_layers.py'
     txt = open(fn).read()

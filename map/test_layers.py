@@ -76,38 +76,8 @@ test_ccds = []
 # test_layers.append(("dr9m-north-resid", "DR9m-north residuals"))
 test_cats.append(("dr9m-north", "Catalog: DR9m north"))
 
-test_layers.append(("dr9m-south", "DR9m-south images"))
-test_layers.append(("dr9m-south-model", "DR9m-south models"))
-test_layers.append(("dr9m-south-resid", "DR9m-south residuals"))
+# test_layers.append(("dr9m-south", "DR9m-south images"))
+# test_layers.append(("dr9m-south-model", "DR9m-south models"))
+# test_layers.append(("dr9m-south-resid", "DR9m-south residuals"))
 test_cats.append(("dr9m-south", "Catalog: DR9m south"))
 
-
-test_layers.append(("dr9m-south", "DR9m-south images"))
-
-test_layers.append(("dr9m-south-model", "DR9m-south models"))
-
-test_layers.append(("dr9m-south-resid", "DR9m-south residuals"))
-
-test_layers.append(("dr9m-south", "DR9m-south images"))
-
-test_layers.append(("dr9m-south-model", "DR9m-south models"))
-
-test_layers.append(("dr9m-south-resid", "DR9m-south residuals"))
-
-test_layers.append(("dr9-m33", "DR9m-M33 images"))
-
-test_layers.append(("dr9-m33-model", "DR9m-M33 models"))
-
-test_layers.append(("dr9-m33-resid", "DR9m-M33 residuals"))
-
-test_layers.append(("dr9-m33", "DR9m-M33 images"))
-
-test_layers.append(("dr9-m33-model", "DR9m-M33 models"))
-
-test_layers.append(("dr9-m33-resid", "DR9m-M33 residuals"))
-
-test_layers.append(("dr9-m33", "DR9m-M33 images"))
-
-test_layers.append(("dr9-m33-model", "DR9m-M33 models"))
-
-test_layers.append(("dr9-m33-resid", "DR9m-M33 residuals"))

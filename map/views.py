@@ -260,7 +260,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'ls-dr8',
+           default_layer = 'ls-dr9',
            default_radec = (None,None),
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
@@ -731,6 +731,10 @@ def data_for_radec(req):
     layer = get_layer(layername)
     print('data_for_radec: layer', layer)
     return layer.data_for_radec(req, ra, dec)
+
+class NoOverlapError(RuntimeError):
+    pass
+
 
 class MapLayer(object):
     '''
@@ -1624,7 +1628,7 @@ class MapLayer(object):
 
         ims = self.render_into_wcs(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
         if ims is None:
-            raise RuntimeError('No overlap')
+            raise NoOverlapError('No overlap')
         
         if jpeg:
             rgb = self.get_rgb(ims, bands)
@@ -4152,6 +4156,13 @@ def get_survey(name):
         south.layer = 'ls-dr8-south'
         survey = SplitSurveyData(north, south)
 
+    elif name == 'ls-dr9':
+        north = get_survey('ls-dr9-north')
+        north.layer = 'ls-dr9-north'
+        south = get_survey('ls-dr9-south')
+        south.layer = 'ls-dr9-south'
+        survey = SplitSurveyData(north, south)
+
     elif name in ['ls-dr8-south', 'ls-dr8-north', 'decals-dr5',
                   'decals-dr7', 'mzls+bass-dr6']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
@@ -4627,7 +4638,7 @@ PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
     axis2 += '</g>'
     
     about = dtd_tag + html_tag + '''<title>CCD details for {ccd}</title>
-<script src="{static}/jquery-2.1.1.min.js"></script>
+<script src="{static}/jquery-3.5.1.min.js"></script>
 </head>
 <body>
 CCD {ccd}, image {c.image_filename}, hdu {c.image_hdu}; exptime {c.exptime:.1f} sec, seeing {c.seeing:.1f} arcsec, fwhm {c.fwhm:.1f} pix, band {c.filter}, RA,Dec <a href="{viewer_url}">{c.ra:.4f}, {c.dec:.4f}</a>
@@ -5967,7 +5978,12 @@ if __name__ == '__main__':
     #r = c.get('/ztf/1/12/1823/2048.jpg')
     #r = c.get('/ztf/1/11/911/1023.jpg')
     #r = c.get('/dr9m-north/1/12/2478/1493.jpg')
-    r = c.get('/dr9m-north/1/13/3520/3006.jpg')
+    #r = c.get('/dr9m-north/1/13/3520/3006.jpg')
+    #r = c.get('/dr9m-south-model/1/8/238/104.jpg')
+    #r = c.get('/ls-dr9-south/1/9/482/214.jpg')
+    #r = c.get('/ls-dr9-south/1/9/481/210.jpg')
+    #r = c.get('/ls-dr9-south/1/7/119/51.jpg')
+    r = c.get('/ls-dr9-south/1/6/59/25.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

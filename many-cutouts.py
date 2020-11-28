@@ -1,4 +1,4 @@
-from map.views import get_layer
+from map.views import get_layer, NoOverlapError
 from astrometry.util.fits import fits_table
 import numpy as np
 
@@ -82,8 +82,11 @@ def main():
 
         layer = get_layer(opt.layer)
         tempfiles = []
-        layer.write_cutout(t.ra, t.dec, t.pixscale, W, H, out,
-                           bands=bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles)
+        try:
+            layer.write_cutout(t.ra, t.dec, t.pixscale, W, H, out,
+                               bands=bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles)
+        except NoOverlapError:
+            print('No overlap')
         for fn in tempfiles:
             os.unlink(fn)
     return 0

@@ -329,9 +329,18 @@ def get_random_galaxy(layer=None):
         drnum = 5
     elif layer == 'hsc2':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
-    else:
+    elif 'ls-dr8' in layer:
         drnum = 8
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr8.fits')
+    elif layer == 'ls-dr9-north':
+        drnum = 9
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr9-north.fits')
+    elif layer == 'ls-dr9-south':
+        drnum = 9
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr9-south.fits')
+    else:
+        drnum = 9
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
 
 
     if (not layer in galaxycats) and not os.path.exists(galfn):
@@ -737,7 +746,7 @@ def cat_sga_parent(req, ver):
     return _cat_sga(req, ver, fn=fn, tag='sga', sga=True)
 
 def cat_sga_ellipse(req, ver):
-    fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2.kd.fits')
     return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga', sga=True)
 
 def cat_sga(req, ver):
@@ -1489,11 +1498,15 @@ def get_desi_tile_radec(tile_id):
 if __name__ == '__main__':
     import sys
 
-    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
     from map.views import get_layer
-    layer = get_layer('hsc2')
-    create_galaxy_catalog(galfn, None, layer=layer)
+    #galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
+    #layer = get_layer('hsc2')
+    #create_galaxy_catalog(galfn, None, layer=layer)
 
+    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
+    layer = get_layer('ls-dr9-north')
+    create_galaxy_catalog(galfn, None, layer=layer)
+    sys.exit(0)
 
     from django.test import Client
     c = Client()
