@@ -199,7 +199,7 @@ var SplitTileLayer = MyTileLayer.extend({
         this._mid_args = mid_args;
         this._south_args = south_args;
     },
-    
+
 	getTileUrl: function (tile) {
         tilesize = this.getTileSize();
         tw = tilesize.x;
@@ -207,32 +207,24 @@ var SplitTileLayer = MyTileLayer.extend({
         px = tw * tile.x + tw/2;
         py = th * tile.y + th/2;
         tilelatlng = map.unproject(L.point(px, py), tile.z);
-        ra = long2ra(tilelatlng.lng);
-        dec = lat2dec(tilelatlng.lat);
-        //console.log('tile ra,dec: ' + ra + ', ' + dec);
-        ux = Math.cos(ra * Math.PI / 180.0) * Math.cos(dec * Math.PI / 180.0);
-        uy = Math.sin(ra * Math.PI / 180.0) * Math.cos(dec * Math.PI / 180.0);
-        uz = Math.sin(dec * Math.PI / 180.0);
-        // var galactic_z_vector = [-0.86766615, -0.19807637, 0.45598378];
-        gx = -0.86766615;
-        gy = -0.19807637;
-        gz =  0.45598378;
-        gdot = ux * gx + uy * gy + uz * gz;
-        // SGC -- always take South
-        if (gdot < 0) {
-            opts = this._south_args;
+        var ysplit = this._ysplits[tile.z];
+        // check NGC/SGC
+        if (!latlong_is_ngc(tilelatlng)) {
+            // SGC -- south, except for way zoomed-out layers
+            if ((tile.z < 5) && (tile.y == ysplit))
+                opts = this._mid_args;
+            else
+                opts = this._south_args;
         } else {
-            var ysplit = this._ysplits[tile.z];
             // y=0 is the top!
             var urlpat;
             var opts;
-            if (tile.y < ysplit) {
+            if (tile.y < ysplit)
                 opts = this._north_args;
-            } else if (tile.y > ysplit) {
+            else if (tile.y > ysplit)
                 opts = this._south_args;
-            } else {
+            else
                 opts = this._mid_args;
-            }
         }
         urlpat = this._getUrlPattern(tile.z, opts['urlPatterns']);
 		var url = L.Util.template(urlpat, L.extend({

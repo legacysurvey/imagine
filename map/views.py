@@ -4184,7 +4184,7 @@ def get_survey(name):
 
     if survey is None:
         survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
-        #print('Creating LegacySurveyData for', name, 'with survey_dir', dirnm)
+        print('Creating LegacySurveyData for', name, 'with survey', survey, 'dir', dirnm)
 
     names_urls = {
         'mzls+bass-dr6': ('MzLS+BASS DR6', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr6/'),
@@ -4196,6 +4196,10 @@ def get_survey(name):
         'ls-dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/north'),
         'ls-dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/south'),
         'ls-dr8': ('Legacy Surveys DR8', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/'),
+
+        'ls-dr9-north': ('Legacy Surveys DR9-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/north'),
+        'ls-dr9-south': ('Legacy Surveys DR9-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/south'),
+        'ls-dr9': ('Legacy Surveys DR9', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/'),
         }
 
     n,u = names_urls.get(name, ('',''))
@@ -5517,6 +5521,14 @@ def get_layer(name, default=None):
         layer = LegacySurveySplitLayer(name, north, south, 32.375)
         layer.drname = 'Legacy Surveys DR8'
 
+    elif name in ['ls-dr9', 'ls-dr9-model', 'ls-dr9-resid']:
+        suff = name.replace('ls-dr9', '')
+        north = get_layer('ls-dr9-north' + suff)
+        south = get_layer('ls-dr9-south' + suff)
+        ### NOTE, must also change the javascript in template/index.html !
+        layer = LegacySurveySplitLayer(name, north, south, 32.375)
+        layer.drname = 'Legacy Surveys DR9'
+
     elif name in ['dr9sv', 'dr9sv-model', 'dr9sv-resid']:
         suff = name[5:]
         north = get_layer('dr9sv-north' + suff)
@@ -5983,7 +5995,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/9/482/214.jpg')
     #r = c.get('/ls-dr9-south/1/9/481/210.jpg')
     #r = c.get('/ls-dr9-south/1/7/119/51.jpg')
-    r = c.get('/ls-dr9-south/1/6/59/25.jpg')
+    #r = c.get('/ls-dr9-south/1/6/59/25.jpg')
+    r = c.get('/ls-dr9/1/2/1/1.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
