@@ -5336,7 +5336,10 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
     elif kind == 'dq':
         tim = im.get_tractor_image(pixels=False, dq=True, invvar=False, **trargs)
         img = tim.dq
-        kwa.update(vmin=0)
+        # remap bitmasks...
+        img = np.log2(1 + img.astype(np.float32))
+        img[img == 0.] -= 5.
+        kwa.update(vmin=-5)
 
     #print('slc', slc)
     #print('img', img.shape)
@@ -5472,6 +5475,7 @@ def image_stamp(req, surveyname, ccd, iv=False, dq=False):
             mn,mx = np.percentile(out.ravel(), [25, 99])
         kwa.update(vmin=mn, vmax=mx)
 
+    #print('imsave: cmap', cmap, 'range', out.min(), out.max())
     plt.imsave(tmpfn, out, cmap=cmap, **kwa)
     return send_file(tmpfn, 'image/jpeg', unlink=True)
 
@@ -5997,7 +6001,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/7/119/51.jpg')
     #r = c.get('/ls-dr9-south/1/6/59/25.jpg')
     #r = c.get('/ls-dr9/1/2/1/1.jpg')
-    r = c.get('/exps/?ralo=246.8384&rahi=247.3335&declo=32.6943&dechi=32.9266&layer=ls-dr9-south')
+    #r = c.get('/exps/?ralo=246.8384&rahi=247.3335&declo=32.6943&dechi=32.9266&layer=ls-dr9-south')
+    r = c.get('/exposure_panels/ls-dr9-south/624475/S21/?ra=128.6599&dec=20.0039&size=100&kind=dq')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
