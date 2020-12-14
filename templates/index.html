@@ -2792,6 +2792,63 @@ var expOverlay8s = new CircleOverlay('dr8-south-exps',
                                     });
 {% endif %}
 
+
+
+{% if enable_dr9_overlays %}
+var ccdOverlay9 = new PolygonOverlay('dr9-ccds',
+                                     'Legacy Surveys DR9 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds9',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr9',
+                                     'dr_name': 'DR9',
+                                    });
+{% endif %}
+
+{% if enable_dr9_north_overlays %}
+var ccdOverlay9n = new PolygonOverlay('dr9-north-ccds',
+                                     'Legacy Surveys DR9-north CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds9n',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr9-north',
+                                     'dr_name': 'DR9',
+                                    });
+{% endif %}
+
+{% if enable_dr9_south_overlays %}
+var ccdOverlay9s = new PolygonOverlay('dr9-south-ccds',
+                                     'Legacy Surveys DR9-south CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds9s',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr9-south',
+                                     'dr_name': 'DR9',
+                                    });
+var expOverlay9s = new CircleOverlay('dr9-south-exps',
+                                    'Legacy Surveys DR9-south Exposures',
+                                    {'url':exposures_url,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'exps9',
+                                     'detail': exp_detail,
+                                     'detail_list': exp_detail_list,
+                                     'url_name': 'ls-dr9-south',
+                                     'dr_name': 'DR9',
+                                    });
+{% endif %}
+
+
+
+
 {% if enable_dr9sv_overlays %}
 var ccdOverlay9sv = new PolygonOverlay('dr9sv-ccds',
                                      'Legacy Surveys DR9-SV CCDs',
@@ -2947,6 +3004,15 @@ var polygonOverlays = [
     {% if enable_dr8_south_overlays %}
     ccdOverlay8s, expOverlay8s,
     {% endif %}
+    {% if enable_dr9_overlays %}
+    ccdOverlay9,
+    {% endif %}
+    {% if enable_dr9_north_overlays %}
+    ccdOverlay9n,
+    {% endif %}
+    {% if enable_dr9_south_overlays %}
+    ccdOverlay9s, expOverlay9s,
+    {% endif %}
     {% if enable_dr9sv_overlays %}
     ccdOverlay9sv,
     {% endif %}
@@ -3019,6 +3085,33 @@ var dr8southcat = new DecalsCatalogLayer(tileWatcher,
                                            'urlTerm': 'sources-dr8s'});
 {% endif %}
 
+{% if enable_dr9_overlays %}
+var dr9cat = new DecalsCatalogLayer(tileWatcher,
+                                    'ls-dr9',
+                                    'Legacy Surveys DR9 Catalog',
+                                    {'url': cat_url,
+                                     'minZoom': 12,
+                                     'urlTerm': 'sources-dr9'});
+{% endif %}
+
+{% if enable_dr9_north_overlays %}
+var dr9northcat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr9-north',
+                                          'Legacy Surveys DR9-north Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr9n'});
+{% endif %}
+{% if enable_dr9_south_overlays %}
+var dr9southcat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr9-south',
+                                          'Legacy Surveys DR9-south Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr9s'});
+{% endif %}
+
+
 {% if enable_dr9sv_overlays %}
 var dr9svcat = new DecalsCatalogLayer(tileWatcher,
                                     'dr9sv',
@@ -3065,7 +3158,7 @@ var GCsPNe = new GCsPNeCatalog('GCs-PNe', 'GCs/PNe',
                               'labelsMinZoom': 7,
                              'urlTerm': 'GCs-PNe',});
 
-var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (DR9)',
+var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (LS-DR9)',
                              {'url_name': 'masks-dr9',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
@@ -3077,12 +3170,12 @@ var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (DR9)',
 //                               'labelsMinZoom': 7,
 //                              'urlTerm': 'masks-dr8',});
 
-var sga_parent = new SGACatalog('sga-parent', 'SGA parent (HyperLEDA)',
+var sga_parent = new SGACatalog('sga-parent', 'HyperLEDA/SGA galaxies',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga-parent',});
 
-var sga_ell = new SGACatalog('sga', 'SGA (ellipse fit)',
+var sga_ell = new SGACatalog('sga', 'Siena Galaxy Atlas',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga',});
@@ -3343,6 +3436,15 @@ var overlays = [
     {% if enable_dr8_south_overlays %}
     dr8southcat,
     {% endif %}
+    {% if enable_dr9_overlays %}
+    dr9cat,
+    {% endif %}
+    {% if enable_dr9_north_overlays %}
+    dr9northcat,
+    {% endif %}
+    {% if enable_dr9_south_overlays %}
+    dr9southcat,
+    {% endif %}
     {% if enable_dr9sv_overlays %}
     dr9svcat,
     {% endif %}
@@ -3370,6 +3472,16 @@ var overlays = [
     {% if enable_dr8_south_overlays %}
     ccdOverlay8s,
     expOverlay8s,
+    {% endif %}
+    {% if enable_dr9_overlays %}
+    ccdOverlay9,
+    {% endif %}
+    {% if enable_dr9_north_overlays %}
+    ccdOverlay9n,
+    {% endif %}
+    {% if enable_dr9_south_overlays %}
+    ccdOverlay9s,
+    expOverlay9s,
     {% endif %}
     {% if enable_dr9sv_overlays %}
     ccdOverlay9sv,
@@ -3513,6 +3625,11 @@ var baseTree1 = [
         findlayer('ls-dr9-south-resid'),
     ]),
     {% endif %}
+
+
+     { label: 'Older Legacy Surveys',
+       children: [
+
     {% if enable_dr9sv %}
     findlayer('dr9sv', [
         findlayer('dr9sv-model'),
@@ -3596,11 +3713,15 @@ var baseTree1 = [
         findlayer('decaps-resid'),
     ]),
     {% endif %}
+
+     ]},
+
     {% if enable_unwise %}
     findlayer('unwise-neo6', [
         findlayer('unwise-neo4'),
+        findlayer('unwise-cat-model'),
+        findlayer('wssa'),
     ]),
-    findlayer('unwise-cat-model'),
     {% endif %}
     {
         label: 'More surveys',
@@ -3623,7 +3744,6 @@ var baseTree1 = [
             findlayer('2mass'),
             {% endcomment %}
             findlayer('galex'),
-            findlayer('wssa'),
             findlayer('sfd'),
             findlayer('halpha'),
         ],
@@ -3639,6 +3759,9 @@ for (var x in baseTree1) {
 }
 
 console.log('baseTree:', baseTree);
+
+bt = { label: 'Images', children: baseTree };
+baseTree = bt;
 
 var namedOverlays = {};
 for (var i=0,len=overlays.length; i<len; i++) {
@@ -3679,8 +3802,21 @@ for (var i=0,len=overlays.length; i<len; i++) {
      {% if enable_phat %}
      findoverlay('phat-clusters'),
      {% endif %}    
-     findoverlay('decals-bricks'),
 
+     { label: 'Boundaries', children: [
+
+     findoverlay('decals-bricks'),
+     {% if enable_dr9_overlays %}
+     findoverlay('dr9-ccds', [
+       {% if enable_dr9_north_overlays %}
+       findoverlay('dr9-north-ccds'),
+       {% endif %}
+       {% if enable_dr9_south_overlays %}
+       findoverlay('dr9-south-ccds'),
+       findoverlay('dr9-south-exps'),
+       {% endif %}
+     ]),
+     {% endif %}
      {% if enable_dr9sv_overlays %}
      findoverlay('dr9sv-ccds', [
        {% if enable_dr9sv_north_overlays %}
@@ -3699,10 +3835,20 @@ for (var i=0,len=overlays.length; i<len; i++) {
        {% if enable_dr8_south_overlays %}
        findoverlay('dr8-south-ccds'),
        {% endif %}
+       {% if enable_dr8_south_overlays %}
+       findoverlay('dr8-south-exps'),
+       {% endif %}
      ]),
      {% endif %}
      {% if enable_dr7_overlays %}
      findoverlay('decals-dr7-ccds', [
+       {% if enable_dr7_overlays %}
+       findoverlay('decals-dr7-exps', [
+         {% if enable_dr5_overlays %}
+         findoverlay('decals-dr5-exps'),
+         {% endif %}
+       ]),
+       {% endif %}
          {% if enable_dr6_overlays %}
          findoverlay('mzls+bass-dr6-ccds'),
          {% endif %}
@@ -3715,28 +3861,22 @@ for (var i=0,len=overlays.length; i<len; i++) {
      {% if enable_unwise %}
      findoverlay('unwise-tiles'),
      {% endif %}
-     {% if enable_dr8_south_overlays %}
-     findoverlay('dr8-south-exps'),
-     {% endif %}
-     {% if enable_dr7_overlays %}
-     findoverlay('decals-dr7-exps', [
-         {% if enable_dr5_overlays %}
-         findoverlay('decals-dr5-exps'),
-         {% endif %}
-     ]),
-     {% endif %}
 
-     {% if enable_dr9sv_overlays %}
-     findoverlay('dr9sv', [
-       {% if enable_dr9sv_north_overlays %}
-       findoverlay('dr9sv-north'),
+     ]},
+
+     { label: 'Imaging catalogs', children: [
+
+     {% if enable_dr9_overlays %}
+     findoverlay('ls-dr9', [
+       {% if enable_dr9_north_overlays %}
+       findoverlay('ls-dr9-north'),
        {% endif %}
-       {% if enable_dr9sv_south_overlays %}
-       findoverlay('dr9sv-south'),
+       {% if enable_dr9_south_overlays %}
+       findoverlay('ls-dr9-south'),
        {% endif %}
        ]),
      {% endif %}
-     
+
      {% if enable_dr8_overlays %}
      findoverlay('ls-dr8', [
        {% if enable_dr8_north_overlays %}
@@ -3761,12 +3901,27 @@ for (var i=0,len=overlays.length; i<len; i++) {
        ],
      },
      {% endif %}
+
      findoverlay('gaia-dr2'),
      {% if enable_ps1 %}
      findoverlay('ps1-cat'),
      {% endif %}
      findoverlay('hsc-dr2-cosmos'),
      findoverlay('sdss-cat'),
+
+     ]},
+
+
+     {% if enable_dr9sv_overlays %}
+     findoverlay('dr9sv', [
+       {% if enable_dr9sv_north_overlays %}
+       findoverlay('dr9sv-north'),
+       {% endif %}
+       {% if enable_dr9sv_south_overlays %}
+       findoverlay('dr9sv-south'),
+       {% endif %}
+       ]),
+     {% endif %}
      {% if enable_spectra %}
      { label: 'Spectroscopy',
        children: [
@@ -3780,30 +3935,37 @@ for (var i=0,len=overlays.length; i<len; i++) {
 
      {% if enable_desi_targets %}
      findoverlay('targets-dr8', [
-           //findoverlay('targets-sv-dr8'),
-           findoverlay('targets-cmx-dr7'),
-           findoverlay('targets-dr67'),
-           findoverlay('targets-bgs-dr67'),
-           findoverlay('targets-sky-dr67'),
-           findoverlay('targets-bright-dr67'),
-           findoverlay('targets-dark-dr67'),
+         //findoverlay('targets-sv-dr8'),
+         findoverlay('targets-cmx-dr7'),
+         findoverlay('targets-dr67'),
+         findoverlay('targets-bgs-dr67'),
+         findoverlay('targets-sky-dr67'),
+         findoverlay('targets-bright-dr67'),
+         findoverlay('targets-dark-dr67'),
+         {% if enable_desi_footprint %}
+         findoverlay('desi-footprint'),
+         findoverlay('desi-fiberpos'),
+         {% endif %}
      ]),
      {% endif %}
-     {% if enable_desi_footprint %}
-     findoverlay('desi-footprint'),
-     findoverlay('desi-fiberpos'),
-     {% endif %}
+
+     { label: 'Bright Objects', children: [
      findoverlay('bright'),
      findoverlay('tycho2'),
      findoverlay('gals'),
-     findoverlay('sga-parent'),
      findoverlay('sga'),
+     findoverlay('sga-parent'),
      //findoverlay('sga-model'),
      findoverlay('masks-dr9'),
      //findoverlay('masks-dr8'),
      findoverlay('GCs-PNe'),
      findoverlay('const'),
+     ]},
  ]);
+
+
+ot = { label: 'Overlays', children: overlayTree };
+overlayTree = ot;
 
 L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
 
@@ -3817,11 +3979,16 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
          {% if enable_dr7 %}
          'Legacy Surveys DR6+DR7 images',
          {% endif %}
-         {% if enable_dr9sv_north %}
-         'Legacy Surveys DR9-SV-north images',
+         {% if enable_dr9_north %}
+         'Legacy Surveys DR9-north images',
          {% endif %}
-         {% if enable_dr9sv_south %}
-         'Legacy Surveys DR9-SV-south images',
+         {% if enable_dr9_south %}
+         'Legacy Surveys DR9-south images',
+         {% endif %}
+         'Older Legacy Surveys',
+         'More surveys',
+         {% if enable_dr8 %}
+         'Legacy Surveys DR8 images',
          {% endif %}
          {% if enable_dr8_north %}
          'Legacy Surveys DR8-north images',
@@ -3848,6 +4015,9 @@ L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
          'Legacy Surveys DR8 Catalog',
          'Legacy Surveys DR8 CCDs',
          {% endif %}
+
+         'Boundaries',
+         'Imaging catalogs',
             ];
 
      for (var i=0,len=txts.length; i<len; i++) {

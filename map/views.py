@@ -4395,7 +4395,7 @@ def get_exposure_table(name):
     from astrometry.util.fits import fits_table
     name = str(name)
     name = clean_layer_name(name)
-    if name in ['decals-dr5', 'decals-dr7', 'ls-dr8-south']:
+    if name in ['decals-dr5', 'decals-dr7', 'ls-dr8-south', 'ls-dr9-south']:
         fn = os.path.join(settings.DATA_DIR, name, 'exposures.fits')
         if not os.path.exists(fn):
             import numpy as np
@@ -5996,7 +5996,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/9/481/210.jpg')
     #r = c.get('/ls-dr9-south/1/7/119/51.jpg')
     #r = c.get('/ls-dr9-south/1/6/59/25.jpg')
-    r = c.get('/ls-dr9/1/2/1/1.jpg')
+    #r = c.get('/ls-dr9/1/2/1/1.jpg')
+    r = c.get('/exps/?ralo=246.8384&rahi=247.3335&declo=32.6943&dechi=32.9266&layer=ls-dr9-south')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
