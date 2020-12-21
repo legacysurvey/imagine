@@ -1600,6 +1600,7 @@ class MapLayer(object):
                 hdr = fitsio.FITSHDR()
                 self.populate_fits_cutout_header(hdr)
                 hdr['BAND'] = band
+                hdr['IMAGETYP'] = 'image'
                 subwcs.add_to_header(hdr)
                 # Append image to FITS file
                 fitsio.write(out_fn, img, header=hdr)
@@ -1700,11 +1701,8 @@ class MapLayer(object):
         os.close(f)
         os.unlink(out_fn)
         
-        try:
-            self.write_cutout(ra, dec, pixscale, width, height, out_fn, bands=bands,
-                              fits=fits, jpeg=jpeg, subimage=subimage, tempfiles=tempfiles)
-        except RuntimeError as e:
-            return HttpResponse(e)
+        self.write_cutout(ra, dec, pixscale, width, height, out_fn, bands=bands,
+                          fits=fits, jpeg=jpeg, subimage=subimage, tempfiles=tempfiles)
 
         return send_file(out_fn, filetype, unlink=True, filename=nice_fn)
 
@@ -2644,10 +2642,17 @@ class LegacySurveySplitLayer(MapLayer):
         return BB
 
     def get_filename(self, brick, band, scale, tempfiles=None):
-        raise RuntimeError('split layer.get_filename()')
+        layer = self.get_layer_for_radec(brick.ra, brick.dec)
+        return layer.get_filename(brick, band, scale, tempfiles=tempfiles)
 
     def get_base_filename(self, brick, band, **kwargs):
-        raise RuntimeError('split layer.get_base_filename()')
+        layer = self.get_layer_for_radec(brick.ra, brick.dec)
+        return layer.get_base_filename(brick, band, **kwargs)
+
+    def get_fits_extension(self, scale, fn):
+        if fn.endswith('.fz'):
+            return 1
+        return 0
 
     def render_into_wcs(self, wcs, zoom, x, y, general_wcs=False, **kwargs):
         
