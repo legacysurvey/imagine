@@ -122,6 +122,10 @@ tileversions = {
     'dr9k-south': [1, 2],
     'dr9k-south-model': [1, 2],
     'dr9k-south-resid': [1, 2],
+
+    'ls-dr9-north': [1],
+    'ls-dr9-north-model': [1],
+    'ls-dr9-north-resid': [1],
 }
 
 test_layers = []
@@ -132,6 +136,22 @@ try:
             tileversions[key] = [1,]
 except:
     pass
+
+# tileversions['dr9m-north'].append(2)
+# tileversions['dr9m-north-model'].append(2)
+# tileversions['dr9m-north-resid'].append(2)
+
+def tst(req):
+    from django.shortcuts import render
+    return render(req, 'tst.html')
+
+def tst(req):
+    from django.shortcuts import render
+    return render(req, 'tst.html')
+
+def cat(req):
+    from django.shortcuts import render
+    return render(req, 'cat.html')
 
 def my_reverse(req, *args, **kwargs):
     ### FIXME -- does this work for decaps.legacysurvey.org ??
@@ -240,7 +260,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'ls-dr8',
+           default_layer = 'ls-dr9',
            default_radec = (None,None),
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
@@ -281,6 +301,20 @@ def _index(req,
         enable_dr9sv_south_models = settings.ENABLE_DR9SV,
         enable_dr9sv_south_resids = settings.ENABLE_DR9SV,
         enable_dr9sv_south_overlays = settings.ENABLE_DR9SV,
+
+        enable_dr9 = settings.ENABLE_DR9,
+        enable_dr9_overlays = settings.ENABLE_DR9,
+        enable_dr9_models = settings.ENABLE_DR9_MODELS,
+        enable_dr9_resids = settings.ENABLE_DR9_RESIDS,
+        enable_dr9_north = settings.ENABLE_DR9_NORTH,
+        enable_dr9_north_models = settings.ENABLE_DR9_NORTH_MODELS,
+        enable_dr9_north_resids = settings.ENABLE_DR9_NORTH_RESIDS,
+        enable_dr9_north_overlays = settings.ENABLE_DR9_NORTH,
+        enable_dr9_south = settings.ENABLE_DR9_SOUTH,
+        enable_dr9_south_models = settings.ENABLE_DR9_SOUTH_MODELS,
+        enable_dr9_south_resids = settings.ENABLE_DR9_SOUTH_RESIDS,
+        enable_dr9_south_overlays = settings.ENABLE_DR9_SOUTH,
+
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         enable_des_dr1 = settings.ENABLE_DES_DR1,
@@ -696,6 +730,10 @@ def data_for_radec(req):
     print('data_for_radec: layer', layer)
     return layer.data_for_radec(req, ra, dec)
 
+class NoOverlapError(RuntimeError):
+    pass
+
+
 class MapLayer(object):
     '''
     Represents a "bricked" image map layer: eg, DECaLS DRx (image, model, or
@@ -997,7 +1035,7 @@ class MapLayer(object):
         fitsio.write(tmpfn, I2, header=hdr, clobber=True)
         if not ro:
             os.rename(tmpfn, fn)
-            debug('Wrote', fn)
+            info('Wrote', fn)
         else:
             print('Leaving temp file for get_scaled:', fn, '->', tmpfn)
             # import traceback
@@ -1025,7 +1063,7 @@ class MapLayer(object):
         import fitsio
         if fn is None:
             fn = self.get_filename(brick, band, scale)
-        print('Reading image from', fn)
+        debug('Reading image from', fn)
         ext = self.get_fits_extension(scale, fn)
         f = fitsio.FITS(fn)[ext]
         if slc is None:
@@ -1091,7 +1129,7 @@ class MapLayer(object):
             bandbricks = self.bricks_for_band(bricks, band)
             for brick in bandbricks:
                 brickname = brick.brickname
-                print('Reading', brickname, 'band', band, 'scale', scale)
+                #print('Reading', brickname, 'band', band, 'scale', scale)
                 # call get_filename to possibly generate scaled version
                 fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
                 print('Reading', brickname, 'band', band, 'scale', scale, '-> fn', fn)
@@ -1504,58 +1542,34 @@ class MapLayer(object):
                 return None
         return bb
 
-    def get_cutout(self, req, fits=False, jpeg=False, outtag=None, tempfiles=None):
+    def write_cutout(self, ra, dec, pixscale, width, height, out_fn,
+                     bands=None,
+                     fits=False, jpeg=False,
+                     subimage=False,
+                     tempfiles=None):
+        import numpy as np
+        import fitsio
+        native_pixscale = self.pixscale
+        native_zoom = self.nativescale
         hdr = None
         if fits:
             import fitsio
             hdr = fitsio.FITSHDR()
             self.populate_fits_cutout_header(hdr)
 
-        native_pixscale = self.pixscale
-        native_zoom = self.nativescale
-
-        ra  = float(req.GET['ra'])
-        dec = float(req.GET['dec'])
-        pixscale = float(req.GET.get('pixscale', self.pixscale))
-        maxsize = 3000
-        size   = min(int(req.GET.get('size',    256)), maxsize)
-        width  = min(int(req.GET.get('width',  size)), maxsize)
-        height = min(int(req.GET.get('height', size)), maxsize)
-        bands = req.GET.get('bands', None)
-
-        # For retrieving a single-CCD cutout, not coadd
-        #ccd = req.GET.get('ccd', None)
-        #decam-432057-S26
-
-        if not 'pixscale' in req.GET and 'zoom' in req.GET:
-            zoom = int(req.GET.get('zoom'))
-            pixscale = pixscale * 2**(native_zoom - zoom)
-            print('Request has zoom=', zoom, ': setting pixscale=', pixscale)
-
-        if bands is not None:
-            bands = self.parse_bands(bands)
-        if bands is None:
-            bands = self.get_bands()
-
-
-        if 'subimage' in req.GET:
+        if subimage:
             from astrometry.libkd.spherematch import match_radec
-            import tempfile
-            import numpy as np
-            import fitsio
             bricks = self.get_bricks()
             # HACK
             #brickrad = 3600. * 0.262 / 2 * np.sqrt(2.) / 3600.
             I,J,d = match_radec(ra, dec, bricks.ra, bricks.dec, 1., nearest=True)
             if len(I) == 0:
-                return HttpResponse('no overlap')
+                raise RuntimeError('no overlap')
             brick = bricks[J[0]]
             print('RA,Dec', ra,dec, 'in brick', brick.brickname)
             scale = 0
-            f,outfn = tempfile.mkstemp(suffix='.fits')
-            os.close(f)
-            os.unlink(outfn)
-            fitsio.write(outfn, None, header=hdr, clobber=True)
+
+            fitsio.write(out_fn, None, header=hdr, clobber=True)
             for band in bands:
                 fn = self.get_filename(brick, band, scale)
                 print('Image filename', fn)
@@ -1584,20 +1598,16 @@ class MapLayer(object):
                 hdr = fitsio.FITSHDR()
                 self.populate_fits_cutout_header(hdr)
                 hdr['BAND'] = band
+                hdr['IMAGETYP'] = 'image'
                 subwcs.add_to_header(hdr)
                 # Append image to FITS file
-                fitsio.write(outfn, img, header=hdr)
+                fitsio.write(out_fn, img, header=hdr)
                 # Add invvar
                 hdr['IMAGETYP'] = 'invvar'
-                fitsio.write(outfn, iv, header=hdr)
-            fn = 'cutout_%.4f_%.4f.fits' % (ra,dec)
-            return send_file(outfn, 'image/fits', unlink=True, filename=fn)
-
+                fitsio.write(out_fn, iv, header=hdr)
+            return
 
         from astrometry.util.util import Tan
-        import numpy as np
-        import fitsio
-        import tempfile
     
         ps = pixscale / 3600.
         raps = -ps
@@ -1612,21 +1622,23 @@ class MapLayer(object):
 
         xtile = ytile = -1
 
-        rtn = self.get_tile(req, None, zoom, xtile, ytile, wcs=wcs, get_images=fits,
-                             savecache=False, bands=bands, tempfiles=tempfiles)
-        if jpeg:
-            return rtn
-        ims = rtn
+        #rtn = self.get_tile(req, None, zoom, xtile, ytile, wcs=wcs, get_images=fits,
+        #                     savecache=False, bands=bands, tempfiles=tempfiles)
+
+        ims = self.render_into_wcs(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
         if ims is None:
-            # ...?
-            print('ims is None')
-    
+            raise NoOverlapError('No overlap')
+        
+        if jpeg:
+            rgb = self.get_rgb(ims, bands)
+            self.write_jpeg(out_fn, rgb)
+            return
+
         if hdr is not None:
             hdr['BANDS'] = ''.join([str(b) for b in bands])
             for i,b in enumerate(bands):
                 hdr['BAND%i' % i] = b
             wcs.add_to_header(hdr)
-
         if ims is None:
             hdr['OVERLAP'] = False
             cube = None
@@ -1637,16 +1649,60 @@ class MapLayer(object):
         else:
             cube = ims[0]
         del ims
+        fitsio.write(out_fn, cube, clobber=True, header=hdr)
 
-        f,tmpfn = tempfile.mkstemp(suffix='.fits')
-        os.close(f)
-        os.unlink(tmpfn)
-        fitsio.write(tmpfn, cube, clobber=True, header=hdr)
-        if outtag is None:
-            fn = 'cutout_%.4f_%.4f.fits' % (ra,dec)
+    def get_cutout(self, req, fits=False, jpeg=False, outtag=None, tempfiles=None):
+        native_pixscale = self.pixscale
+        native_zoom = self.nativescale
+
+        ra  = float(req.GET['ra'])
+        dec = float(req.GET['dec'])
+        pixscale = float(req.GET.get('pixscale', self.pixscale))
+        maxsize = 3000
+        size   = min(int(req.GET.get('size',    256)), maxsize)
+        width  = min(int(req.GET.get('width',  size)), maxsize)
+        height = min(int(req.GET.get('height', size)), maxsize)
+        bands = req.GET.get('bands', None)
+
+        # For retrieving a single-CCD cutout, not coadd
+        #ccd = req.GET.get('ccd', None)
+        #decam-432057-S26
+
+        if not 'pixscale' in req.GET and 'zoom' in req.GET:
+            zoom = int(req.GET.get('zoom'))
+            pixscale = pixscale * 2**(native_zoom - zoom)
+            print('Request has zoom=', zoom, ': setting pixscale=', pixscale)
+
+        if bands is not None:
+            bands = self.parse_bands(bands)
+        if bands is None:
+            bands = self.get_bands()
+
+        subimage = ('subimage' in req.GET)
+
+        if fits:
+            suff = '.fits'
+            filetype = 'image/fits'
         else:
-            fn = 'cutout_%s_%.4f_%.4f.fits' % (outtag, ra,dec)
-        return send_file(tmpfn, 'image/fits', unlink=True, filename=fn)
+            suff = '.jpg'
+            filetype = 'image/jpeg'
+
+        nice_fn = None
+        if fits:
+            if outtag is None:
+                nice_fn = 'cutout_%.4f_%.4f%s' % (ra, dec, suff)
+            else:
+                nice_fn = 'cutout_%s_%.4f_%.4f%s' % (outtag, ra, dec, suff)
+
+        import tempfile
+        f,out_fn = tempfile.mkstemp(suffix=suff)
+        os.close(f)
+        os.unlink(out_fn)
+        
+        self.write_cutout(ra, dec, pixscale, width, height, out_fn, bands=bands,
+                          fits=fits, jpeg=jpeg, subimage=subimage, tempfiles=tempfiles)
+
+        return send_file(out_fn, filetype, unlink=True, filename=nice_fn)
 
     # Note, see cutouts.py : jpeg_cutout, which calls get_cutout directly!
     def get_jpeg_cutout_view(self):
@@ -1929,7 +1985,7 @@ class RebrickedMixin(object):
             return 1
         import fitsio
         F = fitsio.FITS(fn)
-        print('File', fn, 'has', len(F), 'hdus')
+        debug('File', fn, 'has', len(F), 'hdus')
         if len(F) == 1:
             return 0
         return 1
@@ -2445,7 +2501,7 @@ class LegacySurveySplitLayer(MapLayer):
         for zoom in range(0, 18):
             n = 2**zoom
             y = int(fy * n)
-            print('Zoom', zoom, '-> y', y)
+            #print('Zoom', zoom, '-> y', y)
             X = get_tile_wcs(zoom, 0, y)
             wcs = X[0]
             ok,rr,dd = wcs.pixelxy2radec([1,1], [1,256])
@@ -2584,10 +2640,17 @@ class LegacySurveySplitLayer(MapLayer):
         return BB
 
     def get_filename(self, brick, band, scale, tempfiles=None):
-        raise RuntimeError('split layer.get_filename()')
+        layer = self.get_layer_for_radec(brick.ra, brick.dec)
+        return layer.get_filename(brick, band, scale, tempfiles=tempfiles)
 
     def get_base_filename(self, brick, band, **kwargs):
-        raise RuntimeError('split layer.get_base_filename()')
+        layer = self.get_layer_for_radec(brick.ra, brick.dec)
+        return layer.get_base_filename(brick, band, **kwargs)
+
+    def get_fits_extension(self, scale, fn):
+        if fn.endswith('.fz'):
+            return 1
+        return 0
 
     def render_into_wcs(self, wcs, zoom, x, y, general_wcs=False, **kwargs):
         
@@ -4074,7 +4137,7 @@ def get_survey(name):
     survey = None
 
     cachedir = None
-    if 'dr8' in name or 'dr7' in name:
+    if 'dr8' in name or 'dr7' in name or 'dr9' in name:
         cachedir = os.path.join(dirnm, 'extra-images')
 
     if name == 'decaps':
@@ -4096,8 +4159,18 @@ def get_survey(name):
         south.layer = 'ls-dr8-south'
         survey = SplitSurveyData(north, south)
 
+    elif name == 'ls-dr9':
+        north = get_survey('ls-dr9-north')
+        north.layer = 'ls-dr9-north'
+        south = get_survey('ls-dr9-south')
+        south.layer = 'ls-dr9-south'
+        survey = SplitSurveyData(north, south)
+
     elif name in ['ls-dr8-south', 'ls-dr8-north', 'decals-dr5',
                   'decals-dr7', 'mzls+bass-dr6']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+
+    elif name in ['ls-dr9-north', 'ls-dr9-south']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
     elif name == 'dr9sv':
@@ -4114,7 +4187,7 @@ def get_survey(name):
 
     if survey is None:
         survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
-        #print('Creating LegacySurveyData for', name, 'with survey_dir', dirnm)
+        print('Creating LegacySurveyData for', name, 'with survey', survey, 'dir', dirnm)
 
     names_urls = {
         'mzls+bass-dr6': ('MzLS+BASS DR6', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr6/'),
@@ -4126,6 +4199,10 @@ def get_survey(name):
         'ls-dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/north'),
         'ls-dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/south'),
         'ls-dr8': ('Legacy Surveys DR8', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/'),
+
+        'ls-dr9-north': ('Legacy Surveys DR9-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/north'),
+        'ls-dr9-south': ('Legacy Surveys DR9-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/south'),
+        'ls-dr9': ('Legacy Surveys DR9', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/'),
         }
 
     n,u = names_urls.get(name, ('',''))
@@ -4321,7 +4398,7 @@ def get_exposure_table(name):
     from astrometry.util.fits import fits_table
     name = str(name)
     name = clean_layer_name(name)
-    if name in ['decals-dr5', 'decals-dr7', 'ls-dr8-south']:
+    if name in ['decals-dr5', 'decals-dr7', 'ls-dr8-south', 'ls-dr9-south']:
         fn = os.path.join(settings.DATA_DIR, name, 'exposures.fits')
         if not os.path.exists(fn):
             import numpy as np
@@ -4568,7 +4645,7 @@ PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
     axis2 += '</g>'
     
     about = dtd_tag + html_tag + '''<title>CCD details for {ccd}</title>
-<script src="{static}/jquery-2.1.1.min.js"></script>
+<script src="{static}/jquery-3.5.1.min.js"></script>
 </head>
 <body>
 CCD {ccd}, image {c.image_filename}, hdu {c.image_hdu}; exptime {c.exptime:.1f} sec, seeing {c.seeing:.1f} arcsec, fwhm {c.fwhm:.1f} pix, band {c.filter}, RA,Dec <a href="{viewer_url}">{c.ra:.4f}, {c.dec:.4f}</a>
@@ -5262,7 +5339,10 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
     elif kind == 'dq':
         tim = im.get_tractor_image(pixels=False, dq=True, invvar=False, **trargs)
         img = tim.dq
-        kwa.update(vmin=0)
+        # remap bitmasks...
+        img = np.log2(1 + img.astype(np.float32))
+        img[img == 0.] -= 5.
+        kwa.update(vmin=-5)
 
     #print('slc', slc)
     #print('img', img.shape)
@@ -5398,6 +5478,7 @@ def image_stamp(req, surveyname, ccd, iv=False, dq=False):
             mn,mx = np.percentile(out.ravel(), [25, 99])
         kwa.update(vmin=mn, vmax=mx)
 
+    #print('imsave: cmap', cmap, 'range', out.min(), out.max())
     plt.imsave(tmpfn, out, cmap=cmap, **kwa)
     return send_file(tmpfn, 'image/jpeg', unlink=True)
 
@@ -5446,6 +5527,14 @@ def get_layer(name, default=None):
         ### NOTE, must also change the javascript in template/index.html !
         layer = LegacySurveySplitLayer(name, north, south, 32.375)
         layer.drname = 'Legacy Surveys DR8'
+
+    elif name in ['ls-dr9', 'ls-dr9-model', 'ls-dr9-resid']:
+        suff = name.replace('ls-dr9', '')
+        north = get_layer('ls-dr9-north' + suff)
+        south = get_layer('ls-dr9-south' + suff)
+        ### NOTE, must also change the javascript in template/index.html !
+        layer = LegacySurveySplitLayer(name, north, south, 32.375)
+        layer.drname = 'Legacy Surveys DR9'
 
     elif name in ['dr9sv', 'dr9sv-model', 'dr9sv-resid']:
         suff = name[5:]
@@ -5906,7 +5995,17 @@ if __name__ == '__main__':
     #r = c.get('/cutout.jpg?ra=199.68&dec=29.42&layer=ztf&pixscale=1.0&size=1000')
     #r = c.get('/cutout.jpg?ra=200.0108&dec=30.0007&layer=ztf&pixscale=0.25')
     #r = c.get('/ztf/1/12/1823/2048.jpg')
-    r = c.get('/ztf/1/11/911/1023.jpg')
+    #r = c.get('/ztf/1/11/911/1023.jpg')
+    #r = c.get('/dr9m-north/1/12/2478/1493.jpg')
+    #r = c.get('/dr9m-north/1/13/3520/3006.jpg')
+    #r = c.get('/dr9m-south-model/1/8/238/104.jpg')
+    #r = c.get('/ls-dr9-south/1/9/482/214.jpg')
+    #r = c.get('/ls-dr9-south/1/9/481/210.jpg')
+    #r = c.get('/ls-dr9-south/1/7/119/51.jpg')
+    #r = c.get('/ls-dr9-south/1/6/59/25.jpg')
+    #r = c.get('/ls-dr9/1/2/1/1.jpg')
+    #r = c.get('/exps/?ralo=246.8384&rahi=247.3335&declo=32.6943&dechi=32.9266&layer=ls-dr9-south')
+    r = c.get('/exposure_panels/ls-dr9-south/624475/S21/?ra=128.6599&dec=20.0039&size=100&kind=dq')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

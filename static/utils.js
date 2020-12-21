@@ -1,3 +1,18 @@
+function latlong_is_ngc(latlng) {
+    ra = long2ra(latlng.lng);
+    dec = lat2dec(latlng.lat);
+    //console.log('tile ra,dec: ' + ra + ', ' + dec);
+    ux = Math.cos(ra * Math.PI / 180.0) * Math.cos(dec * Math.PI / 180.0);
+    uy = Math.sin(ra * Math.PI / 180.0) * Math.cos(dec * Math.PI / 180.0);
+    uz = Math.sin(dec * Math.PI / 180.0);
+    // var galactic_z_vector = [-0.86766615, -0.19807637, 0.45598378];
+    gx = -0.86766615;
+    gy = -0.19807637;
+    gz =  0.45598378;
+    gdot = ux * gx + uy * gy + uz * gz;
+    return (gdot >= 0);
+}
+
 function long2ra(lng) {
     var ra = 180. - lng;
     while (ra < 0) {

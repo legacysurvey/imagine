@@ -18,7 +18,8 @@ from astrometry.util.fits import *
 from astrometry.libkd.spherematch import *
 
 import logging
-lvl = logging.DEBUG
+#lvl = logging.DEBUG
+lvl = logging.INFO
 logging.basicConfig(level=lvl, format='%(message)s', stream=sys.stdout)
 
 class duck(object):
