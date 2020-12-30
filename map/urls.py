@@ -54,6 +54,8 @@ urlpatterns = [
 
     # AJAX retrieval of user catalogs
     url(r'^usercatalog/(\d+)/cat.json', cats.cat_user),
+    # AJAX retrieval of DESI tiles
+    url(r'^desi-tile/(\d+)/cat.json', cats.cat_desi_tile),
 
     # DEEP2 Spectroscopy catalog
     url(r'^spec-deep2/(\d+)/cat.json', cats.cat_spec_deep2),

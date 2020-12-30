@@ -91,6 +91,7 @@ var exposures_url = '{{ expsurl|safe }}';
 var bricks_url = '{{ bricksurl|safe }}';
 var sdss_plates_url = '{{ platesurl|safe }}';
 var cat_url = '{{ caturl|safe }}';
+var desitile_url = '{{ desitile_url|safe}}';
 var usercat_upload_url = '{{ uploadurl|safe }}';
 var name_query_url = '{{ namequeryurl|safe }}';
 
@@ -1259,8 +1260,10 @@ var DecalsCatalogLayer = TiledOverlay.extend({
     
 });
 
-// User catalog
+// User catalogs
 {% include "user-cat.js" %}
+// DESI tiles
+{% include "desi-tiles.js" %}
 
 function getkeys(obj) {
     var s = '';
@@ -3772,19 +3775,22 @@ for (var i=0,len=overlays.length; i<len; i++) {
     group._name = overlays[i]._name;
 }
 
- function findoverlay(name, children=[]) {
-     rtn =  { label: namedOverlays[name]._pretty,
-              layer: namedOverlays[name].getGroup() };
-     if (children.length) {
-         rtn['children'] = children;
-     }
-     return rtn;
- }
+function findoverlay(name, children=[]) {
+    rtn =  { label: namedOverlays[name]._pretty,
+             layer: namedOverlays[name].getGroup() };
+    if (children.length) {
+        rtn['children'] = children;
+    }
+    return rtn;
+}
 
- var overlayTree = [];
+var overlayTree = [];
 
- {% if usercatalogs %}
-   addUserCatalogs();
+{% if usercatalogs %}
+  addUserCatalogs();
+{% endif %}
+{% if desitiles %}
+  addDesiTiles();
 {% endif %}
 
 

@@ -343,7 +343,7 @@ def _index(req,
         if not k in kwargs:
             kwargs[k] = v
     
-    from map.cats import cat_user
+    from map.cats import cat_user, cat_desi_tile
 
     layer = request_layer_name(req, default_layer)
 
@@ -427,6 +427,8 @@ def _index(req,
     usercatalogurl = my_reverse(req, cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
     usercatalogurl2 = my_reverse(req, cat_user, args=(1,)) + '?start={start}&N={N}&cat={cat}'
 
+    desitile_url = my_reverse(req, cat_desi_tile, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&tile={tile}'
+
     usercatalog = req.GET.get('catalog', None)
     usercats = None
     if usercatalog is not None:
@@ -449,6 +451,8 @@ def _index(req,
         if len(usercats) == 0:
             usercats = None
     #print('User catalogs:', usercats)
+
+    desitiles = [int(x,10) for x in req.GET.get('tile', '').split(',') if len(x)]
 
     hostname_url = req.build_absolute_uri('/')
 
@@ -504,6 +508,9 @@ def _index(req,
                 usercatalogs = usercats,
                 usercatalogurl = usercatalogurl,
                 usercatalogurl2 = usercatalogurl2,
+
+                desitiles = desitiles,
+                desitile_url = desitile_url,
 
                 test_layers = test_layers,
                 test_cats = test_cats,
@@ -6007,7 +6014,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/6/59/25.jpg')
     #r = c.get('/ls-dr9/1/2/1/1.jpg')
     #r = c.get('/exps/?ralo=246.8384&rahi=247.3335&declo=32.6943&dechi=32.9266&layer=ls-dr9-south')
-    r = c.get('/exposure_panels/ls-dr9-south/624475/S21/?ra=128.6599&dec=20.0039&size=100&kind=dq')
+    #r = c.get('/exposure_panels/ls-dr9-south/624475/S21/?ra=128.6599&dec=20.0039&size=100&kind=dq')
+    r = c.get('/')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

@@ -527,6 +527,94 @@ def cat_targets_dr8c(req, ver):
     ], tag='targets-dr8c')
 
 
+
+def desitarget_sv1_names(T, colprefix='sv1_'):
+    names = []
+    colors = []
+    for t in T:
+        desibits = []
+        bgsbits = []
+        mwsbits = []
+        desi_target = int(t.get(colprefix + 'desi_target'))
+        bgs_target = int(t.get(colprefix + 'bgs_target'))
+        mws_target = int(t.get(colprefix + 'mws_target'))
+        for bit in range(64):
+            if (1 << bit) & desi_target:
+                desibits.append(bit)
+            if (1 << bit) & bgs_target:
+                bgsbits.append(bit)
+            if (1 << bit) & mws_target:
+                mwsbits.append(bit)
+        # https://github.com/desihub/desitarget/blob/master/py/desitarget/sv1/data/sv1_targetmask.yaml
+        desinames = [{
+            0:  'LRG',
+            1:  'ELG',
+            2:  'QSO',
+            3:  'LRG_OPT',
+            4:  'LRG_IR',
+            5:  'LRG_SV_OPT',
+            6:  'LRG_SV_IR',
+            7:  'LOWZ_FILLER',
+            8:  'ELG_SV_GTOT',
+            9:  'ELG_SV_GFIB',
+            10: 'ELG_FDR_GTOT',
+            11: 'ELG_FDR_GFIB',
+            12: 'QSO_COLOR_4PASS',
+            13: 'QSO_RF_4PASS',
+            14: 'QSO_COLOR_8PASS',
+            15: 'QSO_RF_8PASS',
+            16: 'QSO_HZ_F',
+            17: 'QSO_Z5',
+            # (skip)
+            #- North vs. South selections for different sub-classes
+            #- Calibration targets
+            32: 'SKY',
+            33: 'STD_FAINT',
+            34: 'STD_WD',
+            35: 'STD_BRIGHT',
+            36: 'BAD_SKY',
+            37: 'SUPP_SKY',
+
+            60: 'BGS_ANY',
+            61: 'MWS_ANY',
+            62: 'SCND_ANY',
+            }.get(b) for b in desibits]
+        bgsnames = [{
+            0:  'BGS_FAINT',
+            1:  'BGS_BRIGHT',
+            2:  'BGS_FAINT_EXT',
+            3:  'BGS_LOWQ',
+            4:  'BGS_FIBMAG',
+            #- (skip) BGS North vs. South selections
+            40: 'BGS_KNOWN_ANY',
+            }.get(b) for b in bgsbits]
+        mwsnames = [{
+            0:  'MWS_MAIN_BROAD',
+            1:  'MWS_WD',
+            2:  'MWS_NEARBY',
+            #- (skip) 4: MWS_MAIN north/south splits
+            6:  'MWS_BHB',
+            14: 'MWS_MAIN_FAINT',
+            }.get(b) for b in mwsbits]
+
+        bitnames = [n for n in desinames + bgsnames + mwsnames if n is not None]
+
+        if len(bitnames) == 0:
+            bitnames.append('0x%x' % desi_target)
+        names.append(', '.join(bitnames))
+        # cc = 'white'
+        # if 'QSO' in nn:
+        #     cc = 'cyan'
+        # elif 'LRG' in nn:
+        #     cc = 'red'
+        # elif 'ELG' in nn:
+        #     cc = 'gray'
+        # elif 'BGS' in nn:
+        #     cc = 'orange'
+        # colors.append(cc)
+    return names #, colors
+
+
 def desitarget_color_names(T, colprefix=''):
     names = []
     colors = []
@@ -1299,6 +1387,57 @@ def cat_user(req, ver):
 
     #for k,v in D.items():
     #    print('Cat', k, v)
+
+    return HttpResponse(json.dumps(D).replace('NaN','null'),
+                        content_type='application/json')
+
+def cat_desi_tile(req, ver):
+    from astrometry.util.fits import fits_table
+    import json
+    import re
+
+    tile = int(req.GET.get('tile','0'), 10)
+    if tile == 0:
+        return 'bad tile'
+    haverd = False
+    if ('ralo'  in req.GET and 'rahi'  in req.GET and
+        'declo' in req.GET and 'dechi' in req.GET):
+        ralo = float(req.GET['ralo'])
+        rahi = float(req.GET['rahi'])
+        declo = float(req.GET['declo'])
+        dechi = float(req.GET['dechi'])
+        haverd = True
+
+    tilestr = '%06i' % tile
+    fn = os.path.join(settings.DATA_DIR, 'desi-tiles',
+                      tilestr[:3], 'fiberassign-%s.fits.gz'%tilestr)
+    if not os.path.exists(fn):
+        print('Does not exist:', fn)
+        return
+    cat = fits_table(fn)
+    cat.ra  = cat.target_ra
+    cat.dec = cat.target_dec
+    
+    if haverd:
+        if ralo > rahi:
+            import numpy as np
+            # RA wrap
+            cat.cut(np.logical_or(cat.ra > ralo, cat.ra < rahi) *
+                    (cat.dec > declo) * (cat.dec < dechi))
+        else:
+            cat.cut((cat.ra > ralo) * (cat.ra < rahi) *
+            (cat.dec > declo) * (cat.dec < dechi))
+        print(len(cat), 'DESI tile sources after RA,Dec cut')
+
+    rd = list(zip(cat.ra.astype(float), cat.dec.astype(float)))
+    D = dict(rd=rd)
+
+    cols = cat.columns()
+    if 'sv1_desi_target' in cols:
+        bitnames = desitarget_sv1_names(cat)
+        D.update(bits=bitnames)
+    if 'targetid' in cols:
+        D.update(targetid=[int(i) for i in cat.targetid])
 
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
