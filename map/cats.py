@@ -528,6 +528,79 @@ def cat_targets_dr8c(req, ver):
 
 
 
+def desitarget_cmx_names(T):
+    names = []
+    colors = []
+    for t in T:
+        cmxbits = []
+        cmx_target = int(t.cmx_target)
+        obj = t.objtype
+        for bit in range(64):
+            if (1 << bit) & cmx_target:
+                cmxbits.append(bit)
+            # https://github.com/desihub/desitarget/blob/master/py/desitarget/cmx/data/cmx_targetmask.yaml
+            cmxnames = [{
+                0:  'STD_GAIA',
+                1:  'SV0_STD_FAINT',
+                2:  'SV0_STD_BRIGHT',
+                3:  'STD_TEST',
+                4:  'STD_CALSPEC',
+                5:  'STD_DITHER',
+                6:  'SV0_MWS_CLUSTER',
+                7:  'SV0_MWS_CLUSTER_VERYBRIGHT',
+                8:  'SV0_BGS',
+                9:  'SV0_MWS',
+                10: 'SV0_LRG',
+                11: 'SV0_ELG',
+                12: 'SV0_QSO',
+                13: 'SV0_WD',
+                14: 'SV0_QSO_Z5',
+                15: 'BACKUP_BRIGHT',
+                16: 'BACKUP_FAINT',
+                18: 'M31_STD_BRIGHT',
+                19: 'M31_H2PN',      
+                20: 'M31_GC',        
+                21: 'M31_QSO',       
+                22: 'M31_VAR',       
+                23: 'M31_BSPL',      
+                24: 'M31_M31cen',    
+                25: 'M31_M31out',    
+                26: 'ORI_STD_BRIGHT',
+                27: 'ORI_QSO',       
+                28: 'ORI_ORI',       
+                29: 'ORI_HA',        
+                30: 'ROS_STD_BRIGHT',
+                31: 'ROS_QSO',       
+                38: 'ROS_ROSM17',    
+                39: 'ROS_ROS1',      
+                40: 'ROS_HA',        
+                41: 'ROS_ROS2',      
+                42: 'M33_STD_BRIGHT',
+                43: 'M33_H2PN',      
+                44: 'M33_GC',        
+                45: 'M33_QSO',       
+                46: 'M33_M33cen',    
+                47: 'M33_M33out',    
+                53: 'MINI_SV_LRG',       
+                54: 'MINI_SV_ELG',       
+                55: 'MINI_SV_QSO',       
+                56: 'MINI_SV_BGS_BRIGHT',
+                57: 'SV0_MWS_FAINT',     
+                58: 'STD_DITHER_GAIA',   
+                32: 'SKY',
+                33: 'STD_FAINT',
+                35: 'STD_BRIGHT',
+                36: 'BAD_SKY',
+                37: 'SUPP_SKY',
+            }.get(b) for b in cmxbits]
+        bitnames = [n for n in cmxnames if n is not None]
+        if obj == 'SKY':
+            bitnames.append('SKY')
+        if obj == 'BAD':
+            bitnames.append('BAD')
+        names.append(', '.join(bitnames))
+    return names
+
 def desitarget_sv1_names(T, colprefix='sv1_'):
     names = []
     colors = []
@@ -538,6 +611,7 @@ def desitarget_sv1_names(T, colprefix='sv1_'):
         desi_target = int(t.get(colprefix + 'desi_target'))
         bgs_target = int(t.get(colprefix + 'bgs_target'))
         mws_target = int(t.get(colprefix + 'mws_target'))
+        obj = t.objtype
         for bit in range(64):
             if (1 << bit) & desi_target:
                 desibits.append(bit)
@@ -598,6 +672,10 @@ def desitarget_sv1_names(T, colprefix='sv1_'):
             }.get(b) for b in mwsbits]
 
         bitnames = [n for n in desinames + bgsnames + mwsnames if n is not None]
+        if obj == 'SKY':
+            bitnames.append('SKY')
+        if obj == 'BAD':
+            bitnames.append('BAD')
 
         if len(bitnames) == 0:
             bitnames.append('0x%x' % desi_target)
@@ -1436,8 +1514,11 @@ def cat_desi_tile(req, ver):
     if 'sv1_desi_target' in cols:
         bitnames = desitarget_sv1_names(cat)
         D.update(bits=bitnames)
+    elif 'cmx_target' in cols:
+        bitnames = desitarget_cmx_names(cat)
+        D.update(bits=bitnames)
     if 'targetid' in cols:
-        D.update(targetid=[int(i) for i in cat.targetid])
+        D.update(targetid=['%i'%i for i in cat.targetid])
 
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
