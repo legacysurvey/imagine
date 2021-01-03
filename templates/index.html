@@ -1395,6 +1395,9 @@ function onMapClick(e) {
     if ('poly' in qstr) {
         linkurl += '&poly=' + qstr['poly'];
     }
+    if ('tile' in qstr) {
+        linkurl += '&tile=' + qstr['tile'];
+    }
 
     var abs_cutout = hostname_url + cutout;
     var abs_link = hostname_url + '{% url 'index' %}' + linkurl;
