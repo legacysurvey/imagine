@@ -27,6 +27,8 @@ class duck(object):
 
 req = duck()
 req.META = dict(HTTP_IF_MODIFIED_SINCE=None)
+req.GET  = dict()
+
 
 version = 1
 

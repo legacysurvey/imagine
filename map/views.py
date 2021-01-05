@@ -6015,7 +6015,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9/1/2/1/1.jpg')
     #r = c.get('/exps/?ralo=246.8384&rahi=247.3335&declo=32.6943&dechi=32.9266&layer=ls-dr9-south')
     #r = c.get('/exposure_panels/ls-dr9-south/624475/S21/?ra=128.6599&dec=20.0039&size=100&kind=dq')
-    r = c.get('/')
+    #r = c.get('/')
+    r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=247.4432&rahi=247.5669&declo=29.9699&dechi=30.0297')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

@@ -3344,6 +3344,23 @@ var desi_sv_targets8 = new DesiTargetCatalog('targets-sv-dr8', 'DESI Targets (SV
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
+
+
+var desi_targets_dr9_sv1_sec = new DesiTileLayer('targets-dr9-sv1-sec',
+                                                 'DESI Secondary Targets (DR9/SV1)',
+                                  {//'radius': 200,
+                                   //'labelsMinZoom': 10,
+                                   'minZoom': 10, });
+var desi_targets_dr9_sv1_dark = new DesiTileLayer('targets-dr9-sv1-dark',
+                                                 'DESI Dark-time Targets (DR9/SV1)',
+                                                 {'minZoom': 10, });
+var desi_targets_dr9_sv1_bright = new DesiTileLayer('targets-dr9-sv1-bright',
+                                                 'DESI Bright-time Targets (DR9/SV1)',
+                                                 {'minZoom': 10, });
+var desi_targets_dr9_sv1_supp = new DesiTileLayer('targets-dr9-sv1-supp',
+                                                 'DESI Supplemental Targets (DR9/SV1)',
+                                                 {'minZoom': 10, });
+
 {% endif %}
 
 {% if enable_spectra %}
@@ -3531,6 +3548,10 @@ var overlays = [
     desi_dark_targets67,
     desi_bright_targets67,
     desi_cmx_targets7,
+    desi_targets_dr9_sv1_sec,
+    desi_targets_dr9_sv1_dark,
+    desi_targets_dr9_sv1_bright,
+    desi_targets_dr9_sv1_supp,
     {% endif %}
     constellations,
     desifoot,
@@ -3943,7 +3964,11 @@ var overlayTree = [];
      {% endif %}
 
      {% if enable_desi_targets %}
-     findoverlay('targets-dr8', [
+     findoverlay('targets-dr9-sv1-dark', [
+         findoverlay('targets-dr9-sv1-bright'),
+         findoverlay('targets-dr9-sv1-sec'),
+         //findoverlay('targets-dr9-sv1-supp'),
+         findoverlay('targets-dr8'),
          //findoverlay('targets-sv-dr8'),
          findoverlay('targets-cmx-dr7'),
          findoverlay('targets-dr67'),

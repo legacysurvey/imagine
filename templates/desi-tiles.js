@@ -10,6 +10,10 @@ var DesiTileLayer = CatalogOverlay.extend({
         var targetids = result['targetid'];
         var rdlist = result['rd'];
         var bitnames = result['bits'];
+        if (bitnames === undefined) {
+            // target functions vs tile function
+            bitnames = result['name'];
+        }
 
         var circleList = [];
         var clong = map.getCenter().lng;
@@ -93,6 +97,15 @@ var DesiTileLayer = CatalogOverlay.extend({
             if (bitnames[i].includes('STD')) {
                 var circ = L.circle([lat, lng], 700.,
                                     {'color': '#CCCCCC', 'fillOpacity':0,
+                                     'weight': 3, 'opacity': 0.8});
+                //circ.bindTooltip(txt, {permanent:true, interactive:true});
+                circ.on('click', dopop);
+                circleList.push(circ);
+                got = true;
+            }
+            if (bitnames[i].includes('SCND')) {
+                var circ = L.circle([lat, lng], 700.,
+                                    {'color': 'orange', 'fillOpacity':0,
                                      'weight': 3, 'opacity': 0.8});
                 //circ.bindTooltip(txt, {permanent:true, interactive:true});
                 circ.on('click', dopop);

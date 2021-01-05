@@ -54,6 +54,10 @@ catversions = {
     'targets-cmx-dr7': [1,],
     'targets-dr8': [1,],
     'targets-sv-dr8': [1,],
+    'targets-dr9-sv1-sec':[1,],
+    'targets-dr9-sv1-dark':[1,],
+    'targets-dr9-sv1-bright':[1,],
+    'targets-dr9-sv1-supp':[1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'sdss-cat': [1,],
@@ -525,8 +529,89 @@ def cat_targets_dr8c(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr8c-PR490.kd.fits'),
     ], tag='targets-dr8c')
+def cat_targets_dr9_sv1_sec(req, ver):
+    # /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/secondary/dark/sv1targets-dark-secondary.fits
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR, 'targets-sv1-secondary-dark.kd.fits'),
+    ], tag='targets-dr9-sv1-sec', name_func=desitarget_sv1_names, colprefix='sv1_',
+    color_name_func=None)
 
+def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', nside=8,
+                          bgs=False, sky=False, bright=False, dark=False):
+    import json
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    from astrometry.util.util import healpix_rangesearch_radec, healpix_xy_to_nested, healpix_side_length_arcmin
+    import numpy as np
+    # hackily bump up the healpix search radius...
+    rplus = 0.1 * healpix_side_length_arcmin(nside) / 60.
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+    hps = healpix_rangesearch_radec(rc, dc, np.deg2rad(rad + rplus), nside)
+    TT = []
+    for hp in hps:
+        hpx = healpix_xy_to_nested(hp, nside)
+        fn = catpat % hpx
+        if not os.path.exists(fn):
+            print('No such file:', fn)
+            continue
+        kd = tree_open(fn)
+        I = tree_search_radec(kd, rc, dc, rad)
+        print('Matched', len(I), 'from', fn)
+        if len(I) == 0:
+            continue
+        T = fits_table(fn, rows=I)
+        TT.append(T)
+    if len(TT) == 0:
+        return HttpResponse(json.dumps(dict(rd=[], name=[])),
+                            content_type='application/json')
+    T = merge_tables(TT, columns='fillzero')
+        
+    if bgs:
+        bgs_target = T.get(colprefix + 'bgs_target')
+        T.cut(bgs_target > 0)
+    if bright:
+        bgs_target = T.get(colprefix + 'bgs_target')
+        mws_target = T.get(colprefix + 'mws_target')
+        T.cut(np.logical_or(bgs_target > 0, mws_target > 0))
+    if dark:
+        desi_target = T.get(colprefix + 'desi_target')
+        T.cut(T.desi_target > 0)
 
+    names = None
+    if name_func is not None:
+        names = name_func(T, colprefix=colprefix)
+
+    rtn = dict(rd=[(t.ra, t.dec) for t in T],
+               # Convert targetid to string to prevent rounding errors in Javascript
+               targetid=[str(t) for t in T.targetid])
+    if names is not None:
+        rtn.update(name=names)
+    return HttpResponse(json.dumps(rtn), content_type='application/json')
+
+def cat_targets_dr9_sv1_dark(req, ver):
+    # for x in /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/resolve/dark/*.fits;
+    #  do echo $x; startree -i $x -o data/targets-dr9-0.70.0.dev4352-sv1-dark/$(basename $x .fits).kd.fits -TPk; done
+    return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-dark',
+                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.70.0.dev4352-sv1-dark',
+                                              'sv1targets-dark-hp-%i.kd.fits'),
+                                 name_func=desitarget_sv1_names, colprefix='sv1_')
+def cat_targets_dr9_sv1_bright(req, ver):
+    return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-bright',
+                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.70.0.dev4352-sv1-bright',
+                                              'sv1targets-bright-hp-%i.kd.fits'),
+                                 name_func=desitarget_sv1_names, colprefix='sv1_')
+def cat_targets_dr9_sv1_supp(req, ver):
+    pass
+# /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/resolve/dark/
+# /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/resolve/bright/
+# /global/cscratch1/sd/adamyers/gaiadr2/0.47.0.dev4352/targets/sv1/resolve/supp/
 
 def desitarget_cmx_names(T):
     names = []
@@ -601,17 +686,28 @@ def desitarget_cmx_names(T):
         names.append(', '.join(bitnames))
     return names
 
+def get_target_val(t, nm, cols):
+    if nm in cols:
+        return int(t.get(nm))
+    return 0
+
 def desitarget_sv1_names(T, colprefix='sv1_'):
     names = []
     colors = []
+    cols = T.get_columns()
     for t in T:
         desibits = []
         bgsbits = []
         mwsbits = []
+        secbits = []
         desi_target = int(t.get(colprefix + 'desi_target'))
-        bgs_target = int(t.get(colprefix + 'bgs_target'))
-        mws_target = int(t.get(colprefix + 'mws_target'))
-        obj = t.objtype
+        bgs_target = get_target_val(t, colprefix + 'bgs_target', cols)
+        mws_target = get_target_val(t, colprefix + 'mws_target', cols)
+        sec_target = get_target_val(t, colprefix + 'scnd_target', cols)
+        if 'objtype' in cols:
+            obj = t.objtype
+        else:
+            obj = ''
         for bit in range(64):
             if (1 << bit) & desi_target:
                 desibits.append(bit)
@@ -619,6 +715,8 @@ def desitarget_sv1_names(T, colprefix='sv1_'):
                 bgsbits.append(bit)
             if (1 << bit) & mws_target:
                 mwsbits.append(bit)
+            if (1 << bit) & sec_target:
+                secbits.append(bit)
         # https://github.com/desihub/desitarget/blob/master/py/desitarget/sv1/data/sv1_targetmask.yaml
         desinames = [{
             0:  'LRG',
@@ -651,7 +749,7 @@ def desitarget_sv1_names(T, colprefix='sv1_'):
 
             60: 'BGS_ANY',
             61: 'MWS_ANY',
-            62: 'SCND_ANY',
+            #62: 'SCND_ANY',
             }.get(b) for b in desibits]
         bgsnames = [{
             0:  'BGS_FAINT',
@@ -670,8 +768,46 @@ def desitarget_sv1_names(T, colprefix='sv1_'):
             6:  'MWS_BHB',
             14: 'MWS_MAIN_FAINT',
             }.get(b) for b in mwsbits]
-
-        bitnames = [n for n in desinames + bgsnames + mwsnames if n is not None]
+        secondarynames = [{
+            0:  'SCND_VETO',
+            1:  'SCND_UDG',
+            2:  'SCND_FIRST_MALS',
+            3:  'SCND_WD_BINARIES',
+            4:  'SCND_LBG_TOMOG',
+            5:  'SCND_QSO_RED',
+            6:  'SCND_M31_KNOWN',
+            7:  'SCND_M31_QSO',
+            8:  'SCND_M31_STAR',
+            10: 'SCND_MWS_CLUS_GAL_DEEP',
+            11: 'SCND_LOW_MASS_AGN',
+            12: 'SCND_FAINT_HPM',
+            13: 'SCND_GW190412',
+            14: 'SCND_IC134191',
+            15: 'SCND_PV_BRIGHT',
+            16: 'SCND_PV_DARK',
+            17: 'SCND_LOW_Z',
+            18: 'SCND_BHB',
+            19: 'SCND_SPCV',
+            20: 'SCND_DC3R2_GAMA',
+            21: 'SCND_UNWISE_BLUE',
+            22: 'SCND_UNWISE_GREEN',
+            23: 'SCND_HETDEX_MAIN',
+            24: 'SCND_HEXDEX_HP',
+            27: 'SCND_HPM_SOUM',
+            28: 'SCND_SN_HOSTS',
+            29: 'SCND_GAL_CLUS_BCG',
+            30: 'SCND_GAL_CLUS_2ND',
+            31: 'SCND_GAL_CLUS_SAT',
+            32: 'SCND_HSC_HIZ_SNE',
+            33: 'SCND_ISM_CGM_QGP',
+            34: 'SCND_STRONG_LENS',
+            35: 'SCND_WISE_VAR_QSO',
+            36: 'SCND_MWS_CALIB',
+            37: 'SCND_BACKUP_CALIB',
+            38: 'SCND_MWS_MAIN_CLUSTER_SV',
+            39: 'SCND_MWS_RRLYR',
+            }.get(b) for b in secbits]
+        bitnames = [n for n in desinames + bgsnames + mwsnames + secondarynames if n is not None]
         if obj == 'SKY':
             bitnames.append('SKY')
         if obj == 'BAD':
@@ -823,7 +959,7 @@ def desi_cmx_color_names(T, colprefix=None):
 
     return names, colors
 
-def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=False, dark=False, color_name_func=desitarget_color_names, colprefix=''):
+def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=False, dark=False, color_name_func=desitarget_color_names, colprefix='', name_func=None):
     '''
     color_name_func: function that selects names and colors for targets
     (eg based on targeting bit values)
@@ -881,30 +1017,35 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
     colors = None
     if color_name_func is not None:
         names,colors = color_name_func(T, colprefix=colprefix)
+    if name_func is not None:
+        names = name_func(T, colprefix=colprefix)
 
+    rtn = dict(rd=[(t.ra, t.dec) for t in T],
+               targetid=[int(t) for t in T.targetid])
+
+    fluxes = None
+    nobs = None
     if sky:
         fluxes = [dict(g=float(g), r=float(r), z=float(z))
                   for (g,r,z) in zip(T.apflux_g[:,0], T.apflux_r[:,0], T.apflux_z[:,0])]
-        nobs = None
     else:
-        fluxes = [dict(g=float(g), r=float(r), z=float(z),
-                       W1=float(W1), W2=float(W2))
-                  for (g,r,z,W1,W2)
-                  in zip(T.flux_g, T.flux_r, T.flux_z, T.flux_w1, T.flux_w2)]
-        nobs=[dict(g=int(g), r=int(r), z=int(z)) for g,r,z
-              in zip(T.nobs_g, T.nobs_r, T.nobs_z)],
+        if 'flux_g' in T.get_columns():
+            fluxes = [dict(g=float(g), r=float(r), z=float(z),
+                           W1=float(W1), W2=float(W2))
+                      for (g,r,z,W1,W2)
+                      in zip(T.flux_g, T.flux_r, T.flux_z, T.flux_w1, T.flux_w2)]
+        if 'nobs_g' in T.get_columns():
+            nobs=[dict(g=int(g), r=int(r), z=int(z)) for g,r,z
+                  in zip(T.nobs_g, T.nobs_r, T.nobs_z)],
 
-    rtn = dict(rd=[(t.ra, t.dec) for t in T],
-               targetid=[int(t) for t in T.targetid],
-               fluxes=fluxes,
-           )
     if names is not None:
         rtn.update(name=names)
     if colors is not None:
         rtn.update(color=colors)
     if nobs is not None:
         rtn.update(nobs=nobs)
-    
+    if fluxes is not None:
+        rtn.update(fluxes=fluxes)
     # Convert targetid to string to prevent rounding errors
     rtn['targetid'] = [str(s) for s in rtn['targetid']]
     

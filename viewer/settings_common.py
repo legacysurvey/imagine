@@ -148,6 +148,8 @@ ALLOWED_HOSTS = [
     'd.imagine.legacysurvey.org',
     'testserver',
     'localhost',
+    # NERSC Spin Rancher2
+    'lb.cosmo-dstn.development.svc.spin.nersc.org',
 ]
 
 # Application definition
