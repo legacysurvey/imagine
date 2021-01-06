@@ -2330,6 +2330,8 @@ addCSSFilterSlider('contrast');
 // A list of object names mapped to [lat,lng,zoom], for history navgation
 var hashLocations = {};
 
+var objqueryString = '';
+ 
 function objQueryLoaded(result) {
     console.log('Result: ' + result);
     if ("error" in result) {
@@ -2346,6 +2348,12 @@ function objQueryLoaded(result) {
     location.hash = result['name'];
     hashLocations[location.hash] = [lat, lng, zoom];
     console.log('Saved hash location:', location.hash, '=', hashLocations[location.hash]);
+
+    // if DESI tile query, also add overlay checkbox
+    var words = objqueryString.split(" ");
+    if (words.length === 2 && words[0] === "TILE") {
+        addDesiTile(words[1]);
+    }
     
 }
 
@@ -2355,7 +2363,9 @@ $(document).ready(function() {
         // when Enter is hit in the Object name search box
         if (event.keyCode == 13) {
             var qstring = $('#objquery').val();
+            objqueryString = qstring;
             
+            // [this is old...]
             // Check if query is DESI tile
             var splited = qstring.split(" ");
             if (splited.length === 2 && splited[0] === "DESI") {
@@ -3814,7 +3824,9 @@ var overlayTree = [];
   addUserCatalogs();
 {% endif %}
 {% if desitiles %}
-  addDesiTiles();
+ {% for tileid in desitiles %}
+ addDesiTile({{tileid}});
+ {% endfor %}
 {% endif %}
 
 

@@ -152,17 +152,21 @@ var DesiTileLayer = CatalogOverlay.extend({
 });
 
 
-var addDesiTiles = function() {
-  {% for tileid in desitiles %}
-    var name = 'desitile-' + '{{tileid}}';
-    var pretty = 'DESI Tile {{tileid}}';
+var added_desi_tiles = [];
+
+var addDesiTile = function(tileid) {
+    // no duplicates!
+    if (added_desi_tiles.includes(tileid)) {
+        return;
+    }
+    var name = 'desitile-' + tileid;
+    var pretty = 'DESI Tile '+tileid;
     var layer = new DesiTileLayer(name, pretty,
-        {'url': desitile_url, 'url_args': {'tile': '{{tileid}}'}});
+        {'url': desitile_url, 'url_args': {'tile': ''+tileid}});
     var group = layer.getGroup();
     group._name = name;
     overlayTree.push({ label: pretty,
                        layer: group });
     map.addLayer(group);
-  {% endfor %}
 }
                              

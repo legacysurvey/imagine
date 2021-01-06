@@ -677,6 +677,15 @@ def name_query(req):
         ra,dec,name = get_random_galaxy(layer=layer)
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=name)),
                             content_type='application/json')
+    # Check for TILE <desi_tile_id>
+    words = obj.strip().split()
+    if len(words) == 2 and words[0].lower() == 'tile':
+        tileid = int(words[1])
+        fn = desi_fiberassign_filename(tileid)
+        if not os.path.exists(fn):
+            return HttpResponse(json.dumps(dict(error='DESI tile %i not found' % tileid)))
+        hdr = fitsio.read_header(fn)
+        return HttpResponse(json.dumps(dict(ra=hdr['TILERA'], dec=hdr['TILEDEC'], name='DESI Tile %i' % tileid)))
 
     # Check for RA,Dec in decimal degrees or H:M:S.
     words = obj.strip().split()

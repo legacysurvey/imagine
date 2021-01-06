@@ -1629,6 +1629,12 @@ def cat_user(req, ver):
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
 
+def desi_fiberassign_filename(tileid):
+    tilestr = '%06i' % tileid
+    fn = os.path.join(settings.DATA_DIR, 'desi-tiles',
+                      tilestr[:3], 'fiberassign-%s.fits.gz'%tilestr)
+    return fn
+
 def cat_desi_tile(req, ver):
     from astrometry.util.fits import fits_table
     import json
@@ -1646,9 +1652,7 @@ def cat_desi_tile(req, ver):
         dechi = float(req.GET['dechi'])
         haverd = True
 
-    tilestr = '%06i' % tile
-    fn = os.path.join(settings.DATA_DIR, 'desi-tiles',
-                      tilestr[:3], 'fiberassign-%s.fits.gz'%tilestr)
+    fn = desi_fiberassign_filename(tile)
     if not os.path.exists(fn):
         print('Does not exist:', fn)
         return
