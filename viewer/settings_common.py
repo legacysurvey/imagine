@@ -150,6 +150,7 @@ ALLOWED_HOSTS = [
     'localhost',
     # NERSC Spin Rancher2
     'lb.cosmo-dstn.development.svc.spin.nersc.org',
+    'spin.legacysurvey.org',
 ]
 
 # Application definition

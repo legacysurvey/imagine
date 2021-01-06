@@ -3,6 +3,7 @@ var DesiTileLayer = CatalogOverlay.extend({
     initialize: function(name, pretty, kwargs) {
         CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
         this.color = '#00ff00';
+        this.rscale = kwargs['rscale'] || 1.0;
     },
 
     getLayer: function(result) {
@@ -33,8 +34,9 @@ var DesiTileLayer = CatalogOverlay.extend({
             };
             var dopop = popf.bind(null, poptxt);
 
-            // var txt = '';
-            // var bits = bitnames[i].split(', ');
+            var txt = bitnames[i];
+            //var txt = '';
+            //var bits = bitnames[i].split(', ');
             // var bset = new Set();
             // for (var j=0, blen=bits.length; j<blen; j++) {
             //     var words = bits[j].split('_');
@@ -47,77 +49,86 @@ var DesiTileLayer = CatalogOverlay.extend({
             //         txt += ', ';
             //     txt += b;
             // }
+            var rscale = this.rscale;
             
             var got = false;
             if (bitnames[i].includes('ELG')) {
-                var circ = L.circle([lat, lng], 300.,
+                var circ = L.circle([lat, lng], 300. * rscale,
                                     {'color': '#88CCEE', 'fillOpacity':0,
                                      'weight': 3, 'opacity': 0.8});
                 //circ.bindTooltip(txt, {permanent:true, interactive:true});
+                circ.bindTooltip(txt, {permanent:false, interactive:true});
                 circ.on('click', dopop);
                 circleList.push(circ);
                 got = true;
             }
             if (bitnames[i].includes('QSO')) {
-                var circ = L.circle([lat, lng], 500.,
+                var circ = L.circle([lat, lng], 500. * rscale,
                                     {'color': 'green', 'fillOpacity':0,
                                      'weight': 3, 'opacity': 0.8});
                 //circ.bindTooltip(txt, {permanent:true, interactive:true});
+                circ.bindTooltip(txt, {permanent:false, interactive:true});
                 circ.on('click', dopop);
                 circleList.push(circ);
                 got = true;
             }
             if (bitnames[i].includes('LRG')) {
-                var circ = L.circle([lat, lng], 400.,
+                var circ = L.circle([lat, lng], 400. * rscale,
                                     {'color': 'red', 'fillOpacity':0,
                                      'weight': 3, 'opacity': 0.8});
                 //circ.bindTooltip(txt, {permanent:true, interactive:true});
+                circ.bindTooltip(txt, {permanent:false, interactive:true});
                 circ.on('click', dopop);
                 circleList.push(circ);
                 got = true;
             }
             if (bitnames[i].includes('MWS')) {
-                var circ = L.circle([lat, lng], 600.,
+                var circ = L.circle([lat, lng], 600. * rscale,
                                     {'color': 'yellow', 'fillOpacity':0,
                                      'weight': 3, 'opacity': 0.8});
                 //circ.bindTooltip(txt, {permanent:true, interactive:true});
+                circ.bindTooltip(txt, {permanent:false, interactive:true});
                 circ.on('click', dopop);
                 circleList.push(circ);
                 got = true;
             }
             if (bitnames[i].includes('BGS')) {
-                var circ = L.circle([lat, lng], 700.,
+                var circ = L.circle([lat, lng], 700. * rscale,
                                     {'color': 'white', 'fillOpacity':0,
                                      'weight': 3, 'opacity': 0.8});
                 //circ.bindTooltip(txt, {permanent:true, interactive:true});
+                circ.bindTooltip(txt, {permanent:false, interactive:true});
                 circ.on('click', dopop);
                 circleList.push(circ);
                 got = true;
             }
             if (bitnames[i].includes('STD')) {
-                var circ = L.circle([lat, lng], 700.,
+                var circ = L.circle([lat, lng], 700. * rscale,
                                     {'color': '#CCCCCC', 'fillOpacity':0,
                                      'weight': 3, 'opacity': 0.8});
                 //circ.bindTooltip(txt, {permanent:true, interactive:true});
+                circ.bindTooltip(txt, {permanent:false, interactive:true});
                 circ.on('click', dopop);
                 circleList.push(circ);
                 got = true;
             }
             if (bitnames[i].includes('SCND')) {
-                var circ = L.circle([lat, lng], 700.,
+                var circ = L.circle([lat, lng], 700. * rscale,
                                     {'color': 'orange', 'fillOpacity':0,
                                      'weight': 3, 'opacity': 0.8});
                 //circ.bindTooltip(txt, {permanent:true, interactive:true});
+                circ.bindTooltip(txt, {permanent:false, interactive:true});
                 circ.on('click', dopop);
                 circleList.push(circ);
                 got = true;
             }
             // SKY
             if (!got) {
-                var circ = L.circle([lat, lng], 400.,
+                var circ = L.circle([lat, lng], 400. * rscale,
                                     {'color': '#888888', 'fillOpacity':0,
                                      'weight': 3, 'opacity': 0.8});
                 //circ.bindTooltip(txt, {permanent:true, interactive:true});
+                circ.bindTooltip(txt, {permanent:false, interactive:true});
                 circ.on('click', dopop);
                 circleList.push(circ);
             }

@@ -548,14 +548,27 @@ def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', n
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
     from astrometry.util.fits import fits_table, merge_tables
     from astrometry.libkd.spherematch import tree_open, tree_search_radec
-    from astrometry.util.util import healpix_rangesearch_radec, healpix_xy_to_nested, healpix_side_length_arcmin
+    from astrometry.util.util import healpix_rangesearch_radec, healpix_xy_to_nested, healpix_side_length_arcmin, healpix_rangesearch_radec_approx
     import numpy as np
     # hackily bump up the healpix search radius...
-    rplus = 0.1 * healpix_side_length_arcmin(nside) / 60.
+    #hpr = healpix_side_length_arcmin(nside) / 60.
+    #print('Healpix side length:', hpr, 'deg')
+    rplus = 0.01 * healpix_side_length_arcmin(nside) / 60.
+    #rplus = 0.
     rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
-    hps = healpix_rangesearch_radec(rc, dc, np.deg2rad(rad + rplus), nside)
+    print('RA,Dec', rc,dc, 'radius', rad, 'rplus', rplus)
+    hps = healpix_rangesearch_radec(rc, dc, rad+rplus, nside)
+    #hps = healpix_rangesearch_radec_approx(rc, dc, np.deg2rad(rad + rplus), nside)
+    print('Healpixes', hps)
     TT = []
     for hp in hps:
+        from astrometry.util.util import healpix_to_radecdeg
+        from astrometry.util.starutil import degrees_between
+        hr,hd = healpix_to_radecdeg(hp, nside, 0.5, 0.5)
+        dist = degrees_between(hr,hd, rc,dc)
+        print('Healpix center:', hr,hd)
+        print('Dist from HP', hp, ':', dist)
+        
         hpx = healpix_xy_to_nested(hp, nside)
         fn = catpat % hpx
         if not os.path.exists(fn):
@@ -572,7 +585,13 @@ def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', n
         return HttpResponse(json.dumps(dict(rd=[], name=[])),
                             content_type='application/json')
     T = merge_tables(TT, columns='fillzero')
-        
+
+    # cut to RA,Dec rectangle
+    margin = (dechi - declo) * 0.05
+    rmargin = margin / np.cos(np.deg2rad(dc))
+    T.cut((T.dec > (declo-margin)) * (T.dec < (dechi+margin)) *
+          (T.ra  > (ralo-rmargin)) * (T.ra  < (rahi+rmargin)))
+    
     if bgs:
         bgs_target = T.get(colprefix + 'bgs_target')
         T.cut(bgs_target > 0)
@@ -597,14 +616,14 @@ def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', n
 
 def cat_targets_dr9_sv1_dark(req, ver):
     # for x in /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/resolve/dark/*.fits;
-    #  do echo $x; startree -i $x -o data/targets-dr9-0.70.0.dev4352-sv1-dark/$(basename $x .fits).kd.fits -TPk; done
+    #  do echo $x; startree -i $x -o data/targets-dr9-0.47.0.dev4352-sv1-dark/$(basename $x .fits).kd.fits -TPk; done
     return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-dark',
-                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.70.0.dev4352-sv1-dark',
+                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.47.0.dev4352-sv1-dark',
                                               'sv1targets-dark-hp-%i.kd.fits'),
                                  name_func=desitarget_sv1_names, colprefix='sv1_')
 def cat_targets_dr9_sv1_bright(req, ver):
     return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-bright',
-                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.70.0.dev4352-sv1-bright',
+                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.47.0.dev4352-sv1-bright',
                                               'sv1targets-bright-hp-%i.kd.fits'),
                                  name_func=desitarget_sv1_names, colprefix='sv1_')
 def cat_targets_dr9_sv1_supp(req, ver):
