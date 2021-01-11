@@ -892,6 +892,7 @@ def main():
                         'dr9sv', 'dr9sv-model', 'dr9sv-resid',
                         'fornax', 'fornax-model', 'fornax-resid',
                          'vlass1.2', 'ztf',
+                         'ls-dr9-south', 'ls-dr9-south-model',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
@@ -1361,6 +1362,8 @@ def main():
                     tilesize = 180.
             I = np.flatnonzero((dd >= opt.mindec) * (dd <= opt.maxdec))
             print('Keeping', len(I), 'Dec points between', opt.mindec, 'and', opt.maxdec)
+            if len(I) == 0:
+                continue
             dd = dd[I]
             yy = yy[I]
 
@@ -1377,6 +1380,8 @@ def main():
 
             I = np.flatnonzero((rr >= opt.minra) * (rr <= opt.maxra))
             print('Keeping', len(I), 'RA points between', opt.minra, 'and', opt.maxra)
+            if len(I) == 0:
+                continue
             rr = rr[I]
             xx = xx[I]
             

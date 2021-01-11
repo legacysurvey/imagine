@@ -48,7 +48,6 @@ def delete_scaled_images(name, old_bricks, new_bricks):
         new_bricks = allbricks[I_touched]
 
 
-
 def main():
 
     # indir = '/global/cscratch1/sd/dstn/dr8test-1'
@@ -195,12 +194,13 @@ def main():
     if True:
         #indir = '/global/cscratch1/sd/ziyaoz/dr9m/south/'
         indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/south'
-        name = 'dr9m-south'
+        #name = 'dr9m-south'
+        name = 'ls-dr9-south'
         pretty = 'DR9m-south'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
 
-    update = True
-    #update = False
+    #update = True
+    update = False
     queue = True
 
     # rsync = True
@@ -287,12 +287,19 @@ def main():
     print('Found', len(extraimagefns), 'extra images')
 
     # Update all bricks in extra-images...
-    if True:
+    if update:
         brickset = set()
-        for fn in extraimagefns:
-            dirs = fn.split('/')
-            brickname = dirs[-2]
+
+        # Read list of new bricks
+        f = open('bricks.txt')
+        for line in f.readlines():
+            brickname = line.strip()
             brickset.add(brickname)
+
+        # for fn in extraimagefns:
+        #     dirs = fn.split('/')
+        #     brickname = dirs[-2]
+        #     brickset.add(brickname)
         print(len(brickset), 'bricks found')
         I, = np.nonzero([b in brickset for b in allbricks.brickname])
         bricks = allbricks[I]
