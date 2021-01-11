@@ -11,6 +11,7 @@ var DesiTileLayer = CatalogOverlay.extend({
         var targetids = result['targetid'];
         var rdlist = result['rd'];
         var bitnames = result['bits'];
+        var fiber = result['fiberid'];
         if (bitnames === undefined) {
             // target functions vs tile function
             bitnames = result['name'];
@@ -34,7 +35,10 @@ var DesiTileLayer = CatalogOverlay.extend({
             };
             var dopop = popf.bind(null, poptxt);
 
-            var txt = bitnames[i];
+            if (fiber != undefined)
+                var txt = 'Fiber ' + fiber[i] + ': ' + bitnames[i];
+            else
+                var txt = bitnames[i];
             //var txt = '';
             //var bits = bitnames[i].split(', ');
             // var bset = new Set();

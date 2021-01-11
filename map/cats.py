@@ -1683,6 +1683,8 @@ def cat_desi_tile(req, ver):
         D.update(bits=bitnames)
     if 'targetid' in cols:
         D.update(targetid=['%i'%i for i in cat.targetid])
+    if 'fiber' in cols:
+        D.update(fiberid=[int(i) for i in cat.fiber])
 
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
@@ -1868,19 +1870,36 @@ def get_desi_tiles():
         tileradec[tileid] = (ra,dec)
     return tileradec
 
-def get_desi_tile_radec(tile_id):
+def get_desi_tile_radec(tileid, fiberid=None):
     """Accepts a tile_id, returns a tuple of ra, dec
     Raises a RuntimeError if tile_id is not found
     """
-    # Load tile radec
-    tileradec = get_desi_tiles()
-
-    if tile_id in tileradec:
-        ra = tileradec[tile_id][0]
-        dec = tileradec[tile_id][1]
-        return ra, dec
-    else:
+    import fitsio
+    fn = desi_fiberassign_filename(tileid)
+    if not os.path.exists(fn):
         raise RuntimeError("DESI tile not found")
+    hdr = fitsio.read_header(fn)
+    ra = hdr['TILERA']
+    dec = hdr['TILEDEC']
+
+    if fiberid is not None:
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        T = fits_table(fn, columns=['target_ra', 'target_dec', 'fiber'])
+        I = np.flatnonzero(T.fiber == fiberid)
+        if len(I) == 1:
+            i = I[0]
+            return T.target_ra[i], T.target_dec[i]
+    
+    return ra,dec
+    # # Load tile radec
+    # tileradec = get_desi_tiles()
+    # if tile_id in tileradec:
+    #     ra = tileradec[tile_id][0]
+    #     dec = tileradec[tile_id][1]
+    #     return ra, dec
+    # else:
+    #     raise RuntimeError("DESI tile not found")
 
 if __name__ == '__main__':
     import sys

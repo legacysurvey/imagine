@@ -1366,19 +1366,15 @@ function plate_detail(layer_name, name, aparams) {
     return '<a href="https://dr14.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
 }
 
-function onMapClick(e) {
-    var ra  = long2ra(e.latlng.lng);
-    var dec = lat2dec(e.latlng.lat);
+function linkHereURL() {
+    var latlng = map.getCenter();
+    var ra  = long2ra(latlng.lng);
+    var dec = lat2dec(latlng.lat);
 
     var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
     var linkqstr = radecstr + '&layer=' + layer_name;
     var zoomstr = '&zoom=' + map.getZoom();
 
-    var pixscale = 0.25 * Math.pow(2, 14 - map.getZoom());
-    var pixstr = '&pixscale=' + pixscale.toFixed(2);
-
-    var cutout = '{% url 'cutout-jpeg' %}?' + linkqstr + pixstr;
-    var cutout_fits = '{% url 'cutout-fits' %}?' + linkqstr + pixstr;
     var linkurl = '?' + linkqstr + zoomstr;
     if ('plate' in qstr) {
         linkurl += '&plate=' + qstr['plate'];
@@ -1398,6 +1394,23 @@ function onMapClick(e) {
     if ('tile' in qstr) {
         linkurl += '&tile=' + qstr['tile'];
     }
+    return linkurl;
+}
+ 
+function onMapClick(e) {
+    var ra  = long2ra(e.latlng.lng);
+    var dec = lat2dec(e.latlng.lat);
+
+    var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
+    var linkqstr = radecstr + '&layer=' + layer_name;
+    var zoomstr = '&zoom=' + map.getZoom();
+
+    var pixscale = 0.25 * Math.pow(2, 14 - map.getZoom());
+    var pixstr = '&pixscale=' + pixscale.toFixed(2);
+
+    var cutout = '{% url 'cutout-jpeg' %}?' + linkqstr + pixstr;
+    var cutout_fits = '{% url 'cutout-fits' %}?' + linkqstr + pixstr;
+    var linkurl = linkHereURL();
 
     var abs_cutout = hostname_url + cutout;
     var abs_link = hostname_url + '{% url 'index' %}' + linkurl;
@@ -2352,7 +2365,16 @@ function objQueryLoaded(result) {
     // if DESI tile query, also add overlay checkbox
     var words = objqueryString.split(" ");
     if (words.length === 2 && words[0] === "TILE") {
-        addDesiTile(words[1]);
+
+        if ('tile' in qstr) {
+            qstr['tile'] = qstr['tile'] + ',' + words[1];
+        } else {
+            qstr['tile'] = words[1];
+        }
+        var linkurl = linkHereURL();
+        console.log('Link URL:', linkurl);
+        window.location.href = linkurl;
+
     }
     
 }
@@ -3823,21 +3845,20 @@ var overlayTree = [];
 {% if usercatalogs %}
   addUserCatalogs();
 {% endif %}
+
 {% if desitiles %}
- {% for tileid in desitiles %}
- addDesiTile({{tileid}});
- {% endfor %}
+  {% for tileid in desitiles %}
+    addDesiTile({{tileid}});
+  {% endfor %}
 {% endif %}
 
-
-
 {% if enable_dev %}
-{% for name,pretty in test_cats %}
-  overlayTree.push(findoverlay('{{name}}'));
-{% endfor %}
-{% for name,pretty in test_ccds %}
-  overlayTree.push(findoverlay('{{name}}-ccds'));
-{% endfor %}
+  {% for name,pretty in test_cats %}
+    overlayTree.push(findoverlay('{{name}}'));
+  {% endfor %}
+  {% for name,pretty in test_ccds %}
+    overlayTree.push(findoverlay('{{name}}-ccds'));
+  {% endfor %}
 {% endif %}
 
  overlayTree = overlayTree.concat([
@@ -3982,12 +4003,14 @@ var overlayTree = [];
          //findoverlay('targets-dr9-sv1-supp'),
          findoverlay('targets-dr8'),
          //findoverlay('targets-sv-dr8'),
-         findoverlay('targets-cmx-dr7'),
-         findoverlay('targets-dr67'),
-         findoverlay('targets-bgs-dr67'),
-         findoverlay('targets-sky-dr67'),
-         findoverlay('targets-bright-dr67'),
-         findoverlay('targets-dark-dr67'),
+         //findoverlay('targets-cmx-dr7'),
+         //findoverlay('targets-dr67'),
+         //findoverlay('targets-bgs-dr67'),
+         //findoverlay('targets-sky-dr67'),
+         //findoverlay('targets-bright-dr67'),
+         //findoverlay('targets-dark-dr67'),
+         { label: 'DESI Individual Tiles',
+           children: desi_tile_list },
          {% if enable_desi_footprint %}
          findoverlay('desi-footprint'),
          findoverlay('desi-fiberpos'),
@@ -4010,10 +4033,9 @@ var overlayTree = [];
  ]);
 
 
-ot = { label: 'Overlays', children: overlayTree };
-overlayTree = ot;
-
-L.control.layers.tree(baseTree, overlayTree, { collapsed: false }).addTo(map);
+var layerTree = L.control.layers.tree(baseTree,
+                      { label: 'Overlays', children: overlayTree },
+                      { collapsed: false }).addTo(map);
 
  $(document).ready(function() {
      // This is fragile wrt the DOM structure of the tree layer control widget.

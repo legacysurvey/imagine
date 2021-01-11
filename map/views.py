@@ -392,10 +392,6 @@ def _index(req,
     except:
         pass
 
-    galname = None
-    if ra is None or dec is None:
-        ra,dec,galname = get_random_galaxy(layer=layer)
-
     from urllib.parse import unquote
     caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
     smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
@@ -454,6 +450,22 @@ def _index(req,
 
     desitiles = [int(x,10) for x in req.GET.get('tile', '').split(',') if len(x)]
 
+    if len(desitiles):
+        tile = desitiles[0]
+        fiberid = None
+        if 'fiber' in req.GET:
+            try:
+                fiberid = int(req.GET.get('fiber'), 10)
+            except:
+                pass
+        try:
+            ra,dec = get_desi_tile_radec(tile, fiberid=fiberid)
+        except:
+            pass
+    galname = None
+    if ra is None or dec is None:
+        ra,dec,galname = get_random_galaxy(layer=layer)
+    
     hostname_url = req.build_absolute_uri('/')
 
     test_layers = []
@@ -680,12 +692,13 @@ def name_query(req):
     # Check for TILE <desi_tile_id>
     words = obj.strip().split()
     if len(words) == 2 and words[0].lower() == 'tile':
+        from map.cats import get_desi_tile_radec
         tileid = int(words[1])
-        fn = desi_fiberassign_filename(tileid)
-        if not os.path.exists(fn):
+        try:
+            ra,dec = get_desi_tile_radec(tileid)
+        except RuntimeError as e:
             return HttpResponse(json.dumps(dict(error='DESI tile %i not found' % tileid)))
-        hdr = fitsio.read_header(fn)
-        return HttpResponse(json.dumps(dict(ra=hdr['TILERA'], dec=hdr['TILEDEC'], name='DESI Tile %i' % tileid)))
+        return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Tile %i' % tileid)))
 
     # Check for RA,Dec in decimal degrees or H:M:S.
     words = obj.strip().split()
