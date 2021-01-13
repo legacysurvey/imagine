@@ -267,6 +267,7 @@ def _index(req,
            maxZoom = 16,
            **kwargs):
     kwkeys = dict(
+        enable_older = settings.ENABLE_OLDER,
         enable_unwise = settings.ENABLE_UNWISE,
         enable_vlass = settings.ENABLE_VLASS,
         enable_dev = settings.ENABLE_DEV,

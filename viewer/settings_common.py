@@ -28,6 +28,8 @@ ENABLE_CUTOUTS = True
 
 ENABLE_UNWISE = True
 
+ENABLE_OLDER = True
+
 ENABLE_DR5 = False
 ENABLE_DR6 = True
 ENABLE_DR7 = True
@@ -149,8 +151,8 @@ ALLOWED_HOSTS = [
     'testserver',
     'localhost',
     # NERSC Spin Rancher2
-    'lb.cosmo-dstn.development.svc.spin.nersc.org',
     'spin.legacysurvey.org',
+    'viewer.legacysurvey.org', 'a.viewer.legacysurvey.org', 'b.viewer.legacysurvey.org', 'c.viewer.legacysurvey.org', 'd.viewer.legacysurvey.org',
 ]
 
 # Application definition

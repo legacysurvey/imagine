@@ -3702,12 +3702,18 @@ var baseTree1 = [
     {% if enable_phat %}
     findlayer('phat'),
     {% endif %}
+
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
+        {% if enable_dr9_models %}
         findlayer('ls-dr9-model'),
+        {% endif %}
+        {% if enable_dr9_resids %}
         findlayer('ls-dr9-resid'),
+        {% endif %}
     ]),
     {% endif %}
+
     {% if enable_dr9_north %}
     findlayer('ls-dr9-north', [
         findlayer('ls-dr9-north-model'),
@@ -3722,6 +3728,7 @@ var baseTree1 = [
     {% endif %}
 
 
+    {% if enable_older %}
      { label: 'Older Legacy Surveys',
        children: [
 
@@ -3810,6 +3817,7 @@ var baseTree1 = [
     {% endif %}
 
      ]},
+    {% endif %}
 
     {% if enable_unwise %}
     findlayer('unwise-neo6', [
