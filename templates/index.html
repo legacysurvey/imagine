@@ -2073,19 +2073,19 @@ tiles = mylayer_B('m33', 'M33 image',
 allLayers.push(tiles);
 {% endif %}
 
-tiles = mylayer_B('sdss', 'SDSS images',
+tiles = mylayer_B('sdss', 'SDSS',
                   {'attribution': sdss_attrib,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
-tiles = mylayer_B('ztf', 'ZTF images',
+tiles = mylayer_B('ztf', 'ZTF',
                   {'attribution': 'ZTF',
                    'urlPatterns': [ [1, maxZoom, tile_url], ],
                    'maxNativeZoom': 12,});
 allLayers.push(tiles);
 
 {% if enable_ps1 %}
-tiles = mylayer_B('ps1', 'PS1 images',
+tiles = mylayer_B('ps1', 'Pan-STARRS1',
                   {'attribution': ps1_attrib,
                    'urlPatterns': [ [8, maxZoom, tile_url], ],});
                   //'urlPatterns': [ [14, maxZoom, tile_url], ],});
@@ -2093,14 +2093,14 @@ allLayers.push(tiles);
 {% endif %}
 
 {% if enable_hsc_dr2 %}
-tiles = mylayer_B('hsc-dr2', 'HSC DR2 images',
+tiles = mylayer_B('hsc-dr2', 'HSC DR2',
                   {'attribution': hsc_attrib,
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
 
 {% if enable_vlass %}
-tiles = mylayer_B('vlass1.2', 'VLASS 1.2 images',
+tiles = mylayer_B('vlass1.2', 'VLASS 1.2',
                   {'attribution': vlass_attrib,
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
@@ -3226,7 +3226,7 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
                               'labelsMinZoom': 7,
                              'urlTerm': 'ngc',});
 
-var GCsPNe = new GCsPNeCatalog('GCs-PNe', 'GCs/PNe',
+var GCsPNe = new GCsPNeCatalog('GCs-PNe', 'Star clusters & Planetary Nebulae',
                              {'url_name': 'GCs-PNe',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
@@ -3829,26 +3829,25 @@ var baseTree1 = [
     {
         label: 'More surveys',
         children: [
-            findlayer('sdss'),
-            findlayer('ztf'),
             {% if enable_des_dr1 %}
             findlayer('des-dr1'),
+            {% endif %}
+            findlayer('galex'),
+            findlayer('halpha'),
+            {% if enable_hsc_dr2 %}
+            findlayer('hsc-dr2'),
             {% endif %}
             {% if enable_ps1 %}
             findlayer('ps1'),
             {% endif %}
-            {% if enable_hsc_dr2 %}
-            findlayer('hsc-dr2'),
-            {% endif %}
+            findlayer('sdss'),
+            findlayer('sfd'),
             {% if enable_vlass %}
             findlayer('vlass1.2'),
             {% endif %}
-            {% comment %}
-            findlayer('2mass'),
-            {% endcomment %}
-            findlayer('galex'),
-            findlayer('sfd'),
-            findlayer('halpha'),
+            {% if enable_ztf %}
+            findlayer('ztf'),
+            {% endif %}
         ],
     },
 ];
@@ -3922,6 +3921,7 @@ var overlayTree = [];
        findoverlay('dr9-south-ccds'),
        findoverlay('dr9-south-exps'),
        {% endif %}
+       findoverlay('masks-dr9'),
      ]),
      {% endif %}
      {% if enable_dr9sv_overlays %}
@@ -4041,7 +4041,17 @@ var overlayTree = [];
      {% endif %}
 
      {% if enable_desi_targets %}
-     findoverlay('targets-dr9-sv1-dark', [
+     { label: 'DESI',
+       children: [
+         {% if desitiles %}
+         { label: 'DESI Individual Tiles',
+           children: desi_tile_list },
+         {% endif %}
+         {% if enable_desi_footprint %}
+         findoverlay('desi-footprint'),
+         findoverlay('desi-fiberpos'),
+         {% endif %}
+           findoverlay('targets-dr9-sv1-dark'),
          findoverlay('targets-dr9-sv1-bright'),
          findoverlay('targets-dr9-sv1-sec'),
          //findoverlay('targets-dr9-sv1-supp'),
@@ -4053,25 +4063,18 @@ var overlayTree = [];
          //findoverlay('targets-sky-dr67'),
          //findoverlay('targets-bright-dr67'),
          //findoverlay('targets-dark-dr67'),
-         { label: 'DESI Individual Tiles',
-           children: desi_tile_list },
-         {% if enable_desi_footprint %}
-         findoverlay('desi-footprint'),
-         findoverlay('desi-fiberpos'),
-         {% endif %}
-     ]),
+       ]},,
      {% endif %}
 
      { label: 'Bright Objects', children: [
      findoverlay('bright'),
      findoverlay('tycho2'),
+     findoverlay('GCs-PNe'),
      findoverlay('gals'),
      findoverlay('sga'),
      findoverlay('sga-parent'),
      //findoverlay('sga-model'),
-     findoverlay('masks-dr9'),
      //findoverlay('masks-dr8'),
-     findoverlay('GCs-PNe'),
      findoverlay('const'),
      ]},
  ]);
@@ -4118,7 +4121,8 @@ var layerTree = L.control.layers.tree(baseTree,
          'DECaLS DR7 Exposures',
          'Other catalogs',
          'Spectroscopy',
-         'DESI Targets (DR8)',
+         'DESI',
+         //'DESI Targets (DR8)',
          {% if enable_dr9sv_overlays %}
          'Legacy Surveys DR9-SV Catalog',
          'Legacy Surveys DR9-SV CCDs',
@@ -4127,7 +4131,6 @@ var layerTree = L.control.layers.tree(baseTree,
          'Legacy Surveys DR8 Catalog',
          'Legacy Surveys DR8 CCDs',
          {% endif %}
-
          'Boundaries',
          'Imaging catalogs',
             ];
