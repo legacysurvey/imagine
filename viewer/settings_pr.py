@@ -6,7 +6,7 @@ STATIC_URL = ROOT_URL + STATIC_URL_PATH
 
 HOSTNAME = 'viewer.legacysurvey.org'
 #HOSTNAME = 'spin.legacysurvey.org'
-TILE_URL = 'http://{s}.%s%s{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+TILE_URL = 'https://{s}.%s%s{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
 DEBUG = True
 

@@ -502,7 +502,7 @@ def _index(req,
         traceback.print_exc()
 
 
-    args = dict(ra=ra, dec=dec, zoom=zoom,
+    args = dict(ra=ra, dec=dec,
                 maxZoom=maxZoom,
                 galname=galname,
                 layer=layer, tileurl=tileurl,

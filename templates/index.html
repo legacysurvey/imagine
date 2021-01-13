@@ -73,7 +73,6 @@
  {# }}} #}
 
 // Variables from django.
-var zoom_initial = {{ zoom }};
 var layer_initial = '{{ layer }}';
 var ra_initial = {{ ra }};
 var dec_initial = {{ dec }};
@@ -122,6 +121,15 @@ var QueryItems = function() {
     return items;
 };
 var qstr = QueryItems();
+
+var zoom_initial = 12;
+if ('zoom' in qstr) {
+  zoom_initial = parseInt(qstr['zoom']);
+  if (isNaN(zoom_initial))
+    zoom_initial = 12;
+  zoom_initial = Math.max(1, Math.min(maxZoom, zoom_initial));
+}
+
 
 function arcsecToMeters(arcsec) {
     return arcsec * 30.87;
@@ -1565,9 +1573,6 @@ var tileversions = {
     'dr9k-south': 2,
     'dr9k-south-model': 2,
     'dr9k-south-resid': 2,
-    //'ls-dr9-north': 2,
-    //'ls-dr9-north-model': 2,
-    //'ls-dr9-north-resid': 2,
 };
 var catversions  = {
 };
@@ -1708,7 +1713,9 @@ allLayers.push(tiles);
 tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
                     32.375,
                     // North
-                    'ls-dr9-north', [ [0, maxZoom, tile_url], ],
+                    'ls-dr9-north', [
+                      [0, 12, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
+                      [13, maxZoom, tile_url], ],
                     //'ls-dr9-north', [ [0, max_aws_zoom, aws_tile_url], ],
                     {'id':'ls-dr9-north'},
                     // Mid
