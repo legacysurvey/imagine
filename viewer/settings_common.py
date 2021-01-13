@@ -30,6 +30,9 @@ ENABLE_UNWISE = True
 
 ENABLE_OLDER = True
 
+# scientist view (vs public)
+ENABLE_SCIENCE = True
+
 ENABLE_DR5 = False
 ENABLE_DR6 = True
 ENABLE_DR7 = True

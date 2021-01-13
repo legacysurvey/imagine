@@ -4,6 +4,9 @@ ROOT_URL = '/'
 STATIC_URL_PATH = 'static/'
 STATIC_URL = ROOT_URL + STATIC_URL_PATH
 
+HOSTNAME = 'viewer.legacysurvey.org'
+TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+
 DEBUG = True
 
 DEBUG_LOGGING = True
@@ -22,4 +25,10 @@ CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
 ENABLE_DR5  = False
 ENABLE_DR9 = True
+ENABLE_DR9SV = False
 ENABLE_OLDER = False
+# public version
+ENABLE_SCIENCE = False
+
+ENABLE_SPECTRA = False
+ENABLE_DESI_TARGETS = False

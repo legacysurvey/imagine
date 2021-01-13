@@ -2288,6 +2288,7 @@ disableMouseEventPropagation(info);
 var container = info.getContainer();
 L.DomEvent.on(container, 'click', infoBoxClicked);
 
+{% if science %}
 // upload catalog input field
 var upload = L.control({'position':'bottomleft'});
 upload.onAdd = function (map) {
@@ -2296,6 +2297,7 @@ upload.onAdd = function (map) {
     return this._div;
 };
 upload.addTo(map);
+{% endif %}
 
 // Named object search field
 var objquery = L.control({'position':'bottomleft'});
@@ -3214,7 +3216,7 @@ var dr9svsouthcat = new DecalsCatalogLayer(tileWatcher,
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
-var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {});
+var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {'minZoom':10});
 
 {% if enable_ps1 %}
 var ps1cat = new Ps1CatalogOverlay('ps1-cat', 'PS1 catalog', {'radius':150});
@@ -3250,7 +3252,7 @@ var sga_parent = new SGACatalog('sga-parent', 'HyperLEDA/SGA galaxies',
                               'urlTerm': 'sga-parent',});
 
 var sga_ell = new SGACatalog('sga', 'Siena Galaxy Atlas',
-                             {'minZoom': 5,
+                             {'minZoom': 7,
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga',});
 
@@ -3821,9 +3823,11 @@ var baseTree1 = [
 
     {% if enable_unwise %}
     findlayer('unwise-neo6', [
+        {% if science %}
         findlayer('unwise-neo4'),
         findlayer('unwise-cat-model'),
         findlayer('wssa'),
+        {% endif %}
     ]),
     {% endif %}
     {
@@ -3909,6 +3913,7 @@ var overlayTree = [];
      findoverlay('phat-clusters'),
      {% endif %}    
 
+     {% if science %}
      { label: 'Boundaries', children: [
 
      findoverlay('decals-bricks'),
@@ -3970,7 +3975,10 @@ var overlayTree = [];
      {% endif %}
 
      ]},
-
+     // end of Boundaries
+     {% endif %}
+                                        
+     {% if science %}
      { label: 'Imaging catalogs', children: [
 
      {% if enable_dr9_overlays %}
@@ -4017,7 +4025,8 @@ var overlayTree = [];
      findoverlay('sdss-cat'),
 
      ]},
-
+     // end of Imaging catalogs
+     {% endif %}
 
      {% if enable_dr9sv_overlays %}
      findoverlay('dr9sv', [
@@ -4029,6 +4038,7 @@ var overlayTree = [];
        {% endif %}
        ]),
      {% endif %}
+
      {% if enable_spectra %}
      { label: 'Spectroscopy',
        children: [
@@ -4040,31 +4050,31 @@ var overlayTree = [];
      },
      {% endif %}
 
-     {% if enable_desi_targets %}
      { label: 'DESI',
        children: [
          {% if desitiles %}
-         { label: 'DESI Individual Tiles',
-           children: desi_tile_list },
+           { label: 'DESI Individual Tiles',
+             children: desi_tile_list },
          {% endif %}
          {% if enable_desi_footprint %}
-         findoverlay('desi-footprint'),
-         findoverlay('desi-fiberpos'),
+           findoverlay('desi-footprint'),
+           findoverlay('desi-fiberpos'),
          {% endif %}
+         {% if enable_desi_targets %}
            findoverlay('targets-dr9-sv1-dark'),
-         findoverlay('targets-dr9-sv1-bright'),
-         findoverlay('targets-dr9-sv1-sec'),
-         //findoverlay('targets-dr9-sv1-supp'),
-         findoverlay('targets-dr8'),
-         //findoverlay('targets-sv-dr8'),
-         //findoverlay('targets-cmx-dr7'),
-         //findoverlay('targets-dr67'),
-         //findoverlay('targets-bgs-dr67'),
-         //findoverlay('targets-sky-dr67'),
-         //findoverlay('targets-bright-dr67'),
-         //findoverlay('targets-dark-dr67'),
+           findoverlay('targets-dr9-sv1-bright'),
+           findoverlay('targets-dr9-sv1-sec'),
+           //findoverlay('targets-dr9-sv1-supp'),
+           findoverlay('targets-dr8'),
+           //findoverlay('targets-sv-dr8'),
+           //findoverlay('targets-cmx-dr7'),
+           //findoverlay('targets-dr67'),
+           //findoverlay('targets-bgs-dr67'),
+           //findoverlay('targets-sky-dr67'),
+           //findoverlay('targets-bright-dr67'),
+           //findoverlay('targets-dark-dr67'),
+         {% endif %}
        ]},,
-     {% endif %}
 
      { label: 'Bright Objects', children: [
      findoverlay('bright'),
@@ -4072,7 +4082,9 @@ var overlayTree = [];
      findoverlay('GCs-PNe'),
      findoverlay('gals'),
      findoverlay('sga'),
+     {% if science %}
      findoverlay('sga-parent'),
+     {% endif %}
      //findoverlay('sga-model'),
      //findoverlay('masks-dr8'),
      findoverlay('const'),
