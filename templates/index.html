@@ -1436,13 +1436,14 @@ function onMapClick(e) {
         'RA,Dec = ' + ra.toFixed(4) + ', ' + dec.toFixed(4) +
         '<br/><a href="' + linkurl +
         '">Link Here</a>' + spacer +
-        '<a href="' + datalink + '">Data</a>' + spacer +
-        '<a href="' + cutout + '">Cutout</a> (<a href="' + cutout_fits + '">FITS</a>)' + spacer +
-    {% if enable_cutouts %}
-        '<a href="' + exposures_radec_url(ra,dec) + '">Single Exposures</a>' + spacer +
-    {% endif %}
-        '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?Coord=' + ra.toFixed(4) + 'd' + dec.toFixed(4) + 'd' + '&CooFrame=ICRS&CooEpoch=2000&CooEqui=2000&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=">Look up in Simbad</a>'
-        + spacer +
+        {% if science %}
+          '<a href="' + datalink + '">Data</a>' + spacer +
+          '<a href="' + cutout + '">Cutout</a> (<a href="' + cutout_fits + '">FITS</a>)' + spacer +
+          {% if enable_cutouts %}
+            '<a href="' + exposures_radec_url(ra,dec) + '">Single Exposures</a>' + spacer +
+          {% endif %}
+        '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?Coord=' + ra.toFixed(4) + 'd' + dec.toFixed(4) + 'd' + '&CooFrame=ICRS&CooEpoch=2000&CooEqui=2000&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=">Look up in Simbad</a>' + spacer +
+        {% endif %}
         '<a href="' + discuss + '">Discuss This Object</a>';
 
     for (var i=0; i<polygonOverlays.length; i++) {
@@ -2309,6 +2310,7 @@ objquery.onAdd = function (map) {
 objquery.addTo(map);
 disableMouseEventPropagation(objquery);
 
+{% if science %}
 // Brightness & contrast sliders
 function addCSSFilterSlider(filterType) {
     let sliderControl = L.control({'position': 'bottomleft'})
@@ -2341,6 +2343,22 @@ function addCSSFilterSlider(filterType) {
 }
 addCSSFilterSlider('brightness');
 addCSSFilterSlider('contrast');
+{% endif %}
+
+{% if science %}
+{% else %}
+// FAQ box
+var faqbox = L.control({'position':'bottomleft'});
+faqbox.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'faqbox');
+    this._div.innerHTML = '<a href="https://djschlegel.wordpress.com/faq-legacy-survey-sky-image/">FAQ</a>';
+    return this._div;
+};
+faqbox.addTo(map);
+disableMouseEventPropagation(faqbox);
+
+{% endif %}
+
 
 // A list of object names mapped to [lat,lng,zoom], for history navgation
 var hashLocations = {};

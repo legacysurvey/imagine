@@ -5,7 +5,8 @@ STATIC_URL_PATH = 'static/'
 STATIC_URL = ROOT_URL + STATIC_URL_PATH
 
 HOSTNAME = 'viewer.legacysurvey.org'
-TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+#HOSTNAME = 'spin.legacysurvey.org'
+TILE_URL = 'http://{s}.%s%s{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
 DEBUG = True
 
@@ -30,5 +31,6 @@ ENABLE_OLDER = False
 # public version
 ENABLE_SCIENCE = False
 
+ENABLE_CUTOUTS = False
 ENABLE_SPECTRA = False
 ENABLE_DESI_TARGETS = False

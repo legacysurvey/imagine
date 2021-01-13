@@ -399,8 +399,8 @@ def _index(req,
     caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
     smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
 
-    print('Small catalog URL:', smallcaturl)
-    
+    #print('Small catalog URL:', smallcaturl)
+
     # includes a leaflet pattern for subdomains
     tileurl = settings.TILE_URL
 
@@ -452,7 +452,6 @@ def _index(req,
     #print('User catalogs:', usercats)
 
     desitiles = [int(x,10) for x in req.GET.get('tile', '').split(',') if len(x)]
-
     if len(desitiles):
         tile = desitiles[0]
         fiberid = None
@@ -465,6 +464,7 @@ def _index(req,
             ra,dec = get_desi_tile_radec(tile, fiberid=fiberid)
         except:
             pass
+
     galname = None
     if ra is None or dec is None:
         ra,dec,galname = get_random_galaxy(layer=layer)
@@ -6045,7 +6045,9 @@ if __name__ == '__main__':
     #r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=119.8540&rahi=120.3490&declo=37.6292&dechi=37.8477')
     #r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=119.8828&rahi=120.3779&declo=37.6129&dechi=37.8315')
     #r = c.get('/ls-dr9-south/1/6/60/26.jpg')
-    r = c.get('/?layer=ls-dr9&zoom=12&tile=80256&fiber=4091')
+    #r = c.get('/?layer=ls-dr9&zoom=12&tile=80256&fiber=4091')
+    #r = c.get('/ls-dr9/1/3/1/3.jpg')
+    r = c.get('/')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
