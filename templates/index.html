@@ -1714,8 +1714,8 @@ tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
                     32.375,
                     // North
                     'ls-dr9-north', [
-                      [0, 12, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
-                      [13, maxZoom, tile_url], ],
+                      [0, 13, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
+                      [14, maxZoom, tile_url], ],
                     //'ls-dr9-north', [ [0, max_aws_zoom, aws_tile_url], ],
                     {'id':'ls-dr9-north'},
                     // Mid
@@ -1723,7 +1723,9 @@ tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
 		            //'ls-dr9', [ [0, max_aws_zoom, aws_tile_url], ],
                     {'id':'ls-dr9'},
                     // South
-                    'ls-dr9-south', [ [0, maxZoom, tile_url], ],
+                    'ls-dr9-south', [
+                      [0, 13, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg'],
+                      [14, maxZoom, tile_url], ],
                     //'ls-dr9-south', [ [0, max_aws_zoom, aws_tile_url], ],
                     {'id':'ls-dr9-south'},
                     //{ 'maxNativeZoom': max_aws_zoom }
