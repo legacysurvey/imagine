@@ -73,7 +73,6 @@
  {# }}} #}
 
 // Variables from django.
-var zoom_initial = {{ zoom }};
 var layer_initial = '{{ layer }}';
 var ra_initial = {{ ra }};
 var dec_initial = {{ dec }};
@@ -122,6 +121,15 @@ var QueryItems = function() {
     return items;
 };
 var qstr = QueryItems();
+
+var zoom_initial = 12;
+if ('zoom' in qstr) {
+  zoom_initial = parseInt(qstr['zoom']);
+  if (isNaN(zoom_initial))
+    zoom_initial = 12;
+  zoom_initial = Math.max(1, Math.min(maxZoom, zoom_initial));
+}
+
 
 function arcsecToMeters(arcsec) {
     return arcsec * 30.87;
@@ -1436,13 +1444,14 @@ function onMapClick(e) {
         'RA,Dec = ' + ra.toFixed(4) + ', ' + dec.toFixed(4) +
         '<br/><a href="' + linkurl +
         '">Link Here</a>' + spacer +
-        '<a href="' + datalink + '">Data</a>' + spacer +
-        '<a href="' + cutout + '">Cutout</a> (<a href="' + cutout_fits + '">FITS</a>)' + spacer +
-    {% if enable_cutouts %}
-        '<a href="' + exposures_radec_url(ra,dec) + '">Single Exposures</a>' + spacer +
-    {% endif %}
-        '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?Coord=' + ra.toFixed(4) + 'd' + dec.toFixed(4) + 'd' + '&CooFrame=ICRS&CooEpoch=2000&CooEqui=2000&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=">Look up in Simbad</a>'
-        + spacer +
+        {% if science %}
+          '<a href="' + datalink + '">Data</a>' + spacer +
+          '<a href="' + cutout + '">Cutout</a> (<a href="' + cutout_fits + '">FITS</a>)' + spacer +
+          {% if enable_cutouts %}
+            '<a href="' + exposures_radec_url(ra,dec) + '">Single Exposures</a>' + spacer +
+          {% endif %}
+        '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?Coord=' + ra.toFixed(4) + 'd' + dec.toFixed(4) + 'd' + '&CooFrame=ICRS&CooEpoch=2000&CooEqui=2000&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=">Look up in Simbad</a>' + spacer +
+        {% endif %}
         '<a href="' + discuss + '">Discuss This Object</a>';
 
     for (var i=0; i<polygonOverlays.length; i++) {
@@ -1564,9 +1573,6 @@ var tileversions = {
     'dr9k-south': 2,
     'dr9k-south-model': 2,
     'dr9k-south-resid': 2,
-    //'ls-dr9-north': 2,
-    //'ls-dr9-north-model': 2,
-    //'ls-dr9-north-resid': 2,
 };
 var catversions  = {
 };
@@ -1707,7 +1713,9 @@ allLayers.push(tiles);
 tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
                     32.375,
                     // North
-                    'ls-dr9-north', [ [0, maxZoom, tile_url], ],
+                    'ls-dr9-north', [
+                      [0, 12, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
+                      [13, maxZoom, tile_url], ],
                     //'ls-dr9-north', [ [0, max_aws_zoom, aws_tile_url], ],
                     {'id':'ls-dr9-north'},
                     // Mid
@@ -2288,6 +2296,7 @@ disableMouseEventPropagation(info);
 var container = info.getContainer();
 L.DomEvent.on(container, 'click', infoBoxClicked);
 
+{% if science %}
 // upload catalog input field
 var upload = L.control({'position':'bottomleft'});
 upload.onAdd = function (map) {
@@ -2296,6 +2305,7 @@ upload.onAdd = function (map) {
     return this._div;
 };
 upload.addTo(map);
+{% endif %}
 
 // Named object search field
 var objquery = L.control({'position':'bottomleft'});
@@ -2307,6 +2317,7 @@ objquery.onAdd = function (map) {
 objquery.addTo(map);
 disableMouseEventPropagation(objquery);
 
+{% if science %}
 // Brightness & contrast sliders
 function addCSSFilterSlider(filterType) {
     let sliderControl = L.control({'position': 'bottomleft'})
@@ -2339,6 +2350,22 @@ function addCSSFilterSlider(filterType) {
 }
 addCSSFilterSlider('brightness');
 addCSSFilterSlider('contrast');
+{% endif %}
+
+{% if science %}
+{% else %}
+// FAQ box
+var faqbox = L.control({'position':'bottomleft'});
+faqbox.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'faqbox');
+    this._div.innerHTML = '<a href="https://djschlegel.wordpress.com/faq-legacy-survey-sky-image/">FAQ</a>';
+    return this._div;
+};
+faqbox.addTo(map);
+disableMouseEventPropagation(faqbox);
+
+{% endif %}
+
 
 // A list of object names mapped to [lat,lng,zoom], for history navgation
 var hashLocations = {};
@@ -3214,7 +3241,7 @@ var dr9svsouthcat = new DecalsCatalogLayer(tileWatcher,
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
-var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {});
+var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {'minZoom':10});
 
 {% if enable_ps1 %}
 var ps1cat = new Ps1CatalogOverlay('ps1-cat', 'PS1 catalog', {'radius':150});
@@ -3250,7 +3277,7 @@ var sga_parent = new SGACatalog('sga-parent', 'HyperLEDA/SGA galaxies',
                               'urlTerm': 'sga-parent',});
 
 var sga_ell = new SGACatalog('sga', 'Siena Galaxy Atlas',
-                             {'minZoom': 5,
+                             {'minZoom': 7,
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga',});
 
@@ -3702,12 +3729,18 @@ var baseTree1 = [
     {% if enable_phat %}
     findlayer('phat'),
     {% endif %}
+
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
+        {% if enable_dr9_models %}
         findlayer('ls-dr9-model'),
+        {% endif %}
+        {% if enable_dr9_resids %}
         findlayer('ls-dr9-resid'),
+        {% endif %}
     ]),
     {% endif %}
+
     {% if enable_dr9_north %}
     findlayer('ls-dr9-north', [
         findlayer('ls-dr9-north-model'),
@@ -3722,6 +3755,7 @@ var baseTree1 = [
     {% endif %}
 
 
+    {% if enable_older %}
      { label: 'Older Legacy Surveys',
        children: [
 
@@ -3810,12 +3844,15 @@ var baseTree1 = [
     {% endif %}
 
      ]},
+    {% endif %}
 
     {% if enable_unwise %}
     findlayer('unwise-neo6', [
+        {% if science %}
         findlayer('unwise-neo4'),
         findlayer('unwise-cat-model'),
         findlayer('wssa'),
+        {% endif %}
     ]),
     {% endif %}
     {
@@ -3901,6 +3938,7 @@ var overlayTree = [];
      findoverlay('phat-clusters'),
      {% endif %}    
 
+     {% if science %}
      { label: 'Boundaries', children: [
 
      findoverlay('decals-bricks'),
@@ -3962,7 +4000,10 @@ var overlayTree = [];
      {% endif %}
 
      ]},
-
+     // end of Boundaries
+     {% endif %}
+                                        
+     {% if science %}
      { label: 'Imaging catalogs', children: [
 
      {% if enable_dr9_overlays %}
@@ -4009,7 +4050,8 @@ var overlayTree = [];
      findoverlay('sdss-cat'),
 
      ]},
-
+     // end of Imaging catalogs
+     {% endif %}
 
      {% if enable_dr9sv_overlays %}
      findoverlay('dr9sv', [
@@ -4021,6 +4063,7 @@ var overlayTree = [];
        {% endif %}
        ]),
      {% endif %}
+
      {% if enable_spectra %}
      { label: 'Spectroscopy',
        children: [
@@ -4032,31 +4075,31 @@ var overlayTree = [];
      },
      {% endif %}
 
-     {% if enable_desi_targets %}
      { label: 'DESI',
        children: [
          {% if desitiles %}
-         { label: 'DESI Individual Tiles',
-           children: desi_tile_list },
+           { label: 'DESI Individual Tiles',
+             children: desi_tile_list },
          {% endif %}
          {% if enable_desi_footprint %}
-         findoverlay('desi-footprint'),
-         findoverlay('desi-fiberpos'),
+           findoverlay('desi-footprint'),
+           findoverlay('desi-fiberpos'),
          {% endif %}
+         {% if enable_desi_targets %}
            findoverlay('targets-dr9-sv1-dark'),
-         findoverlay('targets-dr9-sv1-bright'),
-         findoverlay('targets-dr9-sv1-sec'),
-         //findoverlay('targets-dr9-sv1-supp'),
-         findoverlay('targets-dr8'),
-         //findoverlay('targets-sv-dr8'),
-         //findoverlay('targets-cmx-dr7'),
-         //findoverlay('targets-dr67'),
-         //findoverlay('targets-bgs-dr67'),
-         //findoverlay('targets-sky-dr67'),
-         //findoverlay('targets-bright-dr67'),
-         //findoverlay('targets-dark-dr67'),
+           findoverlay('targets-dr9-sv1-bright'),
+           findoverlay('targets-dr9-sv1-sec'),
+           //findoverlay('targets-dr9-sv1-supp'),
+           findoverlay('targets-dr8'),
+           //findoverlay('targets-sv-dr8'),
+           //findoverlay('targets-cmx-dr7'),
+           //findoverlay('targets-dr67'),
+           //findoverlay('targets-bgs-dr67'),
+           //findoverlay('targets-sky-dr67'),
+           //findoverlay('targets-bright-dr67'),
+           //findoverlay('targets-dark-dr67'),
+         {% endif %}
        ]},,
-     {% endif %}
 
      { label: 'Bright Objects', children: [
      findoverlay('bright'),
@@ -4064,7 +4107,9 @@ var overlayTree = [];
      findoverlay('GCs-PNe'),
      findoverlay('gals'),
      findoverlay('sga'),
+     {% if science %}
      findoverlay('sga-parent'),
+     {% endif %}
      //findoverlay('sga-model'),
      //findoverlay('masks-dr8'),
      findoverlay('const'),
