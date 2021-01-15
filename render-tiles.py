@@ -930,7 +930,6 @@ def main():
                             print(cmd)
                 sys.exit(0)
 
-
             if len(opt.zoom) == 0:
                 opt.zoom = [1]
 
@@ -1121,6 +1120,7 @@ def main():
 
     #if opt.scale:
     #    opt.near_ccds = True
+    ccdsize = None
 
     if opt.near_ccds:
         if opt.kind == 'sdss':
@@ -1335,16 +1335,28 @@ def main():
             continue
 
         if not opt.all:
+            print('Finding overlapping tiles;', len(yy), 'y', len(xx), 'x')
             for y in yy:
                 wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, 0, y)
                 r,d = wcs.get_center()
                 dd.append(d)
-            for x in xx:
-                wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, x, 0)
-                r,d = wcs.get_center()
-                rr.append(r)
+            # Mercator: delta-RA between tiles is the same at all y/Dec values.
+            wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, opt.x0, 0)
+            ra_a,d = wcs.get_center()
+            wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, opt.x0+1, 0)
+            ra_b,d = wcs.get_center()
+            dra = ra_b - ra_a
+            rr = ra_a + dra * np.arange(len(xx))
+            # rr2 = []
+            # for x in xx:
+            #     wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, x, 0)
+            #     r,d = wcs.get_center()
+            #     rr2.append(r)
+            # rr2 = np.array(rr2)
+            # print('rr2', rr2)
+            # print('rr', rr)
+
             dd = np.array(dd)
-            rr = np.array(rr)
             if len(dd) > 1:
                 tilesize = max(np.abs(np.diff(dd)))
                 print('Tile size:', tilesize)
@@ -1388,86 +1400,31 @@ def main():
             print(len(rr), 'RA points x', len(dd), 'Dec points')
             print('x tile range:', xx.min(), xx.max(), 'y tile range:', yy.min(), yy.max())
 
-        for iy,y in enumerate(yy):
-            print()
-            print('Y row', y)
 
-            if opt.queue:
+        from astrometry.libkd.spherematch import trees_match, tree_build_radec
+        Bkd = None
+        if opt.near:
+            Bkd = tree_build_radec(ra=B.ra, dec=B.dec)
+        Ckd = None
+        if opt.near_ccds:
+            Ckd = tree_build_radec(ra=C.ra, dec=C.dec)
 
-                if 'decaps2' in opt.kind:
-                    layer = get_layer(opt.kind)
+        if len(yy) < len(xx):
+            for dec,y in zip(dd, yy):
+                print()
+                print('Y row', y, 'Dec', dec)
+                #dec = dd[iy]
+                run_xy_set(zoom, xx, y+np.zeros_like(xx), rr, dec+np.zeros_like(rr), opt, Bkd, Ckd,
+                           ccdsize, tilesize, mp)
+        else:
+            #for ix,x in enumerate(xx):
+            #ra = rr[ix]
+            for ra,x in zip(rr, xx):
+                print()
+                print('X col', x, 'RA', ra)
+                run_xy_set(zoom, x+np.zeros_like(yy), yy, dd, ra+np.zeros_like(dd), opt, Bkd, Ckd,
+                           ccdsize, tilesize, mp)
 
-                    if zoom >= layer.nativescale:
-                        oldscale = 0
-                    else:
-                        oldscale = (layer.nativescale - zoom)
-                        oldscale = np.clip(oldscale, layer.minscale, layer.maxscale)
-
-                    x = 0
-                    wcs, W, H, zoomscale, z,xi,yi = get_tile_wcs(zoom, x, y)
-                    newscale = layer.get_scale(zoom, 0, y, wcs)
-
-                    if oldscale == newscale:
-                        print('Oldscale = newscale = ', oldscale)
-                        continue
-                    
-                
-                cmd = 'python3 -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s --mindec %f --maxdec %f' % (zoom, y, y+1, opt.kind, opt.mindec, opt.maxdec)
-                cmd += ' --threads 32'
-                if opt.near_ccds:
-                    cmd += ' --near-ccds'
-                if opt.all:
-                    cmd += ' --all'
-                if opt.ignore:
-                    cmd += ' --ignore'
-                print(cmd)
-                continue
-
-            if opt.near:
-                d = dd[iy]
-                I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25 + tilesize, nearest=True)
-                if len(I) == 0:
-                    print('No matches to bricks')
-                    continue
-                keep = np.zeros(len(rr), bool)
-                keep[I] = True
-                print('Keeping', sum(keep), 'tiles in row', y, 'Dec', d)
-                x = xx[keep]
-            elif opt.near_ccds:
-                d = dd[iy]
-                print('RA range of tiles:', rr.min(), rr.max())
-                print('Dec of tile row:', d)
-                I,J,dist = match_radec(rr, d+np.zeros_like(rr), C.ra, C.dec, ccdsize + tilesize, nearest=True)
-                if len(I) == 0:
-                    print('No matches to CCDs')
-                    continue
-                keep = np.zeros(len(rr), bool)
-                keep[I] = True
-                print('Keeping', sum(keep), 'tiles in row', y, 'Dec', d)
-                x = xx[keep]
-            else:
-                x = xx
-
-            # if opt.grass:
-            #     for xi in x:
-            #         basedir = settings.DATA_DIR
-            #         ver = tileversions[opt.kind][-1]
-            #         tilefn = os.path.join(basedir, 'tiles', opt.kind,
-            #                               '%i/%i/%i/%i.jpg' % (ver, zoom, xi, y))
-            #         print 'Checking for', tilefn
-            #         if os.path.exists(tilefn):
-            #             print 'EXISTS'
-            #             tileexists[yi-opt.y0, xi-opt.x0]
-            #     continue
-
-            args = []
-            for xi in x:
-                args.append((opt.kind,zoom,xi,y, opt.ignore, False))
-                #args.append((opt.kind,zoom,xi,y, opt.ignore, True))
-            print('Rendering', len(args), 'tiles in row y =', y)
-            mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
-            #mp.map(_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
-            print('Rendered', len(args), 'tiles')
 
         # if opt.grass:
         #     plt.clf()
@@ -1475,5 +1432,76 @@ def main():
         #              vmin=0, vmax=1, cmap='gray')
         #     plt.savefig('%s-z%02i-exists.png' % (opt.kind, zoom))
 
+
+def run_xy_set(zoom, xx, yy, rr, dd, opt, Bkd, Ckd, ccdsize, tilesize, mp):
+    if opt.queue:
+        if 'decaps2' in opt.kind:
+            layer = get_layer(opt.kind)
+            if zoom >= layer.nativescale:
+                oldscale = 0
+            else:
+                oldscale = (layer.nativescale - zoom)
+                oldscale = np.clip(oldscale, layer.minscale, layer.maxscale)
+            x = 0
+            wcs, W, H, zoomscale, z,xi,yi = get_tile_wcs(zoom, x, y)
+            newscale = layer.get_scale(zoom, 0, y, wcs)
+            if oldscale == newscale:
+                print('Oldscale = newscale = ', oldscale)
+                return
+        cmd = 'python3 -u render-tiles.py --zoom %i --y0 %i --y1 %i --kind %s --mindec %f --maxdec %f' % (zoom, y, y+1, opt.kind, opt.mindec, opt.maxdec)
+        cmd += ' --threads 32'
+        if opt.near_ccds:
+            cmd += ' --near-ccds'
+        if opt.all:
+            cmd += ' --all'
+        if opt.ignore:
+            cmd += ' --ignore'
+        print(cmd)
+        return
+
+    if opt.near:
+        #d = dd[iy]
+        #kd = tree_build_radec(ra=rr, dec=d+np.zeros_like(rr))
+        kd = tree_build_radec(ra=rr, dec=dd)
+        radius = np.deg2rad(0.25 + tilesize)
+        I,J,dist = trees_match(kd, Bkd, radius, nearest=True)
+        #I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25 + tilesize, nearest=True)
+        if len(I) == 0:
+            print('No matches to bricks')
+            return
+        keep = np.zeros(len(rr), bool)
+        keep[I] = True
+        print('Keeping', sum(keep), 'tiles in row/col')
+        #x = xx[keep]
+        xx = xx[keep]
+        yy = yy[keep]
+
+    elif opt.near_ccds:
+        #d = dd[iy]
+        #print('RA range of tiles:', rr.min(), rr.max())
+        #print('Dec of tile row:', d)
+        #I,J,dist = match_radec(rr, d+np.zeros_like(rr), C.ra, C.dec, ccdsize + tilesize, nearest=True)
+        kd = tree_build_radec(ra=rr, dec=dd)
+        radius = np.deg2rad(ccdsize + tilesize)
+        I,J,dist = trees_match(kd, Ckd, radius, nearest=True)
+        if len(I) == 0:
+            print('No matches to CCDs')
+            return
+        keep = np.zeros(len(rr), bool)
+        keep[I] = True
+        print('Keeping', sum(keep), 'tiles in row/col')
+        #x = xx[keep]
+        xx = xx[keep]
+        yy = yy[keep]
+
+    args = []
+    for xi,yi in zip(xx,yy):
+        args.append((opt.kind, zoom, xi, yi, opt.ignore, False))
+    print('Rendering', len(args), 'tiles in row/col')
+    mp.map(_bounce_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
+    #mp.map(_one_tile, args, chunksize=min(100, max(1, int(len(args)/opt.threads))))
+    print('Rendered', len(args), 'tiles')
+
+        
 if __name__ == '__main__':
     main()
