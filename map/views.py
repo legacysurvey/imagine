@@ -2689,17 +2689,17 @@ class LegacySurveySplitLayer(MapLayer):
     def render_into_wcs(self, wcs, zoom, x, y, general_wcs=False, **kwargs):
         
         ## FIXME -- generic WCS
-
-        print('render_into_wcs zoom,x,y', zoom,x,y, 'wcs', wcs)
-
+        #print('render_into_wcs zoom,x,y', zoom,x,y, 'wcs', wcs)
         if y != -1:
             ## FIXME -- this is not the correct cut -- only listen to split for NGC --
             ## but this doesn't get called anyway because the JavaScript layer has the smarts.
             split = self.tilesplits[zoom]
             if y < split:
+                #print('y below split -- north')
                 return self.top.render_into_wcs(wcs, zoom, x, y,
                                                 general_wcs=general_wcs, **kwargs)
             if y > split:
+                #print('y above split -- south')
                 return self.bottom.render_into_wcs(wcs, zoom, x, y,
                                                    general_wcs=general_wcs, **kwargs)
 
@@ -2715,13 +2715,16 @@ class LegacySurveySplitLayer(MapLayer):
             return topims
 
         import numpy as np
+        from astrometry.util.starutil_numpy import radectolb
         # Compute Decs for each Y in the WCS -- this is assuming that the WCS is axis-aligned!!
         H,W = wcs.shape
         x = np.empty(H)
         x[:] = W//2 + 0.5
         y = np.arange(1, H+1)
         rr,dd = wcs.pixelxy2radec(x, y)[-2:]
-        I = np.flatnonzero(dd >= self.decsplit)
+        ll,bb = radectolb(rr, dd)
+        ngc = (bb > 0.)
+        I = np.flatnonzero((dd >= self.decsplit) * ngc)
         for b,t in zip(botims, topims):
             b[I,:] = t[I,:]
         return botims
@@ -6047,7 +6050,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/6/60/26.jpg')
     #r = c.get('/?layer=ls-dr9&zoom=12&tile=80256&fiber=4091')
     #r = c.get('/ls-dr9/1/3/1/3.jpg')
-    r = c.get('/')
+    #r = c.get('/')
+    r = c.get('/ls-dr9/1/5/0/12.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
