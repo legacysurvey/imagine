@@ -655,6 +655,8 @@ def main():
     parser.add_option('--minra', type=float, default=None,   help='Minimum RA to run')
     parser.add_option('--maxra', type=float, default=None, help='Maximum RA to run')
 
+    parser.add_option('--fix', default=False, action='store_true')
+    
     parser.add_option('--touching', default=False, action='store_true',
                       help='Select bricks touching min/max ra/dec box (vs container within)')
 
@@ -1413,18 +1415,14 @@ def main():
             for dec,y in zip(dd, yy):
                 print()
                 print('Y row', y, 'Dec', dec)
-                #dec = dd[iy]
                 run_xy_set(zoom, xx, y+np.zeros_like(xx), rr, dec+np.zeros_like(rr), opt, Bkd, Ckd,
                            ccdsize, tilesize, mp)
         else:
-            #for ix,x in enumerate(xx):
-            #ra = rr[ix]
             for ra,x in zip(rr, xx):
                 print()
                 print('X col', x, 'RA', ra)
-                run_xy_set(zoom, x+np.zeros_like(yy), yy, dd, ra+np.zeros_like(dd), opt, Bkd, Ckd,
+                run_xy_set(zoom, x+np.zeros_like(yy), yy, ra+np.zeros_like(dd), dd, opt, Bkd, Ckd,
                            ccdsize, tilesize, mp)
-
 
         # if opt.grass:
         #     plt.clf()
@@ -1460,19 +1458,26 @@ def run_xy_set(zoom, xx, yy, rr, dd, opt, Bkd, Ckd, ccdsize, tilesize, mp):
         return
 
     if opt.near:
-        #d = dd[iy]
-        #kd = tree_build_radec(ra=rr, dec=d+np.zeros_like(rr))
         kd = tree_build_radec(ra=rr, dec=dd)
         radius = np.deg2rad(0.25 + tilesize)
         I,J,dist = trees_match(kd, Bkd, radius, nearest=True)
-        #I,J,dist = match_radec(rr, d+np.zeros_like(rr), B.ra, B.dec, 0.25 + tilesize, nearest=True)
         if len(I) == 0:
             print('No matches to bricks')
             return
         keep = np.zeros(len(rr), bool)
         keep[I] = True
+
+        if opt.fix:
+            # UGH, in a previous version I had rr,dd swapped in this function call!
+            # Cut the set "I" computed above down to only those that *weren't* previously
+            # computed.
+            kd_old = tree_build_radec(ra=dd, dec=rr)
+            I_old,_,_ = trees_match(kd_old, Bkd, radius, nearest=True)
+            print('Full set:', len(I), 'tiles in row/col')
+            print('Old set:', len(I_old))
+            keep[I_old] = False
+
         print('Keeping', sum(keep), 'tiles in row/col')
-        #x = xx[keep]
         xx = xx[keep]
         yy = yy[keep]
 
@@ -1490,7 +1495,6 @@ def run_xy_set(zoom, xx, yy, rr, dd, opt, Bkd, Ckd, ccdsize, tilesize, mp):
         keep = np.zeros(len(rr), bool)
         keep[I] = True
         print('Keeping', sum(keep), 'tiles in row/col')
-        #x = xx[keep]
         xx = xx[keep]
         yy = yy[keep]
 
