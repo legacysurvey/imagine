@@ -12,8 +12,6 @@ USER_QUERY_DIR = '/tmp/viewer-user'
 
 REDIRECT_CUTOUTS_DECAPS = False
 
-ENABLE_CUTOUTS = True
-
 SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
 SDSS_BASEDIR = '/global/cfs/cdirs/cosmo/data/sdss/dr14/'
@@ -27,6 +25,11 @@ ENABLE_DEV = False
 ENABLE_CUTOUTS = True
 
 ENABLE_UNWISE = True
+
+ENABLE_OLDER = True
+
+# scientist view (vs public)
+ENABLE_SCIENCE = True
 
 ENABLE_DR5 = False
 ENABLE_DR6 = True
@@ -150,8 +153,9 @@ ALLOWED_HOSTS = [
     'testserver',
     'localhost',
     # NERSC Spin Rancher2
-    'lb.cosmo-dstn.development.svc.spin.nersc.org',
     'spin.legacysurvey.org',
+    'viewer.legacysurvey.org', 'a.viewer.legacysurvey.org', 'b.viewer.legacysurvey.org', 'c.viewer.legacysurvey.org', 'd.viewer.legacysurvey.org',
+    'dev.viewer.legacysurvey.org', 'dev-a.viewer.legacysurvey.org', 'dev-b.viewer.legacysurvey.org', 'dev-c.viewer.legacysurvey.org', 'dev-d.viewer.legacysurvey.org',
 ]
 
 # Application definition

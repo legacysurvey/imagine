@@ -342,7 +342,7 @@ def get_random_galaxy(layer=None):
     elif layer == 'ls-dr9-north':
         drnum = 9
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr9-north.fits')
-    elif layer == 'ls-dr9-south':
+    elif layer in ['ls-dr9-south', 'ls-dr9']:
         drnum = 9
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr9-south.fits')
     else:
