@@ -6051,7 +6051,8 @@ if __name__ == '__main__':
     #r = c.get('/?layer=ls-dr9&zoom=12&tile=80256&fiber=4091')
     #r = c.get('/ls-dr9/1/3/1/3.jpg')
     #r = c.get('/')
-    r = c.get('/ls-dr9/1/5/0/12.jpg')
+    #r = c.get('/ls-dr9/1/5/0/12.jpg')
+    r = c.get('/cutout.jpg?ra=182.5248&dec=18.5415&layer=ls-dr9&pixscale=1.00')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
