@@ -267,6 +267,8 @@ def _index(req,
            maxZoom = 16,
            **kwargs):
     kwkeys = dict(
+        science = settings.ENABLE_SCIENCE,
+        enable_older = settings.ENABLE_OLDER,
         enable_unwise = settings.ENABLE_UNWISE,
         enable_vlass = settings.ENABLE_VLASS,
         enable_dev = settings.ENABLE_DEV,
@@ -318,6 +320,7 @@ def _index(req,
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         enable_des_dr1 = settings.ENABLE_DES_DR1,
+        enable_ztf = settings.ENABLE_ZTF,
         enable_dr5_models = settings.ENABLE_DR5,
         enable_dr5_resids = settings.ENABLE_DR5,
         enable_dr6_models = settings.ENABLE_DR6,
@@ -329,9 +332,9 @@ def _index(req,
         enable_dr7_overlays = settings.ENABLE_DR7,
         enable_eboss = settings.ENABLE_EBOSS,
         enable_hsc_dr2 = settings.ENABLE_HSC_DR2,
-        enable_desi_targets = True,
+        enable_desi_targets = settings.ENABLE_DESI_TARGETS,
         enable_desi_footprint = True,
-        enable_spectra = True,
+        enable_spectra = settings.ENABLE_SPECTRA,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         enable_phat = False,
     )
@@ -343,7 +346,7 @@ def _index(req,
         if not k in kwargs:
             kwargs[k] = v
     
-    from map.cats import cat_user
+    from map.cats import cat_user, cat_desi_tile
 
     layer = request_layer_name(req, default_layer)
 
@@ -392,14 +395,9 @@ def _index(req,
     except:
         pass
 
-    galname = None
-    if ra is None or dec is None:
-        ra,dec,galname = get_random_galaxy(layer=layer)
-
     from urllib.parse import unquote
     caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
     smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
-    
     # includes a leaflet pattern for subdomains
     tileurl = settings.TILE_URL
 
@@ -425,6 +423,8 @@ def _index(req,
     usercatalogurl = my_reverse(req, cat_user, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&cat={cat}'
     usercatalogurl2 = my_reverse(req, cat_user, args=(1,)) + '?start={start}&N={N}&cat={cat}'
 
+    desitile_url = my_reverse(req, cat_desi_tile, args=(1,)) + '?ralo={ralo}&rahi={rahi}&declo={declo}&dechi={dechi}&tile={tile}'
+
     usercatalog = req.GET.get('catalog', None)
     usercats = None
     if usercatalog is not None:
@@ -448,6 +448,24 @@ def _index(req,
             usercats = None
     #print('User catalogs:', usercats)
 
+    desitiles = [int(x,10) for x in req.GET.get('tile', '').split(',') if len(x)]
+    if len(desitiles):
+        tile = desitiles[0]
+        fiberid = None
+        if 'fiber' in req.GET:
+            try:
+                fiberid = int(req.GET.get('fiber'), 10)
+            except:
+                pass
+        try:
+            ra,dec = get_desi_tile_radec(tile, fiberid=fiberid)
+        except:
+            pass
+
+    galname = None
+    if ra is None or dec is None:
+        ra,dec,galname = get_random_galaxy(layer=layer)
+    
     hostname_url = req.build_absolute_uri('/')
 
     test_layers = []
@@ -481,7 +499,7 @@ def _index(req,
         traceback.print_exc()
 
 
-    args = dict(ra=ra, dec=dec, zoom=zoom,
+    args = dict(ra=ra, dec=dec,
                 maxZoom=maxZoom,
                 galname=galname,
                 layer=layer, tileurl=tileurl,
@@ -502,6 +520,9 @@ def _index(req,
                 usercatalogs = usercats,
                 usercatalogurl = usercatalogurl,
                 usercatalogurl2 = usercatalogurl2,
+
+                desitiles = desitiles,
+                desitile_url = desitile_url,
 
                 test_layers = test_layers,
                 test_cats = test_cats,
@@ -668,6 +689,16 @@ def name_query(req):
         ra,dec,name = get_random_galaxy(layer=layer)
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=name)),
                             content_type='application/json')
+    # Check for TILE <desi_tile_id>
+    words = obj.strip().split()
+    if len(words) == 2 and words[0].lower() == 'tile':
+        from map.cats import get_desi_tile_radec
+        tileid = int(words[1])
+        try:
+            ra,dec = get_desi_tile_radec(tileid)
+        except RuntimeError as e:
+            return HttpResponse(json.dumps(dict(error='DESI tile %i not found' % tileid)))
+        return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Tile %i' % tileid)))
 
     # Check for RA,Dec in decimal degrees or H:M:S.
     words = obj.strip().split()
@@ -2655,17 +2686,17 @@ class LegacySurveySplitLayer(MapLayer):
     def render_into_wcs(self, wcs, zoom, x, y, general_wcs=False, **kwargs):
         
         ## FIXME -- generic WCS
-
-        print('render_into_wcs zoom,x,y', zoom,x,y, 'wcs', wcs)
-
+        #print('render_into_wcs zoom,x,y', zoom,x,y, 'wcs', wcs)
         if y != -1:
             ## FIXME -- this is not the correct cut -- only listen to split for NGC --
             ## but this doesn't get called anyway because the JavaScript layer has the smarts.
             split = self.tilesplits[zoom]
             if y < split:
+                #print('y below split -- north')
                 return self.top.render_into_wcs(wcs, zoom, x, y,
                                                 general_wcs=general_wcs, **kwargs)
             if y > split:
+                #print('y above split -- south')
                 return self.bottom.render_into_wcs(wcs, zoom, x, y,
                                                    general_wcs=general_wcs, **kwargs)
 
@@ -2681,13 +2712,16 @@ class LegacySurveySplitLayer(MapLayer):
             return topims
 
         import numpy as np
+        from astrometry.util.starutil_numpy import radectolb
         # Compute Decs for each Y in the WCS -- this is assuming that the WCS is axis-aligned!!
         H,W = wcs.shape
         x = np.empty(H)
         x[:] = W//2 + 0.5
         y = np.arange(1, H+1)
         rr,dd = wcs.pixelxy2radec(x, y)[-2:]
-        I = np.flatnonzero(dd >= self.decsplit)
+        ll,bb = radectolb(rr, dd)
+        ngc = (bb > 0.)
+        I = np.flatnonzero((dd >= self.decsplit) * ngc)
         for b,t in zip(botims, topims):
             b[I,:] = t[I,:]
         return botims
@@ -6005,7 +6039,16 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/6/59/25.jpg')
     #r = c.get('/ls-dr9/1/2/1/1.jpg')
     #r = c.get('/exps/?ralo=246.8384&rahi=247.3335&declo=32.6943&dechi=32.9266&layer=ls-dr9-south')
-    r = c.get('/exposure_panels/ls-dr9-south/624475/S21/?ra=128.6599&dec=20.0039&size=100&kind=dq')
+    #r = c.get('/exposure_panels/ls-dr9-south/624475/S21/?ra=128.6599&dec=20.0039&size=100&kind=dq')
+    #r = c.get('/')
+    #r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=247.4432&rahi=247.5669&declo=29.9699&dechi=30.0297')
+    #r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=119.8540&rahi=120.3490&declo=37.6292&dechi=37.8477')
+    #r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=119.8828&rahi=120.3779&declo=37.6129&dechi=37.8315')
+    #r = c.get('/ls-dr9-south/1/6/60/26.jpg')
+    #r = c.get('/?layer=ls-dr9&zoom=12&tile=80256&fiber=4091')
+    #r = c.get('/ls-dr9/1/3/1/3.jpg')
+    #r = c.get('/')
+    r = c.get('/ls-dr9/1/5/0/12.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
