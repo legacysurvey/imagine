@@ -6048,7 +6048,9 @@ if __name__ == '__main__':
     #r = c.get('/?layer=ls-dr9&zoom=12&tile=80256&fiber=4091')
     #r = c.get('/ls-dr9/1/3/1/3.jpg')
     #r = c.get('/')
-    r = c.get('/ls-dr9/1/5/0/12.jpg')
+    #r = c.get('/ls-dr9/1/5/0/12.jpg')
+    #r = c.get('/namequery/?obj=TILE%2080254')
+    r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=18.1525&rahi=18.6476&declo=28.2182&dechi=28.4614')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
