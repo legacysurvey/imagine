@@ -3443,8 +3443,13 @@ var desi_sv_targets8 = new DesiTargetCatalog('targets-sv-dr8', 'DESI Targets (SV
                                    'minZoom': 11, });
 
 
-var desi_targets_dr9_sv1_sec = new DesiTileLayer('targets-dr9-sv1-sec',
-                                                 'DESI Secondary Targets (DR9/SV1)',
+var desi_targets_dr9_sv1_sec_bright = new DesiTileLayer('targets-dr9-sv1-sec-bright',
+                                                 'DESI Bright-time Secondary Targets (DR9/SV1)',
+                                  {//'radius': 200,
+                                   //'labelsMinZoom': 10,
+                                      'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv1_sec_dark = new DesiTileLayer('targets-dr9-sv1-sec-dark',
+                                                 'DESI Dark-time Secondary Targets (DR9/SV1)',
                                   {//'radius': 200,
                                    //'labelsMinZoom': 10,
                                       'minZoom': 10, 'rscale':0.5});
@@ -3645,7 +3650,8 @@ var overlays = [
     desi_dark_targets67,
     desi_bright_targets67,
     desi_cmx_targets7,
-    desi_targets_dr9_sv1_sec,
+    desi_targets_dr9_sv1_sec_dark,
+    desi_targets_dr9_sv1_sec_bright,
     desi_targets_dr9_sv1_dark,
     desi_targets_dr9_sv1_bright,
     desi_targets_dr9_sv1_supp,
@@ -4090,7 +4096,8 @@ var overlayTree = [];
          {% if enable_desi_targets %}
            findoverlay('targets-dr9-sv1-dark'),
            findoverlay('targets-dr9-sv1-bright'),
-           findoverlay('targets-dr9-sv1-sec'),
+           findoverlay('targets-dr9-sv1-sec-dark'),
+           findoverlay('targets-dr9-sv1-sec-bright'),
            //findoverlay('targets-dr9-sv1-supp'),
            findoverlay('targets-dr8'),
            //findoverlay('targets-sv-dr8'),

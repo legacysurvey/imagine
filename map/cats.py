@@ -54,7 +54,8 @@ catversions = {
     'targets-cmx-dr7': [1,],
     'targets-dr8': [1,],
     'targets-sv-dr8': [1,],
-    'targets-dr9-sv1-sec':[1,],
+    'targets-dr9-sv1-sec-bright':[1,],
+    'targets-dr9-sv1-sec-dark':[1,],
     'targets-dr9-sv1-dark':[1,],
     'targets-dr9-sv1-bright':[1,],
     'targets-dr9-sv1-supp':[1,],
@@ -529,11 +530,21 @@ def cat_targets_dr8c(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr8c-PR490.kd.fits'),
     ], tag='targets-dr8c')
-def cat_targets_dr9_sv1_sec(req, ver):
+def cat_targets_dr9_sv1_sec_bright(req, ver):
     # /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/secondary/dark/sv1targets-dark-secondary.fits
     return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-sv1-secondary-dark.kd.fits'),
-    ], tag='targets-dr9-sv1-sec', name_func=desitarget_sv1_names, colprefix='sv1_',
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.49.0-sv1-secondary-bright.kd.fits'),
+                     #'targets-sv1-secondary-dark.kd.fits'),
+    ], tag='targets-dr9-sv1-sec-bright', name_func=desitarget_sv1_names, colprefix='sv1_',
+    color_name_func=None)
+def cat_targets_dr9_sv1_sec_dark(req, ver):
+    # /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/secondary/dark/sv1targets-dark-secondary.fits
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.49.0-sv1-secondary-dark.kd.fits'),
+                     #'targets-sv1-secondary-dark.kd.fits'),
+    ], tag='targets-dr9-sv1-sec-dark', name_func=desitarget_sv1_names, colprefix='sv1_',
     color_name_func=None)
 
 def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', nside=8,
@@ -618,12 +629,16 @@ def cat_targets_dr9_sv1_dark(req, ver):
     # for x in /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/resolve/dark/*.fits;
     #  do echo $x; startree -i $x -o data/targets-dr9-0.47.0.dev4352-sv1-dark/$(basename $x .fits).kd.fits -TPk; done
     return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-dark',
-                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.47.0.dev4352-sv1-dark',
+                                 os.path.join(settings.DATA_DIR,
+                                              #'targets-dr9-0.47.0.dev4352-sv1-dark',
+                                              'targets-dr9-0.49.0-sv1-dark',
                                               'sv1targets-dark-hp-%i.kd.fits'),
                                  name_func=desitarget_sv1_names, colprefix='sv1_')
 def cat_targets_dr9_sv1_bright(req, ver):
     return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-bright',
-                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.47.0.dev4352-sv1-bright',
+                                 os.path.join(settings.DATA_DIR,
+                                              #'targets-dr9-0.47.0.dev4352-sv1-bright',
+                                              'targets-dr9-0.49.0-sv1-bright',
                                               'sv1targets-bright-hp-%i.kd.fits'),
                                  name_func=desitarget_sv1_names, colprefix='sv1_')
 def cat_targets_dr9_sv1_supp(req, ver):
