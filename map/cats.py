@@ -54,12 +54,14 @@ catversions = {
     'targets-cmx-dr7': [1,],
     'targets-dr8': [1,],
     'targets-sv-dr8': [1,],
-    'targets-dr9-sv1-sec':[1,],
+    'targets-dr9-sv1-sec-bright':[1,],
+    'targets-dr9-sv1-sec-dark':[1,],
     'targets-dr9-sv1-dark':[1,],
     'targets-dr9-sv1-bright':[1,],
     'targets-dr9-sv1-supp':[1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
+    'gaia-edr3': [1,],
     'sdss-cat': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
@@ -139,7 +141,13 @@ def cat_phat_clusters(req, ver):
     )),
                         content_type='application/json')
 
-def cat_gaia_dr2(req, ver):
+def cat_gaia_edr3(req, ver):
+    import legacypipe.gaiacat
+    print('legacypipe.gaiacat:', legacypipe.gaiacat.__file__)
+    catdir = os.path.join(settings.DATA_DIR, 'gaia-edr3')
+    return cat_gaia_dr2(req, ver, catdir=catdir, prefix='healpix', indexing='nested')
+
+def cat_gaia_dr2(req, ver, catdir=None, prefix=None, indexing=None):
     import json
     from legacypipe.gaiacat import GaiaCatalog
     import numpy as np
@@ -154,8 +162,16 @@ def cat_gaia_dr2(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-dr2')
-    gaia = GaiaCatalog()
+    if catdir is None:
+        catdir = os.path.join(settings.DATA_DIR, 'gaia-dr2')
+
+    os.environ['GAIA_CAT_DIR'] = catdir
+    kwa = {}
+    if prefix is not None:
+        kwa.update(file_prefix=prefix)
+    if indexing is not None:
+        kwa.update(indexing=indexing)
+    gaia = GaiaCatalog(**kwa)
     cat = gaia.get_catalog_radec_box(ralo, rahi, declo, dechi)
 
     for c in ['ra','dec','phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag',
@@ -529,11 +545,21 @@ def cat_targets_dr8c(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr8c-PR490.kd.fits'),
     ], tag='targets-dr8c')
-def cat_targets_dr9_sv1_sec(req, ver):
+def cat_targets_dr9_sv1_sec_bright(req, ver):
     # /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/secondary/dark/sv1targets-dark-secondary.fits
     return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-sv1-secondary-dark.kd.fits'),
-    ], tag='targets-dr9-sv1-sec', name_func=desitarget_sv1_names, colprefix='sv1_',
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.49.0-sv1-secondary-bright.kd.fits'),
+                     #'targets-sv1-secondary-dark.kd.fits'),
+    ], tag='targets-dr9-sv1-sec-bright', name_func=desitarget_sv1_names, colprefix='sv1_',
+    color_name_func=None)
+def cat_targets_dr9_sv1_sec_dark(req, ver):
+    # /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/secondary/dark/sv1targets-dark-secondary.fits
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.49.0-sv1-secondary-dark.kd.fits'),
+                     #'targets-sv1-secondary-dark.kd.fits'),
+    ], tag='targets-dr9-sv1-sec-dark', name_func=desitarget_sv1_names, colprefix='sv1_',
     color_name_func=None)
 
 def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', nside=8,
@@ -618,12 +644,16 @@ def cat_targets_dr9_sv1_dark(req, ver):
     # for x in /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/resolve/dark/*.fits;
     #  do echo $x; startree -i $x -o data/targets-dr9-0.47.0.dev4352-sv1-dark/$(basename $x .fits).kd.fits -TPk; done
     return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-dark',
-                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.47.0.dev4352-sv1-dark',
+                                 os.path.join(settings.DATA_DIR,
+                                              #'targets-dr9-0.47.0.dev4352-sv1-dark',
+                                              'targets-dr9-0.49.0-sv1-dark',
                                               'sv1targets-dark-hp-%i.kd.fits'),
                                  name_func=desitarget_sv1_names, colprefix='sv1_')
 def cat_targets_dr9_sv1_bright(req, ver):
     return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-bright',
-                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.47.0.dev4352-sv1-bright',
+                                 os.path.join(settings.DATA_DIR,
+                                              #'targets-dr9-0.47.0.dev4352-sv1-bright',
+                                              'targets-dr9-0.49.0-sv1-bright',
                                               'sv1targets-bright-hp-%i.kd.fits'),
                                  name_func=desitarget_sv1_names, colprefix='sv1_')
 def cat_targets_dr9_sv1_supp(req, ver):

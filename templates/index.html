@@ -1714,8 +1714,8 @@ tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
                     32.375,
                     // North
                     'ls-dr9-north', [
-                      [0, 13, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
-                      [14, maxZoom, tile_url], ],
+                      [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
+                      [15, maxZoom, tile_url], ],
                     //'ls-dr9-north', [ [0, max_aws_zoom, aws_tile_url], ],
                     {'id':'ls-dr9-north'},
                     // Mid
@@ -1724,8 +1724,8 @@ tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
                     {'id':'ls-dr9'},
                     // South
                     'ls-dr9-south', [
-                      [0, 13, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg'],
-                      [14, maxZoom, tile_url], ],
+                      [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg'],
+                      [15, maxZoom, tile_url], ],
                     //'ls-dr9-south', [ [0, max_aws_zoom, aws_tile_url], ],
                     {'id':'ls-dr9-south'},
                     //{ 'maxNativeZoom': max_aws_zoom }
@@ -3315,7 +3315,12 @@ var GaiaDr2Catalog = CatalogOverlay.extend({
     getPopupText(json, i) {
     return this.getLabel(json, i);
     },
+});
 
+var GaiaDr3Catalog = GaiaDr2Catalog.extend({
+    getColor: function(json, i) {
+        return '#3289a8';
+    },
 });
 
 var gaia2 = new GaiaDr2Catalog('gaia-dr2', 'Gaia DR2 catalog',
@@ -3324,7 +3329,14 @@ var gaia2 = new GaiaDr2Catalog('gaia-dr2', 'Gaia DR2 catalog',
                               'labelsMinZoom': 11,
                               'urlTerm': 'gaia-dr2',
                               'radius': 220,
-                              //'color': '#ddddff'
+                              });
+
+var gaia3 = new GaiaDr3Catalog('gaia-edr3', 'Gaia EDR3 catalog',
+                             {'url_name': 'gaia-edr3',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'gaia-edr3',
+                              'radius': 150,
                               });
 
 
@@ -3443,8 +3455,13 @@ var desi_sv_targets8 = new DesiTargetCatalog('targets-sv-dr8', 'DESI Targets (SV
                                    'minZoom': 11, });
 
 
-var desi_targets_dr9_sv1_sec = new DesiTileLayer('targets-dr9-sv1-sec',
-                                                 'DESI Secondary Targets (DR9/SV1)',
+var desi_targets_dr9_sv1_sec_bright = new DesiTileLayer('targets-dr9-sv1-sec-bright',
+                                                 'DESI Bright-time Secondary Targets (DR9/SV1)',
+                                  {//'radius': 200,
+                                   //'labelsMinZoom': 10,
+                                      'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv1_sec_dark = new DesiTileLayer('targets-dr9-sv1-sec-dark',
+                                                 'DESI Dark-time Secondary Targets (DR9/SV1)',
                                   {//'radius': 200,
                                    //'labelsMinZoom': 10,
                                       'minZoom': 10, 'rscale':0.5});
@@ -3631,6 +3648,7 @@ var overlays = [
     ps1cat,
     {% endif %}
     gaia2,
+    gaia3,
     hsccosmos,
     sdsscat,
     {% if enable_spectra %}
@@ -3645,7 +3663,8 @@ var overlays = [
     desi_dark_targets67,
     desi_bright_targets67,
     desi_cmx_targets7,
-    desi_targets_dr9_sv1_sec,
+    desi_targets_dr9_sv1_sec_dark,
+    desi_targets_dr9_sv1_sec_bright,
     desi_targets_dr9_sv1_dark,
     desi_targets_dr9_sv1_bright,
     desi_targets_dr9_sv1_supp,
@@ -3751,8 +3770,12 @@ var baseTree1 = [
     {% endif %}
     {% if enable_dr9_south %}
     findlayer('ls-dr9-south', [
+        {% if enable_dr9_models %}
         findlayer('ls-dr9-south-model'),
+        {% endif %}
+        {% if enable_dr9_resids %}
         findlayer('ls-dr9-south-resid'),
+        {% endif %}
     ]),
     {% endif %}
 
@@ -3857,6 +3880,7 @@ var baseTree1 = [
         {% endif %}
     ]),
     {% endif %}
+    {% if science %}
     {
         label: 'More surveys',
         children: [
@@ -3881,6 +3905,7 @@ var baseTree1 = [
             {% endif %}
         ],
     },
+    {% endif %}
 ];
 
 var baseTree = [];
@@ -4045,6 +4070,7 @@ var overlayTree = [];
      {% endif %}
 
      findoverlay('gaia-dr2'),
+     findoverlay('gaia-edr3'),
      {% if enable_ps1 %}
      findoverlay('ps1-cat'),
      {% endif %}
@@ -4090,7 +4116,8 @@ var overlayTree = [];
          {% if enable_desi_targets %}
            findoverlay('targets-dr9-sv1-dark'),
            findoverlay('targets-dr9-sv1-bright'),
-           findoverlay('targets-dr9-sv1-sec'),
+           findoverlay('targets-dr9-sv1-sec-dark'),
+           findoverlay('targets-dr9-sv1-sec-bright'),
            //findoverlay('targets-dr9-sv1-supp'),
            findoverlay('targets-dr8'),
            //findoverlay('targets-sv-dr8'),

@@ -31,6 +31,9 @@ ENABLE_OLDER = True
 # scientist view (vs public)
 ENABLE_SCIENCE = True
 
+ENABLE_DESI_TARGETS = False
+ENABLE_SPECTRA = False
+
 ENABLE_DR5 = False
 ENABLE_DR6 = True
 ENABLE_DR7 = True

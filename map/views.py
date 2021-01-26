@@ -6050,7 +6050,9 @@ if __name__ == '__main__':
     #r = c.get('/')
     #r = c.get('/ls-dr9/1/5/0/12.jpg')
     #r = c.get('/namequery/?obj=TILE%2080254')
-    r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=18.1525&rahi=18.6476&declo=28.2182&dechi=28.4614')
+    #r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=18.1525&rahi=18.6476&declo=28.2182&dechi=28.4614')
+    #r = c.get('/cutout.jpg?ra=182.5248&dec=18.5415&layer=ls-dr9&pixscale=1.00')
+    r = c.get('/gaia-edr3/1/cat.json?ralo=200.8723&rahi=201.3674&declo=13.9584&dechi=14.2264')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
