@@ -3315,7 +3315,12 @@ var GaiaDr2Catalog = CatalogOverlay.extend({
     getPopupText(json, i) {
     return this.getLabel(json, i);
     },
+});
 
+var GaiaDr3Catalog = GaiaDr2Catalog.extend({
+    getColor: function(json, i) {
+        return '#3289a8';
+    },
 });
 
 var gaia2 = new GaiaDr2Catalog('gaia-dr2', 'Gaia DR2 catalog',
@@ -3324,7 +3329,14 @@ var gaia2 = new GaiaDr2Catalog('gaia-dr2', 'Gaia DR2 catalog',
                               'labelsMinZoom': 11,
                               'urlTerm': 'gaia-dr2',
                               'radius': 220,
-                              //'color': '#ddddff'
+                              });
+
+var gaia3 = new GaiaDr3Catalog('gaia-edr3', 'Gaia EDR3 catalog',
+                             {'url_name': 'gaia-edr3',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'gaia-edr3',
+                              'radius': 150,
                               });
 
 
@@ -3636,6 +3648,7 @@ var overlays = [
     ps1cat,
     {% endif %}
     gaia2,
+    gaia3,
     hsccosmos,
     sdsscat,
     {% if enable_spectra %}
@@ -4053,6 +4066,7 @@ var overlayTree = [];
      {% endif %}
 
      findoverlay('gaia-dr2'),
+     findoverlay('gaia-edr3'),
      {% if enable_ps1 %}
      findoverlay('ps1-cat'),
      {% endif %}

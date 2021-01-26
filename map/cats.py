@@ -61,6 +61,7 @@ catversions = {
     'targets-dr9-sv1-supp':[1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
+    'gaia-edr3': [1,],
     'sdss-cat': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
@@ -140,7 +141,13 @@ def cat_phat_clusters(req, ver):
     )),
                         content_type='application/json')
 
-def cat_gaia_dr2(req, ver):
+def cat_gaia_edr3(req, ver):
+    import legacypipe.gaiacat
+    print('legacypipe.gaiacat:', legacypipe.gaiacat.__file__)
+    catdir = os.path.join(settings.DATA_DIR, 'gaia-edr3')
+    return cat_gaia_dr2(req, ver, catdir=catdir, prefix='healpix', indexing='nested')
+
+def cat_gaia_dr2(req, ver, catdir=None, prefix=None, indexing=None):
     import json
     from legacypipe.gaiacat import GaiaCatalog
     import numpy as np
@@ -155,8 +162,16 @@ def cat_gaia_dr2(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-dr2')
-    gaia = GaiaCatalog()
+    if catdir is None:
+        catdir = os.path.join(settings.DATA_DIR, 'gaia-dr2')
+
+    os.environ['GAIA_CAT_DIR'] = catdir
+    kwa = {}
+    if prefix is not None:
+        kwa.update(file_prefix=prefix)
+    if indexing is not None:
+        kwa.update(indexing=indexing)
+    gaia = GaiaCatalog(**kwa)
     cat = gaia.get_catalog_radec_box(ralo, rahi, declo, dechi)
 
     for c in ['ra','dec','phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag',

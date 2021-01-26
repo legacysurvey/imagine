@@ -56,6 +56,7 @@ urlpatterns = [
 
     # Gaia catalog
     url(r'^gaia-dr2/(\d+)/cat.json', cats.cat_gaia_dr2),
+    url(r'^gaia-edr3/(\d+)/cat.json', cats.cat_gaia_edr3),
 
     # Upload user catalog
     url(r'^upload-cat/', cats.upload_cat, name='upload-cat'),
