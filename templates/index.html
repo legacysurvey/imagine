@@ -3770,8 +3770,12 @@ var baseTree1 = [
     {% endif %}
     {% if enable_dr9_south %}
     findlayer('ls-dr9-south', [
+        {% if enable_dr9_models %}
         findlayer('ls-dr9-south-model'),
+        {% endif %}
+        {% if enable_dr9_resids %}
         findlayer('ls-dr9-south-resid'),
+        {% endif %}
     ]),
     {% endif %}
 
