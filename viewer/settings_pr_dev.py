@@ -7,9 +7,8 @@ STATIC_URL = ROOT_URL + STATIC_URL_PATH
 HOSTNAME = 'dev.viewer.legacysurvey.org'
 TILE_URL = 'https://dev-{s}.%s%s{id}/{ver}/{z}/{x}/{y}.jpg' % ('viewer.legacysurvey.org', ROOT_URL)
 
-DEBUG = True
-
-DEBUG_LOGGING = True
+DEBUG = False
+DEBUG_LOGGING = False
 
 READ_ONLY_BASEDIR = True
 
