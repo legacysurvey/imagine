@@ -103,6 +103,8 @@ var subdomains_B = {{ subdomains_B|safe }};
 var aws_tile_url = 'https://s3.us-west-1.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg';
 var max_aws_zoom = 14;
 
+var aws_unwise_url = 'https://s3.us-west-2.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg'
+
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
 
@@ -2127,7 +2129,9 @@ allLayers.push(tiles);
 tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
                 {'maxNativeZoom': 12,
                  'attribution': unwise_attrib,
-                 'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                 'urlPatterns': [
+                     [1, 11, aws_unwise_url],
+                     [12, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',

@@ -8,9 +8,8 @@ HOSTNAME = 'viewer.legacysurvey.org'
 #HOSTNAME = 'spin.legacysurvey.org'
 TILE_URL = 'https://{s}.%s%s{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
-DEBUG = True
-
-DEBUG_LOGGING = True
+DEBUG = False
+DEBUG_LOGGING = False
 
 READ_ONLY_BASEDIR = True
 
