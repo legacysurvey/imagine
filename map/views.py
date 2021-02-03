@@ -5345,7 +5345,8 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
     
     kwa = dict(cmap='gray', origin='lower')
 
-    trargs = dict(slc=slc, gaussPsf=True, old_calibs_ok=True, tiny=1)
+    trargs = dict(slc=slc, gaussPsf=True, old_calibs_ok=True, tiny=1,
+                  trim_edges=False)
                   #readsky=False)
     
     if kind == 'image':
@@ -6053,7 +6054,8 @@ if __name__ == '__main__':
     #r = c.get('/')
     #r = c.get('/ls-dr9/1/5/0/12.jpg')
     #r = c.get('/cutout.jpg?ra=182.5248&dec=18.5415&layer=ls-dr9&pixscale=1.00')
-    r = c.get('/gaia-edr3/1/cat.json?ralo=200.8723&rahi=201.3674&declo=13.9584&dechi=14.2264')
+    #r = c.get('/gaia-edr3/1/cat.json?ralo=200.8723&rahi=201.3674&declo=13.9584&dechi=14.2264')
+    r = c.get('/exposure_panels/mzls+bass-dr6/75120132/CCD1/?ra=230.6465&dec=56.2721&size=100')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
