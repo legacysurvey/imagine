@@ -337,6 +337,7 @@ def _index(req,
         enable_spectra = settings.ENABLE_SPECTRA,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         enable_phat = False,
+        discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
     )
 
     for k in kwargs.keys():

@@ -1465,7 +1465,8 @@ function onMapClick(e) {
     var cutout_fits = '{% url 'cutout-fits' %}?' + linkqstr + pixstr;
     var linkurl = linkHereURL();
 
-    var abs_cutout = hostname_url + cutout;
+    //var abs_cutout = hostname_url + cutout;
+    var abs_cutout = '{{ discuss_cutout_url }}?' + linkqstr + pixstr;
     var abs_link = hostname_url + '{% url 'index' %}' + linkurl;
 
     var discuss = 'http://discuss.legacysurvey.org/new-topic?title=Interesting+object&body=' +
