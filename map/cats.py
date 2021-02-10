@@ -115,6 +115,39 @@ def gaia_stars_for_wcs(req):
                         content_type='application/json')
 
 def cat_photoz_dr9(req, ver):
+    '''
+    I pre-processed the photo-z sweep files like this to create a kd-tree per sweep:
+
+    pzfns = glob('/global/cscratch1/sd/rongpu/dr9_photoz/south/sweep-*.fits')
+    pzfns.sort()
+    for pzfn in pzfns:
+        outfn = ('/global/cfs/cdirs/cosmo/webapp/viewer-dev/data/photoz/dr9-south/'
+                 + os.path.basename(pzfn).replace('.fits', '.kd.fits'))
+        if os.path.exists(outfn):
+            print('Exists:', outfn)
+            continue
+        sweepfn = pzfn.replace('/global/cscratch1/sd/rongpu/dr9_photoz/south',
+                               '/global/cfs/cdirs/cosmo/data/legacysurvey/dr9/south/sweep/9.0').replace(
+                            '-pz.fits', '.fits')
+        PZ = fits_table(pzfn)
+        if not np.any(PZ.z_phot_mean > -99):
+            print('Skipping', pzfn)
+            continue
+        SW = fits_table(sweepfn, columns=['ra','dec'])
+        assert(len(PZ) == len(SW))
+        PZ.ra  = SW.ra
+        PZ.dec = SW.dec
+        print(pzfn)
+        print('Before cut:', len(PZ))
+        PZ.cut(PZ.z_phot_mean > -99)
+        print('After  cut:', len(PZ))
+        if len(PZ) == 0:
+            continue
+        PZ.writeto('/tmp/pz.fits')
+        cmd = ('startree -i /tmp/pz.fits -o %s -PTk' % outfn)
+        print(cmd)
+        os.system(cmd)
+    '''
     import numpy as np
     import json
     from astrometry.libkd.spherematch import tree_open, tree_search_radec
