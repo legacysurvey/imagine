@@ -92,6 +92,8 @@ STATIC_TILE_URL = 'http://{s}.%s%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNA
 
 CAT_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
 
+DISCUSS_CUTOUT_URL = 'https://www.legacysurvey.org/viewer/cutout.jpg'
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
 BASE_DIR   = os.path.dirname(__file__)
