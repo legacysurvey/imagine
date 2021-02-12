@@ -1207,16 +1207,19 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
 
 def cat_sga_parent(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-parent-v3.0.kd.fits')
-    return _cat_sga(req, ver, fn=fn, tag='sga', sga=True)
+    return _cat_sga(req, ver, fn=fn, tag='sga')
 
 def cat_sga_ellipse(req, ver):
-    fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2.kd.fits')
-    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga', sga=True)
+    # T = fits_table('cosmo/webapp/viewer-dev/data/sga/SGA-ellipse-v3.2.kd.fits')
+    # T.cut((T.sga_id >= 0) * (T.preburned))
+    # cols = ['ra','dec','diam', 'galaxy', 'pgc', 'morphtype', 'ba', 'pa', 'z_leda', 'group_name']
+    # T.writeto('sga-cut.fits', columns=cols)
+    # startree -i ~/sga-cut.fits -o data/sga/SGA-ellipse-v3.2-cut.kd.fits -PTk
+    #fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2-cut.kd.fits')
+    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga')
 
-def cat_sga(req, ver):
-    return _cat_sga(req, ver)
-
-def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', sga=False):
+def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     import json
     import numpy as np
     # The SGA catalog includes radii for the galaxies, and we want galaxies
@@ -1236,13 +1239,6 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', sga=False):
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[],
                                             posAngle=[], pgc=[], type=[], redshift=[])),
                             content_type='application/json')
-
-    if ellipse:
-        if sga:
-            T.cut((T.sga_id >= 0) * (T.preburned))
-        else:
-            T.cut((T.id >= 0) * (T.preburned))
-
     T.cut(np.argsort(-T.radius_arcsec))
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
