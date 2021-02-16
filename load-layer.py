@@ -185,13 +185,13 @@ def main():
     pretty = 'DR9j south'
 
     rsync = False
-    if False:
+    if True:
         #indir = '/global/cscratch1/sd/ziyaoz/dr9m/north/'
         indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/north'
         name = 'dr9m-north'
         pretty = 'DR9m-north'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
-    if True:
+    if False:
         #indir = '/global/cscratch1/sd/ziyaoz/dr9m/south/'
         indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/south'
         #name = 'dr9m-south'
@@ -199,9 +199,9 @@ def main():
         pretty = 'DR9m-south'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
 
-    #update = True
-    update = False
-    queue = True
+    update = True
+    #update = False
+    queue = False
 
     # rsync = True
     # update = False
@@ -295,7 +295,6 @@ def main():
         for line in f.readlines():
             brickname = line.strip()
             brickset.add(brickname)
-
         # for fn in extraimagefns:
         #     dirs = fn.split('/')
         #     brickname = dirs[-2]
@@ -303,7 +302,39 @@ def main():
         print(len(brickset), 'bricks found')
         I, = np.nonzero([b in brickset for b in allbricks.brickname])
         bricks = allbricks[I]
-        delete_scaled_images(name, old_bricks, bricks)
+
+        # Find tiles that overlap each brick.
+        if True:
+            ii = 0
+            for zoom in range(6, 15):
+                zoomscale = 2.**zoom
+                W,H = 256,256
+                xyset = set()
+                for brick in bricks:
+                    x1 = int(np.floor((360. - brick.ra2)/360. * zoomscale))
+                    x2 = int(np.floor((360. - brick.ra1)/360. * zoomscale))
+                    y1 = int(zoomscale * 1./(2.*np.pi) * (np.pi - np.log(np.tan(np.pi/4. + np.deg2rad(brick.dec2)/2.))))
+                    y2 = int(zoomscale * 1./(2.*np.pi) * (np.pi - np.log(np.tan(np.pi/4. + np.deg2rad(brick.dec1)/2.))))
+                    #print('Brick', brick.brickname, 'RA,Dec', brick.ra, brick.dec, ': zoom', zoom, 'x range', x1, x2, 'y range', y1, y2)
+                    #print('# brick ', brick.brickname)
+                    for x in range(x1, x2+1):
+                        for y in range(y1, y2+1):
+                            xyset.add((x,y))
+                xyset = list(xyset)
+                xyset.sort()
+                for x,y in xyset:
+                    #print('%i/%i/%i.jpg' % (zoom, x, y))
+                    #print('python render-tiles.py --kind ls-dr9-north -z %i -x %i -y %i --ignore > /dev/null 2>&1 &' % (zoom, x, y))
+                    # cat update3.txt | xargs -n 6 -P 32 python render-tiles.py --kind ls-dr9-north --ignore
+                    print('-z %i -x %i -y %i' % (zoom, x, y))
+                    # ii += 1
+                    # if ii % 32 == 0:
+                    #     pass
+                    #     #print('wait')
+            #print('wait')
+        
+        #delete_scaled_images(name, old_bricks, bricks)
+
         sys.exit(0)
 
     print('Searching for new coadd image files...')

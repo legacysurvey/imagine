@@ -67,6 +67,7 @@ catversions = {
     'ps1': [1,],
     'desi-tiles': [1,],
     'masks-dr8': [1,],
+    'photoz-dr9': [1,],
 }
 
 test_cats = []
@@ -112,6 +113,110 @@ def gaia_stars_for_wcs(req):
             for g,x,y in zip(stars, xx, yy)])
     return HttpResponse(json.dumps(reply),
                         content_type='application/json')
+
+def cat_photoz_dr9(req, ver):
+    '''
+    I pre-processed the photo-z sweep files like this to create a kd-tree per sweep:
+
+    pzfns = glob('/global/cscratch1/sd/rongpu/dr9_photoz/south/sweep-*.fits')
+    pzfns.sort()
+    for pzfn in pzfns:
+        outfn = ('/global/cfs/cdirs/cosmo/webapp/viewer-dev/data/photoz/dr9-south/'
+                 + os.path.basename(pzfn).replace('.fits', '.kd.fits'))
+        if os.path.exists(outfn):
+            print('Exists:', outfn)
+            continue
+        sweepfn = pzfn.replace('/global/cscratch1/sd/rongpu/dr9_photoz/south',
+                               '/global/cfs/cdirs/cosmo/data/legacysurvey/dr9/south/sweep/9.0').replace(
+                            '-pz.fits', '.fits')
+        PZ = fits_table(pzfn)
+        if not np.any(PZ.z_phot_mean > -99):
+            print('Skipping', pzfn)
+            continue
+        SW = fits_table(sweepfn, columns=['ra','dec'])
+        assert(len(PZ) == len(SW))
+        PZ.ra  = SW.ra
+        PZ.dec = SW.dec
+        print(pzfn)
+        print('Before cut:', len(PZ))
+        PZ.cut(PZ.z_phot_mean > -99)
+        print('After  cut:', len(PZ))
+        if len(PZ) == 0:
+            continue
+        PZ.writeto('/tmp/pz.fits')
+        cmd = ('startree -i /tmp/pz.fits -o %s -PTk' % outfn)
+        print(cmd)
+        os.system(cmd)
+    '''
+    import numpy as np
+    import json
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.util.starutil_numpy import radectolb
+    tag = 'photoz-dr9'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    TT = []
+    # find relevant sweep files
+    rastep = 10
+    decstep = 5
+    r1 = rastep * np.floor(ralo / rastep).astype(int)
+    r2 = rastep * np.ceil (rahi / rastep).astype(int)
+    d1 = decstep * np.floor(declo / decstep).astype(int)
+    d2 = decstep * np.ceil (dechi / decstep).astype(int)
+    # Too big an area?
+    empty = json.dumps(dict(rd=[], phot_z_mean=[], phot_z_std=[]))
+    if (d2 - d1) * (r2 - r1) > 200:
+        return HttpResponse(empty, content_type='application/json')
+
+    decsplit = 32.375
+    
+    for hemi in ['north', 'south']:
+        for d in range(d1, d2, decstep):
+            for r in range(r1, r2, rastep):
+                dsign = 'p' if d >= 0 else 'm'
+                d2sign = 'p' if (d+decstep) >= 0 else 'm'
+                fn = os.path.join(settings.DATA_DIR, 'photoz', 'dr9-' + hemi,
+                                  'sweep-%03i%s%03i-%03i%s%03i-pz.kd.fits' %
+                                  (r, dsign, abs(d), r+rastep, d2sign, abs(d+decstep)))
+                if not os.path.exists(fn):
+                    print('No such file:', fn)
+                    continue
+                kd = tree_open(fn)
+                I = tree_search_radec(kd, rc, dc, rad)
+                print('Matched', len(I), 'from', fn)
+                if len(I) == 0:
+                    continue
+                T = fits_table(fn, rows=I)
+                ll,bb = radectolb(T.ra, T.dec)
+                ngc = (bb > 0.)
+                if hemi == 'north':
+                    T.cut((T.dec >= decsplit) * ngc)
+                else:
+                    T.cut(np.logical_or(T.dec <= decsplit, np.logical_not(ngc)))
+                if len(T) == 0:
+                    continue
+                T.cut((T.ra  >= ralo ) * (T.ra  <= rahi) *
+                      (T.dec >= declo) * (T.dec <= dechi))
+                if len(T) == 0:
+                    continue
+                TT.append(T)
+    if len(TT) == 0:
+        return HttpResponse(empty, content_type='application/json')
+    T = merge_tables(TT)
+    return HttpResponse(json.dumps(dict(
+        rd=[(float(r),float(d)) for r,d in zip(T.ra, T.dec)],
+        phot_z_mean=[float(z) for z in T.z_phot_mean],
+        phot_z_std=[float(z) for z in T.z_phot_std],
+    )), content_type='application/json')
     
 def cat_phat_clusters(req, ver):
     import json

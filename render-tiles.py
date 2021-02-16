@@ -795,6 +795,7 @@ def main():
     
     elif opt.kind in ['dr8-north', 'dr8-north-model', 'dr8-north-resid',
                       'dr9sv-north', 'dr9sv-north-model', 'dr9sv-north-resid',
+                      'ls-dr9-north', 'ls-dr9-north-model',
                       ]:
         if opt.maxdec is None:
             opt.maxdec = 90
@@ -895,6 +896,7 @@ def main():
                         'fornax', 'fornax-model', 'fornax-resid',
                          'vlass1.2', 'ztf',
                          'ls-dr9-south', 'ls-dr9-south-model',
+                         'ls-dr9-north', 'ls-dr9-north-model',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
@@ -1345,9 +1347,12 @@ def main():
             # Mercator: delta-RA between tiles is the same at all y/Dec values.
             wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, opt.x0, 0)
             ra_a,d = wcs.get_center()
-            wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, opt.x0+1, 0)
-            ra_b,d = wcs.get_center()
-            dra = ra_b - ra_a
+            if len(xx) < 2:
+                dra = 0.
+            else:
+                wcs,W,H,zoomscale,zoom,x,y = get_tile_wcs(zoom, opt.x0+1, 0)
+                ra_b,d = wcs.get_center()
+                dra = ra_b - ra_a
             rr = ra_a + dra * np.arange(len(xx))
             # rr2 = []
             # for x in xx:
