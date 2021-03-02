@@ -156,6 +156,7 @@ ALLOWED_HOSTS = [
     'spin.legacysurvey.org',
     'viewer.legacysurvey.org', 'a.viewer.legacysurvey.org', 'b.viewer.legacysurvey.org', 'c.viewer.legacysurvey.org', 'd.viewer.legacysurvey.org',
     'dev.viewer.legacysurvey.org', 'dev-a.viewer.legacysurvey.org', 'dev-b.viewer.legacysurvey.org', 'dev-c.viewer.legacysurvey.org', 'dev-d.viewer.legacysurvey.org',
+    'odin.legacysurvey.org',
 ]
 
 # Application definition

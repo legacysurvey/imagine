@@ -122,7 +122,7 @@ var QueryItems = function() {
 };
 var qstr = QueryItems();
 
-var zoom_initial = 12;
+var zoom_initial = 14;
 if ('zoom' in qstr) {
   zoom_initial = parseInt(qstr['zoom']);
   if (isNaN(zoom_initial))
@@ -1706,6 +1706,9 @@ allLayers.push(tiles);
 
 
 
+tiles = mylayer_B('odin-2band', 'ODIN N501/N673 images',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
 
 
 {% if enable_dr9 %}
@@ -3731,6 +3734,10 @@ var baseTree1 = [
     findlayer('phat'),
     {% endif %}
 
+    findlayer('odin-2band'),
+    {% if enable_hsc_dr2 %}
+    findlayer('hsc-dr2'),
+    {% endif %}
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
         {% if enable_dr9_models %}
@@ -3864,9 +3871,6 @@ var baseTree1 = [
             {% endif %}
             findlayer('galex'),
             findlayer('halpha'),
-            {% if enable_hsc_dr2 %}
-            findlayer('hsc-dr2'),
-            {% endif %}
             {% if enable_ps1 %}
             findlayer('ps1'),
             {% endif %}

@@ -260,7 +260,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'ls-dr9',
+           default_layer = 'odin-2band',
            default_radec = (None,None),
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
@@ -352,7 +352,10 @@ def _index(req,
 
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
-
+    # COSMOS
+    default_radec = 150.1622, 1.9913
+    default_zoom = 14
+    
     ra, dec = default_radec
     zoom = default_zoom
 
@@ -3823,6 +3826,15 @@ class ZeaLayer(MapLayer):
         #print('red range', rgb[:,:,0].min(), rgb[:,:,0].max())
         return rgb
 
+
+class OdinLayer(ReDecalsLayer):
+    def get_rgb(self, imgs, bands, **kwargs):
+        from legacypipe.survey import get_rgb
+        return get_rgb(imgs, bands)
+    def get_bands(self):
+        return ['N501', 'N673']
+
+    
 # "PR"
 #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
@@ -5683,7 +5695,11 @@ def get_layer(name, default=None):
 
     elif name == 'hsc-dr2':
         layer = HscLayer('hsc-dr2')
-    
+
+    elif name == 'odin-2band':
+        survey = get_survey('odin-2band')
+        layer = OdinLayer('odin-2band', 'image', survey)
+        
     if layer is None:
         # Try generic rebricked
         #print('get_layer:', name, '-- generic')
@@ -6052,7 +6068,9 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9/1/3/1/3.jpg')
     #r = c.get('/')
     #r = c.get('/ls-dr9/1/5/0/12.jpg')
-    r = c.get('/cutout.jpg?ra=182.5248&dec=18.5415&layer=ls-dr9&pixscale=1.00')
+    #r = c.get('/cutout.jpg?ra=182.5248&dec=18.5415&layer=ls-dr9&pixscale=1.00')
+    #r = c.get('/odin-2band/1/14/9552/8100.jpg')
+    r = c.get('/odin-2band/1/14/9548/8116.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

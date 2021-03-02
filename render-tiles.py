@@ -707,6 +707,17 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
 
+    elif opt.kind == 'odin-2band':
+        if opt.maxdec is None:
+            opt.maxdec = 4.76
+        if opt.mindec is None:
+            opt.mindec = -0.39
+        if opt.minra is None:
+            opt.minra = 147.4
+        if opt.maxra is None:
+            opt.maxra = 152.8
+        if opt.bands is None:
+            opt.bands = ['N501','N673']
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                            'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
@@ -895,6 +906,7 @@ def main():
                         'fornax', 'fornax-model', 'fornax-resid',
                          'vlass1.2', 'ztf',
                          'ls-dr9-south', 'ls-dr9-south-model',
+                         'odin-2band',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
