@@ -1419,8 +1419,7 @@ function plate_detail(layer_name, name, aparams) {
     return '<a href="https://dr14.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
 }
 
-function linkHereURL() {
-    var latlng = map.getCenter();
+function linkHereURL(latlng) {
     var ra  = long2ra(latlng.lng);
     var dec = lat2dec(latlng.lat);
 
@@ -1463,7 +1462,7 @@ function onMapClick(e) {
 
     var cutout = '{% url 'cutout-jpeg' %}?' + linkqstr + pixstr;
     var cutout_fits = '{% url 'cutout-fits' %}?' + linkqstr + pixstr;
-    var linkurl = linkHereURL();
+    var linkurl = linkHereURL(e.latlng);
 
     //var abs_cutout = hostname_url + cutout;
     var abs_cutout = '{{ discuss_cutout_url }}?' + linkqstr + pixstr;
@@ -2448,7 +2447,7 @@ function objQueryLoaded(result) {
         } else {
             qstr['tile'] = words[1];
         }
-        var linkurl = linkHereURL();
+        var linkurl = linkHereURL(map.getCenter());
         console.log('Link URL:', linkurl);
         window.location.href = linkurl;
 
