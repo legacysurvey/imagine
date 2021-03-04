@@ -54,17 +54,20 @@ catversions = {
     'targets-cmx-dr7': [1,],
     'targets-dr8': [1,],
     'targets-sv-dr8': [1,],
-    'targets-dr9-sv1-sec':[1,],
+    'targets-dr9-sv1-sec-bright':[1,],
+    'targets-dr9-sv1-sec-dark':[1,],
     'targets-dr9-sv1-dark':[1,],
     'targets-dr9-sv1-bright':[1,],
     'targets-dr9-sv1-supp':[1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
+    'gaia-edr3': [1,],
     'sdss-cat': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
     'desi-tiles': [1,],
     'masks-dr8': [1,],
+    'photoz-dr9': [1,],
 }
 
 test_cats = []
@@ -110,6 +113,110 @@ def gaia_stars_for_wcs(req):
             for g,x,y in zip(stars, xx, yy)])
     return HttpResponse(json.dumps(reply),
                         content_type='application/json')
+
+def cat_photoz_dr9(req, ver):
+    '''
+    I pre-processed the photo-z sweep files like this to create a kd-tree per sweep:
+
+    pzfns = glob('/global/cscratch1/sd/rongpu/dr9_photoz/south/sweep-*.fits')
+    pzfns.sort()
+    for pzfn in pzfns:
+        outfn = ('/global/cfs/cdirs/cosmo/webapp/viewer-dev/data/photoz/dr9-south/'
+                 + os.path.basename(pzfn).replace('.fits', '.kd.fits'))
+        if os.path.exists(outfn):
+            print('Exists:', outfn)
+            continue
+        sweepfn = pzfn.replace('/global/cscratch1/sd/rongpu/dr9_photoz/south',
+                               '/global/cfs/cdirs/cosmo/data/legacysurvey/dr9/south/sweep/9.0').replace(
+                            '-pz.fits', '.fits')
+        PZ = fits_table(pzfn)
+        if not np.any(PZ.z_phot_mean > -99):
+            print('Skipping', pzfn)
+            continue
+        SW = fits_table(sweepfn, columns=['ra','dec'])
+        assert(len(PZ) == len(SW))
+        PZ.ra  = SW.ra
+        PZ.dec = SW.dec
+        print(pzfn)
+        print('Before cut:', len(PZ))
+        PZ.cut(PZ.z_phot_mean > -99)
+        print('After  cut:', len(PZ))
+        if len(PZ) == 0:
+            continue
+        PZ.writeto('/tmp/pz.fits')
+        cmd = ('startree -i /tmp/pz.fits -o %s -PTk' % outfn)
+        print(cmd)
+        os.system(cmd)
+    '''
+    import numpy as np
+    import json
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.util.starutil_numpy import radectolb
+    tag = 'photoz-dr9'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    TT = []
+    # find relevant sweep files
+    rastep = 10
+    decstep = 5
+    r1 = rastep * np.floor(ralo / rastep).astype(int)
+    r2 = rastep * np.ceil (rahi / rastep).astype(int)
+    d1 = decstep * np.floor(declo / decstep).astype(int)
+    d2 = decstep * np.ceil (dechi / decstep).astype(int)
+    # Too big an area?
+    empty = json.dumps(dict(rd=[], phot_z_mean=[], phot_z_std=[]))
+    if (d2 - d1) * (r2 - r1) > 200:
+        return HttpResponse(empty, content_type='application/json')
+
+    decsplit = 32.375
+    
+    for hemi in ['north', 'south']:
+        for d in range(d1, d2, decstep):
+            for r in range(r1, r2, rastep):
+                dsign = 'p' if d >= 0 else 'm'
+                d2sign = 'p' if (d+decstep) >= 0 else 'm'
+                fn = os.path.join(settings.DATA_DIR, 'photoz', 'dr9-' + hemi,
+                                  'sweep-%03i%s%03i-%03i%s%03i-pz.kd.fits' %
+                                  (r, dsign, abs(d), r+rastep, d2sign, abs(d+decstep)))
+                if not os.path.exists(fn):
+                    print('No such file:', fn)
+                    continue
+                kd = tree_open(fn)
+                I = tree_search_radec(kd, rc, dc, rad)
+                print('Matched', len(I), 'from', fn)
+                if len(I) == 0:
+                    continue
+                T = fits_table(fn, rows=I)
+                ll,bb = radectolb(T.ra, T.dec)
+                ngc = (bb > 0.)
+                if hemi == 'north':
+                    T.cut((T.dec >= decsplit) * ngc)
+                else:
+                    T.cut(np.logical_or(T.dec <= decsplit, np.logical_not(ngc)))
+                if len(T) == 0:
+                    continue
+                T.cut((T.ra  >= ralo ) * (T.ra  <= rahi) *
+                      (T.dec >= declo) * (T.dec <= dechi))
+                if len(T) == 0:
+                    continue
+                TT.append(T)
+    if len(TT) == 0:
+        return HttpResponse(empty, content_type='application/json')
+    T = merge_tables(TT)
+    return HttpResponse(json.dumps(dict(
+        rd=[(float(r),float(d)) for r,d in zip(T.ra, T.dec)],
+        phot_z_mean=[float(z) for z in T.z_phot_mean],
+        phot_z_std=[float(z) for z in T.z_phot_std],
+    )), content_type='application/json')
     
 def cat_phat_clusters(req, ver):
     import json
@@ -139,7 +246,13 @@ def cat_phat_clusters(req, ver):
     )),
                         content_type='application/json')
 
-def cat_gaia_dr2(req, ver):
+def cat_gaia_edr3(req, ver):
+    import legacypipe.gaiacat
+    print('legacypipe.gaiacat:', legacypipe.gaiacat.__file__)
+    catdir = os.path.join(settings.DATA_DIR, 'gaia-edr3')
+    return cat_gaia_dr2(req, ver, catdir=catdir, prefix='healpix', indexing='nested')
+
+def cat_gaia_dr2(req, ver, catdir=None, prefix=None, indexing=None):
     import json
     from legacypipe.gaiacat import GaiaCatalog
     import numpy as np
@@ -154,8 +267,16 @@ def cat_gaia_dr2(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-dr2')
-    gaia = GaiaCatalog()
+    if catdir is None:
+        catdir = os.path.join(settings.DATA_DIR, 'gaia-dr2')
+
+    os.environ['GAIA_CAT_DIR'] = catdir
+    kwa = {}
+    if prefix is not None:
+        kwa.update(file_prefix=prefix)
+    if indexing is not None:
+        kwa.update(indexing=indexing)
+    gaia = GaiaCatalog(**kwa)
     cat = gaia.get_catalog_radec_box(ralo, rahi, declo, dechi)
 
     for c in ['ra','dec','phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag',
@@ -529,11 +650,21 @@ def cat_targets_dr8c(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr8c-PR490.kd.fits'),
     ], tag='targets-dr8c')
-def cat_targets_dr9_sv1_sec(req, ver):
+def cat_targets_dr9_sv1_sec_bright(req, ver):
     # /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/secondary/dark/sv1targets-dark-secondary.fits
     return cat_targets_drAB(req, ver, cats=[
-        os.path.join(settings.DATA_DIR, 'targets-sv1-secondary-dark.kd.fits'),
-    ], tag='targets-dr9-sv1-sec', name_func=desitarget_sv1_names, colprefix='sv1_',
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.49.0-sv1-secondary-bright.kd.fits'),
+                     #'targets-sv1-secondary-dark.kd.fits'),
+    ], tag='targets-dr9-sv1-sec-bright', name_func=desitarget_sv1_names, colprefix='sv1_',
+    color_name_func=None)
+def cat_targets_dr9_sv1_sec_dark(req, ver):
+    # /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/secondary/dark/sv1targets-dark-secondary.fits
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.49.0-sv1-secondary-dark.kd.fits'),
+                     #'targets-sv1-secondary-dark.kd.fits'),
+    ], tag='targets-dr9-sv1-sec-dark', name_func=desitarget_sv1_names, colprefix='sv1_',
     color_name_func=None)
 
 def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', nside=8,
@@ -618,12 +749,16 @@ def cat_targets_dr9_sv1_dark(req, ver):
     # for x in /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/resolve/dark/*.fits;
     #  do echo $x; startree -i $x -o data/targets-dr9-0.47.0.dev4352-sv1-dark/$(basename $x .fits).kd.fits -TPk; done
     return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-dark',
-                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.47.0.dev4352-sv1-dark',
+                                 os.path.join(settings.DATA_DIR,
+                                              #'targets-dr9-0.47.0.dev4352-sv1-dark',
+                                              'targets-dr9-0.49.0-sv1-dark',
                                               'sv1targets-dark-hp-%i.kd.fits'),
                                  name_func=desitarget_sv1_names, colprefix='sv1_')
 def cat_targets_dr9_sv1_bright(req, ver):
     return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-bright',
-                                 os.path.join(settings.DATA_DIR, 'targets-dr9-0.47.0.dev4352-sv1-bright',
+                                 os.path.join(settings.DATA_DIR,
+                                              #'targets-dr9-0.47.0.dev4352-sv1-bright',
+                                              'targets-dr9-0.49.0-sv1-bright',
                                               'sv1targets-bright-hp-%i.kd.fits'),
                                  name_func=desitarget_sv1_names, colprefix='sv1_')
 def cat_targets_dr9_sv1_supp(req, ver):
@@ -1072,16 +1207,19 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
 
 def cat_sga_parent(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-parent-v3.0.kd.fits')
-    return _cat_sga(req, ver, fn=fn, tag='sga', sga=True)
+    return _cat_sga(req, ver, fn=fn, tag='sga')
 
 def cat_sga_ellipse(req, ver):
-    fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2.kd.fits')
-    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga', sga=True)
+    # T = fits_table('cosmo/webapp/viewer-dev/data/sga/SGA-ellipse-v3.2.kd.fits')
+    # T.cut((T.sga_id >= 0) * (T.preburned))
+    # cols = ['ra','dec','diam', 'galaxy', 'pgc', 'morphtype', 'ba', 'pa', 'z_leda', 'group_name']
+    # T.writeto('sga-cut.fits', columns=cols)
+    # startree -i ~/sga-cut.fits -o data/sga/SGA-ellipse-v3.2-cut.kd.fits -PTk
+    #fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2-cut.kd.fits')
+    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga')
 
-def cat_sga(req, ver):
-    return _cat_sga(req, ver)
-
-def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', sga=False):
+def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     import json
     import numpy as np
     # The SGA catalog includes radii for the galaxies, and we want galaxies
@@ -1101,13 +1239,6 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', sga=False):
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[],
                                             posAngle=[], pgc=[], type=[], redshift=[])),
                             content_type='application/json')
-
-    if ellipse:
-        if sga:
-            T.cut((T.sga_id >= 0) * (T.preburned))
-        else:
-            T.cut((T.id >= 0) * (T.preburned))
-
     T.cut(np.argsort(-T.radius_arcsec))
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))

@@ -31,6 +31,9 @@ ENABLE_OLDER = True
 # scientist view (vs public)
 ENABLE_SCIENCE = True
 
+ENABLE_DESI_TARGETS = False
+ENABLE_SPECTRA = False
+
 ENABLE_DR5 = False
 ENABLE_DR6 = True
 ENABLE_DR7 = True
@@ -88,6 +91,8 @@ TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 STATIC_TILE_URL = 'http://{s}.%s%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL, STATIC_URL_PATH)
 
 CAT_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
+
+DISCUSS_CUTOUT_URL = 'https://www.legacysurvey.org/viewer/cutout.jpg'
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os

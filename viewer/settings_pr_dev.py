@@ -4,9 +4,8 @@ ROOT_URL = '/'
 STATIC_URL_PATH = 'static/'
 STATIC_URL = ROOT_URL + STATIC_URL_PATH
 
-HOSTNAME = 'viewer.legacysurvey.org'
-#HOSTNAME = 'spin.legacysurvey.org'
-TILE_URL = 'https://{s}.%s%s{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+HOSTNAME = 'dev.viewer.legacysurvey.org'
+TILE_URL = 'https://dev-{s}.%s%s{id}/{ver}/{z}/{x}/{y}.jpg' % ('viewer.legacysurvey.org', ROOT_URL)
 
 DEBUG = False
 DEBUG_LOGGING = False
@@ -29,7 +28,11 @@ ENABLE_DR9SV = False
 ENABLE_OLDER = False
 # public version
 ENABLE_SCIENCE = False
-
-ENABLE_CUTOUTS = True
-ENABLE_SPECTRA = False
 ENABLE_DESI_TARGETS = False
+ENABLE_SPECTRA = False
+ENABLE_DR9_MODELS = False
+ENABLE_DR9_RESIDS = False
+ENABLE_DR9_SOUTH = False
+ENABLE_DR9_SOUTH_MODELS = False
+ENABLE_DR9_SOUTH_RESIDS = False
+ENABLE_CUTOUTS = False

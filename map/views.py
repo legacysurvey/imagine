@@ -337,6 +337,7 @@ def _index(req,
         enable_spectra = settings.ENABLE_SPECTRA,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         enable_phat = False,
+        discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
     )
 
     for k in kwargs.keys():
@@ -4218,6 +4219,10 @@ def get_survey(name):
     elif name in ['ls-dr8-south', 'ls-dr8-north', 'decals-dr5',
                   'decals-dr7', 'mzls+bass-dr6']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+        # DR5 CCDs table:
+        # - pull in "photometric = annotated has_zeropoint * photometric * blacklist_ok"
+        # python legacypipe/create_kdtrees.py --no-cut $CSCRATCH/dr5x.fits data/decals-dr5/survey-ccds-decam-dr5-newlocs4-ext2.kd.fits
+        # (not startree! -- need expnum tree too)
 
     elif name in ['ls-dr9-north', 'ls-dr9-south']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
@@ -4852,6 +4857,11 @@ def touchup_ccds(ccds, survey):
             uts.append(dd[1])
         ccds.date_obs = np.array(dates)
         ccds.ut = np.array(uts)
+
+    if 'photometric' in cols:
+        print('Cut', len(ccds), 'to', np.sum(ccds.photometric), 'CCDs on photometric column')
+        ccds.cut(ccds.photometric)
+
     return ccds
 
 def format_jpl_url(req, ra, dec, ccd):
@@ -5357,7 +5367,8 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
     
     kwa = dict(cmap='gray', origin='lower')
 
-    trargs = dict(slc=slc, gaussPsf=True, old_calibs_ok=True, tiny=1)
+    trargs = dict(slc=slc, gaussPsf=True, old_calibs_ok=True, tiny=1,
+                  trim_edges=False)
                   #readsky=False)
     
     if kind == 'image':
@@ -6070,7 +6081,13 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9/1/5/0/12.jpg')
     #r = c.get('/cutout.jpg?ra=182.5248&dec=18.5415&layer=ls-dr9&pixscale=1.00')
     #r = c.get('/odin-2band/1/14/9552/8100.jpg')
-    r = c.get('/odin-2band/1/14/9548/8116.jpg')
+    #r = c.get('/odin-2band/1/14/9548/8116.jpg')
+    #r = c.get('/gaia-edr3/1/cat.json?ralo=200.8723&rahi=201.3674&declo=13.9584&dechi=14.2264')
+    #r = c.get('/exposure_panels/mzls+bass-dr6/75120132/CCD1/?ra=230.6465&dec=56.2721&size=100')
+    #r = c.get('/ls-dr9/1/8/181/103.jpg')
+    #r = c.get('/exposure_panels/decals-dr5/496441/N11/?ra=121.2829&dec=29.6660&size=100')
+    #r = c.get('/exposures/?ra=121.2829&dec=29.666&layer=decals-dr5')
+    r = c.get('/exposure_panels/decals-dr5/392401/N11/?ra=121.2829&dec=29.6660&size=100')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

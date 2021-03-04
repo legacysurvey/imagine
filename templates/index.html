@@ -103,6 +103,8 @@ var subdomains_B = {{ subdomains_B|safe }};
 var aws_tile_url = 'https://s3.us-west-1.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg';
 var max_aws_zoom = 14;
 
+var aws_unwise_url = 'https://s3.us-west-2.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg'
+
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
 
@@ -448,6 +450,7 @@ var CatalogOverlay = L.Evented.extend({
         var radii = result['radiusArcsec'];
         var abratio = result['abRatio'];
         var posAngle = result['posAngle'];
+        var weights = result['weight'];
         var tooltipStyle = this.getTooltipStyle();
         for (var i=0, len=rdlist.length; i<len; i++) {
             var r = rdlist[i][0];
@@ -455,9 +458,15 @@ var CatalogOverlay = L.Evented.extend({
             var lat = dec2lat(d);
             var lng = ra2long_C(r, clong);
             var style = this._style;
+            if (style == undefined) {
+                style = {};
+            }
             var color = this.getColor(result, i);
             if (color !== undefined) {
                 style = Object.assign(style, {'color':color});
+            }
+            if (weights !== undefined) {
+                style = Object.assign(style, {'weight':weights[i]});
             }
             var radius = this._radius;
             if (radii) {
@@ -667,6 +676,41 @@ var SGACatalog = CatalogOverlay.extend({
 
 });
 
+var PhotozCatalog = CatalogOverlay.extend({
+    //initialize: function(name, pretty, kwargs) {
+    //    CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+    //    this._radius = 
+    //},
+    getLabel: function(json, i) {
+        return 'z = ' + json['phot_z_mean'][i].toFixed(3) + ' &plusmn; ' +
+            json['phot_z_std'][i].toFixed(3);
+    },
+    //getPopupText: function(json, i) {
+    //    return sga_popup(json, i);
+    //},
+    getTooltipStyle() {
+        return { permanent: false, interactive: true, };
+    },
+    getLayer: function(result) {
+        //console.log('getLayer: style', self._style);
+        var wt = [];
+        var rads = [];
+        var dz = result['phot_z_std'];
+        for (var i=0, len=dz.length; i<len; i++) {
+            if (dz[i] > 0.2) {
+                wt.push(2);
+                rads.push(100 / 30.);
+            } else {
+                wt.push(5);
+                rads.push(150 / 30.);
+            }
+        }
+        result['weight'] = wt;
+        result['radiusArcsec'] = rads;
+        return CatalogOverlay.prototype.getLayer.call(this, result);
+    },
+});
+
 var MangaCatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
       var label = '<a href="https://dr16.sdss.org/marvin/galaxy/' + json['plate'][i] + '-' + json['ifudsgn'][i] + '/">' + json['name'][i]
@@ -796,6 +840,7 @@ var DesiTargetCatalog = CatalogOverlay.extend({
             var lat = dec2lat(d);
             var lng = ra2long_C(r, clong);
             var color = 'blue';
+            var weight = 5;
             if (typeof(defaultcolor) != 'undefined') {
                 color = defaultcolor;
             }
@@ -1419,7 +1464,8 @@ function onMapClick(e) {
     var cutout_fits = '{% url 'cutout-fits' %}?' + linkqstr + pixstr;
     var linkurl = linkHereURL(e.latlng);
 
-    var abs_cutout = hostname_url + cutout;
+    //var abs_cutout = hostname_url + cutout;
+    var abs_cutout = '{{ discuss_cutout_url }}?' + linkqstr + pixstr;
     var abs_link = hostname_url + '{% url 'index' %}' + linkurl;
 
     var discuss = 'http://discuss.legacysurvey.org/new-topic?title=Interesting+object&body=' +
@@ -2127,9 +2173,11 @@ tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
 allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
-                {'maxNativeZoom': 12,
+                {'maxNativeZoom': 11,
                  'attribution': unwise_attrib,
-                 'urlPatterns': [ [1, maxZoom, tile_url], ],});
+                 'urlPatterns': [
+                     [1, 11, aws_unwise_url],]});
+                 //[12, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
 tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
@@ -3285,6 +3333,12 @@ var sga_ell = new SGACatalog('sga', 'Siena Galaxy Atlas',
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga',});
 
+var photoz = new PhotozCatalog('photoz-dr9', 'DR9 Photo-z',
+                                 {'minZoom': 12,
+                                 'labelsMinZoom': 14,
+                                 'urlTerm': 'photoz-dr9',
+                                 'radius': 150,});
+
 var GaiaDr2Catalog = CatalogOverlay.extend({
     getColor: function(json, i) {
         return '#8888ff';
@@ -3317,7 +3371,12 @@ var GaiaDr2Catalog = CatalogOverlay.extend({
     getPopupText(json, i) {
     return this.getLabel(json, i);
     },
+});
 
+var GaiaDr3Catalog = GaiaDr2Catalog.extend({
+    getColor: function(json, i) {
+        return '#3289a8';
+    },
 });
 
 var gaia2 = new GaiaDr2Catalog('gaia-dr2', 'Gaia DR2 catalog',
@@ -3326,7 +3385,14 @@ var gaia2 = new GaiaDr2Catalog('gaia-dr2', 'Gaia DR2 catalog',
                               'labelsMinZoom': 11,
                               'urlTerm': 'gaia-dr2',
                               'radius': 220,
-                              //'color': '#ddddff'
+                              });
+
+var gaia3 = new GaiaDr3Catalog('gaia-edr3', 'Gaia EDR3 catalog',
+                             {'url_name': 'gaia-edr3',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'gaia-edr3',
+                              'radius': 150,
                               });
 
 
@@ -3445,8 +3511,13 @@ var desi_sv_targets8 = new DesiTargetCatalog('targets-sv-dr8', 'DESI Targets (SV
                                    'minZoom': 11, });
 
 
-var desi_targets_dr9_sv1_sec = new DesiTileLayer('targets-dr9-sv1-sec',
-                                                 'DESI Secondary Targets (DR9/SV1)',
+var desi_targets_dr9_sv1_sec_bright = new DesiTileLayer('targets-dr9-sv1-sec-bright',
+                                                 'DESI Bright-time Secondary Targets (DR9/SV1)',
+                                  {//'radius': 200,
+                                   //'labelsMinZoom': 10,
+                                      'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv1_sec_dark = new DesiTileLayer('targets-dr9-sv1-sec-dark',
+                                                 'DESI Dark-time Secondary Targets (DR9/SV1)',
                                   {//'radius': 200,
                                    //'labelsMinZoom': 10,
                                       'minZoom': 10, 'rscale':0.5});
@@ -3629,10 +3700,12 @@ var overlays = [
     ccdOverlaySdss,
     gals, sga_parent, sga_ell, //lslga_model, starmasks8,
     starmasks9, GCsPNe, bright, tycho2,
+    photoz,
     {% if enable_ps1 %}
     ps1cat,
     {% endif %}
     gaia2,
+    gaia3,
     hsccosmos,
     sdsscat,
     {% if enable_spectra %}
@@ -3647,7 +3720,8 @@ var overlays = [
     desi_dark_targets67,
     desi_bright_targets67,
     desi_cmx_targets7,
-    desi_targets_dr9_sv1_sec,
+    desi_targets_dr9_sv1_sec_dark,
+    desi_targets_dr9_sv1_sec_bright,
     desi_targets_dr9_sv1_dark,
     desi_targets_dr9_sv1_bright,
     desi_targets_dr9_sv1_supp,
@@ -3757,8 +3831,12 @@ var baseTree1 = [
     {% endif %}
     {% if enable_dr9_south %}
     findlayer('ls-dr9-south', [
+        {% if enable_dr9_models %}
         findlayer('ls-dr9-south-model'),
+        {% endif %}
+        {% if enable_dr9_resids %}
         findlayer('ls-dr9-south-resid'),
+        {% endif %}
     ]),
     {% endif %}
 
@@ -3863,6 +3941,7 @@ var baseTree1 = [
         {% endif %}
     ]),
     {% endif %}
+    {% if science %}
     {
         label: 'More surveys',
         children: [
@@ -3884,6 +3963,7 @@ var baseTree1 = [
             {% endif %}
         ],
     },
+    {% endif %}
 ];
 
 var baseTree = [];
@@ -4048,6 +4128,7 @@ var overlayTree = [];
      {% endif %}
 
      findoverlay('gaia-dr2'),
+     findoverlay('gaia-edr3'),
      {% if enable_ps1 %}
      findoverlay('ps1-cat'),
      {% endif %}
@@ -4093,7 +4174,8 @@ var overlayTree = [];
          {% if enable_desi_targets %}
            findoverlay('targets-dr9-sv1-dark'),
            findoverlay('targets-dr9-sv1-bright'),
-           findoverlay('targets-dr9-sv1-sec'),
+           findoverlay('targets-dr9-sv1-sec-dark'),
+           findoverlay('targets-dr9-sv1-sec-bright'),
            //findoverlay('targets-dr9-sv1-supp'),
            findoverlay('targets-dr8'),
            //findoverlay('targets-sv-dr8'),
@@ -4114,8 +4196,8 @@ var overlayTree = [];
      findoverlay('sga'),
      {% if science %}
      findoverlay('sga-parent'),
+     findoverlay('photoz-dr9'),
      {% endif %}
-     //findoverlay('sga-model'),
      //findoverlay('masks-dr8'),
      findoverlay('const'),
      ]},

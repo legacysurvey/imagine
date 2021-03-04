@@ -17,6 +17,9 @@ urlpatterns = [
     url(r'^gfas', views.gfas),
     url(r'^ci', views.ci),
 
+    # Rongpu's DR9 photo-zs
+    url(r'^photoz-dr9/(\d+)/cat.json', cats.cat_photoz_dr9),
+
     url(r'^hsc-dr2-cosmos/(\d+)/cat.json', cats.cat_hsc_dr2_cosmos),
 
     url(r'^gaia-stars-for-wcs', cats.gaia_stars_for_wcs),
@@ -33,7 +36,8 @@ urlpatterns = [
     url(r'^targets-dr9-sv1-bright/(\d+)/cat.json', cats.cat_targets_dr9_sv1_bright),
     url(r'^targets-dr9-sv1-supp/(\d+)/cat.json', cats.cat_targets_dr9_sv1_supp),
     # DR9 SV1 secondary targets
-    url(r'^targets-dr9-sv1-sec/(\d+)/cat.json', cats.cat_targets_dr9_sv1_sec),
+    url(r'^targets-dr9-sv1-sec-bright/(\d+)/cat.json', cats.cat_targets_dr9_sv1_sec_bright),
+    url(r'^targets-dr9-sv1-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_sv1_sec_dark),
     
      # DR6/7 DESI targets
     url(r'^targets-dr67/(\d+)/cat.json', cats.cat_targets_dr67),
@@ -55,6 +59,7 @@ urlpatterns = [
 
     # Gaia catalog
     url(r'^gaia-dr2/(\d+)/cat.json', cats.cat_gaia_dr2),
+    url(r'^gaia-edr3/(\d+)/cat.json', cats.cat_gaia_edr3),
 
     # Upload user catalog
     url(r'^upload-cat/', cats.upload_cat, name='upload-cat'),
