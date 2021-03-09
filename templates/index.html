@@ -3915,12 +3915,6 @@ var baseTree1 = [
     {% if enable_eboss %}
     findlayer('eboss'),
     {% endif %}
-    {% if enable_decaps %}
-    findlayer('decaps', [
-        findlayer('decaps-model'),
-        findlayer('decaps-resid'),
-    ]),
-    {% endif %}
 
      ]},
     {% endif %}
@@ -3940,6 +3934,12 @@ var baseTree1 = [
         children: [
             {% if enable_des_dr1 %}
             findlayer('des-dr1'),
+            {% endif %}
+            {% if enable_decaps %}
+            findlayer('decaps', [
+                findlayer('decaps-model'),
+                findlayer('decaps-resid'),
+            ]),
             {% endif %}
             findlayer('galex'),
             findlayer('halpha'),
