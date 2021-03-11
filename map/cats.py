@@ -36,6 +36,7 @@ catversions = {
     'ls-dr8-south': [1,],
     'decals-dr7': [1,],
     'mzls+bass-dr6': [1,],
+    'ls-dr67':[1,],
     'decals-dr5': [1,],
     'ngc': [1,],
     'GCs-PNe': [1,],

@@ -170,7 +170,9 @@ def urls(req):
     from django.shortcuts import render
     script_prefix = get_script_prefix()
     this_url = reverse('urls')
-    return render(req, 'urls.html', dict(script_prefix=script_prefix, this_url=this_url))
+    return render(req, 'urls.html', dict(script_prefix=script_prefix, this_url=this_url,
+                                         enable_desi_targets=settings.ENABLE_DESI_TARGETS,
+    ))
 
 def gfas(req):
     from django.shortcuts import render
@@ -6069,7 +6071,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9/1/8/181/103.jpg')
     #r = c.get('/exposure_panels/decals-dr5/496441/N11/?ra=121.2829&dec=29.6660&size=100')
     #r = c.get('/exposures/?ra=121.2829&dec=29.666&layer=decals-dr5')
-    r = c.get('/exposure_panels/decals-dr5/392401/N11/?ra=121.2829&dec=29.6660&size=100')
+    #r = c.get('/exposure_panels/decals-dr5/392401/N11/?ra=121.2829&dec=29.6660&size=100')
+    r = c.get('/decals-dr7/1/13/4070/3626.cat.json')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
