@@ -198,11 +198,18 @@ def main():
         name = 'ls-dr9-south'
         pretty = 'DR9m-south'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
-
+        
     update = True
     #update = False
     queue = False
 
+
+    update = False
+    indir = '/global/cscratch1/sd/landriau/dr9.1.1'
+    name = 'ls-dr9.1.1'
+    pretty = 'DR9.1.1 COSMOS deep'
+    survey_dir = indir
+    
     # rsync = True
     # update = False
     # queue = False

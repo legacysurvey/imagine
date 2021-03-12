@@ -6073,8 +6073,9 @@ if __name__ == '__main__':
     #r = c.get('/exposures/?ra=121.2829&dec=29.666&layer=decals-dr5')
     #r = c.get('/exposure_panels/decals-dr5/392401/N11/?ra=121.2829&dec=29.6660&size=100')
     #r = c.get('/decals-dr7/1/13/4070/3626.cat.json')
-    r = c.get('/photoz-dr9/1/cat.json?ralo=183.1147&rahi=183.1487&declo=12.1365&dechi=12.1551')
-    print('r:', type(r))
+    #r = c.get('/photoz-dr9/1/cat.json?ralo=183.1147&rahi=183.1487&declo=12.1365&dechi=12.1551')
+    #r = c.get('/ls-dr9.1.1/1/14/9549/8100.jpg')
+    #r = c.get('/ls-dr9.1.1/1/13/4768/4040.    print('r:', type(r))
 
     f = open('out.jpg', 'wb')
     for x in r:
