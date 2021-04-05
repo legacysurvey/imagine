@@ -3831,10 +3831,16 @@ class ZeaLayer(MapLayer):
 class OdinLayer(ReDecalsLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         from legacypipe.survey import get_rgb
-        return get_rgb(imgs, bands)
+        return get_rgb(imgs, bands, allbands=self.get_bands())
     def get_bands(self):
         return ['N501', 'N673']
 
+class OdinSingleBandLayer(OdinLayer):
+    def __init__(self, name, layer, survey, band, **kwargs):
+        super().__init__(name, layer, survey, **kwargs)
+        self.band = band
+    def get_bands(self):
+        return [self.band]
     
 # "PR"
 #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
@@ -5710,7 +5716,15 @@ def get_layer(name, default=None):
     elif name == 'odin-2band':
         survey = get_survey('odin-2band')
         layer = OdinLayer('odin-2band', 'image', survey)
-        
+
+    elif name == 'odin-n501':
+        survey = get_survey('odin-2band')
+        layer = OdinSingleBandLayer('odin-2band', 'image', survey, 'N501')
+
+    elif name == 'odin-n673':
+        survey = get_survey('odin-2band')
+        layer = OdinSingleBandLayer('odin-2band', 'image', survey, 'N673')
+
     if layer is None:
         # Try generic rebricked
         #print('get_layer:', name, '-- generic')
