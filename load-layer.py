@@ -191,24 +191,24 @@ def main():
         name = 'dr9m-north'
         pretty = 'DR9m-north'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
-    if False:
+    if True:
         #indir = '/global/cscratch1/sd/ziyaoz/dr9m/south/'
-        indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/south'
+        indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9/south'
         #name = 'dr9m-south'
         name = 'ls-dr9-south'
         pretty = 'DR9m-south'
-        survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
+        survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
         
     update = True
     #update = False
     queue = False
 
 
-    update = False
-    indir = '/global/cscratch1/sd/landriau/dr9.1.1'
-    name = 'ls-dr9.1.1'
-    pretty = 'DR9.1.1 COSMOS deep'
-    survey_dir = indir
+    # update = False
+    # indir = '/global/cscratch1/sd/landriau/dr9.1.1'
+    # name = 'ls-dr9.1.1'
+    # pretty = 'DR9.1.1 COSMOS deep'
+    # survey_dir = indir
     
     # rsync = True
     # update = False
@@ -289,19 +289,20 @@ def main():
                     os.symlink(os.path.join(indir, fn), os.path.join(basedir, fn), target_is_directory=False)
 
     # Find new available bricks
-    print('Searching for new extra-image files...')
-    extraimagefns = glob(os.path.join(basedir, 'extra-images', 'coadd', '*', '*', '*-image-*.fits*'))
-    print('Found', len(extraimagefns), 'extra images')
+    # print('Searching for new extra-image files...')
+    # extraimagefns = glob(os.path.join(basedir, 'extra-images', 'coadd', '*', '*', '*-image-*.fits*'))
+    # print('Found', len(extraimagefns), 'extra images')
 
     # Update all bricks in extra-images...
     if update:
         brickset = set()
 
         # Read list of new bricks
-        f = open('bricks.txt')
-        for line in f.readlines():
-            brickname = line.strip()
-            brickset.add(brickname)
+        # f = open('bricks.txt')
+        # for line in f.readlines():
+        #     brickname = line.strip()
+        #     brickset.add(brickname)
+        brickset.add('0610m432')
         # for fn in extraimagefns:
         #     dirs = fn.split('/')
         #     brickname = dirs[-2]
@@ -340,7 +341,7 @@ def main():
                     #     #print('wait')
             #print('wait')
         
-        #delete_scaled_images(name, old_bricks, bricks)
+        delete_scaled_images(name, old_bricks, bricks)
 
         sys.exit(0)
 

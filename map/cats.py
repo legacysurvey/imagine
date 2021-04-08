@@ -846,6 +846,124 @@ def get_target_val(t, nm, cols):
         return int(t.get(nm))
     return 0
 
+
+def desitarget_sv3_names(T, colprefix='sv3_'):
+    names = []
+    colors = []
+    cols = T.get_columns()
+    for t in T:
+        desibits = []
+        bgsbits = []
+        mwsbits = []
+        secbits = []
+        desi_target = int(t.get(colprefix + 'desi_target'))
+        bgs_target = get_target_val(t, colprefix + 'bgs_target', cols)
+        mws_target = get_target_val(t, colprefix + 'mws_target', cols)
+        sec_target = get_target_val(t, colprefix + 'scnd_target', cols)
+        if 'objtype' in cols:
+            obj = t.objtype
+        else:
+            obj = ''
+        for bit in range(64):
+            if (1 << bit) & desi_target:
+                desibits.append(bit)
+            if (1 << bit) & bgs_target:
+                bgsbits.append(bit)
+            if (1 << bit) & mws_target:
+                mwsbits.append(bit)
+            if (1 << bit) & sec_target:
+                secbits.append(bit)
+        # https://github.com/desihub/desitarget/blob/master/py/desitarget/sv1/data/sv1_targetmask.yaml
+        desinames = [{
+            0:  'LRG',
+            1:  'ELG',
+            2:  'QSO',
+            3:  'LRG_LOWDENS',
+            4:  'QSO_HIZ',
+            5:  'ELG_LOP',
+            6:  'ELG_HIP',
+            #- Calibration targets
+            32: 'SKY',
+            33: 'STD_FAINT',
+            34: 'STD_WD',
+            35: 'STD_BRIGHT',
+            36: 'BAD_SKY',
+            37: 'SUPP_SKY',
+
+            60: 'BGS_ANY',
+            61: 'MWS_ANY',
+            62: 'SCND_ANY',
+            }.get(b) for b in desibits]
+        bgsnames = [{
+            0:  'BGS_FAINT',
+            1:  'BGS_BRIGHT',
+            2:  'BGS_WISE',
+            3:  'BGS_FAINT_HIP',
+            }.get(b) for b in bgsbits]
+        mwsnames = [{
+            0:  'MWS_BROAD',
+            1:  'MWS_WD',
+            2:  'MWS_NEARBY',
+            #- (skip) 4: MWS_MAIN north/south splits
+            6:  'MWS_BHB',
+            33: 'GAIA_STD_FAINT',
+            34: 'GAIA_STD_WD',
+            35: 'GAIA_STD_BRIGHT',
+            60: 'BACKUP_BRIGHT',
+            61: 'BACKUP_FAINT',
+            62: 'BACKUP_VERY_FAINT',
+            }.get(b) for b in mwsbits]
+        secondarynames = [{
+            0:  'SCND_VETO',
+            1:  'SCND_UDG',
+            2:  'SCND_FIRST_MALS',
+            5:  'SCND_QSO_RED',
+            10: 'SCND_MWS_CLUS_GAL_DEEP',
+            11: 'SCND_LOW_MASS_AGN',
+            12: 'SCND_FAINT_HPM',
+            15: 'SCND_LOW_Z_TIER1',
+            16: 'SCND_LOW_Z_TIER2',
+            17: 'SCND_LOW_Z_TIER3',
+            18: 'SCND_BHB',
+            19: 'SCND_SPCV',
+            20: 'SCND_DC3R2_GAMA',
+            25: 'SCND_PSF_OUT_BRIGHT',
+            26: 'SCND_PSF_OUT_DARK',
+            27: 'SCND_HPM_SOUM',
+            28: 'SCND_SN_HOSTS',
+            29: 'SCND_GAL_CLUS_BCG',
+            30: 'SCND_GAL_CLUS_2ND',
+            31: 'SCND_GAL_CLUS_SAT',
+            34: 'SCND_STRONG_LENS',
+            35: 'SCND_WISE_VAR_QSO',
+            36: 'SCND_Z5_QSO',
+            38: 'SCND_MWS_MAIN_CLUSTER_SV',
+            40: 'SCND_BRIGHT_HPM',
+            41: 'SCND_WD_BINARIES_BRIGHT',
+            42: 'SCND_WD_BINARIES_DARK',
+            43: 'SCND_PV_BRIGHT_HIGH',
+            44: 'SCND_PV_BRIGHT_MEDIUM',
+            45: 'SCND_PV_BRIGHT_LOW',
+            46: 'SCND_PV_DARK_HIGH',
+            47: 'SCND_PV_DARK_MEDIUM',
+            48: 'SCND_PV_DARK_LOW',
+            59: 'SCND_BRIGHT_TOO_LOP',
+            60: 'SCND_BRIGHT_TOO_HIP',
+            61: 'SCND_DARK_TOO_LOP',
+            62: 'SCND_DARK_TOO_HIP',
+            }.get(b) for b in secbits]
+        bitnames = [n for n in desinames + bgsnames + mwsnames + secondarynames if n is not None]
+        if obj == 'SKY':
+            bitnames.append('SKY')
+        if obj == 'BAD':
+            bitnames.append('BAD')
+
+        if len(bitnames) == 0:
+            bitnames.append('0x%x' % desi_target)
+        names.append(', '.join(bitnames))
+    return names #, colors
+
+
 def desitarget_sv1_names(T, colprefix='sv1_'):
     names = []
     colors = []
@@ -1807,7 +1925,10 @@ def cat_desi_tile(req, ver):
     D = dict(rd=rd)
 
     cols = cat.columns()
-    if 'sv1_desi_target' in cols:
+    if 'sv3_desi_target' in cols:
+        bitnames = desitarget_sv3_names(cat)
+        D.update(bits=bitnames)
+    elif 'sv1_desi_target' in cols:
         bitnames = desitarget_sv1_names(cat)
         D.update(bits=bitnames)
     elif 'cmx_target' in cols:

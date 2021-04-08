@@ -458,6 +458,7 @@ def _index(req,
     if len(desitiles):
         tile = desitiles[0]
         fiberid = None
+        print('Looking up DESI tile', tile)
         if 'fiber' in req.GET:
             try:
                 fiberid = int(req.GET.get('fiber'), 10)
@@ -465,6 +466,7 @@ def _index(req,
                 pass
         try:
             ra,dec = get_desi_tile_radec(tile, fiberid=fiberid)
+            print('Tile RA,Dec', ra,dec)
         except:
             pass
 
@@ -6076,7 +6078,9 @@ if __name__ == '__main__':
     #r = c.get('/photoz-dr9/1/cat.json?ralo=183.1147&rahi=183.1487&declo=12.1365&dechi=12.1551')
     #r = c.get('/ls-dr9.1.1/1/14/9549/8100.jpg')
     #r = c.get('/ls-dr9.1.1/1/13/4768/4040.    print('r:', type(r))
-
+    #r = c.get('/ls-dr9-south/1/14/13604/10378.jpg')
+    r = c.get('/?tile=120')
+    
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
