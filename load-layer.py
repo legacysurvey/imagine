@@ -204,13 +204,14 @@ def main():
     queue = False
 
 
-    # update = False
-    # indir = '/global/cscratch1/sd/landriau/dr9.1.1'
-    # name = 'ls-dr9.1.1'
-    # pretty = 'DR9.1.1 COSMOS deep'
-    # survey_dir = indir
-    
-    # rsync = True
+    #indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9.1.1'
+    #indir = '/global/cscratch1/sd/landriau/dr9.1.1'
+    indir = 'fake-dr9.1.1'
+    name = 'ls-dr9.1.1'
+    pretty = 'DR9.1.1 COSMOS deep'
+    survey_dir = indir
+
+    rsync = True
     # update = False
     # queue = False
     # indir = '/global/cscratch1/sd/dstn/m33-2/south/'
@@ -251,7 +252,8 @@ def main():
                 T = fits_table(pathfn)
                 print('Read', len(T), 'old bricks from', pathfn)
                 old_bricks.append(T)
-                #### os.rename(pathfn, os.path.join(old_bricks_dir, fn))
+                ####
+                os.rename(pathfn, os.path.join(old_bricks_dir, fn))
 
     if rsync:
         for sub in ['image-g', 'image-r', 'image-z', 'model-g', 'model-r', 'model-z', 'ccds']:
@@ -290,11 +292,11 @@ def main():
 
     # Find new available bricks
     # print('Searching for new extra-image files...')
-    # extraimagefns = glob(os.path.join(basedir, 'extra-images', 'coadd', '*', '*', '*-image-*.fits*'))
-    # print('Found', len(extraimagefns), 'extra images')
+    extraimagefns = glob(os.path.join(basedir, 'extra-images', 'coadd', '*', '*', '*-image-*.fits*'))
+    print('Found', len(extraimagefns), 'extra images')
 
     # Update all bricks in extra-images...
-    if update:
+    if False and update:
         brickset = set()
 
         # Read list of new bricks
@@ -311,8 +313,8 @@ def main():
         I, = np.nonzero([b in brickset for b in allbricks.brickname])
         bricks = allbricks[I]
 
-        # Find tiles that overlap each brick.
-        if True:
+        # Find and delete tiles that overlap each new brick.
+        if False:
             ii = 0
             for zoom in range(6, 15):
                 zoomscale = 2.**zoom

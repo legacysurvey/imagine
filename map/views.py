@@ -470,6 +470,19 @@ def _index(req,
         except:
             pass
 
+    if 'targetid' in req.GET:
+        try:
+            targetid = int(req.GET['targetid'], 10)
+            # 22 bits
+            objid = targetid & 0x3fffff
+            # 20 bits
+            brickid = (targetid >> 22) & 0xfffff
+            # 16 bits
+            release = (targetid >> 42) & 0xffff
+            print('Release', release, 'brickid', brickid, 'objid', objid)
+        except:
+            pass
+        
     galname = None
     if ra is None or dec is None:
         ra,dec,galname = get_random_galaxy(layer=layer)
@@ -6079,7 +6092,9 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9.1.1/1/14/9549/8100.jpg')
     #r = c.get('/ls-dr9.1.1/1/13/4768/4040.    print('r:', type(r))
     #r = c.get('/ls-dr9-south/1/14/13604/10378.jpg')
-    r = c.get('/?tile=120')
+    #r = c.get('/?tile=120')
+    #r = c.get('/ls-dr9.1.1/1/14/9571/8085.jpg')
+    r = c.get('/targets-dr9-sv3-dark/1/cat.json?ralo=349.2859&rahi=349.8304&declo=10.1487&dechi=10.4476#NGC 3716')
     
     f = open('out.jpg', 'wb')
     for x in r:
