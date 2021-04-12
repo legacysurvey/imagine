@@ -60,6 +60,8 @@ catversions = {
     'targets-dr9-sv1-dark':[1,],
     'targets-dr9-sv1-bright':[1,],
     'targets-dr9-sv1-supp':[1,],
+    'targets-dr9-sv3-bright':[1,],
+    'targets-dr9-sv3-dark':[1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'gaia-edr3': [1,],
@@ -745,6 +747,23 @@ def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', n
     if names is not None:
         rtn.update(name=names)
     return HttpResponse(json.dumps(rtn), content_type='application/json')
+
+
+def cat_targets_dr9_sv3_dark(req, ver):
+    # for x in /global/cfs/cdirs/desi/target/catalogs/dr9/0.57.0/targets/sv3/resolve/dark/sv3targets-dark-hp-*.fits;
+    # do echo $x; startree -i $x -o data/targets-dr9-0.57.0-sv3-dark/$(basename $x .fits).kd.fits -TPk; done
+    return cat_targets_healpixed(req, ver, 'targets-dr9-sv3-dark',
+                                 os.path.join(settings.DATA_DIR,
+                                              #'targets-dr9-0.47.0.dev4352-sv1-dark',
+                                              'targets-dr9-0.57.0-sv3-dark',
+                                              'sv3targets-dark-hp-%i.kd.fits'),
+                                 name_func=desitarget_sv3_names, colprefix='sv3_')
+def cat_targets_dr9_sv3_bright(req, ver):
+    return cat_targets_healpixed(req, ver, 'targets-dr9-sv3-bright',
+                                 os.path.join(settings.DATA_DIR,
+                                              'targets-dr9-0.57.0-sv3-bright',
+                                              'sv3targets-bright-hp-%i.kd.fits'),
+                                 name_func=desitarget_sv3_names, colprefix='sv3_')
 
 def cat_targets_dr9_sv1_dark(req, ver):
     # for x in /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/resolve/dark/*.fits;
