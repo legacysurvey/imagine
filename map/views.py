@@ -6112,7 +6112,12 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/5/26/19.jpg')
     #r = c.get('/ls-dr9-south/1/6/52/38.jpg')
     #r = c.get('/exposure_panels/decals-dr5/316739/N11/?ra=221.8517&dec=-7.6426&size=100')
-    r = c.get('/exposure_panels/decals-dr5/316741/N11/?ra=221.8520&dec=-7.6426&size=100&kind=dq')
+    #r = c.get('/exposure_panels/decals-dr5/316741/N11/?ra=221.8520&dec=-7.6426&size=100&kind=dq')
+    #r = c.get('/ls-dr9.1.1-model/1/13/4767/4044.jpg')
+    #r = c.get('/ls-dr9.1.1-model/1/12/2383/2022.jpg')
+    #r = c.get('/ls-dr9.1.1-resid/1/12/2374/2020.jpg')
+    r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
+
 
     f = open('out.jpg', 'wb')
     for x in r:

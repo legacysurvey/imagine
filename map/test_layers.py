@@ -12,9 +12,6 @@ test_ccds = []
 # test_layers.append(("dr9m-south-resid", "DR9m-south residuals"))
 #test_cats.append(("dr9m-south", "Catalog: DR9m south"))
 
-
-test_layers.append(("ls-dr9.1.1", "DR9.1.1 COSMOS deep images"))
-
-test_layers.append(("ls-dr9.1.1-model", "DR9.1.1 COSMOS deep models"))
-
-test_layers.append(("ls-dr9.1.1-resid", "DR9.1.1 COSMOS deep residuals"))
+# test_layers.append(("ls-dr9.1.1", "DR9.1.1 COSMOS deep images"))
+# test_layers.append(("ls-dr9.1.1-model", "DR9.1.1 COSMOS deep models"))
+# test_layers.append(("ls-dr9.1.1-resid", "DR9.1.1 COSMOS deep residuals"))

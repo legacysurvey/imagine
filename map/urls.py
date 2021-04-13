@@ -37,6 +37,8 @@ urlpatterns = [
     url(r'^targets-dr9-main-dark/(\d+)/cat.json', cats.cat_targets_dr9_main_dark),
     url(r'^targets-dr9-main-bright/(\d+)/cat.json', cats.cat_targets_dr9_main_bright),
     # DR9 SV3 targets
+    url(r'^targets-dr9-sv3-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_sv3_sec_dark),
+    url(r'^targets-dr9-sv3-sec-bright/(\d+)/cat.json', cats.cat_targets_dr9_sv3_sec_bright),
     url(r'^targets-dr9-sv3-dark/(\d+)/cat.json', cats.cat_targets_dr9_sv3_dark),
     url(r'^targets-dr9-sv3-bright/(\d+)/cat.json', cats.cat_targets_dr9_sv3_bright),
     #url(r'^targets-dr9-sv1-supp/(\d+)/cat.json', cats.cat_targets_dr9_sv1_supp),

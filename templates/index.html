@@ -1754,9 +1754,18 @@ allLayers.push(tiles);
 
 
 
-tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep',
+tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep images',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+
+tiles = mylayer_B('ls-dr9.1.1-model', 'Legacy Surveys DR9.1.1 COSMOS deep models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('ls-dr9.1.1-resid', 'Legacy Surveys DR9.1.1 COSMOS deep residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 
 
 {% if enable_dr9 %}
@@ -3541,6 +3550,12 @@ var desi_targets_dr9_sv3_dark = new DesiTileLayer('targets-dr9-sv3-dark',
 var desi_targets_dr9_sv3_bright = new DesiTileLayer('targets-dr9-sv3-bright',
                                                  'DESI Bright-time Targets (DR9/SV3)',
                                                  {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv3_sec_dark = new DesiTileLayer('targets-dr9-sv3-sec-dark',
+                                                 'DESI Dark-time Secondary Targets (DR9/SV3)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv3_sec_bright = new DesiTileLayer('targets-dr9-sv3-sec-bright',
+                                                 'DESI Bright-time Secondary Targets (DR9/SV3)',
+                                                 {'minZoom': 8, 'rscale':0.5});
 
 
 var desi_targets_dr9_main_dark = new DesiTileLayer('targets-dr9-main-dark',
@@ -3753,6 +3768,8 @@ var overlays = [
     desi_targets_dr9_sv1_supp,
     desi_targets_dr9_sv3_dark,
     desi_targets_dr9_sv3_bright,
+    desi_targets_dr9_sv3_sec_dark,
+    desi_targets_dr9_sv3_sec_bright,
     desi_targets_dr9_main_dark,
     desi_targets_dr9_main_bright,
     desi_targets_dr9_main_sec_dark,
@@ -3848,7 +3865,10 @@ var baseTree1 = [
         {% if enable_dr9_resids %}
         findlayer('ls-dr9-resid'),
         {% endif %}
-        findlayer('ls-dr9.1.1'),
+        findlayer('ls-dr9.1.1', [,
+         findlayer('ls-dr9.1.1-model'),
+         findlayer('ls-dr9.1.1-resid'),
+        ]),
     ]),
     {% endif %}
 
@@ -4210,6 +4230,8 @@ var overlayTree = [];
            findoverlay('targets-dr9-main-sec-bright'),
            findoverlay('targets-dr9-sv3-dark'),
            findoverlay('targets-dr9-sv3-bright'),
+           findoverlay('targets-dr9-sv3-sec-dark'),
+           findoverlay('targets-dr9-sv3-sec-bright'),
            findoverlay('targets-dr9-sv1-dark'),
            findoverlay('targets-dr9-sv1-bright'),
            findoverlay('targets-dr9-sv1-sec-dark'),
