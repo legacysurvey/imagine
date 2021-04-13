@@ -724,8 +724,7 @@ def main():
               or 'dr9-segsize2' in opt.kind
               or 'dr9k' in opt.kind
               or 'dr9m' in opt.kind
-              or opt.kind == 'ls-dr9.1.1'
-    ):
+              or 'ls-dr9.1.1' in opt.kind):
         if opt.maxdec is None:
             opt.maxdec = 90.
         if opt.mindec is None:
@@ -898,7 +897,7 @@ def main():
                          'vlass1.2', 'ztf',
                          'ls-dr9-south', 'ls-dr9-south-model',
                          'ls-dr9-north', 'ls-dr9-north-model',
-                         'ls-dr9.1.1',
+                         'ls-dr9.1.1', 'ls-dr9.1.1-model',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')

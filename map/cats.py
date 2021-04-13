@@ -62,6 +62,8 @@ catversions = {
     'targets-dr9-sv1-supp':[1,],
     'targets-dr9-sv3-bright':[1,],
     'targets-dr9-sv3-dark':[1,],
+    'targets-dr9-sv3-sec-bright':[1,],
+    'targets-dr9-sv3-sec-dark':[1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'gaia-edr3': [1,],
@@ -749,6 +751,23 @@ def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', n
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 
+def cat_targets_dr9_sv3_sec_bright(req, ver):
+    # startree -i /global/cfs/cdirs/desi/target/catalogs/dr9/0.57.0/targets/sv3/secondary/bright/sv3targets-bright-secondary.fits -o data/targets-dr9-0.57.0-sv3-sec-bright.kd.fits -TPk
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.57.0-sv3-sec-bright.kd.fits'),
+    ], tag='targets-dr9-sv3-sec-bright', name_func=desitarget_sv3_names, colprefix='sv3_',
+    color_name_func=None)
+
+def cat_targets_dr9_sv3_sec_dark(req, ver):
+    # startree -i /global/cfs/cdirs/desi/target/catalogs/dr9/0.57.0/targets/sv3/secondary/dark/sv3targets-dark-secondary.fits -o data/targets-dr9-0.57.0-sv3-sec-dark.kd.fits -TPk
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.57.0-sv3-sec-dark.kd.fits'),
+    ], tag='targets-dr9-sv3-sec-dark', name_func=desitarget_sv3_names, colprefix='sv3_',
+    color_name_func=None)
+
+
 def cat_targets_dr9_sv3_dark(req, ver):
     # for x in /global/cfs/cdirs/desi/target/catalogs/dr9/0.57.0/targets/sv3/resolve/dark/sv3targets-dark-hp-*.fits;
     # do echo $x; startree -i $x -o data/targets-dr9-0.57.0-sv3-dark/$(basename $x .fits).kd.fits -TPk; done
@@ -1322,10 +1341,15 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
                   for (g,r,z) in zip(T.apflux_g[:,0], T.apflux_r[:,0], T.apflux_z[:,0])]
     else:
         if 'flux_g' in T.get_columns():
-            fluxes = [dict(g=float(g), r=float(r), z=float(z),
-                           W1=float(W1), W2=float(W2))
-                      for (g,r,z,W1,W2)
-                      in zip(T.flux_g, T.flux_r, T.flux_z, T.flux_w1, T.flux_w2)]
+            if 'flux_w1' in T.get_columns():
+                fluxes = [dict(g=float(g), r=float(r), z=float(z),
+                               W1=float(W1), W2=float(W2))
+                          for (g,r,z,W1,W2)
+                          in zip(T.flux_g, T.flux_r, T.flux_z, T.flux_w1, T.flux_w2)]
+            else:
+                fluxes = [dict(g=float(g), r=float(r), z=float(z))
+                          for (g,r,z)
+                          in zip(T.flux_g, T.flux_r, T.flux_z)]
         if 'nobs_g' in T.get_columns():
             nobs=[dict(g=int(g), r=int(r), z=int(z)) for g,r,z
                   in zip(T.nobs_g, T.nobs_r, T.nobs_z)],
