@@ -73,6 +73,7 @@ catversions = {
     'desi-tiles': [1,],
     'masks-dr8': [1,],
     'photoz-dr9': [1,],
+    'desi-denali-tiles': [1,],
 }
 
 test_cats = []
@@ -119,6 +120,67 @@ def gaia_stars_for_wcs(req):
     return HttpResponse(json.dumps(reply),
                         content_type='application/json')
 
+
+def cat_desi_denali_tiles(req, ver):
+    # text2fits -s, -f jsssjfffffssfffsfs /global/cfs/cdirs/desi/spectro/redux/denali/tiles-denali.csv data/desi-spectro-denali/tiles.fits
+    '''
+    T = fits_table('cosmo/webapp/viewer-desi/data/desi-spectro-denali/tiles.fits')
+    T.tilera  = np.zeros(len(T), np.float64)
+    T.tiledec = np.zeros(len(T), np.float64)
+    for itile,tileid in enumerate(T.tileid):
+        ts = '%06i' % tileid
+        fn = 'cosmo/webapp/viewer-desi/data/desi-tiles/%s/fiberassign-%s.fits.gz' % (ts[:3], ts)
+        F = fitsio.FITS(fn)
+        hdr = F[0].read_header()
+        ra,dec = hdr['TILERA'], hdr['TILEDEC']
+        T.tilera [itile] = ra
+        T.tiledec[itile] = dec
+    T.writeto('cosmo/webapp/viewer-desi/data/desi-spectro-denali/tiles2.fits')
+    # startree -i data/desi-spectro-denali/tiles2.fits -R tilera -D tiledec -PTk -o data/desi-spectro-denali/tiles2.kd.fits
+    '''
+    import json
+    from astrometry.util.fits import fits_table
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    import numpy as np
+    ver = int(ver)
+    tag = 'desi-denali-tiles'
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+
+    fn = os.path.join(settings.DATA_DIR, 'desi-spectro-denali/tiles2.kd.fits')
+    kd = tree_open(fn)
+
+    desi_radius = 1.6
+    I = tree_search_radec(kd, rc, dc, rad + desi_radius)
+    T = fits_table(fn, rows=I)
+    res = []
+    for t in T:
+        name = 'Tile %i' % t.tileid
+        details = []
+        p = t.faprgrm.strip()
+        if p != 'unknown':
+            details.append(p)
+        s = t.survey.strip()
+        if s != 'unknown':
+            details.append(s)
+        if len(details):
+            name += ' (%s)' % ', '.join(details)
+            
+        res.append(dict(name=name, ra=t.tilera, dec=t.tiledec, radius=desi_radius))
+    #res = [dict(name='Tile %i' % tileid, ra=ra, dec=dec, radius=desi_radius)
+    #   for tileid,ra,dec in zip(T.tileid, T.tilera, T.tiledec)]
+    return HttpResponse(json.dumps(dict(objs=res)),
+                        content_type='application/json')
+    #return HttpResponse(json.dumps(dict(rd=[float(r),float(d) for r,d in zip(T.tilera, T.tiledec)],
+    #name=['Tile %i'%t for t in T.tileid])),
+
+    
+    
 def cat_photoz_dr9(req, ver):
     '''
     I pre-processed the photo-z sweep files like this to create a kd-tree per sweep:
