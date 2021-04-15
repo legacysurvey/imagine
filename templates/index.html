@@ -3230,9 +3230,22 @@ var desi_tiles_denali = new DesiTileOverlay('desi-tiles-denali',
                                      'detail_list': denali_detail_list,
                                      'detail': denali_detail,
                                     });
- desi_tiles_denali._style = {'fillOpacity': 0.05 };
- 
-console.log('desi_tiles_denali: ' + desi_tiles_denali);
+desi_tiles_denali._style = {'fillOpacity': 0.05 };
+
+var DesiSpectraCatalog = CatalogOverlay.extend({
+    //getLabel: function(json, i) {
+    //getColor: function(json, i) {
+
+});
+
+var desi_spec_denali = new DesiSpectraCatalog('desi-spec-denali', 'DESI Denali spectra',
+                                  {'url': smallcat_url,
+                                   'radius': 300,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 8,
+                                   //'urlTerm': 'desi-spec/denali',
+                                   });
+
 {% endif %}
  
 var polygonOverlays = [ 
@@ -3851,6 +3864,7 @@ var overlays = [
     desi_targets_dr9_sv3_sec_dark,
     desi_targets_dr9_sv3_sec_bright,
     desi_tiles_denali,
+    desi_spec_denali,
     {% endif %}
     constellations,
     desifoot,
@@ -4305,6 +4319,7 @@ var overlayTree = [];
          {% endif %}
          {% if enable_desi_targets %}
            findoverlay('desi-tiles-denali'),
+           findoverlay('desi-spec-denali'),
            findoverlay('targets-dr9-sv3-dark'),
            findoverlay('targets-dr9-sv3-bright'),
            findoverlay('targets-dr9-sv3-sec-dark'),

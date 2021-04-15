@@ -74,6 +74,7 @@ catversions = {
     'masks-dr8': [1,],
     'photoz-dr9': [1,],
     'desi-denali-tiles': [1,],
+    'desi-denali-spectra': [1,],
 }
 
 test_cats = []
@@ -120,6 +121,62 @@ def gaia_stars_for_wcs(req):
     return HttpResponse(json.dumps(reply),
                         content_type='application/json')
 
+def cat_desi_denali_spectra(req, ver):
+    # startree -i /global/cfs/cdirs/desi/spectro/redux/denali/zcatalog-denali-cumulative.fits -o data/desi-spectro-denali/zcatalog-denali-cumulative.kd.fits -PTk -R target_ra -D target_dec
+    import json
+    from astrometry.util.fits import fits_table
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    import numpy as np
+    ver = int(ver)
+    tag = 'desi-denali-spectra'
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+    
+    fn = os.path.join(settings.DATA_DIR, 'desi-spectro-denali/zcatalog-denali-cumulative.kd.fits')
+    kd = tree_open(fn)
+
+    I = tree_search_radec(kd, rc, dc, rad)
+    if len(I) == 0:
+        return HttpResponse(json.dumps(dict(rd=[], name=[])),
+                            content_type='application/json')
+    T = fits_table(fn, rows=I)
+    names = []
+    colors = []
+    for t,st,z,zerr,zw in zip(T.spectype, T.subtype, T.z, T.zerr, T.zwarn):
+        #nm = 'z = %.3f \pm %.3f' % (z, zerr)
+        c = '#3388ff'
+        t = t.strip()
+        nm = t
+        st = st.strip()
+        if st != '':
+            nm += ':' + st
+        if t != 'STAR':
+            nm += ', z = %.3f' % z
+
+        if t == 'STAR':
+            c = '#ff4444'
+        elif t == 'GALAXY':
+            c = '#ffffff'
+        elif t == 'QSO':
+            c = '#4444ff'
+            
+        if zw > 0:
+            nm += ' (ZWARN=0x%x)' %zw
+            c = '#888888'
+        names.append(nm)
+        colors.append(c)
+
+    res = dict(rd=[(float(r),float(d)) for r,d in zip(T.target_ra, T.target_dec)],
+               targetid=[int(i) for i in T.targetid],
+               name=names,
+               color=colors)
+    return HttpResponse(json.dumps(res),
+                        content_type='application/json')
 
 def cat_desi_denali_tiles(req, ver):
     # text2fits -s, -f jsssjfffffssfffsfs /global/cfs/cdirs/desi/spectro/redux/denali/tiles-denali.csv data/desi-spectro-denali/tiles.fits
@@ -150,36 +207,36 @@ def cat_desi_denali_tiles(req, ver):
     rahi = float(req.GET['rahi'])
     declo = float(req.GET['declo'])
     dechi = float(req.GET['dechi'])
-    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
-
-    fn = os.path.join(settings.DATA_DIR, 'desi-spectro-denali/tiles2.kd.fits')
-    kd = tree_open(fn)
 
     desi_radius = 1.6
+    fn = os.path.join(settings.DATA_DIR, 'desi-spectro-denali/tiles2.kd.fits')
+
+    def result(T):
+        res = []
+        for t in T:
+            name = 'Tile %i' % t.tileid
+            details = []
+            p = t.faprgrm.strip()
+            if p != 'unknown':
+                details.append(p)
+            s = t.survey.strip()
+            if s != 'unknown':
+                details.append(s)
+            if len(details):
+                name += ' (%s)' % ', '.join(details)
+            res.append(dict(name=name, ra=t.tilera, dec=t.tiledec, radius=desi_radius))
+        return HttpResponse(json.dumps(dict(objs=res)),
+                            content_type='application/json')
+
+    if dechi - declo > 10:
+        T = fits_table(fn)
+        return result(T)
+    
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+    kd = tree_open(fn)
     I = tree_search_radec(kd, rc, dc, rad + desi_radius)
     T = fits_table(fn, rows=I)
-    res = []
-    for t in T:
-        name = 'Tile %i' % t.tileid
-        details = []
-        p = t.faprgrm.strip()
-        if p != 'unknown':
-            details.append(p)
-        s = t.survey.strip()
-        if s != 'unknown':
-            details.append(s)
-        if len(details):
-            name += ' (%s)' % ', '.join(details)
-            
-        res.append(dict(name=name, ra=t.tilera, dec=t.tiledec, radius=desi_radius))
-    #res = [dict(name='Tile %i' % tileid, ra=ra, dec=dec, radius=desi_radius)
-    #   for tileid,ra,dec in zip(T.tileid, T.tilera, T.tiledec)]
-    return HttpResponse(json.dumps(dict(objs=res)),
-                        content_type='application/json')
-    #return HttpResponse(json.dumps(dict(rd=[float(r),float(d) for r,d in zip(T.tilera, T.tiledec)],
-    #name=['Tile %i'%t for t in T.tileid])),
-
-    
+    return result(T)
     
 def cat_photoz_dr9(req, ver):
     '''
@@ -1836,7 +1893,8 @@ def radecbox_to_circle(ralo, rahi, declo, dechi):
     rc,dc = xyztoradec(xyz)
     rc = rc[0]
     dc = dc[0]
-    rad = degrees_between(rc, dc, ralo, declo)
+    rad = max(degrees_between(rc, dc, ralo, declo),
+              degrees_between(rc, dc, rahi, dechi))
     return rc, dc, rad
     
 def cat_query_radec(kdfn, ra, dec, radius):
@@ -2267,10 +2325,10 @@ if __name__ == '__main__':
     #layer = get_layer('hsc2')
     #create_galaxy_catalog(galfn, None, layer=layer)
 
-    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
-    layer = get_layer('ls-dr9-north')
-    create_galaxy_catalog(galfn, None, layer=layer)
-    sys.exit(0)
+    # galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
+    # layer = get_layer('ls-dr9-north')
+    # create_galaxy_catalog(galfn, None, layer=layer)
+    # sys.exit(0)
 
     from django.test import Client
     c = Client()
@@ -2283,8 +2341,9 @@ if __name__ == '__main__':
     #r = c.get('/dr8-north/1/14/8194/5895.cat.json')
     #r = c.get('/dr8/1/14/8194/5895.cat.json')
     #r = c.get('/decals-dr7/1/14/8639/7624.cat.json')
-    r = c.get('/mzls+bass-dr6/1/14/7517/6364.cat.json')
-    
+    #r = c.get('/mzls+bass-dr6/1/14/7517/6364.cat.json')
+    #r = c.get('/desi-spec/denali/1/cat.json?ralo=135.0397&rahi=135.3119&declo=0.4467&dechi=0.5986#NGC%207536')
+    r = c.get('/desi-tiles/denali/1/cat.json?ralo=93.9551&rahi=233.3496&declo=15.2713&dechi=67.7710')
     f = open('out', 'wb')
     for x in r:
         f.write(x)

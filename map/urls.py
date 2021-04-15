@@ -32,6 +32,7 @@ urlpatterns = [
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
 
     url(r'^desi-tiles/denali/(\d+)/cat.json', cats.cat_desi_denali_tiles),
+    url(r'^desi-spec-denali/(\d+)/cat.json', cats.cat_desi_denali_spectra),
 
     # DR9 SV3 targets
     url(r'^targets-dr9-sv3-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_sv3_sec_dark),
