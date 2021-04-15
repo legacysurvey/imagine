@@ -31,6 +31,8 @@ urlpatterns = [
     # PHAT cluster catalog
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
 
+    # DESI spectroscopy
+    url(r'^desi-spec-detail/denali/tile(\d+)/fiber(\d+)', cats.cat_desi_denali_spectra_detail),
     url(r'^desi-tiles/denali/(\d+)/cat.json', cats.cat_desi_denali_tiles),
     url(r'^desi-spec-denali/(\d+)/cat.json', cats.cat_desi_denali_spectra),
 

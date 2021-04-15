@@ -121,6 +121,73 @@ def gaia_stars_for_wcs(req):
     return HttpResponse(json.dumps(reply),
                         content_type='application/json')
 
+def cat_desi_denali_spectra_detail(req, tile, fiber):
+    #from desispec.io import read_tile_spectra
+    #spectra, zbest = read_tile_spectra(tile, 'deep', specprod='blanc', coadd=True, fibers=fibers, zbest=True)
+
+    from glob import glob
+    from desispec.io import read_spectra
+    import numpy as np
+    import os
+    from astropy.table import Table
+    import astropy
+    from desispec.spectra import stack
+
+    tile = int(tile)
+    fiber = int(fiber)
+    sp = fiber//500
+    pat = '/global/cfs/cdirs/desi/spectro/redux/denali/tiles/cumulative/%i/*/coadd-%i-%i-thru*.fits' % (tile, sp, tile)
+    print('Searching', pat)
+    fns = glob(pat)
+    fns.sort()
+    fn = fns[-1]
+    spectra = read_spectra(fn)
+    keep = np.in1d(spectra.fibermap['FIBER'], [fiber])
+    spectra = spectra[keep]
+
+    zbests = []
+    #- Read matching zbest file for this spectra/coadd file
+    zbfile = os.path.basename(fn).replace('coadd', 'zbest', 1)
+    zbfile = os.path.join(os.path.dirname(fn), zbfile)
+    zb = Table.read(zbfile, 'ZBEST')
+    #- Trim zb to only have TARGETIDs in filtered spectra sp
+    keep = np.in1d(zb['TARGETID'], spectra.fibermap['TARGETID'])
+    zb = zb[keep]
+    #- spectra files can have multiple entries per TARGETID,
+    #- while zbest files have only 1.  Expand to match spectra.
+    #- Note: astropy.table.join changes the order
+    if len(spectra.fibermap) > len(zb):
+        zbx = Table()
+        zbx['TARGETID'] = spectra.fibermap['TARGETID']
+        zbx = astropy.table.join(zbx, zb, keys='TARGETID')
+    else:
+        zbx = zb
+    #- Sort the zbx Table to match the order of sp['TARGETID']
+    ii = np.argsort(spectra.fibermap['TARGETID'])
+    jj = np.argsort(zbx['TARGETID'])
+    kk = np.argsort(ii[jj])
+    zbx = zbx[kk]
+    #- Confirm that we got all that expanding and sorting correct
+    assert np.all(spectra.fibermap['TARGETID'] == zbx['TARGETID'])
+
+    #zbests.append(zbx)
+    #spectra = stack([spectra])
+    #zbests = astropy.table.vstack(zbests)
+    zbests = zbx
+    
+    assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
+
+    import prospect.plotframes
+    import tempfile
+    import os
+    os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
+    with tempfile.TemporaryDirectory() as d:
+        prospect.plotframes.plotspectra(spectra, zcatalog=zbests, html_dir=d)
+        f = open(os.path.join(d, 'specviewer_specviewer.html'))
+        return HttpResponse(f)
+        
+    return HttpResponse('tile %i fiber %i' % (tile, fiber))
+
 def cat_desi_denali_spectra(req, ver):
     # startree -i /global/cfs/cdirs/desi/spectro/redux/denali/zcatalog-denali-cumulative.fits -o data/desi-spectro-denali/zcatalog-denali-cumulative.kd.fits -PTk -R target_ra -D target_dec
     import json
@@ -147,7 +214,7 @@ def cat_desi_denali_spectra(req, ver):
     T = fits_table(fn, rows=I)
     names = []
     colors = []
-    for t,st,z,zerr,zw in zip(T.spectype, T.subtype, T.z, T.zerr, T.zwarn):
+    for ot,t,st,z,zerr,zw in zip(T.objtype, T.spectype, T.subtype, T.z, T.zerr, T.zwarn):
         #nm = 'z = %.3f \pm %.3f' % (z, zerr)
         c = '#3388ff'
         t = t.strip()
@@ -158,7 +225,11 @@ def cat_desi_denali_spectra(req, ver):
         if t != 'STAR':
             nm += ', z = %.3f' % z
 
-        if t == 'STAR':
+        ot = ot.strip()
+        if ot == 'SKY':
+            c = '#448888'
+            nm = ot
+        elif t == 'STAR':
             c = '#ff4444'
         elif t == 'GALAXY':
             c = '#ffffff'
@@ -173,6 +244,8 @@ def cat_desi_denali_spectra(req, ver):
 
     res = dict(rd=[(float(r),float(d)) for r,d in zip(T.target_ra, T.target_dec)],
                targetid=[int(i) for i in T.targetid],
+               fiberid=[int(i) for i in T.fiber],
+               tileid=[int(i) for i in T.tileid],
                name=names,
                color=colors)
     return HttpResponse(json.dumps(res),
@@ -2343,7 +2416,8 @@ if __name__ == '__main__':
     #r = c.get('/decals-dr7/1/14/8639/7624.cat.json')
     #r = c.get('/mzls+bass-dr6/1/14/7517/6364.cat.json')
     #r = c.get('/desi-spec/denali/1/cat.json?ralo=135.0397&rahi=135.3119&declo=0.4467&dechi=0.5986#NGC%207536')
-    r = c.get('/desi-tiles/denali/1/cat.json?ralo=93.9551&rahi=233.3496&declo=15.2713&dechi=67.7710')
+    #r = c.get('/desi-tiles/denali/1/cat.json?ralo=93.9551&rahi=233.3496&declo=15.2713&dechi=67.7710')
+    r = c.get('/desi-spec-detail/denali/tile80740/fiber3975')
     f = open('out', 'wb')
     for x in r:
         f.write(x)

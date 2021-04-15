@@ -70,7 +70,7 @@
 
  // this is just to reset the indent level for emacs javascript-mode;
  // the "{#" is a django template comment.
- {# }}} #}
+ {# }}}} #}
 
 // Variables from django.
 var layer_initial = '{{ layer }}';
@@ -84,7 +84,8 @@ var tile_url = '{{ tileurl|safe }}';
 var maxNativeZoom = {{ maxNativeZoom }};
 
 var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
-
+var root_url = '{{ root_url }}';  // eg /viewer-dev
+ 
 var ccds_url = '{{ ccdsurl|safe }}';
 var exposures_url = '{{ expsurl|safe }}';
 var bricks_url = '{{ bricksurl|safe }}';
@@ -3235,14 +3236,17 @@ desi_tiles_denali._style = {'fillOpacity': 0.05 };
 var DesiSpectraCatalog = CatalogOverlay.extend({
     //getLabel: function(json, i) {
     //getColor: function(json, i) {
-
+    getLabel: function(json, i) {
+        return '<a href="' + root_url + 'desi-spec-detail/denali/tile' + json['tileid'][i] +
+            '/fiber' + json['fiberid'][i] + '">' + json['name'][i] + '</a>';
+    },
 });
 
 var desi_spec_denali = new DesiSpectraCatalog('desi-spec-denali', 'DESI Denali spectra',
                                   {'url': smallcat_url,
                                    'radius': 300,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 8,
+                                   'labelsMinZoom': 12,
+                                   'minZoom': 10,
                                    //'urlTerm': 'desi-spec/denali',
                                    });
 
