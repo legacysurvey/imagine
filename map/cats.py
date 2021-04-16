@@ -122,9 +122,6 @@ def gaia_stars_for_wcs(req):
                         content_type='application/json')
 
 def cat_desi_denali_spectra_detail(req, tile, fiber):
-    #from desispec.io import read_tile_spectra
-    #spectra, zbest = read_tile_spectra(tile, 'deep', specprod='blanc', coadd=True, fibers=fibers, zbest=True)
-
     from glob import glob
     from desispec.io import read_spectra
     import numpy as np
@@ -132,12 +129,15 @@ def cat_desi_denali_spectra_detail(req, tile, fiber):
     from astropy.table import Table
     import astropy
     from desispec.spectra import stack
+    import tempfile
+    import os
+    import prospect.viewer
 
     tile = int(tile)
     fiber = int(fiber)
     sp = fiber//500
     pat = '/global/cfs/cdirs/desi/spectro/redux/denali/tiles/cumulative/%i/*/coadd-%i-%i-thru*.fits' % (tile, sp, tile)
-    print('Searching', pat)
+    #print('Searching', pat)
     fns = glob(pat)
     fns.sort()
     fn = fns[-1]
@@ -167,22 +167,13 @@ def cat_desi_denali_spectra_detail(req, tile, fiber):
     jj = np.argsort(zbx['TARGETID'])
     kk = np.argsort(ii[jj])
     zbx = zbx[kk]
-    #- Confirm that we got all that expanding and sorting correct
-    assert np.all(spectra.fibermap['TARGETID'] == zbx['TARGETID'])
-
-    #zbests.append(zbx)
-    #spectra = stack([spectra])
-    #zbests = astropy.table.vstack(zbests)
     zbests = zbx
-    
+    #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
-    import prospect.plotframes
-    import tempfile
-    import os
     os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
     with tempfile.TemporaryDirectory() as d:
-        prospect.plotframes.plotspectra(spectra, zcatalog=zbests, html_dir=d)
+        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d)
         f = open(os.path.join(d, 'specviewer_specviewer.html'))
         return HttpResponse(f)
         
