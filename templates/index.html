@@ -3250,6 +3250,36 @@ var desi_spec_denali = new DesiSpectraCatalog('desi-spec-denali', 'DESI Denali s
                                    //'urlTerm': 'desi-spec/denali',
                                    });
 
+//////////////// Daily
+
+var DesiDailySpectraCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        return '<a href="' + root_url + 'desi-spectrum/daily/tile' + json['tileid'][i] +
+            '/fiber' + json['fiberid'][i] + '">' + json['name'][i] + '</a>';
+    },
+});
+
+var desi_tiles_daily = new DesiTileOverlay('desi-tiles-daily',
+                                     'DESI daily tiles',
+                                    {'url': smallcat_url,
+                                     'url_args': { 'id': 'desi-tiles/daily',
+                                                   'ver': getcatversion('desi-tiles/daily') },
+                                     'labelMinZoom': 100,
+                                     'detail_list': denali_detail_list,
+                                     'detail': denali_detail,
+                                    });
+desi_tiles_daily._style = {'fillOpacity': 0.05 };
+
+var desi_spec_daily = new DesiDailySpectraCatalog('desi-spec-daily', 'DESI daily spectra',
+                                  {'url': smallcat_url,
+                                   'radius': 300,
+                                   'labelsMinZoom': 12,
+                                   'minZoom': 10,
+                                   //'urlTerm': 'desi-spec/denali',
+                                   });
+
+
+
 {% endif %}
  
 var polygonOverlays = [ 
@@ -3299,6 +3329,7 @@ var polygonOverlays = [
     {% endif %}
     {% if enable_desi_targets %}
     desi_tiles_denali,
+    desi_tiles_daily,
     {% endif %}
 ];
 
@@ -3869,6 +3900,8 @@ var overlays = [
     desi_targets_dr9_sv3_sec_bright,
     desi_tiles_denali,
     desi_spec_denali,
+    desi_tiles_daily,
+    desi_spec_daily,
     {% endif %}
     constellations,
     desifoot,
@@ -4324,6 +4357,8 @@ var overlayTree = [];
          {% if enable_desi_targets %}
            findoverlay('desi-tiles-denali'),
            findoverlay('desi-spec-denali'),
+           findoverlay('desi-tiles-daily'),
+           findoverlay('desi-spec-daily'),
            findoverlay('targets-dr9-sv3-dark'),
            findoverlay('targets-dr9-sv3-bright'),
            findoverlay('targets-dr9-sv3-sec-dark'),
