@@ -63,6 +63,9 @@
     font-size: 100%;
 }
 
+.spectrumTooltip {
+}
+
 /* https://gis.stackexchange.com/questions/212820/overriding-leaflet-tooltip-style */
 .leaflet-tooltip-left.spectrumTooltip {
   margin-left: -15px;
@@ -72,9 +75,12 @@
 }
 
 .leaflet-tooltip {
-    background: transparent;
+    background-color: rgba(0,0,0, 0.5);
     color: white;
+/*
+    background: transparent;
     box-shadow: 0 0px 0px rgba(0,0,0,0);
+*/
 }
 
 .leaflet-tooltip a {
