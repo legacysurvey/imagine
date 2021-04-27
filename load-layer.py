@@ -47,7 +47,25 @@ def delete_scaled_images(name, old_bricks, new_bricks):
                               if b in sbricks])
         new_bricks = allbricks[I_touched]
 
-
+def print_tiles(bricks):
+    for zoom in range(6, 15):
+        zoomscale = 2.**zoom
+        W,H = 256,256
+        xyset = set()
+        for brick in bricks:
+            x1 = int(np.floor((360. - brick.ra2)/360. * zoomscale))
+            x2 = int(np.floor((360. - brick.ra1)/360. * zoomscale))
+            y1 = int(zoomscale * 1./(2.*np.pi) * (np.pi - np.log(np.tan(np.pi/4. + np.deg2rad(brick.dec2)/2.))))
+            y2 = int(zoomscale * 1./(2.*np.pi) * (np.pi - np.log(np.tan(np.pi/4. + np.deg2rad(brick.dec1)/2.))))
+            for x in range(x1, x2+1):
+                for y in range(y1, y2+1):
+                    xyset.add((x,y))
+        xyset = list(xyset)
+        xyset.sort()
+        for x,y in xyset:
+            # cat update3.txt | xargs -n 6 -P 32 python render-tiles.py --kind ls-dr9-north --ignore
+            print('-z %i -x %i -y %i' % (zoom, x, y))
+        
 def main():
 
     # indir = '/global/cscratch1/sd/dstn/dr8test-1'
@@ -191,27 +209,26 @@ def main():
         name = 'dr9m-north'
         pretty = 'DR9m-north'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
+
     if True:
-        #indir = '/global/cscratch1/sd/ziyaoz/dr9m/south/'
         indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9/south'
-        #name = 'dr9m-south'
         name = 'ls-dr9-south'
-        pretty = 'DR9m-south'
+        pretty = 'Legacy Surveys DR9 south'
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
-        
+
     update = True
     #update = False
     queue = False
 
 
-    #indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9.1.1'
-    #indir = '/global/cscratch1/sd/landriau/dr9.1.1'
-    indir = 'fake-dr9.1.1'
-    name = 'ls-dr9.1.1'
-    pretty = 'DR9.1.1 COSMOS deep'
-    survey_dir = indir
+    # indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9.1.1'
+    # indir = '/global/cscratch1/sd/landriau/dr9.1.1'
+    # indir = 'fake-dr9.1.1'
+    # name = 'ls-dr9.1.1'
+    # pretty = 'DR9.1.1 COSMOS deep'
+    # survey_dir = indir
 
-    rsync = True
+    # rsync = True
     # update = False
     # queue = False
     # indir = '/global/cscratch1/sd/dstn/m33-2/south/'
@@ -314,49 +331,26 @@ def main():
         bricks = allbricks[I]
 
         # Find and delete tiles that overlap each new brick.
-        if False:
-            ii = 0
-            for zoom in range(6, 15):
-                zoomscale = 2.**zoom
-                W,H = 256,256
-                xyset = set()
-                for brick in bricks:
-                    x1 = int(np.floor((360. - brick.ra2)/360. * zoomscale))
-                    x2 = int(np.floor((360. - brick.ra1)/360. * zoomscale))
-                    y1 = int(zoomscale * 1./(2.*np.pi) * (np.pi - np.log(np.tan(np.pi/4. + np.deg2rad(brick.dec2)/2.))))
-                    y2 = int(zoomscale * 1./(2.*np.pi) * (np.pi - np.log(np.tan(np.pi/4. + np.deg2rad(brick.dec1)/2.))))
-                    #print('Brick', brick.brickname, 'RA,Dec', brick.ra, brick.dec, ': zoom', zoom, 'x range', x1, x2, 'y range', y1, y2)
-                    #print('# brick ', brick.brickname)
-                    for x in range(x1, x2+1):
-                        for y in range(y1, y2+1):
-                            xyset.add((x,y))
-                xyset = list(xyset)
-                xyset.sort()
-                for x,y in xyset:
-                    #print('%i/%i/%i.jpg' % (zoom, x, y))
-                    #print('python render-tiles.py --kind ls-dr9-north -z %i -x %i -y %i --ignore > /dev/null 2>&1 &' % (zoom, x, y))
-                    # cat update3.txt | xargs -n 6 -P 32 python render-tiles.py --kind ls-dr9-north --ignore
-                    print('-z %i -x %i -y %i' % (zoom, x, y))
-                    # ii += 1
-                    # if ii % 32 == 0:
-                    #     pass
-                    #     #print('wait')
-            #print('wait')
-        
+        #print_tiles(bricks)
         delete_scaled_images(name, old_bricks, bricks)
 
         sys.exit(0)
 
-    print('Searching for new coadd image files...')
-    imagefns = glob(os.path.join(basedir, 'coadd', '*', '*', '*-image-*.fits*'))
-    print('Image filenames:', len(imagefns), 'plus', len(extraimagefns), 'extras')
-    imagefns += extraimagefns
+    if False:
+        print('Searching for new coadd image files...')
+        imagefns = glob(os.path.join(basedir, 'coadd', '*', '*', '*-image-*.fits*'))
+        print('Image filenames:', len(imagefns), 'plus', len(extraimagefns), 'extras')
+        imagefns += extraimagefns
+    
+        brickset = set()
+        for fn in imagefns:
+            dirs = fn.split('/')
+            brickname = dirs[-2]
+            brickset.add(brickname)
+    else:
+        B = fits_table('/global/cfs/cdirs/cosmo/data/legacysurvey/dr9/south/survey-bricks-dr9-south.fits.gz')
+        brickset = set(B.brickname)
 
-    brickset = set()
-    for fn in imagefns:
-        dirs = fn.split('/')
-        brickname = dirs[-2]
-        brickset.add(brickname)
     print(len(brickset), 'bricks found')
     I, = np.nonzero([b in brickset for b in allbricks.brickname])
     bricks = allbricks[I]
@@ -380,6 +374,7 @@ def main():
         new_bricks = bricks[I_new]
         print('Added', len(new_bricks), 'bricks')
 
+        print_tiles(new_bricks)
         delete_scaled_images(name, old_bricks, new_bricks)
 
     fn = 'map/test_layers.py'

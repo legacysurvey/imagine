@@ -132,6 +132,9 @@ if ('zoom' in qstr) {
   zoom_initial = Math.max(1, Math.min(maxZoom, zoom_initial));
 }
 
+var sparseMode = ('sparse' in qstr);
+
+
 
 function arcsecToMeters(arcsec) {
     return arcsec * 30.87;
@@ -2412,8 +2415,10 @@ function addCSSFilterSlider(filterType) {
     }
     disableMouseEventPropagation(sliderControl);
 }
-addCSSFilterSlider('brightness');
-addCSSFilterSlider('contrast');
+if (!sparseMode) {
+  addCSSFilterSlider('brightness');
+  addCSSFilterSlider('contrast');
+}
 {% endif %}
 
 {% if science %}

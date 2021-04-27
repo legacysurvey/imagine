@@ -2059,7 +2059,7 @@ class RebrickedMixin(object):
 
         ro = settings.READ_ONLY_BASEDIR
         if ro:
-            print('Read-only; not creating scaled', brick, band, scale)
+            print('Read-only; not creating scaled', brick.brickname, band, scale)
             return None
         
         # Create scaled-down image (recursively).
@@ -2110,6 +2110,7 @@ class RebrickedMixin(object):
         fitsio.write(tmpfn + compress, img, header=hdr, clobber=True)
         os.rename(tmpfn, fn)
         print('Wrote', fn)
+        return fn
 
     def get_filename(self, brick, band, scale, tempfiles=None):
         #print('RebrickedMixin.get_filename: brick', brick, 'band', band, 'scale', scale)
@@ -4232,6 +4233,9 @@ def get_survey(name):
     elif name in ['ls-dr9-north', 'ls-dr9-south']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
+    elif name in ['ls-dr9-south-B']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+
     elif name == 'dr9sv':
         north = get_survey('dr9sv-north')
         north.layer = 'dr9sv-north'
@@ -6098,8 +6102,12 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9.1.1-model/1/13/4767/4044.jpg')
     #r = c.get('/ls-dr9.1.1-model/1/12/2383/2022.jpg')
     #r = c.get('/ls-dr9.1.1-resid/1/12/2374/2020.jpg')
-    r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
-
+    #r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
+    #r = c.get('/ls-dr9-south/1/15/27206/20760.jpg')
+    #r = c.get('/ls-dr9-south/1/12/3402/2596.jpg')
+    #r = c.get('/ls-dr9-south/1/4/12/10.jpg')
+    #r = c.get('/ls-dr9-south/1/5/26/19.jpg')
+    r = c.get('/ls-dr9-south/1/6/52/38.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

@@ -827,6 +827,15 @@ def main():
             opt.maxra = 280
         if opt.minra is None:
             opt.minra = 90
+    elif opt.kind in ['ls-dr9-south-B', 'ls-dr9-south-B-model']:
+        if opt.maxdec is None:
+            opt.maxdec = 40
+        if opt.mindec is None:
+            opt.mindec = -70
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
     else:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -898,6 +907,7 @@ def main():
                          'ls-dr9-south', 'ls-dr9-south-model',
                          'ls-dr9-north', 'ls-dr9-north-model',
                          'ls-dr9.1.1', 'ls-dr9.1.1-model',
+                         'ls-dr9-south-B', 'ls-dr9-south-B-model',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
