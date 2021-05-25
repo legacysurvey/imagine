@@ -5381,6 +5381,9 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
                   #readsky=False)
     
     if kind == 'image':
+        # HACK for some DR5 images...
+        if im.sig1 == 0:
+            im.sig1 = 1.
         tim = im.get_tractor_image(invvar=False, dq=False, **trargs)
         from legacypipe.survey import get_rgb
         print('im=',im)
@@ -5406,6 +5409,9 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'dq':
+        # HACK for some DR5 images...
+        if im.sig1 == 0:
+            im.sig1 = 1.
         tim = im.get_tractor_image(pixels=False, dq=True, invvar=False, **trargs)
         img = tim.dq
         # remap bitmasks...
@@ -6107,7 +6113,9 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/12/3402/2596.jpg')
     #r = c.get('/ls-dr9-south/1/4/12/10.jpg')
     #r = c.get('/ls-dr9-south/1/5/26/19.jpg')
-    r = c.get('/ls-dr9-south/1/6/52/38.jpg')
+    #r = c.get('/ls-dr9-south/1/6/52/38.jpg')
+    #r = c.get('/exposure_panels/decals-dr5/316739/N11/?ra=221.8517&dec=-7.6426&size=100')
+    r = c.get('/exposure_panels/decals-dr5/316741/N11/?ra=221.8520&dec=-7.6426&size=100&kind=dq')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
