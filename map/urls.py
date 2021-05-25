@@ -33,7 +33,8 @@ urlpatterns = [
 
     # DESI spectroscopy -- daily
     url(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),
-    url(r'^desi-spec-daily/(\d+)/cat.json', cats.cat_desi_daily_spectra),
+    url(r'^desi-spec-daily/(\d+)/cat.json', cats.cat_desi_daily_spectra_2),
+    #url(r'^desi-spec-daily-2/(\d+)/cat.json', cats.cat_desi_daily_spectra_2),
     url(r'^desi-spectrum/daily/tile(\d+)/fiber(\d+)', cats.cat_desi_daily_spectra_detail),
     
     # DESI spectroscopy -- Denali

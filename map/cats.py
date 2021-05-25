@@ -195,6 +195,54 @@ def cat_desi_daily_spectra_detail(req, tile, fiber):
 def cat_desi_daily_tiles(req, ver):
     return cat_desi_release_tiles(req, ver, 'daily')
 
+
+
+def cat_desi_daily_spectra_2(req, ver):
+    import json
+    fn = os.path.join(settings.DATA_DIR, 'allzbest.kd.fits')
+    tag = 'desi-daily-spectra'
+    T = cat_kd(req, ver, tag, fn)
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])), #, z=[], zerr=[])),
+                            content_type='application/json')
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    #radius = [3600. * float(r) for r in T.radius]
+    #color = ['orange' if bright else '#3388ff' for bright in T.isbright]
+    #G = [float(r) for r in T.phot_g_mean_mag]
+
+    names = []
+    colors = []
+    for t,st,z,zw in zip(T.spectype, T.subtype, T.z, T.zwarn):
+        c = '#3388ff'
+        t = t.strip()
+        nm = t
+        st = st.strip()
+        if st != '':
+            nm += ':' + st
+        if t != 'STAR':
+            nm += ', z = %.3f' % z
+
+        #ot = ot.strip()
+        #if ot == 'SKY':
+        #    c = '#448888'
+        #    nm = ot
+        #el
+        if t == 'STAR':
+            c = '#ff4444'
+        elif t == 'GALAXY':
+            c = '#ffffff'
+        elif t == 'QSO':
+            c = '#4444ff'
+            
+        if zw > 0:
+            nm += ' (ZWARN=0x%x)' %zw
+            c = '#888888'
+        names.append(nm)
+        colors.append(c)
+
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, color=colors, targetid=[int(i) for i in T.targetid])),
+                        content_type='application/json')
+
 def cat_desi_daily_spectra(req, ver):
     import json
     from astrometry.util.fits import fits_table, merge_tables

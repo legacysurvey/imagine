@@ -3254,8 +3254,11 @@ var desi_spec_denali = new DesiSpectraCatalog('desi-spec-denali', 'DESI Denali s
 
 var DesiDailySpectraCatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
-        return '<a href="' + root_url + 'desi-spectrum/daily/tile' + json['tileid'][i] +
-            '/fiber' + json['fiberid'][i] + '">' + json['name'][i] + '</a>';
+        return '<a href="' + root_url + 'desi-spectrum/daily/'
+            + 'targetid' + json['targetid'][i]
+            + '">' + json['name'][i] + '</a>';
+        //tile' + json['tileid'][i] +
+            //+ '/fiber' + json['fiberid'][i] 
     },
 });
 
