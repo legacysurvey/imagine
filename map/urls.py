@@ -41,6 +41,12 @@ urlpatterns = [
     url(r'^desi-tiles/denali/(\d+)/cat.json', cats.cat_desi_denali_tiles),
     url(r'^desi-spec-denali/(\d+)/cat.json', cats.cat_desi_denali_spectra),
 
+    # DR9 MAIN targets
+    url(r'^targets-dr9-main-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_dark),
+    url(r'^targets-dr9-main-sec-bright/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_bright),
+    url(r'^targets-dr9-main-dark/(\d+)/cat.json', cats.cat_targets_dr9_main_dark),
+    url(r'^targets-dr9-main-bright/(\d+)/cat.json', cats.cat_targets_dr9_main_bright),
+
     # DR9 SV3 targets
     url(r'^targets-dr9-sv3-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_sv3_sec_dark),
     url(r'^targets-dr9-sv3-sec-bright/(\d+)/cat.json', cats.cat_targets_dr9_sv3_sec_bright),
