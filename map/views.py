@@ -5374,6 +5374,9 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
                   #readsky=False)
     
     if kind == 'image':
+        # HACK for some DR5 images...
+        if im.sig1 == 0:
+            im.sig1 = 1.
         tim = im.get_tractor_image(invvar=False, dq=False, **trargs)
         from legacypipe.survey import get_rgb
         print('im=',im)
@@ -5399,6 +5402,9 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'dq':
+        # HACK for some DR5 images...
+        if im.sig1 == 0:
+            im.sig1 = 1.
         tim = im.get_tractor_image(pixels=False, dq=True, invvar=False, **trargs)
         img = tim.dq
         # remap bitmasks...
@@ -6094,8 +6100,20 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/14/13604/10378.jpg')
     #r = c.get('/?tile=120')
     #r = c.get('/ls-dr9.1.1/1/14/9571/8085.jpg')
-    r = c.get('/targets-dr9-sv3-dark/1/cat.json?ralo=349.2859&rahi=349.8304&declo=10.1487&dechi=10.4476#NGC 3716')
-    
+    #r = c.get('/targets-dr9-sv3-dark/1/cat.json?ralo=349.2859&rahi=349.8304&declo=10.1487&dechi=10.4476#NGC 3716')
+    #r = c.get('/targets-dr9-sv3-dark/1/cat.json?ralo=349.2859&rahi=349.8304&declo=10.1487&dechi=10.4476#NGC 3716')
+    #r = c.get('/ls-dr9.1.1-model/1/13/4767/4044.jpg')
+    #r = c.get('/ls-dr9.1.1-model/1/12/2383/2022.jpg')
+    #r = c.get('/ls-dr9.1.1-resid/1/12/2374/2020.jpg')
+    #r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
+    #r = c.get('/ls-dr9-south/1/15/27206/20760.jpg')
+    #r = c.get('/ls-dr9-south/1/12/3402/2596.jpg')
+    #r = c.get('/ls-dr9-south/1/4/12/10.jpg')
+    #r = c.get('/ls-dr9-south/1/5/26/19.jpg')
+    #r = c.get('/ls-dr9-south/1/6/52/38.jpg')
+    #r = c.get('/exposure_panels/decals-dr5/316739/N11/?ra=221.8517&dec=-7.6426&size=100')
+    r = c.get('/exposure_panels/decals-dr5/316741/N11/?ra=221.8520&dec=-7.6426&size=100&kind=dq')
+
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

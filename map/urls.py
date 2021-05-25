@@ -31,6 +31,11 @@ urlpatterns = [
     # PHAT cluster catalog
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
 
+    # DR9 MAIN targets
+    url(r'^targets-dr9-main-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_dark),
+    url(r'^targets-dr9-main-sec-bright/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_bright),
+    url(r'^targets-dr9-main-dark/(\d+)/cat.json', cats.cat_targets_dr9_main_dark),
+    url(r'^targets-dr9-main-bright/(\d+)/cat.json', cats.cat_targets_dr9_main_bright),
     # DR9 SV3 targets
     url(r'^targets-dr9-sv3-dark/(\d+)/cat.json', cats.cat_targets_dr9_sv3_dark),
     url(r'^targets-dr9-sv3-bright/(\d+)/cat.json', cats.cat_targets_dr9_sv3_bright),

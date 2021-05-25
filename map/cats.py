@@ -62,6 +62,10 @@ catversions = {
     'targets-dr9-sv1-supp':[1,],
     'targets-dr9-sv3-bright':[1,],
     'targets-dr9-sv3-dark':[1,],
+    'targets-dr9-main-bright':[1,],
+    'targets-dr9-main-dark':[1,],
+    'targets-dr9-main-sec-bright':[1,],
+    'targets-dr9-main-sec-dark':[1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
     'gaia-edr3': [1,],
@@ -747,6 +751,131 @@ def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', n
     if names is not None:
         rtn.update(name=names)
     return HttpResponse(json.dumps(rtn), content_type='application/json')
+
+
+def desitarget_main_names(T, colprefix='main_'):
+    from desitarget.targetmask import desi_mask, bgs_mask, mws_mask, scnd_mask
+
+    allnames = []
+    colors = []
+    cols = T.get_columns()
+    for t in T:
+        desibits = []
+        bgsbits = []
+        mwsbits = []
+        secbits = []
+        desi_target = int(t.get(colprefix + 'desi_target'))
+        bgs_target = get_target_val(t, colprefix + 'bgs_target', cols)
+        mws_target = get_target_val(t, colprefix + 'mws_target', cols)
+        scnd_target = get_target_val(t, colprefix + 'scnd_target', cols)
+        if 'objtype' in cols:
+            obj = t.objtype
+        else:
+            obj = ''
+
+        names = []
+
+        desi_keys = ['LRG', 'ELG', 'QSO', 'QSO_HIZ', 'ELG_LOP', 'ELG_HIP', 'ELG_VLO',
+                     'SKY', 'STD_FAINT', 'STD_WD', 'STD_BRIGHT', 'BAD_SKY', 'SUPP_SKY',
+                     'NO_TARGET', 'BRIGHT_OBJECT', 'IN_BRIGHT_OBJECT', 'NEAR_BRIGHT_OBJECT',
+                     'BGS_ANY', 'MWS_ANY', 'SCND_ANY']
+        for k in desi_keys:
+            bitmask = desi_mask[k].mask
+            if bitmask & desi_target:
+                names.append(k)
+
+        bgs_keys = ['BGS_FAINT', 'BGS_BRIGHT', 'BGS_WISE', 'BGS_FAINT_HIP']
+        for k in bgs_keys:
+            bitmask = bgs_mask[k].mask
+            if bitmask & bgs_target:
+                names.append(k)
+
+        mws_keys = ['MWS_BROAD', 'MWS_WD', 'MWS_NEARBY', 'MWS_BHB', 'MWS_MAIN_BLUE',
+                    'MWS_MAIN_RED', 'MWS_FAINT_BLUE', 'MWS_FAINT_RED', 'GAIA_STD_FAINT',
+                    'GAIA_STD_WD', 'GAIA_STD_BRIGHT', 'BACKUP_BRIGHT', 'BACKUP_FAINT',
+                    'BACKUP_VERY_FAINT']
+        for k in mws_keys:
+            bitmask = mws_mask[k].mask
+            if bitmask & mws_target:
+                names.append(k)
+
+        scnd_keys = ['UDG', 'FIRST_MALS', 'QSO_RED', 'MWS_CLUS_GAL_DEEP', 'LOW_MASS_AGN',
+                     'FAINT_HPM', 'LOW_Z_TIER1', 'LOW_Z_TIER2', 'LOW_Z_TIER3', 'BHB', 'SPCV',
+                     'DC3R2_GAMA', 'PSF_OUT_BRIGHT', 'PSF_OUT_DARK', 'HPM_SOUM', 'SN_HOSTS',
+                     'GAL_CLUS_BCG', 'GAL_CLUS_2ND', 'GAL_CLUS_SAT', 'STRONG_LENS',
+                     'WISE_VAR_QSO', 'Z5_QSO', 'MWS_MAIN_CLUSTER_SV', 'BRIGHT_HPM',
+                     'WD_BINARIES_BRIGHT', 'WD_BINARIES_DARK', 'PV_BRIGHT_HIGH',
+                     'PV_BRIGHT_MEDIUM', 'PV_BRIGHT_LOW', 'PV_DARK_HIGH', 'PV_DARK_MEDIUM',
+                     'PV_DARK_LOW', 'GC_BRIGHT', 'GC_DARK', 'DWF_BRIGHT_HI', 'DWF_BRIGHT_LO',
+                     'DWF_DARK_HI', 'DWF_DARK_LO', 'BRIGHT_TOO_LOP', 'BRIGHT_TOO_HIP',
+                     'DARK_TOO_LOP', 'DARK_TOO_HIP']
+        for k in scnd_keys:
+            bitmask = scnd_mask[k].mask
+            if bitmask & scnd_target:
+                names.append(k)
+
+        if obj == 'SKY':
+            names.append('SKY')
+        if obj == 'BAD':
+            names.append('BAD')
+        if len(names) == 0:
+            names.append('0x%x' % desi_target)
+        allnames.append(', '.join(names))
+    return allnames
+
+def cat_targets_dr9_main_sec_bright(req, ver):
+    # startree -i /global/cfs/cdirs/desi/target/catalogs/dr9/0.58.0/targets/main/secondary/bright/targets-bright-secondary.fits -o data/targets-dr9-0.58.0-main-sec-bright.kd.fits -TPk
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.58.0-main-sec-bright.kd.fits'),
+    ], tag='targets-dr9-main-sec-bright', name_func=desitarget_main_names, colprefix='',
+    color_name_func=None)
+
+def cat_targets_dr9_main_sec_dark(req, ver):
+    # startree -i /global/cfs/cdirs/desi/target/catalogs/dr9/0.58.0/targets/main/secondary/dark/targets-dark-secondary.fits -o data/targets-dr9-0.58.0-main-sec-dark.kd.fits -TPk
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.58.0-main-sec-dark.kd.fits'),
+    ], tag='targets-dr9-main-sec-dark', name_func=desitarget_main_names, colprefix='',
+    color_name_func=None)
+
+
+def cat_targets_dr9_main_dark(req, ver):
+    # for x in /global/cfs/cdirs/desi/target/catalogs/dr9/0.58.0/targets/main/resolve/dark/targets-dark-hp-*.fits;
+    # do echo $x; startree -i $x -o data/targets-dr9-0.58.0-main-dark/$(basename $x .fits).kd.fits -TPk; done
+    return cat_targets_healpixed(req, ver, 'targets-dr9-main-dark',
+                                 os.path.join(settings.DATA_DIR,
+                                              'targets-dr9-0.58.0-main-dark',
+                                              'targets-dark-hp-%i.kd.fits'),
+                                 name_func=desitarget_main_names, colprefix='')
+def cat_targets_dr9_main_bright(req, ver):
+    # for x in /global/cfs/cdirs/desi/target/catalogs/dr9/0.58.0/targets/main/resolve/bright/targets-bright-hp-*.fits;
+    # do echo $x; startree -i $x -o data/targets-dr9-0.58.0-main-bright/$(basename $x .fits).kd.fits -TPk; done
+    return cat_targets_healpixed(req, ver, 'targets-dr9-main-bright',
+                                 os.path.join(settings.DATA_DIR,
+                                              'targets-dr9-0.58.0-main-bright',
+                                              'targets-bright-hp-%i.kd.fits'),
+                                 name_func=desitarget_main_names, colprefix='')
+
+
+
+
+
+def cat_targets_dr9_sv3_sec_bright(req, ver):
+    # startree -i /global/cfs/cdirs/desi/target/catalogs/dr9/0.57.0/targets/sv3/secondary/bright/sv3targets-bright-secondary.fits -o data/targets-dr9-0.57.0-sv3-sec-bright.kd.fits -TPk
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.57.0-sv3-sec-bright.kd.fits'),
+    ], tag='targets-dr9-sv3-sec-bright', name_func=desitarget_sv3_names, colprefix='sv3_',
+    color_name_func=None)
+
+def cat_targets_dr9_sv3_sec_dark(req, ver):
+    # startree -i /global/cfs/cdirs/desi/target/catalogs/dr9/0.57.0/targets/sv3/secondary/dark/sv3targets-dark-secondary.fits -o data/targets-dr9-0.57.0-sv3-sec-dark.kd.fits -TPk
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.57.0-sv3-sec-dark.kd.fits'),
+    ], tag='targets-dr9-sv3-sec-dark', name_func=desitarget_sv3_names, colprefix='sv3_',
+    color_name_func=None)
 
 
 def cat_targets_dr9_sv3_dark(req, ver):
@@ -2181,10 +2310,10 @@ if __name__ == '__main__':
     #layer = get_layer('hsc2')
     #create_galaxy_catalog(galfn, None, layer=layer)
 
-    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
-    layer = get_layer('ls-dr9-north')
-    create_galaxy_catalog(galfn, None, layer=layer)
-    sys.exit(0)
+    # galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
+    # layer = get_layer('ls-dr9-north')
+    # create_galaxy_catalog(galfn, None, layer=layer)
+    # sys.exit(0)
 
     from django.test import Client
     c = Client()
@@ -2197,8 +2326,8 @@ if __name__ == '__main__':
     #r = c.get('/dr8-north/1/14/8194/5895.cat.json')
     #r = c.get('/dr8/1/14/8194/5895.cat.json')
     #r = c.get('/decals-dr7/1/14/8639/7624.cat.json')
-    r = c.get('/mzls+bass-dr6/1/14/7517/6364.cat.json')
-    
+    #r = c.get('/mzls+bass-dr6/1/14/7517/6364.cat.json')
+    r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
     f = open('out', 'wb')
     for x in r:
         f.write(x)

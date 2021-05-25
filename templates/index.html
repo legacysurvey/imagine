@@ -3543,6 +3543,20 @@ var desi_targets_dr9_sv3_bright = new DesiTileLayer('targets-dr9-sv3-bright',
                                                  {'minZoom': 10, 'rscale':0.5});
 
 
+var desi_targets_dr9_main_dark = new DesiTileLayer('targets-dr9-main-dark',
+                                                 'DESI Dark-time Targets (DR9/Main)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_main_bright = new DesiTileLayer('targets-dr9-main-bright',
+                                                 'DESI Bright-time Targets (DR9/Main)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_main_sec_dark = new DesiTileLayer('targets-dr9-main-sec-dark',
+                                                 'DESI Dark-time Secondary Targets (DR9/Main)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_main_sec_bright = new DesiTileLayer('targets-dr9-main-sec-bright',
+                                                 'DESI Bright-time Secondary Targets (DR9/Main)',
+                                                 {'minZoom': 8, 'rscale':0.5});
+
+
 {% endif %}
 
 {% if enable_spectra %}
@@ -3739,6 +3753,10 @@ var overlays = [
     desi_targets_dr9_sv1_supp,
     desi_targets_dr9_sv3_dark,
     desi_targets_dr9_sv3_bright,
+    desi_targets_dr9_main_dark,
+    desi_targets_dr9_main_bright,
+    desi_targets_dr9_main_sec_dark,
+    desi_targets_dr9_main_sec_bright,
     {% endif %}
     constellations,
     desifoot,
@@ -4186,6 +4204,10 @@ var overlayTree = [];
            findoverlay('desi-fiberpos'),
          {% endif %}
          {% if enable_desi_targets %}
+           findoverlay('targets-dr9-main-dark'),
+           findoverlay('targets-dr9-main-bright'),
+           findoverlay('targets-dr9-main-sec-dark'),
+           findoverlay('targets-dr9-main-sec-bright'),
            findoverlay('targets-dr9-sv3-dark'),
            findoverlay('targets-dr9-sv3-bright'),
            findoverlay('targets-dr9-sv1-dark'),
