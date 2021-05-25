@@ -55,11 +55,11 @@ def main():
     from astrometry.util.multiproc import multiproc
     mp = multiproc(32)
 
-    kind = 'ls-dr9-south'
+    kind = 'ls-dr9-south-model'
     bands = 'grz'
     layer = get_layer(kind)
     #for scale in range(1,8):
-    for scale in range(7,8):
+    for scale in range(3,8):
         B = layer.get_bricks_for_scale(scale)
         print(len(B), 'bricks for scale', scale)
         print('Brick 0 is', B[0].brickname)
@@ -69,9 +69,8 @@ def main():
         # boolean results
         R = []
         
-        #RESUME = 28500
-        #RESUME = 64900
-        #RESUME = 4000
+        #RESUME = 38000
+        #RESUME = 55000
         RESUME = 0
         for ibrick,brick in enumerate(B[:RESUME]):
             keep = False

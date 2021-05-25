@@ -780,8 +780,7 @@ def desitarget_main_names(T, colprefix='main_'):
 
         desi_keys = ['LRG', 'ELG', 'QSO', 'QSO_HIZ', 'ELG_LOP', 'ELG_HIP', 'ELG_VLO',
                      'SKY', 'STD_FAINT', 'STD_WD', 'STD_BRIGHT', 'BAD_SKY', 'SUPP_SKY',
-                     'NO_TARGET', 'BRIGHT_OBJECT', 'IN_BRIGHT_OBJECT', 'NEAR_BRIGHT_OBJECT',
-                     'BGS_ANY', 'MWS_ANY', 'SCND_ANY']
+                     'NO_TARGET', 'BRIGHT_OBJECT', 'IN_BRIGHT_OBJECT', 'NEAR_BRIGHT_OBJECT',]
         for k in desi_keys:
             bitmask = desi_mask[k].mask
             if bitmask & desi_target:
