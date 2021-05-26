@@ -3253,6 +3253,10 @@ var desi_spec_denali = new DesiSpectraCatalog('desi-spec-denali', 'DESI Denali s
 //////////////// Daily
 
 var DesiDailySpectraCatalog = CatalogOverlay.extend({
+    // getLayer: function(result) {
+    //     console.log('getLayer()');
+    //     return CatalogOverlay.prototype.getLayer.call(this, result);
+    // },
     getLabel: function(json, i) {
         return '<a href="' + root_url + 'desi-spectrum/daily/'
             + 'targetid' + json['targetid'][i]
@@ -3260,6 +3264,23 @@ var DesiDailySpectraCatalog = CatalogOverlay.extend({
         //tile' + json['tileid'][i] +
             //+ '/fiber' + json['fiberid'][i] 
     },
+    getTooltipStyle() {
+        var z = map.getZoom()
+        return { permanent: (z >= 12),
+                 interactive: true,
+                 className: (z == 12 ? 'spectrumTooltipSmall' : 'spectrumTooltip'),
+               };
+        //className: 'tooltipbg',
+    },
+    getPopupText: function(json, i) {
+        var rd = json['rd'][i];
+        var ra = rd[0];
+        var dec = rd[1];
+        return this.getLabel(json, i)
+            + '<br/>RA,Dec: ' + ra.toFixed(4) + ', ' + dec.toFixed(4)
+            + '<br/>Targetid: ' + json['targetid'][i];
+    },
+
 });
 
 var desi_tiles_daily = new DesiTileOverlay('desi-tiles-daily',
@@ -3276,8 +3297,8 @@ desi_tiles_daily._style = {'fillOpacity': 0.05 };
 var desi_spec_daily = new DesiDailySpectraCatalog('desi-spec-daily', 'DESI daily spectra',
                                   {'url': smallcat_url,
                                    'radius': 300,
-                                   'labelsMinZoom': 12,
-                                   'minZoom': 10,
+                                   'labelsMinZoom': 10,
+                                   'minZoom': 8,
                                    //'urlTerm': 'desi-spec/denali',
                                    });
 

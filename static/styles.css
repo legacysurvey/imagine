@@ -65,6 +65,9 @@
 
 .spectrumTooltip {
 }
+.spectrumTooltipSmall {
+    font-size: 80%;
+}
 
 /* https://gis.stackexchange.com/questions/212820/overriding-leaflet-tooltip-style */
 .leaflet-tooltip-left.spectrumTooltip {
