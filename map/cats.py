@@ -189,15 +189,39 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
 def cat_desi_denali_spectra_detail(req, tile, fiber):
     return cat_desi_release_spectra_detail(req, tile, fiber, 'denali')
 
-def cat_desi_daily_spectra_detail(req, tile, fiber):
-    return cat_desi_release_spectra_detail(req, tile, fiber, 'daily')
+#def cat_desi_daily_spectra_detail(req, tile, fiber):
+#    return cat_desi_release_spectra_detail(req, tile, fiber, 'daily')
+
+def lookup_targetid(targetid):
+    from astrometry.libkd.spherematch import tree_open
+    from astrometry.util.fits import fits_table
+    import numpy as np
+    fn = os.path.join(settings.DATA_DIR, 'allzbest.kd.fits')
+    kd = tree_open(fn, 'targetid')
+    print('Searching for targetid', targetid)
+    I = kd.search(np.array([float(targetid)]), 0.5, 0, 0)
+    if len(I) == 0:
+        return None
+    print('Found', len(I), 'entries for targetid', targetid)
+    # Read only the allzbest table rows within range.
+    T = fits_table(fn, rows=I)
+    # ra,dec = T.ra[0], T.dec[0]
+    return T[0]
+    
+def cat_desi_daily_spectra_detail(req, targetid):
+    import os
+    import prospect.viewer
+
+    t = lookup_targetid(targetid)
+    if t is None:
+        return HttpResponse('No such targetid found in DESI daily spectra')
+
+    return cat_desi_release_spectra_detail(req, t.tileid, t.fiber, 'daily')
 
 def cat_desi_daily_tiles(req, ver):
     return cat_desi_release_tiles(req, ver, 'daily')
 
-
-
-def cat_desi_daily_spectra_2(req, ver):
+def cat_desi_daily_spectra(req, ver):
     import json
     fn = os.path.join(settings.DATA_DIR, 'allzbest.kd.fits')
     tag = 'desi-daily-spectra'
@@ -242,100 +266,6 @@ def cat_desi_daily_spectra_2(req, ver):
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names, color=colors, targetid=[int(i) for i in T.targetid])),
                         content_type='application/json')
-
-def cat_desi_daily_spectra(req, ver):
-    import json
-    from astrometry.util.fits import fits_table, merge_tables
-    from astrometry.libkd.spherematch import tree_open, tree_search_radec
-    import numpy as np
-    from glob import glob
-
-    ver = int(ver)
-    tag = 'desi-daily-spectra'
-    if not ver in catversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-    ralo = float(req.GET['ralo'])
-    rahi = float(req.GET['rahi'])
-    declo = float(req.GET['declo'])
-    dechi = float(req.GET['dechi'])
-    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
-
-    desi_radius = 1.6
-    
-    # Find overlapping tiles
-    fn = os.path.join(settings.DATA_DIR, 'desi-spectro-daily/tiles2.kd.fits')
-    kd = tree_open(fn)
-    I = tree_search_radec(kd, rc, dc, rad + desi_radius)
-    if len(I) == 0:
-        return HttpResponse(json.dumps(dict(rd=[], name=[])),
-                            content_type='application/json')
-    tiles = fits_table(fn, rows=I)
-
-    TT = []
-    for tileid in tiles.tileid:
-        pat = '/global/cfs/cdirs/desi/spectro/redux/daily/tiles/cumulative/%i/*/zbest-?-%i-*.fits' % (tileid, tileid)
-        fns = glob(pat)
-        for fn in fns:
-            print('Reading', fn)
-            T = fits_table(fn)
-            T2 = fits_table(fn, hdu=2)
-            tmap = dict([(targetid,i) for i,targetid in enumerate(T2.targetid)])
-            I2 = np.array([tmap[tid] for tid in T.targetid])
-            T2.cut(I2)
-            #print('Tables:', len(T), len(T2))
-            T.add_columns_from(T2)
-            TT.append(T)
-    T = merge_tables(TT, columns='fillzero')
-    if len(T) == 0:
-        return HttpResponse(json.dumps(dict(rd=[], name=[])),
-                            content_type='application/json')
-    T.cut((T.target_dec >= declo) * (T.target_dec <= dechi))
-    if ralo > rahi:
-        # RA wrap
-        T.cut(np.logical_or(T.target_ra > ralo, T.target_ra < rahi))
-    else:
-        T.cut((T.target_ra > ralo) * (T.target_ra < rahi))
-
-    names = []
-    colors = []
-    for ot,t,st,z,zerr,zw in zip(T.objtype, T.spectype, T.subtype, T.z, T.zerr, T.zwarn):
-        #nm = 'z = %.3f \pm %.3f' % (z, zerr)
-        c = '#3388ff'
-        t = t.strip()
-        nm = t
-        st = st.strip()
-        if st != '':
-            nm += ':' + st
-        if t != 'STAR':
-            nm += ', z = %.3f' % z
-
-        ot = ot.strip()
-        if ot == 'SKY':
-            c = '#448888'
-            nm = ot
-        elif t == 'STAR':
-            c = '#ff4444'
-        elif t == 'GALAXY':
-            c = '#ffffff'
-        elif t == 'QSO':
-            c = '#4444ff'
-            
-        if zw > 0:
-            nm += ' (ZWARN=0x%x)' %zw
-            c = '#888888'
-        names.append(nm)
-        colors.append(c)
-
-    res = dict(rd=[(float(r),float(d)) for r,d in zip(T.target_ra, T.target_dec)],
-               targetid=[int(i) for i in T.targetid],
-               fiberid=[int(i) for i in T.fiber],
-               tileid=[int(i) for i in T.tileid],
-               name=names,
-               color=colors)
-    return HttpResponse(json.dumps(res),
-                        content_type='application/json')
-
-
 
 def cat_desi_denali_spectra(req, ver):
     # startree -i /global/cfs/cdirs/desi/spectro/redux/denali/zcatalog-denali-cumulative.fits -o data/desi-spectro-denali/zcatalog-denali-cumulative.kd.fits -PTk -R target_ra -D target_dec
