@@ -398,6 +398,17 @@ def _index(req,
     except:
         pass
 
+    # Process DESI targetid parameter
+    try:
+        from map.cats import lookup_targetid
+        tid = req.GET.get('targetid')
+        t = lookup_targetid(tid)
+        if t is not None:
+            ra = t.ra
+            dec = t.dec
+    except:
+        pass
+
     from urllib.parse import unquote
     caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
     smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
@@ -721,6 +732,20 @@ def name_query(req):
         except RuntimeError as e:
             return HttpResponse(json.dumps(dict(error='DESI tile %i not found' % tileid)))
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Tile %i' % tileid)))
+
+
+    # Check for TARGET or TARGETID <targetid>
+    words = obj.strip().split()
+    if len(words) == 2 and words[0].lower() in ['target', 'targetid']:
+        from map.cats import lookup_targetid
+        tid = int(words[1])
+        try:
+            t = lookup_targetid(tid)
+            ra = t.ra
+            dec = t.dec
+        except RuntimeError as e:
+            return HttpResponse(json.dumps(dict(error='DESI targetid %i not found' % tid)))
+        return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Targetid %i' % tid)))
 
     # Check for RA,Dec in decimal degrees or H:M:S.
     words = obj.strip().split()
