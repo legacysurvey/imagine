@@ -199,22 +199,28 @@ def lookup_targetid(targetid):
     fn = os.path.join(settings.DATA_DIR, 'allzbest.kd.fits')
     kd = tree_open(fn, 'targetid')
     print('Searching for targetid', targetid)
-    I = kd.search(np.array([float(targetid)]), 0.5, 0, 0)
+    #I = kd.search(np.array([float(targetid)]), 0.5, 0, 0)
+    I = kd.search(np.array([targetid]).astype(np.uint64), 0.5, 0, 0)
     if len(I) == 0:
         return None
     print('Found', len(I), 'entries for targetid', targetid)
     # Read only the allzbest table rows within range.
     T = fits_table(fn, rows=I)
-    # ra,dec = T.ra[0], T.dec[0]
-    return T[0]
+    print('Matched targetids:', T.targetid)
+    I = np.flatnonzero(T.targetid == targetid)
+    if len(I) == 0:
+        return None
+    i = I[0]
+    return T[i]
     
 def cat_desi_daily_spectra_detail(req, targetid):
     import os
     import prospect.viewer
 
+    targetid = int(targetid)
     t = lookup_targetid(targetid)
     if t is None:
-        return HttpResponse('No such targetid found in DESI daily spectra')
+        return HttpResponse('No such targetid found in DESI daily spectra: %s' % targetid)
 
     return cat_desi_release_spectra_detail(req, t.tileid, t.fiber, 'daily')
 
@@ -264,7 +270,7 @@ def cat_desi_daily_spectra(req, ver):
         names.append(nm)
         colors.append(c)
 
-    return HttpResponse(json.dumps(dict(rd=rd, name=names, color=colors, targetid=[int(i) for i in T.targetid])),
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, color=colors, targetid=[str(i) for i in T.targetid])),
                         content_type='application/json')
 
 def cat_desi_denali_spectra(req, ver):
@@ -322,7 +328,7 @@ def cat_desi_denali_spectra(req, ver):
         colors.append(c)
 
     res = dict(rd=[(float(r),float(d)) for r,d in zip(T.target_ra, T.target_dec)],
-               targetid=[int(i) for i in T.targetid],
+               targetid=[str(i) for i in T.targetid],
                fiberid=[int(i) for i in T.fiber],
                tileid=[int(i) for i in T.tileid],
                name=names,
@@ -1715,7 +1721,7 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
         names = name_func(T, colprefix=colprefix)
 
     rtn = dict(rd=[(t.ra, t.dec) for t in T],
-               targetid=[int(t) for t in T.targetid])
+               targetid=[str(t) for t in T.targetid])
 
     fluxes = None
     nobs = None
@@ -2594,6 +2600,10 @@ if __name__ == '__main__':
     # create_galaxy_catalog(galfn, None, layer=layer)
     # sys.exit(0)
 
+    t = lookup_targetid(39627788403084375)
+    print('Targetid:', t)
+    t.about()
+    
     from django.test import Client
     c = Client()
     #r = c.get('/sga/1/cat.json?ralo=259.2787&rahi=259.7738&declo=35.9422&dechi=36.1656')

@@ -402,10 +402,16 @@ def _index(req,
     try:
         from map.cats import lookup_targetid
         tid = req.GET.get('targetid')
+        tid = int(tid)
+        print('Looking up TARGETID', tid)
         t = lookup_targetid(tid)
         if t is not None:
             ra = t.ra
             dec = t.dec
+            print('Targetid found: RA,Dec', ra, dec)
+            print('(targetid', t.targetid, ')')
+        else:
+            print('Targetid not found:', tid)
     except:
         pass
 
@@ -481,21 +487,22 @@ def _index(req,
         except:
             pass
 
-    if 'targetid' in req.GET:
-        try:
-            targetid = int(req.GET['targetid'], 10)
-            # 22 bits
-            objid = targetid & 0x3fffff
-            # 20 bits
-            brickid = (targetid >> 22) & 0xfffff
-            # 16 bits
-            release = (targetid >> 42) & 0xffff
-            print('Release', release, 'brickid', brickid, 'objid', objid)
-        except:
-            pass
+    # if 'targetid' in req.GET:
+    #     try:
+    #         targetid = int(req.GET['targetid'], 10)
+    #         # 22 bits
+    #         objid = targetid & 0x3fffff
+    #         # 20 bits
+    #         brickid = (targetid >> 22) & 0xfffff
+    #         # 16 bits
+    #         release = (targetid >> 42) & 0xffff
+    #         print('Release', release, 'brickid', brickid, 'objid', objid)
+    #     except:
+    #         pass
         
     galname = None
     if ra is None or dec is None:
+        print('Getting random galaxy position')
         ra,dec,galname = get_random_galaxy(layer=layer)
     
     hostname_url = req.build_absolute_uri('/')
@@ -530,6 +537,7 @@ def _index(req,
         import traceback
         traceback.print_exc()
 
+    print('Setting initial RA,Dec position', ra, dec)
 
     args = dict(ra=ra, dec=dec,
                 maxZoom=maxZoom,
@@ -6138,7 +6146,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/5/26/19.jpg')
     #r = c.get('/ls-dr9-south/1/6/52/38.jpg')
     #r = c.get('/exposure_panels/decals-dr5/316739/N11/?ra=221.8517&dec=-7.6426&size=100')
-    r = c.get('/exposure_panels/decals-dr5/316741/N11/?ra=221.8520&dec=-7.6426&size=100&kind=dq')
+    #r = c.get('/exposure_panels/decals-dr5/316741/N11/?ra=221.8520&dec=-7.6426&size=100&kind=dq')
+    r = c.get('/?zoom=15&targetid=39627788403084375')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
