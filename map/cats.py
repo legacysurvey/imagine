@@ -1490,7 +1490,9 @@ def cat_sga_ellipse(req, ver):
     # T.writeto('sga-cut.fits', columns=cols)
     # startree -i ~/sga-cut.fits -o data/sga/SGA-ellipse-v3.2-cut.kd.fits -PTk
     #fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2.kd.fits')
-    fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2-cut.kd.fits')
+    #fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2-cut.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-2020.kd.fits')
+    print('Reading', fn)
     return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga')
 
 def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
@@ -1555,7 +1557,11 @@ def query_sga_radecbox(fn, ralo, rahi, declo, dechi):
     wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
     H,W = wcs.shape
     # cut to sga entries possibly touching wcs box
-    T.radius_arcsec = T.diam / 2. * 60.
+    cols = T.get_columns()
+    if 'diam' in cols:
+        T.radius_arcsec = T.diam / 2. * 60.
+    else:
+        T.radius_arcsec = T.d26 / 2. * 60.
     radius_pix = T.radius_arcsec / wcs.pixel_scale()
     ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
     T.cut((xx > -radius_pix) * (xx < W+radius_pix) *
