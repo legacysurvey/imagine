@@ -20,7 +20,7 @@ RUN pip install -e git+http://github.com/dstndstn/astrometry.net@0.86#egg=astrom
     pip install -e git+https://github.com/dstndstn/tractor.git@dr9.6#egg=tractor
 RUN pip install -e git+http://github.com/legacysurvey/legacypipe@DR9.7.2#egg=legacypipe
 RUN apt install -y less
-RUN git clone https://github.com/legacysurvey/imagine.git
+RUN git clone https://github.com/legacysurvey/imagine.git && echo 1
 RUN cd imagine/viewer && ln -s settings_test.py settings.py
 #ENV PS1="[container] \\u@\\h:\\w$ "
 #RUN echo "export PS1='[container] \\u@\\h:\\w$ '" >> $HOME/.bashrc
