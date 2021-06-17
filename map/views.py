@@ -6116,9 +6116,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9.1.1-model/1/13/4767/4044.jpg')
     #r = c.get('/ls-dr9.1.1-model/1/12/2383/2022.jpg')
     #r = c.get('/ls-dr9.1.1-resid/1/12/2374/2020.jpg')
-    r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
-
-
+    #r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
+    r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
