@@ -1579,6 +1579,10 @@ def cat_manga(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'manga', 'drpall-v2_4_3.kd.fits')
     tag = 'manga'
     T = cat_kd(req, ver, tag, fn, racol='ifura', deccol='ifudec')
+    if T is not None and len(T)>0:
+        T.cut(T.ifudesignsize > 0)
+        if len(T) == 0:
+            T = None
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],plate=[])),
                             content_type='application/json')
