@@ -6147,7 +6147,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/6/52/38.jpg')
     #r = c.get('/exposure_panels/decals-dr5/316739/N11/?ra=221.8517&dec=-7.6426&size=100')
     #r = c.get('/exposure_panels/decals-dr5/316741/N11/?ra=221.8520&dec=-7.6426&size=100&kind=dq')
-    r = c.get('/?zoom=15&targetid=39627788403084375')
+    #r = c.get('/?zoom=15&targetid=39627788403084375')
+    r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
