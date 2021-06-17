@@ -660,7 +660,8 @@ var SGACatalog = CatalogOverlay.extend({
     },
 
     getTooltipStyle() {
-        return { permanent: false, interactive: true, };
+        return { permanent: false, interactive: true,
+	         className: 'tooltipbg', };
     },
 
     getLayer: function(result) {
@@ -2765,7 +2766,8 @@ var expOverlay9svs = new CircleOverlay('dr9sv-south-exps',
                                      'dr_name': 'DR9-SV',
                                     });
 {% endif %}
-                                                     
+
+{% if enable_ls_bricks %}
 var brickOverlay = new PolygonOverlay('decals-bricks', 'Legacy Surveys Bricks',
                                       {'url': bricks_url,
                                        'minZoom': 1,
@@ -2782,7 +2784,7 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'Legacy Surveys Bricks',
     return txt;
 },
 });
-
+{% endif %}
 
 var unwise_tile_detail = function(layer_name, name, aparams) {
     return 'Tile: ' + name;
@@ -2803,6 +2805,7 @@ var unwise_tile_detail_list = function(ov, objs) {
     return txt;
 }
     
+{% if enable_unwise_tiles %}
 var unwiseTileOverlay = new PolygonOverlay('unwise-tiles',
                                  'unWISE tiles',
                                  {'url':ccds_url,
@@ -2815,8 +2818,9 @@ var unwiseTileOverlay = new PolygonOverlay('unwise-tiles',
                                  'dr_name': 'unWISE',
                                  });
 unwiseTileOverlay._color = '#9040f0';
+{% endif %}
 
-
+{% if enable_sdss_ccds %}
 var ccdOverlaySdss = new PolygonOverlay('sdss-ccds',
                                  'SDSS CCDs',
                                     {'url':ccds_url,
@@ -2828,8 +2832,7 @@ var ccdOverlaySdss = new PolygonOverlay('sdss-ccds',
                                      'url_name': 'sdss',
                                      'dr_name': 'SDSS',
                                     });
-
-
+{% endif %}
 
 {% if enable_spectra %}
 url = sdss_plates_url;
@@ -2878,11 +2881,17 @@ var polygonOverlays = [
     {% if enable_dr9sv_south_overlays %}
     ccdOverlay9svs, expOverlay9svs,
     {% endif %}
+    {% if enable_ls_bricks %}
     brickOverlay,
+    {% endif %}
     {% if enable_unwise %}
+    {% if enable_unwise_tiles %}
     unwiseTileOverlay,
     {% endif %}
+    {% endif %}
+    {% if enable_sdss_ccds %}
     ccdOverlaySdss,
+    {% endif %}
     {% if enable_spectra %}
     plateOverlay,
     {% endif %}
@@ -2979,7 +2988,9 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
                              {'url_name': 'ngc',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
-                             'urlTerm': 'ngc',});
+                              'urlTerm': 'ngc',
+			      'url': '{{ my_small_cat_url }}',
+			     });
 
 var GCsPNe = new GCsPNeCatalog('GCs-PNe', 'GCs/PNe',
                              {'url_name': 'GCs-PNe',
@@ -2987,11 +2998,13 @@ var GCsPNe = new GCsPNeCatalog('GCs-PNe', 'GCs/PNe',
                               'labelsMinZoom': 7,
                              'urlTerm': 'GCs-PNe',});
 
+{% if enable_dr9_masks %}
 var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (DR9)',
                              {'url_name': 'masks-dr9',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
                              'urlTerm': 'masks-dr9',});
+{% endif %}
                              
 // var starmasks8 = new StarMaskCatalog('masks-dr8', 'Gaia masks (DR8)',
 //                              {'url_name': 'masks-dr8',
@@ -2999,15 +3012,18 @@ var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (DR9)',
 //                               'labelsMinZoom': 7,
 //                              'urlTerm': 'masks-dr8',});
 
-var sga_parent = new SGACatalog('sga-parent', 'SGA parent (HyperLEDA)',
+{% if enabled.hyperleda %}
+var sga_parent = new SGACatalog('sga-parent', 'HyperLEDA',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga-parent',});
-
-var sga_ell = new SGACatalog('sga', 'SGA (ellipse fit)',
+{% endif %}
+{% if enabled.sga %}
+var sga_ell = new SGACatalog('sga', 'Siena Galaxy Atlas',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga',});
+{% endif %}
 
 var GaiaDr2Catalog = CatalogOverlay.extend({
     getColor: function(json, i) {
@@ -3325,13 +3341,29 @@ var overlays = [
     expOverlay7,
     {% endif %}
 
+    {% if enable_ls_bricks %}
     brickOverlay,
+    {% endif %}
     {% if enable_unwise %}
+    {% if enable_unwise_tiles %}
     unwiseTileOverlay,
     {% endif %}
+    {% endif %}
+    {% if enable_sdss_ccds %}
     ccdOverlaySdss,
-    gals, sga_parent, sga_ell, //lslga_model, starmasks8,
-    starmasks9, GCsPNe, bright, tycho2,
+    {% endif %}
+    gals,
+    {% if enabled.hyperleda %}
+    sga_parent,
+    {% endif %}
+    {% if enabled.sga %}
+    sga_ell,
+    {% endif %}
+    //lslga_model, starmasks8,
+    {% if enable_dr9_masks %}
+    starmasks9,
+    {% endif %}
+    GCsPNe, bright, tycho2,
     {% if enable_ps1 %}
     ps1cat,
     {% endif %}
@@ -3602,7 +3634,9 @@ for (var i=0,len=overlays.length; i<len; i++) {
      {% if enable_phat %}
      findoverlay('phat-clusters'),
      {% endif %}    
+     {% if enable_ls_bricks %}
      findoverlay('decals-bricks'),
+     {% endif %}    
 
      {% if enable_dr9sv_overlays %}
      findoverlay('dr9sv-ccds', [
@@ -3634,9 +3668,13 @@ for (var i=0,len=overlays.length; i<len; i++) {
          {% endif %}
      ]),
      {% endif %}
+     {% if enable_sdss_ccds %}
      findoverlay('sdss-ccds'),
+     {% endif %}    
      {% if enable_unwise %}
+     {% if enable_unwise_tiles %}
      findoverlay('unwise-tiles'),
+     {% endif %}
      {% endif %}
      {% if enable_dr8_south_overlays %}
      findoverlay('dr8-south-exps'),
@@ -3718,10 +3756,16 @@ for (var i=0,len=overlays.length; i<len; i++) {
      findoverlay('bright'),
      findoverlay('tycho2'),
      findoverlay('gals'),
+     {% if enabled.hyperleda %}
      findoverlay('sga-parent'),
+     {% endif %}
+     {% if enabled.sga %}
      findoverlay('sga'),
+     {% endif %}
      //findoverlay('sga-model'),
+     {% if enable_dr9_masks %}
      findoverlay('masks-dr9'),
+     {% endif %}
      //findoverlay('masks-dr8'),
      findoverlay('GCs-PNe'),
      findoverlay('const'),

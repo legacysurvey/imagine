@@ -289,14 +289,18 @@ def _index(req,
         enable_vlass = settings.ENABLE_VLASS,
         enable_dev = settings.ENABLE_DEV,
         enable_m33 = False,
+        enable_dr9_masks = settings.ENABLE_DR9_MASKS,
         enable_cutouts = settings.ENABLE_CUTOUTS,
+        enable_ls_bricks = settings.ENABLE_LS_BRICKS,
+        enable_unwise_tiles = settings.ENABLE_UNWISE_TILES,
+        enable_sdss_ccds = settings.ENABLE_SDSS_CCDS,
         enable_dr67 = settings.ENABLE_DR67,
         enable_dr56 = settings.ENABLE_DR56,
         enable_dr5 = settings.ENABLE_DR5,
         enable_dr6 = settings.ENABLE_DR6,
         enable_dr7 = settings.ENABLE_DR7,
         enable_dr8 = settings.ENABLE_DR8,
-        enable_dr8_overlays = settings.ENABLE_DR8,
+        enable_dr8_overlays = settings.ENABLE_DR8_OVERLAYS,
         enable_dr8_models = settings.ENABLE_DR8_MODELS,
         enable_dr8_resids = settings.ENABLE_DR8_RESIDS,
         enable_dr8_north = settings.ENABLE_DR8_NORTH,
@@ -403,7 +407,7 @@ def _index(req,
     from urllib.parse import unquote
     #caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
     caturl = settings.CAT_URL
-    #smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
+    mysmallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
     smallcaturl = settings.SMALL_CAT_URL
     cfis_cat_url = unquote(my_reverse(req, 'cat-json-pattern'))
 
@@ -496,6 +500,10 @@ def _index(req,
     for k,v in settings.TILE_URLS.items():
         tileurls[k] = v + [[1, maxZoom, settings.TILE_URL, settings.SUBDOMAINS]]
 
+    enabled = dict()
+    for k in settings.ENABLED_LAYERS:
+        enabled[k] = True
+        
     args = dict(ra=ra, dec=dec, zoom=zoom,
                 maxZoom=maxZoom,
                 galname=galname,
@@ -504,6 +512,7 @@ def _index(req,
                 hostname_url=hostname_url,
                 uploadurl=uploadurl,
                 caturl=caturl, bricksurl=bricksurl,
+                my_small_cat_url=mysmallcaturl,
                 smallcaturl=smallcaturl,
                 cfis_cat_url=cfis_cat_url,
                 namequeryurl=namequeryurl,
@@ -512,6 +521,8 @@ def _index(req,
                 platesurl=platesurl,
                 static_tile_url=static_tile_url,
                 subdomains=subdomains,
+
+                enabled=enabled,
 
                 static_tile_url_B=static_tile_url_B,
                 subdomains_B=subdomains_B,
