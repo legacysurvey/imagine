@@ -1,3 +1,20 @@
 #! /bin/bash
 
-python3 -u /app/imagine/cutout.py "$@"
+unset LD_LIBRARY_PATH
+export PYTHONPATH=/usr/lib/python3.8:/usr/lib/python3.8/lib-dynload:/usr/local/lib/python3.8/dist-packages:/app/src/astrometry:/app/src/tractor:/app/src/legacypipe/build/lib
+
+# Don't add ~/.local/ to Python's sys.path
+export PYTHONNOUSERSITE=1
+
+# Force MKL single-threaded
+# https://software.intel.com/en-us/articles/using-threaded-intel-mkl-in-multi-thread-application
+export MKL_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+# To avoid problems with MPI and Python multiprocessing
+export MPICH_GNI_FORK_MODE=FULLCOPY
+export KMP_AFFINITY=disabled
+
+/usr/bin/python3 -c "import numpy; print('Numpy:', numpy.__file__, numpy.__version__)"
+/usr/bin/python3 -c "import sys; print('sys.path:'); print('\n  '.join(sys.path))"
+
+/usr/bin/python3 -u /app/imagine/cutout.py "$@"
