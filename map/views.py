@@ -4640,6 +4640,20 @@ def ccd_detail(req, layer_name, ccd):
                 rect = (x,y,w,h)
             except:
                 pass
+    else:
+        ra = req.GET.get('ra', None)
+        dec = req.GET.get('dec', None)
+        if ra is not None and dec is not None:
+            ra = float(ra)
+            dec = float(dec)
+            im = survey.get_image_object(c)
+            wcs = im.get_wcs()
+            x,y = wcs.radec2pixelxy(ra, dec)
+            size = int(req.GET.get('size', 100))
+            x = x-size/2
+            y = y-size/2
+            w = h = size
+            rect = (x,y,w,h)
 
     imgurl   = my_reverse(req, 'image_data', args=[layer_name, ccd])
     dqurl    = my_reverse(req, 'dq_data', args=[layer_name, ccd])
