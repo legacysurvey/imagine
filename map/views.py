@@ -1873,11 +1873,13 @@ class DecalsLayer(MapLayer):
         cutout_subimage = my_reverse(req, 'cutout-fits') + qargs + '&subimage'
         copsf = my_reverse(req, 'coadd_psf') + qargs
 
-        html = ['<h1>%s Cutouts at RA,Dec:</h1>' % self.drname,
-                '<p><a href="%s">Image (JPG)</a></p>' % cutout_jpg,
-                '<p><a href="%s">Image (FITS)</a></p>' % cutout_fits,
-                '<p><a href="%s">Image (FITS; not resampled; including inverse-variance map)</a></p>' % cutout_subimage,
-                '<p><a href="%s">Coadd PSF (FITS)</a></p>' % copsf,
+        html = ['<h1>%s Cutouts at RA,Dec:</h1>' % self.survey.drname,
+                '<ul>'
+                '<li><a href="%s">Image (JPG)</a></li>' % cutout_jpg,
+                '<li><a href="%s">Image (FITS)</a></li>' % cutout_fits,
+                '<li><a href="%s">Image (FITS; not resampled; including inverse-variance map)</a></li>' % cutout_subimage,
+                '<li><a href="%s">Coadd PSF (FITS)</a></li>' % copsf,
+                '</ul>'
                 ]
         return html
 
