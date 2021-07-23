@@ -1827,18 +1827,7 @@ class DecalsLayer(MapLayer):
             html.extend(['<h1>%s Data for RA,Dec box:</h1>' % self.drname,
                          '<p><a href="%s">Catalog</a></p>' % caturl])
 
-            qargs = '?ra=%.4f&dec=%.4f&layer=%s' % (ra, dec, self.name))
-            cutout_jpg = my_reverse(req, 'cutout-jpeg') + qargs
-            cutout_fits = my_reverse(req, 'cutout-fits') + qargs
-            cutout_subimage = my_reverse(req, 'cutout-fits') + qargs + '&subimage'
-            copsf = my_reverse(req, 'coadd_psf') + qargs
-
-            html.extend(['<h1>%s Cutouts at RA,Dec:</h1>' % self.drname,
-                         '<p><a href="%s">Image (JPG)</a></p>' % cutout_jpg,
-                         '<p><a href="%s">Image (FITS)</a></p>' % cutout_fits,
-                         '<p><a href="%s">Image (FITS; not resampled; including inverse-variance map)</a></p>' % cutout_subimage,
-                         '<p><a href="%s">Coadd PSF (FITS)</a></p>' % copsf,
-                         ])
+            html.extend(self.cutouts_html(req, ra, dec))
 
         brick_html = self.brick_details_body(brick)
         html.extend(brick_html)
@@ -1875,6 +1864,21 @@ class DecalsLayer(MapLayer):
             '<li><a href="%s/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
             '</ul>',
             ]
+        return html
+
+    def cutouts_html(self, req, ra, dec):
+        qargs = '?ra=%.4f&dec=%.4f&layer=%s' % (ra, dec, self.name)
+        cutout_jpg = my_reverse(req, 'cutout-jpeg') + qargs
+        cutout_fits = my_reverse(req, 'cutout-fits') + qargs
+        cutout_subimage = my_reverse(req, 'cutout-fits') + qargs + '&subimage'
+        copsf = my_reverse(req, 'coadd_psf') + qargs
+
+        html = ['<h1>%s Cutouts at RA,Dec:</h1>' % self.drname,
+                '<p><a href="%s">Image (JPG)</a></p>' % cutout_jpg,
+                '<p><a href="%s">Image (FITS)</a></p>' % cutout_fits,
+                '<p><a href="%s">Image (FITS; not resampled; including inverse-variance map)</a></p>' % cutout_subimage,
+                '<p><a href="%s">Coadd PSF (FITS)</a></p>' % copsf,
+                ]
         return html
 
     def ccds_overlapping_html(self, req, ccds, ra=None, dec=None, brick=None):
@@ -2628,6 +2632,9 @@ class LegacySurveySplitLayer(MapLayer):
             ccds = touchup_ccds(ccds, survey)
             if len(ccds) == 0:
                 continue
+
+            html.extend(layer.cutouts_html(req, ra, dec))
+
             html.extend(layer.ccds_overlapping_html(req, ccds, ra=ra, dec=dec, brick=brickname))
             from legacypipe.survey import wcs_for_brick
             brickwcs = wcs_for_brick(brick)
