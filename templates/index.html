@@ -2172,6 +2172,14 @@ tiles = mylayer_B('hsc-dr2', 'HSC DR2',
 allLayers.push(tiles);
 {% endif %}
 
+tiles = mylayer_B('outliers-ast', 'Asteroids test: outliers',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('asteroids-i', 'Asteroids test: images',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 {% if enable_vlass %}
 tiles = mylayer_B('vlass1.2', 'VLASS 1.2',
                   {'attribution': vlass_attrib,
@@ -3993,6 +4001,8 @@ var baseTree1 = [
     {
         label: 'More surveys',
         children: [
+            findlayer('outliers-ast'),
+            findlayer('asteroids-i'),
             {% if enable_des_dr1 %}
             findlayer('des-dr1'),
             {% endif %}

@@ -217,7 +217,7 @@ def main():
         survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
 
     update = True
-    #update = False
+    update = False
     queue = False
 
 
@@ -236,6 +236,11 @@ def main():
     # pretty = 'DR9m-M33'
     # survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
     
+
+    indir = 'data/asteroids-i'
+    name = 'asteroids-i'
+    pretty = 'Asteroids test'
+    survey_dir = indir
     
     datadir = 'data'
 

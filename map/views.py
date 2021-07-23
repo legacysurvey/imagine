@@ -4170,6 +4170,219 @@ class DR8BokImage(BokImage):
             os.path.join(calibdir, self.camera, 'psfex',
                          estr[:5], '%s-%s.fits' % (self.camera, estr))]
 
+class AsteroidsLayer(ReDecalsLayer):
+    def get_rgb(self, imgs, bands, **kwargs):
+        rgb = super().get_rgb(imgs, bands, **kwargs)
+        rgb[:,:,1] = rgb[:,:,2] = rgb[:,:,0]
+        return rgb
+    def get_bands(self):
+        return 'i'
+
+class OutliersLayer(DecalsLayer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.scaledir = None
+        #self.bands = 'o'
+        self.bands = 'rgb'
+        self.imagetype = 'outliers-masked-pos'
+
+        self.cached_brick = None
+        self.cached_image = None
+
+    def get_base_filename(self, brick, band, invvar=False, **kwargs):
+        return self.survey.find_file(self.imagetype, brick=brick.brickname, band=band)
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        print('get_rgb: Bands:', bands)
+        print('imgs:', [i.shape for i in imgs])
+        #return imgs[0]
+        rgb = np.dstack(imgs)
+        print('get_rgb:', rgb.shape)
+        print('rgb range:', rgb.min(), rgb.max())
+        rgb = np.clip(rgb, 0., 1.)
+        return rgb
+
+    def get_scale(self, zoom, x, y, wcs):
+        if zoom >= 12:
+            return 0
+        return -1
+
+    def read_image(self, brick, band, scale, slc, fn=None):
+        import pylab as plt
+        import numpy as np
+
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+
+        key = fn #(brick, scale, slc)
+        if self.cached_brick == key:
+            print('Using cached image for', fn, 'band', band)
+            rgb = self.cached_image
+        else:
+            print('Reading image from', fn)
+            rgb = plt.imread(fn)
+            rgb = np.flipud(rgb)
+            print('rgb:', rgb.shape)
+
+            self.cached_brick = key
+            self.cached_image = rgb
+
+        plane = 'rgb'.index(band)
+        img = rgb[:,:,plane]
+        if slc is not None:
+            img = img[slc]
+            print('sliced:', img.shape)
+        #print('returning image type', img.dtype)
+        img = img.astype(np.float32) / 255.
+        return img
+
+    def read_wcs(self, brick, band, scale, fn=None):
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        print('Reading WCS for', fn)
+        if not os.path.exists(fn):
+            return None
+        print('(brick', brick, 'band', band, 'scale', scale)
+        from legacypipe.survey import wcs_for_brick
+        wcs = wcs_for_brick(brick)
+        return wcs
+
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
+                        scale=None, tempfiles=None):
+        import numpy as np
+        from astrometry.util.resample import resample_with_wcs, OverlapError
+        if scale is None:
+            scale = self.get_scale(zoom, x, y, wcs)
+        if not general_wcs:
+            bricks = self.bricks_touching_aa_wcs(wcs, scale=scale)
+        else:
+            bricks = self.bricks_touching_general_wcs(wcs, scale=scale)
+        if bricks is None or len(bricks) == 0:
+            print('No bricks touching WCS')
+            return None
+        if bands is None:
+            bands = self.get_bands()
+        W = int(wcs.get_width())
+        H = int(wcs.get_height())
+        target_ra,target_dec = wcs.pixelxy2radec([1,  1,1,W/2,W,W,  W,W/2],
+                                                 [1,H/2,H,H,  H,H/2,1,1  ])[-2:]
+        coordtype = self.get_pixel_coord_type(scale)
+        rimgs = {}
+        rws = {}
+        for band in bands:
+            rimgs[band] = np.zeros((H,W), np.float32)
+            rws[band]   = np.zeros((H,W), np.float32)
+        brick_bands = {}
+        allbricks = {}
+        for band in bands:
+            bandbricks = self.bricks_for_band(bricks, band)
+            for brick in bandbricks:
+                if not brick.brickname in brick_bands:
+                    brick_bands[brick.brickname] = []
+                    allbricks[brick.brickname] = brick
+                brick_bands[brick.brickname].append(band)
+        for brickname,brick in allbricks.items():
+            bimgs = []
+            # ASSUME WCS for all bands is the same!
+            band = brick_bands[brickname][0]
+            fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
+            print('Reading', brickname, 'band', band, 'scale', scale, '-> fn', fn)
+            if fn is None:
+                continue
+            try:
+                bwcs = self.read_wcs(brick, band, scale, fn=fn)
+                if bwcs is None:
+                    print('No such file:', brickname, band, scale, 'fn', fn)
+                    continue
+            except:
+                print('Failed to read WCS:', brickname, band, scale, 'fn', fn)
+                savecache = False
+                import traceback
+                import sys
+                traceback.print_exc(None, sys.stdout)
+                continue
+            # Check for pixel overlap area (projecting target WCS edges into this brick)
+            ok,xx,yy = bwcs.radec2pixelxy(target_ra, target_dec)
+            xx = xx.astype(np.int)
+            yy = yy.astype(np.int)
+            imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
+            M = 10
+            xlo = np.clip(xx.min() - M, 0, imW)
+            xhi = np.clip(xx.max() + M, 0, imW)
+            ylo = np.clip(yy.min() - M, 0, imH)
+            yhi = np.clip(yy.max() + M, 0, imH)
+            if xlo >= xhi or ylo >= yhi:
+                print('No pixel overlap')
+                continue
+            subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
+            slc = slice(ylo,yhi), slice(xlo,xhi)
+            ih,iw = subwcs.shape
+            assert(np.iinfo(coordtype).max > max(ih,iw))
+            oh,ow = wcs.shape
+            assert(np.iinfo(coordtype).max > max(oh,ow))
+
+            goodimgs = []
+            goodbands = []
+            imgtype = None
+            for band in brick_bands[brickname]:
+                try:
+                    img = self.read_image(brick, band, scale, slc, fn=fn)
+                    imgtype = img.dtype
+                except:
+                    print('Failed to read image:', brickname, band, scale, 'fn', fn)
+                    savecache = False
+                    import traceback
+                    import sys
+                    traceback.print_exc(None, sys.stdout)
+                    continue
+                goodimgs.append(img)
+                goodbands.append(band)
+            try:
+                Yo,Xo,Yi,Xi,resamps = resample_with_wcs(wcs, subwcs, goodimgs, intType=coordtype)
+            except OverlapError:
+                continue
+            bmask = self.get_brick_mask(scale, bwcs, brick)
+            if bmask is not None:
+                # Assume bmask is a binary mask as large as the bwcs.
+                # Shift the Xi,Yi coords
+                I = np.flatnonzero(bmask[Yi+ylo, Xi+xlo])
+                if len(I) == 0:
+                    continue
+                Yo = Yo[I]
+                Xo = Xo[I]
+                Yi = Yi[I]
+                Xi = Xi[I]
+                resamps = [resamp[I] for resamp in resamps]
+
+            # if not np.all(np.isfinite(resamp)):
+            #     ok, = np.nonzero(np.isfinite(resamp))
+            #     Yo = Yo[ok]
+            #     Xo = Xo[ok]
+            #     Yi = Yi[ok]
+            #     Xi = Xi[ok]
+            #     resamps = [resamp[ok] for resamp in resamps]
+
+            ok = self.filter_pixels(scale, img, wcs, subwcs, Yo,Xo,Yi,Xi)
+            if ok is not None:
+                Yo = Yo[ok]
+                Xo = Xo[ok]
+                Yi = Yi[ok]
+                Xi = Xi[ok]
+                resamps = [resamp[ok] for resamp in resamps]
+
+            for band,resamp in zip(goodbands, resamps):
+                wt = self.get_pixel_weights(band, brick, scale)
+                rimgs[band][Yo,Xo] += resamp * wt
+                rws  [band][Yo,Xo] += wt
+
+            for band in goodbands:
+                rimgs[band] /= np.maximum(rws[band], 1e-18)
+
+        rimgs = [rimgs[b] for b in bands]
+        return rimgs
+
+
 surveys = {}
 def get_survey(name):
     global surveys
@@ -4648,7 +4861,7 @@ def ccd_detail(req, layer_name, ccd):
             dec = float(dec)
             im = survey.get_image_object(c)
             wcs = im.get_wcs()
-            x,y = wcs.radec2pixelxy(ra, dec)
+            ok,x,y = wcs.radec2pixelxy(ra, dec)
             size = int(req.GET.get('size', 100))
             x = x-size/2
             y = y-size/2
@@ -5405,7 +5618,7 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         # hack a sky sub
         #tim.data -= np.median(tim.data)
         rgb = get_rgb([tim.data], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        index = dict(g=2, r=1, z=0)[tim.band]
+        index = dict(g=2, r=1, i=0, z=0)[tim.band]
         img = rgb[:,:,index]
         kwa.update(vmin=0, vmax=1)
 
@@ -5735,7 +5948,16 @@ def get_layer(name, default=None):
 
     elif name == 'hsc-dr2':
         layer = HscLayer('hsc-dr2')
-    
+
+    elif name == 'outliers-ast':
+        basename = 'asteroids-i'
+        survey = get_survey(basename)
+        layer = OutliersLayer(basename, 'outliers', survey)
+    elif name == 'asteroids-i':
+        basename = 'asteroids-i'
+        survey = get_survey(basename)
+        layer = AsteroidsLayer(basename, 'image', survey)
+        
     if layer is None:
         # Try generic rebricked
         #print('get_layer:', name, '-- generic')
@@ -6130,7 +6352,13 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/6/52/38.jpg')
     #r = c.get('/exposure_panels/decals-dr5/316739/N11/?ra=221.8517&dec=-7.6426&size=100')
     #r = c.get('/exposure_panels/decals-dr5/316741/N11/?ra=221.8520&dec=-7.6426&size=100&kind=dq')
-    r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
+    #r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
+    #r = c.get('/ccd/ls-dr9.1.1/decam-166877-S6.xhtml?ra=152.3613&dec=0.2671')
+    #r = c.get('/outliers-ast/1/14/9557/8044.jpg')
+    #r = c.get('/asteroids-i/1/15/19108/16061.jpg')
+    #r = c.get('/exposures/?ra=150.0452&dec=3.5275&layer=asteroids-i')
+    #r = c.get('/exposure_panels/asteroids-i/959877/S17/?ra=150.0452&dec=3.5275&size=100')
+    r = c.get('/jpl_lookup?ra=150.0452&dec=3.5275&date=2021-05-15 01:35:16.197199&camera=decam')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

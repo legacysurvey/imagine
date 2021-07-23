@@ -908,6 +908,7 @@ def main():
                          'ls-dr9-north', 'ls-dr9-north-model',
                          'ls-dr9.1.1', 'ls-dr9.1.1-model',
                          'ls-dr9-south-B', 'ls-dr9-south-B-model',
+                         'asteroids-i',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
