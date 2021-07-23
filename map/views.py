@@ -1820,14 +1820,25 @@ class DecalsLayer(MapLayer):
         ]
 
         bb = get_radec_bbox(req)
-        print('DecalsLayer.data_for_radec: bb', bb)
         if bb is not None:
             ralo,rahi,declo,dechi = bb
-            print('RA,Dec bb:', bb)
             caturl = (my_reverse(req, 'cat-fits', args=(self.name,)) +
                       '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
             html.extend(['<h1>%s Data for RA,Dec box:</h1>' % self.drname,
                          '<p><a href="%s">Catalog</a></p>' % caturl])
+
+            qargs = '?ra=%.4f&dec=%.4f&layer=%s' % (ra, dec, self.name))
+            cutout_jpg = my_reverse(req, 'cutout-jpeg') + qargs
+            cutout_fits = my_reverse(req, 'cutout-fits') + qargs
+            cutout_subimage = my_reverse(req, 'cutout-fits') + qargs + '&subimage'
+            copsf = my_reverse(req, 'coadd_psf') + qargs
+
+            html.extend(['<h1>%s Cutouts at RA,Dec:</h1>' % self.drname,
+                         '<p><a href="%s">Image (JPG)</a></p>' % cutout_jpg,
+                         '<p><a href="%s">Image (FITS)</a></p>' % cutout_fits,
+                         '<p><a href="%s">Image (FITS; not resampled; including inverse-variance map)</a></p>' % cutout_subimage,
+                         '<p><a href="%s">Coadd PSF (FITS)</a></p>' % copsf,
+                         ])
 
         brick_html = self.brick_details_body(brick)
         html.extend(brick_html)
