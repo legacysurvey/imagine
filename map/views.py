@@ -1483,84 +1483,7 @@ class MapLayer(object):
 
         if ("lslga" in req.GET or "lslga-model" in req.GET
             or 'sga' in req.GET or 'sga-parent' in req.GET):
-
-            from PIL import Image, ImageDraw
-            img = Image.open(tilefn)
-
-            ra, dec = wcs.radec_center()
-            img_cx = img.size[0] / 2
-            img_cy = img.size[1] / 2
-            pixscale = wcs.pixel_scale()
-
-            ralo = ra - (img_cx * pixscale / 3600 / np.cos(np.deg2rad(dec)))
-            rahi = ra + (img_cx * pixscale / 3600 / np.cos(np.deg2rad(dec)))
-            declo = dec - (img_cy * pixscale / 3600)
-            dechi = dec + (img_cy * pixscale / 3600)
-
-            from map.cats import query_lslga_radecbox, query_lslga_model_radecbox
-            galaxies = None
-            if req.GET.get('lslga', None) == '':
-                lslgacolor_default = '#3388ff'
-                galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
-            elif req.GET.get('lslga-model', None) == '':
-                lslgacolor_default = '#ffaa33'
-                galaxies = query_lslga_model_radecbox(ralo, rahi, declo, dechi)
-            elif req.GET.get('sga', None) == '':
-                lslgacolor_default = '#3388ff'
-                fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
-                galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi, fn=fn)
-            elif req.GET.get('sga-parent', None) == '':
-                lslgacolor_default = '#ffaa33'
-                fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-parent-v3.0.kd.fits')
-                galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi, fn=fn)
-            else:
-                galaxies, lslgacolor_default = None, None
-
-            for r in galaxies if galaxies is not None else []:
-
-                RA, DEC = r.ra, r.dec
-                if (req.GET.get('lslga', None) == '' or
-                    req.GET.get('sga', None) == '' or
-                    req.GET.get('sga-parent', None) == ''):
-                    RAD = r.radius_arcsec
-                    AB = r.ba
-                    PA = r.pa
-                elif req.GET.get('lslga-model', None) == '':
-                    RAD = r.radius_model_arcsec
-                    AB = r.ba_model
-                    PA = r.pa_model
-
-                if np.isnan(AB):
-                    AB = 1
-                if np.isnan(PA):
-                    PA = 90
-
-                major_axis_arcsec = RAD * 2
-                minor_axis_arcsec = major_axis_arcsec * AB
-
-                overlay_height = int(np.abs(major_axis_arcsec / pixscale))
-                overlay_width = int(np.abs(minor_axis_arcsec / pixscale))
-
-                overlay = Image.new('RGBA', (overlay_width, overlay_height))
-                draw = ImageDraw.ImageDraw(overlay)
-                box_corners = (0, 0, overlay_width, overlay_height)
-                ellipse_color = '#' + req.GET.get('lslgacolor', lslgacolor_default).lstrip('#')
-                ellipse_width = int(np.round(float(req.GET.get('lslgawidth', 3)), 0))
-                draw.ellipse(box_corners, fill=None, outline=ellipse_color, width=ellipse_width)
-
-                rotated = overlay.rotate(PA, expand=True)
-                rotated_width, rotated_height = rotated.size
-
-                ok, ellipse_x, ellipse_y = wcs.radec2pixelxy(RA, DEC)
-
-                if ok:
-
-                    paste_shift_x = int(ellipse_x - rotated_width / 2)
-                    paste_shift_y = int(ellipse_y - rotated_height / 2)
-
-                    img.paste(rotated, (paste_shift_x, paste_shift_y), rotated)
-
-            img.save(tilefn)
+            render_sga_ellipse(tilefn, tilefn, wcs, req.GET)
     
         return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
                          filename=filename)
@@ -1598,7 +1521,8 @@ class MapLayer(object):
                      bands=None,
                      fits=False, jpeg=False,
                      subimage=False,
-                     tempfiles=None):
+                     tempfiles=None,
+                     req=None):
         import numpy as np
         import fitsio
         native_pixscale = self.pixscale
@@ -1684,6 +1608,10 @@ class MapLayer(object):
         if jpeg:
             rgb = self.get_rgb(ims, bands)
             self.write_jpeg(out_fn, rgb)
+
+            if 'sga' in req.GET or 'sga-parent' in req.GET:
+                render_sga_ellipse(out_fn, out_fn, wcs, req.GET)
+
             return
 
         if hdr is not None:
@@ -1750,9 +1678,10 @@ class MapLayer(object):
         f,out_fn = tempfile.mkstemp(suffix=suff)
         os.close(f)
         os.unlink(out_fn)
-        
+
         self.write_cutout(ra, dec, pixscale, width, height, out_fn, bands=bands,
-                          fits=fits, jpeg=jpeg, subimage=subimage, tempfiles=tempfiles)
+                          fits=fits, jpeg=jpeg, subimage=subimage, tempfiles=tempfiles,
+                          req=req)
 
         return send_file(out_fn, filetype, unlink=True, filename=nice_fn)
 
@@ -1776,6 +1705,85 @@ class MapLayer(object):
                 os.unlink(fn)
             return rtn
         return view
+
+def render_sga_ellipse(infn, outfn, wcs, request):
+    from PIL import Image, ImageDraw
+    import numpy as np
+    img = Image.open(infn)
+
+    ra, dec = wcs.radec_center()
+    img_cx = img.size[0] / 2
+    img_cy = img.size[1] / 2
+    pixscale = wcs.pixel_scale()
+
+    ralo = ra - (img_cx * pixscale / 3600 / np.cos(np.deg2rad(dec)))
+    rahi = ra + (img_cx * pixscale / 3600 / np.cos(np.deg2rad(dec)))
+    declo = dec - (img_cy * pixscale / 3600)
+    dechi = dec + (img_cy * pixscale / 3600)
+
+    from map.cats import query_sga_radecbox
+    galaxies = None
+    # if request.get('lslga', None) == '':
+    #     lslgacolor_default = '#3388ff'
+    #     galaxies = query_lslga_radecbox(ralo, rahi, declo, dechi)
+    # elif request.get('lslga-model', None) == '':
+    #     lslgacolor_default = '#ffaa33'
+    #     galaxies = query_lslga_model_radecbox(ralo, rahi, declo, dechi)
+    if request.get('sga', None) == '':
+        lslgacolor_default = '#3388ff'
+        #fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
+        fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-2020.kd.fits')
+        galaxies = query_sga_radecbox(fn, ralo, rahi, declo, dechi)
+    elif request.get('sga-parent', None) == '':
+        lslgacolor_default = '#ffaa33'
+        fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-parent-v3.0.kd.fits')
+        galaxies = query_sga_radecbox(fn, ralo, rahi, declo, dechi)
+    else:
+        galaxies, lslgacolor_default = None, None
+
+    for r in galaxies if galaxies is not None else []:
+
+        RA, DEC = r.ra, r.dec
+        if (request.get('lslga', None) == '' or
+            request.get('sga', None) == '' or
+            request.get('sga-parent', None) == ''):
+            RAD = r.radius_arcsec
+            AB = r.ba
+            PA = r.pa
+        elif request.get('lslga-model', None) == '':
+            RAD = r.radius_model_arcsec
+            AB = r.ba_model
+            PA = r.pa_model
+
+        if np.isnan(AB):
+            AB = 1
+        if np.isnan(PA):
+            PA = 90
+
+        major_axis_arcsec = RAD * 2
+        minor_axis_arcsec = major_axis_arcsec * AB
+
+        overlay_height = int(np.abs(major_axis_arcsec / pixscale))
+        overlay_width = int(np.abs(minor_axis_arcsec / pixscale))
+
+        overlay = Image.new('RGBA', (overlay_width, overlay_height))
+        draw = ImageDraw.ImageDraw(overlay)
+        box_corners = (0, 0, overlay_width, overlay_height)
+        ellipse_color = '#' + request.get('sgacolor', lslgacolor_default).lstrip('#')
+        ellipse_width = int(np.round(float(request.get('sgawidth', 3)), 0))
+        draw.ellipse(box_corners, fill=None, outline=ellipse_color, width=ellipse_width)
+
+        rotated = overlay.rotate(PA, expand=True)
+        rotated_width, rotated_height = rotated.size
+
+        ok, ellipse_x, ellipse_y = wcs.radec2pixelxy(RA, DEC)
+
+        if ok:
+            paste_shift_x = int(ellipse_x - rotated_width / 2)
+            paste_shift_y = int(ellipse_y - rotated_height / 2)
+            img.paste(rotated, (paste_shift_x, paste_shift_y), rotated)
+
+    img.save(outfn)
 
 class DecalsLayer(MapLayer):
     def __init__(self, name, imagetype, survey, bands='grz', drname=None):
@@ -6378,7 +6386,9 @@ if __name__ == '__main__':
     #r = c.get('/asteroids-i/1/15/19108/16061.jpg')
     #r = c.get('/exposures/?ra=150.0452&dec=3.5275&layer=asteroids-i')
     #r = c.get('/exposure_panels/asteroids-i/959877/S17/?ra=150.0452&dec=3.5275&size=100')
-    r = c.get('/jpl_lookup?ra=150.0452&dec=3.5275&date=2021-05-15 01:35:16.197199&camera=decam')
+    #r = c.get('/jpl_lookup?ra=150.0452&dec=3.5275&date=2021-05-15 01:35:16.197199&camera=decam')
+    #r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga=')
+    r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga-parent=')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
