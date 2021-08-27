@@ -799,7 +799,7 @@ var SdssSpectraCatalog = CatalogOverlay.extend({
         if (zwval > 0) {
             zw = ' (Zwarn=0x' + zwval.toString(16) + ')';
         }
-        var label = '<a href="https://dr14.sdss.org/optical/spectrum/view?mjd=' +
+        var label = '<a href="https://dr16.sdss.org/optical/spectrum/view?mjd=' +
             json['mjd'][i] + '&fiberid=' + json['fiber'][i] + '&plateid=' +
             json['plate'][i] + '&zwarning=0&matches=any">' + json.name[i] + zw + '</a>';
         return label;
@@ -1422,7 +1422,7 @@ function exp_detail(layer_name, name, aparams) {
 
 function plate_detail(layer_name, name, aparams) {
     //console.log('Plate_detail: ' + layer_name + ', ' + name + ', ' + aparams);
-    return '<a href="https://dr14.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
+    return '<a href="https://dr16.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
 }
 
 function linkHereURL(latlng) {
@@ -3885,7 +3885,6 @@ var baseTree1 = [
          findlayer('ls-dr9.1.1-model'),
          findlayer('ls-dr9.1.1-resid'),
         ]),
-    ]),
     {% endif %}
 
     {% if enable_dr9_north %}
@@ -3902,6 +3901,11 @@ var baseTree1 = [
         {% if enable_dr9_resids %}
         findlayer('ls-dr9-south-resid'),
         {% endif %}
+    ]),
+    {% endif %}
+
+    {% if enable_dr9 %}
+    // nested in dr9
     ]),
     {% endif %}
 
@@ -4291,10 +4295,12 @@ var layerTree = L.control.layers.tree(baseTree,
      var sel = $(".leaflet-layerstree-opened").parent().parent();
      //console.log('Parents:');
      //console.log(sel);
-     
+
+     // These are menus to collapse
      txts = [
-         {% if enable_dr7 %}
-         'Legacy Surveys DR6+DR7 images',
+         {% if enable_dr9 %}
+         'Legacy Surveys DR9 images',
+         'Legacy Surveys DR9.1.1 COSMOS deep images',
          {% endif %}
          {% if enable_dr9_north %}
          'Legacy Surveys DR9-north images',
@@ -4312,6 +4318,9 @@ var layerTree = L.control.layers.tree(baseTree,
          {% endif %}
          {% if enable_dr8_south %}
          'Legacy Surveys DR8-south images',
+         {% endif %}
+         {% if enable_dr7 %}
+         'Legacy Surveys DR6+DR7 images',
          {% endif %}
          'DECaLS DR7 images',
          'MzLS+BASS DR6 images',
