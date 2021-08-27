@@ -69,7 +69,7 @@ ENABLE_VLASS = True
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False
 
-DEBUG_LOGGING = False
+DEBUG_LOGGING = True
 
 MAX_NATIVE_ZOOM = 15
 

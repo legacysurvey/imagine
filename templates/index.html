@@ -125,6 +125,9 @@ var QueryItems = function() {
 var qstr = QueryItems();
 
 var zoom_initial = 12;
+if ('plate' in qstr) {
+  zoom_initial = 8;
+}
 if ('zoom' in qstr) {
   zoom_initial = parseInt(qstr['zoom']);
   if (isNaN(zoom_initial))
@@ -3150,7 +3153,7 @@ if ('plate' in qstr) {
     url += '&plate=' + qstr['plate'];
 }
 var plateOverlay = new CircleOverlay('sdss-plates',
-                                     'SDSS Spectro Plates',
+                                     'SDSS Spectro Plates (DR16)',
                                     {'url': url,
                                      'labelMinZoom': 100,
                                      'detail': plate_detail,
@@ -3592,7 +3595,7 @@ url = smallcat_url;
 if ('plate' in qstr) {
     url += '&plate=' + qstr['plate'];
 }
-var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
+var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra (DR16)',
                                   {'url': url,
                                    'radius': 300,
                                    'labelsMinZoom': 11,

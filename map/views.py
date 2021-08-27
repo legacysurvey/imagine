@@ -348,7 +348,7 @@ def _index(req,
     for k,v in kwkeys.items():
         if not k in kwargs:
             kwargs[k] = v
-    
+
     from map.cats import cat_user, cat_desi_tile
 
     layer = request_layer_name(req, default_layer)
@@ -361,19 +361,23 @@ def _index(req,
 
     plate = req.GET.get('plate', None)
     if plate is not None:
-        from astrometry.util.fits import fits_table
+        import numpy as np
+        T,tree = read_sdss_plates()
         plate = int(plate, 10)
-        T = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
-                                    'plates-dr12.fits'))
-        T.cut(T.plate == plate)
-        ra,dec = float(T.racen), float(T.deccen)
-        zoom = 8
-        layer = 'sdss'
+        # (don't use T.cut -- it's from a shared cache)
+        i = np.flatnonzero(T.plate == plate)
+        if len(i) == 1:
+            t = T[i[0]]
+            ra,dec = float(t.ra), float(t.dec)
+            #zoom = 8
+            layer = 'sdss'
+            #print('Found plate', plate, 'at RA,Dec', ra,dec, ', setting RA,Dec,zoom,layer')
 
-    try:
-        zoom = int(req.GET.get('zoom', zoom))
-    except:
-        pass
+    # (note, zoom level is actually set by index.html; it's not even passed to index.html)
+    # try:
+    #     zoom = int(req.GET.get('zoom', zoom))
+    # except:
+    #     pass
     try:
         ra,dec = parse_radec_strings(req.GET.get('ra'), req.GET.get('dec'))
     except:
@@ -551,7 +555,7 @@ def _index(req,
     )
 
     args.update(kwargs)
-    
+
     from django.shortcuts import render
     # (it's not supposed to be **args, trust me)
     return render(req, 'index.html', args)
@@ -4772,14 +4776,30 @@ def exposure_list(req):
     return HttpResponse(json.dumps(dict(objs=exps)),
                         content_type='application/json')
 
-plate_cache = {}
+plate_cache = None
+def read_sdss_plates():
+    global plate_cache
+    if plate_cache is None:
+        from astrometry.libkd.spherematch import tree_build_radec
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        T = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
+                                    'plates-dr16.fits'))
+        T.rename('racen', 'ra')
+        T.rename('deccen', 'dec')
+        # Cut to the first entry for each PLATE
+        nil,I = np.unique(T.plate, return_index=True)
+        T.cut(I)
+        tree = tree_build_radec(T.ra, T.dec)
+        plate_cache = (T,tree)
+    else:
+        T,tree = plate_cache
+    return T,tree
 
 def sdss_plate_list(req):
     import json
     from astrometry.util.fits import fits_table
     import numpy as np
-
-    global plate_cache
 
     north = float(req.GET['dechi'])
     south = float(req.GET['declo'])
@@ -4788,22 +4808,8 @@ def sdss_plate_list(req):
     name = 'sdss'
     plate = req.GET.get('plate', None)
 
-    if not name in plate_cache:
-        from astrometry.libkd.spherematch import tree_build_radec
-        T = fits_table(os.path.join(settings.DATA_DIR, 'sdss',
-                                    'plates-dr12.fits'))
-        T.rename('racen', 'ra')
-        T.rename('deccen', 'dec')
-        # Cut to the first entry for each PLATE
-        nil,I = np.unique(T.plate, return_index=True)
-        T.cut(I)
-        tree = tree_build_radec(T.ra, T.dec)
-        plate_cache[name] = (T,tree)
-    else:
-        T,tree = plate_cache[name]
-
+    T,tree = read_sdss_plates()
     radius = 1.5
-
     I = _objects_touching_box(tree, north, south, east, west,radius=radius)
     T = T[I]
 

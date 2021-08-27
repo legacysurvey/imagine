@@ -1,6 +1,6 @@
 from viewer.settings_common import *
 
-DEBUG_LOGGING = False
+DEBUG_LOGGING = True
 
 USER_QUERY_DIR = '/tmp/viewer-dev-user'
 
