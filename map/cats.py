@@ -1641,7 +1641,7 @@ def manga_ifu_offsets():
 
 def cat_spec(req, ver):
     import json
-    fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr14-trimmed.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr16-trimmed.kd.fits')
     tag = 'spec'
     T = cat_kd(req, ver, tag, fn)
     if T is None:
@@ -2331,6 +2331,34 @@ if __name__ == '__main__':
     # create_galaxy_catalog(galfn, None, layer=layer)
     # sys.exit(0)
 
+    if True:
+        # Create SDSS DR16 Spectra file (specObj-dr16-trimmed.kd.fits):
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        T=fits_table('/global/cfs/cdirs/cosmo/data/sdss/dr16/sdss/spectro/redux/specObj-dr16.fits',
+                     columns=['plate','mjd','fiberid','plug_ra','plug_dec','class','subclass','z','zwarning'])
+        print('Read', len(T))
+        T.rename('plug_ra', 'ra')
+        T.rename('plug_dec','dec')
+        labels = []
+        for t in T:
+            sub = t.subclass
+            sub = sub.split()
+            sub = ' '.join([s for s in sub if s[0] != '('])
+            cla = t.get('class').strip()
+            txt = cla
+            if len(sub):
+                txt += ' (' + sub + ')'
+            if cla in ['GALAXY', 'QSO']:
+                txt += ' z=%.3f' % t.z
+            labels.append(txt)
+        T.label = np.array(labels)
+        print('Writing trimmed...')
+        T.writeto('data/sdss/specObj-dr16-trimmed.fits', columns=['ra','dec','plate','mjd','fiberid','z','zwarning','label'])
+        print('Creating kdtree...')
+        os.system('startree -i data/sdss/specObj-dr16-trimmed.fits -o data/sdss/specObj-dr16-trimmed.kd.fits -T -k -P')
+        sys.exit(0)
+
     from django.test import Client
     c = Client()
     #r = c.get('/sga/1/cat.json?ralo=259.2787&rahi=259.7738&declo=35.9422&dechi=36.1656')
@@ -2369,24 +2397,3 @@ if __name__ == '__main__':
     c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
 
     sys.exit(0)
-
-    T=fits_table('/project/projectdirs/cosmo/data/sdss/dr14/sdss/spectro/redux/specObj-dr14.fits',
-                 columns=['plate','mjd','fiberid','plug_ra','plug_dec','class','subclass','z','zwarning'])
-    T.rename('plug_ra', 'ra')
-    T.rename('plug_dec','dec')
-    labels = []
-    for t in T:
-        sub = t.subclass
-        sub = sub.split()
-        sub = ' '.join([s for s in sub if s[0] != '('])
-        cla = t.get('class').strip()
-        txt = cla
-        if len(sub):
-            txt += ' (' + sub + ')'
-        if cla in ['GALAXY', 'QSO']:
-            txt += ' z=%.3f' % t.z
-        labels.append(txt)
-    T.label = np.array(labels)
-    T.writeto('specObj-dr14-trimmed.fits', columns=['ra','dec','plate','mjd','fiberid','z','zwarning','label'])
-
-    # startree -i data/specObj-dr14-trimmed.fits -o data/specObj-dr14-trimmed.kd.fits -T -k -P
