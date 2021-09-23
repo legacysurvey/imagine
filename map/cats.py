@@ -412,18 +412,35 @@ def upload_cat(req):
             destination.write(chunk)
     print('Wrote', tmpfn)
 
+    errtxt = ('<html><body>%s<p>Custom catalogs must be either a: <ul>'
+              + '<li><b>FITS binary table</b> with columns named "RA", "DEC" (not case sensitive) and optionally "NAME".'
+              + '<li><b>CSV text file</b> with columns "RA", "DEC", and optionally "NAME" (also not case sensitive)</ul>'
+              +'See <a href="https://www.legacysurvey.org/svtips/">Tips & Tricks</a> for some hints on how to produce such a catalog.</p></body></html>')
+
+    T = None
+    emsg = ''
     try:
         T = fits_table(tmpfn)
-    except:
-        return HttpResponse('Must upload FITS format catalog including "RA", "Dec", optionally "Name" columns')
-    
+    except Exception as e:
+        emsg = str(e)
+    if T is None:
+        try:
+            # Try CSV...
+            from astropy.table import Table
+            t = Table.read(tmpfn, format='ascii').write(tmpfn, overwrite=True)
+            T = fits_table(tmpfn)
+        except Exception as e:
+            emsg += '; ' + str(e)
+    if T is None:
+        return HttpResponse(errtxt % ('Error: '+emsg))
+
     # Rename and resave columns if necessary
     if rename_cols(T):
         T.write_to(tmpfn)
 
     cols = T.columns()
     if not (('ra' in cols) and ('dec' in cols)):
-        return HttpResponse('Must upload catalog including "RA", "Dec", optionally "Name" columns')
+        return HttpResponse(errtxt % '<p>Did not find column "RA" and "DEC" in table.</p>')
 
     ra,dec = T.ra[0], T.dec[0]
     catname = tmpfn.replace(dirnm, '').replace('.fits', '')
