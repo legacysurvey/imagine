@@ -702,10 +702,10 @@ var PhotozCatalog = CatalogOverlay.extend({
         for (var i=0, len=dz.length; i<len; i++) {
             if (dz[i] > 0.2) {
                 wt.push(2);
-                rads.push(100 / 30.);
+                rads.push(40 / 30.);
             } else {
                 wt.push(5);
-                rads.push(150 / 30.);
+                rads.push(50 / 30.);
             }
         }
         result['weight'] = wt;
@@ -3352,7 +3352,7 @@ var photoz = new PhotozCatalog('photoz-dr9', 'DR9 Photo-z',
                                  {'minZoom': 12,
                                  'labelsMinZoom': 14,
                                  'urlTerm': 'photoz-dr9',
-                                 'radius': 150,});
+                                 'radius': 50,});
 
 var GaiaDr2Catalog = CatalogOverlay.extend({
     getColor: function(json, i) {
