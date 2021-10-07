@@ -5467,49 +5467,111 @@ def jpl_lookup(req):
     dec = float(req.GET.get('dec'))
     camera = req.GET.get('camera')
 
-    latlongs = dict(decam=dict(lon='70.81489', lon_u='W',
-                               lat='30.16606', lat_u='S',
-                               alt='2215.0', alt_u='m'),
-                    mosaic=dict(lon='111.6003', lon_u='W',
-                                lat = '31.9634', lat_u='N',
-                                alt='2120.0', alt_u='m'))
-    latlongs.update({'90prime': dict(lon='111.6', lon_u='W',
-                                     lat='31.98', lat_u='N',
-                                     alt='2120.0', alt_u='m')})
+    # JPL's observer codes
+    obs_code = {
+        'decam': 'W84',
+        '90prime': 'V00',
+        'mosaic': '695',
+    }[camera]
 
-    latlongargs = latlongs[camera]
+    rastr = ra2hmsstring(ra, separator='-')
+    decstr = dec2dmsstring(dec, separator='-')
+    if decstr.startswith('+'):
+        decstr = decstr[1:]
+    if decstr.startswith('-'):
+        decstr = 'M' + decstr[1:]
 
-    hms = ra2hmsstring(ra, separator=':')
-    dms = dec2dmsstring(dec)
-    if dms.startswith('+'):
-        dms = dms[1:]
+    date = date.replace(' ', 'T')
+    date = date[:19]
+    print('Date:', date)
+    # search radius in degrees
+    r = '%.4f' % (10./3600)
 
-    # '2016-03-01 00:42'
-    s = requests.Session()
-    r = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi')
-    #r2 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_time=1')
-    print('JPL lookup: setting date', date)
-    r3 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(obs_time=date, time_zone='0', check_time='Use Specified Time'))
-    print('Reply code:', r3.status_code)
-    #r4 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_loc=1')
-    print('JPL lookup: setting location', latlongargs)
-    latlongargs.update(s_pos="Use Specified Coordinates")
-    r5 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=latlongargs)
-    print('Reply code:', r5.status_code)
-    #r6 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_region=1')
-    print('JPL lookup: setting RA,Dec', (hms, dms))
-    r7 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(ra_1=hms, dec_1=dms,
-                                                                 ra_2='w0 0 45', dec_2='w0 0 45', sys='J2000', check_region_1="Use Specified R.A./Dec. Region"))
-    print('Reply code:', r7.status_code)
-    #r8 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_constraint=1')
-    print('JPL lookup: clearing mag limit')
-    r9 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(group='all', limit='1000', mag_limit='', mag_required='yes', two_pass='yes', check_constraints="Use Specified Settings"))
-    print('Reply code:', r9.status_code)
-    print('JPL lookup: submitting search')
-    r10 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(search="Find Objects"))
-    txt = r10.text
-    txt = txt.replace('<head>', '<head><base href="https://ssd.jpl.nasa.gov/">')
-    return HttpResponse(txt)
+    url = ('https://ssd-api.jpl.nasa.gov/sb_ident.api?two-pass=true&suppress-first-pass=true&'
+           + 'req-elem=false&'
+           + 'mpc-code=%s&' % obs_code
+           + 'obs-time=%s&' % date
+           + 'fov-ra-center=%s&' % rastr
+           + 'fov-dec-center=%s&' % decstr
+           + 'fov-ra-hwidth=%s&' % r
+           + 'fov-dec-hwidth=%s' % r
+           )
+    print('URL', url)
+    r = requests.get(url)
+
+    print('Text result:', r.text)
+    j = r.json()
+    print('Json result:', j)
+    warn = j.get('warning')
+    if warn:
+        return HttpResponse('<html><body><p>Result: warning: %s</p><p>Full response: <pre>%s</pre></p></body></html>' % (warn, r.text))
+    fields = j['fields_second']
+    data = j['data_second_pass']
+
+    # Add link to objects.
+    import re
+    # 44505 (1998 XT38) --> 44505
+    r1 = re.compile('(?P<num>\d+) \([\w\s]+\)')
+    for i,d in enumerate(data):
+        name = d[0]
+        #https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=44505
+        m = r1.match(name)
+        if m is not None:
+            d_url = 'https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=' + m['num']
+            data[i][0] = '<a href="%s">%s</a>' % (d_url, name)
+    
+    
+    from django.shortcuts import render
+    return render(req, 'jpl-small-body-results.html',
+                  { 'fields': fields,
+                    'data': data,
+                    'json': j })
+    #return HttpResponse(r.text)
+
+    
+    #sb-kind=a&mpc-code=568&obs-time=2021-02-09_00:00:00&mag-required=true&two-pass=true&suppress-first-pass=true&req-elem=false&vmag-lim=20&fov-ra-lim=10-10-00%2C10-20-00&fov-dec-lim=10-00-00,10-30-00
+
+
+    
+    # latlongs = dict(decam=dict(lon='70.81489', lon_u='W',
+    #                            lat='30.16606', lat_u='S',
+    #                            alt='2215.0', alt_u='m'),
+    #                 mosaic=dict(lon='111.6003', lon_u='W',
+    #                             lat = '31.9634', lat_u='N',
+    #                             alt='2120.0', alt_u='m'))
+    # latlongs.update({'90prime': dict(lon='111.6', lon_u='W',
+    #                                  lat='31.98', lat_u='N',
+    #                                  alt='2120.0', alt_u='m')})
+    # 
+    # latlongargs = latlongs[camera]
+    # 
+    # 
+    # # '2016-03-01 00:42'
+    # s = requests.Session()
+    # r = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi')
+    # #r2 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_time=1')
+    # print('JPL lookup: setting date', date)
+    # r3 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(obs_time=date, time_zone='0', check_time='Use Specified Time'))
+    # print('Reply code:', r3.status_code)
+    # #r4 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_loc=1')
+    # print('JPL lookup: setting location', latlongargs)
+    # latlongargs.update(s_pos="Use Specified Coordinates")
+    # r5 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=latlongargs)
+    # print('Reply code:', r5.status_code)
+    # #r6 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_region=1')
+    # print('JPL lookup: setting RA,Dec', (hms, dms))
+    # r7 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(ra_1=hms, dec_1=dms,
+    #                                                              ra_2='w0 0 45', dec_2='w0 0 45', sys='J2000', check_region_1="Use Specified R.A./Dec. Region"))
+    # print('Reply code:', r7.status_code)
+    # #r8 = s.get('https://ssd.jpl.nasa.gov/sbfind.cgi?s_constraint=1')
+    # print('JPL lookup: clearing mag limit')
+    # r9 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(group='all', limit='1000', mag_limit='', mag_required='yes', two_pass='yes', check_constraints="Use Specified Settings"))
+    # print('Reply code:', r9.status_code)
+    # print('JPL lookup: submitting search')
+    # r10 = s.post('https://ssd.jpl.nasa.gov/sbfind.cgi', data=dict(search="Find Objects"))
+    # txt = r10.text
+    # txt = txt.replace('<head>', '<head><base href="https://ssd.jpl.nasa.gov/">')
+    # return HttpResponse(txt)
 
 def jpl_redirect(req, jpl_url):
     from django.http import HttpResponseRedirect
@@ -6394,7 +6456,8 @@ if __name__ == '__main__':
     #r = c.get('/exposure_panels/asteroids-i/959877/S17/?ra=150.0452&dec=3.5275&size=100')
     #r = c.get('/jpl_lookup?ra=150.0452&dec=3.5275&date=2021-05-15 01:35:16.197199&camera=decam')
     #r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga=')
-    r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga-parent=')
+    #r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga-parent=')
+    r = c.get('/jpl_lookup?ra=138.9834&dec=17.8431&date=2016-01-15%2005:51:44.149541&camera=decam')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
