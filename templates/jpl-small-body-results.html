@@ -1,0 +1,21 @@
+<html>
+  <head>
+    <title>JPL Small-body identification search results</title>
+  </head>
+  <body>
+    <table border="1">
+      <tr>
+        {% for f in fields %}
+        <th>{{f}}</th>
+        {% endfor %}
+      </tr>
+      {% for d in data %}
+      <tr>
+        {% for di in d %}
+        <td>{{di|safe}}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+      </table>
+  </body>
+</html>
