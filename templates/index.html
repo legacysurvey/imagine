@@ -3869,9 +3869,6 @@ var baseTree1 = [
     {% if enable_m33 %}
     findlayer('m33'),
     {% endif %}
-    {% if enable_phat %}
-    findlayer('phat'),
-    {% endif %}
 
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
@@ -4008,6 +4005,9 @@ var baseTree1 = [
     {
         label: 'More surveys',
         children: [
+            {% if enable_phat %}
+            findlayer('phat'),
+            {% endif %}
             findlayer('outliers-ast'),
             findlayer('asteroids-i'),
             {% if enable_des_dr1 %}

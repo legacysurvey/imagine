@@ -66,6 +66,8 @@ ENABLE_HSC_DR2 = True
 
 ENABLE_VLASS = True
 
+ENABLE_PHAT = False
+
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False
 

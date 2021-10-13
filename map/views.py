@@ -337,8 +337,8 @@ def _index(req,
         enable_desi_targets = settings.ENABLE_DESI_TARGETS,
         enable_desi_footprint = True,
         enable_spectra = settings.ENABLE_SPECTRA,
+        enable_phat = settings.ENABLE_PHAT,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
-        enable_phat = False,
         discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
     )
 

@@ -24,6 +24,8 @@ CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
 ENABLE_DEV = True
 
+ENABLE_PHAT = True
+
 ENABLE_DECAPS = True
 ENABLE_EBOSS = True
 ENABLE_DR5 = True
