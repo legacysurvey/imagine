@@ -2203,8 +2203,17 @@ tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
                  'attribution': unwise_attrib,
                  'urlPatterns': [
                      [1, 11, aws_unwise_url],]});
-                 //[12, maxZoom, tile_url], ],});
+ //[12, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+
+tiles = mylayer_B('unwise-neo7', 'unWISE W1/W2 NEO7',
+                {'maxNativeZoom': 11,
+                 'attribution': unwise_attrib,
+                 'urlPatterns': [
+                     [1, maxZoom, tile_url], ],});
+ //[1, 11, aws_unwise_url],]});
+allLayers.push(tiles);
+
 
 tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
                 {'maxNativeZoom': 12,
@@ -3993,6 +4002,7 @@ var baseTree1 = [
     {% endif %}
 
     {% if enable_unwise %}
+    findlayer('unwise-neo7'),
     findlayer('unwise-neo6', [
         {% if science %}
         findlayer('unwise-neo4'),
