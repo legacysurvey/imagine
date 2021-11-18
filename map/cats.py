@@ -358,7 +358,8 @@ def cat_desi_release_tiles(req, ver, release):
         for t in T:
             name = 'Tile %i' % t.tileid
             details = []
-            p = t.faprgrm.strip()
+            #p = t.faprgrm.strip()
+            p = t.program.strip()
             if p != 'unknown':
                 details.append(p)
             s = t.survey.strip()
@@ -1613,7 +1614,6 @@ def desitarget_color_names(T, colprefix=''):
             # exist in bitnames, remove the current name
             if any([better_name in bitnames for better_name in bitnames_veto.get(name, [])]):
                 bitnames.remove(name)
-
         names.append(', '.join(bitnames))
 
         nn = ' '.join(bitnames)
@@ -2349,6 +2349,7 @@ def cat_desi_tile(req, ver):
     if not os.path.exists(fn):
         print('Does not exist:', fn)
         return
+    print('Reading', fn)
     cat = fits_table(fn)
     cat.ra  = cat.target_ra
     cat.dec = cat.target_dec
@@ -2368,6 +2369,7 @@ def cat_desi_tile(req, ver):
     D = dict(rd=rd)
 
     cols = cat.columns()
+    print('Columns:', cols)
     if 'sv3_desi_target' in cols:
         bitnames = desitarget_sv3_names(cat)
         D.update(bits=bitnames)
@@ -2376,6 +2378,20 @@ def cat_desi_tile(req, ver):
         D.update(bits=bitnames)
     elif 'cmx_target' in cols:
         bitnames = desitarget_cmx_names(cat)
+        D.update(bits=bitnames)
+    # Main targets
+    elif 'desi_target' in cols:
+        from desitarget.targets import desi_mask, bgs_mask, mws_mask, scnd_mask
+        bitnames = []
+        for desi,bgs,mws,scnd in zip(cat.desi_target, cat.bgs_target, cat.mws_target, cat.scnd_target):
+            sec = scnd_mask.names(scnd)
+            sec = ['sec:'+k for k in sec]
+            names = desi_mask.names(desi) + bgs_mask.names(bgs) + mws_mask.names(mws) + sec
+            for kill in ['LRG_SOUTH', 'ELG_SOUTH', 'QSO_SOUTH', 'ELG_VLO_SOUTH', 'SCND_ANY',
+                         'MWS_MAIN_BLUE_SOUTH', ]:
+                if kill in names:
+                    names.remove(kill)
+            bitnames.append(', '.join(names))
         D.update(bits=bitnames)
     if 'targetid' in cols:
         D.update(targetid=['%i'%i for i in cat.targetid])
@@ -2610,9 +2626,9 @@ if __name__ == '__main__':
     # create_galaxy_catalog(galfn, None, layer=layer)
     # sys.exit(0)
 
-    t = lookup_targetid(39627788403084375)
-    print('Targetid:', t)
-    t.about()
+    #t = lookup_targetid(39627788403084375)
+    #print('Targetid:', t)
+    #t.about()
     
     from django.test import Client
     c = Client()
@@ -2630,7 +2646,8 @@ if __name__ == '__main__':
     #r = c.get('/desi-tiles/denali/1/cat.json?ralo=93.9551&rahi=233.3496&declo=15.2713&dechi=67.7710')
     #r = c.get('/desi-spec-detail/denali/tile80740/fiber3975')
     #r = c.get('/desi-spec-daily/1/cat.json?ralo=154.1814&rahi=154.3175&declo=-2.6274&dechi=-2.5515')
-    r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
+    #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
+    r = c.get('/desi-tile/1/cat.json?ralo=238.1458&rahi=238.4181&declo=-0.0750&dechi=0.0748&tile=1000')
     f = open('out', 'wb')
     for x in r:
         f.write(x)

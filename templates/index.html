@@ -3209,7 +3209,23 @@ var denali_detail_list = function(ov, objs) {
     txt += '</ul>';
     return txt;
 };
- var denali_detail = function(ov, objs, aparams) {
+
+var desi_daily_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In DESI Daily tiles: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + denali_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
+
+var denali_detail = function(ov, objs, aparams) {
      return objs;
  };
 
@@ -3289,7 +3305,7 @@ var desi_tiles_daily = new DesiTileOverlay('desi-tiles-daily',
                                      'url_args': { 'id': 'desi-tiles/daily',
                                                    'ver': getcatversion('desi-tiles/daily') },
                                      'labelMinZoom': 100,
-                                     'detail_list': denali_detail_list,
+                                     'detail_list': desi_daily_detail_list,
                                      'detail': denali_detail,
                                     });
 desi_tiles_daily._style = {'fillOpacity': 0.05 };
