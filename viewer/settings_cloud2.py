@@ -65,13 +65,13 @@ ROOT_URL = ''
 SUBDOMAINS = []
 #SUBDOMAINS = ['a','b','c','d']
 
-STATIC_URL = 'http://%s%s/static/' % (HOSTNAME, ROOT_URL)
+STATIC_URL = 'https://%s%s/static/' % (HOSTNAME, ROOT_URL)
 
 # TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 # CAT_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
 # STATIC_TILE_URL = 'http://{s}.cloud.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 
-TILE_URL = 'http://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+TILE_URL = 'https://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
 #CAT_URL = 'http://%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
 CAT_URL = 'https://www.legacysurvey.org/viewer-dev/{id}/{ver}/{z}/{x}/{y}.cat.json'
@@ -80,7 +80,7 @@ SMALL_CAT_URL = 'https://www.legacysurvey.org/viewer-dev/{id}/{ver}/cat.json?ral
 MY_CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 MY_SMALL_CAT_URL = '%s/{id}/{ver}/cat.json?ralo=\{ralo\}&rahi=\{rahi\}&declo=\{declo\}&dechi=\{dechi\}' % (ROOT_URL)
 
-STATIC_TILE_URL = 'http://unions.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+STATIC_TILE_URL = 'https://unions.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 
 NERSC_TILE_URL = 'https://www.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
 

@@ -1993,13 +1993,25 @@ tiles = mylayer_B('m33', 'M33 image',
 allLayers.push(tiles);
 {% endif %}
 
-tiles = mylayer_2('cfis-r', 'CFIS-r images',
+tiles = mylayer_2('cfis-dr3-r', 'CFIS-r DR3 images',
+                  {'attribution': 'CFIS',
+		   'urlPatterns': {{ tileurls.cfis_dr3_r|safe }},
+		  });
+allLayers.push(tiles);
+
+tiles = mylayer_2('cfis-dr3-u', 'CFIS-u DR3 images',
+                  {'attribution': 'CFIS',
+		   'urlPatterns': {{ tileurls.cfis_dr3_u|safe }},
+		  });
+allLayers.push(tiles);
+
+tiles = mylayer_2('cfis-r', 'CFIS-r DR2 images',
                   {'attribution': 'CFIS',
 		   'urlPatterns': {{ tileurls.cfis_r|safe }},
 		  });
 allLayers.push(tiles);
 
-tiles = mylayer_2('cfis-u', 'CFIS-u images',
+tiles = mylayer_2('cfis-u', 'CFIS-u DR2 images',
                   {'attribution': 'CFIS',
 		   'urlPatterns': {{ tileurls.cfis_u|safe }},
 		  });
@@ -3457,6 +3469,8 @@ var testTree = [];
 console.log('testTree:', testTree);
 
 var baseTree1 = [
+    findlayer('cfis-dr3-r'),
+    findlayer('cfis-dr3-u'),
     findlayer('cfis-r'),
     findlayer('cfis-u'),
     {% if enable_m33 %}

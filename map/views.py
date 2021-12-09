@@ -2073,9 +2073,10 @@ class RebrickedMixin(object):
             return super(RebrickedMixin, self).get_filename(brick, band, scale,
                                                             tempfiles=tempfiles)
         fn = self.get_scaled_filename(brick, band, scale)
-        print('Target filename (rebricked):', fn)
         if os.path.exists(fn):
+            print('Target filename (rebricked) exists:', fn)
             return fn
+        print('Creating target filename (rebricked):', fn)
         fn = self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
         if fn is None:
             return None
@@ -2127,12 +2128,20 @@ class RebrickedMixin(object):
             if I is None:
                 continue
 
-            # Check for actual RA,Dec box overlap, not spherematch possible overlap
+            # Check for actual RA,Dec box overlap
+            # handle RA wrap: if ra1 (near 360) > ra2 (near 0), bring ra1 negative
+            ra1 = bsmall.ra1[I]
+            ra2 = bsmall.ra2[I]
+            ra1 -= (360. * (ra1 > ra2))
+            ara1 = allbricks.ra1[ia]
+            ara2 = allbricks.ra2[ia]
+            ara1 -= (360. * (ara1 > ara2))
+            overlap = ((bsmall.dec2[I] >= allbricks.dec1[ia]) *
+                       (bsmall.dec1[I] <= allbricks.dec2[ia]) *
+                       (ra2 >= ara1) *
+                       (ra1 <= ara2))
             if haves:
-                Igood = np.array(I)[(bsmall.dec2[I] >= allbricks.dec1[ia]) *
-                                    (bsmall.dec1[I] <= allbricks.dec2[ia]) *
-                                    (bsmall.ra2[I] >= allbricks.ra1[ia]) *
-                                    (bsmall.ra1[I] <= allbricks.ra2[ia])]
+                Igood = np.array(I)[overlap]
                 #print('Brick', allbricks.brickname[ia], ':', len(I), 'spherematches', len(Igood), 'in box')
                 if len(Igood) == 0:
                     continue
@@ -2149,12 +2158,7 @@ class RebrickedMixin(object):
                 keep.append(ia)
 
             else:
-                good = np.any((bsmall.dec2[I] >= allbricks.dec1[ia]) *
-                              (bsmall.dec1[I] <= allbricks.dec2[ia]) *
-                              (bsmall.ra2[I] >= allbricks.ra1[ia]) *
-                              (bsmall.ra1[I] <= allbricks.ra2[ia]))
-                #if (allbricks.dec[ia] > 80):
-                #    print('Keep?', good)
+                good = np.any(overlap)
                 if good:
                     keep.append(ia)
         keep = np.array(keep)
@@ -3768,18 +3772,28 @@ class CFISLayer(RebrickedMixin, MapLayer):
         import numpy as np
         return np.int16
 
-    def get_bricks_for_scale(self, scale):
-        if scale in [0, None]:
-            return self.get_bricks()
-        scale = min(scale, self.maxscale)
-        from astrometry.util.fits import fits_table
-        # cut to existing bricks
-        fn = os.path.join(self.basedir, 'bricks-%i.fits' % scale)
-        if not os.path.exists(fn):
-            # generic
-            fn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % scale)
-        b = fits_table(fn)
-        return b
+    # def get_bricks_for_scale(self, scale):
+    #     print('CFISlayer: get_bricks_for_scale', scale)
+    #     if scale in [0, None]:
+    #         return self.get_bricks()
+    #     scale = min(scale, self.maxscale)
+    #     from astrometry.util.fits import fits_table
+    #     fn = os.path.join(self.basedir, 'bricks-%i.fits' % scale)
+    #     if not os.path.exists(fn):
+    #         # generic
+    #         fn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % scale)
+    #         b = fits_table(fn)
+    #         print('generic bricks:', len(b))
+    #         b0 = self.get_bricks_for_scale(scale-1)
+    #         print('smaller-scale bricks:', len(b0))
+    #         rad = 1.5 * (self.pixelsize * self.pixscale * 2.**scale) / 3600. / np.sqrt(2.)
+    #         
+    # 
+    #         sys.exit(-1)
+    #         
+    #     else:
+    #         b = fits_table(fn)
+    #     return b
 
     def bricks_within_range(self, ra, dec, radius, scale=None):
         from astrometry.libkd.spherematch import match_radec, tree_open, tree_search_radec
@@ -3787,6 +3801,8 @@ class CFISLayer(RebrickedMixin, MapLayer):
         import numpy as np
         if scale > 0:
             return None
+        # cfis.py
+        # startree -i cfis-files-dr3-r.fits -o data/cfis-dr3-r/cfis-tiles.kd.fits -PTk
         fn = os.path.join(self.basedir, 'cfis-tiles.kd.fits')
         kd = tree_open(fn)
         # 0.4 ~ 10k / 2 * sqrt(2) x 186"/pix
@@ -5593,6 +5609,12 @@ def get_layer(name, default=None):
         layer = CFISLayer('cfis-u', 'U')
     elif name == 'cfis-dr2':
         layer = CFISLayer('cfis-dr2', '')
+    elif name == 'cfis-dr3-r':
+        layer = CFISLayer('cfis-dr3-r', 'R')
+    elif name == 'cfis-dr3-u':
+        layer = CFISLayer('cfis-dr3-u', 'U')
+    elif name == 'cfis-dr3-u':
+        layer = CFISLayer('cfis-dr3-u', 'U')
 
     elif name == 'ztf':
         layer = ZtfLayer('ztf')

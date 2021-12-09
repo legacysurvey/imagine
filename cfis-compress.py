@@ -1,21 +1,24 @@
 import os
+from glob import glob
+import numpy as np
 import fitsio
 from astrometry.util.fits import fits_table
-import numpy as np
 from astrometry.util.multiproc import multiproc
 
 def one_file(fn):
     fn = fn.strip()
-    fn = os.path.join('/data/CFIS', fn)
-    outfn = fn.replace('tiles-dr2', 'compressed/tiles-dr2')
+    #fn = os.path.join('/data/CFIS', fn)
+    #outfn = fn.replace('tiles-dr2', 'compressed/tiles-dr2')
+    infn = os.path.join('/data2/CFIS', fn)
+    outfn = os.path.join('/data2/CFIS/tiles-dr3-compressed', fn)
+    print(fn, infn, outfn)
     if os.path.exists(outfn):
         print('Exists:', outfn)
-    print(fn)
-    img,hdr = fitsio.read(fn, header=True)
-    wfn = fn.replace('.r.fits', '.r.weight.fits.fz')
-    wt = fitsio.read(wfn)
-    # that's it...
-    img[wt == 0] = 0.
+    img,hdr = fitsio.read(infn, header=True)
+    # wfn = fn.replace('.r.fits', '.r.weight.fits.fz')
+    # wt = fitsio.read(wfn)
+    # # that's it...
+    # img[wt == 0] = 0.
 
     # Blanton MAD sigmas: 2-3
     # qz -1e-4: files ~ 200 MB
@@ -27,7 +30,7 @@ def one_file(fn):
     outfn = tmpfn + '[compress R 200 200; qz -1e-1]'
     fitsio.write(outfn, img, header=hdr, clobber=True)
     os.rename(tmpfn, finalfn)
-        
+
     # cimg = fitsio.read(outfn)
     # print('RMS diff', np.sqrt(np.mean((cimg - img)**2)))
     # nz = np.sum(img != 0)
@@ -41,9 +44,15 @@ def one_file(fn):
     # print('vs Blanton sigma', sig1)
 
 def main():
-    T = fits_table('data/cfis-r/cfis-tiles.fits')
-    mp = multiproc(4)
-    mp.map(one_file, T.filename)
+    mp = multiproc(16)
+    #T = fits_table('data/cfis-r/cfis-tiles.fits')
+    #mp.map(one_file, T.filename)
+
+    fns = glob('/data2/CFIS/tiles-dr3/CFIS.*.u.fits')
+    fns.sort()
+    fns = [fn.replace('/data2/CFIS/', '') for fn in fns]
+    mp.map(one_file, fns)
+
     #map(one_file, [fn for fn in T.filename])
 
 if __name__ == '__main__':

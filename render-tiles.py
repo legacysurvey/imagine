@@ -699,17 +699,17 @@ def main():
 
     mp = multiproc(opt.threads)
 
-    if opt.kind in ['cfis-r', 'cfis-u']:
+    if opt.kind in ['cfis-r', 'cfis-u', 'cfis-dr3-r', 'cfis-dr3-u']:
         if opt.bands is None:
-            if opt.kind == 'cfis-r':
+            if opt.kind in ['cfis-r', 'cfis-dr3-r']:
                 opt.bands = 'R'
-            if opt.kind == 'cfis-u':
+            if opt.kind in ['cfis-u', 'cfis-dr3-u']:
                 opt.bands = 'U'
         if opt.mindec is None:
-            if opt.kind == 'cfis-r':
-                opt.mindec = 28
-            if opt.kind == 'cfis-u':
-                opt.mindec = -1
+            if opt.kind in ['cfis-r', 'cfis-dr3-r']:
+                opt.mindec = 22
+            if opt.kind in ['cfis-u', 'cfis-dr3-u']:
+                opt.mindec = -11
         if opt.maxdec is None:
             opt.maxdec = 90
 
@@ -723,7 +723,8 @@ def main():
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                            'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
-                           'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'cfis-r', 'cfis-u']
+                           'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'cfis-r', 'cfis-u',
+                       'cfis-dr3-r', 'cfis-dr3-u']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
               or 'dr9f' in opt.kind
@@ -891,6 +892,7 @@ def main():
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                          'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
                          'galex', 'wssa', 'des-dr1', 'hsc2', 'cfis-r', 'cfis-u',
+                         'cfis-dr3-r', 'cfis-dr3-u',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
                         'dr8-south', 'dr8-south-model', 'dr8-south-resid',
                         'dr9c', 'dr9c-model', 'dr9c-resid',

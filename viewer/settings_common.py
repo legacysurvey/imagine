@@ -20,6 +20,8 @@ ima_sub = abcd
 TILE_URLS = {
         'sdss': [ [1, 13, ima, ima_sub],
                   [14, maxZoom, nersc, nersc_sub], ],
+        'cfis_dr3_r': [ ],# [1, maxZoom, tileurl, []], ],
+        'cfis_dr3_u': [ ],# [1, maxZoom, tileurl, []], ],
         'cfis_r': [ ],# [1, maxZoom, tileurl, []], ],
         'cfis_u': [ ],# [1, maxZoom, tileurl, []], ],
     }
