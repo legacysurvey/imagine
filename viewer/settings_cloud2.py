@@ -1,4 +1,5 @@
 from viewer.settings_common import *
+from appsecrets.auth import *
 
 ALLOWED_HOSTS.extend(['cloud.legacysurvey.org',
                       'a.cloud.legacysurvey.org',
@@ -86,3 +87,28 @@ NERSC_TILE_URL = 'https://www.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg
 
 STATIC_TILE_URL_B = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 SUBDOMAINS_B = ['a','b','c','d']
+
+
+
+
+AUTHENTICATION_BACKENDS = (
+    #'social_core.backends.google.GoogleOAuth2',
+    'viewer.cadc.CadcOAuth',
+    # if you want to support username/password:
+    #    'django.contrib.auth.backends.ModelBackend',
+)
+
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY    = 'abc'
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '123'
+
+import appsecrets.auth as authsecrets
+
+SOCIAL_AUTH_CADC_KEY    = authsecrets.CADC_CLIENT_ID
+SOCIAL_AUTH_CADC_SECRET = authsecrets.CADC_CLIENT_SECRET
+
+LOGIN_URL = '/login'
+LOGIN_REDIRECT_URL = '/logged-in'
+
+SESSION_COOKIE_NAME = 'UnionsSkyViewer'

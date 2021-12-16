@@ -18,6 +18,8 @@ except:
     from django.urls import reverse, get_script_prefix
 
 from django import forms
+from django.shortcuts import redirect
+
 from viewer import settings
 from map.utils import (get_tile_wcs, trymakedirs, save_jpeg, ra2long, ra2long_B,
                        send_file, oneyear)
@@ -545,8 +547,12 @@ def _index(req,
     return render(req, 'index.html', args)
 
 def unions(req):
+
+    if req.user is None or not req.user.is_authenticated:
+        return redirect('/login')
+    
     return _index(req,
-                  default_layer='cfis-r',
+                  default_layer='cfis-dr3-r',
                   #default_radec=(211.389, 54.461),
                   default_radec=(226.4879, 42.2253),
                   default_zoom=14,

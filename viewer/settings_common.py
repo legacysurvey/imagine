@@ -136,29 +136,26 @@ DEBUG = True
 
 TEMPLATE_DEBUG = True
 
-TEMPLATE_DIRS = (os.path.join(WEB_DIR, 'templates'),)
-
-TEMPLATE_CONTEXT_PROCESSORS = [
-    #"django.contrib.auth.context_processors.auth",
-    "django.template.context_processors.debug",
-    #"django.template.context_processors.i18n",
-    #"django.template.context_processors.media",
-    "django.template.context_processors.static",
-    #"django.template.context_processors.tz",
-    #"django.contrib.messages.context_processors.messages",
-    ]
+# TEMPLATE_DIRS = [os.path.join(WEB_DIR, 'templates'),
+#                  os.path.join(WEB_DIR, 'viewer', 'templates'),
+# ]
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'APP_DIRS': False,
+        #'APP_DIRS': False,
+        'APP_DIRS': True,
         'DIRS': [os.path.join(WEB_DIR, 'templates')],
         'OPTIONS': {
             'context_processors': [
+                'django.contrib.auth.context_processors.auth',
+                'django.template.context_processors.request',
                 "django.template.context_processors.debug",
                 "django.template.context_processors.static",
-                ],
-            #'debug': True,
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
+            ],
+            'debug': True,
             },
     },
 ]
@@ -180,20 +177,24 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = (
+    'django.contrib.auth',
+    'social_django',
     # 'django.contrib.admin',
-    # 'django.contrib.auth',
     'django.contrib.contenttypes',
-    # 'django.contrib.sessions',
+    'django.contrib.sessions',
     # 'django.contrib.messages',
     'django.contrib.staticfiles',
     # 'cat',
+    'viewer',
+    ### For ./manage.py show_urls
+    'django_extensions',
 )
 
-MIDDLEWARE_CLASSES = (
-#    'django.contrib.sessions.middleware.SessionMiddleware',
+MIDDLEWARE = (
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-#    'django.middleware.csrf.CsrfViewMiddleware',
-#    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
 #    'django.contrib.messages.middleware.MessageMiddleware',
 #    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
@@ -206,10 +207,10 @@ WSGI_APPLICATION = 'wsgi.application'
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
 
 DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-#     },
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    },
 #     'cosmo': secrets.database.COSMO_DB,
 #     'dr2': secrets.database.DR2_DB,
 }
@@ -232,7 +233,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATICFILES_DIRS = (
-    os.path.join(WEB_DIR, 'static'),
+    #os.path.join(WEB_DIR, 'static'),
 )
 
 STATIC_ROOT = os.path.join(WEB_DIR, 'static')

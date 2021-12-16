@@ -1,4 +1,4 @@
-from django.conf.urls import url
+from django.conf.urls import url, include
 
 from map import views
 from map import cats
@@ -8,7 +8,6 @@ survey_regex = r'[\w\. +-]+'
 layer_regex = r'\{id\}|' + survey_regex
 
 urlpatterns = [
-
     url(r'^urls', views.urls, name='urls'),
 
     url(r'^gfas', views.gfas),
@@ -191,5 +190,4 @@ urlpatterns = [
 
     # fall-through
     url(r'', views.index, name='index'),
-
 ]
