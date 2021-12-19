@@ -9,16 +9,18 @@ def one_file(fn):
     fn = fn.strip()
     #fn = os.path.join('/data/CFIS', fn)
     #outfn = fn.replace('tiles-dr2', 'compressed/tiles-dr2')
-    infn = os.path.join('/data2/CFIS', fn)
-    outfn = os.path.join('/data2/CFIS/tiles-dr3-compressed', fn)
+    infn = os.path.join('/data2/CFIS/tiles-dr3-compressed', fn)
+    #outfn = os.path.join('/data2/CFIS/tiles-dr3-compressed', fn)
+    outfn = os.path.join('/data3/CFIS/tiles-dr3-compressed', fn)
     print(fn, infn, outfn)
     if os.path.exists(outfn):
         print('Exists:', outfn)
     img,hdr = fitsio.read(infn, header=True)
-    # wfn = fn.replace('.r.fits', '.r.weight.fits.fz')
-    # wt = fitsio.read(wfn)
-    # # that's it...
-    # img[wt == 0] = 0.
+
+    wfn = os.path.join('/data/CFIS/weights-dr3', fn.replace('.fits', '.weight.fits.fz'))
+    wt = fitsio.read(wfn)
+    # that's it...
+    img[wt == 0] = 0.
 
     # Blanton MAD sigmas: 2-3
     # qz -1e-4: files ~ 200 MB
@@ -45,12 +47,14 @@ def one_file(fn):
 
 def main():
     mp = multiproc(16)
+    #mp = multiproc()
     #T = fits_table('data/cfis-r/cfis-tiles.fits')
     #mp.map(one_file, T.filename)
 
-    fns = glob('/data2/CFIS/tiles-dr3/CFIS.*.u.fits')
+    #fns = glob('/data2/CFIS/tiles-dr3/CFIS.*.u.fits')
+    fns = glob('/data2/CFIS/tiles-dr3-compressed/CFIS.*.fits')
     fns.sort()
-    fns = [fn.replace('/data2/CFIS/', '') for fn in fns]
+    fns = [os.path.basename(fn) for fn in fns]
     mp.map(one_file, fns)
 
     #map(one_file, [fn for fn in T.filename])
