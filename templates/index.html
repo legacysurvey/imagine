@@ -1757,6 +1757,9 @@ tiles = mylayer_B('des-dr1', 'DES DR1',
 allLayers.push(tiles);
 
 
+tiles = mylayer_B('ls-dr10-early', 'Legacy Surveys DR10-early',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
 
 
 
@@ -3879,6 +3882,7 @@ var baseTree1 = [
     findlayer('m33'),
     {% endif %}
 
+    findlayer('ls-dr10-early'),
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
         {% if enable_dr9_models %}
@@ -4103,10 +4107,6 @@ var overlayTree = [];
 {% endif %}
 
  overlayTree = overlayTree.concat([
-     {% if enable_phat %}
-     findoverlay('phat-clusters'),
-     {% endif %}    
-
      {% if science %}
      { label: 'Boundaries', children: [
 
@@ -4174,6 +4174,10 @@ var overlayTree = [];
                                         
      {% if science %}
      { label: 'Imaging catalogs', children: [
+
+     {% if enable_phat %}
+     findoverlay('phat-clusters'),
+     {% endif %}    
 
      {% if enable_dr9_overlays %}
      findoverlay('ls-dr9', [

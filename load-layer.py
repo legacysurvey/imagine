@@ -66,160 +66,115 @@ def print_tiles(bricks):
             # cat update3.txt | xargs -n 6 -P 32 python render-tiles.py --kind ls-dr9-north --ignore
             print('-z %i -x %i -y %i' % (zoom, x, y))
         
+
 def main():
+    if True:
+        from astrometry.util.fits import fits_table
+        from map.views import get_layer
+        layer = get_layer('ls-dr10-early')
 
-    # indir = '/global/cscratch1/sd/dstn/dr8test-1'
-    # name = 'dr8-test1'
-    # pretty = 'DR8 test1'
-
-    # indir = '/scratch1/scratchdirs/desiproc/dr8test002/'
-    # name = 'dr8-test2'
-    # pretty = 'DR8 test2 (outliers)'
-
-    # indir = '/scratch1/scratchdirs/desiproc/dr8test003/'
-    # name = 'dr8-test3'
-    # pretty = 'DR8 test3 (outliers)'
-    # 
-    # indir = '/scratch1/scratchdirs/desiproc/dr8test004/'
-    # name = 'dr8-test4'
-    # pretty = 'DR8 test4 (large-galaxies)'
-
-    # indir = '/global/cscratch1/sd/dstn/dr8test005/'
-    # name = 'dr8-test5'
-    # pretty = 'DR8 test5 (trident)'
-
-    # indir = '/global/cscratch1/sd/dstn/dr8test006/'
-    # name = 'dr8-test6'
-    # pretty = 'DR8 test6 (sky)'
-
-    # indir = '/global/cscratch1/sd/dstn/dr8test007/'
-    # name = 'dr8-test7'
-    # pretty = 'DR8 test7 (outliers)'
-
-    #indir = '/global/cscratch1/sd/dstn/dr8test14/'
-    #name = 'dr8-test14'
-    #pretty = 'DR8 test14 (rc)'
-
-    #indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
-    #name = 'dr8a'
-    #pretty = 'DR8a (rc)'
-
-    # indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam/'
-    # name = 'dr8b-decam'
-    # pretty = 'DR8b DECam'
-    # survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam'
-
-    # indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-90prime-mosaic/'
-    # name = 'dr8b-90p-mos'
-    # pretty = 'DR8b BASS+MzLS'
-    # survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-90prime-mosaic'
-
-    rsync = False
-    #indir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8c/90prime-mosaic/'
-    #name = 'dr8c-90p-mos'
-    #pretty = 'DR8c BASS+MzLS'
-    survey_dir = '/global/cscratch1/sd/landriau/dr8'
-    # ln -s /global/project/projectdirs/cosmo/work/legacysurvey/dr8b/runbrick-decam/coadds-only/coadd/ .
-
-    #indir = '/scratch1/scratchdirs/desiproc/dr8/decam/'
-    indir = 'data/dr8c-decam'
-    name = 'dr8c-decam'
-    pretty = 'DR8c DECam'
-    #rsync = True
-
-    indir = 'data/dr8i-decam'
-    name = 'dr8i-decam'
-    pretty = 'DR8i DECam'
-
-    indir = 'data/dr8i-90p-mos'
-    name = 'dr8i-90p-mos'
-    pretty = 'DR8i MzLS+BASS'
-
-
+        r1,r2 = 34.1, 36.75
+        d1,d2 = -7.8, -6.7
+        
+        scale = 8
+        #b1 = fits_table('data/ls-dr10-early/survey-bricks-%i.fits.gz' % scale)
+        SB = layer.bricks_touching_radec_box(r1, r2, d1, d2,
+                                             scale=scale)#, bricks=b1)
+        ndel = 0.
+        for sb in SB:
+            for band in layer.get_bands():
+                fn = layer.get_scaled_filename(sb, band, scale)
+                if os.path.exists(fn):
+                    print('Delete', fn)
+                    os.remove(fn)
+                    ndel += 1
+        print('Actually deleted', ndel, 'scaled files at scale', scale)
+        sys.exit(0)
+        
+    if False:
+        from astrometry.util.fits import fits_table
+        scale = 4
+        b1 = fits_table('data/ls-dr10-early/survey-bricks-%i.fits.gz' % scale)
+        brickset = set(b1.brickname)
+        print('Scale', scale)
+        print('Bricks:', len(brickset))
+        fns = glob('data/scaled/ls-dr10-early/%i*/*/image-*.fits.fz' % scale)
+        print('Scaled images:', len(fns))
+        fns.sort()
+        ndel = 0
+        keepbricks = set()
+        for fn in fns:
+            b = fn.split('-')[-2]
+            print('file', fn, 'brick', b)
+            if not b in brickset:
+                print('delete!')
+                os.remove(fn)
+                ndel += 1
+            else:
+                keepbricks.add(b)
+        print('Deleted', ndel)
+        print('Bricks:', len(brickset))
+        print('Kept bricks:', len(keepbricks))
+        sys.exit(0)
+        
+    if False:
+        from astrometry.util.fits import fits_table
+        from map.views import get_layer
+        layer = get_layer('ls-dr10-early')
+    
+        bricks = open('/global/homes/d/dstn/legacypipe/py/deep.txt').read().split('\n')
+        bricks = [b.strip() for b in bricks]
+        bricks = [b for b in bricks if len(b)]
+        #brickset = set(bricks)
+    
+        b0 = fits_table('data/ls-dr10-early/survey-bricks.fits.gz')
+        b1 = fits_table('data/ls-dr10-early/survey-bricks-1.fits.gz')
+        bind = dict([(name,i) for i,name in enumerate(b0.brickname)])
+        sbricks = set()
+        delfiles = set()
+        scale = 1
+        for bn in bricks:
+            i = bind[bn]
+            b = b0[i]
+    
+            SB = layer.bricks_touching_radec_box(b.ra1, b.ra2, b.dec1, b.dec2,
+                                                 scale=scale, bricks=b1)
+            for sb in SB.brickname:
+                sbricks.add(sb)
+            for sb in SB:
+                for band in layer.get_bands():
+                    fn = layer.get_scaled_filename(sb, band, scale)
+                    delfiles.add(fn)
+        print(len(sbricks), 'scaled bricks at scale', scale, 'to delete')
+        print(len(delfiles), 'files to delete')
+        ndel = 0
+        for fn in delfiles:
+            if os.path.exists(fn):
+                #print('  Removing', fn)
+                os.remove(fn)
+                ndel += 1
+        print('Actually deleted', ndel, 'scaled files at scale', scale)
+    
+        exit(-1)
+    
+    
 
     sublayers = ['', '-model', '-resid']
     subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
-    
-    # #indir = '/global/cscratch1/sd/ziyaoz/dr9c/'
-    # #indir = '/global/cscratch1/sd/dstn/dr9c-fpack/'
-    # #rsync = True
-    # indir = 'data/dr9c'
-    # name = 'dr9c'
-    # pretty = 'DR9c'
-    # survey_dir = indir
+
+    # rsync = True
+    # side = 'north'
+    # #side = 'south'
+    # survey_dir = '/global/cscratch1/sd/ziyaoz/dr9e4/%s' % side
+    # indir = survey_dir
+    # name = 'dr9sv-%s' % side
+    # pretty = 'DR9-SV %s' % side
     # 
-    # indir = '/global/cscratch1/sd/ziyaoz/dr9d-south/'
-    # #rsync = True
-    # name = 'dr9d-south'
-    # pretty = 'DR9d south'
-    # survey_dir = indir
-
-    
-    # indir = '/global/cscratch1/sd/ziyaoz/dr9d-north/'
-    # #rsync = True
-    # name = 'dr9d-north'
-    # pretty = 'DR9d north'
-    # survey_dir = indir
-
-    # code runs:
-    #    rsync -LRarv /global/cscratch1/sd/ziyaoz/dr9d-south//./{coadd/*/*/*-{image-,model-,ccds}*.fits*,tractor} data/dr9d-south
-    # add my image-coadds:
-    #    rsync -LRarv /global/cscratch1/sd/dstn/dr9d-coadds/./coadd/*/*/*-{image-,ccds}*.fits* data/dr9d-south
-    
-    # survey_dir = '/global/cscratch1/sd/desiproc/dr7'
-
-    # sublayers = ['']
-    # subpretty = {'':' images'}
-    
-    #survey_dir = '/global/cscratch1/sd/dstn/dr8-depthcut'
-    #survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
-
-    rsync = True
-    #survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurv
-
-    side = 'north'
-    #side = 'south'
-
-    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9e4/%s' % side
-    indir = survey_dir
-    name = 'dr9sv-%s' % side
-    pretty = 'DR9-SV %s' % side
-
-    rsync = False
-    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
-    indir = '/global/cscratch1/sd/dstn/fornax'
-    name = 'fornax'
-    pretty = 'Fornax'
-
-    rsync = True
-    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
-    indir = '/global/cscratch1/sd/dstn/dr9.2'
-    name = 'dr9-test-9.2'
-    pretty = 'DR9.2 test'
-
-    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9j/south'
-    indir = survey_dir
-    name = 'dr9j-south'
-    pretty = 'DR9j south'
-
-    rsync = False
-    if True:
-        #indir = '/global/cscratch1/sd/ziyaoz/dr9m/north/'
-        indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/north'
-        name = 'dr9m-north'
-        pretty = 'DR9m-north'
-        survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
-
-    if True:
-        indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9/south'
-        name = 'ls-dr9-south'
-        pretty = 'Legacy Surveys DR9 south'
-        survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
-
-    update = True
-    update = False
-    queue = False
-
+    # rsync = True
+    # survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    # indir = '/global/cscratch1/sd/dstn/dr9.2'
+    # name = 'dr9-test-9.2'
+    # pretty = 'DR9.2 test'
 
     # indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9.1.1'
     # indir = '/global/cscratch1/sd/landriau/dr9.1.1'
@@ -237,10 +192,19 @@ def main():
     # survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
     
 
-    indir = 'data/asteroids-i'
-    name = 'asteroids-i'
-    pretty = 'Asteroids test'
-    survey_dir = indir
+    # indir = 'data/asteroids-i'
+    # name = 'asteroids-i'
+    # pretty = 'Asteroids test'
+    # survey_dir = indir
+
+    rsync = False
+    update = True
+    queue = False
+    
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr10/'
+    indir = 'data/ls-dr10-early'
+    name = 'ls-dr10-early'
+    pretty = 'LS DR10 early'
     
     datadir = 'data'
 
@@ -353,9 +317,16 @@ def main():
             brickname = dirs[-2]
             brickset.add(brickname)
     else:
-        B = fits_table('/global/cfs/cdirs/cosmo/data/legacysurvey/dr9/south/survey-bricks-dr9-south.fits.gz')
-        brickset = set(B.brickname)
+        #B = fits_table('/global/cfs/cdirs/cosmo/data/legacysurvey/dr9/south/survey-bricks-dr9-south.fits.gz')
+        #     brickset = set(B.brickname)
 
+        bricks = open('/global/homes/d/dstn/legacypipe/py/deep.txt').read().split('\n')
+        bricks = [b.strip() for b in bricks]
+        bricks = [b for b in bricks if len(b)]
+        brickset = set(bricks)
+
+
+        
     print(len(brickset), 'bricks found')
     I, = np.nonzero([b in brickset for b in allbricks.brickname])
     bricks = allbricks[I]

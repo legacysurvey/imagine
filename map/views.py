@@ -2493,6 +2493,58 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
                   float(size), float(size))
         return wcs
 
+class LsDr10Layer(ReDecalsLayer):
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        m=0.03
+        Q=20
+        mnmx=None
+        clip=True
+        allbands = ['g','r','i','z']
+        rgb_stretch_factor = 1.5
+        rgbscales=dict(
+            g =    (2, 6.0 * rgb_stretch_factor),
+            r =    (1, 3.4 * rgb_stretch_factor),
+            i =    (0, 3.0 * rgb_stretch_factor),
+            z =    (0, 2.2 * rgb_stretch_factor),
+            )
+        I = 0
+        for img,band in zip(imgs, bands):
+            plane,scale = rgbscales[band]
+            img = np.maximum(0, img * scale + m)
+            I = I + img
+        I /= len(bands)
+        if Q is not None:
+            fI = np.arcsinh(Q * I) / np.sqrt(Q)
+            I += (I == 0.) * 1e-6
+            I = fI / I
+        H,W = I.shape
+        rgb = np.zeros((H,W,3), np.float32)
+
+        rgbvec = dict(
+            g = (0.,   0.,  0.75),
+            r = (0.,   0.5, 0.25),
+            i = (0.25, 0.5, 0.),
+            z = (0.75, 0.,  0.))
+
+        for img,band in zip(imgs, bands):
+            _,scale = rgbscales[band]
+            rf,gf,bf = rgbvec[band]
+            if mnmx is None:
+                v = (img * scale + m) * I
+            else:
+                mn,mx = mnmx
+                v = ((img * scale + m) - mn) / (mx - mn)
+            if clip:
+                v = np.clip(v, 0, 1)
+            if rf != 0.:
+                rgb[:,:,0] += rf*v
+            if gf != 0.:
+                rgb[:,:,1] += gf*v
+            if bf != 0.:
+                rgb[:,:,2] += bf*v
+        return rgb
+    
 class ReDecalsResidLayer(UniqueBrickMixin, ResidMixin, ReDecalsLayer):
     pass
 
@@ -4478,6 +4530,12 @@ def get_survey(name):
     elif name in ['ls-dr9-north', 'ls-dr9-south']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
+    elif name in ['ls-dr10']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+
+    elif name in ['ls-dr10-early']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+        
     elif name in ['ls-dr9-south-B']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
@@ -6056,6 +6114,13 @@ def get_layer(name, default=None):
         basename = 'asteroids-i'
         survey = get_survey(basename)
         layer = AsteroidsLayer(basename, 'image', survey)
+
+    elif name == 'ls-dr10-early':
+        survey = get_survey(name)
+        image = LsDr10Layer(name, 'image', survey, bands='griz')
+        layers[name] = image
+        layer = layers[name]
+
         
     if layer is None:
         # Try generic rebricked

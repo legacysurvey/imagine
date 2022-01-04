@@ -836,6 +836,17 @@ def main():
             opt.maxra = 360
         if opt.minra is None:
             opt.minra = 0
+    elif opt.kind in ['ls-dr10-early']:
+        if opt.bands is None:
+            opt.bands = 'griz'
+        if opt.maxdec is None:
+            opt.maxdec = 40
+        if opt.mindec is None:
+            opt.mindec = -90
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
     else:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -910,6 +921,7 @@ def main():
                          'ls-dr9.1.1', 'ls-dr9.1.1-model',
                          'ls-dr9-south-B', 'ls-dr9-south-B-model',
                          'asteroids-i',
+                         'ls-dr10-early',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
