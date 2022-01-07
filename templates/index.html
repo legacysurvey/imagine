@@ -1756,6 +1756,10 @@ tiles = mylayer_B('des-dr1', 'DES DR1',
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+tiles = mylayer_B('pandas', 'PANDAS',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 
 tiles = mylayer_B('ls-dr10-early', 'Legacy Surveys DR10-early',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
@@ -4019,6 +4023,7 @@ var baseTree1 = [
     {
         label: 'More surveys',
         children: [
+            findlayer('pandas'),
             {% if enable_phat %}
             findlayer('phat'),
             {% endif %}

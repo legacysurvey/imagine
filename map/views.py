@@ -3783,6 +3783,176 @@ class VlassLayer(RebrickedMixin, MapLayer):
         html.extend(['</body>', '</html>'])
         return HttpResponse('\n'.join(html))
 
+
+class anwcs_wrapper(object):
+    def __init__(self, *args):
+        from astrometry.util.util import anwcs_t
+        self._anwcs = anwcs_t(*args)
+    def get_subimage(self, x0, y0, w, h):
+        #print('anwcs_wrapper: get_subimage')
+        s = self._anwcs.getHeaderString()
+        s = s.encode()
+        s = (b'SIMPLE  =                    T / Standard FITS file                             ' +
+             b'BITPIX  =                    8 / ASCII or bytes array                           ' +
+             b'NAXIS   =                    0 / Minimal header                                 ' +
+             s)
+        L = len(s)
+        pad = 2880 - (L % 2880)
+        s += b' '*pad
+        import tempfile
+        f,tmpfn = tempfile.mkstemp()
+        os.close(f)
+        open(tmpfn,'wb').write(s)
+        import fitsio
+        hdr = fitsio.read_header(tmpfn)
+        crpix1 = hdr['CRPIX1']
+        crpix2 = hdr['CRPIX2']
+        crpix1 -= x0
+        crpix2 -= y0
+        hdr['CRPIX1'] = crpix1
+        hdr['CRPIX2'] = crpix2
+        hdr.delete('NAXIS1')
+        hdr.delete('NAXIS2')
+        fitsio.write(tmpfn, None, header=hdr, clobber=True)
+        wcs = anwcs_wrapper(tmpfn, 0)
+        os.remove(tmpfn)
+        wcs.imagew = int(w)
+        wcs.imageh = int(h)
+        #print('desired h,w:', h, w, 'wcs shape:', wcs.shape)
+        return wcs
+        
+    def __getattr__(self, k):
+        return getattr(self._anwcs, k)
+    def __setattr__(self, k, v):
+        if k == '_anwcs':
+            object.__setattr__(self, k, v)
+        else:
+            self._anwcs.__setattr__(k, v)
+
+class PandasLayer(RebrickedMixin, MapLayer):
+
+    def __init__(self, name):
+        super().__init__(name, nativescale=14)
+        self.pixscale = 0.186
+        self.bands = self.get_bands()
+        self.pixelsize = 5300
+        self.maxscale = 7
+
+    def get_bricks(self):
+        from astrometry.util.fits import fits_table
+        return fits_table(os.path.join(self.basedir, 'pandas.fits'))
+
+    def get_bricks_for_scale(self, scale):
+        if scale in [0, None]:
+            return self.get_bricks()
+        scale = min(scale, self.maxscale)
+        from astrometry.util.fits import fits_table
+        fn = os.path.join(self.basedir, 'pandas-bricks-%i.fits' % scale)
+        b = fits_table(fn)
+        return b
+
+    def get_scaled_wcs(self, brick, band, scale):
+        print('get_scaled_wcs: scale', scale, 'brick', brick)
+        from astrometry.util.util import Tan
+        if scale < 5:
+            size = self.pixelsize
+        elif scale == 5:
+            size = self.pixelsize * 1.07
+        elif scale >= 6:
+            size = self.pixelsize * 1.18
+
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+
+    def get_bands(self):
+        return ['g','i']
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        assert(len(imgs) == 2)
+        img = imgs[0]
+        H,W = img.shape
+
+        rgb = np.zeros((H,W,3), np.uint8)
+        # g,i
+        blu,red = imgs
+        mn,mx = -20, 2000
+
+        blu *= 1.2
+        
+        arcsinh=1./20.
+        def nlmap(x):
+            return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
+        bright = (blu + red) / 2.
+        I = nlmap(bright)
+        # color -- abs here prevents weird effects when, eg, W1>0 and W2<0.
+        mean = np.maximum(1e-6, (np.abs(red)+np.abs(blu))/2.)
+        red = np.abs(red)/mean * I
+        blu = np.abs(blu)/mean * I
+        mn = nlmap(mn)
+        mx = nlmap(mx)
+
+        blu = (blu - mn) / (mx - mn)
+        red = (red - mn) / (mx - mn)
+
+        rgb[:,:,2] = (np.clip(blu, 0., 1.) * 255).astype(np.uint8)
+        rgb[:,:,0] = (np.clip(red, 0., 1.) * 255).astype(np.uint8)
+        rgb[:,:,1] = rgb[:,:,0]/2 + rgb[:,:,2]/2
+
+        return rgb
+
+    def get_base_filename(self, brick, band, **kwargs):
+        # The "pandas.fits" file contains only g-band images; swap in correct band.
+        fn = brick.filename_g.strip().replace('_g.fit', '_%s.fit'%band)
+        return os.path.join(self.basedir, fn)
+
+    def read_image(self, brick, band, scale, slc, fn=None):
+        if scale > 0:
+            return super().read_image(brick, band, scale, slc, fn=fn)
+        import fitsio
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        print('read_image: brick', brick.brickname, 'band', band, 'scale', scale, 'fn', fn)
+        print('ext', brick.ext)
+        f = fitsio.FITS(fn)[brick.ext]
+        med = getattr(brick, 'median_'+band)
+        if slc is None:
+             return f.read() - med
+        return f[slc] - med
+
+    def read_wcs(self, brick, band, scale, fn=None):
+        if scale > 0:
+            return super().read_wcs(brick, band, scale, fn=fn)
+
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        if fn is None:
+            return None
+        print('read_wcs: brick', brick.brickname, 'band', band, 'scale', scale, 'fn', fn)
+        print('ext', brick.ext)
+        wcs = anwcs_wrapper(fn, int(brick.ext))
+        import fitsio
+        hdr = fitsio.read_header(fn, ext=int(brick.ext))
+        w = hdr['NAXIS1']
+        h = hdr['NAXIS2']
+        wcs.imagew = int(w)
+        wcs.imageh = int(h)
+        #wcs.imagew = int(brick.width)
+        #wcs.imageh = int(brick.height)
+        #sub = wcs.get_subimage(100, 100, 200, 200)
+        return wcs
+    
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+                            '%(scale)i%(band)s', '%(brickname).3s',
+                            '%(brickname)s.fits')
+
+
+    
 class ZtfLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
         super(ZtfLayer, self).__init__(name, nativescale=12)
@@ -5957,7 +6127,10 @@ def get_layer(name, default=None):
     if '/' in name or '..' in name:
         pass
 
-    if name == 'ztf':
+    if name == 'pandas':
+        layer = PandasLayer('pandas')
+        
+    elif name == 'ztf':
         layer = ZtfLayer('ztf')
 
     elif name == 'sdss':
@@ -6525,7 +6698,10 @@ if __name__ == '__main__':
     #r = c.get('/jpl_lookup?ra=150.0452&dec=3.5275&date=2021-05-15 01:35:16.197199&camera=decam')
     #r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga=')
     #r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga-parent=')
-    r = c.get('/jpl_lookup?ra=138.9834&dec=17.8431&date=2016-01-15%2005:51:44.149541&camera=decam')
+    #r = c.get('/jpl_lookup?ra=138.9834&dec=17.8431&date=2016-01-15%2005:51:44.149541&camera=decam')
+    #r = c.get('/pandas/1/14/16363/6307.jpg')
+    #r = c.get('/pandas/1/14/15897/6126.jpg')
+    r = c.get('/pandas/1/14/15903/6126.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
