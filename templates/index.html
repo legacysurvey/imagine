@@ -70,7 +70,7 @@
 
  // this is just to reset the indent level for emacs javascript-mode;
  // the "{#" is a django template comment.
- {# }}} #}
+ {# }}}} #}
 
 // Variables from django.
 var layer_initial = '{{ layer }}';
@@ -84,7 +84,8 @@ var tile_url = '{{ tileurl|safe }}';
 var maxNativeZoom = {{ maxNativeZoom }};
 
 var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
-
+var root_url = '{{ root_url }}';  // eg /viewer-dev
+ 
 var ccds_url = '{{ ccdsurl|safe }}';
 var exposures_url = '{{ expsurl|safe }}';
 var bricks_url = '{{ bricksurl|safe }}';
@@ -1509,7 +1510,9 @@ function onMapClick(e) {
         var overlay = polygonOverlays[i];
         var objs = overlay.under(e.latlng);
         for (var j=0; j<objs.length; j++) {
-            txt += '<br/>' + overlay._detail(overlay._url_name, objs[j], '');
+            if (typeof(overlay._detail) != 'undefined') {
+                txt += '<br/>' + overlay._detail(overlay._url_name, objs[j], '');
+            }
         }
     }
 
@@ -2682,8 +2685,10 @@ var PolygonOverlay = CatalogOverlay.extend({
     },
 
     mouseOver: function(e) {
-        e.target.setStyle({color: 'yellow'});
         var obj = e.target;
+        //if (obj.doHighlight) {
+        //obj.setStyle({color: 'yellow'});
+        //}
         this._highlighted = obj.name;
         // remove other objs from fills
         for (var i=0, len=this._filled.length; i<len; i++) {
@@ -2752,11 +2757,21 @@ var PolygonOverlay = CatalogOverlay.extend({
 });
 
 var CircleOverlay = PolygonOverlay.extend({
+    initialize: function(name, pretty, kwargs) {
+        PolygonOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this._style = {'fill':false, 'color':color, 'weight':5 };
+    },
     getLayer: function(result) {
         var objs = result['objs'];
         //console.log('Received ' + objs.length + ' objs');
         var objList = [];
         var clong = map.getCenter().lng;
+
+        var tooltipStyle = this.getTooltipStyle();
+        var showlabels = (map.getZoom() >= this._labelsMinZoom);
+
+        var style = this._style;
+        
         for (var i=0, len=objs.length; i<len; i++) {
             var name = objs[i].name;
 	        var meters = 30 * 3600 * objs[i].radius;
@@ -2764,17 +2779,45 @@ var CircleOverlay = PolygonOverlay.extend({
             var dec = objs[i].dec;
             var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
             var color = objs[i].color || this._color;
-            var c = L.circle(latlng, meters, {fill:false, color:color, weight:5 });
+            var c = L.circle(latlng, meters, style);
             c.orig_color = color;
             c.name = name;
             if (this._doHighlight) {
                 c.on('mouseover', this.mouseOver.bind(this));
                 c.on('mouseout',  this.mouseOut.bind(this));
             }
+
+	        if (showlabels) {
+                var txt = this.getLabel(result, i);
+                if (txt.length > 0) {
+                    c.bindTooltip(txt, tooltipStyle);
+                }
+	        }
+            var txt = this.getPopupText(result, i);
+            if (txt.length > 0) {
+                c.popupText = txt;
+                c.on('click', function(e) {
+                    popup.setLatLng(e.latlng)
+                         .setContent(e.target.popupText)
+                         .openOn(map);
+                    L.DomEvent.stopPropagation(e);
+                });
+            }
             objList.push(c);
             this._current[name] = c;
         }
         return L.layerGroup(objList);
+    },
+    getTooltipStyle() {
+        return { permanent: true, interactive: true,
+                 className: 'spectrumTooltip' };
+    },
+
+    getLabel: function(json, i) {
+        return json['objs'][i]['name'];
+    },
+    getPopupText: function(json, i) {
+        return '';
     },
 
     highlight: function(obj) {
@@ -3175,6 +3218,7 @@ var plateOverlay = new CircleOverlay('sdss-plates',
                                      'detail': plate_detail,
                                      'detail_list': plate_detail_list,
                                     });
+console.log('plateOverlay: ' + plateOverlay);
 {% endif %}
 
 {% comment %}
@@ -3182,6 +3226,134 @@ These are overlays that have entries when you click on the map,
 and entries in the "in brick/ccd" panel.
 {% endcomment %}
 
+
+{% if enable_desi_targets %}
+var denali_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In DESI Denali tiles: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + denali_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
+var desi_daily_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In DESI Daily tiles: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + denali_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
+
+var denali_detail = function(ov, objs, aparams) {
+     return objs;
+ };
+
+ var DesiTileOverlay = CircleOverlay.extend({
+     highlight: function(obj) {
+     },
+/*
+     getPopupText: function(json, i) {
+      return json['objs'][i]['name'];
+  },
+*/
+});
+var desi_tiles_denali = new DesiTileOverlay('desi-tiles-denali',
+                                     'DESI Denali tiles',
+                                    {'url': smallcat_url,
+                                     'url_args': { 'id': 'desi-tiles/denali',
+                                                   'ver': getcatversion('desi-tiles/denali') },
+                                     'labelMinZoom': 100,
+                                     'detail_list': denali_detail_list,
+                                     'detail': denali_detail,
+                                    });
+desi_tiles_denali._style = {'fillOpacity': 0.05 };
+
+var DesiSpectraCatalog = CatalogOverlay.extend({
+    //getLabel: function(json, i) {
+    //getColor: function(json, i) {
+    getLabel: function(json, i) {
+        return '<a href="' + root_url + 'desi-spec-detail/denali/tile' + json['tileid'][i] +
+            '/fiber' + json['fiberid'][i] + '">' + json['name'][i] + '</a>';
+    },
+});
+
+var desi_spec_denali = new DesiSpectraCatalog('desi-spec-denali', 'DESI Denali spectra',
+                                  {'url': smallcat_url,
+                                   'radius': 300,
+                                   'labelsMinZoom': 12,
+                                   'minZoom': 10,
+                                   //'urlTerm': 'desi-spec/denali',
+                                   });
+
+//////////////// Daily
+
+var DesiDailySpectraCatalog = CatalogOverlay.extend({
+    // getLayer: function(result) {
+    //     console.log('getLayer()');
+    //     return CatalogOverlay.prototype.getLayer.call(this, result);
+    // },
+    getLabel: function(json, i) {
+        return '<a href="' + root_url + 'desi-spectrum/daily/'
+            + 'targetid' + json['targetid'][i]
+            + '">' + json['name'][i] + '</a>';
+        //tile' + json['tileid'][i] +
+            //+ '/fiber' + json['fiberid'][i] 
+    },
+    getTooltipStyle() {
+        var z = map.getZoom()
+        return { permanent: (z >= 12),
+                 interactive: true,
+                 className: (z == 12 ? 'spectrumTooltipSmall' : 'spectrumTooltip'),
+               };
+        //className: 'tooltipbg',
+    },
+    getPopupText: function(json, i) {
+        var rd = json['rd'][i];
+        var ra = rd[0];
+        var dec = rd[1];
+        return this.getLabel(json, i)
+            + '<br/>RA,Dec: ' + ra.toFixed(4) + ', ' + dec.toFixed(4)
+            + '<br/>Targetid: ' + json['targetid'][i];
+    },
+
+});
+
+var desi_tiles_daily = new DesiTileOverlay('desi-tiles-daily',
+                                     'DESI daily tiles',
+                                    {'url': smallcat_url,
+                                     'url_args': { 'id': 'desi-tiles/daily',
+                                                   'ver': getcatversion('desi-tiles/daily') },
+                                     'labelMinZoom': 100,
+                                     'detail_list': desi_daily_detail_list,
+                                     'detail': denali_detail,
+                                    });
+desi_tiles_daily._style = {'fillOpacity': 0.05 };
+
+var desi_spec_daily = new DesiDailySpectraCatalog('desi-spec-daily', 'DESI daily spectra',
+                                  {'url': smallcat_url,
+                                   'radius': 300,
+                                   'labelsMinZoom': 10,
+                                   'minZoom': 8,
+                                   //'urlTerm': 'desi-spec/denali',
+                                   });
+
+
+
+{% endif %}
+ 
 var polygonOverlays = [ 
     {% if enable_dr5_overlays %}
     ccdOverlay5, expOverlay5,
@@ -3227,8 +3399,18 @@ var polygonOverlays = [
     {% if enable_spectra %}
     plateOverlay,
     {% endif %}
+    {% if enable_desi_targets %}
+    desi_tiles_denali,
+    desi_tiles_daily,
+    {% endif %}
 ];
 
+console.log('Polygon overlays: ' + polygonOverlays.length);
+for (var i=0; i<polygonOverlays.length; i++) {
+console.log('polygon overlay ' + i + ':');
+console.log(polygonOverlays[i]);
+}
+ 
 {% if enable_dr5_overlays %}
 var decalscat5 = new DecalsCatalogLayer(tileWatcher,
                                         'decals-dr5',
@@ -3807,6 +3989,12 @@ var overlays = [
     desi_targets_dr9_main_sec_dark,
     desi_targets_dr9_main_sec_bright,
     {% endif %}
+    {% if enable_desi_data %}
+    desi_tiles_denali,
+    desi_spec_denali,
+    desi_tiles_daily,
+    desi_spec_daily,
+    {% endif %}
     constellations,
     desifoot,
     desifiber,
@@ -3839,7 +4027,10 @@ var ccds = new PolygonOverlay('{{name}}-ccds', '{{pretty}}',
  
 {% endfor %}
 
+console.log('Polygon overlays: ' + polygonOverlays.length);
 for (var i=0; i<polygonOverlays.length; i++) {
+console.log('polygon overlay ' + i + ':');
+console.log(polygonOverlays[i]);
     polygonOverlays[i].on('loaded', function() { inbrickccdUpdate(); });
 }
 
@@ -4264,6 +4455,12 @@ var overlayTree = [];
            findoverlay('desi-footprint'),
            findoverlay('desi-fiberpos'),
          {% endif %}
+         {% if enable_desi_data %}
+           findoverlay('desi-tiles-denali'),
+           findoverlay('desi-spec-denali'),
+           findoverlay('desi-tiles-daily'),
+           findoverlay('desi-spec-daily'),
+         {% endif %}
          {% if enable_desi_targets %}
            findoverlay('targets-dr9-main-dark'),
            findoverlay('targets-dr9-main-bright'),
@@ -4351,7 +4548,8 @@ var layerTree = L.control.layers.tree(baseTree,
          'DECaLS DR7 Exposures',
          'Other catalogs',
          'Spectroscopy',
-         'DESI',
+         //'DESI',
+         'Bright Objects',
          //'DESI Targets (DR8)',
          {% if enable_dr9sv_overlays %}
          'Legacy Surveys DR9-SV Catalog',

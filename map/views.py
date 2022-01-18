@@ -335,6 +335,7 @@ def _index(req,
         enable_eboss = settings.ENABLE_EBOSS,
         enable_hsc_dr2 = settings.ENABLE_HSC_DR2,
         enable_desi_targets = settings.ENABLE_DESI_TARGETS,
+        enable_desi_data = settings.ENABLE_DESI_DATA,
         enable_desi_footprint = True,
         enable_spectra = settings.ENABLE_SPECTRA,
         enable_phat = settings.ENABLE_PHAT,
@@ -399,6 +400,23 @@ def _index(req,
         tileid = req.GET.get('desi_tile')
         # Set ra and dec
         ra, dec = get_desi_tile_radec(int(tileid))
+    except:
+        pass
+
+    # Process DESI targetid parameter
+    try:
+        from map.cats import lookup_targetid
+        tid = req.GET.get('targetid')
+        tid = int(tid)
+        print('Looking up TARGETID', tid)
+        t = lookup_targetid(tid)
+        if t is not None:
+            ra = t.ra
+            dec = t.dec
+            print('Targetid found: RA,Dec', ra, dec)
+            print('(targetid', t.targetid, ')')
+        else:
+            print('Targetid not found:', tid)
     except:
         pass
 
@@ -474,21 +492,22 @@ def _index(req,
         except:
             pass
 
-    if 'targetid' in req.GET:
-        try:
-            targetid = int(req.GET['targetid'], 10)
-            # 22 bits
-            objid = targetid & 0x3fffff
-            # 20 bits
-            brickid = (targetid >> 22) & 0xfffff
-            # 16 bits
-            release = (targetid >> 42) & 0xffff
-            print('Release', release, 'brickid', brickid, 'objid', objid)
-        except:
-            pass
+    # if 'targetid' in req.GET:
+    #     try:
+    #         targetid = int(req.GET['targetid'], 10)
+    #         # 22 bits
+    #         objid = targetid & 0x3fffff
+    #         # 20 bits
+    #         brickid = (targetid >> 22) & 0xfffff
+    #         # 16 bits
+    #         release = (targetid >> 42) & 0xffff
+    #         print('Release', release, 'brickid', brickid, 'objid', objid)
+    #     except:
+    #         pass
         
     galname = None
     if ra is None or dec is None:
+        print('Getting random galaxy position')
         ra,dec,galname = get_random_galaxy(layer=layer)
     
     hostname_url = req.build_absolute_uri('/')
@@ -523,12 +542,14 @@ def _index(req,
         import traceback
         traceback.print_exc()
 
+    print('Setting initial RA,Dec position', ra, dec)
 
     args = dict(ra=ra, dec=dec,
                 maxZoom=maxZoom,
                 galname=galname,
                 layer=layer, tileurl=tileurl,
                 hostname_url=hostname_url,
+                root_url=settings.ROOT_URL+'/'.replace('//','/'),
                 uploadurl=uploadurl,
                 caturl=caturl, bricksurl=bricksurl,
                 smallcaturl=smallcaturl,
@@ -724,6 +745,20 @@ def name_query(req):
         except RuntimeError as e:
             return HttpResponse(json.dumps(dict(error='DESI tile %i not found' % tileid)))
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Tile %i' % tileid)))
+
+
+    # Check for TARGET or TARGETID <targetid>
+    words = obj.strip().split()
+    if len(words) == 2 and words[0].lower() in ['target', 'targetid']:
+        from map.cats import lookup_targetid
+        tid = int(words[1])
+        try:
+            t = lookup_targetid(tid)
+            ra = t.ra
+            dec = t.dec
+        except RuntimeError as e:
+            return HttpResponse(json.dumps(dict(error='DESI targetid %i not found' % tid)))
+        return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Targetid %i' % tid)))
 
     # Check for RA,Dec in decimal degrees or H:M:S.
     words = obj.strip().split()
@@ -6682,6 +6717,7 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9.1.1-model/1/12/2383/2022.jpg')
     #r = c.get('/ls-dr9.1.1-resid/1/12/2374/2020.jpg')
     #r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
+    #r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
     #r = c.get('/ls-dr9-south/1/15/27206/20760.jpg')
     #r = c.get('/ls-dr9-south/1/12/3402/2596.jpg')
     #r = c.get('/ls-dr9-south/1/4/12/10.jpg')
@@ -6689,6 +6725,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/6/52/38.jpg')
     #r = c.get('/exposure_panels/decals-dr5/316739/N11/?ra=221.8517&dec=-7.6426&size=100')
     #r = c.get('/exposure_panels/decals-dr5/316741/N11/?ra=221.8520&dec=-7.6426&size=100&kind=dq')
+    #r = c.get('/?zoom=15&targetid=39627788403084375')
+    #r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
     #r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
     #r = c.get('/ccd/ls-dr9.1.1/decam-166877-S6.xhtml?ra=152.3613&dec=0.2671')
     #r = c.get('/outliers-ast/1/14/9557/8044.jpg')
