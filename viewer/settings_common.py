@@ -31,6 +31,9 @@ ENABLE_OLDER = True
 # scientist view (vs public)
 ENABLE_SCIENCE = True
 
+# Collab-private data!
+ENABLE_DESI_DATA = False
+
 ENABLE_DESI_TARGETS = False
 ENABLE_SPECTRA = False
 

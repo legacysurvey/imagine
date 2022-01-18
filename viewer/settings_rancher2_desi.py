@@ -36,6 +36,9 @@ ENABLE_DR8 = True
 ENABLE_DR9SV = False
 ENABLE_DES_DR1 = True
 
+# Collab-private data!
+ENABLE_DESI_DATA = True
+
 ENABLE_DESI_TARGETS = True
 ENABLE_SPECTRA = True
 
