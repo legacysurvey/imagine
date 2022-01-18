@@ -2348,7 +2348,8 @@ def desi_fiberassign_filename(tileid):
                       tilestr[:3], 'fiberassign-%s.fits.gz'%tilestr)
     return fn
 
-def cat_desi_all_tiles(req, subset, ver, tag):
+def cat_desi_all_tiles(req, subset, ver):
+    import numpy as np
     import json
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
@@ -2364,11 +2365,11 @@ def cat_desi_all_tiles(req, subset, ver, tag):
     t = Table.read('data/tiles-main.ecsv')
     from astrometry.util.fits import fits_table
     T = fits_table()
-    T.tileid = t['TILEID']
-    T.ra = t['RA']
-    T.dec = t['DEC']
-    T.in_desi = t['IN_DESI']
-    T.program = t['PROGRAM']
+    T.tileid = t['TILEID'].data
+    T.ra = t['RA'].data
+    T.dec = t['DEC'].data
+    T.in_desi = t['IN_DESI'].data
+    T.program = t['PROGRAM'].data
 
     T.cut(T.in_desi)
     margin = 0.8
@@ -2391,10 +2392,17 @@ def cat_desi_all_tiles(req, subset, ver, tag):
     elif subset == 'bright':
         T.cut(T.program == 'BRIGHT')
 
-    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
-    tid = list(int(t) for t in T.tileid)
-    rtn = dict(rd=rd, tileid=tid, program=T.program)
-    return HttpResponse(json.dumps(rtn), content_type='application/json')
+    # rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    # tid = list(int(t) for t in T.tileid)
+    # rtn = dict(rd=rd, tileid=list(tid), program=list(T.program))
+    # return HttpResponse(json.dumps(rtn), content_type='application/json')
+    objs = []
+    for r,d,prog,tid in zip(T.ra, T.dec, T.program, T.tileid):
+        objs.append(dict(name='Tile %i (%s)' % (tid, prog),
+                         ra=r,
+                         dec=d,
+                         radius=1.6))
+    return HttpResponse(json.dumps({'objs':objs}), content_type='application/json')
 
 def cat_desi_tile(req, ver):
     from astrometry.util.fits import fits_table

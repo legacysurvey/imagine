@@ -3227,7 +3227,25 @@ and entries in the "in brick/ccd" panel.
 {% endcomment %}
 
 
-{% if enable_desi_targets %}
+ var DesiTileOverlay = CircleOverlay.extend({
+     highlight: function(obj) {
+     },
+
+    getTooltipStyle() {
+        var z = map.getZoom()
+        return { permanent: (z >= 12),
+                 interactive: true,
+                 //className: (z == 12 ? 'spectrumTooltipSmall' : 'spectrumTooltip'),
+               };
+    },
+/*
+     getPopupText: function(json, i) {
+      return json['objs'][i]['name'];
+  },
+*/
+});
+
+{% if enable_desi_data %}
 var denali_detail_list = function(ov, objs) {
     if (objs.length == 0) { return ''; }
     txt = 'In DESI Denali tiles: <ul>';
@@ -3261,15 +3279,6 @@ var denali_detail = function(ov, objs, aparams) {
      return objs;
  };
 
- var DesiTileOverlay = CircleOverlay.extend({
-     highlight: function(obj) {
-     },
-/*
-     getPopupText: function(json, i) {
-      return json['objs'][i]['name'];
-  },
-*/
-});
 var desi_tiles_denali = new DesiTileOverlay('desi-tiles-denali',
                                      'DESI Denali tiles',
                                     {'url': smallcat_url,
@@ -3353,6 +3362,37 @@ var desi_spec_daily = new DesiDailySpectraCatalog('desi-spec-daily', 'DESI daily
 
 
 {% endif %}
+
+////////////////////// DESI All tiles
+
+var desi_dark_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In DESI dark-time tiles: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + desi_dark_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+var desi_dark_detail = function(ov, objs, aparams) {
+     return objs;
+ };
+
+var desi_tiles_dark = new DesiTileOverlay('desi-tiles-dark',
+                                     'DESI dark-time tiles',
+                                    {'url': smallcat_url,
+                                     'url_args': { 'id': 'desi-all-tiles/dark',
+                                                   'ver': getcatversion('desi-all-tiles/dark') },
+                                     'labelMinZoom': 100,
+                                     'detail_list': desi_dark_detail_list,
+                                     'detail': desi_dark_detail,
+                                    });
+desi_tiles_dark._style = {'fillOpacity': 0.05 };
+
  
 var polygonOverlays = [ 
     {% if enable_dr5_overlays %}
@@ -3399,7 +3439,8 @@ var polygonOverlays = [
     {% if enable_spectra %}
     plateOverlay,
     {% endif %}
-    {% if enable_desi_targets %}
+    desi_tiles_dark,
+    {% if enable_desi_data %}
     desi_tiles_denali,
     desi_tiles_daily,
     {% endif %}
@@ -3998,6 +4039,7 @@ var overlays = [
     constellations,
     desifoot,
     desifiber,
+    desi_tiles_dark,
 ];
 
 
@@ -4451,6 +4493,7 @@ var overlayTree = [];
            { label: 'DESI Individual Tiles',
              children: desi_tile_list },
          {% endif %}
+         findoverlay('desi-tiles-dark'),
          {% if enable_desi_footprint %}
            findoverlay('desi-footprint'),
            findoverlay('desi-fiberpos'),

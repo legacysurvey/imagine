@@ -32,7 +32,7 @@ urlpatterns = [
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
 
     # All DESI tiles (tiles-main.ecsv)
-    url(r'^desi-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
+    url(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
     
     # DESI spectroscopy -- daily
     url(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),
