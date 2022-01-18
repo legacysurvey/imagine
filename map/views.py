@@ -3835,21 +3835,21 @@ class PandasLayer(RebrickedMixin, MapLayer):
         super().__init__(name, nativescale=14)
         self.pixscale = 0.186
         self.bands = self.get_bands()
-        self.pixelsize = 5300
+        self.pixelsize = 5100
         self.maxscale = 7
 
     def get_bricks(self):
         from astrometry.util.fits import fits_table
         return fits_table(os.path.join(self.basedir, 'pandas.fits'))
 
-    def get_bricks_for_scale(self, scale):
-        if scale in [0, None]:
-            return self.get_bricks()
-        scale = min(scale, self.maxscale)
-        from astrometry.util.fits import fits_table
-        fn = os.path.join(self.basedir, 'pandas-bricks-%i.fits' % scale)
-        b = fits_table(fn)
-        return b
+    # def get_bricks_for_scale(self, scale):
+    #     if scale in [0, None]:
+    #         return self.get_bricks()
+    #     scale = min(scale, self.maxscale)
+    #     from astrometry.util.fits import fits_table
+    #     fn = os.path.join(self.basedir, 'pandas-bricks-%i.fits' % scale)
+    #     b = fits_table(fn)
+    #     return b
 
     def get_scaled_wcs(self, brick, band, scale):
         print('get_scaled_wcs: scale', scale, 'brick', brick)
@@ -6701,7 +6701,8 @@ if __name__ == '__main__':
     #r = c.get('/jpl_lookup?ra=138.9834&dec=17.8431&date=2016-01-15%2005:51:44.149541&camera=decam')
     #r = c.get('/pandas/1/14/16363/6307.jpg')
     #r = c.get('/pandas/1/14/15897/6126.jpg')
-    r = c.get('/pandas/1/14/15903/6126.jpg')
+    #r = c.get('/pandas/1/14/15903/6126.jpg')
+    r = c.get('/pandas/1/13/8184/3174.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

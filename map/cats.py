@@ -77,6 +77,7 @@ catversions = {
     'desi-tiles': [1,],
     'masks-dr8': [1,],
     'photoz-dr9': [1,],
+    'desi-all-tiles': [1,],
 }
 
 test_cats = []
@@ -2066,6 +2067,54 @@ def desi_fiberassign_filename(tileid):
     fn = os.path.join(settings.DATA_DIR, 'desi-tiles',
                       tilestr[:3], 'fiberassign-%s.fits.gz'%tilestr)
     return fn
+
+def cat_desi_all_tiles(req, subset, ver, tag):
+    import json
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    tag = 'desi-all-tiles'
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from astropy.table import Table
+    t = Table.read('data/tiles-main.ecsv')
+    from astrometry.util.fits import fits_table
+    T = fits_table()
+    T.tileid = t['TILEID']
+    T.ra = t['RA']
+    T.dec = t['DEC']
+    T.in_desi = t['IN_DESI']
+    T.program = t['PROGRAM']
+
+    T.cut(T.in_desi)
+    margin = 0.8
+    # not exactly right...
+    cosdec = np.cos(np.deg2rad((declo+dechi)/2.))
+    r0 = ralo - margin/cosdec
+    r1 = rahi + margin/cosdec
+    d0 = declo - margin
+    d1 = dechi + margin
+
+    T.cut((T.dec > d0) * (T.dec < d1))
+    if ralo > rahi:
+        # RA wrap
+        T.cut(np.logical_or(T.ra > r0, T.ra < r1))
+    else:
+        T.cut((T.ra > r0) * (T.ra < r1))
+
+    if subset == 'dark':
+        T.cut(T.program == 'DARK')
+    elif subset == 'bright':
+        T.cut(T.program == 'BRIGHT')
+
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    tid = list(int(t) for t in T.tileid)
+    rtn = dict(rd=rd, tileid=tid, program=T.program)
+    return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def cat_desi_tile(req, ver):
     from astrometry.util.fits import fits_table

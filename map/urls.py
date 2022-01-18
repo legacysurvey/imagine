@@ -31,6 +31,9 @@ urlpatterns = [
     # PHAT cluster catalog
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
 
+    # All DESI tiles (tiles-main.ecsv)
+    url(r'^desi-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
+    
     # DR9 MAIN targets
     url(r'^targets-dr9-main-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_dark),
     url(r'^targets-dr9-main-sec-bright/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_bright),
