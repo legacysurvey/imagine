@@ -692,18 +692,35 @@ def upload_cat(req):
             destination.write(chunk)
     print('Wrote', tmpfn)
 
+    errtxt = ('<html><body>%s<p>Custom catalogs must be either a: <ul>'
+              + '<li><b>FITS binary table</b> with columns named "RA", "DEC" (not case sensitive) and optionally "NAME".'
+              + '<li><b>CSV text file</b> with columns "RA", "DEC", and optionally "NAME" (also not case sensitive)</ul>'
+              +'See <a href="https://www.legacysurvey.org/svtips/">Tips & Tricks</a> for some hints on how to produce such a catalog.</p></body></html>')
+
+    T = None
+    emsg = ''
     try:
         T = fits_table(tmpfn)
-    except:
-        return HttpResponse('Must upload FITS format catalog including "RA", "Dec", optionally "Name" columns')
-    
+    except Exception as e:
+        emsg = str(e)
+    if T is None:
+        try:
+            # Try CSV...
+            from astropy.table import Table
+            t = Table.read(tmpfn, format='ascii').write(tmpfn, overwrite=True)
+            T = fits_table(tmpfn)
+        except Exception as e:
+            emsg += '; ' + str(e)
+    if T is None:
+        return HttpResponse(errtxt % ('Error: '+emsg))
+
     # Rename and resave columns if necessary
     if rename_cols(T):
         T.write_to(tmpfn)
 
     cols = T.columns()
     if not (('ra' in cols) and ('dec' in cols)):
-        return HttpResponse('Must upload catalog including "RA", "Dec", optionally "Name" columns')
+        return HttpResponse(errtxt % '<p>Did not find column "RA" and "DEC" in table.</p>')
 
     ra,dec = T.ra[0], T.dec[0]
     catname = tmpfn.replace(dirnm, '').replace('.fits', '')
@@ -1921,7 +1938,7 @@ def manga_ifu_offsets():
 
 def cat_spec(req, ver):
     import json
-    fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr14-trimmed.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr16-trimmed.kd.fits')
     tag = 'spec'
     T = cat_kd(req, ver, tag, fn)
     if T is None:
@@ -2628,6 +2645,34 @@ if __name__ == '__main__':
     # create_galaxy_catalog(galfn, None, layer=layer)
     # sys.exit(0)
 
+    if True:
+        # Create SDSS DR16 Spectra file (specObj-dr16-trimmed.kd.fits):
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        T=fits_table('/global/cfs/cdirs/cosmo/data/sdss/dr16/sdss/spectro/redux/specObj-dr16.fits',
+                     columns=['plate','mjd','fiberid','plug_ra','plug_dec','class','subclass','z','zwarning'])
+        print('Read', len(T))
+        T.rename('plug_ra', 'ra')
+        T.rename('plug_dec','dec')
+        labels = []
+        for t in T:
+            sub = t.subclass
+            sub = sub.split()
+            sub = ' '.join([s for s in sub if s[0] != '('])
+            cla = t.get('class').strip()
+            txt = cla
+            if len(sub):
+                txt += ' (' + sub + ')'
+            if cla in ['GALAXY', 'QSO']:
+                txt += ' z=%.3f' % t.z
+            labels.append(txt)
+        T.label = np.array(labels)
+        print('Writing trimmed...')
+        T.writeto('data/sdss/specObj-dr16-trimmed.fits', columns=['ra','dec','plate','mjd','fiberid','z','zwarning','label'])
+        print('Creating kdtree...')
+        os.system('startree -i data/sdss/specObj-dr16-trimmed.fits -o data/sdss/specObj-dr16-trimmed.kd.fits -T -k -P')
+        sys.exit(0)
+
     #t = lookup_targetid(39627788403084375)
     #print('Targetid:', t)
     #t.about()
@@ -2650,7 +2695,8 @@ if __name__ == '__main__':
     #r = c.get('/desi-spec-daily/1/cat.json?ralo=154.1814&rahi=154.3175&declo=-2.6274&dechi=-2.5515')
     #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
     #r = c.get('/desi-tile/1/cat.json?ralo=238.1458&rahi=238.4181&declo=-0.0750&dechi=0.0748&tile=1000')
-    r = c.get('/desi-tile/1/cat.json?ralo=190.9733&rahi=191.6270&declo=10.1426&dechi=10.5060&tile=8786')
+    #r = c.get('/desi-tile/1/cat.json?ralo=190.9733&rahi=191.6270&declo=10.1426&dechi=10.5060&tile=8786')
+    r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
     f = open('out', 'wb')
     for x in r:
         f.write(x)
@@ -2676,24 +2722,3 @@ if __name__ == '__main__':
     c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
 
     sys.exit(0)
-
-    T=fits_table('/project/projectdirs/cosmo/data/sdss/dr14/sdss/spectro/redux/specObj-dr14.fits',
-                 columns=['plate','mjd','fiberid','plug_ra','plug_dec','class','subclass','z','zwarning'])
-    T.rename('plug_ra', 'ra')
-    T.rename('plug_dec','dec')
-    labels = []
-    for t in T:
-        sub = t.subclass
-        sub = sub.split()
-        sub = ' '.join([s for s in sub if s[0] != '('])
-        cla = t.get('class').strip()
-        txt = cla
-        if len(sub):
-            txt += ' (' + sub + ')'
-        if cla in ['GALAXY', 'QSO']:
-            txt += ' z=%.3f' % t.z
-        labels.append(txt)
-    T.label = np.array(labels)
-    T.writeto('specObj-dr14-trimmed.fits', columns=['ra','dec','plate','mjd','fiberid','z','zwarning','label'])
-
-    # startree -i data/specObj-dr14-trimmed.fits -o data/specObj-dr14-trimmed.kd.fits -T -k -P

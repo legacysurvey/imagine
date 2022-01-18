@@ -199,7 +199,7 @@ def top_levels(mp, opt):
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
                     'des-dr1',
                     'eboss',
-                    'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6',
+                    'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                     'unwise-cat-model',
                     'galex', 'sdss2', 'wssa', 'ztf',
                     'ls-dr56', 'ls-dr67',
@@ -223,7 +223,7 @@ def top_levels(mp, opt):
         print('Bands', bands)
 
         rgbkwargs = {}
-        if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6',
+        if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                         'unwise-cat-model']:
             bands = [1, 2]
         elif opt.kind == 'sdss2':
@@ -709,7 +709,7 @@ def main():
 
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
-                           'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
+                           'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
                            'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'ztf']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
@@ -827,6 +827,26 @@ def main():
             opt.maxra = 280
         if opt.minra is None:
             opt.minra = 90
+    elif opt.kind in ['ls-dr9-south-B', 'ls-dr9-south-B-model']:
+        if opt.maxdec is None:
+            opt.maxdec = 40
+        if opt.mindec is None:
+            opt.mindec = -70
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
+    elif opt.kind in ['ls-dr10-early']:
+        if opt.bands is None:
+            opt.bands = 'griz'
+        if opt.maxdec is None:
+            opt.maxdec = 40
+        if opt.mindec is None:
+            opt.mindec = -90
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
     else:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -879,7 +899,8 @@ def main():
         if (opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
-                         'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
+                         'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
+                         'unwise-cat-model',
                         'galex', 'wssa', 'des-dr1', 'hsc2',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
                         'dr8-south', 'dr8-south-model', 'dr8-south-resid',
@@ -898,6 +919,9 @@ def main():
                          'ls-dr9-south', 'ls-dr9-south-model',
                          'ls-dr9-north', 'ls-dr9-north-model',
                          'ls-dr9.1.1', 'ls-dr9.1.1-model',
+                         'ls-dr9-south-B', 'ls-dr9-south-B-model',
+                         'asteroids-i',
+                         'ls-dr10-early',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')

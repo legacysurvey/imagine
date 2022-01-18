@@ -84,3 +84,4 @@ test_ccds = []
 # test_layers.append(("ls-dr9.1.1", "DR9.1.1 COSMOS deep images"))
 # test_layers.append(("ls-dr9.1.1-model", "DR9.1.1 COSMOS deep models"))
 # test_layers.append(("ls-dr9.1.1-resid", "DR9.1.1 COSMOS deep residuals"))
+
