@@ -358,8 +358,10 @@ def cat_desi_release_tiles(req, ver, release):
         for t in T:
             name = 'Tile %i' % t.tileid
             details = []
-            #p = t.faprgrm.strip()
-            p = t.program.strip()
+            if 'program' in t.get_columns():
+                p = t.program.strip()
+            else:
+                p = t.faprgrm.strip()
             if p != 'unknown':
                 details.append(p)
             s = t.survey.strip()
@@ -2647,7 +2649,8 @@ if __name__ == '__main__':
     #r = c.get('/desi-spec-detail/denali/tile80740/fiber3975')
     #r = c.get('/desi-spec-daily/1/cat.json?ralo=154.1814&rahi=154.3175&declo=-2.6274&dechi=-2.5515')
     #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
-    r = c.get('/desi-tile/1/cat.json?ralo=238.1458&rahi=238.4181&declo=-0.0750&dechi=0.0748&tile=1000')
+    #r = c.get('/desi-tile/1/cat.json?ralo=238.1458&rahi=238.4181&declo=-0.0750&dechi=0.0748&tile=1000')
+    r = c.get('/desi-tile/1/cat.json?ralo=190.9733&rahi=191.6270&declo=10.1426&dechi=10.5060&tile=8786')
     f = open('out', 'wb')
     for x in r:
         f.write(x)
