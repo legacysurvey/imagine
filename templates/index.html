@@ -1768,7 +1768,9 @@ tiles = mylayer_B('ls-dr10-early', 'Legacy Surveys DR10-early',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
-
+tiles = mylayer_B('ls-dr10-early-grz', 'Legacy Surveys DR10-early (grz)',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
 
 tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep images',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
@@ -4120,6 +4122,7 @@ var baseTree1 = [
     {% endif %}
 
     findlayer('ls-dr10-early'),
+    findlayer('ls-dr10-early-grz'),
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
         {% if enable_dr9_models %}

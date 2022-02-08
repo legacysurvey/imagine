@@ -4740,6 +4740,8 @@ def get_survey(name):
 
     elif name in ['ls-dr10-early']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+    elif name in ['ls-dr10-early-grz']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm.replace('-grz',''), cache_dir=cachedir)
         
     elif name in ['ls-dr9-south-B']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
@@ -4765,7 +4767,7 @@ def get_survey(name):
         'decals-dr5': ('DECaLS DR5', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr5/'),
         'decals-dr7': ('DECaLS DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr7/'),
         'eboss': ('eBOSS', 'http://legacysurvey.org/'),
-        'decals': ('DECaPS', 'http://legacysurvey.org/'),
+        #'decals': ('DECaPS', 'http://legacysurvey.org/'),
         'ls-dr67': ('Legacy Surveys DR6+DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/'),
         'ls-dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/north'),
         'ls-dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/south'),
@@ -5710,6 +5712,7 @@ def exposures_common(req, tgz, copsf):
         ccdsx.append(('<br/>'.join(['CCD <a href="%s">%s %s %i %s</a>, %.1f sec (x,y ~ %i,%i)' % (expurl, ccd.camera, ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
                                     '<small>(observed %s @ %s = MJD %.6f)</small>' % (ccd.date_obs, ccd.ut, ccd.mjd_obs),
+                                    '<small>(proposal id %s)</small>' % (ccd.propid),
                                     '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % format_jpl_url(req, ra, dec, ccd),]),
                       theurl))
     return render(req, 'exposures.html',
@@ -6323,12 +6326,17 @@ def get_layer(name, default=None):
         survey = get_survey(basename)
         layer = AsteroidsLayer(basename, 'image', survey)
 
-    elif name == 'ls-dr10-early':
+    elif name in ['ls-dr10-early',]:
         survey = get_survey(name)
         image = LsDr10Layer(name, 'image', survey, bands='griz')
         layers[name] = image
         layer = layers[name]
 
+    elif name in ['ls-dr10-early-grz',]:
+        survey = get_survey(name.replace('-grz',''))
+        image = ReDecalsLayer(name, 'image', survey, bands='grz')
+        layers[name] = image
+        layer = layers[name]
         
     if layer is None:
         # Try generic rebricked
@@ -6740,7 +6748,18 @@ if __name__ == '__main__':
     #r = c.get('/pandas/1/14/16363/6307.jpg')
     #r = c.get('/pandas/1/14/15897/6126.jpg')
     #r = c.get('/pandas/1/14/15903/6126.jpg')
-    r = c.get('/pandas/1/13/8184/3174.jpg')
+    #r = c.get('/pandas/1/13/8184/3174.jpg')
+    #r = c.get('/ls-dr10-early/1/13/8191/4680.jpg')
+    #r = c.get('/ls-dr10-early/1/12/4095/2340.jpg')
+    #r = c.get('/ls-dr10-early/1/11/2047/1170.jpg')
+    #r = c.get('/ls-dr10-early/1/12/4095/2352.jpg')
+    #r = c.get('/ls-dr10-early/1/11/2047/1176.jpg')
+    #r = c.get('/decaps2/2/14/8191/11625.jpg')
+    #r = c.get('/decaps2/2/13/4095/5812.jpg') # native
+    #r = c.get('/decaps2/2/12/2047/2906.jpg') # s1
+    #r = c.get('/decaps2/2/12/1023/1453.jpg')
+    #r = c.get('/decaps2/2/12/2048/2905.jpg')
+    r = c.get('/ls-dr10-early/1/5/29/26.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

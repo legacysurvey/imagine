@@ -43,6 +43,8 @@ def _one_tile(X):
     print()
     print('one_tile: zoom', zoom, 'x,y', x,y)
 
+    v = version
+    
     # forcecache=False, return_if_not_found=True)
     if kind == 'sdss':
         print('Zoom', zoom, 'x,y', x,y)
@@ -102,10 +104,9 @@ def _one_tile(X):
         view = views.get_tile_view(kind)
         return view(req, version, zoom, x, y, savecache=True, **kwargs)
 
-    else:
-        from map import views
-        view = views.get_tile_view(kind)
-        return view(req, version, zoom, x, y, savecache=True, **kwargs)
+    from map import views
+    view = views.get_tile_view(kind)
+    return view(req, v, zoom, x, y, savecache=True, **kwargs)
 
 def _bounce_one_tile(*args):
     try:
