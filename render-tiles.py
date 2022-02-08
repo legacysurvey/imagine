@@ -244,6 +244,11 @@ def top_levels(mp, opt):
         print('Version', ver)
         basescale = 5
 
+        if opt.kind  in ['ls-dr10-early',]:
+            ## UGH, this is because there is some problem with the tiling so that scale 5, y=26 fails
+            ## to find any bricks touching, and rather than figure it out I just backed out the scale.
+            basescale = 6
+        
         pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                            '%(zoom)i', '%(x)i', '%(y)i.jpg')
         patdata = dict(ver=ver)
