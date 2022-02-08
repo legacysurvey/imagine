@@ -81,10 +81,10 @@ def _one_tile(X):
         
     elif kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
         v = 2
-        layer = get_layer(kind)
-        print('kind', kind, 'zoom', zoom, 'x,y', x,y)
-        return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
-                              get_images=get_images, ignoreCached=True)
+        # layer = get_layer(kind)
+        # print('kind', kind, 'zoom', zoom, 'x,y', x,y)
+        # return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
+        #                       get_images=get_images, ignoreCached=True)
         
     elif kind == 'sfd':
         v = 2
@@ -828,7 +828,7 @@ def main():
         if opt.maxdec is None:
             opt.maxdec = -20
         if opt.mindec is None:
-            opt.mindec = -70
+            opt.mindec = -75
         if opt.maxra is None:
             opt.maxra = 280
         if opt.minra is None:
@@ -941,6 +941,7 @@ def main():
                          'ls-dr9-south-B', 'ls-dr9-south-B-model',
                          'asteroids-i',
                          'ls-dr10-early', 'pandas',
+                         'decaps2', 'decaps2-model',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
@@ -1017,7 +1018,7 @@ def main():
             sys.exit(0)
                 
         
-        if (opt.kind in ['decaps2', 'decaps2-model', 'eboss', 'ps1']
+        if (opt.kind in ['eboss', 'ps1']
             or 'dr8b' in opt.kind
             or 'dr8c' in opt.kind
             or 'dr8i' in opt.kind):
@@ -1138,7 +1139,7 @@ def main():
             for band in bands:
                 fn = survey.find_file(filetype, brick=brick, band=band)
                 ex = os.path.exists(fn)
-                print('Brick', brick, 'band', band, 'exists?', ex)
+                print('Brick', brick, 'band', band, 'exists?', ex, 'file', fn)
                 has_band[band][i] = ex
                 if ex:
                     found = True

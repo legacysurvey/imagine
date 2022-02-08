@@ -2137,6 +2137,24 @@ tiles = mylayer_B('decaps-resid', 'DECaPS residuals',
                   {//'maxNativeZoom': 13,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+
+
+tiles = mylayer_B('decaps2', 'DECaPS 2 images',
+                  {//'maxNativeZoom': 13,
+                   //'urlPatterns': [ [14, maxZoom, tile_url], ],});
+                   'urlPatterns': [ [1 , maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('decaps2-model', 'DECaPS 2 models',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('decaps2-resid', 'DECaPS 2 residuals',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
 {% endif %}
 
 {% if enable_eboss %}
@@ -4269,6 +4287,10 @@ var baseTree1 = [
             findlayer('des-dr1'),
             {% endif %}
             {% if enable_decaps %}
+            findlayer('decaps2', [
+                findlayer('decaps2-model'),
+                findlayer('decaps2-resid'),
+            ]),
             findlayer('decaps', [
                 findlayer('decaps-model'),
                 findlayer('decaps-resid'),
@@ -4588,6 +4610,7 @@ var layerTree = L.control.layers.tree(baseTree,
          'MzLS+BASS DR6 images',
          'DECaLS DR5 images',
          'DECaPS images',
+         'DECaPS 2 images',
          'unWISE W1/W2 NEO6',
          'DECaLS DR7 catalog',
          'DECaLS DR7 CCDs',

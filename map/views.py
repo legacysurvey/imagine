@@ -105,6 +105,10 @@ tileversions = {
     'decaps-model': [1, 2],
     'decaps-resid': [1, 2],
 
+    'decaps2': [2],
+    'decaps2-model': [2],
+    'decaps2-resid': [2],
+    
     'unwise-w1w2': [1],
     'unwise-neo2': [1],
     'unwise-neo3': [1],
@@ -202,9 +206,9 @@ def clean_layer_name(name):
         'mzls bass-dr6-model': 'mzls+bass-dr6-model',
         'mzls bass-dr6-resid': 'mzls+bass-dr6-resid',
 
-        'decaps2': 'decaps',
-        'decaps2-model': 'decaps-model',
-        'decaps2-resid': 'decaps-resid',
+        #'decaps2': 'decaps',
+        #'decaps2-model': 'decaps-model',
+        #'decaps2-resid': 'decaps-resid',
 
         'dr8': 'ls-dr8',
         'dr8-model': 'ls-dr8-model',
@@ -2297,7 +2301,7 @@ class RebrickedMixin(object):
         return bricks[I]
 
         
-class Decaps2Layer(DecalsDr3Layer):
+class DecapsLayer(DecalsDr3Layer):
 
     def brick_details_body(self, brick):
         survey = self.survey
@@ -2387,7 +2391,7 @@ class DecalsResidLayer(ResidMixin, UniqueBrickMixin, DecalsLayer):
 class DecalsModelLayer(UniqueBrickMixin, DecalsLayer):
     pass
 
-class Decaps2ResidLayer(ResidMixin, Decaps2Layer):
+class DecapsResidLayer(ResidMixin, DecapsLayer):
     pass
 
 class MzlsMixin(object):
@@ -2585,6 +2589,36 @@ class ReDecalsResidLayer(UniqueBrickMixin, ResidMixin, ReDecalsLayer):
 
 class ReDecalsModelLayer(UniqueBrickMixin, ReDecalsLayer):
     pass
+
+
+class Decaps2Layer(ReDecalsLayer):
+
+    # def brick_details_body(self, brick):
+    #     survey = self.survey
+    #     brickname = brick.brickname
+    #     html = [
+    #         '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
+    #         '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
+    #         '<ul>',
+    #         '<li><a href="%s/coadd/%s/%s/legacysurvey-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
+    #         '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
+    #         '</ul>',
+    #         ]
+    #     return html
+
+
+    # Some of the DECaPS2 images do not have WCS headers, so create them based on the brick center.
+    def read_wcs(self, brick, band, scale, fn=None):
+        if scale > 0:
+            return super(Decaps2Layer, self).read_wcs(brick, band, scale, fn=fn)
+        from legacypipe.survey import wcs_for_brick
+        return wcs_for_brick(brick)
+
+class Decaps2ModelLayer(ReDecalsModelLayer):
+    pass
+class Decaps2ResidLayer(ReDecalsResidLayer):
+    pass
+
 
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
@@ -4388,7 +4422,8 @@ class Decaps2LegacySurveyData(MyLegacySurveyData):
         if brick is not None:
             codir = os.path.join(basedir, 'coadd', brickpre, brick)
         sname = self.file_prefix
-        if filetype == 'model':
+        # No .fits.fz suffix, just .fits
+        if filetype in ['image', 'model']:
             return os.path.join(codir,
                                 '%s-%s-%s-%s.fits' % (sname, brick, filetype, band))
         return super(Decaps2LegacySurveyData, self).find_file(filetype, brick=brick,
@@ -4678,7 +4713,7 @@ def get_survey(name):
     import numpy as np
     name = clean_layer_name(name)
     name = layer_to_survey_name(name)
-    #print('Survey name', name)
+    print('Survey name', name)
 
     if name in surveys:
         #print('Cache hit for survey', name)
@@ -4703,6 +4738,11 @@ def get_survey(name):
         survey.drname = 'DECaPS'
         survey.drurl = 'https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
 
+    elif name == 'decaps2':
+        survey = Decaps2LegacySurveyData(survey_dir=dirnm)
+        survey.drname = 'DECaPS 2'
+        survey.drurl = 'https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
+        
     elif name == 'ls-dr67':
         north = get_survey('mzls+bass-dr6')
         north.layer = 'mzls+bass-dr6'
@@ -6232,15 +6272,26 @@ def get_layer(name, default=None):
 
     elif name in ['decaps', 'decaps-model', 'decaps-resid']:
         survey = get_survey('decaps')
-        image = Decaps2Layer('decaps', 'image', survey)
-        model = Decaps2Layer('decaps-model', 'model', survey)
-        resid = Decaps2ResidLayer(image, model,
+        image = DecapsLayer('decaps', 'image', survey)
+        model = DecapsLayer('decaps-model', 'model', survey)
+        resid = DecapsResidLayer(image, model,
                                   'decaps-resid', 'resid', survey, drname='decaps')
         layers['decaps'] = image
         layers['decaps-model'] = model
         layers['decaps-resid'] = resid
         layer = layers[name]
 
+    elif name in ['decaps2', 'decaps2-model', 'decaps2-resid']:
+        survey = get_survey('decaps2')
+        image = Decaps2Layer('decaps2', 'image', survey)
+        model = Decaps2Layer('decaps2-model', 'model', survey)
+        resid = Decaps2ResidLayer(image, model,
+                                  'decaps2-resid', 'resid', survey, drname='decaps2')
+        layers['decaps2'] = image
+        layers['decaps2-model'] = model
+        layers['decaps2-resid'] = resid
+        layer = layers[name]
+        
     elif name == 'unwise-w1w2':
         layer = UnwiseLayer('unwise-w1w2',
                             os.path.join(settings.DATA_DIR, 'unwise-w1w2'))
