@@ -1041,6 +1041,9 @@ def main():
             B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
             print(len(B), 'in RA range')
 
+            print('Resulting range: RA', B.ra.min(), 'to', B.ra.max(),
+                  'Dec', B.dec.min(), 'to', B.dec.max())
+            
             # find all image files
             filetype = 'image'
             model = False
@@ -1117,7 +1120,8 @@ def main():
         filetype = 'image'
 
         survey = get_survey(surveyname)
-
+        print('Survey:', type(survey), survey)
+        
         B = survey.get_bricks()
         print(len(B), 'bricks')
         B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))

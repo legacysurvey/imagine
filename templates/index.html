@@ -416,10 +416,11 @@ var CatalogOverlay = L.Evented.extend({
         }
         this._status && this._status.html('');
         if (!this._show) {
+            console.log('Not showing layer ' + this._name);
             return;
         }
         var circles = this.getLayer(result);
-        //console.log('Got marker layer ' + circles);
+        console.log('Got marker layer ' + circles);
         // remove old layers
         for (var k in this._layers) {
 	        if (k < counter) {
@@ -2783,22 +2784,20 @@ var CircleOverlay = PolygonOverlay.extend({
     },
     getLayer: function(result) {
         var objs = result['objs'];
-        //console.log('Received ' + objs.length + ' objs');
+        console.log('Creating CircleOverlays for ' + objs.length + ' objects');
         var objList = [];
         var clong = map.getCenter().lng;
-
         var tooltipStyle = this.getTooltipStyle();
         var showlabels = (map.getZoom() >= this._labelsMinZoom);
-
         var style = this._style;
-        
         for (var i=0, len=objs.length; i<len; i++) {
             var name = objs[i].name;
-	        var meters = 30 * 3600 * objs[i].radius;
+	        var meters = arcsecToMeters(3600 * objs[i].radius);
             var ra = objs[i].ra;
             var dec = objs[i].dec;
             var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
             var color = objs[i].color || this._color;
+            style = Object.assign(style, {'color':color});
             var c = L.circle(latlng, meters, style);
             c.orig_color = color;
             c.name = name;
@@ -2806,7 +2805,6 @@ var CircleOverlay = PolygonOverlay.extend({
                 c.on('mouseover', this.mouseOver.bind(this));
                 c.on('mouseout',  this.mouseOut.bind(this));
             }
-
 	        if (showlabels) {
                 var txt = this.getLabel(result, i);
                 if (txt.length > 0) {
@@ -2943,7 +2941,7 @@ var ccdOverlay5 = new PolygonOverlay('decals-dr5-ccds',
                                      'DECaLS DR5 CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds5',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -2953,7 +2951,7 @@ var ccdOverlay5 = new PolygonOverlay('decals-dr5-ccds',
 var expOverlay5 = new CircleOverlay('decals-dr5-exps',
                                     'DECaLS DR5 Exposures',
                                     {'url':exposures_url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'exps5',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
@@ -2967,7 +2965,7 @@ var ccdOverlay6 = new PolygonOverlay('mzls+bass-dr6-ccds',
                                      'MzLS+BASS DR6 CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds6',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -2981,7 +2979,7 @@ var ccdOverlay7 = new PolygonOverlay('decals-dr7-ccds',
                                      'DECaLS DR7 CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds7',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -2991,7 +2989,7 @@ var ccdOverlay7 = new PolygonOverlay('decals-dr7-ccds',
 var expOverlay7 = new CircleOverlay('decals-dr7-exps',
                                     'DECaLS DR7 Exposures',
                                     {'url':exposures_url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'exps7',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
@@ -3005,7 +3003,7 @@ var ccdOverlay8 = new PolygonOverlay('dr8-ccds',
                                      'Legacy Surveys DR8 CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds8',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3019,7 +3017,7 @@ var ccdOverlay8n = new PolygonOverlay('dr8-north-ccds',
                                      'Legacy Surveys DR8-north CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds8n',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3033,7 +3031,7 @@ var ccdOverlay8s = new PolygonOverlay('dr8-south-ccds',
                                      'Legacy Surveys DR8-south CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds8s',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3043,7 +3041,7 @@ var ccdOverlay8s = new PolygonOverlay('dr8-south-ccds',
 var expOverlay8s = new CircleOverlay('dr8-south-exps',
                                     'Legacy Surveys DR8-south Exposures',
                                     {'url':exposures_url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'exps8',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
@@ -3055,11 +3053,35 @@ var expOverlay8s = new CircleOverlay('dr8-south-exps',
 
 
 {% if enable_dr9_overlays %}
+
+var ccdOverlay10 = new PolygonOverlay('dr10-ccds',
+                                     'Legacy Surveys DR10 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelsMinZoom': 100,
+                                     'urlTerm': 'ccds10',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr10-early',
+                                     'dr_name': 'DR10',
+                                    });
+var expOverlay10 = new CircleOverlay('dr10-exps',
+                                    'Legacy Surveys DR10 Exposures',
+                                    {'url':exposures_url,
+                                     'labelsMinZoom': 7,
+                                     'urlTerm': 'exps10',
+                                     'detail': exp_detail,
+                                     'detail_list': exp_detail_list,
+                                     'url_name': 'ls-dr10-early',
+                                     'dr_name': 'DR10',
+                                    });
+
+
 var ccdOverlay9 = new PolygonOverlay('dr9-ccds',
                                      'Legacy Surveys DR9 CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3073,7 +3095,7 @@ var ccdOverlay9n = new PolygonOverlay('dr9-north-ccds',
                                      'Legacy Surveys DR9-north CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9n',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3087,7 +3109,7 @@ var ccdOverlay9s = new PolygonOverlay('dr9-south-ccds',
                                      'Legacy Surveys DR9-south CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9s',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3097,7 +3119,7 @@ var ccdOverlay9s = new PolygonOverlay('dr9-south-ccds',
 var expOverlay9s = new CircleOverlay('dr9-south-exps',
                                     'Legacy Surveys DR9-south Exposures',
                                     {'url':exposures_url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'exps9',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
@@ -3114,7 +3136,7 @@ var ccdOverlay9sv = new PolygonOverlay('dr9sv-ccds',
                                      'Legacy Surveys DR9-SV CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9sv',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3128,7 +3150,7 @@ var ccdOverlay9svn = new PolygonOverlay('dr9sv-north-ccds',
                                      'Legacy Surveys DR9-SV-north CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9svn',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3142,7 +3164,7 @@ var ccdOverlay9svs = new PolygonOverlay('dr9sv-south-ccds',
                                      'Legacy Surveys DR9-SV-south CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9svs',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3152,7 +3174,7 @@ var ccdOverlay9svs = new PolygonOverlay('dr9sv-south-ccds',
 var expOverlay9svs = new CircleOverlay('dr9sv-south-exps',
                                     'Legacy Surveys DR9-SV-south Exposures',
                                     {'url':exposures_url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'exps9sv',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
@@ -3164,7 +3186,7 @@ var expOverlay9svs = new CircleOverlay('dr9sv-south-exps',
 var brickOverlay = new PolygonOverlay('decals-bricks', 'Legacy Surveys Bricks',
                                       {'url': bricks_url,
                                        'minZoom': 1,
-                                       'labelMinZoom': 100,
+                                       'labelsMinZoom': 100,
                                        'doHighlight': false,
                                        'urlTerm': 'bricks',
                                        'detail': brick_detail,
@@ -3202,7 +3224,7 @@ var unwiseTileOverlay = new PolygonOverlay('unwise-tiles',
                                  'unWISE tiles',
                                  {'url':ccds_url,
                                  'minZoom': 6,
-                                 'labelMinZoom': 100,
+                                 'labelsMinZoom': 100,
                                  'urlTerm': 'unwise_tile',
                                  'detail': unwise_tile_detail,
                                  'detail_list': unwise_tile_detail_list,
@@ -3216,7 +3238,7 @@ var ccdOverlaySdss = new PolygonOverlay('sdss-ccds',
                                  'SDSS CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccdssdss',
                                      'detail': sdss_ccd_detail,
                                      'detail_list': sdss_ccd_detail_list,
@@ -3234,7 +3256,7 @@ if ('plate' in qstr) {
 var plateOverlay = new CircleOverlay('sdss-plates',
                                      'SDSS Spectro Plates (DR16)',
                                     {'url': url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'detail': plate_detail,
                                      'detail_list': plate_detail_list,
                                     });
@@ -3304,7 +3326,7 @@ var desi_tiles_denali = new DesiTileOverlay('desi-tiles-denali',
                                     {'url': smallcat_url,
                                      'url_args': { 'id': 'desi-tiles/denali',
                                                    'ver': getcatversion('desi-tiles/denali') },
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'detail_list': denali_detail_list,
                                      'detail': denali_detail,
                                     });
@@ -3365,7 +3387,7 @@ var desi_tiles_daily = new DesiTileOverlay('desi-tiles-daily',
                                     {'url': smallcat_url,
                                      'url_args': { 'id': 'desi-tiles/daily',
                                                    'ver': getcatversion('desi-tiles/daily') },
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'detail_list': desi_daily_detail_list,
                                      'detail': denali_detail,
                                     });
@@ -3407,7 +3429,7 @@ var desi_tiles_dark = new DesiTileOverlay('desi-tiles-dark',
                                     {'url': smallcat_url,
                                      'url_args': { 'id': 'desi-all-tiles/dark',
                                                    'ver': getcatversion('desi-all-tiles/dark') },
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'detail_list': desi_dark_detail_list,
                                      'detail': desi_dark_detail,
                                     });
@@ -3434,6 +3456,8 @@ var polygonOverlays = [
     ccdOverlay8s, expOverlay8s,
     {% endif %}
     {% if enable_dr9_overlays %}
+    ccdOverlay10,
+    expOverlay10,
     ccdOverlay9,
     {% endif %}
     {% if enable_dr9_north_overlays %}
@@ -3983,6 +4007,8 @@ var overlays = [
     expOverlay8s,
     {% endif %}
     {% if enable_dr9_overlays %}
+    ccdOverlay10,
+    expOverlay10,
     ccdOverlay9,
     {% endif %}
     {% if enable_dr9_north_overlays %}
@@ -4078,7 +4104,7 @@ for (k in qstr) {
 var ccds = new PolygonOverlay('{{name}}-ccds', '{{pretty}}',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': '{{name}}',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -4375,6 +4401,8 @@ var overlayTree = [];
 
      findoverlay('decals-bricks'),
      {% if enable_dr9_overlays %}
+     findoverlay('dr10-ccds'),
+     findoverlay('dr10-exps'),
      findoverlay('dr9-ccds', [
        {% if enable_dr9_north_overlays %}
        findoverlay('dr9-north-ccds'),

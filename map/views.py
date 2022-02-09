@@ -926,6 +926,7 @@ class MapLayer(object):
         rad = 1.01 * max(d1,d2)/2.
 
         B = self.bricks_within_range(rc, dc, rad, scale=scale)
+        print('Bricks within range:', B)
         if B is None:
             # Previously...
             '''Assumes WCS is axis-aligned and normal parity'''
@@ -2300,6 +2301,9 @@ class RebrickedMixin(object):
         #      ', '.join(bricks.brickname[I]))
         return bricks[I]
 
+    #def bricks_within_range(self, ra, dec, radius, scale=None):
+    #    return None
+    
         
 class DecapsLayer(DecalsDr3Layer):
 
@@ -5016,7 +5020,7 @@ def get_exposure_table(name):
     from astrometry.util.fits import fits_table
     name = str(name)
     name = clean_layer_name(name)
-    if name in ['decals-dr5', 'decals-dr7', 'ls-dr8-south', 'ls-dr9-south']:
+    if name in ['decals-dr5', 'decals-dr7', 'ls-dr8-south', 'ls-dr9-south', 'ls-dr10-early']:
         fn = os.path.join(settings.DATA_DIR, name, 'exposures.fits')
         if not os.path.exists(fn):
             import numpy as np
@@ -5079,6 +5083,9 @@ def exposure_list(req):
     exps = []
     for t in T:
         cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
+        if name in ['ls-dr10-early']:
+            cmap = dict(g='#0000cc', r='#008844', i='#448800', z='#cc0000')
+            
         exps.append(dict(name='%i %s' % (t.expnum, t.filter),
                          ra=t.ra, dec=t.dec, radius=radius,
                          color=cmap[t.filter]))
@@ -6816,7 +6823,8 @@ if __name__ == '__main__':
     #r = c.get('/decaps2/2/12/1023/1453.jpg')
     #r = c.get('/decaps2/2/12/2048/2905.jpg')
     #r = c.get('/ls-dr10-early/1/5/29/26.jpg')
-    r = c.get('/decaps2-model/2/14/8230/12122.jpg')
+    #r = c.get('/decaps2-model/2/14/8230/12122.jpg')
+    r = c.get('/exps/?ralo=256.6791&rahi=261.0352&declo=1.8646&dechi=4.2560&layer=ls-dr10-early')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
