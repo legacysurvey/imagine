@@ -2614,9 +2614,9 @@ class Decaps2Layer(ReDecalsLayer):
         from legacypipe.survey import wcs_for_brick
         return wcs_for_brick(brick)
 
-class Decaps2ModelLayer(ReDecalsModelLayer):
+class Decaps2ModelLayer(Decaps2Layer, ReDecalsModelLayer):
     pass
-class Decaps2ResidLayer(ReDecalsResidLayer):
+class Decaps2ResidLayer(Decaps2Layer, ReDecalsResidLayer):
     pass
 
 
@@ -4423,9 +4423,14 @@ class Decaps2LegacySurveyData(MyLegacySurveyData):
             codir = os.path.join(basedir, 'coadd', brickpre, brick)
         sname = self.file_prefix
         # No .fits.fz suffix, just .fits
-        if filetype in ['image', 'model']:
+        if filetype in ['image']:
             return os.path.join(codir,
                                 '%s-%s-%s-%s.fits' % (sname, brick, filetype, band))
+        if filetype in ['model']:
+            # coadd-model dir; named "legacysurvey-BRICK-image", not "-model"
+            codir = os.path.join(basedir, 'coadd-model', brickpre, brick)
+            return os.path.join(codir,
+                                '%s-%s-%s-%s.fits' % (sname, brick, 'image', band))
         return super(Decaps2LegacySurveyData, self).find_file(filetype, brick=brick,
                                                               brickpre=brickpre,
                                                               band=band,
@@ -6810,7 +6815,8 @@ if __name__ == '__main__':
     #r = c.get('/decaps2/2/12/2047/2906.jpg') # s1
     #r = c.get('/decaps2/2/12/1023/1453.jpg')
     #r = c.get('/decaps2/2/12/2048/2905.jpg')
-    r = c.get('/ls-dr10-early/1/5/29/26.jpg')
+    #r = c.get('/ls-dr10-early/1/5/29/26.jpg')
+    r = c.get('/decaps2-model/2/14/8230/12122.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
