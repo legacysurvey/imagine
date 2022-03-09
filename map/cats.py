@@ -82,6 +82,7 @@ catversions = {
     'desi-denali-spectra': [1,],
     'desi-daily-tiles': [1,],
     'desi-daily-spectra': [1,],
+    'ls-dr10a': [1,],
 }
 
 test_cats = []
@@ -2628,10 +2629,26 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     else:
         rd = list(zip(cat.ra, cat.dec))
         types = list([t[0] for t in cat.get('type')])
-        fluxes = [dict(g=float(g), r=float(r), z=float(z))
-                  for g,r,z in zip(cat.flux_g, cat.flux_r, cat.flux_z)]
-        nobs = [dict(g=int(g), r=int(r), z=int(z))
-                for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
+
+        havebands = []
+        havefluxes = []
+        havenobs = []
+        cols = cat.get_columns()
+        for band in 'griz':
+            if 'flux_'+band in cols:
+                havebands.append(band)
+                havefluxes.append(cat.get('flux_' + band))
+                havenobs.append(cat.get('nobs_' + band))
+        fluxes = []
+        for F in zip(*havefluxes):
+            fluxes.append(dict([(b,float(f)) for b,f in zip(havebands, F)]))
+        nobs = []
+        for N in zip(*havenobs):
+            nobs.append(dict([(b,int(f)) for b,f in zip(havebands, N)]))
+        #fluxes = [dict(g=float(g), r=float(r), z=float(z))
+        #          for g,r,z in zip(cat.flux_g, cat.flux_r, cat.flux_z)]
+        #nobs = [dict(g=int(g), r=int(r), z=int(z))
+        #        for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
         bricknames = list(cat.brickname)
         objids = [int(x) for x in cat.objid]
 

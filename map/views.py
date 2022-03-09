@@ -2587,6 +2587,12 @@ class LsDr10Layer(ReDecalsLayer):
             if bf != 0.:
                 rgb[:,:,2] += bf*v
         return rgb
+
+#class LsDr10ModelLayer(UniqueBrickMixin, LsDr10Layer):
+#    pass
+class LsDr10ResidLayer(UniqueBrickMixin, ResidMixin, LsDr10Layer):
+    pass
+
     
 class ReDecalsResidLayer(UniqueBrickMixin, ResidMixin, ReDecalsLayer):
     pass
@@ -4791,7 +4797,12 @@ def get_survey(name):
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
     elif name in ['ls-dr10-early-grz']:
         survey = DR8LegacySurveyData(survey_dir=dirnm.replace('-grz',''), cache_dir=cachedir)
-        
+
+    elif name in ['ls-dr10a', 'ls-dr10a-model']:
+        if name == 'ls-dr10a-model':
+            dirnm = os.path.join(basedir, 'ls-dr10a')
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+
     elif name in ['ls-dr9-south-B']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
@@ -4995,7 +5006,10 @@ def ccd_list(req):
         x = np.array([1, 1, c.width, c.width])
         y = np.array([1, c.height, c.height, 1])
         r,d = wcs.pixelxy2radec(x, y)
-        ccmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
+        if name in ['ls-dr10-early', 'ls-dr10a']:
+            ccmap = dict(g='#0000cc', r='#008844', i='#448800', z='#cc0000', Y='#cc4444')
+        else:
+            ccmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
         ccds.append(dict(name='%s %i-%s-%s' % (c.camera.strip(), c.expnum,
                                                c.ccdname.strip(), c.filter.strip()),
                          radecs=list(zip(r, d)),
@@ -6389,18 +6403,32 @@ def get_layer(name, default=None):
         survey = get_survey(basename)
         layer = AsteroidsLayer(basename, 'image', survey)
 
-    elif name in ['ls-dr10-early',]:
+    elif name in ['ls-dr10-early']:
         survey = get_survey(name)
         image = LsDr10Layer(name, 'image', survey, bands='griz')
         layers[name] = image
         layer = layers[name]
 
-    elif name in ['ls-dr10-early-grz',]:
+    elif name in ['ls-dr10-early-grz']:
         survey = get_survey(name.replace('-grz',''))
         image = ReDecalsLayer(name, 'image', survey, bands='grz')
         layers[name] = image
         layer = layers[name]
         
+    elif name in ['ls-dr10a', 'ls-dr10a-model', 'ls-dr10a-resid']:
+        basename = 'ls-dr10a'
+        survey = get_survey(basename)
+        image = LsDr10Layer(basename, 'image', survey, bands='griz')
+        #model = LsDr10Layer(basename + '-model', 'model', survey, bands='griz')
+        model = LsDr10Layer(basename, 'model', survey, bands='griz')
+        #drname=basename)
+        resid = LsDr10ResidLayer(image, model, basename + '-resid', 'resid', survey, bands='griz')
+        #drname=basename)
+        layers[basename] = image
+        layers[basename + '-model'] = model
+        layers[basename + '-resid'] = resid
+        layer = layers[name]
+
     if layer is None:
         # Try generic rebricked
         #print('get_layer:', name, '-- generic')
@@ -6824,7 +6852,9 @@ if __name__ == '__main__':
     #r = c.get('/decaps2/2/12/2048/2905.jpg')
     #r = c.get('/ls-dr10-early/1/5/29/26.jpg')
     #r = c.get('/decaps2-model/2/14/8230/12122.jpg')
-    r = c.get('/exps/?ralo=256.6791&rahi=261.0352&declo=1.8646&dechi=4.2560&layer=ls-dr10-early')
+    #r = c.get('/exps/?ralo=256.6791&rahi=261.0352&declo=1.8646&dechi=4.2560&layer=ls-dr10-early')
+    #r = c.get('/ls-dr10a/1/13/5233/4095.jpg')
+    r = c.get('/ls-dr10a/1/14/10467/8191.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

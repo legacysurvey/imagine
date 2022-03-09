@@ -842,7 +842,7 @@ def main():
             opt.maxra = 360
         if opt.minra is None:
             opt.minra = 0
-    elif opt.kind in ['ls-dr10-early']:
+    elif opt.kind in ['ls-dr10-early', 'ls-dr10a', 'ls-dr10a-model']:
         if opt.bands is None:
             opt.bands = 'griz'
         if opt.maxdec is None:
@@ -940,7 +940,8 @@ def main():
                          'ls-dr9.1.1', 'ls-dr9.1.1-model',
                          'ls-dr9-south-B', 'ls-dr9-south-B-model',
                          'asteroids-i',
-                         'ls-dr10-early', 'pandas',
+                         'ls-dr10-early', 'ls-dr10a', 'ls-dr10a-model',
+                         'pandas',
                          'decaps2', 'decaps2-model',
         ]
             or opt.kind.startswith('dr8-test')
@@ -960,7 +961,7 @@ def main():
             from map.views import get_layer
 
             layer = get_layer(opt.kind)
-
+            print('Layer:', layer)
             if opt.queue:
                 if len(opt.zoom) == 0:
                     opt.zoom = [1,2,3,4,5,6,7]
