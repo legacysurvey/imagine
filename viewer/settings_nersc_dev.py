@@ -1,6 +1,6 @@
 from viewer.settings_common import *
 
-DEBUG_LOGGING = False
+DEBUG_LOGGING = True
 
 USER_QUERY_DIR = '/tmp/viewer-dev-user'
 
@@ -23,6 +23,8 @@ SUBDOMAINS_B = SUBDOMAINS
 CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
 ENABLE_DEV = True
+
+ENABLE_PHAT = True
 
 ENABLE_DECAPS = True
 ENABLE_EBOSS = True

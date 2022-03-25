@@ -126,12 +126,18 @@ var QueryItems = function() {
 var qstr = QueryItems();
 
 var zoom_initial = 12;
+if ('plate' in qstr) {
+  zoom_initial = 8;
+}
 if ('zoom' in qstr) {
   zoom_initial = parseInt(qstr['zoom']);
   if (isNaN(zoom_initial))
     zoom_initial = 12;
   zoom_initial = Math.max(1, Math.min(maxZoom, zoom_initial));
 }
+
+var sparseMode = ('sparse' in qstr);
+
 
 
 function arcsecToMeters(arcsec) {
@@ -700,10 +706,10 @@ var PhotozCatalog = CatalogOverlay.extend({
         for (var i=0, len=dz.length; i<len; i++) {
             if (dz[i] > 0.2) {
                 wt.push(2);
-                rads.push(100 / 30.);
+                rads.push(40 / 30.);
             } else {
                 wt.push(5);
-                rads.push(150 / 30.);
+                rads.push(50 / 30.);
             }
         }
         result['weight'] = wt;
@@ -794,7 +800,7 @@ var SdssSpectraCatalog = CatalogOverlay.extend({
         if (zwval > 0) {
             zw = ' (Zwarn=0x' + zwval.toString(16) + ')';
         }
-        var label = '<a href="https://dr14.sdss.org/optical/spectrum/view?mjd=' +
+        var label = '<a href="https://dr16.sdss.org/optical/spectrum/view?mjd=' +
             json['mjd'][i] + '&fiberid=' + json['fiber'][i] + '&plateid=' +
             json['plate'][i] + '&zwarning=0&matches=any">' + json.name[i] + zw + '</a>';
         return label;
@@ -1417,7 +1423,7 @@ function exp_detail(layer_name, name, aparams) {
 
 function plate_detail(layer_name, name, aparams) {
     //console.log('Plate_detail: ' + layer_name + ', ' + name + ', ' + aparams);
-    return '<a href="https://dr14.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
+    return '<a href="https://dr16.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
 }
 
 function linkHereURL(latlng) {
@@ -1753,7 +1759,14 @@ tiles = mylayer_B('des-dr1', 'DES DR1',
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+tiles = mylayer_B('pandas', 'PANDAS',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
 
+
+tiles = mylayer_B('ls-dr10-early', 'Legacy Surveys DR10-early',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
 
 
 
@@ -2172,6 +2185,14 @@ tiles = mylayer_B('hsc-dr2', 'HSC DR2',
 allLayers.push(tiles);
 {% endif %}
 
+tiles = mylayer_B('outliers-ast', 'Asteroids test: outliers',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('asteroids-i', 'Asteroids test: images',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 {% if enable_vlass %}
 tiles = mylayer_B('vlass1.2', 'VLASS 1.2',
                   {'attribution': vlass_attrib,
@@ -2192,8 +2213,17 @@ tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
                  'attribution': unwise_attrib,
                  'urlPatterns': [
                      [1, 11, aws_unwise_url],]});
-                 //[12, maxZoom, tile_url], ],});
+ //[12, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+
+tiles = mylayer_B('unwise-neo7', 'unWISE W1/W2 NEO7',
+                {'maxNativeZoom': 11,
+                 'attribution': unwise_attrib,
+                 'urlPatterns': [
+                     [1, maxZoom, tile_url], ],});
+ //[1, 11, aws_unwise_url],]});
+allLayers.push(tiles);
+
 
 tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
                 {'maxNativeZoom': 12,
@@ -2368,7 +2398,7 @@ L.DomEvent.on(container, 'click', infoBoxClicked);
 var upload = L.control({'position':'bottomleft'});
 upload.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'upload');
-    this._div.innerHTML = 'Custom catalog upload (FITS table; RA,Dec,[name]): <form action="' + usercat_upload_url + '" method="POST" enctype="multipart/form-data"><input type="file" name="catalog" id="usercat_file" /><span id="upload_status"></span><input type="submit" value="Upload" id="usercat_submit" /></form>'
+    this._div.innerHTML = 'Custom catalog upload (FITS or CSV; RA,Dec,[name,color,radius]): <form action="' + usercat_upload_url + '" method="POST" enctype="multipart/form-data"><input type="file" name="catalog" id="usercat_file" /><span id="upload_status"></span><input type="submit" value="Upload" id="usercat_submit" /></form>'
     return this._div;
 };
 upload.addTo(map);
@@ -2415,8 +2445,10 @@ function addCSSFilterSlider(filterType) {
     }
     disableMouseEventPropagation(sliderControl);
 }
-addCSSFilterSlider('brightness');
-addCSSFilterSlider('contrast');
+if (!sparseMode) {
+  addCSSFilterSlider('brightness');
+  addCSSFilterSlider('contrast');
+}
 {% endif %}
 
 {% if science %}
@@ -3180,7 +3212,7 @@ if ('plate' in qstr) {
     url += '&plate=' + qstr['plate'];
 }
 var plateOverlay = new CircleOverlay('sdss-plates',
-                                     'SDSS Spectro Plates',
+                                     'SDSS Spectro Plates (DR16)',
                                     {'url': url,
                                      'labelMinZoom': 100,
                                      'detail': plate_detail,
@@ -3531,7 +3563,7 @@ var photoz = new PhotozCatalog('photoz-dr9', 'DR9 Photo-z',
                                  {'minZoom': 12,
                                  'labelsMinZoom': 14,
                                  'urlTerm': 'photoz-dr9',
-                                 'radius': 150,});
+                                 'radius': 50,});
 
 var GaiaDr2Catalog = CatalogOverlay.extend({
     getColor: function(json, i) {
@@ -3761,7 +3793,7 @@ url = smallcat_url;
 if ('plate' in qstr) {
     url += '&plate=' + qstr['plate'];
 }
-var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
+var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra (DR16)',
                                   {'url': url,
                                    'radius': 300,
                                    'labelsMinZoom': 11,
@@ -3956,6 +3988,8 @@ var overlays = [
     desi_targets_dr9_main_bright,
     desi_targets_dr9_main_sec_dark,
     desi_targets_dr9_main_sec_bright,
+    {% endif %}
+    {% if enable_desi_data %}
     desi_tiles_denali,
     desi_spec_denali,
     desi_tiles_daily,
@@ -4042,10 +4076,8 @@ var baseTree1 = [
     {% if enable_m33 %}
     findlayer('m33'),
     {% endif %}
-    {% if enable_phat %}
-    findlayer('phat'),
-    {% endif %}
 
+    findlayer('ls-dr10-early'),
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
         {% if enable_dr9_models %}
@@ -4058,7 +4090,6 @@ var baseTree1 = [
          findlayer('ls-dr9.1.1-model'),
          findlayer('ls-dr9.1.1-resid'),
         ]),
-    ]),
     {% endif %}
 
     {% if enable_dr9_north %}
@@ -4075,6 +4106,11 @@ var baseTree1 = [
         {% if enable_dr9_resids %}
         findlayer('ls-dr9-south-resid'),
         {% endif %}
+    ]),
+    {% endif %}
+
+    {% if enable_dr9 %}
+    // nested in dr9
     ]),
     {% endif %}
 
@@ -4165,6 +4201,7 @@ var baseTree1 = [
     {% endif %}
 
     {% if enable_unwise %}
+    findlayer('unwise-neo7'),
     findlayer('unwise-neo6', [
         {% if science %}
         findlayer('unwise-neo4'),
@@ -4177,6 +4214,12 @@ var baseTree1 = [
     {
         label: 'More surveys',
         children: [
+            findlayer('pandas'),
+            {% if enable_phat %}
+            findlayer('phat'),
+            {% endif %}
+            findlayer('outliers-ast'),
+            findlayer('asteroids-i'),
             {% if enable_des_dr1 %}
             findlayer('des-dr1'),
             {% endif %}
@@ -4260,10 +4303,6 @@ var overlayTree = [];
 {% endif %}
 
  overlayTree = overlayTree.concat([
-     {% if enable_phat %}
-     findoverlay('phat-clusters'),
-     {% endif %}    
-
      {% if science %}
      { label: 'Boundaries', children: [
 
@@ -4331,6 +4370,10 @@ var overlayTree = [];
                                         
      {% if science %}
      { label: 'Imaging catalogs', children: [
+
+     {% if enable_phat %}
+     findoverlay('phat-clusters'),
+     {% endif %}    
 
      {% if enable_dr9_overlays %}
      findoverlay('ls-dr9', [
@@ -4412,11 +4455,13 @@ var overlayTree = [];
            findoverlay('desi-footprint'),
            findoverlay('desi-fiberpos'),
          {% endif %}
-         {% if enable_desi_targets %}
+         {% if enable_desi_data %}
            findoverlay('desi-tiles-denali'),
            findoverlay('desi-spec-denali'),
            findoverlay('desi-tiles-daily'),
            findoverlay('desi-spec-daily'),
+         {% endif %}
+         {% if enable_desi_targets %}
            findoverlay('targets-dr9-main-dark'),
            findoverlay('targets-dr9-main-bright'),
            findoverlay('targets-dr9-main-sec-dark'),
@@ -4466,10 +4511,12 @@ var layerTree = L.control.layers.tree(baseTree,
      var sel = $(".leaflet-layerstree-opened").parent().parent();
      //console.log('Parents:');
      //console.log(sel);
-     
+
+     // These are menus to collapse
      txts = [
-         {% if enable_dr7 %}
-         'Legacy Surveys DR6+DR7 images',
+         {% if enable_dr9 %}
+         'Legacy Surveys DR9 images',
+         'Legacy Surveys DR9.1.1 COSMOS deep images',
          {% endif %}
          {% if enable_dr9_north %}
          'Legacy Surveys DR9-north images',
@@ -4487,6 +4534,9 @@ var layerTree = L.control.layers.tree(baseTree,
          {% endif %}
          {% if enable_dr8_south %}
          'Legacy Surveys DR8-south images',
+         {% endif %}
+         {% if enable_dr7 %}
+         'Legacy Surveys DR6+DR7 images',
          {% endif %}
          'DECaLS DR7 images',
          'MzLS+BASS DR6 images',
