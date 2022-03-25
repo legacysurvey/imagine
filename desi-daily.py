@@ -7,6 +7,8 @@ from glob import glob
 import tempfile
 from astrometry.libkd.spherematch import tree_build
 
+basedir = 'data/desi-spectro-daily'
+
 # Create tile kd-tree
 if True:
     from astropy.table import Table
@@ -30,11 +32,12 @@ if True:
     #     T.found_tile[itile] = True
     # T.cut(T.found_tile)
 
-    T.writeto('data/desi-spectro-daily/tiles2.fits')    
-    
-    cmd = 'startree -i data/desi-spectro-daily/tiles2.fits -R tilera -D tiledec -PTk -o data/desi-spectro-daily/tiles2.kd.fits'
-    os.system(cmd)
+    outfn = os.path.join(basedir, 'tiles2.fits')
+    T.writeto(outfn)
 
+    kdfn = os.path.join(basedir, 'tiles2.kd.fits')
+    cmd = 'startree -i %s -R tilera -D tiledec -PTk -o %s' % (outfn, kdfn)
+    os.system(cmd)
     print('Wrote tile kd-tree')
 
 # Create redshift catalog kd-tree
@@ -42,16 +45,18 @@ if True:
 
     allzbest = []
 
-    # Cached file & date
-    cachedfn = 'data/allzbest-%s.fits' % '202110'
-    print('Reading cached spectra from', cachedfn, '...')
-    T = fits_table(cachedfn)
-    T.rename('ra',  'target_ra')
-    T.rename('dec', 'target_dec')
-    allzbest.append(T)
-    cache_cutoff = '20211100'
+    # Cached files & dates
+    for date in ['202110', '202202']:
+        cachedfn = os.path.join(basedir, 'allzbest-%s.fits' % date)
+        print('Reading cached spectra from', cachedfn, '...')
+        T = fits_table(cachedfn)
+        T.rename('ra',  'target_ra')
+        T.rename('dec', 'target_dec')
+        allzbest.append(T)
+    #cache_cutoff = '20211100'
+    cache_cutoff = '20220300'
 
-    print('Finding zbest files...')
+    print('Finding zbest(redrock) files...')
     
     tiles = glob('/global/cfs/cdirs/desi/spectro/redux/daily/tiles/cumulative/*')
     fns = []
@@ -67,7 +72,10 @@ if True:
             if justdate <= cache_cutoff:
                 print('Skipping (cached):', date)
                 continue
-        fns.extend(glob(date + '/zbest-*.fits'))
+        #fns.extend(glob(date + '/zbest-*.fits'))
+        thisfns = glob(date + '/redrock-*.fits')
+        fns.extend(thisfns)
+        print('Adding', len(thisfns), 'files from', date)
 
     tiles = glob('/global/cfs/cdirs/desi/spectro/redux/daily/attic/rerunarchive-20211029/tiles/cumulative/*')
     for tile in tiles:
@@ -82,13 +90,17 @@ if True:
             if justdate <= cache_cutoff:
                 print('Skipping (cached):', date)
                 continue
-        fns.extend(glob(date + '/redrock-*.fits'))
+        thisfns = glob(date + '/redrock-*.fits')
+        fns.extend(thisfns)
+        print('Adding', len(thisfns), 'files from', date)
 
     # Are we producing a cache file?
     caching = False
     if caching:
-        cachedate = '20211100'
-        cachedate_name = '202110'
+        #cachedate = '20211100'
+        #cachedate_name = '202110'
+        cachedate = '20220300'
+        cachedate_name = '202202'
         # print('Dates:')
         # for fn in fns:
         #     print('  ', fn)
@@ -124,17 +136,18 @@ if True:
     allzbest.rename('target_ra', 'ra')
     allzbest.rename('target_dec', 'dec')
     if caching:
-        allzbest.writeto('data/allzbest-%s.fits' % cachedate_name)
+        allzbest.writeto(os.path.join(basedir, 'allzbest-%s.fits' % cachedate_name))
         sys.exit(0)
-        
-    allzbest.writeto('data/allzbest.fits')
 
-outfn = 'data/allzbest.kd.fits'
+    fitsfn = os.path.join(basedir, 'allzbest.fits')
+    allzbest.writeto(fitsfn)
+
+fitsfn = os.path.join(basedir, 'allzbest.fits')
+outfn = os.path.join(basedir, 'allzbest.kd.fits')
 
 with tempfile.TemporaryDirectory() as tempdir:
     
     sfn = os.path.join(tempdir, 'allzbest.kd.fits')
-    fitsfn = 'data/allzbest.fits'
 
     cmd = 'startree -i %s -PTk -o %s' % (fitsfn, sfn)
     os.system(cmd)

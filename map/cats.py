@@ -229,7 +229,7 @@ def cat_desi_daily_tiles(req, ver):
 
 def cat_desi_daily_spectra(req, ver):
     import json
-    fn = os.path.join(settings.DATA_DIR, 'allzbest.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')
     tag = 'desi-daily-spectra'
     T = cat_kd(req, ver, tag, fn)
     if T is None:

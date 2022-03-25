@@ -6148,7 +6148,12 @@ if __name__ == '__main__':
     #r = c.get('/exposure_panels/decals-dr5/316739/N11/?ra=221.8517&dec=-7.6426&size=100')
     #r = c.get('/exposure_panels/decals-dr5/316741/N11/?ra=221.8520&dec=-7.6426&size=100&kind=dq')
     #r = c.get('/?zoom=15&targetid=39627788403084375')
-    r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
+    #r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
+    #r = c.get('/desi-spec-daily/1/cat.json?ralo=10.2550&rahi=10.2890&declo=21.2163&dechi=21.2337')
+    #r = c.get('/decaps-model/2/14/10246/10688.jpg')
+    # tile 10489 / observed 20220324
+    r = c.get('/desi-tile/1/cat.json?ralo=216.5628&rahi=217.1074&declo=0.8761&dechi=1.1755&tile=10489')
+    #r = c.get('/desi-spec-daily/1/cat.json?ralo=141.9359&rahi=142.0720&declo=30.0046&dechi=30.0694')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
