@@ -1752,7 +1752,18 @@ allLayers.push(tiles);
 
 
 
-tiles = mylayer_B('odin-2band', 'ODIN N501/N673 images',
+// tiles = mylayer_B('odin-2band', 'ODIN N501/N673 images',
+//                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+// allLayers.push(tiles);
+
+tiles = mylayer_B('odin-color-n501n673', 'ODIN color images (N501/N673)',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('odin-color-n419n673', 'ODIN color images (N419/N673)',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('odin-n673', 'ODIN N673 image',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
@@ -1760,7 +1771,7 @@ tiles = mylayer_B('odin-n501', 'ODIN N501 image',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
-tiles = mylayer_B('odin-n673', 'ODIN N673 image',
+tiles = mylayer_B('odin-n419', 'ODIN N419 image',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
@@ -3820,9 +3831,12 @@ var baseTree1 = [
     findlayer('phat'),
     {% endif %}
 
-    findlayer('odin-2band'),
-    findlayer('odin-n501'),
+    //findlayer('odin-2band'),
+    findlayer('odin-color-n501n673'),
+    findlayer('odin-color-n419n673'),
     findlayer('odin-n673'),
+    findlayer('odin-n501'),
+    findlayer('odin-n419'),
     findlayer('ls-dr9.1.1'),
     {% if enable_hsc_dr2 %}
     findlayer('hsc-dr2'),

@@ -220,8 +220,6 @@ def top_levels(mp, opt):
         #print('Survey:', layer.survey)
         #print('  cache_dir:', layer.survey.cache_dir)
 
-        print('Bands', bands)
-
         rgbkwargs = {}
         if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6',
                         'unwise-cat-model']:
@@ -236,8 +234,22 @@ def top_levels(mp, opt):
             bands = ['x']
         elif 'vlass' in opt.kind:
             bands = [1]
+        elif opt.kind in ['odin-deep23-n419']:
+            bands = ['N419']
+        elif opt.kind in ['odin-n419']:
+            bands = ['N419']
+        elif opt.kind in ['odin-n501']:
+            bands = ['N501']
+        elif opt.kind in ['odin-n673']:
+            bands = ['N673']
+        elif opt.kind == 'odin-color-n501n673':
+            opt.bands = ['N501', 'N673']
+        elif opt.kind == 'odin-color-n419n673':
+            opt.bands = ['N419', 'N673']
         #else:
         #    bands = 'grz'
+
+        print('Bands', bands)
 
         ver = tileversions.get(opt.kind, [1])[-1]
         print('Version', ver)
@@ -718,6 +730,44 @@ def main():
             opt.maxra = 152.8
         if opt.bands is None:
             opt.bands = ['N501','N673']
+
+    elif opt.kind == 'odin-deep23-n419':
+        if opt.maxdec is None:
+            opt.maxdec = 2.
+        if opt.mindec is None:
+            opt.mindec = -3.
+        if opt.minra is None:
+            opt.minra = 349.
+        if opt.maxra is None:
+            opt.maxra = 355.
+        if opt.bands is None:
+            opt.bands = ['N419']
+
+    elif opt.kind in ['odin-n419', 'odin-n501', 'odin-n673', 'odin-all',
+                      'odin-color-n501n673', 'odin-color-n419n673']:
+        if opt.maxdec is None:
+            opt.maxdec = 40.
+        if opt.mindec is None:
+            opt.mindec = -90.
+        if opt.minra is None:
+            opt.minra = 0.
+        if opt.maxra is None:
+            opt.maxra = 360.
+
+        if opt.bands is None:
+            if opt.kind == 'odin-n419':
+                opt.bands = ['N419']
+            elif opt.kind == 'odin-n501':
+                opt.bands = ['N501']
+            elif opt.kind == 'odin-n673':
+                opt.bands = ['N673']
+            elif opt.kind == 'odin-all':
+                opt.bands = ['N419', 'N501', 'N673']
+            elif opt.kind == 'odin-color-n501n673':
+                opt.bands = ['N501', 'N673']
+            elif opt.kind == 'odin-color-n419n673':
+                opt.bands = ['N419', 'N673']
+            
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                            'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
@@ -909,7 +959,9 @@ def main():
                          'vlass1.2', 'ztf',
                          'ls-dr9-south', 'ls-dr9-south-model',
                          'ls-dr9-north', 'ls-dr9-north-model',
-                         'odin-2band', 'ls-dr9.1.1'
+                         'odin-2band', 'odin-deep23-n419', 'odin-n673', 'odin-n501', 'odin-n419',
+                         'odin-all', 'odin-color-n501n673', 'odin-color-n419n673',
+                         'ls-dr9.1.1',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')

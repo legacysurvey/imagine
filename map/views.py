@@ -260,7 +260,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'odin-2band',
+           default_layer = 'odin-color-n501n673',
            default_radec = (None,None),
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
@@ -778,7 +778,7 @@ class MapLayer(object):
     resid), SDSSco, unWISE.
     '''
     def __init__(self, name,
-                 nativescale=14, maxscale=7):
+                 nativescale=14, maxscale=7, nocreate=False, tiledir=None):
         ''' name: like 'decals-dr2-model'
         '''
         self.name = name
@@ -789,8 +789,13 @@ class MapLayer(object):
         self.pixscale = 0.262
 
         self.basedir = os.path.join(settings.DATA_DIR, self.name)
-        self.tiledir = os.path.join(settings.DATA_DIR, 'tiles', self.name)
+        if tiledir is None:
+            self.tiledir = os.path.join(settings.DATA_DIR, 'tiles', self.name)
+        else:
+            self.tiledir = tiledir
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
+
+        self.nocreate = nocreate
 
     def has_cutouts(self):
         return False
@@ -1034,6 +1039,11 @@ class MapLayer(object):
         import tempfile
         import numpy as np
 
+        if self.nocreate:
+            print('Not creating scaled image for', self.name,
+                  'brick', brick, 'band', band, 'scale', scale)
+            return None
+        
         # Read scale-1 image and scale it
         sourcefn = self.get_filename(brick, band, scale-1)
         if sourcefn is None or not os.path.exists(sourcefn):
@@ -1764,14 +1774,14 @@ class MapLayer(object):
         return view
 
 class DecalsLayer(MapLayer):
-    def __init__(self, name, imagetype, survey, bands='grz', drname=None):
+    def __init__(self, name, imagetype, survey, bands='grz', drname=None, **kwargs):
         '''
         name like 'decals-dr2-model'
         imagetype: 'image', 'model', 'resid'
         survey: LegacySurveyData object
         drname like 'decals-dr2'
         '''
-        super(DecalsLayer, self).__init__(name)
+        super(DecalsLayer, self).__init__(name, **kwargs)
         self.imagetype = imagetype
         self.survey = survey
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
@@ -2047,7 +2057,12 @@ class RebrickedMixin(object):
         if ro:
             print('Read-only; not creating scaled', brick, band, scale)
             return None
-        
+
+        if self.nocreate:
+            print('Not creating scaled image for', self.name,
+                  'brick', brick, 'band', band, 'scale', scale)
+            return None
+
         # Create scaled-down image (recursively).
         #print('Creating scaled-down image for', brick.brickname, band, 'scale', scale)
         # This is a little strange -- we resample into a WCS twice
@@ -3829,11 +3844,22 @@ class ZeaLayer(MapLayer):
 
 
 class OdinLayer(ReDecalsLayer):
+    # def __init__(self, name, layer, survey, bands, **kwargs):
+    #     super().__init__(name, layer, survey, **kwargs)
+    #     self.bands = bands
     def get_rgb(self, imgs, bands, **kwargs):
         from legacypipe.survey import get_rgb
         return get_rgb(imgs, bands, allbands=self.get_bands())
     def get_bands(self):
-        return ['N501', 'N673']
+        return self.bands
+    def get_scaled_pattern(self):
+        # Scaled images come from
+        # data/scaled/odin-N501/.....
+        return os.path.join(
+            settings.DATA_DIR, 'scaled',
+            'odin-%(band)s',
+            '%(scale)i%(band)s', '%(brickname).3s',
+            self.imagetype + '-%(brickname)s-%(band)s.fits.fz')
 
 class OdinSingleBandLayer(OdinLayer):
     def __init__(self, name, layer, survey, band, **kwargs):
@@ -4107,6 +4133,29 @@ class Decaps2LegacySurveyData(MyLegacySurveyData):
                                                               band=band,
                                                               output=output)
 
+class MultiCoaddLegacySurveyData(LegacySurveyData):
+    ''' For ODIN, where we have a mixed fields x filters coverage matrix, this allows
+    creating a directory per filter, with a coadds/ directory containing multiple
+    symlinks into field x filter coadd/ directories.
+    '''
+    def find_file(self, filetype, brick=None, band=None, **kwargs):
+        if filetype in ['image', 'model']:
+            from glob import glob
+            basedir = self.survey_dir
+            if brick is None:
+                brick = '%(brick)s'
+                brickpre = '%(brick).3s'
+            else:
+                brickpre = brick[:3]
+            codir = os.path.join(basedir, 'coadds', '*', brickpre, brick)
+            sname = self.file_prefix
+            pat = os.path.join(codir, '%s-%s-%s-%s.fits.fz' % (sname, brick, filetype, band))
+            fns = glob(pat)
+            for fn in fns:
+                if os.path.exists(fn):
+                    return fn
+        return super().find_file(filetype, brick=brick, band=band, **kwargs)
+        
 class DR8LegacySurveyData(LegacySurveyData):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -4239,6 +4288,9 @@ def get_survey(name):
         south = get_survey('dr9sv-south')
         south.layer = 'dr9sv-south'
         survey = SplitSurveyData(north, south)
+
+    elif name in ['odin-N673', 'odin-N501', 'odin-N419', 'odin-all']:
+        survey = MultiCoaddLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
     #print('dirnm', dirnm, 'exists?', os.path.exists(dirnm))
 
@@ -5713,18 +5765,37 @@ def get_layer(name, default=None):
     elif name == 'hsc-dr2':
         layer = HscLayer('hsc-dr2')
 
-    elif name == 'odin-2band':
-        survey = get_survey('odin-2band')
-        layer = OdinLayer('odin-2band', 'image', survey)
+    # elif name == 'odin-2band':
+    #     survey = get_survey('odin-2band')
+    #     layer = OdinLayer('odin-2band', 'image', survey)
+    # elif name in ['odin-deep23-n419']:
+    #     survey = get_survey('odin-deep23-n419')
+    #     layer = OdinSingleBandLayer('odin-deep23-n419', 'image', survey, 'N419')
+    # 
+    # elif name == 'odin-n501':
+    #    survey = get_survey('odin-2band')
+    #    layer = OdinSingleBandLayer('odin-2band', 'image', survey, 'N501')
 
-    elif name == 'odin-n501':
-        survey = get_survey('odin-2band')
-        layer = OdinSingleBandLayer('odin-2band', 'image', survey, 'N501')
+    elif name in ['odin-n419', 'odin-n501', 'odin-n673',
+                  'odin-N419', 'odin-N501', 'odin-N673']:
+        band = name[-4:].upper()
+        name2 = 'odin-' + band
+        survey = get_survey(name2)
+        layer = OdinSingleBandLayer(name2, 'image', survey, band)
 
-    elif name == 'odin-n673':
-        survey = get_survey('odin-2band')
-        layer = OdinSingleBandLayer('odin-2band', 'image', survey, 'N673')
+    elif name in ['odin-2band', 'odin-color-n501n673']:
+        name = 'odin-color-n501n673'
+        survey = get_survey('odin-all')
+        layer = OdinLayer('odin-all', 'image', survey, bands=['N501','N673'],
+                          nocreate=True,
+                          tiledir = os.path.join(settings.DATA_DIR, 'tiles', name))
 
+    elif name in ['odin-color-n419n673']:
+        survey = get_survey('odin-all')
+        layer = OdinLayer('odin-all', 'image', survey, bands=['N419','N673'],
+                          nocreate=True,
+                          tiledir = os.path.join(settings.DATA_DIR, 'tiles', name))
+        
     if layer is None:
         # Try generic rebricked
         #print('get_layer:', name, '-- generic')
@@ -6102,8 +6173,15 @@ if __name__ == '__main__':
     #r = c.get('/exposure_panels/decals-dr5/496441/N11/?ra=121.2829&dec=29.6660&size=100')
     #r = c.get('/exposures/?ra=121.2829&dec=29.666&layer=decals-dr5')
     #r = c.get('/exposure_panels/decals-dr5/392401/N11/?ra=121.2829&dec=29.6660&size=100')
-    r = c.get('/ls-dr9.1.1/1/14/9549/8100.jpg')
-    r = c.get('/ls-dr9.1.1/1/13/4768/4040.jpg')
+    #r = c.get('/ls-dr9.1.1/1/14/9549/8100.jpg')
+    #r = c.get('/ls-dr9.1.1/1/13/4768/4040.jpg')
+    #r = c.get('/odin-n419/1/10/22/510.jpg')
+    #r = c.get('/odin-n419/1/9/10/255.jpg')
+    #r = c.get('/odin-n501/1/13/6985/4765.jpg')
+    #r = c.get('/odin-color-n501n673/1/14/13971/9530.jpg')
+    #r = c.get('/odin-color-n501n673/1/5/0/13.jpg')
+    #r = c.get('/odin-color-n501n673/1/1/1/1.jpg')
+    r = c.get('/odin-color-n419n673/1/5/0/16.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')
