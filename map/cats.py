@@ -207,7 +207,7 @@ def lookup_targetid(targetid):
     from astrometry.libkd.spherematch import tree_open
     from astrometry.util.fits import fits_table
     import numpy as np
-    fn = os.path.join(settings.DATA_DIR, 'allzbest.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')
     kd = tree_open(fn, 'targetid')
     print('Searching for targetid', targetid)
     #I = kd.search(np.array([float(targetid)]), 0.5, 0, 0)
@@ -2730,6 +2730,7 @@ if __name__ == '__main__':
     #r = c.get('/desi-tile/1/cat.json?ralo=238.1458&rahi=238.4181&declo=-0.0750&dechi=0.0748&tile=1000')
     #r = c.get('/desi-tile/1/cat.json?ralo=190.9733&rahi=191.6270&declo=10.1426&dechi=10.5060&tile=8786')
     r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
+    r = c.get('/desi-spectrum/daily/targetid39628158961452744')
     f = open('out', 'wb')
     for x in r:
         f.write(x)
