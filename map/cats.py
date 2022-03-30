@@ -81,6 +81,10 @@ catversions = {
     'desi-denali-spectra': [1,],
     'desi-daily-tiles': [1,],
     'desi-daily-spectra': [1,],
+    'desi-fuji-tiles': [1,],
+    'desi-fuji-spectra': [1,],
+    'desi-guadalupe-tiles': [1,],
+    'desi-guadalupe-spectra': [1,],
 }
 
 test_cats = []
@@ -189,6 +193,13 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
 def cat_desi_denali_spectra_detail(req, tile, fiber):
     return cat_desi_release_spectra_detail(req, tile, fiber, 'denali')
 
+
+# def cat_desi_fuji_spectra_detail(req, tile, fiber):
+#     return cat_desi_release_spectra_detail(req, tile, fiber, 'fuji')
+# def cat_desi_guadalupe_spectra_detail(req, tile, fiber):
+#     return cat_desi_release_spectra_detail(req, tile, fiber, 'guadalupe')
+
+
 #def cat_desi_daily_spectra_detail(req, tile, fiber):
 #    return cat_desi_release_spectra_detail(req, tile, fiber, 'daily')
 
@@ -227,80 +238,26 @@ def cat_desi_daily_spectra_detail(req, targetid):
 def cat_desi_daily_tiles(req, ver):
     return cat_desi_release_tiles(req, ver, 'daily')
 
-def cat_desi_daily_spectra(req, ver):
+
+def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
     import json
-    fn = os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')
-    tag = 'desi-daily-spectra'
-    T = cat_kd(req, ver, tag, fn)
+    T = cat_kd(req, ver, tag, kdfn, racol=racol, deccol=deccol)
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])), #, z=[], zerr=[])),
                             content_type='application/json')
-    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
-    #radius = [3600. * float(r) for r in T.radius]
-    #color = ['orange' if bright else '#3388ff' for bright in T.isbright]
-    #G = [float(r) for r in T.phot_g_mean_mag]
 
-    names = []
-    colors = []
-    for t,st,z,zw in zip(T.spectype, T.subtype, T.z, T.zwarn):
-        c = '#3388ff'
-        t = t.strip()
-        nm = t
-        st = st.strip()
-        if st != '':
-            nm += ':' + st
-        if t != 'STAR':
-            nm += ', z = %.3f' % z
-
-        #ot = ot.strip()
-        #if ot == 'SKY':
-        #    c = '#448888'
-        #    nm = ot
-        #el
-        if t == 'STAR':
-            c = '#ff4444'
-        elif t == 'GALAXY':
-            c = '#ffffff'
-        elif t == 'QSO':
-            c = '#4444ff'
-            
-        if zw > 0:
-            nm += ' (ZWARN=0x%x)' %zw
-            c = '#888888'
-        names.append(nm)
-        colors.append(c)
-
-    return HttpResponse(json.dumps(dict(rd=rd, name=names, color=colors, targetid=[str(i) for i in T.targetid])),
-                        content_type='application/json')
-
-def cat_desi_denali_spectra(req, ver):
-    # startree -i /global/cfs/cdirs/desi/spectro/redux/denali/zcatalog-denali-cumulative.fits -o data/desi-spectro-denali/zcatalog-denali-cumulative.kd.fits -PTk -R target_ra -D target_dec
-    import json
-    from astrometry.util.fits import fits_table
-    from astrometry.libkd.spherematch import tree_open, tree_search_radec
-    import numpy as np
-    ver = int(ver)
-    tag = 'desi-denali-spectra'
-    if not ver in catversions[tag]:
-        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
-    ralo = float(req.GET['ralo'])
-    rahi = float(req.GET['rahi'])
-    declo = float(req.GET['declo'])
-    dechi = float(req.GET['dechi'])
-    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+    cols = T.get_columns()
+    rd = list((float(r),float(d)) for r,d in zip(T.get(racol), T.get(deccol)))
+        
+    # objtype -- FIXME -- can we unpack TARGETID enough to figure out SKY fibers?
+    if 'objtype' in T.get_columns():
+        objtype = T.objtype
+    else:
+        objtype = ['']*len(T)
     
-    fn = os.path.join(settings.DATA_DIR, 'desi-spectro-denali/zcatalog-denali-cumulative.kd.fits')
-    kd = tree_open(fn)
-
-    I = tree_search_radec(kd, rc, dc, rad)
-    if len(I) == 0:
-        return HttpResponse(json.dumps(dict(rd=[], name=[])),
-                            content_type='application/json')
-    T = fits_table(fn, rows=I)
     names = []
     colors = []
-    for ot,t,st,z,zerr,zw in zip(T.objtype, T.spectype, T.subtype, T.z, T.zerr, T.zwarn):
-        #nm = 'z = %.3f \pm %.3f' % (z, zerr)
+    for ot,t,st,z,zerr,zw in zip(objtype, T.spectype, T.subtype, T.z, T.zerr, T.zwarn):
         c = '#3388ff'
         t = t.strip()
         nm = t
@@ -314,7 +271,7 @@ def cat_desi_denali_spectra(req, ver):
         if ot == 'SKY':
             c = '#448888'
             nm = ot
-        elif t == 'STAR':
+        if t == 'STAR':
             c = '#ff4444'
         elif t == 'GALAXY':
             c = '#ffffff'
@@ -327,14 +284,75 @@ def cat_desi_denali_spectra(req, ver):
         names.append(nm)
         colors.append(c)
 
-    res = dict(rd=[(float(r),float(d)) for r,d in zip(T.target_ra, T.target_dec)],
-               targetid=[str(i) for i in T.targetid],
-               fiberid=[int(i) for i in T.fiber],
-               tileid=[int(i) for i in T.tileid],
-               name=names,
-               color=colors)
-    return HttpResponse(json.dumps(res),
-                        content_type='application/json')
+    J = dict(rd=rd, name=names, color=colors,
+             targetid=[str(i) for i in T.targetid])
+    if 'fiber' in cols:
+        J.update(fiberid=[int(i) for i in T.fiber])
+    if 'tileid' in cols:
+        J.update(tileid=[int(i) for i in T.tileid])
+    return HttpResponse(json.dumps(J), content_type='application/json')
+
+def cat_desi_daily_spectra(req, ver):
+    kdfn = os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')
+    tag = 'desi-daily-spectra'
+    return cat_desi_release_spectra(req, ver, kdfn, tag)
+
+def cat_desi_guadalupe_spectra(req, ver):
+    '''
+    T = merge_tables([fits_table(fn, columns=['target_ra','target_dec','targetid','z','zerr','zwarn','spectype','subtype'])
+                                          for fn in glob('/global/cfs/cdirs/desi/spectro/redux/guadalupe/zcatalog/zpix-*')])
+    T.writeto('cosmo/webapp/viewer-desi/data/desi-spectro-guadalupe/zpix-all.fits')
+    '''
+    # startree -i data/desi-spectro-guadalupe/zpix-all.fits -o data/desi-spectro-guadalupe/zpix-all.kd.fits -PTk -R target_ra -D target_dec
+    kdfn = os.path.join(settings.DATA_DIR, 'desi-spectro-guadalupe', 'zpix-all.kd.fits')
+    tag = 'desi-guadalupe-spectra'
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
+
+def cat_desi_denali_spectra(req, ver):
+    # startree -i /global/cfs/cdirs/desi/spectro/redux/denali/zcatalog-denali-cumulative.fits -o data/desi-spectro-denali/zcatalog-denali-cumulative.kd.fits -PTk -R target_ra -D target_dec
+    kdfn = os.path.join(settings.DATA_DIR, 'desi-spectro-denali',
+                        'zcatalog-denali-cumulative.kd.fits')
+    tag = 'desi-denali-spectra'
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
+# 
+#     names = []
+#     colors = []
+#     for ot,t,st,z,zerr,zw in zip(T.objtype, T.spectype, T.subtype, T.z, T.zerr, T.zwarn):
+#         #nm = 'z = %.3f \pm %.3f' % (z, zerr)
+#         c = '#3388ff'
+#         t = t.strip()
+#         nm = t
+#         st = st.strip()
+#         if st != '':
+#             nm += ':' + st
+#         if t != 'STAR':
+#             nm += ', z = %.3f' % z
+# 
+#         ot = ot.strip()
+#         if ot == 'SKY':
+#             c = '#448888'
+#             nm = ot
+#         elif t == 'STAR':
+#             c = '#ff4444'
+#         elif t == 'GALAXY':
+#             c = '#ffffff'
+#         elif t == 'QSO':
+#             c = '#4444ff'
+#             
+#         if zw > 0:
+#             nm += ' (ZWARN=0x%x)' %zw
+#             c = '#888888'
+#         names.append(nm)
+#         colors.append(c)
+# 
+#     res = dict(rd=[(float(r),float(d)) for r,d in zip(T.target_ra, T.target_dec)],
+#                targetid=[str(i) for i in T.targetid],
+#                fiberid=[int(i) for i in T.fiber],
+#                tileid=[int(i) for i in T.tileid],
+#                name=names,
+#                color=colors)
+#     return HttpResponse(json.dumps(res),
+#                         content_type='application/json')
 
 def cat_desi_release_tiles(req, ver, release):
     import json
@@ -358,18 +376,28 @@ def cat_desi_release_tiles(req, ver, release):
         for t in T:
             name = 'Tile %i' % t.tileid
             details = []
+            prog = None
             if 'program' in t.get_columns():
-                p = t.program.strip()
+                prog = t.program.strip()
             else:
-                p = t.faprgrm.strip()
-            if p != 'unknown':
-                details.append(p)
-            s = t.survey.strip()
-            if s != 'unknown':
-                details.append(s)
+                prog = t.faprgrm.strip()
+            if prog != 'unknown':
+                details.append(prog)
+            surv = t.survey.strip()
+            if surv != 'unknown':
+                details.append(surv)
             if len(details):
                 name += ' (%s)' % ', '.join(details)
-            res.append(dict(name=name, ra=t.tilera, dec=t.tiledec, radius=desi_radius))
+
+            cc = {
+                ('dark','main'):  '#22aadd',
+                ('bright','main'): '#cc8800',
+                ('dark','special'): '#77ccee',
+                ('bright','special'): '#ffbb33',
+                }.get((prog, surv), '#888888')
+                
+            res.append(dict(name=name, ra=t.tilera, dec=t.tiledec, radius=desi_radius,
+                            color=cc))
         return HttpResponse(json.dumps(dict(objs=res)),
                             content_type='application/json')
 
@@ -402,7 +430,12 @@ def cat_desi_denali_tiles(req, ver):
     # startree -i data/desi-spectro-denali/tiles2.fits -R tilera -D tiledec -PTk -o data/desi-spectro-denali/tiles2.kd.fits
     '''
     return cat_desi_release_tiles(req, ver, 'denali')
-    
+
+def cat_desi_guadalupe_tiles(req, ver):
+    #startree -i /global/cfs/cdirs/desi/spectro/redux/guadalupe/tiles-guadalupe.fits -R tilera -D tiledec -PTk -o data/desi-spectro-guadalupe/tiles2.kd.fits
+    return cat_desi_release_tiles(req, ver, 'guadalupe')
+
+
 def cat_photoz_dr9(req, ver):
     '''
     I pre-processed the photo-z sweep files like this to create a kd-tree per sweep:
