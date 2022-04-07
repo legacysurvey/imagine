@@ -912,7 +912,7 @@ class MapLayer(object):
         #print('Old scale', oldscale, 'scale', scale)
         return scale
 
-    def bricks_touching_aa_wcs(self, wcs, scale=None):
+    def bricks_touching_aa_wcs(self, wcs, scale=None, oldcode=False):
         from astrometry.util.starutil_numpy import degrees_between
 
         rc,dc = wcs.radec_center()
@@ -926,8 +926,8 @@ class MapLayer(object):
         rad = 1.01 * max(d1,d2)/2.
 
         B = self.bricks_within_range(rc, dc, rad, scale=scale)
-        print('Bricks within range:', B)
-        if B is None:
+        #print('Bricks within range:', B)
+        if (B is None) or oldcode:
             # Previously...
             '''Assumes WCS is axis-aligned and normal parity'''
             rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
@@ -2301,9 +2301,16 @@ class RebrickedMixin(object):
         #      ', '.join(bricks.brickname[I]))
         return bricks[I]
 
-    #def bricks_within_range(self, ra, dec, radius, scale=None):
-    #    return None
-    
+    def bricks_within_range(self, ra, dec, radius, scale=None):
+        from astrometry.libkd.spherematch import match_radec
+        import numpy as np
+        #print('bricks_within_range for scale', scale)
+        B = self.get_bricks_for_scale(scale)
+        #brad = self.pixelsize * self.pixscale/3600. * 2**scale * np.sqrt(2.)/2. * 1.01
+        brad = self.get_brick_size_for_scale(scale) * np.sqrt(2.) / 2. * 1.1
+        I,J,d = match_radec(ra, dec, B.ra, B.dec, radius + brad)
+        J = np.sort(J)
+        return B[J]
         
 class DecapsLayer(DecalsDr3Layer):
 
@@ -2521,20 +2528,22 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
 
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
-
-        # Work around issue where the largest-scale bricks don't quite
-        # meet up due to TAN projection effects.
-        if scale >= 6:
-            size = 3800
-        else:
-            size = 3600
-
+        size = self.get_pixel_size_for_scale(scale)
         pixscale = self.pixscale * 2**scale
         cd = pixscale / 3600.
         crpix = size/2. + 0.5
         wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
                   float(size), float(size))
         return wcs
+
+    def get_pixel_size_for_scale(self, scale):
+        # Work around issue where the largest-scale bricks don't quite
+        # meet up due to TAN projection effects.
+        if scale >= 6:
+            size = 3800
+        else:
+            size = 3600
+        return size
 
 class LsDr10Layer(ReDecalsLayer):
     def get_rgb(self, imgs, bands, **kwargs):
