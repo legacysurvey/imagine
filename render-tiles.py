@@ -833,7 +833,7 @@ def main():
 
     elif opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
         if opt.maxdec is None:
-            opt.maxdec = -20
+            opt.maxdec = -15
         if opt.mindec is None:
             opt.mindec = -75
         if opt.maxra is None:

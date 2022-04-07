@@ -1402,7 +1402,7 @@ class MapLayer(object):
 
                 #print('Coadded', len(Yo), 'pixels;', (nz-np.sum(rw==0)), 'new')
 
-                if False:
+                if debug_ps is not None:
                     #import pylab as plt
                     dest = np.zeros(wcs.shape, bool)
                     dest[Yo,Xo] = True
@@ -1424,19 +1424,19 @@ class MapLayer(object):
                     plt.title('sub-source')
                     plt.subplot(2,3,5)
                     plt.imshow(destval, interpolation='nearest', origin='lower',
-                               vmin=-0.001, vmax=0.01)
+                               vmin=-0.001, vmax=0.1)
                     plt.title('dest')
 
                     plt.subplot(2,3,3)
                     plt.imshow(rimg / np.maximum(rw, 1e-18),
                                interpolation='nearest', origin='lower',
-                               vmin=-0.001, vmax=0.01)
+                               vmin=-0.001, vmax=0.1)
                     plt.title('rimg')
                     plt.subplot(2,3,6)
                     plt.imshow(rw, interpolation='nearest', origin='lower')
                     plt.title('rw')
-                    plt.savefig('render-%s-%s.png' % (brickname, band))
-
+                    #plt.savefig('render-%s-%s.png' % (brickname, band))
+                    debug_ps.savefig()
             #print('Median image weight:', np.median(rw.ravel()))
             rimg /= np.maximum(rw, 1e-18)
             #print('Median image value:', np.median(rimg.ravel()))
@@ -2302,7 +2302,15 @@ class RebrickedMixin(object):
         print('Cut generic bricks to', len(allbricks))
         allbricks.writeto(fn)
         print('Wrote', fn)
-        return allbricks
+        
+        # tmpfn = fn.replace('.gz','')
+        # assert(tmpfn != fn)
+        # allbricks.writeto(tmpfn)
+        # kdfn = os.path.join(self.basedir, 'survey-bricks-%i.kd.fits' % scale)
+        # cmd = 'startree -i %s -o %s -PTk' % (tmpfn, kdfn)
+        # os.system(cmd)
+        # os.remove(tmpfn)
+        # return allbricks
 
     def get_brick_size_for_scale(self, scale):
         return 0.25 * 2**scale
@@ -6093,7 +6101,7 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         tim = im.get_tractor_image(dq=False, invvar=True, **trargs)
         from legacypipe.survey import get_rgb
         rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        index = dict(g=2, r=1, z=0)[tim.band]
+        index = dict(g=2, r=1, i=0, z=0)[tim.band]
         img = rgb[:,:,index]
         kwa.update(vmin=0, vmax=1)
 
@@ -6888,7 +6896,9 @@ if __name__ == '__main__':
     #r = c.get('/decaps2-model/2/14/8230/12122.jpg')
     #r = c.get('/exps/?ralo=256.6791&rahi=261.0352&declo=1.8646&dechi=4.2560&layer=ls-dr10-early')
     #r = c.get('/ls-dr10a/1/13/5233/4095.jpg')
-    r = c.get('/ls-dr10a/1/14/10467/8191.jpg')
+    #r = c.get('/ls-dr10a/1/14/10467/8191.jpg')
+    #r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=64')
+    r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=32&size=512')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
