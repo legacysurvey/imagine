@@ -629,11 +629,17 @@ def top_levels(mp, opt):
 
 
 def _layer_get_filename(args):
-    layer,brick,band,scale,force = args
+    layer,brick,band,scale,force,deps = args
 
     if force:
         fn = layer.get_scaled_filename(brick, band, scale)
         if os.path.exists(fn):
+            os.remove(fn)
+
+    if deps:
+        fn = layer.get_scaled_filename(brick, band, scale)
+        if os.path.exists(fn) and layer.needs_recreating(brick, band, scale):
+            print('Need to re-create', fn, 'due to modified dependencies')
             os.remove(fn)
 
     fn = layer.get_filename(brick, band, scale)
@@ -686,6 +692,7 @@ def main():
 
     parser.add_option('--kind', default='image')
     parser.add_option('--scale', action='store_true', help='Scale images?')
+    parser.add_option('--deps', action='store_true', default=False, help='With --scale, check if files need to be remade due to updated dependencies?')
     parser.add_option('--bricks', action='store_true', help='Compute scaled brick tables?')
     parser.add_option('--coadd', action='store_true', help='Create SDSS coadd images?')
     parser.add_option('--grass', action='store_true', help='progress plot')
@@ -1012,7 +1019,7 @@ def main():
                 for ibrick,brick in enumerate(B):
                     for band in bands:
                         if has[band][ibrick]:
-                            args.append((layer, brick, band, scale, opt.ignore))
+                            args.append((layer, brick, band, scale, opt.ignore, opt.deps))
                 print(len(args), 'bricks for scale', scale)
                 mp.map(_layer_get_filename, args)
 
@@ -1071,7 +1078,7 @@ def main():
                         if not has[band][ibrick]:
                             print('Brick', brick.brickname, 'does not have', band)
                             continue
-                        args.append((layer, brick, band, scale, opt.ignore))
+                        args.append((layer, brick, band, scale, opt.ignore, False))
                 mp.map(_layer_get_filename, args)
                 
             sys.exit(0)

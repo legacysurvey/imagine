@@ -1086,6 +1086,21 @@ class MapLayer(object):
             return fn
         return None
 
+    def needs_recreating(self, brick, band, scale):
+        fn = self.get_filename(brick, band, scale)
+        deps = self.get_dependencies(brick, band, scale)
+        mytime = os.path.getmtime(fn)
+        for dep in deps:
+            if os.path.exists(dep) and os.path.getmtime(dep) > mytime:
+                return True
+        return False
+        
+    def get_dependencies(self, brick, band, scale):
+        if scale == 0:
+            return []
+        sourcefn = self.get_scaled_filename(brick, band, scale-1)
+        return [sourcefn]
+
     def create_scaled_image(self, brick, band, scale, fn, tempfiles=None):
         from scipy.ndimage.filters import gaussian_filter
         import fitsio
@@ -2119,6 +2134,16 @@ class RebrickedMixin(object):
 
     def get_scaled_wcs(self, brick, band, scale):
         pass
+
+    def get_dependencies(self, brick, band, scale):
+        if scale == 0:
+            return []
+        finalwcs = self.get_scaled_wcs(brick, band, scale)
+        bricks = self.bricks_touching_aa_wcs(finalwcs, scale-1)
+        fns = []
+        for b in brick:
+            fns.append(self.get_scaled_filename(b, band, scale-1))
+        return fns
     
     def create_scaled_image(self, brick, band, scale, fn, tempfiles=None):
         import numpy as np
