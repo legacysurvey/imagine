@@ -4840,8 +4840,8 @@ def get_survey(name):
     elif name in ['ls-dr10-early-grz']:
         survey = DR8LegacySurveyData(survey_dir=dirnm.replace('-grz',''), cache_dir=cachedir)
 
-    elif name in ['ls-dr10a', 'ls-dr10a-model']:
-        if name == 'ls-dr10a-model':
+    elif name in ['ls-dr10a', 'ls-dr10a-model', 'ls-dr10a-resid']:
+        if name in ['ls-dr10a-model', 'ls-dr10a-resid']:
             dirnm = os.path.join(basedir, 'ls-dr10a')
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
@@ -6464,7 +6464,8 @@ def get_layer(name, default=None):
         #model = LsDr10Layer(basename + '-model', 'model', survey, bands='griz')
         model = LsDr10Layer(basename, 'model', survey, bands='griz')
         #drname=basename)
-        resid = LsDr10ResidLayer(image, model, basename + '-resid', 'resid', survey, bands='griz')
+        #resid = LsDr10ResidLayer(image, model, basename + '-resid', 'resid', survey, bands='griz')
+        resid = LsDr10ResidLayer(image, model, basename, 'resid', survey, bands='griz')
         #drname=basename)
         layers[basename] = image
         layers[basename + '-model'] = model
