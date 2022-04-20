@@ -2170,6 +2170,23 @@ tiles = mylayer_B('decaps2-resid', 'DECaPS 2 residuals',
 allLayers.push(tiles);
 
 
+
+tiles = mylayer_B('decaps2-riy', 'DECaPS 2 images (riY)',
+                  {//'maxNativeZoom': 13,
+                   //'urlPatterns': [ [14, maxZoom, tile_url], ],});
+                   'urlPatterns': [ [1 , maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('decaps2-model-riy', 'DECaPS 2 models (riY)',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('decaps2-resid-riy', 'DECaPS 2 residuals (riY)',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
 {% endif %}
 
 {% if enable_eboss %}
@@ -4344,6 +4361,10 @@ var baseTree1 = [
             findlayer('decaps2', [
                 findlayer('decaps2-model'),
                 findlayer('decaps2-resid'),
+            ]),
+            findlayer('decaps2-riy', [
+                findlayer('decaps2-model-riy'),
+                findlayer('decaps2-resid-riy'),
             ]),
             findlayer('decaps', [
                 findlayer('decaps-model'),

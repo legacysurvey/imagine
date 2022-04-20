@@ -2666,6 +2666,15 @@ class Decaps2Layer(ReDecalsLayer):
         from legacypipe.survey import wcs_for_brick
         return wcs_for_brick(brick)
 
+    def get_rgb(self, imgs, bands, **kwargs):
+        if self.bands == 'grz':
+            # equivalent to:
+            #return sdss_rgb(rimgs, bands, scales=dict(g=(2,6.0), r=(1,3.4), z=(0,2.2)), m=0.03)
+            return super().get_rgb(imgs, bands, **kwargs)
+        elif self.bands == 'riY':
+            return sdss_rgb(imgs, bands, scales=dict(r=(2,3.4), i=(1,2.8), Y=(0,2.0)), m=0.03)
+        return None
+    
 class Decaps2ModelLayer(Decaps2Layer, ReDecalsModelLayer):
     pass
 class Decaps2ResidLayer(Decaps2Layer, ReDecalsResidLayer):
@@ -6359,6 +6368,21 @@ def get_layer(name, default=None):
         layers['decaps2-model'] = model
         layers['decaps2-resid'] = resid
         layer = layers[name]
+
+    elif name in ['decaps2-riy', 'decaps2-model-riy', 'decaps2-resid-riy']:
+        bands = 'riY'
+        survey = get_survey('decaps2')
+        image = Decaps2Layer('decaps2', 'image', survey)
+        image.bands = bands
+        model = Decaps2Layer('decaps2-model', 'model', survey)
+        model.bands = bands
+        resid = Decaps2ResidLayer(image, model,
+                                  'decaps2-resid', 'resid', survey, drname='decaps2')
+        resid.bands = bands
+        layers['decaps2-riy'] = image
+        layers['decaps2-model-riy'] = model
+        layers['decaps2-resid-riy'] = resid
+        layer = layers[name]
         
     elif name == 'unwise-w1w2':
         layer = UnwiseLayer('unwise-w1w2',
@@ -6899,7 +6923,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr10a/1/13/5233/4095.jpg')
     #r = c.get('/ls-dr10a/1/14/10467/8191.jpg')
     #r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=64')
-    r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=32&size=512')
+    #r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=32&size=512')
+    r = c.get('/decaps2-riy/2/14/7530/11896.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

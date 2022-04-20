@@ -221,8 +221,6 @@ def top_levels(mp, opt):
         #print('Survey:', layer.survey)
         #print('  cache_dir:', layer.survey.cache_dir)
 
-        print('Bands', bands)
-
         rgbkwargs = {}
         if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                         'unwise-cat-model']:
@@ -239,6 +237,10 @@ def top_levels(mp, opt):
             bands = [1]
         #else:
         #    bands = 'grz'
+
+        if opt.bands is not None:
+            bands = opt.bands
+        print('Bands', bands)
 
         ver = tileversions.get(opt.kind, [1])[-1]
         print('Version', ver)
@@ -832,14 +834,20 @@ def main():
             opt.minra = 0
 
     elif opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
+        # After we have generated the bricks-exist files, don't really need RA,Dec limits...
         if opt.maxdec is None:
-            opt.maxdec = -15
+            #opt.maxdec = -15
+            opt.maxdec = 90
         if opt.mindec is None:
-            opt.mindec = -75
+            #opt.mindec = -75
+            opt.mindec = -90
         if opt.maxra is None:
-            opt.maxra = 280
+            #opt.maxra = 280
+            opt.maxra = 360
         if opt.minra is None:
-            opt.minra = 90
+            #opt.minra = 90
+            opt.minra = 0
+
     elif opt.kind in ['ls-dr9-south-B', 'ls-dr9-south-B-model']:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -982,8 +990,8 @@ def main():
                         rstep = step / np.maximum(0.05, np.cos(np.deg2rad((declo+dechi)/2.)))
                         ras = np.arange(opt.minra, opt.maxra+rstep, rstep)
                         for ralo,rahi in zip(ras, np.clip(ras[1:], opt.minra, opt.maxra)):
-                            cmd = ('python3 render-tiles.py --kind %s --scale --minra %f --maxra %f --mindec %f --maxdec %f -z %i' %
-                                   (opt.kind, ralo, rahi, declo, dechi, zoom))
+                            cmd = ('python3 render-tiles.py --kind %s --bands %s --scale --minra %f --maxra %f --mindec %f --maxdec %f -z %i' %
+                                   (opt.kind, opt.bands, ralo, rahi, declo, dechi, zoom))
                             print(cmd)
                 sys.exit(0)
 
