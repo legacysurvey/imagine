@@ -145,6 +145,10 @@ except:
 # tileversions['dr9m-north-model'].append(2)
 # tileversions['dr9m-north-resid'].append(2)
 
+# Used in Spin liveness test
+def alive(req):
+    return HttpResponse('yes')
+
 def tst(req):
     from django.shortcuts import render
     return render(req, 'tst.html')

@@ -9,6 +9,8 @@ layer_regex = r'\{id\}|' + survey_regex
 
 urlpatterns = [
 
+    url(r'^alive', views.alive),
+
     url(r'^tst', views.tst),
     url(r'^cat', views.cat),
 
