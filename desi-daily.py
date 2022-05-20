@@ -13,20 +13,28 @@ basedir = 'data/desi-spectro-daily'
 if True:
     from astropy.table import Table
     TT = []
-    for surv,fn in [('main', '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-main.ecsv'),
-                    ('sv1',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv1.ecsv'),
-                    ('sv2',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv2.ecsv'),
-                    ('sv3',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv3.ecsv'),
-               ]:
+    # for surv,fn in [('main', '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-main.ecsv'),
+    #                 ('sv1',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv1.ecsv'),
+    #                 ('sv2',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv2.ecsv'),
+    #                 ('sv3',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv3.ecsv'),
+    # 
+    for fn in ['/global/cfs/cdirs/desi/spectro/redux/daily/tiles-daily.csv']:
         t1 = Table.read(fn)
         t1.write('/tmp/t.fits', overwrite=True)
         T = fits_table('/tmp/t.fits')
         #T.about()
-        T.survey = np.array([surv] * len(T))
+        #T.survey = np.array([surv] * len(T))
         TT.append(T)
     T = merge_tables(TT, columns='fillzero')
-    T.tilera  = T.ra
-    T.tiledec = T.dec
+    #T.tilera  = T.ra
+    #T.tiledec = T.dec
+    T.ra  = T.tilera
+    T.dec = T.tiledec
+
+    for i,(prog,faprog) in enumerate(zip(T.program, T.faprgrm)):
+        if prog.strip() == '':
+            T.program[i] = faprog
+    
     #     ts = '%06i' % tileid
     #     fn = 'data/desi-tiles/%s/fiberassign-%s.fits.gz' % (ts[:3], ts)
     #     T.found_tile[itile] = True
@@ -145,28 +153,7 @@ if True:
 fitsfn = os.path.join(basedir, 'allzbest.fits')
 outfn = os.path.join(basedir, 'allzbest.kd.fits')
 
-with tempfile.TemporaryDirectory() as tempdir:
-    
-    sfn = os.path.join(tempdir, 'allzbest.kd.fits')
+from desi_spectro_kdtree import create_desi_spectro_kdtree
 
-    cmd = 'startree -i %s -PTk -o %s' % (fitsfn, sfn)
-    os.system(cmd)
-    
-    T = fits_table(sfn, columns=['targetid'])
-    ekd = tree_build(np.atleast_2d(T.targetid.copy()).T.astype(np.uint64),
-                     bbox=False, split=True)
-    ekd.set_name('targetid')
+create_desi_spectro_kdtree(fitsfn, outfn)
 
-    efn = os.path.join(tempdir, 'ekd.fits')
-    ekd.write(efn)
-
-    # merge
-    cmd = 'fitsgetext -i %s -o %s/ekd-%%02i -a' % (efn, tempdir)
-    print(cmd)
-    rtn = os.system(cmd)
-    assert(rtn == 0)
-
-    cmd = 'cat %s %s/ekd-0[12345] > %s' % (sfn, tempdir, outfn)
-    print(cmd)
-    rtn = os.system(cmd)
-    assert(rtn == 0)

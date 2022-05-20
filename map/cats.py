@@ -157,10 +157,26 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     spectra = spectra[keep]
 
     zbests = []
-    #- Read matching zbest file for this spectra/coadd file
-    zbfile = os.path.basename(fn).replace('coadd', 'zbest', 1)
-    zbfile = os.path.join(os.path.dirname(fn), zbfile)
-    zb = Table.read(zbfile, 'ZBEST')
+
+    # I don't understand why some daily spectra seem to be 'zbest' and some 'redrock'
+    # eg zbest https://www.legacysurvey.org/viewer-desi/desi-spectrum/daily/targetid39628433252155537
+    # /global/cfs/cdirs/desi/spectro/redux/daily/tiles/cumulative/125/20210504/zbest
+
+    # #- Read matching zbest file for this spectra/coadd file
+    # if release in []:#'daily']:
+    #     fntag = 'zbest'
+    #     extname = 'ZBEST'
+    # else:
+    #     fntag = 'redrock'
+    #     extname = 'REDSHIFTS'
+
+    # Just gd try both
+    for fntag,extname in [('redrock', 'REDSHIFTS'), ('zbest', 'ZBEST')]:
+        zbfile = os.path.basename(fn).replace('coadd', fntag, 1)
+        zbfile = os.path.join(os.path.dirname(fn), zbfile)
+        if not os.path.exists(zbfile):
+            continue
+        zb = Table.read(zbfile, extname)
     #- Trim zb to only have TARGETIDs in filtered spectra sp
     keep = np.in1d(zb['TARGETID'], spectra.fibermap['TARGETID'])
     zb = zb[keep]
@@ -182,32 +198,83 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
+    print('Passing to prospect: spectra:')
+    print(spectra)
+    print('zcatalog:')
+    print(zbests)
+    
     os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
     with tempfile.TemporaryDirectory() as d:
         prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d)
-        f = open(os.path.join(d, 'specviewer_specviewer.html'))
+        f = open(os.path.join(d, 'prospect.html')) #'specviewer_specviewer.html'))
         return HttpResponse(f)
         
     return HttpResponse('tile %i fiber %i' % (tile, fiber))
 
-def cat_desi_denali_spectra_detail(req, tile, fiber):
-    return cat_desi_release_spectra_detail(req, tile, fiber, 'denali')
+def desi_healpix_spectrum(req, obj, release):
+    from glob import glob
+    from desispec.io import read_spectra
+    import numpy as np
+    import os
+    from astropy.table import Table
+    import astropy
+    from desispec.spectra import stack
+    import tempfile
+    import os
+    import prospect.viewer
 
+    prog = obj.program.strip()
+    surv = obj.survey.strip()
+    hp = '%i' % obj.healpix
+    hp_pre = '%i' % (obj.healpix//100)
 
-# def cat_desi_fuji_spectra_detail(req, tile, fiber):
-#     return cat_desi_release_spectra_detail(req, tile, fiber, 'fuji')
-# def cat_desi_guadalupe_spectra_detail(req, tile, fiber):
-#     return cat_desi_release_spectra_detail(req, tile, fiber, 'guadalupe')
+    fn = ('/global/cfs/cdirs/desi/spectro/redux/%s/healpix/%s/%s/%s/%s/coadd-%s-%s-%s.fits' %
+          (release, surv, prog,hp_pre, hp, surv, prog, hp))
 
+    spectra = read_spectra(fn)
+    spectra = spectra.select(targets=[obj.targetid])
+    if spectra.num_targets() != 1:
+        return HttpResponse('Expected to find 1 spectrum, got %i for TARGETID %i in file %s' %
+                            (spectra.num_targets(), obj.targetid, fn))
+    zbests = []
+    #- Read matching zbest file for this spectra/coadd file
+    zbfile = os.path.basename(fn).replace('coadd', 'redrock', 1)
+    zbfile = os.path.join(os.path.dirname(fn), zbfile)
+    zb = Table.read(zbfile, 'REDSHIFTS')
+    #- Trim zb to only have TARGETIDs in filtered spectra sp
+    keep = np.in1d(zb['TARGETID'], spectra.fibermap['TARGETID'])
+    zb = zb[keep]
+    assert(len(spectra.fibermap) == 1)
+    assert(len(zb) == 1)
+    zbests = zb
+    #- Confirm that we got all that expanding and sorting correct
+    assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
-#def cat_desi_daily_spectra_detail(req, tile, fiber):
-#    return cat_desi_release_spectra_detail(req, tile, fiber, 'daily')
+    os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
+    #if True:
+    #    d = tempfile.mkdtemp()
+    with tempfile.TemporaryDirectory() as d:
+        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d)
+        f = open(os.path.join(d, 'prospect.html'))
+        return HttpResponse(f)
+        
+def get_desi_spectro_kdfile(release):
+    if release == 'daily':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')
+    elif release == 'guadalupe':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-guadalupe', 'zpix-all.kd.fits')
+    elif release == 'fuji':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-fuji', 'zpix-all.kd.fits')
+    elif release == 'denali':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-denali',
+                            'zcatalog-denali-cumulative.kd.fits')
+    return None
 
-def lookup_targetid(targetid):
+def lookup_targetid(targetid, release):
     from astrometry.libkd.spherematch import tree_open
     from astrometry.util.fits import fits_table
     import numpy as np
-    fn = os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')
+    fn = get_desi_spectro_kdfile(release)
     kd = tree_open(fn, 'targetid')
     print('Searching for targetid', targetid)
     #I = kd.search(np.array([float(targetid)]), 0.5, 0, 0)
@@ -223,20 +290,33 @@ def lookup_targetid(targetid):
         return None
     i = I[0]
     return T[i]
-    
-def cat_desi_daily_spectra_detail(req, targetid):
-    import os
-    import prospect.viewer
 
+def cat_desi_daily_spectra_detail(req, targetid):
     targetid = int(targetid)
-    t = lookup_targetid(targetid)
+    t = lookup_targetid(targetid, 'daily')
     if t is None:
         return HttpResponse('No such targetid found in DESI daily spectra: %s' % targetid)
-
     return cat_desi_release_spectra_detail(req, t.tileid, t.fiber, 'daily')
 
-def cat_desi_daily_tiles(req, ver):
-    return cat_desi_release_tiles(req, ver, 'daily')
+def cat_desi_guadalupe_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    t = lookup_targetid(targetid, 'guadalupe')
+    if t is None:
+        return HttpResponse('No such targetid found in DESI Guadalupe spectra: %s' % targetid)
+    return desi_healpix_spectrum(req, t, 'guadalupe')
+
+def cat_desi_fuji_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    t = lookup_targetid(targetid, 'fuji')
+    if t is None:
+        return HttpResponse('No such targetid found in DESI Fuji spectra: %s' % targetid)
+    return desi_healpix_spectrum(req, t, 'fuji')
+
+# def cat_desi_denali_spectra_detail(req, tile, fiber):
+#     return cat_desi_release_spectra_detail(req, tile, fiber, 'denali')
+
+
+
 
 
 def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
@@ -245,6 +325,15 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])), #, z=[], zerr=[])),
                             content_type='application/json')
+
+    tileid = None
+    if 'tile' in req.GET:
+        try:
+            tileid = int(req.GET['tile'])
+        except:
+            pass
+    if tileid is not None:
+        T.cut(T.tileid == tileid)
 
     cols = T.get_columns()
     rd = list((float(r),float(d)) for r,d in zip(T.get(racol), T.get(deccol)))
@@ -293,25 +382,55 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
     return HttpResponse(json.dumps(J), content_type='application/json')
 
 def cat_desi_daily_spectra(req, ver):
-    kdfn = os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')
+    kdfn = get_desi_spectro_kdfile('daily')
     tag = 'desi-daily-spectra'
     return cat_desi_release_spectra(req, ver, kdfn, tag)
 
 def cat_desi_guadalupe_spectra(req, ver):
     '''
-    T = merge_tables([fits_table(fn, columns=['target_ra','target_dec','targetid','z','zerr','zwarn','spectype','subtype'])
-                                          for fn in glob('/global/cfs/cdirs/desi/spectro/redux/guadalupe/zcatalog/zpix-*')])
+    TT = []
+    for surv,prog in [('main','dark'), ('main','bright'), ('special','dark'), ('special','bright')]:
+        fn = '/global/cfs/cdirs/desi/spectro/redux/guadalupe/zcatalog/zpix-%s-%s.fits' % (surv, prog)
+        T = fits_table(fn, columns=['target_ra','target_dec','targetid','z','zerr','zwarn','spectype','subtype',
+                                             'healpix', 'objtype'])
+        T.survey = np.array([surv]*len(T))
+        T.program = np.array([prog]*len(T))
+        TT.append(T)
+    T = merge_tables(TT)
     T.writeto('cosmo/webapp/viewer-desi/data/desi-spectro-guadalupe/zpix-all.fits')
     '''
-    # startree -i data/desi-spectro-guadalupe/zpix-all.fits -o data/desi-spectro-guadalupe/zpix-all.kd.fits -PTk -R target_ra -D target_dec
-    kdfn = os.path.join(settings.DATA_DIR, 'desi-spectro-guadalupe', 'zpix-all.kd.fits')
+    # python -c "from desi_spectro_kdtree import create_desi_spectro_kdtree as create; create('data/desi-spectro-guadalupe/zpix-all.fits', 'data/desi-spectro-guadalupe/zpix-all.kd.fits', racol='target_ra', deccol='target_dec')"
+    kdfn = get_desi_spectro_kdfile('guadalupe')
     tag = 'desi-guadalupe-spectra'
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
+
+
+def cat_desi_fuji_spectra(req, ver):
+    '''
+    sys.path.append('cosmo/webapp/viewer-desi/')
+    from desi_spectro_kdtree import create_desi_spectro_kdtree
+    TT = []
+    for surv,prog in [('cmx','other'), ('special','dark'), ('sv1','backup'), ('sv1','bright'),
+                     ('sv1','other'), ('sv2','backup'), ('sv2','bright'), ('sv2','dark'),
+                     ('sv3','backup'), ('sv3','bright'), ('sv3','dark')]:
+        fn = '/global/cfs/cdirs/desi/spectro/redux/fuji/zcatalog/zpix-%s-%s.fits' % (surv, prog)
+        T = fits_table(fn, columns=['target_ra','target_dec','targetid','z','zerr','zwarn','spectype','subtype',
+                                             'healpix', 'objtype'])
+        T.survey = np.array([surv]*len(T))
+        T.program = np.array([prog]*len(T))
+        TT.append(T)
+    T = merge_tables(TT)
+    fn = 'cosmo/webapp/viewer-desi/data/desi-spectro-fuji/zpix-all.fits'
+    T.writeto(fn)
+    create_desi_spectro_kdtree(fn, 'cosmo/webapp/viewer-desi/data/desi-spectro-fuji/zpix-all.kd.fits', racol='target_ra', deccol='target_dec')
+    '''
+    kdfn = get_desi_spectro_kdfile('fuji')
+    tag = 'desi-fuji-spectra'
     return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
 
 def cat_desi_denali_spectra(req, ver):
     # startree -i /global/cfs/cdirs/desi/spectro/redux/denali/zcatalog-denali-cumulative.fits -o data/desi-spectro-denali/zcatalog-denali-cumulative.kd.fits -PTk -R target_ra -D target_dec
-    kdfn = os.path.join(settings.DATA_DIR, 'desi-spectro-denali',
-                        'zcatalog-denali-cumulative.kd.fits')
+    kdfn = get_desi_spectro_kdfile('denali')
     tag = 'desi-denali-spectra'
     return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
 # 
@@ -368,7 +487,7 @@ def cat_desi_release_tiles(req, ver, release):
     declo = float(req.GET['declo'])
     dechi = float(req.GET['dechi'])
 
-    desi_radius = 1.6
+    desi_radius = 1.628
     fn = os.path.join(settings.DATA_DIR, 'desi-spectro-%s/tiles2.kd.fits' % release)
 
     def result(T):
@@ -431,10 +550,16 @@ def cat_desi_denali_tiles(req, ver):
     '''
     return cat_desi_release_tiles(req, ver, 'denali')
 
+def cat_desi_daily_tiles(req, ver):
+    return cat_desi_release_tiles(req, ver, 'daily')
+
 def cat_desi_guadalupe_tiles(req, ver):
     #startree -i /global/cfs/cdirs/desi/spectro/redux/guadalupe/tiles-guadalupe.fits -R tilera -D tiledec -PTk -o data/desi-spectro-guadalupe/tiles2.kd.fits
     return cat_desi_release_tiles(req, ver, 'guadalupe')
 
+def cat_desi_fuji_tiles(req, ver):
+    #startree -i /global/cfs/cdirs/desi/spectro/redux/fuji/tiles-fuji.fits -R tilera -D tiledec -PTk -o data/desi-spectro-fuji/tiles2.kd.fits
+    return cat_desi_release_tiles(req, ver, 'fuji')
 
 def cat_photoz_dr9(req, ver):
     '''
@@ -2627,7 +2752,8 @@ def get_desi_tiles():
     """
     from astrometry.util.fits import fits_table
 
-    path = os.path.join(settings.DATA_DIR, 'desi-tiles.fits')
+    #path = os.path.join(settings.DATA_DIR, 'desi-tiles.fits')
+    path = os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'tiles2.kd.fits')
     t = fits_table(path)
     tileradec = dict()
     for tileid, ra, dec in zip(t.tileid, t.ra, t.dec):
@@ -2635,6 +2761,10 @@ def get_desi_tiles():
     return tileradec
 
 def get_desi_tile_radec(tileid, fiberid=None):
+    tilerd = get_desi_tiles()
+    return tilerd.get(tileid, None)
+
+    #### OLD - read from fiberassign file.
     """Accepts a tile_id, returns a tuple of ra, dec
     Raises a RuntimeError if tile_id is not found
     """
@@ -2678,7 +2808,7 @@ if __name__ == '__main__':
     # create_galaxy_catalog(galfn, None, layer=layer)
     # sys.exit(0)
 
-    if True:
+    if False:
         # Create SDSS DR16 Spectra file (specObj-dr16-trimmed.kd.fits):
         from astrometry.util.fits import fits_table
         import numpy as np
@@ -2729,8 +2859,16 @@ if __name__ == '__main__':
     #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
     #r = c.get('/desi-tile/1/cat.json?ralo=238.1458&rahi=238.4181&declo=-0.0750&dechi=0.0748&tile=1000')
     #r = c.get('/desi-tile/1/cat.json?ralo=190.9733&rahi=191.6270&declo=10.1426&dechi=10.5060&tile=8786')
-    r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
-    r = c.get('/desi-spectrum/daily/targetid39628158961452744')
+    #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
+    #r = c.get('/desi-spectrum/daily/targetid39628158961452744')
+    #r = c.get('/desi-spectrum/daily/targetid39633049259870731')
+
+    # tile = 6834
+    # print('Tile', tile, 'rd', get_desi_tile_radec(tile))
+    # sys.exit(0)
+    
+    r = c.get('/desi-spectrum/guadalupe/targetid39633049259870731')
+    r = c.get('/desi-spectrum/daily/targetid43977408013222855')
     f = open('out', 'wb')
     for x in r:
         f.write(x)

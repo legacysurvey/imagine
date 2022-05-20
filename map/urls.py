@@ -38,15 +38,19 @@ urlpatterns = [
     url(r'^desi-spectrum/daily/targetid(\d+)', cats.cat_desi_daily_spectra_detail),
 
     # DESI spectroscopy -- Guadalupe
-    #url(r'^desi-spec-detail/guadalupe/tile(\d+)/fiber(\d+)', cats.cat_desi_guadalupe_spectra_detail),
     url(r'^desi-tiles/guadalupe/(\d+)/cat.json', cats.cat_desi_guadalupe_tiles),
     url(r'^desi-spec-guadalupe/(\d+)/cat.json', cats.cat_desi_guadalupe_spectra),
+    url(r'^desi-spectrum/guadalupe/targetid(\d+)', cats.cat_desi_guadalupe_spectra_detail),
 
+    # DESI spectroscopy -- Fuji
+    url(r'^desi-tiles/fuji/(\d+)/cat.json', cats.cat_desi_fuji_tiles),
+    url(r'^desi-spec-fuji/(\d+)/cat.json', cats.cat_desi_fuji_spectra),
+    url(r'^desi-spectrum/fuji/targetid(\d+)', cats.cat_desi_fuji_spectra_detail),
     
     # DESI spectroscopy -- Denali
-    url(r'^desi-spec-detail/denali/tile(\d+)/fiber(\d+)', cats.cat_desi_denali_spectra_detail),
-    url(r'^desi-tiles/denali/(\d+)/cat.json', cats.cat_desi_denali_tiles),
-    url(r'^desi-spec-denali/(\d+)/cat.json', cats.cat_desi_denali_spectra),
+    # url(r'^desi-spec-detail/denali/tile(\d+)/fiber(\d+)', cats.cat_desi_denali_spectra_detail),
+    # url(r'^desi-tiles/denali/(\d+)/cat.json', cats.cat_desi_denali_tiles),
+    # url(r'^desi-spec-denali/(\d+)/cat.json', cats.cat_desi_denali_spectra),
 
     # DR9 MAIN targets
     url(r'^targets-dr9-main-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_dark),

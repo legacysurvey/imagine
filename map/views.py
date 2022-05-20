@@ -358,6 +358,7 @@ def _index(req,
     #ra, dec, zoom = 244.7, 7.4, 13
 
     ra, dec = default_radec
+    radec_set = False
     zoom = default_zoom
 
     plate = req.GET.get('plate', None)
@@ -381,6 +382,7 @@ def _index(req,
     #     pass
     try:
         ra,dec = parse_radec_strings(req.GET.get('ra'), req.GET.get('dec'))
+        radec_set = True
     except:
         pass
 
@@ -409,7 +411,7 @@ def _index(req,
         tid = req.GET.get('targetid')
         tid = int(tid)
         print('Looking up TARGETID', tid)
-        t = lookup_targetid(tid)
+        t = lookup_targetid(tid, 'daily')
         if t is not None:
             ra = t.ra
             dec = t.dec
@@ -486,11 +488,12 @@ def _index(req,
                 fiberid = int(req.GET.get('fiber'), 10)
             except:
                 pass
-        try:
-            ra,dec = get_desi_tile_radec(tile, fiberid=fiberid)
-            print('Tile RA,Dec', ra,dec)
-        except:
-            pass
+        if not radec_set:
+            try:
+                ra,dec = get_desi_tile_radec(tile, fiberid=fiberid)
+                print('Tile RA,Dec', ra,dec)
+            except:
+                pass
 
     # if 'targetid' in req.GET:
     #     try:
@@ -753,7 +756,7 @@ def name_query(req):
         from map.cats import lookup_targetid
         tid = int(words[1])
         try:
-            t = lookup_targetid(tid)
+            t = lookup_targetid(tid, 'daily')
             ra = t.ra
             dec = t.dec
         except RuntimeError as e:
@@ -6744,7 +6747,8 @@ if __name__ == '__main__':
     #r = c.get('/pandas/1/14/15903/6126.jpg')
     # tile 10489 / observed 20220324
     #r = c.get('/desi-tile/1/cat.json?ralo=216.5628&rahi=217.1074&declo=0.8761&dechi=1.1755&tile=10489')
-    r = c.get('/desi-spec-daily/1/cat.json?ralo=141.9359&rahi=142.0720&declo=30.0046&dechi=30.0694')
+    #r = c.get('/desi-spec-daily/1/cat.json?ralo=141.9359&rahi=142.0720&declo=30.0046&dechi=30.0694')
+    r = c.get('/?targetid=39627733692582430')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

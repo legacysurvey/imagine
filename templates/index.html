@@ -3249,6 +3249,23 @@ var guadalupe_detail = function(ov, objs, aparams) {
  };
 
 
+var fuji_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In DESI Fuji tiles: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + fuji_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+var fuji_detail = function(ov, objs, aparams) {
+     return objs;
+ };
+
 var denali_detail_list = function(ov, objs) {
     if (objs.length == 0) { return ''; }
     txt = 'In DESI Denali tiles: <ul>';
@@ -3303,6 +3320,18 @@ var desi_tiles_guadalupe = new DesiTileOverlay('desi-tiles-guadalupe',
                                     });
 desi_tiles_guadalupe._style = {'fillOpacity': 0.05 };
 
+var desi_tiles_fuji = new DesiTileOverlay('desi-tiles-fuji',
+                                     'DESI Fuji tiles',
+                                    {'url': smallcat_url,
+                                     'url_args': { 'id': 'desi-tiles/fuji',
+                                                   'ver': getcatversion('desi-tiles/fuji') },
+                                     'labelMinZoom': 100,
+                                     'detail_list': fuji_detail_list,
+                                     'detail': fuji_detail,
+                                    });
+desi_tiles_fuji._style = {'fillOpacity': 0.05 };
+
+
 var desi_tiles_denali = new DesiTileOverlay('desi-tiles-denali',
                                      'DESI Denali tiles',
                                     {'url': smallcat_url,
@@ -3314,33 +3343,26 @@ var desi_tiles_denali = new DesiTileOverlay('desi-tiles-denali',
                                     });
 desi_tiles_denali._style = {'fillOpacity': 0.05 };
 
+// var DesiSpectraCatalog = CatalogOverlay.extend({
+//     //getLabel: function(json, i) {
+//     //getColor: function(json, i) {
+//     getLabel: function(json, i) {
+//         return '<a href="' + root_url + 'desi-spec-detail/denali/tile' + json['tileid'][i] +
+//             '/fiber' + json['fiberid'][i] + '">' + json['name'][i] + '</a>';
+//     },
+// });
+
 var DesiSpectraCatalog = CatalogOverlay.extend({
-    //getLabel: function(json, i) {
-    //getColor: function(json, i) {
-    getLabel: function(json, i) {
-        return '<a href="' + root_url + 'desi-spec-detail/denali/tile' + json['tileid'][i] +
-            '/fiber' + json['fiberid'][i] + '">' + json['name'][i] + '</a>';
+    initialize: function(name, pretty, release, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this.release = release;
     },
-});
-
-var desi_spec_denali = new DesiSpectraCatalog('desi-spec-denali', 'DESI Denali spectra',
-                                  {'url': smallcat_url,
-                                   'radius': 300,
-                                   'labelsMinZoom': 12,
-                                   'minZoom': 10,
-                                   //'urlTerm': 'desi-spec/denali',
-                                   });
-
-
-//////////////// Daily
-
-var DesiDailySpectraCatalog = CatalogOverlay.extend({
     // getLayer: function(result) {
     //     console.log('getLayer()');
     //     return CatalogOverlay.prototype.getLayer.call(this, result);
     // },
     getLabel: function(json, i) {
-        return '<a href="' + root_url + 'desi-spectrum/daily/'
+        return '<a href="' + root_url + 'desi-spectrum/' + this.release + '/'
             + 'targetid' + json['targetid'][i]
             + '">' + json['name'][i] + '</a>';
         //tile' + json['tileid'][i] +
@@ -3376,24 +3398,39 @@ var desi_tiles_daily = new DesiTileOverlay('desi-tiles-daily',
                                     });
 desi_tiles_daily._style = {'fillOpacity': 0.05 };
 
-var desi_spec_daily = new DesiDailySpectraCatalog('desi-spec-daily', 'DESI daily spectra',
-                                  {'url': smallcat_url,
-                                   'radius': 300,
-                                   'labelsMinZoom': 10,
-                                   'minZoom': 8,
-                                   //'urlTerm': 'desi-spec/denali',
-                                   });
+var desi_spec_denali = new DesiSpectraCatalog(
+    'desi-spec-denali', 'DESI Denali spectra', 'denali',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 12,
+     'minZoom': 10,
+     //'urlTerm': 'desi-spec/denali',
+    });
 
+var desi_spec_daily = new DesiSpectraCatalog(
+    'desi-spec-daily', 'DESI daily spectra', 'daily',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+     //'urlTerm': 'desi-spec/denali',
+    });
 
+var desi_spec_guadalupe = new DesiSpectraCatalog(
+    'desi-spec-guadalupe', 'DESI Guadalupe spectra', 'guadalupe',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+    });
 
-var desi_spec_guadalupe = new DesiDailySpectraCatalog('desi-spec-guadalupe', 'DESI Guadalupe spectra',
-                                  {'url': smallcat_url,
-                                   'radius': 300,
-                                   'labelsMinZoom': 10,
-                                   'minZoom': 8,
-                                   });
-
-
+var desi_spec_fuji = new DesiSpectraCatalog(
+    'desi-spec-fuji', 'DESI Fuji spectra', 'fuji',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+    });
 
 {% endif %}
  
@@ -3444,7 +3481,8 @@ var polygonOverlays = [
     {% endif %}
     {% if enable_desi_targets %}
     desi_tiles_guadalupe,
-    desi_tiles_denali,
+    desi_tiles_fuji,
+    //desi_tiles_denali,
     desi_tiles_daily,
     {% endif %}
 ];
@@ -4036,8 +4074,10 @@ var overlays = [
     {% if enable_desi_data %}
     desi_tiles_guadalupe,
     desi_spec_guadalupe,
-    desi_tiles_denali,
-    desi_spec_denali,
+    desi_tiles_fuji,
+    desi_spec_fuji,
+    //desi_tiles_denali,
+    //desi_spec_denali,
     desi_tiles_daily,
     desi_spec_daily,
     {% endif %}
@@ -4504,8 +4544,10 @@ var overlayTree = [];
          {% if enable_desi_data %}
            findoverlay('desi-tiles-guadalupe'),
            findoverlay('desi-spec-guadalupe'),
-           findoverlay('desi-tiles-denali'),
-           findoverlay('desi-spec-denali'),
+           findoverlay('desi-tiles-fuji'),
+           findoverlay('desi-spec-fuji'),
+           //findoverlay('desi-tiles-denali'),
+           //findoverlay('desi-spec-denali'),
            findoverlay('desi-tiles-daily'),
            findoverlay('desi-spec-daily'),
          {% endif %}
