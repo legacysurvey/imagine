@@ -1388,10 +1388,17 @@ function onSourceClick(e) {
     if ('z' in src.nobs) {
 	    nobsstr += ', i=' + src.nobs.z;
     }
+    console.log('layer_name ' + layer_name);
     txt = 'Source RA,Dec = ' + exposures_radec_link(src.ra, src.dec) +
         '<br/>Source type: ' + src.type +
         '<br/>Mags: ' + fluxstr +
-        '<br/>Brick: ' + src.brickname + ', Objid: ' + src.objid +
+        '<br/>Brick: ' + src.brickname + ', Objid: ' +
+        '<a href="' + layer_name + '/cat' + // url cat-table
+        '?ralo=' + (src.ra - 0.001) + '&rahi=' + (src.ra + 0.001) +
+        '&declo=' + (src.dec - 0.001) + '&dechi=' + (src.dec + 0.001) +
+        '&objid=' + src.objid + '">' +
+        src.objid +
+        '</a>' +
 	    '<br/>Number of exposures: ' + nobsstr;
     console.log('Popup text: ' + txt);
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);

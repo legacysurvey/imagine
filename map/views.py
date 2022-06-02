@@ -2879,6 +2879,40 @@ class LegacySurveySplitLayer(MapLayer):
         cat.writeto(outfn, header=hdr)
         return send_file(outfn, 'image/fits', unlink=True, filename=fn)
 
+    def get_catalog_table(self, req, ralo, rahi, declo, dechi, brick=None, objid=None):
+        from django.shortcuts import render
+        from map.cats import radecbox_to_wcs
+        wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
+        cat,hdr = self.get_catalog_in_wcs(wcs)
+        if brick is not None:
+            cat = cat[cat.brickname == brick]
+        if objid is not None:
+            cat = cat[cat.objid == objid]
+        if len(cat) == 0:
+            return HttpResponse('No sources')
+        cols = cat.get_columns()
+        for band in ['g','r','i','z','w1','w2','w3','w4']:
+            c = 'flux_' + band
+            import numpy as np
+            if c in cols:
+                f = cat.get(c)
+                mag = -2.5 * (np.log10(f) - 9)
+                cat.set('mag_' + band, mag)
+        cols = cat.get_columns()
+        cat_dict = {}
+        for c in cols:
+            cat_dict[c] = cat.get(c)
+        args = dict(cat_entries=cat_dict)
+        return render(req, 'cat_table.html', args)
+        #return HttpResponse('got %i sources' % len(cat))
+        # fn = 'cat-%s.fits' % (self.name)
+        # import tempfile
+        # f,outfn = tempfile.mkstemp(suffix='.fits')
+        # os.close(f)
+        # os.unlink(outfn)
+        # cat.writeto(outfn, header=hdr)
+        # return send_file(outfn, 'image/fits', unlink=True, filename=fn)
+
     def get_catalog_in_wcs(self, wcs):
         from astrometry.util.fits import merge_tables
         allcats = []
@@ -6554,6 +6588,25 @@ def any_fits_cat(req, name, **kwargs):
         return HttpResponse('no ra,dec bbox')
     ralo,rahi,declo,dechi = bb
     return layer.get_catalog(req, ralo, rahi, declo, dechi)
+
+def any_cat_table(req, name, **kwargs):
+    name = clean_layer_name(name)
+    layer = get_layer(name)
+    if layer is None:
+        return HttpResponse('no such layer')
+    bb = get_radec_bbox(req)
+    if bb is None:
+        return HttpResponse('no ra,dec bbox')
+    ralo,rahi,declo,dechi = bb
+    brick = req.GET.get('brick', None)
+    objid = req.GET.get('objid', None)
+    if objid is not None:
+        try:
+            objid = int(objid)
+        except:
+            objid = None
+    return layer.get_catalog_table(req, ralo, rahi, declo, dechi,
+                                   brick=brick, objid=objid)
 
 def get_radec_bbox(req):
     print('get_radec_bbox()')
