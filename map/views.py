@@ -2317,6 +2317,8 @@ class RebrickedMixin(object):
         # return allbricks
 
     def get_brick_size_for_scale(self, scale):
+        if scale is None:
+            scale = 0
         return 0.25 * 2**scale
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None,
@@ -2565,6 +2567,8 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
 
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
+        if scale is None:
+            scale = 0
         size = self.get_pixel_size_for_scale(scale)
         pixscale = self.pixscale * 2**scale
         cd = pixscale / 3600.

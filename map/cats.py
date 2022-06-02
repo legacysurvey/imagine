@@ -2719,7 +2719,7 @@ if __name__ == '__main__':
     # create_galaxy_catalog(galfn, None, layer=layer)
     # sys.exit(0)
 
-    if True:
+    if False:
         # Create SDSS DR16 Spectra file (specObj-dr16-trimmed.kd.fits):
         from astrometry.util.fits import fits_table
         import numpy as np
@@ -2770,7 +2770,9 @@ if __name__ == '__main__':
     #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
     #r = c.get('/desi-tile/1/cat.json?ralo=238.1458&rahi=238.4181&declo=-0.0750&dechi=0.0748&tile=1000')
     #r = c.get('/desi-tile/1/cat.json?ralo=190.9733&rahi=191.6270&declo=10.1426&dechi=10.5060&tile=8786')
-    r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
+    #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
+    r = c.get('/ls-dr9/1/15/29479/18709.cat.json')
+
     f = open('out', 'wb')
     for x in r:
         f.write(x)
