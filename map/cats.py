@@ -2495,6 +2495,19 @@ def cat_tycho2(req, ver):
         if 'name' in T.columns():
             names = [t.strip() for t in T.name]
             rtn['name'] = names
+            for i,name in enumerate(names):
+                try:
+                    # Parse name as "Tycho-2 ###-###-###", then form Simbad link from the parsed
+                    # numbers.
+                    words = name.split()
+                    nums = words[1].split('-')
+                    tyc1 = int(nums[0])
+                    tyc2 = int(nums[1])
+                    tyc3 = int(nums[2])
+                    url = 'http://simbad.cds.unistra.fr/simbad/sim-id?Ident=TYC++%i+%i+%i&NbIdent=1' % (tyc1, tyc2, tyc3)
+                    names[i] = '<a href="%s">%s</a>' % (url, name)
+                except:
+                    pass
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def cat_ngc(req, ver):
