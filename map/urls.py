@@ -4,10 +4,33 @@ from map import views
 from map import cats
 from map import cutouts
 
+from viewer import settings
+
 survey_regex = r'[\w\. +-]+'
 layer_regex = r'\{id\}|' + survey_regex
 
-urlpatterns = [
+urlpatterns_desi = [
+]
+
+if settings.ENABLE_DESI_DATA:
+    # Private
+    urlpatterns_desi.extend([
+        # All DESI tiles (tiles-main.ecsv)
+        url(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
+
+        # DESI spectroscopy -- daily
+        url(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),
+        url(r'^desi-spec-daily/(\d+)/cat.json', cats.cat_desi_daily_spectra),
+        #url(r'^desi-spectrum/daily/tile(\d+)/fiber(\d+)', cats.cat_desi_daily_spectra_detail),
+        url(r'^desi-spectrum/daily/targetid(\d+)', cats.cat_desi_daily_spectra_detail),
+
+        # DESI spectroscopy -- Denali
+        url(r'^desi-spec-detail/denali/tile(\d+)/fiber(\d+)', cats.cat_desi_denali_spectra_detail),
+        url(r'^desi-tiles/denali/(\d+)/cat.json', cats.cat_desi_denali_tiles),
+        url(r'^desi-spec-denali/(\d+)/cat.json', cats.cat_desi_denali_spectra),
+    ])
+
+urlpatterns = ([
 
     url(r'^alive', views.alive),
 
@@ -32,21 +55,7 @@ urlpatterns = [
 
     # PHAT cluster catalog
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
-
-    # All DESI tiles (tiles-main.ecsv)
-    url(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
-    
-    # DESI spectroscopy -- daily
-    url(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),
-    url(r'^desi-spec-daily/(\d+)/cat.json', cats.cat_desi_daily_spectra),
-    #url(r'^desi-spectrum/daily/tile(\d+)/fiber(\d+)', cats.cat_desi_daily_spectra_detail),
-    url(r'^desi-spectrum/daily/targetid(\d+)', cats.cat_desi_daily_spectra_detail),
-
-    # DESI spectroscopy -- Denali
-    url(r'^desi-spec-detail/denali/tile(\d+)/fiber(\d+)', cats.cat_desi_denali_spectra_detail),
-    url(r'^desi-tiles/denali/(\d+)/cat.json', cats.cat_desi_denali_tiles),
-    url(r'^desi-spec-denali/(\d+)/cat.json', cats.cat_desi_denali_spectra),
-
+] + urlpatterns_desi + [
     # DR9 MAIN targets
     url(r'^targets-dr9-main-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_dark),
     url(r'^targets-dr9-main-sec-bright/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_bright),
@@ -66,7 +75,7 @@ urlpatterns = [
     # DR9 SV1 secondary targets
     url(r'^targets-dr9-sv1-sec-bright/(\d+)/cat.json', cats.cat_targets_dr9_sv1_sec_bright),
     url(r'^targets-dr9-sv1-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_sv1_sec_dark),
-    
+
      # DR6/7 DESI targets
     url(r'^targets-dr67/(\d+)/cat.json', cats.cat_targets_dr67),
 
@@ -155,7 +164,7 @@ urlpatterns = [
     url(r'^\{id\}/\{ver\}/cat.json\?ralo=\{ralo\}&rahi=\{rahi\}&declo=\{declo\}&dechi=\{dechi\}',
         cats.cat_bright,
         name='cat-json-pattern'),
-    
+
     # Generic tile layers
     url(r'^(%s)/(\d+)/(\d+)/(\d+)/(\d+).jpg' % layer_regex,
         views.any_tile_view),
