@@ -5867,6 +5867,7 @@ def cutout_wcs(req):
         v = req.GET.get(k)
         fv = float(v)
         args.append(fv)
+    flip = 'flip' in req.GET
     wcs = Tan(*args)
     pixscale = wcs.pixel_scale()
     x = y = 0
@@ -5876,22 +5877,24 @@ def cutout_wcs(req):
     scale = np.clip(scale, 0, layer.maxscale)
     zoom = 0
 
-    rimgs = layer.render_into_wcs(wcs, zoom, x, y, general_wcs=True, scale=scale)
-    if rimgs is None:
+    imgs = layer.render_into_wcs(wcs, zoom, x, y, general_wcs=True, scale=scale)
+    if imgs is None:
         from django.http import HttpResponseRedirect
         return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
 
     # FLIP VERTICAL AXIS?!
-    flipimgs = []
-    for img in rimgs:
-        if img is not None:
-            flipimgs.append(np.flipud(img))
-        else:
-            flipimgs.append(img)
+    if flip:
+        flipimgs = []
+        for img in imgs:
+            if img is not None:
+                flipimgs.append(np.flipud(img))
+            else:
+                flipimgs.append(img)
+        imgs = flipimgs
 
     bands = layer.get_bands()
-    rgb = layer.get_rgb(flipimgs, bands)
-    
+    rgb = layer.get_rgb(imgs, bands)
+
     import tempfile
     f,tilefn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
@@ -6203,7 +6206,8 @@ if __name__ == '__main__':
     #r = c.get('/jpl_lookup?ra=150.0452&dec=3.5275&date=2021-05-15 01:35:16.197199&camera=decam')
     #r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga=')
     #r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga-parent=')
-    r = c.get('/jpl_lookup?ra=138.9834&dec=17.8431&date=2016-01-15%2005:51:44.149541&camera=decam')
+    #r = c.get('/jpl_lookup?ra=138.9834&dec=17.8431&date=2016-01-15%2005:51:44.149541&camera=decam')
+    r = c.get('/ls-dr9-south/1/12/1995/1752.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
