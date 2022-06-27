@@ -2157,7 +2157,7 @@ class RebrickedMixin(object):
 
         ro = settings.READ_ONLY_BASEDIR
         if ro:
-            print('Read-only; not creating scaled', brick.brickname, band, scale)
+            print('Read-only; not creating scaled', brick.brickname, band, scale, 'fn', fn)
             return None
         
         # Create scaled-down image (recursively).
@@ -6416,11 +6416,14 @@ def get_layer(name, default=None):
         survey = get_survey('decaps2')
         image = Decaps2Layer('decaps2', 'image', survey)
         image.bands = bands
+        image.tiledir += '-riy'
         model = Decaps2Layer('decaps2-model', 'model', survey)
         model.bands = bands
+        model.tiledir += '-riy'
         resid = Decaps2ResidLayer(image, model,
                                   'decaps2-resid', 'resid', survey, drname='decaps2')
         resid.bands = bands
+        resid.tiledir += '-riy'
         layers['decaps2-riy'] = image
         layers['decaps2-model-riy'] = model
         layers['decaps2-resid-riy'] = resid
@@ -6985,7 +6988,19 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr10a/1/14/10467/8191.jpg')
     #r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=64')
     #r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=32&size=512')
-    r = c.get('/decaps2-riy/2/14/7530/11896.jpg')
+    #r = c.get('/decaps2-riy/2/14/7530/11896.jpg')
+
+    settings.READ_ONLY_BASEDIR = True
+
+    #r = c.get('/decaps2/2/14/12110/9411.jpg')
+    #r = c.get('/decaps2/2/13/6052/4719.jpg')
+    #r = c.get('/decaps2/2/13/2415/5074.jpg')
+    #r = c.get('/decaps2/2/12/1207/2536.jpg')
+    #r = c.get('/decaps2-model/2/13/2415/5074.jpg')
+    #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
+    #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
+    r = c.get('/decaps2-resid-riy/1/2/2/2.jpg')
+    
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
