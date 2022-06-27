@@ -347,6 +347,7 @@ def _index(req,
         enable_desi_footprint = True,
         enable_spectra = settings.ENABLE_SPECTRA,
         enable_phat = settings.ENABLE_PHAT,
+        enable_pandas = settings.ENABLE_PANDAS,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
     )
