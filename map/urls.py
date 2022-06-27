@@ -9,6 +9,8 @@ layer_regex = r'\{id\}|' + survey_regex
 
 urlpatterns = [
 
+    url(r'^alive', views.alive),
+
     url(r'^tst', views.tst),
     url(r'^cat', views.cat),
 
@@ -31,11 +33,26 @@ urlpatterns = [
     # PHAT cluster catalog
     url(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
 
+    # All DESI tiles (tiles-main.ecsv)
+    url(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
+    
+    # DESI spectroscopy -- daily
+    url(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),
+    url(r'^desi-spec-daily/(\d+)/cat.json', cats.cat_desi_daily_spectra),
+    #url(r'^desi-spectrum/daily/tile(\d+)/fiber(\d+)', cats.cat_desi_daily_spectra_detail),
+    url(r'^desi-spectrum/daily/targetid(\d+)', cats.cat_desi_daily_spectra_detail),
+
+    # DESI spectroscopy -- Denali
+    url(r'^desi-spec-detail/denali/tile(\d+)/fiber(\d+)', cats.cat_desi_denali_spectra_detail),
+    url(r'^desi-tiles/denali/(\d+)/cat.json', cats.cat_desi_denali_tiles),
+    url(r'^desi-spec-denali/(\d+)/cat.json', cats.cat_desi_denali_spectra),
+
     # DR9 MAIN targets
     url(r'^targets-dr9-main-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_dark),
     url(r'^targets-dr9-main-sec-bright/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_bright),
     url(r'^targets-dr9-main-dark/(\d+)/cat.json', cats.cat_targets_dr9_main_dark),
     url(r'^targets-dr9-main-bright/(\d+)/cat.json', cats.cat_targets_dr9_main_bright),
+
     # DR9 SV3 targets
     url(r'^targets-dr9-sv3-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_sv3_sec_dark),
     url(r'^targets-dr9-sv3-sec-bright/(\d+)/cat.json', cats.cat_targets_dr9_sv3_sec_bright),
@@ -148,6 +165,9 @@ urlpatterns = [
 
     # FITS catalog cutout
     url(r'^(%s)/cat.fits' % layer_regex, views.any_fits_cat, name='cat-fits'),
+
+    # HTML catalog output
+    url(r'^(%s)/cat' % layer_regex, views.any_cat_table, name='cat-table'),
 
     ## hackish -- the pattern (using leaflet's template format) for cat-json-tiled
     url(r'^\{id\}/\{ver\}/\{z\}/\{x\}/\{y\}.cat.json', cats.any_cat, name='cat-json-tiled-pattern'),

@@ -105,6 +105,10 @@ tileversions = {
     'decaps-model': [1, 2],
     'decaps-resid': [1, 2],
 
+    'decaps2': [2],
+    'decaps2-model': [2],
+    'decaps2-resid': [2],
+    
     'unwise-w1w2': [1],
     'unwise-neo2': [1],
     'unwise-neo3': [1],
@@ -140,6 +144,10 @@ except:
 # tileversions['dr9m-north'].append(2)
 # tileversions['dr9m-north-model'].append(2)
 # tileversions['dr9m-north-resid'].append(2)
+
+# Used in Spin liveness test
+def alive(req):
+    return HttpResponse('yes')
 
 def tst(req):
     from django.shortcuts import render
@@ -202,9 +210,9 @@ def clean_layer_name(name):
         'mzls bass-dr6-model': 'mzls+bass-dr6-model',
         'mzls bass-dr6-resid': 'mzls+bass-dr6-resid',
 
-        'decaps2': 'decaps',
-        'decaps2-model': 'decaps-model',
-        'decaps2-resid': 'decaps-resid',
+        #'decaps2': 'decaps',
+        #'decaps2-model': 'decaps-model',
+        #'decaps2-resid': 'decaps-resid',
 
         'dr8': 'ls-dr8',
         'dr8-model': 'ls-dr8-model',
@@ -335,10 +343,11 @@ def _index(req,
         enable_eboss = settings.ENABLE_EBOSS,
         enable_hsc_dr2 = settings.ENABLE_HSC_DR2,
         enable_desi_targets = settings.ENABLE_DESI_TARGETS,
+        enable_desi_data = settings.ENABLE_DESI_DATA,
         enable_desi_footprint = True,
         enable_spectra = settings.ENABLE_SPECTRA,
+        enable_phat = settings.ENABLE_PHAT,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
-        enable_phat = False,
         discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
     )
 
@@ -399,6 +408,23 @@ def _index(req,
         tileid = req.GET.get('desi_tile')
         # Set ra and dec
         ra, dec = get_desi_tile_radec(int(tileid))
+    except:
+        pass
+
+    # Process DESI targetid parameter
+    try:
+        from map.cats import lookup_targetid
+        tid = req.GET.get('targetid')
+        tid = int(tid)
+        print('Looking up TARGETID', tid)
+        t = lookup_targetid(tid)
+        if t is not None:
+            ra = t.ra
+            dec = t.dec
+            print('Targetid found: RA,Dec', ra, dec)
+            print('(targetid', t.targetid, ')')
+        else:
+            print('Targetid not found:', tid)
     except:
         pass
 
@@ -471,21 +497,22 @@ def _index(req,
         except:
             pass
 
-    if 'targetid' in req.GET:
-        try:
-            targetid = int(req.GET['targetid'], 10)
-            # 22 bits
-            objid = targetid & 0x3fffff
-            # 20 bits
-            brickid = (targetid >> 22) & 0xfffff
-            # 16 bits
-            release = (targetid >> 42) & 0xffff
-            print('Release', release, 'brickid', brickid, 'objid', objid)
-        except:
-            pass
+    # if 'targetid' in req.GET:
+    #     try:
+    #         targetid = int(req.GET['targetid'], 10)
+    #         # 22 bits
+    #         objid = targetid & 0x3fffff
+    #         # 20 bits
+    #         brickid = (targetid >> 22) & 0xfffff
+    #         # 16 bits
+    #         release = (targetid >> 42) & 0xffff
+    #         print('Release', release, 'brickid', brickid, 'objid', objid)
+    #     except:
+    #         pass
         
     galname = None
     if ra is None or dec is None:
+        print('Getting random galaxy position')
         ra,dec,galname = get_random_galaxy(layer=layer)
     
     hostname_url = req.build_absolute_uri('/')
@@ -520,12 +547,14 @@ def _index(req,
         import traceback
         traceback.print_exc()
 
+    print('Setting initial RA,Dec position', ra, dec)
 
     args = dict(ra=ra, dec=dec,
                 maxZoom=maxZoom,
                 galname=galname,
                 layer=layer, tileurl=tileurl,
                 hostname_url=hostname_url,
+                root_url=settings.ROOT_URL+'/'.replace('//','/'),
                 uploadurl=uploadurl,
                 caturl=caturl, bricksurl=bricksurl,
                 smallcaturl=smallcaturl,
@@ -722,6 +751,20 @@ def name_query(req):
             return HttpResponse(json.dumps(dict(error='DESI tile %i not found' % tileid)))
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Tile %i' % tileid)))
 
+
+    # Check for TARGET or TARGETID <targetid>
+    words = obj.strip().split()
+    if len(words) == 2 and words[0].lower() in ['target', 'targetid']:
+        from map.cats import lookup_targetid
+        tid = int(words[1])
+        try:
+            t = lookup_targetid(tid)
+            ra = t.ra
+            dec = t.dec
+        except RuntimeError as e:
+            return HttpResponse(json.dumps(dict(error='DESI targetid %i not found' % tid)))
+        return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Targetid %i' % tid)))
+
     # Check for RA,Dec in decimal degrees or H:M:S.
     words = obj.strip().split()
     print('Parsing name query: words', words)
@@ -870,7 +913,7 @@ class MapLayer(object):
         #print('Old scale', oldscale, 'scale', scale)
         return scale
 
-    def bricks_touching_aa_wcs(self, wcs, scale=None):
+    def bricks_touching_aa_wcs(self, wcs, scale=None, oldcode=False):
         from astrometry.util.starutil_numpy import degrees_between
 
         rc,dc = wcs.radec_center()
@@ -884,7 +927,8 @@ class MapLayer(object):
         rad = 1.01 * max(d1,d2)/2.
 
         B = self.bricks_within_range(rc, dc, rad, scale=scale)
-        if B is None:
+        #print('Bricks within range:', B)
+        if (B is None) or oldcode:
             # Previously...
             '''Assumes WCS is axis-aligned and normal parity'''
             rlo,d = wcs.pixelxy2radec(W, H/2)[-2:]
@@ -1042,6 +1086,21 @@ class MapLayer(object):
         if os.path.exists(fn):
             return fn
         return None
+
+    def needs_recreating(self, brick, band, scale):
+        fn = self.get_filename(brick, band, scale)
+        deps = self.get_dependencies(brick, band, scale)
+        mytime = os.path.getmtime(fn)
+        for dep in deps:
+            if os.path.exists(dep) and os.path.getmtime(dep) > mytime:
+                return True
+        return False
+        
+    def get_dependencies(self, brick, band, scale):
+        if scale == 0:
+            return []
+        sourcefn = self.get_scaled_filename(brick, band, scale-1)
+        return [sourcefn]
 
     def create_scaled_image(self, brick, band, scale, fn, tempfiles=None):
         from scipy.ndimage.filters import gaussian_filter
@@ -1344,7 +1403,7 @@ class MapLayer(object):
 
                 #print('Coadded', len(Yo), 'pixels;', (nz-np.sum(rw==0)), 'new')
 
-                if False:
+                if debug_ps is not None:
                     #import pylab as plt
                     dest = np.zeros(wcs.shape, bool)
                     dest[Yo,Xo] = True
@@ -1366,19 +1425,19 @@ class MapLayer(object):
                     plt.title('sub-source')
                     plt.subplot(2,3,5)
                     plt.imshow(destval, interpolation='nearest', origin='lower',
-                               vmin=-0.001, vmax=0.01)
+                               vmin=-0.001, vmax=0.1)
                     plt.title('dest')
 
                     plt.subplot(2,3,3)
                     plt.imshow(rimg / np.maximum(rw, 1e-18),
                                interpolation='nearest', origin='lower',
-                               vmin=-0.001, vmax=0.01)
+                               vmin=-0.001, vmax=0.1)
                     plt.title('rimg')
                     plt.subplot(2,3,6)
                     plt.imshow(rw, interpolation='nearest', origin='lower')
                     plt.title('rw')
-                    plt.savefig('render-%s-%s.png' % (brickname, band))
-
+                    #plt.savefig('render-%s-%s.png' % (brickname, band))
+                    debug_ps.savefig()
             #print('Median image weight:', np.median(rw.ravel()))
             rimg /= np.maximum(rw, 1e-18)
             #print('Median image value:', np.median(rimg.ravel()))
@@ -1829,14 +1888,14 @@ class DecalsLayer(MapLayer):
         ]
 
         bb = get_radec_bbox(req)
-        print('DecalsLayer.data_for_radec: bb', bb)
         if bb is not None:
             ralo,rahi,declo,dechi = bb
-            print('RA,Dec bb:', bb)
             caturl = (my_reverse(req, 'cat-fits', args=(self.name,)) +
                       '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
             html.extend(['<h1>%s Data for RA,Dec box:</h1>' % self.drname,
                          '<p><a href="%s">Catalog</a></p>' % caturl])
+
+            html.extend(self.cutouts_html(req, ra, dec))
 
         brick_html = self.brick_details_body(brick)
         html.extend(brick_html)
@@ -1873,6 +1932,23 @@ class DecalsLayer(MapLayer):
             '<li><a href="%s/tractor/%s/tractor-%s.fits">Catalog (FITS table)</a></li>' % (survey.drurl, brickname[:3], brickname),
             '</ul>',
             ]
+        return html
+
+    def cutouts_html(self, req, ra, dec):
+        qargs = '?ra=%.4f&dec=%.4f&layer=%s' % (ra, dec, self.name)
+        cutout_jpg = my_reverse(req, 'cutout-jpeg') + qargs
+        cutout_fits = my_reverse(req, 'cutout-fits') + qargs
+        cutout_subimage = my_reverse(req, 'cutout-fits') + qargs + '&subimage'
+        copsf = my_reverse(req, 'coadd_psf') + qargs
+
+        html = ['<h1>%s Cutouts at RA,Dec:</h1>' % self.survey.drname,
+                '<ul>'
+                '<li><a href="%s">Image (JPG)</a></li>' % cutout_jpg,
+                '<li><a href="%s">Image (FITS)</a></li>' % cutout_fits,
+                '<li><a href="%s">Image (FITS; not resampled; including inverse-variance map)</a></li>' % cutout_subimage,
+                '<li><a href="%s">Coadd PSF (FITS)</a></li>' % copsf,
+                '</ul>'
+                ]
         return html
 
     def ccds_overlapping_html(self, req, ccds, ra=None, dec=None, brick=None):
@@ -2059,6 +2135,16 @@ class RebrickedMixin(object):
 
     def get_scaled_wcs(self, brick, band, scale):
         pass
+
+    def get_dependencies(self, brick, band, scale):
+        if scale == 0:
+            return []
+        finalwcs = self.get_scaled_wcs(brick, band, scale)
+        bricks = self.bricks_touching_aa_wcs(finalwcs, scale-1)
+        fns = []
+        for b in brick:
+            fns.append(self.get_scaled_filename(b, band, scale-1))
+        return fns
     
     def create_scaled_image(self, brick, band, scale, fn, tempfiles=None):
         import numpy as np
@@ -2068,7 +2154,7 @@ class RebrickedMixin(object):
 
         ro = settings.READ_ONLY_BASEDIR
         if ro:
-            print('Read-only; not creating scaled', brick, band, scale)
+            print('Read-only; not creating scaled', brick.brickname, band, scale, 'fn', fn)
             return None
         
         # Create scaled-down image (recursively).
@@ -2119,6 +2205,7 @@ class RebrickedMixin(object):
         fitsio.write(tmpfn + compress, img, header=hdr, clobber=True)
         os.rename(tmpfn, fn)
         print('Wrote', fn)
+        return fn
 
     def get_filename(self, brick, band, scale, tempfiles=None):
         #print('RebrickedMixin.get_filename: brick', brick, 'band', band, 'scale', scale)
@@ -2216,9 +2303,19 @@ class RebrickedMixin(object):
         print('Cut generic bricks to', len(allbricks))
         allbricks.writeto(fn)
         print('Wrote', fn)
-        return allbricks
+        
+        # tmpfn = fn.replace('.gz','')
+        # assert(tmpfn != fn)
+        # allbricks.writeto(tmpfn)
+        # kdfn = os.path.join(self.basedir, 'survey-bricks-%i.kd.fits' % scale)
+        # cmd = 'startree -i %s -o %s -PTk' % (tmpfn, kdfn)
+        # os.system(cmd)
+        # os.remove(tmpfn)
+        # return allbricks
 
     def get_brick_size_for_scale(self, scale):
+        if scale is None:
+            scale = 0
         return 0.25 * 2**scale
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None,
@@ -2240,8 +2337,18 @@ class RebrickedMixin(object):
         #      ', '.join(bricks.brickname[I]))
         return bricks[I]
 
+    def bricks_within_range(self, ra, dec, radius, scale=None):
+        from astrometry.libkd.spherematch import match_radec
+        import numpy as np
+        #print('bricks_within_range for scale', scale)
+        B = self.get_bricks_for_scale(scale)
+        #brad = self.pixelsize * self.pixscale/3600. * 2**scale * np.sqrt(2.)/2. * 1.01
+        brad = self.get_brick_size_for_scale(scale) * np.sqrt(2.) / 2. * 1.1
+        I,J,d = match_radec(ra, dec, B.ra, B.dec, radius + brad)
+        J = np.sort(J)
+        return B[J]
         
-class Decaps2Layer(DecalsDr3Layer):
+class DecapsLayer(DecalsDr3Layer):
 
     def brick_details_body(self, brick):
         survey = self.survey
@@ -2331,7 +2438,7 @@ class DecalsResidLayer(ResidMixin, UniqueBrickMixin, DecalsLayer):
 class DecalsModelLayer(UniqueBrickMixin, DecalsLayer):
     pass
 
-class Decaps2ResidLayer(ResidMixin, Decaps2Layer):
+class DecapsResidLayer(ResidMixin, DecapsLayer):
     pass
 
 class MzlsMixin(object):
@@ -2457,14 +2564,9 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
 
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
-
-        # Work around issue where the largest-scale bricks don't quite
-        # meet up due to TAN projection effects.
-        if scale >= 6:
-            size = 3800
-        else:
-            size = 3600
-
+        if scale is None:
+            scale = 0
+        size = self.get_pixel_size_for_scale(scale)
         pixscale = self.pixscale * 2**scale
         cd = pixscale / 3600.
         crpix = size/2. + 0.5
@@ -2472,11 +2574,117 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
                   float(size), float(size))
         return wcs
 
+    def get_pixel_size_for_scale(self, scale):
+        # Work around issue where the largest-scale bricks don't quite
+        # meet up due to TAN projection effects.
+        if scale >= 6:
+            size = 3800
+        else:
+            size = 3600
+        return size
+
+class LsDr10Layer(ReDecalsLayer):
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        m=0.03
+        Q=20
+        mnmx=None
+        clip=True
+        allbands = ['g','r','i','z']
+        rgb_stretch_factor = 1.5
+        rgbscales=dict(
+            g =    (2, 6.0 * rgb_stretch_factor),
+            r =    (1, 3.4 * rgb_stretch_factor),
+            i =    (0, 3.0 * rgb_stretch_factor),
+            z =    (0, 2.2 * rgb_stretch_factor),
+            )
+        I = 0
+        for img,band in zip(imgs, bands):
+            plane,scale = rgbscales[band]
+            img = np.maximum(0, img * scale + m)
+            I = I + img
+        I /= len(bands)
+        if Q is not None:
+            fI = np.arcsinh(Q * I) / np.sqrt(Q)
+            I += (I == 0.) * 1e-6
+            I = fI / I
+        H,W = I.shape
+        rgb = np.zeros((H,W,3), np.float32)
+
+        rgbvec = dict(
+            g = (0.,   0.,  0.75),
+            r = (0.,   0.5, 0.25),
+            i = (0.25, 0.5, 0.),
+            z = (0.75, 0.,  0.))
+
+        for img,band in zip(imgs, bands):
+            _,scale = rgbscales[band]
+            rf,gf,bf = rgbvec[band]
+            if mnmx is None:
+                v = (img * scale + m) * I
+            else:
+                mn,mx = mnmx
+                v = ((img * scale + m) - mn) / (mx - mn)
+            if clip:
+                v = np.clip(v, 0, 1)
+            if rf != 0.:
+                rgb[:,:,0] += rf*v
+            if gf != 0.:
+                rgb[:,:,1] += gf*v
+            if bf != 0.:
+                rgb[:,:,2] += bf*v
+        return rgb
+
+#class LsDr10ModelLayer(UniqueBrickMixin, LsDr10Layer):
+#    pass
+class LsDr10ResidLayer(UniqueBrickMixin, ResidMixin, LsDr10Layer):
+    pass
+
+    
 class ReDecalsResidLayer(UniqueBrickMixin, ResidMixin, ReDecalsLayer):
     pass
 
 class ReDecalsModelLayer(UniqueBrickMixin, ReDecalsLayer):
     pass
+
+
+class Decaps2Layer(ReDecalsLayer):
+
+    # def brick_details_body(self, brick):
+    #     survey = self.survey
+    #     brickname = brick.brickname
+    #     html = [
+    #         '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
+    #         '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
+    #         '<ul>',
+    #         '<li><a href="%s/coadd/%s/%s/legacysurvey-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
+    #         '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
+    #         '</ul>',
+    #         ]
+    #     return html
+
+
+    # Some of the DECaPS2 images do not have WCS headers, so create them based on the brick center.
+    def read_wcs(self, brick, band, scale, fn=None):
+        if scale > 0:
+            return super(Decaps2Layer, self).read_wcs(brick, band, scale, fn=fn)
+        from legacypipe.survey import wcs_for_brick
+        return wcs_for_brick(brick)
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        if self.bands == 'grz':
+            # equivalent to:
+            #return sdss_rgb(rimgs, bands, scales=dict(g=(2,6.0), r=(1,3.4), z=(0,2.2)), m=0.03)
+            return super().get_rgb(imgs, bands, **kwargs)
+        elif self.bands == 'riY':
+            return sdss_rgb(imgs, bands, scales=dict(r=(2,3.4), i=(1,2.8), Y=(0,2.0)), m=0.03)
+        return None
+    
+class Decaps2ModelLayer(Decaps2Layer, ReDecalsModelLayer):
+    pass
+class Decaps2ResidLayer(Decaps2Layer, ReDecalsResidLayer):
+    pass
+
 
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
@@ -2625,6 +2833,9 @@ class LegacySurveySplitLayer(MapLayer):
             ccds = touchup_ccds(ccds, survey)
             if len(ccds) == 0:
                 continue
+
+            html.extend(layer.cutouts_html(req, ra, dec))
+
             html.extend(layer.ccds_overlapping_html(req, ccds, ra=ra, dec=dec, brick=brickname))
             from legacypipe.survey import wcs_for_brick
             brickwcs = wcs_for_brick(brick)
@@ -2664,6 +2875,40 @@ class LegacySurveySplitLayer(MapLayer):
         os.unlink(outfn)
         cat.writeto(outfn, header=hdr)
         return send_file(outfn, 'image/fits', unlink=True, filename=fn)
+
+    def get_catalog_table(self, req, ralo, rahi, declo, dechi, brick=None, objid=None):
+        from django.shortcuts import render
+        from map.cats import radecbox_to_wcs
+        wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
+        cat,hdr = self.get_catalog_in_wcs(wcs)
+        if brick is not None:
+            cat = cat[cat.brickname == brick]
+        if objid is not None:
+            cat = cat[cat.objid == objid]
+        if len(cat) == 0:
+            return HttpResponse('No sources')
+        cols = cat.get_columns()
+        for band in ['g','r','i','z','w1','w2','w3','w4']:
+            c = 'flux_' + band
+            import numpy as np
+            if c in cols:
+                f = cat.get(c)
+                mag = -2.5 * (np.log10(f) - 9)
+                cat.set('mag_' + band, mag)
+        cols = cat.get_columns()
+        cat_dict = {}
+        for c in cols:
+            cat_dict[c] = cat.get(c)
+        args = dict(cat_entries=cat_dict)
+        return render(req, 'cat_table.html', args)
+        #return HttpResponse('got %i sources' % len(cat))
+        # fn = 'cat-%s.fits' % (self.name)
+        # import tempfile
+        # f,outfn = tempfile.mkstemp(suffix='.fits')
+        # os.close(f)
+        # os.unlink(outfn)
+        # cat.writeto(outfn, header=hdr)
+        # return send_file(outfn, 'image/fits', unlink=True, filename=fn)
 
     def get_catalog_in_wcs(self, wcs):
         from astrometry.util.fits import merge_tables
@@ -3707,6 +3952,176 @@ class VlassLayer(RebrickedMixin, MapLayer):
         html.extend(['</body>', '</html>'])
         return HttpResponse('\n'.join(html))
 
+
+class anwcs_wrapper(object):
+    def __init__(self, *args):
+        from astrometry.util.util import anwcs_t
+        self._anwcs = anwcs_t(*args)
+    def get_subimage(self, x0, y0, w, h):
+        #print('anwcs_wrapper: get_subimage')
+        s = self._anwcs.getHeaderString()
+        s = s.encode()
+        s = (b'SIMPLE  =                    T / Standard FITS file                             ' +
+             b'BITPIX  =                    8 / ASCII or bytes array                           ' +
+             b'NAXIS   =                    0 / Minimal header                                 ' +
+             s)
+        L = len(s)
+        pad = 2880 - (L % 2880)
+        s += b' '*pad
+        import tempfile
+        f,tmpfn = tempfile.mkstemp()
+        os.close(f)
+        open(tmpfn,'wb').write(s)
+        import fitsio
+        hdr = fitsio.read_header(tmpfn)
+        crpix1 = hdr['CRPIX1']
+        crpix2 = hdr['CRPIX2']
+        crpix1 -= x0
+        crpix2 -= y0
+        hdr['CRPIX1'] = crpix1
+        hdr['CRPIX2'] = crpix2
+        hdr.delete('NAXIS1')
+        hdr.delete('NAXIS2')
+        fitsio.write(tmpfn, None, header=hdr, clobber=True)
+        wcs = anwcs_wrapper(tmpfn, 0)
+        os.remove(tmpfn)
+        wcs.imagew = int(w)
+        wcs.imageh = int(h)
+        #print('desired h,w:', h, w, 'wcs shape:', wcs.shape)
+        return wcs
+        
+    def __getattr__(self, k):
+        return getattr(self._anwcs, k)
+    def __setattr__(self, k, v):
+        if k == '_anwcs':
+            object.__setattr__(self, k, v)
+        else:
+            self._anwcs.__setattr__(k, v)
+
+class PandasLayer(RebrickedMixin, MapLayer):
+
+    def __init__(self, name):
+        super().__init__(name, nativescale=14)
+        self.pixscale = 0.186
+        self.bands = self.get_bands()
+        self.pixelsize = 5100
+        self.maxscale = 7
+
+    def get_bricks(self):
+        from astrometry.util.fits import fits_table
+        return fits_table(os.path.join(self.basedir, 'pandas.fits'))
+
+    # def get_bricks_for_scale(self, scale):
+    #     if scale in [0, None]:
+    #         return self.get_bricks()
+    #     scale = min(scale, self.maxscale)
+    #     from astrometry.util.fits import fits_table
+    #     fn = os.path.join(self.basedir, 'pandas-bricks-%i.fits' % scale)
+    #     b = fits_table(fn)
+    #     return b
+
+    def get_scaled_wcs(self, brick, band, scale):
+        print('get_scaled_wcs: scale', scale, 'brick', brick)
+        from astrometry.util.util import Tan
+        if scale < 5:
+            size = self.pixelsize
+        elif scale == 5:
+            size = self.pixelsize * 1.07
+        elif scale >= 6:
+            size = self.pixelsize * 1.18
+
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+
+    def get_bands(self):
+        return ['g','i']
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        assert(len(imgs) == 2)
+        img = imgs[0]
+        H,W = img.shape
+
+        rgb = np.zeros((H,W,3), np.uint8)
+        # g,i
+        blu,red = imgs
+        mn,mx = -20, 2000
+
+        blu *= 1.2
+        
+        arcsinh=1./20.
+        def nlmap(x):
+            return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
+        bright = (blu + red) / 2.
+        I = nlmap(bright)
+        # color -- abs here prevents weird effects when, eg, W1>0 and W2<0.
+        mean = np.maximum(1e-6, (np.abs(red)+np.abs(blu))/2.)
+        red = np.abs(red)/mean * I
+        blu = np.abs(blu)/mean * I
+        mn = nlmap(mn)
+        mx = nlmap(mx)
+
+        blu = (blu - mn) / (mx - mn)
+        red = (red - mn) / (mx - mn)
+
+        rgb[:,:,2] = (np.clip(blu, 0., 1.) * 255).astype(np.uint8)
+        rgb[:,:,0] = (np.clip(red, 0., 1.) * 255).astype(np.uint8)
+        rgb[:,:,1] = rgb[:,:,0]/2 + rgb[:,:,2]/2
+
+        return rgb
+
+    def get_base_filename(self, brick, band, **kwargs):
+        # The "pandas.fits" file contains only g-band images; swap in correct band.
+        fn = brick.filename_g.strip().replace('_g.fit', '_%s.fit'%band)
+        return os.path.join(self.basedir, fn)
+
+    def read_image(self, brick, band, scale, slc, fn=None):
+        if scale > 0:
+            return super().read_image(brick, band, scale, slc, fn=fn)
+        import fitsio
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        print('read_image: brick', brick.brickname, 'band', band, 'scale', scale, 'fn', fn)
+        print('ext', brick.ext)
+        f = fitsio.FITS(fn)[brick.ext]
+        med = getattr(brick, 'median_'+band)
+        if slc is None:
+             return f.read() - med
+        return f[slc] - med
+
+    def read_wcs(self, brick, band, scale, fn=None):
+        if scale > 0:
+            return super().read_wcs(brick, band, scale, fn=fn)
+
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        if fn is None:
+            return None
+        print('read_wcs: brick', brick.brickname, 'band', band, 'scale', scale, 'fn', fn)
+        print('ext', brick.ext)
+        wcs = anwcs_wrapper(fn, int(brick.ext))
+        import fitsio
+        hdr = fitsio.read_header(fn, ext=int(brick.ext))
+        w = hdr['NAXIS1']
+        h = hdr['NAXIS2']
+        wcs.imagew = int(w)
+        wcs.imageh = int(h)
+        #wcs.imagew = int(brick.width)
+        #wcs.imageh = int(brick.height)
+        #sub = wcs.get_subimage(100, 100, 200, 200)
+        return wcs
+    
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+                            '%(scale)i%(band)s', '%(brickname).3s',
+                            '%(brickname)s.fits')
+
+
+    
 class ZtfLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
         super(ZtfLayer, self).__init__(name, nativescale=12)
@@ -4107,9 +4522,15 @@ class Decaps2LegacySurveyData(MyLegacySurveyData):
         if brick is not None:
             codir = os.path.join(basedir, 'coadd', brickpre, brick)
         sname = self.file_prefix
-        if filetype == 'model':
+        # No .fits.fz suffix, just .fits
+        if filetype in ['image']:
             return os.path.join(codir,
                                 '%s-%s-%s-%s.fits' % (sname, brick, filetype, band))
+        if filetype in ['model']:
+            # coadd-model dir; named "legacysurvey-BRICK-image", not "-model"
+            codir = os.path.join(basedir, 'coadd-model', brickpre, brick)
+            return os.path.join(codir,
+                                '%s-%s-%s-%s.fits' % (sname, brick, 'image', band))
         return super(Decaps2LegacySurveyData, self).find_file(filetype, brick=brick,
                                                               brickpre=brickpre,
                                                               band=band,
@@ -4178,13 +4599,226 @@ class DR8BokImage(BokImage):
             os.path.join(calibdir, self.camera, 'psfex',
                          estr[:5], '%s-%s.fits' % (self.camera, estr))]
 
+class AsteroidsLayer(ReDecalsLayer):
+    def get_rgb(self, imgs, bands, **kwargs):
+        rgb = super().get_rgb(imgs, bands, **kwargs)
+        rgb[:,:,1] = rgb[:,:,2] = rgb[:,:,0]
+        return rgb
+    def get_bands(self):
+        return 'i'
+
+class OutliersLayer(DecalsLayer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.scaledir = None
+        #self.bands = 'o'
+        self.bands = 'rgb'
+        self.imagetype = 'outliers-masked-pos'
+
+        self.cached_brick = None
+        self.cached_image = None
+
+    def get_base_filename(self, brick, band, invvar=False, **kwargs):
+        return self.survey.find_file(self.imagetype, brick=brick.brickname, band=band)
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        print('get_rgb: Bands:', bands)
+        print('imgs:', [i.shape for i in imgs])
+        #return imgs[0]
+        rgb = np.dstack(imgs)
+        print('get_rgb:', rgb.shape)
+        print('rgb range:', rgb.min(), rgb.max())
+        rgb = np.clip(rgb, 0., 1.)
+        return rgb
+
+    def get_scale(self, zoom, x, y, wcs):
+        if zoom >= 12:
+            return 0
+        return -1
+
+    def read_image(self, brick, band, scale, slc, fn=None):
+        import pylab as plt
+        import numpy as np
+
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+
+        key = fn #(brick, scale, slc)
+        if self.cached_brick == key:
+            print('Using cached image for', fn, 'band', band)
+            rgb = self.cached_image
+        else:
+            print('Reading image from', fn)
+            rgb = plt.imread(fn)
+            rgb = np.flipud(rgb)
+            print('rgb:', rgb.shape)
+
+            self.cached_brick = key
+            self.cached_image = rgb
+
+        plane = 'rgb'.index(band)
+        img = rgb[:,:,plane]
+        if slc is not None:
+            img = img[slc]
+            print('sliced:', img.shape)
+        #print('returning image type', img.dtype)
+        img = img.astype(np.float32) / 255.
+        return img
+
+    def read_wcs(self, brick, band, scale, fn=None):
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        print('Reading WCS for', fn)
+        if not os.path.exists(fn):
+            return None
+        print('(brick', brick, 'band', band, 'scale', scale)
+        from legacypipe.survey import wcs_for_brick
+        wcs = wcs_for_brick(brick)
+        return wcs
+
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
+                        scale=None, tempfiles=None):
+        import numpy as np
+        from astrometry.util.resample import resample_with_wcs, OverlapError
+        if scale is None:
+            scale = self.get_scale(zoom, x, y, wcs)
+        if not general_wcs:
+            bricks = self.bricks_touching_aa_wcs(wcs, scale=scale)
+        else:
+            bricks = self.bricks_touching_general_wcs(wcs, scale=scale)
+        if bricks is None or len(bricks) == 0:
+            print('No bricks touching WCS')
+            return None
+        if bands is None:
+            bands = self.get_bands()
+        W = int(wcs.get_width())
+        H = int(wcs.get_height())
+        target_ra,target_dec = wcs.pixelxy2radec([1,  1,1,W/2,W,W,  W,W/2],
+                                                 [1,H/2,H,H,  H,H/2,1,1  ])[-2:]
+        coordtype = self.get_pixel_coord_type(scale)
+        rimgs = {}
+        rws = {}
+        for band in bands:
+            rimgs[band] = np.zeros((H,W), np.float32)
+            rws[band]   = np.zeros((H,W), np.float32)
+        brick_bands = {}
+        allbricks = {}
+        for band in bands:
+            bandbricks = self.bricks_for_band(bricks, band)
+            for brick in bandbricks:
+                if not brick.brickname in brick_bands:
+                    brick_bands[brick.brickname] = []
+                    allbricks[brick.brickname] = brick
+                brick_bands[brick.brickname].append(band)
+        for brickname,brick in allbricks.items():
+            bimgs = []
+            # ASSUME WCS for all bands is the same!
+            band = brick_bands[brickname][0]
+            fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
+            print('Reading', brickname, 'band', band, 'scale', scale, '-> fn', fn)
+            if fn is None:
+                continue
+            try:
+                bwcs = self.read_wcs(brick, band, scale, fn=fn)
+                if bwcs is None:
+                    print('No such file:', brickname, band, scale, 'fn', fn)
+                    continue
+            except:
+                print('Failed to read WCS:', brickname, band, scale, 'fn', fn)
+                savecache = False
+                import traceback
+                import sys
+                traceback.print_exc(None, sys.stdout)
+                continue
+            # Check for pixel overlap area (projecting target WCS edges into this brick)
+            ok,xx,yy = bwcs.radec2pixelxy(target_ra, target_dec)
+            xx = xx.astype(np.int)
+            yy = yy.astype(np.int)
+            imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
+            M = 10
+            xlo = np.clip(xx.min() - M, 0, imW)
+            xhi = np.clip(xx.max() + M, 0, imW)
+            ylo = np.clip(yy.min() - M, 0, imH)
+            yhi = np.clip(yy.max() + M, 0, imH)
+            if xlo >= xhi or ylo >= yhi:
+                print('No pixel overlap')
+                continue
+            subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
+            slc = slice(ylo,yhi), slice(xlo,xhi)
+            ih,iw = subwcs.shape
+            assert(np.iinfo(coordtype).max > max(ih,iw))
+            oh,ow = wcs.shape
+            assert(np.iinfo(coordtype).max > max(oh,ow))
+
+            goodimgs = []
+            goodbands = []
+            imgtype = None
+            for band in brick_bands[brickname]:
+                try:
+                    img = self.read_image(brick, band, scale, slc, fn=fn)
+                    imgtype = img.dtype
+                except:
+                    print('Failed to read image:', brickname, band, scale, 'fn', fn)
+                    savecache = False
+                    import traceback
+                    import sys
+                    traceback.print_exc(None, sys.stdout)
+                    continue
+                goodimgs.append(img)
+                goodbands.append(band)
+            try:
+                Yo,Xo,Yi,Xi,resamps = resample_with_wcs(wcs, subwcs, goodimgs, intType=coordtype)
+            except OverlapError:
+                continue
+            bmask = self.get_brick_mask(scale, bwcs, brick)
+            if bmask is not None:
+                # Assume bmask is a binary mask as large as the bwcs.
+                # Shift the Xi,Yi coords
+                I = np.flatnonzero(bmask[Yi+ylo, Xi+xlo])
+                if len(I) == 0:
+                    continue
+                Yo = Yo[I]
+                Xo = Xo[I]
+                Yi = Yi[I]
+                Xi = Xi[I]
+                resamps = [resamp[I] for resamp in resamps]
+
+            # if not np.all(np.isfinite(resamp)):
+            #     ok, = np.nonzero(np.isfinite(resamp))
+            #     Yo = Yo[ok]
+            #     Xo = Xo[ok]
+            #     Yi = Yi[ok]
+            #     Xi = Xi[ok]
+            #     resamps = [resamp[ok] for resamp in resamps]
+
+            ok = self.filter_pixels(scale, img, wcs, subwcs, Yo,Xo,Yi,Xi)
+            if ok is not None:
+                Yo = Yo[ok]
+                Xo = Xo[ok]
+                Yi = Yi[ok]
+                Xi = Xi[ok]
+                resamps = [resamp[ok] for resamp in resamps]
+
+            for band,resamp in zip(goodbands, resamps):
+                wt = self.get_pixel_weights(band, brick, scale)
+                rimgs[band][Yo,Xo] += resamp * wt
+                rws  [band][Yo,Xo] += wt
+
+            for band in goodbands:
+                rimgs[band] /= np.maximum(rws[band], 1e-18)
+
+        rimgs = [rimgs[b] for b in bands]
+        return rimgs
+
+
 surveys = {}
 def get_survey(name):
     global surveys
     import numpy as np
     name = clean_layer_name(name)
     name = layer_to_survey_name(name)
-    #print('Survey name', name)
+    print('Survey name', name)
 
     if name in surveys:
         #print('Cache hit for survey', name)
@@ -4209,6 +4843,11 @@ def get_survey(name):
         survey.drname = 'DECaPS'
         survey.drurl = 'https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
 
+    elif name == 'decaps2':
+        survey = Decaps2LegacySurveyData(survey_dir=dirnm)
+        survey.drname = 'DECaPS 2'
+        survey.drurl = 'https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
+        
     elif name == 'ls-dr67':
         north = get_survey('mzls+bass-dr6')
         north.layer = 'mzls+bass-dr6'
@@ -4241,6 +4880,22 @@ def get_survey(name):
     elif name in ['ls-dr9-north', 'ls-dr9-south']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
+    elif name in ['ls-dr10']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+
+    elif name in ['ls-dr10-early']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+    elif name in ['ls-dr10-early-grz']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm.replace('-grz',''), cache_dir=cachedir)
+
+    elif name in ['ls-dr10a', 'ls-dr10a-model', 'ls-dr10a-resid']:
+        if name in ['ls-dr10a-model', 'ls-dr10a-resid']:
+            dirnm = os.path.join(basedir, 'ls-dr10a')
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+
+    elif name in ['ls-dr9-south-B']:
+        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+
     elif name == 'dr9sv':
         north = get_survey('dr9sv-north')
         north.layer = 'dr9sv-north'
@@ -4262,7 +4917,7 @@ def get_survey(name):
         'decals-dr5': ('DECaLS DR5', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr5/'),
         'decals-dr7': ('DECaLS DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr7/'),
         'eboss': ('eBOSS', 'http://legacysurvey.org/'),
-        'decals': ('DECaPS', 'http://legacysurvey.org/'),
+        #'decals': ('DECaPS', 'http://legacysurvey.org/'),
         'ls-dr67': ('Legacy Surveys DR6+DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/'),
         'ls-dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/north'),
         'ls-dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/south'),
@@ -4441,7 +5096,10 @@ def ccd_list(req):
         x = np.array([1, 1, c.width, c.width])
         y = np.array([1, c.height, c.height, 1])
         r,d = wcs.pixelxy2radec(x, y)
-        ccmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
+        if name in ['ls-dr10-early', 'ls-dr10a']:
+            ccmap = dict(g='#0000cc', r='#008844', i='#448800', z='#cc0000', Y='#cc4444')
+        else:
+            ccmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
         ccds.append(dict(name='%s %i-%s-%s' % (c.camera.strip(), c.expnum,
                                                c.ccdname.strip(), c.filter.strip()),
                          radecs=list(zip(r, d)),
@@ -4466,7 +5124,7 @@ def get_exposure_table(name):
     from astrometry.util.fits import fits_table
     name = str(name)
     name = clean_layer_name(name)
-    if name in ['decals-dr5', 'decals-dr7', 'ls-dr8-south', 'ls-dr9-south']:
+    if name in ['decals-dr5', 'decals-dr7', 'ls-dr8-south', 'ls-dr9-south', 'ls-dr10-early']:
         fn = os.path.join(settings.DATA_DIR, name, 'exposures.fits')
         if not os.path.exists(fn):
             import numpy as np
@@ -4529,6 +5187,9 @@ def exposure_list(req):
     exps = []
     for t in T:
         cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
+        if name in ['ls-dr10-early']:
+            cmap = dict(g='#0000cc', r='#008844', i='#448800', z='#cc0000')
+            
         exps.append(dict(name='%i %s' % (t.expnum, t.filter),
                          ra=t.ra, dec=t.dec, radius=radius,
                          color=cmap[t.filter]))
@@ -4647,6 +5308,20 @@ def ccd_detail(req, layer_name, ccd):
                 rect = (x,y,w,h)
             except:
                 pass
+    else:
+        ra = req.GET.get('ra', None)
+        dec = req.GET.get('dec', None)
+        if ra is not None and dec is not None:
+            ra = float(ra)
+            dec = float(dec)
+            im = survey.get_image_object(c)
+            wcs = im.get_wcs()
+            ok,x,y = wcs.radec2pixelxy(ra, dec)
+            size = int(req.GET.get('size', 100))
+            x = x-size/2
+            y = y-size/2
+            w = h = size
+            rect = (x,y,w,h)
 
     imgurl   = my_reverse(req, 'image_data', args=[layer_name, ccd])
     dqurl    = my_reverse(req, 'dq_data', args=[layer_name, ccd])
@@ -5193,6 +5868,7 @@ def exposures_common(req, tgz, copsf):
         ccdsx.append(('<br/>'.join(['CCD <a href="%s">%s %s %i %s</a>, %.1f sec (x,y ~ %i,%i)' % (expurl, ccd.camera, ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
                                     '<small>(observed %s @ %s = MJD %.6f)</small>' % (ccd.date_obs, ccd.ut, ccd.mjd_obs),
+                                    '<small>(proposal id %s)</small>' % (ccd.propid),
                                     '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % format_jpl_url(req, ra, dec, ccd),]),
                       theurl))
     return render(req, 'exposures.html',
@@ -5460,7 +6136,7 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         # hack a sky sub
         #tim.data -= np.median(tim.data)
         rgb = get_rgb([tim.data], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        index = dict(g=2, r=1, z=0)[tim.band]
+        index = dict(g=2, r=1, i=0, z=0)[tim.band]
         img = rgb[:,:,index]
         kwa.update(vmin=0, vmax=1)
 
@@ -5473,7 +6149,7 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         tim = im.get_tractor_image(dq=False, invvar=True, **trargs)
         from legacypipe.survey import get_rgb
         rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        index = dict(g=2, r=1, z=0)[tim.band]
+        index = dict(g=2, r=1, i=0, z=0)[tim.band]
         img = rgb[:,:,index]
         kwa.update(vmin=0, vmax=1)
 
@@ -5645,7 +6321,10 @@ def get_layer(name, default=None):
     if '/' in name or '..' in name:
         pass
 
-    if name == 'ztf':
+    if name == 'pandas':
+        layer = PandasLayer('pandas')
+        
+    elif name == 'ztf':
         layer = ZtfLayer('ztf')
 
     elif name == 'sdss':
@@ -5709,15 +6388,44 @@ def get_layer(name, default=None):
 
     elif name in ['decaps', 'decaps-model', 'decaps-resid']:
         survey = get_survey('decaps')
-        image = Decaps2Layer('decaps', 'image', survey)
-        model = Decaps2Layer('decaps-model', 'model', survey)
-        resid = Decaps2ResidLayer(image, model,
+        image = DecapsLayer('decaps', 'image', survey)
+        model = DecapsLayer('decaps-model', 'model', survey)
+        resid = DecapsResidLayer(image, model,
                                   'decaps-resid', 'resid', survey, drname='decaps')
         layers['decaps'] = image
         layers['decaps-model'] = model
         layers['decaps-resid'] = resid
         layer = layers[name]
 
+    elif name in ['decaps2', 'decaps2-model', 'decaps2-resid']:
+        survey = get_survey('decaps2')
+        image = Decaps2Layer('decaps2', 'image', survey)
+        model = Decaps2Layer('decaps2-model', 'model', survey)
+        resid = Decaps2ResidLayer(image, model,
+                                  'decaps2-resid', 'resid', survey, drname='decaps2')
+        layers['decaps2'] = image
+        layers['decaps2-model'] = model
+        layers['decaps2-resid'] = resid
+        layer = layers[name]
+
+    elif name in ['decaps2-riy', 'decaps2-model-riy', 'decaps2-resid-riy']:
+        bands = 'riY'
+        survey = get_survey('decaps2')
+        image = Decaps2Layer('decaps2', 'image', survey)
+        image.bands = bands
+        image.tiledir += '-riy'
+        model = Decaps2Layer('decaps2-model', 'model', survey)
+        model.bands = bands
+        model.tiledir += '-riy'
+        resid = Decaps2ResidLayer(image, model,
+                                  'decaps2-resid', 'resid', survey, drname='decaps2')
+        resid.bands = bands
+        resid.tiledir += '-riy'
+        layers['decaps2-riy'] = image
+        layers['decaps2-model-riy'] = model
+        layers['decaps2-resid-riy'] = resid
+        layer = layers[name]
+        
     elif name == 'unwise-w1w2':
         layer = UnwiseLayer('unwise-w1w2',
                             os.path.join(settings.DATA_DIR, 'unwise-w1w2'))
@@ -5733,6 +6441,9 @@ def get_layer(name, default=None):
     elif name == 'unwise-neo6':
         layer = RebrickedUnwise('unwise-neo6',
                                 os.path.join(settings.DATA_DIR, 'unwise-neo6'))
+    elif name == 'unwise-neo7':
+        layer = RebrickedUnwise('unwise-neo7',
+                                os.path.join(settings.DATA_DIR, 'unwise-neo7'))
 
     elif name == '2mass':
         layer = TwoMassLayer('2mass')
@@ -5790,7 +6501,43 @@ def get_layer(name, default=None):
 
     elif name == 'hsc-dr2':
         layer = HscLayer('hsc-dr2')
-    
+
+    elif name == 'outliers-ast':
+        basename = 'asteroids-i'
+        survey = get_survey(basename)
+        layer = OutliersLayer(basename, 'outliers', survey)
+    elif name == 'asteroids-i':
+        basename = 'asteroids-i'
+        survey = get_survey(basename)
+        layer = AsteroidsLayer(basename, 'image', survey)
+
+    elif name in ['ls-dr10-early']:
+        survey = get_survey(name)
+        image = LsDr10Layer(name, 'image', survey, bands='griz')
+        layers[name] = image
+        layer = layers[name]
+
+    elif name in ['ls-dr10-early-grz']:
+        survey = get_survey(name.replace('-grz',''))
+        image = ReDecalsLayer(name, 'image', survey, bands='grz')
+        layers[name] = image
+        layer = layers[name]
+        
+    elif name in ['ls-dr10a', 'ls-dr10a-model', 'ls-dr10a-resid']:
+        basename = 'ls-dr10a'
+        survey = get_survey(basename)
+        image = LsDr10Layer(basename, 'image', survey, bands='griz')
+        #model = LsDr10Layer(basename + '-model', 'model', survey, bands='griz')
+        model = LsDr10Layer(basename, 'model', survey, bands='griz')
+        #drname=basename)
+        #resid = LsDr10ResidLayer(image, model, basename + '-resid', 'resid', survey, bands='griz')
+        resid = LsDr10ResidLayer(image, model, basename, 'resid', survey, bands='griz')
+        #drname=basename)
+        layers[basename] = image
+        layers[basename + '-model'] = model
+        layers[basename + '-resid'] = resid
+        layer = layers[name]
+
     if layer is None:
         # Try generic rebricked
         #print('get_layer:', name, '-- generic')
@@ -5841,6 +6588,25 @@ def any_fits_cat(req, name, **kwargs):
         return HttpResponse('no ra,dec bbox')
     ralo,rahi,declo,dechi = bb
     return layer.get_catalog(req, ralo, rahi, declo, dechi)
+
+def any_cat_table(req, name, **kwargs):
+    name = clean_layer_name(name)
+    layer = get_layer(name)
+    if layer is None:
+        return HttpResponse('no such layer')
+    bb = get_radec_bbox(req)
+    if bb is None:
+        return HttpResponse('no ra,dec bbox')
+    ralo,rahi,declo,dechi = bb
+    brick = req.GET.get('brick', None)
+    objid = req.GET.get('objid', None)
+    if objid is not None:
+        try:
+            objid = int(objid)
+        except:
+            objid = None
+    return layer.get_catalog_table(req, ralo, rahi, declo, dechi,
+                                   brick=brick, objid=objid)
 
 def get_radec_bbox(req):
     print('get_radec_bbox()')
@@ -6185,6 +6951,7 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9.1.1-model/1/12/2383/2022.jpg')
     #r = c.get('/ls-dr9.1.1-resid/1/12/2374/2020.jpg')
     #r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
+    #r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
     #r = c.get('/ls-dr9-south/1/15/27206/20760.jpg')
     #r = c.get('/ls-dr9-south/1/12/3402/2596.jpg')
     #r = c.get('/ls-dr9-south/1/4/12/10.jpg')
@@ -6196,6 +6963,7 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9.1.1-model/1/12/2383/2022.jpg')
     #r = c.get('/ls-dr9.1.1-resid/1/12/2374/2020.jpg')
     #r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
+    #r = c.get('/?zoom=15&targetid=39627788403084375')
     #r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
     #r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
     #r = c.get('/ccd/ls-dr9.1.1/decam-166877-S6.xhtml?ra=152.3613&dec=0.2671')
@@ -6207,7 +6975,41 @@ if __name__ == '__main__':
     #r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga=')
     #r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga-parent=')
     #r = c.get('/jpl_lookup?ra=138.9834&dec=17.8431&date=2016-01-15%2005:51:44.149541&camera=decam')
-    r = c.get('/ls-dr9-south/1/12/1995/1752.jpg')
+    #r = c.get('/ls-dr9-south/1/12/1995/1752.jpg')
+    #r = c.get('/pandas/1/14/16363/6307.jpg')
+    #r = c.get('/pandas/1/14/15897/6126.jpg')
+    #r = c.get('/pandas/1/14/15903/6126.jpg')
+    #r = c.get('/pandas/1/13/8184/3174.jpg')
+    #r = c.get('/ls-dr10-early/1/13/8191/4680.jpg')
+    #r = c.get('/ls-dr10-early/1/12/4095/2340.jpg')
+    #r = c.get('/ls-dr10-early/1/11/2047/1170.jpg')
+    #r = c.get('/ls-dr10-early/1/12/4095/2352.jpg')
+    #r = c.get('/ls-dr10-early/1/11/2047/1176.jpg')
+    #r = c.get('/decaps2/2/14/8191/11625.jpg')
+    #r = c.get('/decaps2/2/13/4095/5812.jpg') # native
+    #r = c.get('/decaps2/2/12/2047/2906.jpg') # s1
+    #r = c.get('/decaps2/2/12/1023/1453.jpg')
+    #r = c.get('/decaps2/2/12/2048/2905.jpg')
+    #r = c.get('/ls-dr10-early/1/5/29/26.jpg')
+    #r = c.get('/decaps2-model/2/14/8230/12122.jpg')
+    #r = c.get('/exps/?ralo=256.6791&rahi=261.0352&declo=1.8646&dechi=4.2560&layer=ls-dr10-early')
+    #r = c.get('/ls-dr10a/1/13/5233/4095.jpg')
+    #r = c.get('/ls-dr10a/1/14/10467/8191.jpg')
+    #r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=64')
+    #r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=32&size=512')
+    #r = c.get('/decaps2-riy/2/14/7530/11896.jpg')
+
+    settings.READ_ONLY_BASEDIR = True
+
+    #r = c.get('/decaps2/2/14/12110/9411.jpg')
+    #r = c.get('/decaps2/2/13/6052/4719.jpg')
+    #r = c.get('/decaps2/2/13/2415/5074.jpg')
+    #r = c.get('/decaps2/2/12/1207/2536.jpg')
+    #r = c.get('/decaps2-model/2/13/2415/5074.jpg')
+    #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
+    #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
+    r = c.get('/decaps2-resid-riy/1/2/2/2.jpg')
+    
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

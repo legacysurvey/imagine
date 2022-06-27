@@ -31,6 +31,9 @@ ENABLE_OLDER = True
 # scientist view (vs public)
 ENABLE_SCIENCE = True
 
+# Collab-private data!
+ENABLE_DESI_DATA = False
+
 ENABLE_DESI_TARGETS = False
 ENABLE_SPECTRA = False
 
@@ -65,6 +68,8 @@ ENABLE_EBOSS = False
 ENABLE_HSC_DR2 = True
 
 ENABLE_VLASS = True
+
+ENABLE_PHAT = False
 
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False

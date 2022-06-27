@@ -43,6 +43,8 @@ def _one_tile(X):
     print()
     print('one_tile: zoom', zoom, 'x,y', x,y)
 
+    v = version
+    
     # forcecache=False, return_if_not_found=True)
     if kind == 'sdss':
         print('Zoom', zoom, 'x,y', x,y)
@@ -79,10 +81,10 @@ def _one_tile(X):
         
     elif kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
         v = 2
-        layer = get_layer(kind)
-        print('kind', kind, 'zoom', zoom, 'x,y', x,y)
-        return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
-                              get_images=get_images, ignoreCached=True)
+        # layer = get_layer(kind)
+        # print('kind', kind, 'zoom', zoom, 'x,y', x,y)
+        # return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,
+        #                       get_images=get_images, ignoreCached=True)
         
     elif kind == 'sfd':
         v = 2
@@ -102,10 +104,9 @@ def _one_tile(X):
         view = views.get_tile_view(kind)
         return view(req, version, zoom, x, y, savecache=True, **kwargs)
 
-    else:
-        from map import views
-        view = views.get_tile_view(kind)
-        return view(req, version, zoom, x, y, savecache=True, **kwargs)
+    from map import views
+    view = views.get_tile_view(kind)
+    return view(req, v, zoom, x, y, savecache=True, **kwargs)
 
 def _bounce_one_tile(*args):
     try:
@@ -199,7 +200,7 @@ def top_levels(mp, opt):
                     'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
                     'des-dr1',
                     'eboss',
-                    'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6',
+                    'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                     'unwise-cat-model',
                     'galex', 'sdss2', 'wssa', 'ztf',
                     'ls-dr56', 'ls-dr67',
@@ -220,10 +221,8 @@ def top_levels(mp, opt):
         #print('Survey:', layer.survey)
         #print('  cache_dir:', layer.survey.cache_dir)
 
-        print('Bands', bands)
-
         rgbkwargs = {}
-        if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6',
+        if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                         'unwise-cat-model']:
             bands = [1, 2]
         elif opt.kind == 'sdss2':
@@ -239,10 +238,19 @@ def top_levels(mp, opt):
         #else:
         #    bands = 'grz'
 
+        if opt.bands is not None:
+            bands = opt.bands
+        print('Bands', bands)
+
         ver = tileversions.get(opt.kind, [1])[-1]
         print('Version', ver)
         basescale = 5
 
+        if opt.kind  in ['ls-dr10-early',]:
+            ## UGH, this is because there is some problem with the tiling so that scale 5, y=26 fails
+            ## to find any bricks touching, and rather than figure it out I just backed out the scale.
+            basescale = 6
+        
         pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                            '%(zoom)i', '%(x)i', '%(y)i.jpg')
         patdata = dict(ver=ver)
@@ -623,11 +631,17 @@ def top_levels(mp, opt):
 
 
 def _layer_get_filename(args):
-    layer,brick,band,scale,force = args
+    layer,brick,band,scale,force,deps = args
 
     if force:
         fn = layer.get_scaled_filename(brick, band, scale)
         if os.path.exists(fn):
+            os.remove(fn)
+
+    if deps:
+        fn = layer.get_scaled_filename(brick, band, scale)
+        if os.path.exists(fn) and layer.needs_recreating(brick, band, scale):
+            print('Need to re-create', fn, 'due to modified dependencies')
             os.remove(fn)
 
     fn = layer.get_filename(brick, band, scale)
@@ -680,6 +694,7 @@ def main():
 
     parser.add_option('--kind', default='image')
     parser.add_option('--scale', action='store_true', help='Scale images?')
+    parser.add_option('--deps', action='store_true', default=False, help='With --scale, check if files need to be remade due to updated dependencies?')
     parser.add_option('--bricks', action='store_true', help='Compute scaled brick tables?')
     parser.add_option('--coadd', action='store_true', help='Create SDSS coadd images?')
     parser.add_option('--grass', action='store_true', help='progress plot')
@@ -709,7 +724,7 @@ def main():
 
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
-                           'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
+                           'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
                            'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'ztf']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
@@ -819,14 +834,53 @@ def main():
             opt.minra = 0
 
     elif opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid']:
+        # After we have generated the bricks-exist files, don't really need RA,Dec limits...
         if opt.maxdec is None:
-            opt.maxdec = -20
+            #opt.maxdec = -15
+            opt.maxdec = 90
+        if opt.mindec is None:
+            #opt.mindec = -75
+            opt.mindec = -90
+        if opt.maxra is None:
+            #opt.maxra = 280
+            opt.maxra = 360
+        if opt.minra is None:
+            #opt.minra = 90
+            opt.minra = 0
+
+    elif opt.kind in ['ls-dr9-south-B', 'ls-dr9-south-B-model']:
+        if opt.maxdec is None:
+            opt.maxdec = 40
         if opt.mindec is None:
             opt.mindec = -70
         if opt.maxra is None:
-            opt.maxra = 280
+            opt.maxra = 360
         if opt.minra is None:
-            opt.minra = 90
+            opt.minra = 0
+    elif opt.kind in ['ls-dr10-early', 'ls-dr10a', 'ls-dr10a-model']:
+        if opt.bands is None:
+            opt.bands = 'griz'
+        if opt.maxdec is None:
+            opt.maxdec = 40
+        if opt.mindec is None:
+            opt.mindec = -90
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
+
+    elif opt.kind in ['pandas']:
+        if opt.bands is None:
+            opt.bands = 'gi'
+        if opt.maxdec is None:
+            opt.maxdec = 51
+        if opt.mindec is None:
+            opt.mindec = 37
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
+
     else:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -879,7 +933,8 @@ def main():
         if (opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
-                         'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-cat-model',
+                         'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
+                         'unwise-cat-model',
                         'galex', 'wssa', 'des-dr1', 'hsc2',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
                         'dr8-south', 'dr8-south-model', 'dr8-south-resid',
@@ -898,6 +953,12 @@ def main():
                          'ls-dr9-south', 'ls-dr9-south-model',
                          'ls-dr9-north', 'ls-dr9-north-model',
                          'ls-dr9.1.1', 'ls-dr9.1.1-model',
+
+                         'ls-dr9-south-B', 'ls-dr9-south-B-model',
+                         'asteroids-i',
+                         'ls-dr10-early', 'ls-dr10a', 'ls-dr10a-model',
+                         'pandas',
+                         'decaps2', 'decaps2-model',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
@@ -916,7 +977,7 @@ def main():
             from map.views import get_layer
 
             layer = get_layer(opt.kind)
-
+            print('Layer:', layer)
             if opt.queue:
                 if len(opt.zoom) == 0:
                     opt.zoom = [1,2,3,4,5,6,7]
@@ -930,8 +991,8 @@ def main():
                         rstep = step / np.maximum(0.05, np.cos(np.deg2rad((declo+dechi)/2.)))
                         ras = np.arange(opt.minra, opt.maxra+rstep, rstep)
                         for ralo,rahi in zip(ras, np.clip(ras[1:], opt.minra, opt.maxra)):
-                            cmd = ('python3 render-tiles.py --kind %s --scale --minra %f --maxra %f --mindec %f --maxdec %f -z %i' %
-                                   (opt.kind, ralo, rahi, declo, dechi, zoom))
+                            cmd = ('python3 render-tiles.py --kind %s --bands %s --scale --minra %f --maxra %f --mindec %f --maxdec %f -z %i' %
+                                   (opt.kind, opt.bands, ralo, rahi, declo, dechi, zoom))
                             print(cmd)
                 sys.exit(0)
 
@@ -967,14 +1028,14 @@ def main():
                 for ibrick,brick in enumerate(B):
                     for band in bands:
                         if has[band][ibrick]:
-                            args.append((layer, brick, band, scale, opt.ignore))
+                            args.append((layer, brick, band, scale, opt.ignore, opt.deps))
                 print(len(args), 'bricks for scale', scale)
                 mp.map(_layer_get_filename, args)
 
             sys.exit(0)
                 
         
-        if (opt.kind in ['decaps2', 'decaps2-model', 'eboss', 'ps1']
+        if (opt.kind in ['eboss', 'ps1']
             or 'dr8b' in opt.kind
             or 'dr8c' in opt.kind
             or 'dr8i' in opt.kind):
@@ -997,6 +1058,9 @@ def main():
             B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
             print(len(B), 'in RA range')
 
+            print('Resulting range: RA', B.ra.min(), 'to', B.ra.max(),
+                  'Dec', B.dec.min(), 'to', B.dec.max())
+            
             # find all image files
             filetype = 'image'
             model = False
@@ -1023,7 +1087,7 @@ def main():
                         if not has[band][ibrick]:
                             print('Brick', brick.brickname, 'does not have', band)
                             continue
-                        args.append((layer, brick, band, scale, opt.ignore))
+                        args.append((layer, brick, band, scale, opt.ignore, False))
                 mp.map(_layer_get_filename, args)
                 
             sys.exit(0)
@@ -1073,7 +1137,8 @@ def main():
         filetype = 'image'
 
         survey = get_survey(surveyname)
-
+        print('Survey:', type(survey), survey)
+        
         B = survey.get_bricks()
         print(len(B), 'bricks')
         B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
@@ -1095,7 +1160,7 @@ def main():
             for band in bands:
                 fn = survey.find_file(filetype, brick=brick, band=band)
                 ex = os.path.exists(fn)
-                print('Brick', brick, 'band', band, 'exists?', ex)
+                print('Brick', brick, 'band', band, 'exists?', ex, 'file', fn)
                 has_band[band][i] = ex
                 if ex:
                     found = True

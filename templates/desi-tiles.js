@@ -10,8 +10,8 @@ var DesiTileLayer = CatalogOverlay.extend({
         //return decals_getLayer(result, 10, this.color, this.getTooltipStyle());
         var targetids = result['targetid'];
         var rdlist = result['rd'];
-        var bitnames = result['bits'];
         var fiber = result['fiberid'];
+        var bitnames = result['bits'];
         if (bitnames === undefined) {
             // target functions vs tile function
             bitnames = result['name'];
