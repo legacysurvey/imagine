@@ -1053,8 +1053,6 @@ def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', n
         rtn.update(name=names)
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
-
-
 def desitarget_main_names(T, colprefix='main_'):
     from desitarget.targetmask import desi_mask, bgs_mask, mws_mask, scnd_mask
 
@@ -2731,7 +2729,6 @@ if __name__ == '__main__':
     # layer = get_layer('ls-dr9-north')
     # create_galaxy_catalog(galfn, None, layer=layer)
     # sys.exit(0)
-
     if False:
         # Create SDSS DR16 Spectra file (specObj-dr16-trimmed.kd.fits):
         from astrometry.util.fits import fits_table
@@ -2776,6 +2773,7 @@ if __name__ == '__main__':
     #r = c.get('/dr8/1/14/8194/5895.cat.json')
     #r = c.get('/decals-dr7/1/14/8639/7624.cat.json')
     #r = c.get('/mzls+bass-dr6/1/14/7517/6364.cat.json')
+    #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
     #r = c.get('/desi-spec/denali/1/cat.json?ralo=135.0397&rahi=135.3119&declo=0.4467&dechi=0.5986#NGC%207536')
     #r = c.get('/desi-tiles/denali/1/cat.json?ralo=93.9551&rahi=233.3496&declo=15.2713&dechi=67.7710')
     #r = c.get('/desi-spec-detail/denali/tile80740/fiber3975')

@@ -262,7 +262,7 @@ def is_m33(req):
     return (host == 'm33.legacysurvey.org')
 
 def index(req, **kwargs):
-    print('Host is', req.META.get('HTTP_HOST', None))
+    #print('Host is', req.META.get('HTTP_HOST', None))
     if is_decaps(req):
         return decaps(req)
     if is_m33(req):
@@ -275,6 +275,7 @@ def _index(req,
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
            maxZoom = 16,
+           decaps_first = False,
            **kwargs):
     kwkeys = dict(
         science = settings.ENABLE_SCIENCE,
@@ -347,6 +348,7 @@ def _index(req,
         enable_desi_footprint = True,
         enable_spectra = settings.ENABLE_SPECTRA,
         enable_phat = settings.ENABLE_PHAT,
+        enable_pandas = settings.ENABLE_PANDAS,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
     )
@@ -431,9 +433,6 @@ def _index(req,
     from urllib.parse import unquote
     caturl = unquote(my_reverse(req, 'cat-json-tiled-pattern'))
     smallcaturl = unquote(my_reverse(req, 'cat-json-pattern'))
-
-    #print('Small catalog URL:', smallcaturl)
-
     # includes a leaflet pattern for subdomains
     tileurl = settings.TILE_URL
 
@@ -554,6 +553,7 @@ def _index(req,
 
     args = dict(ra=ra, dec=dec,
                 maxZoom=maxZoom,
+                decaps_first=decaps_first,
                 galname=galname,
                 layer=layer, tileurl=tileurl,
                 hostname_url=hostname_url,
@@ -592,6 +592,7 @@ def _index(req,
 
 def decaps(req):
     return _index(req,
+                  decaps_first=True,
                   enable_decaps=True,
                   enable_dr5_models=False,
                   enable_dr5_resids=False,
@@ -6648,6 +6649,7 @@ def cutout_wcs(req):
         v = req.GET.get(k)
         fv = float(v)
         args.append(fv)
+    flip = 'flip' in req.GET
     wcs = Tan(*args)
     pixscale = wcs.pixel_scale()
     x = y = 0
@@ -6657,22 +6659,24 @@ def cutout_wcs(req):
     scale = np.clip(scale, 0, layer.maxscale)
     zoom = 0
 
-    rimgs = layer.render_into_wcs(wcs, zoom, x, y, general_wcs=True, scale=scale)
-    if rimgs is None:
+    imgs = layer.render_into_wcs(wcs, zoom, x, y, general_wcs=True, scale=scale)
+    if imgs is None:
         from django.http import HttpResponseRedirect
         return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
 
     # FLIP VERTICAL AXIS?!
-    flipimgs = []
-    for img in rimgs:
-        if img is not None:
-            flipimgs.append(np.flipud(img))
-        else:
-            flipimgs.append(img)
+    if flip:
+        flipimgs = []
+        for img in imgs:
+            if img is not None:
+                flipimgs.append(np.flipud(img))
+            else:
+                flipimgs.append(img)
+        imgs = flipimgs
 
     bands = layer.get_bands()
-    rgb = layer.get_rgb(flipimgs, bands)
-    
+    rgb = layer.get_rgb(imgs, bands)
+
     import tempfile
     f,tilefn = tempfile.mkstemp(suffix='.jpg')
     os.close(f)
@@ -6940,8 +6944,11 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9/1/3/1/3.jpg')
     #r = c.get('/')
     #r = c.get('/ls-dr9/1/5/0/12.jpg')
+    #r = c.get('/namequery/?obj=TILE%2080254')
+    #r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=18.1525&rahi=18.6476&declo=28.2182&dechi=28.4614')
     #r = c.get('/cutout.jpg?ra=182.5248&dec=18.5415&layer=ls-dr9&pixscale=1.00')
     #r = c.get('/gaia-edr3/1/cat.json?ralo=200.8723&rahi=201.3674&declo=13.9584&dechi=14.2264')
+    #r = c.get('/exposure_panels/mzls+bass-dr6/75120132/CCD1/?ra=230.6465&dec=56.2721&size=100')
     #r = c.get('/exposure_panels/mzls+bass-dr6/75120132/CCD1/?ra=230.6465&dec=56.2721&size=100')
     #r = c.get('/ls-dr9/1/8/181/103.jpg')
     #r = c.get('/exposure_panels/decals-dr5/496441/N11/?ra=121.2829&dec=29.6660&size=100')
@@ -6955,6 +6962,7 @@ if __name__ == '__main__':
     #r = c.get('/?tile=120')
     #r = c.get('/ls-dr9.1.1/1/14/9571/8085.jpg')
     #r = c.get('/targets-dr9-sv3-dark/1/cat.json?ralo=349.2859&rahi=349.8304&declo=10.1487&dechi=10.4476#NGC 3716')
+    #r = c.get('/targets-dr9-sv3-dark/1/cat.json?ralo=349.2859&rahi=349.8304&declo=10.1487&dechi=10.4476#NGC 3716')
     #r = c.get('/ls-dr9.1.1-model/1/13/4767/4044.jpg')
     #r = c.get('/ls-dr9.1.1-model/1/12/2383/2022.jpg')
     #r = c.get('/ls-dr9.1.1-resid/1/12/2374/2020.jpg')
@@ -6967,6 +6975,10 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr9-south/1/6/52/38.jpg')
     #r = c.get('/exposure_panels/decals-dr5/316739/N11/?ra=221.8517&dec=-7.6426&size=100')
     #r = c.get('/exposure_panels/decals-dr5/316741/N11/?ra=221.8520&dec=-7.6426&size=100&kind=dq')
+    #r = c.get('/ls-dr9.1.1-model/1/13/4767/4044.jpg')
+    #r = c.get('/ls-dr9.1.1-model/1/12/2383/2022.jpg')
+    #r = c.get('/ls-dr9.1.1-resid/1/12/2374/2020.jpg')
+    #r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
     #r = c.get('/?zoom=15&targetid=39627788403084375')
     #r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
     #r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
@@ -6979,6 +6991,7 @@ if __name__ == '__main__':
     #r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga=')
     #r = c.get('/cutout.jpg?ra=39.7001&dec=2.2170&layer=ls-dr9&pixscale=1.00&sga-parent=')
     #r = c.get('/jpl_lookup?ra=138.9834&dec=17.8431&date=2016-01-15%2005:51:44.149541&camera=decam')
+    #r = c.get('/ls-dr9-south/1/12/1995/1752.jpg')
     #r = c.get('/pandas/1/14/16363/6307.jpg')
     #r = c.get('/pandas/1/14/15897/6126.jpg')
     #r = c.get('/pandas/1/14/15903/6126.jpg')
@@ -7011,7 +7024,8 @@ if __name__ == '__main__':
     #r = c.get('/decaps2-model/2/13/2415/5074.jpg')
     #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
     #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
-    r = c.get('/decaps2-resid-riy/1/2/2/2.jpg')
+    #r = c.get('/decaps2-resid-riy/1/2/2/2.jpg')
+    r = c.get('/')
     
     f = open('out.jpg', 'wb')
     for x in r:

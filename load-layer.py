@@ -183,7 +183,81 @@ def main():
     # pretty = 'DR9.1.1 COSMOS deep'
     # survey_dir = indir
 
-    # rsync = True
+    # indir = '/global/cscratch1/sd/ziyaoz/dr9d-north/'
+    # #rsync = True
+    # name = 'dr9d-north'
+    # pretty = 'DR9d north'
+    # survey_dir = indir
+
+    # code runs:
+    #    rsync -LRarv /global/cscratch1/sd/ziyaoz/dr9d-south//./{coadd/*/*/*-{image-,model-,ccds}*.fits*,tractor} data/dr9d-south
+    # add my image-coadds:
+    #    rsync -LRarv /global/cscratch1/sd/dstn/dr9d-coadds/./coadd/*/*/*-{image-,ccds}*.fits* data/dr9d-south
+    
+    # survey_dir = '/global/cscratch1/sd/desiproc/dr7'
+
+    # sublayers = ['']
+    # subpretty = {'':' images'}
+    
+    #survey_dir = '/global/cscratch1/sd/dstn/dr8-depthcut'
+    #survey_dir = '/global/project/projectdirs/cosmo/work/legacysurvey/dr8a/'
+
+    rsync = True
+    #survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurv
+
+    side = 'north'
+    #side = 'south'
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9e4/%s' % side
+    indir = survey_dir
+    name = 'dr9sv-%s' % side
+    pretty = 'DR9-SV %s' % side
+
+    rsync = False
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    indir = '/global/cscratch1/sd/dstn/fornax'
+    name = 'fornax'
+    pretty = 'Fornax'
+
+    rsync = True
+    survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+    indir = '/global/cscratch1/sd/dstn/dr9.2'
+    name = 'dr9-test-9.2'
+    pretty = 'DR9.2 test'
+
+    survey_dir = '/global/cscratch1/sd/ziyaoz/dr9j/south'
+    indir = survey_dir
+    name = 'dr9j-south'
+    pretty = 'DR9j south'
+
+    rsync = False
+    if True:
+        #indir = '/global/cscratch1/sd/ziyaoz/dr9m/north/'
+        indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/north'
+        name = 'dr9m-north'
+        pretty = 'DR9m-north'
+        survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
+    if True:
+        #indir = '/global/cscratch1/sd/ziyaoz/dr9m/south/'
+        indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9/south'
+        #name = 'dr9m-south'
+        name = 'ls-dr9-south'
+        pretty = 'DR9m-south'
+        survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
+        
+    update = True
+    #update = False
+    queue = False
+
+    #indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9.1.1'
+    #indir = '/global/cscratch1/sd/landriau/dr9.1.1'
+    indir = 'fake-dr9.1.1'
+    name = 'ls-dr9.1.1'
+    pretty = 'DR9.1.1 COSMOS deep'
+    survey_dir = indir
+
+    rsync = True
+
     # update = False
     # queue = False
     # indir = '/global/cscratch1/sd/dstn/m33-2/south/'

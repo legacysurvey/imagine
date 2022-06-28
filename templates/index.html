@@ -1771,9 +1771,24 @@ tiles = mylayer_B('des-dr1', 'DES DR1',
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep images',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+{% if enable_pandas %}
 tiles = mylayer_B('pandas', 'PANDAS',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+{% endif %}
+
+tiles = mylayer_B('ls-dr9.1.1-model', 'Legacy Surveys DR9.1.1 COSMOS deep models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('ls-dr9.1.1-resid', 'Legacy Surveys DR9.1.1 COSMOS deep residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 
 
 tiles = mylayer_B('ls-dr10-early', 'Legacy Surveys DR10-early',

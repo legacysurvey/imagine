@@ -953,6 +953,7 @@ def main():
                          'ls-dr9-south', 'ls-dr9-south-model',
                          'ls-dr9-north', 'ls-dr9-north-model',
                          'ls-dr9.1.1', 'ls-dr9.1.1-model',
+
                          'ls-dr9-south-B', 'ls-dr9-south-B-model',
                          'asteroids-i',
                          'ls-dr10-early', 'ls-dr10a', 'ls-dr10a-model',
