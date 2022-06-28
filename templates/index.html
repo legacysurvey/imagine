@@ -4213,7 +4213,51 @@ var baseTree1 = [
     {% if enable_m33 %}
     findlayer('m33'),
     {% endif %}
+];
 
+{% if decaps_first %}
+baseTree1 = baseTree1.concat(decaps_tree);
+{% endif %}
+
+var moresurveys = [
+    {% if enable_pandas %}
+    findlayer('pandas'),
+    {% endif %}
+    {% if enable_phat %}
+    findlayer('phat'),
+    {% endif %}
+    findlayer('outliers-ast'),
+    findlayer('asteroids-i'),
+    {% if enable_des_dr1 %}
+    findlayer('des-dr1'),
+    {% endif %}
+];
+
+{% if decaps_first %}
+{% else %}
+moresurveys = moresurveys.concat(decaps_tree);
+{% endif %}
+
+moresurveys = moresurveys.concat([
+    findlayer('galex'),
+    findlayer('halpha'),
+    {% if enable_hsc_dr2 %}
+    findlayer('hsc-dr2'),
+    {% endif %}
+    {% if enable_ps1 %}
+    findlayer('ps1'),
+    {% endif %}
+    findlayer('sdss'),
+    findlayer('sfd'),
+    {% if enable_vlass %}
+    findlayer('vlass1.2'),
+    {% endif %}
+    {% if enable_ztf %}
+    findlayer('ztf'),
+    {% endif %}
+]);
+
+baseTree1 = baseTree1.concat([
     findlayer('ls-dr10a'),
     findlayer('ls-dr10a-model'),
     findlayer('ls-dr10a-resid'),
@@ -4354,50 +4398,10 @@ var baseTree1 = [
     {% if science %}
     {
         label: 'More surveys',
-        children: [
-            findlayer('pandas'),
-            {% if enable_phat %}
-            findlayer('phat'),
-            {% endif %}
-            findlayer('outliers-ast'),
-            findlayer('asteroids-i'),
-            {% if enable_des_dr1 %}
-            findlayer('des-dr1'),
-            {% endif %}
-            {% if enable_decaps %}
-            findlayer('decaps2', [
-                findlayer('decaps2-model'),
-                findlayer('decaps2-resid'),
-            ]),
-            findlayer('decaps2-riy', [
-                findlayer('decaps2-model-riy'),
-                findlayer('decaps2-resid-riy'),
-            ]),
-            findlayer('decaps', [
-                findlayer('decaps-model'),
-                findlayer('decaps-resid'),
-            ]),
-            {% endif %}
-            findlayer('galex'),
-            findlayer('halpha'),
-            {% if enable_hsc_dr2 %}
-            findlayer('hsc-dr2'),
-            {% endif %}
-            {% if enable_ps1 %}
-            findlayer('ps1'),
-            {% endif %}
-            findlayer('sdss'),
-            findlayer('sfd'),
-            {% if enable_vlass %}
-            findlayer('vlass1.2'),
-            {% endif %}
-            {% if enable_ztf %}
-            findlayer('ztf'),
-            {% endif %}
-        ],
+        children: moresurveys,
     },
     {% endif %}
-];
+]);
 
 var baseTree = [];
 for (var x in testTree) {
