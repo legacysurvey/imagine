@@ -1589,6 +1589,7 @@ class MapLayer(object):
                      fits=False, jpeg=False,
                      subimage=False,
                      tempfiles=None,
+                     get_images=False,
                      req=None):
         import numpy as np
         import fitsio
@@ -1671,7 +1672,7 @@ class MapLayer(object):
         ims = self.render_into_wcs(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
         if ims is None:
             raise NoOverlapError('No overlap')
-        
+
         if jpeg:
             rgb = self.get_rgb(ims, bands)
             self.write_jpeg(out_fn, rgb)
@@ -1686,6 +1687,10 @@ class MapLayer(object):
             for i,b in enumerate(bands):
                 hdr['BAND%i' % i] = b
             wcs.add_to_header(hdr)
+
+        if get_images:
+            return ims,hdr
+
         if ims is None:
             hdr['OVERLAP'] = False
             cube = None
