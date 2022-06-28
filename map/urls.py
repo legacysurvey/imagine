@@ -247,4 +247,4 @@ urlpatterns = ([
     # fall-through
     url(r'', views.index, name='index'),
 
-]
+])

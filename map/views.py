@@ -7012,7 +7012,8 @@ if __name__ == '__main__':
     #r = c.get('/decaps2-model/2/13/2415/5074.jpg')
     #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
     #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
-    r = c.get('/decaps2-resid-riy/1/2/2/2.jpg')
+    #r = c.get('/decaps2-resid-riy/1/2/2/2.jpg')
+    r = c.get('/')
     
     f = open('out.jpg', 'wb')
     for x in r:
