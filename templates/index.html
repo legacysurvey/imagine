@@ -4433,8 +4433,8 @@ baseTree1 = baseTree1.concat([
     {% endif %}
 
     {% if enable_unwise %}
-    findlayer('unwise-neo7'),
-    findlayer('unwise-neo6', [
+    findlayer('unwise-neo7', [
+        findlayer('unwise-neo6'),
         {% if science %}
         findlayer('unwise-neo4'),
         findlayer('unwise-cat-model'),
@@ -4752,13 +4752,12 @@ var layerTree = L.control.layers.tree(baseTree,
          'DECaLS DR5 images',
          'DECaPS images',
          'DECaPS 2 images',
-         'unWISE W1/W2 NEO6',
+         'unWISE W1/W2 NEO7',
          'DECaLS DR7 catalog',
          'DECaLS DR7 CCDs',
          'DECaLS DR7 Exposures',
          'Other catalogs',
          'Spectroscopy',
-         //'DESI',
          'Bright Objects',
          //'DESI Targets (DR8)',
          {% if enable_dr9sv_overlays %}
@@ -4771,6 +4770,7 @@ var layerTree = L.control.layers.tree(baseTree,
          {% endif %}
          'Boundaries',
          'Imaging catalogs',
+         'DESI',
             ];
 
      for (var i=0,len=txts.length; i<len; i++) {
