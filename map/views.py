@@ -1571,8 +1571,9 @@ class MapLayer(object):
         pass
 
     def parse_bands(self, bands):
+        # (actually only used when getting cutouts, so far)
         # default: assume single-character band names
-        mybands = self.get_bands()
+        mybands = self.get_available_bands()
         bb = []
         for b in bands:
             if b in mybands:
@@ -1580,6 +1581,9 @@ class MapLayer(object):
             else:
                 return None
         return bb
+
+    def get_available_bands(self):
+        return self.get_bands()
 
     def write_cutout(self, ra, dec, pixscale, width, height, out_fn,
                      bands=None,
@@ -2683,6 +2687,9 @@ class Decaps2Layer(ReDecalsLayer):
         elif self.bands == 'riY':
             return sdss_rgb(imgs, bands, scales=dict(r=(2,3.4), i=(1,2.8), Y=(0,2.0)), m=0.03)
         return None
+
+    def get_available_bands(self):
+        return 'grizY'
     
 class Decaps2ModelLayer(Decaps2Layer, ReDecalsModelLayer):
     pass
