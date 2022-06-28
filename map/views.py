@@ -604,6 +604,7 @@ def decaps(req):
                   enable_dr5_overlays=False,
                   enable_desi_targets=False,
                   enable_spectra=False,
+                  enable_older=False,
                   default_layer='decaps2',
                   default_radec=(225.0, -63.2),
                   default_zoom=10,
