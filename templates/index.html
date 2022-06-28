@@ -4209,6 +4209,23 @@ var testTree = [];
 
 console.log('testTree:', testTree);
 
+{% if enable_decaps %}
+var decaps_tree = [
+    findlayer('decaps2', [
+        findlayer('decaps2-model'),
+        findlayer('decaps2-resid'),
+    ]),
+    findlayer('decaps2-riy', [
+        findlayer('decaps2-model-riy'),
+        findlayer('decaps2-resid-riy'),
+    ]),
+    findlayer('decaps', [
+        findlayer('decaps-model'),
+        findlayer('decaps-resid'),
+    ]),
+];
+{% endif %}
+
 var baseTree1 = [
     {% if enable_m33 %}
     findlayer('m33'),
