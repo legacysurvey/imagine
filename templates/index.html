@@ -4224,9 +4224,30 @@ var testTree = [];
 
 console.log('testTree:', testTree);
 
+{% if enable_decaps %}
+var decaps_tree = [
+    findlayer('decaps2', [
+        findlayer('decaps2-model'),
+        findlayer('decaps2-resid'),
+    ]),
+    findlayer('decaps2-riy', [
+        findlayer('decaps2-model-riy'),
+        findlayer('decaps2-resid-riy'),
+    ]),
+    findlayer('decaps', [
+        findlayer('decaps-model'),
+        findlayer('decaps-resid'),
+    ]),
+];
+{% endif %}
+
 var baseTree1 = [
     {% if enable_m33 %}
     findlayer('m33'),
+    {% endif %}
+
+    {% if decaps_first %}
+    ] + decaps_tree + [
     {% endif %}
 
     findlayer('ls-dr10a'),
@@ -4381,19 +4402,9 @@ var baseTree1 = [
             {% if enable_des_dr1 %}
             findlayer('des-dr1'),
             {% endif %}
-            {% if enable_decaps %}
-            findlayer('decaps2', [
-                findlayer('decaps2-model'),
-                findlayer('decaps2-resid'),
-            ]),
-            findlayer('decaps2-riy', [
-                findlayer('decaps2-model-riy'),
-                findlayer('decaps2-resid-riy'),
-            ]),
-            findlayer('decaps', [
-                findlayer('decaps-model'),
-                findlayer('decaps-resid'),
-            ]),
+            {% if decaps_first %}
+            {% else %}
+            ] + decaps_tree + [
             {% endif %}
             findlayer('galex'),
             findlayer('halpha'),

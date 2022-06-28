@@ -275,6 +275,7 @@ def _index(req,
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
            maxZoom = 16,
+           decaps_first = False,
            **kwargs):
     kwkeys = dict(
         science = settings.ENABLE_SCIENCE,
@@ -552,6 +553,7 @@ def _index(req,
 
     args = dict(ra=ra, dec=dec,
                 maxZoom=maxZoom,
+                decaps_first=decaps_first,
                 galname=galname,
                 layer=layer, tileurl=tileurl,
                 hostname_url=hostname_url,
@@ -590,6 +592,7 @@ def _index(req,
 
 def decaps(req):
     return _index(req,
+                  decaps_first=True,
                   enable_decaps=True,
                   enable_dr5_models=False,
                   enable_dr5_resids=False,
