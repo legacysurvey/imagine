@@ -3889,6 +3889,11 @@ class VlassLayer(RebrickedMixin, MapLayer):
         self.pixelsize = 3744 # 3600 * 1.04
         self.maxscale = 6
 
+    def get_brick_size_for_scale(self, scale):
+        if scale is None:
+            scale = 0
+        return 1. * 2**scale
+
     def get_bricks(self):
         from astrometry.util.fits import fits_table
         return fits_table(os.path.join(self.basedir, 'vlass-tiles.fits'))
@@ -3915,8 +3920,8 @@ class VlassLayer(RebrickedMixin, MapLayer):
         pixscale = self.pixscale * 2**scale
         cd = pixscale / 3600.
         crpix = size/2. + 0.5
-        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
-                  float(size), float(size))
+        wcs = Tan(*[float(f) for f in [brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                                      size, size]])
         return wcs
 
     def get_bands(self):
@@ -7034,8 +7039,11 @@ if __name__ == '__main__':
     #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
     #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
     #r = c.get('/decaps2-resid-riy/1/2/2/2.jpg')
-    r = c.get('/')
-    
+    #r = c.get('/')
+    #r = c.get('/vlass1.2/1/9/261/223.jpg')
+    #r = c.get('/vlass1.2/1/10/526/447.jpg')
+    r = c.get('/vlass1.2/1/13/4193/3581.jpg')
+
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
