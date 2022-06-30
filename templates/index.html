@@ -2164,7 +2164,7 @@ allLayers.push(tiles);
 {% endif %}
 
 {% if enable_decaps %}
-tiles = mylayer_B('decaps', 'DECaPS images',
+tiles = mylayer_B('decaps', 'DECaPS1 images',
                   {//'maxNativeZoom': 13,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
@@ -4653,6 +4653,7 @@ var overlayTree = [];
      },
      {% endif %}
 
+     {% if enable_desi_menu %}
      { label: 'DESI',
        children: [
          {% if desitiles %}
@@ -4693,7 +4694,8 @@ var overlayTree = [];
            //findoverlay('targets-bright-dr67'),
            //findoverlay('targets-dark-dr67'),
          {% endif %}
-       ]},,
+       ]},
+       {% endif %}
 
      { label: 'Bright Objects', children: [
      findoverlay('bright'),
