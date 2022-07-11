@@ -4862,8 +4862,16 @@ if ('poly' in qstr) {
     var bounds = L.latLngBounds([map.getCenter()]);
     var group = [];
     var clong = map.getCenter().lng;
+    var color = 'orange';
     for (var i=0; i<segments.length; i++) {
-        coords = segments[i].split(',');
+        var seg = segments[i];
+        if (seg.startsWith('color:')) {
+            var cc = seg.substring(6, seg.length);
+            color = cc;
+            console.log('Setting color to ' + color);
+            continue;
+        }
+        coords = seg.split(',');
         var nc = coords.length/2;
         var poly = [];
         for (var j=0; j<nc; j++) {
@@ -4874,7 +4882,6 @@ if ('poly' in qstr) {
             bounds.extend(L.latLng(lat,lng));
             poly.push([lat, lng]);
         }
-        var color = 'orange';
         var pline = L.polygon(poly, {fill:false, color:color, weight:4});
         group.push(pline);
     }
