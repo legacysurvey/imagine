@@ -1922,11 +1922,8 @@ class DecalsLayer(MapLayer):
         brick_html = self.brick_details_body(brick)
         html.extend(brick_html)
 
-        ccdsfn = survey.find_file('ccds-table', brick=brickname)
-        if os.path.exists(ccdsfn):
-            from astrometry.util.fits import fits_table
-            ccds = fits_table(ccdsfn)
-            ccds = touchup_ccds(ccds, survey)
+        ccds = self.get_ccds_for_brick(survey, brick)
+        if ccds is not None:
             if len(ccds):
                 html.extend(self.ccds_overlapping_html(req, ccds, brick=brickname, ra=ra, dec=dec))
             from legacypipe.survey import wcs_for_brick
@@ -1941,6 +1938,15 @@ class DecalsLayer(MapLayer):
 
         html.extend(['</body></html>',])
         return HttpResponse('\n'.join(html))
+
+    def get_ccds_for_brick(self, survey, brick):
+        ccdsfn = survey.find_file('ccds-table', brick=brick.brickname)
+        if not os.path.exists(ccdsfn):
+            return None
+        from astrometry.util.fits import fits_table
+        ccds = fits_table(ccdsfn)
+        ccds = touchup_ccds(ccds, survey)
+        return ccds
 
     def brick_details_body(self, brick):
         survey = self.survey
@@ -2656,6 +2662,44 @@ class LsDr10Layer(ReDecalsLayer):
             if bf != 0.:
                 rgb[:,:,2] += bf*v
         return rgb
+
+    def get_ccds_for_brick(self, survey, brick):
+        ccdsfn = survey.find_file('ccds-table', brick=brick.brickname)
+        if not os.path.exists(ccdsfn):
+            # LS-DR10-early, we didn't save the per-brick CCDs table (d'oh).
+            if self.name == 'ls-dr10-early':
+                from legacypipe.survey import wcs_for_brick
+                import numpy as np
+                print('DR10-early looking for CCDs')
+                targetwcs = wcs_for_brick(brick)
+                ccds = survey.ccds_touching_wcs(targetwcs)
+                ccds = touchup_ccds(ccds, survey)
+
+                print(len(ccds), 'CCDs')
+                ccds.brick_x0 = np.zeros(len(ccds), np.int16)
+                ccds.brick_x1 = np.zeros(len(ccds), np.int16)
+                ccds.brick_y0 = np.zeros(len(ccds), np.int16)
+                ccds.brick_y1 = np.zeros(len(ccds), np.int16)
+                rr = np.array([brick.ra1,  brick.ra1,  brick.ra2,  brick.ra2])
+                dd = np.array([brick.dec1, brick.dec2, brick.dec1, brick.dec2])
+                B = 3600
+                for i,ccd in enumerate(ccds):
+                    wcs = survey.get_approx_wcs(ccd)
+                    _,bx,by = wcs.radec2pixelxy(rr, dd)
+                    ccds.brick_x0[i] = max(0, np.floor(min(bx-1)))
+                    ccds.brick_y0[i] = max(0, np.floor(min(by-1)))
+                    ccds.brick_x1[i] = min(B-1, np.ceil(max(bx-1)))
+                    ccds.brick_y1[i] = min(B-1, np.ceil(max(by-1)))
+                filtorder = dict(g=0, r=1, i=2, z=3, Y=4)
+                fo = np.array([filtorder.get(f, 5) for f in ccds.filter])
+                I = np.lexsort((ccds.ccdname, ccds.expnum, fo))
+                ccds = ccds[I]
+                return ccds
+            return None
+        from astrometry.util.fits import fits_table
+        ccds = fits_table(ccdsfn)
+        ccds = touchup_ccds(ccds, survey)
+        return ccds
 
 #class LsDr10ModelLayer(UniqueBrickMixin, LsDr10Layer):
 #    pass
@@ -7042,8 +7086,8 @@ if __name__ == '__main__':
     #r = c.get('/')
     #r = c.get('/vlass1.2/1/9/261/223.jpg')
     #r = c.get('/vlass1.2/1/10/526/447.jpg')
-    r = c.get('/vlass1.2/1/13/4193/3581.jpg')
-
+    #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
+    r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
