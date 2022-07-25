@@ -3108,6 +3108,11 @@ class DesLayer(ReDecalsLayer):
             return 10000 * 0.263 / 3600.
         return 0.25 * 2**scale
 
+    def get_pixel_size_for_scale(self, scale):
+        if scale == 0:
+            return 10000
+        return super(DesLayer,self).get_pixel_size_for_scale(scale)
+
     def populate_fits_cutout_header(self, hdr):
         hdr['SURVEY'] = 'DES'
         hdr['VERSION'] = 'DR1'
