@@ -5241,7 +5241,8 @@ PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
 CCD {ccd}, image {c.image_filename}, hdu {c.image_hdu}; exptime {c.exptime:.1f} sec, seeing {c.seeing:.1f} arcsec, fwhm {c.fwhm:.1f} pix, band {c.filter}, RA,Dec <a href="{viewer_url}">{c.ra:.4f}, {c.dec:.4f}</a>
 <br />
 {flags}
-Observed MJD {c.mjd_obs:.3f}, {c.date_obs} {c.ut} UT
+Observed MJD {c.mjd_obs:.3f}, {c.date_obs} {c.ut} UT<br/>
+PROPID {c.propid}.  RA,Dec boresight {c.ra_bore:.4f}, {c.dec_bore:.4f}
 <ul>
 <li>image: <a href="{imgurl}">{ccd}</a>
 {ooitext}</li>
@@ -6748,7 +6749,43 @@ if __name__ == '__main__':
     # tile 10489 / observed 20220324
     #r = c.get('/desi-tile/1/cat.json?ralo=216.5628&rahi=217.1074&declo=0.8761&dechi=1.1755&tile=10489')
     #r = c.get('/desi-spec-daily/1/cat.json?ralo=141.9359&rahi=142.0720&declo=30.0046&dechi=30.0694')
-    r = c.get('/?targetid=39627733692582430')
+    #r = c.get('/?targetid=39627733692582430')
+    #r = c.get('/pandas/1/13/8184/3174.jpg')
+    #r = c.get('/ls-dr10-early/1/13/8191/4680.jpg')
+    #r = c.get('/ls-dr10-early/1/12/4095/2340.jpg')
+    #r = c.get('/ls-dr10-early/1/11/2047/1170.jpg')
+    #r = c.get('/ls-dr10-early/1/12/4095/2352.jpg')
+    #r = c.get('/ls-dr10-early/1/11/2047/1176.jpg')
+    #r = c.get('/decaps2/2/14/8191/11625.jpg')
+    #r = c.get('/decaps2/2/13/4095/5812.jpg') # native
+    #r = c.get('/decaps2/2/12/2047/2906.jpg') # s1
+    #r = c.get('/decaps2/2/12/1023/1453.jpg')
+    #r = c.get('/decaps2/2/12/2048/2905.jpg')
+    #r = c.get('/ls-dr10-early/1/5/29/26.jpg')
+    #r = c.get('/decaps2-model/2/14/8230/12122.jpg')
+    #r = c.get('/exps/?ralo=256.6791&rahi=261.0352&declo=1.8646&dechi=4.2560&layer=ls-dr10-early')
+    #r = c.get('/ls-dr10a/1/13/5233/4095.jpg')
+    #r = c.get('/ls-dr10a/1/14/10467/8191.jpg')
+    #r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=64')
+    #r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=32&size=512')
+    #r = c.get('/decaps2-riy/2/14/7530/11896.jpg')
+
+    settings.READ_ONLY_BASEDIR = True
+
+    #r = c.get('/decaps2/2/14/12110/9411.jpg')
+    #r = c.get('/decaps2/2/13/6052/4719.jpg')
+    #r = c.get('/decaps2/2/13/2415/5074.jpg')
+    #r = c.get('/decaps2/2/12/1207/2536.jpg')
+    #r = c.get('/decaps2-model/2/13/2415/5074.jpg')
+    #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
+    #r = c.get('/decaps2-model/2/12/1207/2536.jpg')
+    #r = c.get('/decaps2-resid-riy/1/2/2/2.jpg')
+    #r = c.get('/')
+    #r = c.get('/vlass1.2/1/9/261/223.jpg')
+    #r = c.get('/vlass1.2/1/10/526/447.jpg')
+    #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
+    #r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
+    r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
