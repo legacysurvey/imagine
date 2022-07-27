@@ -5431,7 +5431,8 @@ PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
 CCD {ccd}, image {c.image_filename}, hdu {c.image_hdu}; exptime {c.exptime:.1f} sec, seeing {c.seeing:.1f} arcsec, fwhm {c.fwhm:.1f} pix, band {c.filter}, RA,Dec <a href="{viewer_url}">{c.ra:.4f}, {c.dec:.4f}</a>
 <br />
 {flags}
-Observed MJD {c.mjd_obs:.3f}, {c.date_obs} {c.ut} UT
+Observed MJD {c.mjd_obs:.3f}, {c.date_obs} {c.ut} UT<br/>
+PROPID {c.propid}.  RA,Dec boresight {c.ra_bore:.4f}, {c.dec_bore:.4f}
 <ul>
 <li>image: <a href="{imgurl}">{ccd}</a>
 {ooitext}</li>
@@ -7047,8 +7048,10 @@ if __name__ == '__main__':
     #r = c.get('/')
     #r = c.get('/vlass1.2/1/9/261/223.jpg')
     #r = c.get('/vlass1.2/1/10/526/447.jpg')
-    r = c.get('/vlass1.2/1/13/4193/3581.jpg')
-
+    #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
+    #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
+    #r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
+    r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
