@@ -5413,6 +5413,9 @@ def ccd_detail(req, layer_name, ccd):
     imgstamp = my_reverse(req, 'image_stamp', args=[layer_name, ccd])
     ivstamp = my_reverse(req, 'iv_stamp', args=[layer_name, ccd])
     dqstamp = my_reverse(req, 'dq_stamp', args=[layer_name, ccd])
+    outlierstamp = my_reverse(req, 'outlier_stamp', args=[layer_name, ccd])
+    skystamp = my_reverse(req, 'sky_stamp', args=[layer_name, ccd])
+    skysubstamp = my_reverse(req, 'skysub_stamp', args=[layer_name, ccd])
     flags = ''
     cols = c.columns()
     if 'photometric' in cols and 'blacklist_ok' in cols:
@@ -5487,8 +5490,12 @@ PROPID {c.propid}.  RA,Dec boresight {c.ra_bore:.4f}, {c.dec_bore:.4f}
 {ooitext}</li>
 <li>weight or inverse-variance: <a href="{ivurl}">{ccd}</a></li>
 <li>data quality (flags): <a href="{dqurl}">{ccd}</a></li>
+<li>outlier mask display: <a href="{outlierstamp}">{ccd}</a></li>
+<li>sky model display: <a href="{skystamp}">{ccd}</a></li>
+<li>sky-subtracted image display: <a href="{skysubstamp}">{ccd}</a></li>
 </ul>
-<div>Mouse: <span id="image_coords"></span>  Click: <span id="image_click"></span></div><br/>
+<div>Image (~raw, not sky-subtracted)<br/>
+Mouse: <span id="image_coords"></span>  Click: <span id="image_click"></span></div><br/>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
   width="{swa}" height="{sha}">
   <g transform="translate({axspace} 0)">
@@ -5501,7 +5508,8 @@ PROPID {c.propid}.  RA,Dec boresight {c.ra_bore:.4f}, {c.dec_bore:.4f}
   {axis2}
 </svg>
 <br />
-<div>Mouse: <span id="iv_coords"></span>  Click: <span id="iv_click"></span></div><br/>
+<div>Inverse-variance map<br/>
+Mouse: <span id="iv_coords"></span>  Click: <span id="iv_click"></span></div><br/>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
   width="{swa}" height="{sha}">
   <g transform="translate({axspace} 0)">
@@ -5514,7 +5522,8 @@ PROPID {c.propid}.  RA,Dec boresight {c.ra_bore:.4f}, {c.dec_bore:.4f}
   {axis2}
 </svg>
 <br />
-<div>Mouse: <span id="dq_coords"></span>  Click: <span id="dq_click"></span></div><br/>
+<div>Data quality map (not including outlier-masks)<br/>
+Mouse: <span id="dq_coords"></span>  Click: <span id="dq_click"></span></div><br/>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
   width="{swa}" height="{sha}">
   <g transform="translate({axspace} 0)">
@@ -5549,6 +5558,7 @@ PROPID {c.propid}.  RA,Dec boresight {c.ra_bore:.4f}, {c.dec_bore:.4f}
            rectsvg=rectsvg, rectsvg2=rectsvg2, viewer_url=viewer_url,
            flags=flags, imgurl=imgurl, ooitext=ooitext, ivurl=ivurl, dqurl=dqurl,
            imgstamp=imgstamp, ivstamp=ivstamp, dqstamp=dqstamp,
+           outlierstamp=outlierstamp, skystamp=skystamp, skysubstamp=skysubstamp,
            static=settings.STATIC_URL, scale=image_stamp_scale)
 
     return HttpResponse(about, content_type='application/xhtml+xml')
@@ -5707,7 +5717,7 @@ def exposures_common(req, tgz, copsf):
         bands = ''.join([b for b in bands if b in 'grz'])
     else:
         size = int(req.GET.get('size', '100'), 10)
-        size = min(200, size)
+        size = min(500, size)
         size = size // 2
 
     W,H = size*2, size*2
@@ -6335,7 +6345,8 @@ def iv_data(req, survey, ccd):
     fits.close()
     return send_file(tmpfn, 'image/fits', unlink=True, filename='iv-%s.fits.gz' % ccd)
 
-def image_stamp(req, surveyname, ccd, iv=False, dq=False):
+def image_stamp(req, surveyname, ccd, iv=False, dq=False, sky=False, skysub=False,
+                outliers=False):
     import fitsio
     import tempfile
     import pylab as plt
@@ -6347,6 +6358,46 @@ def image_stamp(req, surveyname, ccd, iv=False, dq=False):
     os.close(ff)
     os.unlink(tmpfn)
 
+    if skysub:
+        tim = im.get_tractor_image(gaussPsf=True, hybridPsf=False,
+                                   readsky=True, subsky=True,
+                                   dq=False, invvar=False, pixels=True,
+                                   trim_edges=False, nanomaggies=False)
+        pix = tim.getImage()
+    elif sky:
+        primhdr = im.read_image_primary_header()
+        imghdr = im.read_image_header()
+        skymod = im.read_sky_model(primhdr=primhdr, imghdr=imghdr)
+        skyimg = np.zeros((im.height, im.width), np.float32)
+        skymod.addTo(skyimg)
+        pix = skyimg
+    elif outliers:
+        from legacypipe.survey import bricks_touching_wcs
+        from legacypipe.outliers import read_outlier_mask_file
+        tim = im.get_tractor_image(gaussPsf=True, hybridPsf=False,
+                                   readsky=False, subsky=False,
+                                   dq=False, invvar=False, pixels=False,
+                                   trim_edges=False, nanomaggies=False)
+        tim.dq = np.zeros(tim.shape, np.int16)
+        posneg_mask = np.zeros(tim.shape, np.uint8)
+        chipwcs = tim.subwcs
+        outlier_bricks = bricks_touching_wcs(chipwcs, survey=survey)
+        for b in outlier_bricks:
+            print('Reading outlier mask for brick', b.brickname,
+                  ':', survey.find_file('outliers_mask', brick=b.brickname, output=False))
+            ok = read_outlier_mask_file(survey, [tim], b.brickname, pos_neg_mask=posneg_mask,
+                                        subimage=False, output=False)
+        # OUTLIER_POS = 1
+        # OUTLIER_NEG = 2
+        # Create an image that can be used with the "RdBu' (red-white-blue) colormap,
+        # 0 = NEG, 1 = nil, 2=POS
+        # ie, posneg_mask value 0 -> 1
+        #                       1 -> 2
+        #                       2 -> 0
+        #                       3 -> ?? 2?
+        pixmap = np.array([1, 2, 0, 2])
+        pix = pixmap[posneg_mask]
+
     kwa = dict(origin='lower')
 
     cmap = 'gray'
@@ -6356,9 +6407,17 @@ def image_stamp(req, surveyname, ccd, iv=False, dq=False):
     elif dq:
         fn = fn.replace('_ooi_', '_ood_')
         cmap = 'tab10'
-    print('Reading', fn)
+    elif skysub:
+        fn = None
+    elif sky:
+        fn = None
+    elif outliers:
+        fn = None
+        cmap = 'RdBu'
 
-    pix = fitsio.read(fn, ext=c.image_hdu)
+    if fn is not None:
+        print('Reading', fn)
+        pix = fitsio.read(fn, ext=c.image_hdu)
     H,W = pix.shape
 
     # BIN
@@ -6368,6 +6427,7 @@ def image_stamp(req, surveyname, ccd, iv=False, dq=False):
     if dq:
         # Assume DQ codes (not bitmask)
         out = np.zeros((sh,sw), np.uint8)
+        # Scale down, taking the max per block
         for i in range(scale):
             for j in range(scale):
                 out = np.maximum(out, pix[i::scale, j::scale][:sh,:sw])
@@ -6379,6 +6439,11 @@ def image_stamp(req, surveyname, ccd, iv=False, dq=False):
         out /= scale**2
         if iv:
             mn,mx = 0,np.percentile(out.ravel(), 99)
+        elif sky:
+            mn,mx = None,None
+        elif outliers:
+            mn = 0
+            mx = 2
         else:
             mn,mx = np.percentile(out.ravel(), [25, 99])
         kwa.update(vmin=mn, vmax=mx)
@@ -6391,6 +6456,14 @@ def iv_stamp(req, surveyname, ccd):
     return image_stamp(req, surveyname, ccd, iv=True)
 def dq_stamp(req, surveyname, ccd):
     return image_stamp(req, surveyname, ccd, dq=True)
+
+def sky_stamp(req, surveyname, ccd):
+    return image_stamp(req, surveyname, ccd, sky=True)
+def skysub_stamp(req, surveyname, ccd):
+    return image_stamp(req, surveyname, ccd, skysub=True)
+def outlier_stamp(req, surveyname, ccd):
+    return image_stamp(req, surveyname, ccd, outliers=True)
+
 
 layers = {}
 def get_layer(name, default=None):
@@ -7099,7 +7172,12 @@ if __name__ == '__main__':
     #r = c.get('/vlass1.2/1/10/526/447.jpg')
     #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
     #r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
-    r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
+    #r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
+    #r = c.get('/decaps2/2/14/6039/12119.jpg')
+    #r = c.get('/decaps2/2/13/3018/6058.jpg')
+    #r = c.get('/decaps2/2/12/1509/3028.jpg')
+    #r = c.get('/decaps2/2/11/754/1514.jpg')
+    r = c.get('/outlier-stamp/ls-dr10-early/decam-885706-S30.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
