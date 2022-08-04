@@ -5,16 +5,18 @@ import numpy as np
 from astrometry.util.file import read_file
 from legacypipe.survey import LegacySurveyData
 
-def delete_scaled_images(name, old_bricks, new_bricks):
+def delete_scaled_images(name, new_bricks, bands=None):
     from map.views import get_layer
     layer = get_layer(name)
     modlayer = get_layer(name + '-model')
+    if bands is None:
+        bands = layer.get_bands()
     print('Got layer:', layer)
     print('Got model layer:', modlayer)
     for scale in range(1, 8):
-        if scale >= len(old_bricks):
-            print('No old bricks for scale', scale)
-            break
+        #if scale >= len(old_bricks):
+        #    print('No old bricks for scale', scale)
+        #    break
         sbricks = set()
         delfiles = set()
         scale_bricks = layer.get_bricks_for_scale(scale)
@@ -27,7 +29,7 @@ def delete_scaled_images(name, old_bricks, new_bricks):
             for sb in SB.brickname:
                 sbricks.add(sb)
             for sb in SB:
-                for band in ['g','r','z']:
+                for band in bands:
                     fn = layer.get_scaled_filename(sb, band, scale)
                     delfiles.add(fn)
                     fn = modlayer.get_scaled_filename(sb, band, scale)
@@ -375,7 +377,7 @@ def main():
 
         # Find and delete tiles that overlap each new brick.
         #print_tiles(bricks)
-        delete_scaled_images(name, old_bricks, bricks)
+        delete_scaled_images(name, bricks)
 
         sys.exit(0)
 
