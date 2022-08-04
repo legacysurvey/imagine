@@ -4594,14 +4594,24 @@ class Decaps2LegacySurveyData(MyLegacySurveyData):
         else:
             basedir = self.survey_dir
         if brick is not None:
+            codir0 = os.path.join(basedir, 'coadd-override', brickpre, brick)
             codir = os.path.join(basedir, 'coadd', brickpre, brick)
         sname = self.file_prefix
         # No .fits.fz suffix, just .fits
         if filetype in ['image']:
+            fn = os.path.join(codir0,
+                              '%s-%s-%s-%s.fits' % (sname, brick, filetype, band))
+            if os.path.exists(fn):
+                return fn
             return os.path.join(codir,
                                 '%s-%s-%s-%s.fits' % (sname, brick, filetype, band))
         if filetype in ['model']:
             # coadd-model dir; named "legacysurvey-BRICK-image", not "-model"
+            codir0 = os.path.join(basedir, 'coadd-model-override', brickpre, brick)
+            fn = os.path.join(codir0,
+                            '%s-%s-%s-%s.fits' % (sname, brick, 'image', band))
+            if os.path.exists(fn):
+                return fn
             codir = os.path.join(basedir, 'coadd-model', brickpre, brick)
             return os.path.join(codir,
                                 '%s-%s-%s-%s.fits' % (sname, brick, 'image', band))
