@@ -6696,6 +6696,17 @@ def get_layer(name, default=None):
         layers[basename + '-resid'] = resid
         layer = layers[name]
 
+    elif name in ['ls-dr10', 'ls-dr10-model', 'ls-dr10-resid']:
+        basename = 'ls-dr10'
+        survey = get_survey(basename)
+        image = LsDr10Layer(basename, 'image', survey, bands='griz')
+        model = LsDr10Layer(basename, 'model', survey, bands='griz')
+        resid = LsDr10ResidLayer(image, model, basename, 'resid', survey, bands='griz')
+        layers[basename] = image
+        layers[basename + '-model'] = model
+        layers[basename + '-resid'] = resid
+        layer = layers[name]
+
     if layer is None:
         # Try generic rebricked
         #print('get_layer:', name, '-- generic')

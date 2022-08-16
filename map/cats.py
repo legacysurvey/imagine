@@ -83,6 +83,7 @@ catversions = {
     'desi-daily-tiles': [1,],
     'desi-daily-spectra': [1,],
     'ls-dr10a': [1,],
+    'ls-dr10': [1,],
 }
 
 test_cats = []
