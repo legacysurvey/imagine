@@ -2320,10 +2320,25 @@ def cat_user(req, ver):
                          for g,r,z in zip(10.**((cat.g - 22.5)/-2.5),
                                           10.**((cat.r - 22.5)/-2.5),
                                           10.**((cat.z - 22.5)/-2.5))])
+    else:
+        fluxbands = []
+        fluxes = []
+        for band in 'griz':
+            if 'flux_'+band in cols:
+                fluxbands.append(band)
+                fluxes.append(cat.get('flux_'+band))
+        if len(fluxbands) > 0:
+            allfluxes = []
+            for srcfluxes in zip(*fluxes):
+                #print('srcfluxes:', srcfluxes)
+                #print('zip:', dict(zip(fluxbands, srcfluxes)))
+                allfluxes.append(dict(zip(fluxbands, [float(f) for f in srcfluxes])))
+            D.update(fluxes = allfluxes)
+
     if 'gnobs' in cols and 'rnobs' in cols and 'znobs' in cols:
         D.update(nobs=[dict(g=int(g), r=int(r), z=int(z))
                        for g,r,z in zip(cat.gnobs, cat.rnobs, cat.znobs)])
-    if 'objids' in cols:
+    if 'objid' in cols:
         D.update(objids=[int(x) for x in cat.objid])
     if 'brickname' in cols:
         D.update(bricknames=cat.brickname.tolist())
