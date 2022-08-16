@@ -1274,6 +1274,7 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
             } else {
               ttstyle = { permanent: true, interactive: true };
             }
+            txt = '' + txt;
             if (txt.length > 0) {
                 circ.bindTooltip(txt, ttstyle);
             }

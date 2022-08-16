@@ -7188,7 +7188,9 @@ if __name__ == '__main__':
     #r = c.get('/decaps2/2/13/3018/6058.jpg')
     #r = c.get('/decaps2/2/12/1509/3028.jpg')
     #r = c.get('/decaps2/2/11/754/1514.jpg')
-    r = c.get('/outlier-stamp/ls-dr10-early/decam-885706-S30.jpg')
+    #r = c.get('/outlier-stamp/ls-dr10-early/decam-885706-S30.jpg')
+    #r = c.get('/ls-dr10/1/14/979/8573.jpg')
+    r = c.get('/usercatalog/1/cat.json?ralo=104.1755&rahi=104.4230&declo=20.3734&dechi=20.5008&cat=tmp02tajgo8')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
