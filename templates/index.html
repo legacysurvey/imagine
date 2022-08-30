@@ -3622,6 +3622,82 @@ var constellations = new Constellations();
 
 polygonOverlays.push(constellations);
 
+
+// Deep fields
+var deepGroup = L.layerGroup([]);
+
+/*
+from astrometry.util.starutil_numpy import *
+for ra,dec,name in [('00:37', '-44:00', 'ELAIS-S1'),
+                    ('01:30', '-00:00', 'SHELA'),
+                    ('02:22', '-04:45', 'XMM-LSS'),
+                    ('03:32', '-28:06', 'E-CDFS'),
+                    ('04:10', '-48:10', 'EDF-S'),
+                    ('10:00', '+02:10', 'E-COSMOS'),
+                    ('23:02', '+00:16', 'DEEP2-F3'),
+                    ]:
+    r = hmsstring2ra(ra)
+    d = dmsstring2dec(dec)
+    print('[% +9.4f, % +8.4f, "%s"],' % (r, d, name))
+*/
+var deeps = [
+[  +9.2500, -44.0000, "ELAIS-S1"],
+[ +22.5000,  -0.0000, "SHELA"],
+[ +35.5000,  -4.7500, "XMM-LSS"],
+[ +53.0000, -28.1000, "E-CDFS"],
+[ +62.5000, -48.1667, "EDF-S"],
+[+150.0000,  +2.1667, "E-COSMOS"],
+[+345.5000,  +0.2667, "DEEP2-F3"],
+];
+var buildDeepFields = function() {
+    var clong = map.getCenter().lng;
+    for (var i in deeps) {
+        var f = deeps[i];
+        var ra = f[0];
+        var dec = f[1];
+        var name = f[2];
+        var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
+        var circ = L.circle(latlng, 0., {'color':'red', 'opacity':0.,
+                                         'fillOpacity':0, 'weight':5});
+        circ.bindTooltip(name,
+                         {interactive: true, permanent: true,
+                          direction: 'center' });
+        deepGroup.addLayer(circ);
+    }
+};
+
+var DeepFields = L.LayerGroup.extend({
+    initialize: function() {
+      L.LayerGroup.prototype.initialize.call(this);
+      this.addLayer(deepGroup);
+      this._show = false;
+      this.on('add', function(e) {
+        console.log('Deep Fields added.');
+        this._show = true;
+      });
+      this.on('remove', function(e) {
+        console.log('Deep Fields removed.');
+        this._show = false;
+      });
+    },
+    _name: 'deepfields',
+    _pretty: 'Deep Fields',
+    _url_term: 'deepfields',
+    //getGroup: function() { return deepGroup; },
+    getGroup: function() { return this; },
+    getLinkHere: function() { return 'deepfields'; },
+    initLinkHere: function(val) {},
+    under: function(latlng) { return []; },
+    // popup menu addition
+    _detail: function(urlname, obj, s) { return ''; },
+    _detail_list: function(me, objs) { return objs; },
+});
+var deepfields = new DeepFields();
+polygonOverlays.push(deepfields);
+
+
+
+
 {% include "desi-footprint.js" %}
 
 var desifoot = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
@@ -3750,6 +3826,7 @@ var overlays = [
     desi_targets_dr9_sv1_supp,
     {% endif %}
     constellations,
+    deepfields,
     desifoot,
     desifiber,
 ];
@@ -4228,6 +4305,7 @@ var overlayTree = [];
      findoverlay('photoz-dr9'),
      {% endif %}
      //findoverlay('masks-dr8'),
+     findoverlay('deepfields'),
      findoverlay('const'),
      ]},
  ]);
@@ -4494,6 +4572,8 @@ for (var i=0,len=overlays.length; i<len; i++) {
 console.log('done adding layers from qstr');
 
 {% include "constellations.js" %}
+
+buildDeepFields();
 
 {% comment %}
 AstroPolylineMeasure = L.Polyline.Measure.extend({
