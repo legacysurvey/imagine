@@ -1808,6 +1808,9 @@ tiles = mylayer_B('ls-dr10-resid', 'Legacy Surveys DR10 residuals',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+{% endif %}
+{% if enable_dr10_early %}
+
 tiles = mylayer_B('ls-dr10-early', 'Legacy Surveys DR10-early',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
@@ -1815,6 +1818,9 @@ allLayers.push(tiles);
 tiles = mylayer_B('ls-dr10-early-grz', 'Legacy Surveys DR10-early (grz)',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+
+{% endif %}
+{% if enable_dr10a %}
 
 tiles = mylayer_B('ls-dr10a', 'Legacy Surveys DR10a images',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
