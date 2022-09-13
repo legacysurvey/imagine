@@ -329,6 +329,8 @@ def _index(req,
         enable_dr9_south_overlays = settings.ENABLE_DR9_SOUTH,
 
         enable_dr10 = settings.ENABLE_DR10,
+        enable_dr10a = settings.ENABLE_DR10A,
+        enable_dr10_early = settings.ENABLE_DR10_EARLY,
         enable_dr10_overlays = settings.ENABLE_DR10,
 
         enable_decaps = settings.ENABLE_DECAPS,
