@@ -4079,8 +4079,12 @@ var overlays = [
     dr9southcat,
     {% endif %}
     {% if enable_dr10_overlays %}
+    {% if enable_dr10 %}
     dr10cat,
+    {% endif %}
+    {% if enable_dr10a %}
     dr10acat,
+    {% endif %}
     {% endif %}
     {% if enable_dr9sv_overlays %}
     dr9svcat,
@@ -4337,9 +4341,13 @@ baseTree1 = baseTree1.concat([
     findlayer('ls-dr10'),
     findlayer('ls-dr10-model'),
     findlayer('ls-dr10-resid'),
+    {% endif %}
+    {% if enable_dr10a %}
     findlayer('ls-dr10a'),
     findlayer('ls-dr10a-model'),
     findlayer('ls-dr10a-resid'),
+    {% endif %}
+    {% if enable_dr10_early %}
     findlayer('ls-dr10-early'),
     findlayer('ls-dr10-early-grz'),
     {% endif %}
@@ -4615,6 +4623,8 @@ var overlayTree = [];
 
      {% if enable_dr10 %}
      findoverlay('ls-dr10'),
+     {% endif %}
+     {% if enable_dr10a %}
      findoverlay('ls-dr10a'),
      {% endif %}
 
