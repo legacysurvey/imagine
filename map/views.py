@@ -329,6 +329,8 @@ def _index(req,
         enable_dr9_south_overlays = settings.ENABLE_DR9_SOUTH,
 
         enable_dr10 = settings.ENABLE_DR10,
+        enable_dr10a = settings.ENABLE_DR10A,
+        enable_dr10_early = settings.ENABLE_DR10_EARLY,
         enable_dr10_overlays = settings.ENABLE_DR10,
 
         enable_decaps = settings.ENABLE_DECAPS,
@@ -3151,6 +3153,11 @@ class DesLayer(ReDecalsLayer):
         if scale == 0:
             return 10000 * 0.263 / 3600.
         return 0.25 * 2**scale
+
+    def get_pixel_size_for_scale(self, scale):
+        if scale == 0:
+            return 10000
+        return super(DesLayer,self).get_pixel_size_for_scale(scale)
 
     def populate_fits_cutout_header(self, hdr):
         hdr['SURVEY'] = 'DES'
@@ -7240,6 +7247,10 @@ if __name__ == '__main__':
     #r = c.get('/vlass1.2/1/10/526/447.jpg')
     #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
     #r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
+    #r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
+    #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
+    #r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
+    #r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
     #r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
     #r = c.get('/decaps2/2/14/6039/12119.jpg')
     #r = c.get('/decaps2/2/13/3018/6058.jpg')
