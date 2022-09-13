@@ -5956,7 +5956,8 @@ def exposures_common(req, tgz, copsf):
     for c,d,x,y in ccds:
         swap.append(not(os.path.exists(d.imgfn)))
     if any(swap):
-        swap_layers = {'decals-dr7': 'ls-dr10-all',
+        swap_layers = {'ls-dr8': 'ls-dr10-all',
+                       'decals-dr7': 'ls-dr10-all',
                        'decals-dr5': 'ls-dr10-all',
         }
         for (c,d,x,y),s in zip(ccds,swap):
