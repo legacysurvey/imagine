@@ -5309,11 +5309,12 @@ def exposure_list(req):
     T.cut(np.lexsort((T.expnum, T.filter)))
 
     exps = []
+    cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
+    if name in ['ls-dr10-early']:
+        cmap = dict(g='#0000cc', r='#008844', i='#448800', z='#cc0000')
     for t in T:
-        cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
-        if name in ['ls-dr10-early']:
-            cmap = dict(g='#0000cc', r='#008844', i='#448800', z='#cc0000')
-            
+        if t.filter not in cmap:
+            continue
         exps.append(dict(name='%i %s' % (t.expnum, t.filter),
                          ra=t.ra, dec=t.dec, radius=radius,
                          color=cmap[t.filter]))
