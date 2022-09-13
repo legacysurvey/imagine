@@ -5936,7 +5936,7 @@ def exposures_common(req, tgz, copsf):
         y = int(np.round(y-1))
         if x < -size or x >= c.width+size or y < -size or y >= c.height+size:
             continue
-        ccds.append((c, x, y))
+        ccds.append((c, dim, x, y))
 
     B = survey.get_bricks_readonly()
     I = np.flatnonzero((B.ra1  <= ra)  * (B.ra2  >= ra) *
@@ -5950,6 +5950,19 @@ def exposures_common(req, tgz, copsf):
         brick = None
         brickx = bricky = []
 
+    # Swap in DR10 links for images where we no longer have the original CP images
+    from collections import Counter
+    swap = []
+    for c,d,x,y in ccds:
+        swap.append(not(os.path.exists(d.imgfn)))
+    if any(swap):
+        swap_layers = {'decals-dr7': 'ls-dr10-all',
+                       'decals-dr5': 'ls-dr10-all',
+        }
+        for (c,d,x,y),s in zip(ccds,swap):
+            if s:
+                c.layer = swap_layers.get(layername, layername)
+
     from django.shortcuts import render
 
     url = my_reverse(req, 'exposure_panels', args=('LAYER', '12345', 'EXTNAME'))
@@ -5961,7 +5974,7 @@ def exposures_common(req, tgz, copsf):
     domains = settings.SUBDOMAINS
 
     ccdsx = []
-    for i,(ccd,x,y) in enumerate(ccds):
+    for i,(ccd,_,x,y) in enumerate(ccds):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
         ccdlayer = getattr(ccd, 'layer', layername)
         theurl = url % (domains[i%len(domains)], ccdlayer, int(ccd.expnum), ccd.ccdname.strip()) + '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
@@ -7201,7 +7214,10 @@ if __name__ == '__main__':
     #r = c.get('/decaps2/2/11/754/1514.jpg')
     #r = c.get('/outlier-stamp/ls-dr10-early/decam-885706-S30.jpg')
     #r = c.get('/ls-dr10/1/14/979/8573.jpg')
-    r = c.get('/usercatalog/1/cat.json?ralo=104.1755&rahi=104.4230&declo=20.3734&dechi=20.5008&cat=tmp02tajgo8')
+    #r = c.get('/usercatalog/1/cat.json?ralo=104.1755&rahi=104.4230&declo=20.3734&dechi=20.5008&cat=tmp02tajgo8')
+    #r = c.get('/cutout.jpg?ra=91.1268&dec=-66.6530&layer=unwise-w3w4&pixscale=2.75&size=500')
+    #r = c.get('/exposures/?ra=229.9982&dec=1.8043&layer=decals-dr7')
+    r = c.get('/exposure_panels/ls-dr9-south-all/449377/S29/?ra=229.9982&dec=1.8043&size=100')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
