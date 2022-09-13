@@ -201,6 +201,7 @@ def top_levels(mp, opt):
                     'des-dr1',
                     'eboss',
                     'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
+                    'unwise-w3w4',
                     'unwise-cat-model',
                     'galex', 'sdss2', 'wssa', 'ztf',
                     'ls-dr56', 'ls-dr67',
@@ -225,6 +226,8 @@ def top_levels(mp, opt):
         if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                         'unwise-cat-model']:
             bands = [1, 2]
+        elif opt.kind == 'unwise-w3w4':
+            bands = [3, 4]
         elif opt.kind == 'sdss2':
             bands = 'gri'
         elif opt.kind == 'galex':
@@ -724,8 +727,9 @@ def main():
 
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
-                           'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
-                           'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'ztf']
+                       'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
+                       'unwise-w3w4',
+                       'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'ztf']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
               or 'dr9f' in opt.kind
@@ -751,6 +755,8 @@ def main():
 
         if opt.kind == 'galex' and opt.bands is None:
             opt.bands = 'nf'
+        if opt.kind == 'unwise-w3w4' and opt.bands is None:
+            opt.bands = '34'
         if 'unwise' in opt.kind and opt.bands is None:
             opt.bands = '12'
         if 'ztf' in opt.kind and opt.bands is None:

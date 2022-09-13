@@ -3533,7 +3533,47 @@ class UnwiseCatalogModel(RebrickedUnwise):
     def get_fits_extension(self, scale, fn):
         return 1
 
+class UnwiseW3W4(RebrickedUnwise):
+    def get_bands(self):
+        # Note, not 'w1','w2'...
+        return '34'
+    def get_rgb(self, imgs, bands, **kwargs):
+        return _unwise_w34_to_rgb(imgs, **kwargs)
 
+def _unwise_w34_to_rgb(imgs, bands=[3,4],
+                   scale3=10.,
+                   scale4=40.,
+                   arcsinh=1./20.,
+                   mn=-20.,
+                   mx=10000.,
+                   w3weight=9.):
+    import numpy as np
+    img = imgs[0]
+    H,W = img.shape
+    ## FIXME
+    assert(bands == [3,4])
+    w3,w4 = imgs
+    rgb = np.zeros((H, W, 3), np.uint8)
+    img3 = w3 / scale3
+    img4 = w4 / scale4
+    if arcsinh is not None:
+        def nlmap(x):
+            return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
+        # intensity -- weight W3 more
+        bright = (w3weight * img3 + img4) / (w3weight + 1.)
+        I = nlmap(bright)
+        # color -- abs here prevents weird effects when, eg, W3>0 and W4<0.
+        mean = np.maximum(1e-6, (np.abs(img3)+np.abs(img4))/2.)
+        img3 = np.abs(img3)/mean * I
+        img4 = np.abs(img4)/mean * I
+        mn = nlmap(mn)
+        mx = nlmap(mx)
+    img3 = (img3 - mn) / (mx - mn)
+    img4 = (img4 - mn) / (mx - mn)
+    rgb[:,:,2] = (np.clip(img3, 0., 1.) * 255).astype(np.uint8)
+    rgb[:,:,0] = (np.clip(img4, 0., 1.) * 255).astype(np.uint8)
+    rgb[:,:,1] = rgb[:,:,0]/2 + rgb[:,:,2]/2
+    return rgb
 
 
 class WssaLayer(RebrickedUnwise):
@@ -6615,6 +6655,9 @@ def get_layer(name, default=None):
     elif name == 'unwise-neo7':
         layer = RebrickedUnwise('unwise-neo7',
                                 os.path.join(settings.DATA_DIR, 'unwise-neo7'))
+
+    elif name == 'unwise-w3w4':
+        layer = UnwiseW3W4('unwise-w3w4', os.path.join(settings.DATA_DIR, 'unwise-w3w4'))
 
     elif name == '2mass':
         layer = TwoMassLayer('2mass')
