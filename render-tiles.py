@@ -940,6 +940,7 @@ def main():
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                          'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
+                         'unwise-w3w4',
                          'unwise-cat-model',
                         'galex', 'wssa', 'des-dr1', 'hsc2',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
