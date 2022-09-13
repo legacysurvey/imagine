@@ -1922,11 +1922,8 @@ class DecalsLayer(MapLayer):
         brick_html = self.brick_details_body(brick)
         html.extend(brick_html)
 
-        ccdsfn = survey.find_file('ccds-table', brick=brickname)
-        if os.path.exists(ccdsfn):
-            from astrometry.util.fits import fits_table
-            ccds = fits_table(ccdsfn)
-            ccds = touchup_ccds(ccds, survey)
+        ccds = self.get_ccds_for_brick(survey, brick)
+        if ccds is not None:
             if len(ccds):
                 html.extend(self.ccds_overlapping_html(req, ccds, brick=brickname, ra=ra, dec=dec))
             from legacypipe.survey import wcs_for_brick
@@ -1941,6 +1938,15 @@ class DecalsLayer(MapLayer):
 
         html.extend(['</body></html>',])
         return HttpResponse('\n'.join(html))
+
+    def get_ccds_for_brick(self, survey, brick):
+        ccdsfn = survey.find_file('ccds-table', brick=brick.brickname)
+        if not os.path.exists(ccdsfn):
+            return None
+        from astrometry.util.fits import fits_table
+        ccds = fits_table(ccdsfn)
+        ccds = touchup_ccds(ccds, survey)
+        return ccds
 
     def brick_details_body(self, brick):
         survey = self.survey
@@ -2656,6 +2662,44 @@ class LsDr10Layer(ReDecalsLayer):
             if bf != 0.:
                 rgb[:,:,2] += bf*v
         return rgb
+
+    def get_ccds_for_brick(self, survey, brick):
+        ccdsfn = survey.find_file('ccds-table', brick=brick.brickname)
+        if not os.path.exists(ccdsfn):
+            # LS-DR10-early, we didn't save the per-brick CCDs table (d'oh).
+            if self.name == 'ls-dr10-early':
+                from legacypipe.survey import wcs_for_brick
+                import numpy as np
+                print('DR10-early looking for CCDs')
+                targetwcs = wcs_for_brick(brick)
+                ccds = survey.ccds_touching_wcs(targetwcs)
+                ccds = touchup_ccds(ccds, survey)
+
+                print(len(ccds), 'CCDs')
+                ccds.brick_x0 = np.zeros(len(ccds), np.int16)
+                ccds.brick_x1 = np.zeros(len(ccds), np.int16)
+                ccds.brick_y0 = np.zeros(len(ccds), np.int16)
+                ccds.brick_y1 = np.zeros(len(ccds), np.int16)
+                rr = np.array([brick.ra1,  brick.ra1,  brick.ra2,  brick.ra2])
+                dd = np.array([brick.dec1, brick.dec2, brick.dec1, brick.dec2])
+                B = 3600
+                for i,ccd in enumerate(ccds):
+                    wcs = survey.get_approx_wcs(ccd)
+                    _,bx,by = wcs.radec2pixelxy(rr, dd)
+                    ccds.brick_x0[i] = max(0, np.floor(min(bx-1)))
+                    ccds.brick_y0[i] = max(0, np.floor(min(by-1)))
+                    ccds.brick_x1[i] = min(B-1, np.ceil(max(bx-1)))
+                    ccds.brick_y1[i] = min(B-1, np.ceil(max(by-1)))
+                filtorder = dict(g=0, r=1, i=2, z=3, Y=4)
+                fo = np.array([filtorder.get(f, 5) for f in ccds.filter])
+                I = np.lexsort((ccds.ccdname, ccds.expnum, fo))
+                ccds = ccds[I]
+                return ccds
+            return None
+        from astrometry.util.fits import fits_table
+        ccds = fits_table(ccdsfn)
+        ccds = touchup_ccds(ccds, survey)
+        return ccds
 
 #class LsDr10ModelLayer(UniqueBrickMixin, LsDr10Layer):
 #    pass
@@ -4555,14 +4599,24 @@ class Decaps2LegacySurveyData(MyLegacySurveyData):
         else:
             basedir = self.survey_dir
         if brick is not None:
+            codir0 = os.path.join(basedir, 'coadd-override', brickpre, brick)
             codir = os.path.join(basedir, 'coadd', brickpre, brick)
         sname = self.file_prefix
         # No .fits.fz suffix, just .fits
         if filetype in ['image']:
+            fn = os.path.join(codir0,
+                              '%s-%s-%s-%s.fits' % (sname, brick, filetype, band))
+            if os.path.exists(fn):
+                return fn
             return os.path.join(codir,
                                 '%s-%s-%s-%s.fits' % (sname, brick, filetype, band))
         if filetype in ['model']:
             # coadd-model dir; named "legacysurvey-BRICK-image", not "-model"
+            codir0 = os.path.join(basedir, 'coadd-model-override', brickpre, brick)
+            fn = os.path.join(codir0,
+                            '%s-%s-%s-%s.fits' % (sname, brick, 'image', band))
+            if os.path.exists(fn):
+                return fn
             codir = os.path.join(basedir, 'coadd-model', brickpre, brick)
             return os.path.join(codir,
                                 '%s-%s-%s-%s.fits' % (sname, brick, 'image', band))
@@ -5364,6 +5418,9 @@ def ccd_detail(req, layer_name, ccd):
     imgstamp = my_reverse(req, 'image_stamp', args=[layer_name, ccd])
     ivstamp = my_reverse(req, 'iv_stamp', args=[layer_name, ccd])
     dqstamp = my_reverse(req, 'dq_stamp', args=[layer_name, ccd])
+    outlierstamp = my_reverse(req, 'outlier_stamp', args=[layer_name, ccd])
+    skystamp = my_reverse(req, 'sky_stamp', args=[layer_name, ccd])
+    skysubstamp = my_reverse(req, 'skysub_stamp', args=[layer_name, ccd])
     flags = ''
     cols = c.columns()
     if 'photometric' in cols and 'blacklist_ok' in cols:
@@ -5438,8 +5495,12 @@ PROPID {c.propid}.  RA,Dec boresight {c.ra_bore:.4f}, {c.dec_bore:.4f}
 {ooitext}</li>
 <li>weight or inverse-variance: <a href="{ivurl}">{ccd}</a></li>
 <li>data quality (flags): <a href="{dqurl}">{ccd}</a></li>
+<li>outlier mask display: <a href="{outlierstamp}">{ccd}</a></li>
+<li>sky model display: <a href="{skystamp}">{ccd}</a></li>
+<li>sky-subtracted image display: <a href="{skysubstamp}">{ccd}</a></li>
 </ul>
-<div>Mouse: <span id="image_coords"></span>  Click: <span id="image_click"></span></div><br/>
+<div>Image (~raw, not sky-subtracted)<br/>
+Mouse: <span id="image_coords"></span>  Click: <span id="image_click"></span></div><br/>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
   width="{swa}" height="{sha}">
   <g transform="translate({axspace} 0)">
@@ -5452,7 +5513,8 @@ PROPID {c.propid}.  RA,Dec boresight {c.ra_bore:.4f}, {c.dec_bore:.4f}
   {axis2}
 </svg>
 <br />
-<div>Mouse: <span id="iv_coords"></span>  Click: <span id="iv_click"></span></div><br/>
+<div>Inverse-variance map<br/>
+Mouse: <span id="iv_coords"></span>  Click: <span id="iv_click"></span></div><br/>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
   width="{swa}" height="{sha}">
   <g transform="translate({axspace} 0)">
@@ -5465,7 +5527,8 @@ PROPID {c.propid}.  RA,Dec boresight {c.ra_bore:.4f}, {c.dec_bore:.4f}
   {axis2}
 </svg>
 <br />
-<div>Mouse: <span id="dq_coords"></span>  Click: <span id="dq_click"></span></div><br/>
+<div>Data quality map (not including outlier-masks)<br/>
+Mouse: <span id="dq_coords"></span>  Click: <span id="dq_click"></span></div><br/>
 <svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
   width="{swa}" height="{sha}">
   <g transform="translate({axspace} 0)">
@@ -5500,6 +5563,7 @@ PROPID {c.propid}.  RA,Dec boresight {c.ra_bore:.4f}, {c.dec_bore:.4f}
            rectsvg=rectsvg, rectsvg2=rectsvg2, viewer_url=viewer_url,
            flags=flags, imgurl=imgurl, ooitext=ooitext, ivurl=ivurl, dqurl=dqurl,
            imgstamp=imgstamp, ivstamp=ivstamp, dqstamp=dqstamp,
+           outlierstamp=outlierstamp, skystamp=skystamp, skysubstamp=skysubstamp,
            static=settings.STATIC_URL, scale=image_stamp_scale)
 
     return HttpResponse(about, content_type='application/xhtml+xml')
@@ -5658,7 +5722,7 @@ def exposures_common(req, tgz, copsf):
         bands = ''.join([b for b in bands if b in 'grz'])
     else:
         size = int(req.GET.get('size', '100'), 10)
-        size = min(200, size)
+        size = min(500, size)
         size = size // 2
 
     W,H = size*2, size*2
@@ -6286,7 +6350,8 @@ def iv_data(req, survey, ccd):
     fits.close()
     return send_file(tmpfn, 'image/fits', unlink=True, filename='iv-%s.fits.gz' % ccd)
 
-def image_stamp(req, surveyname, ccd, iv=False, dq=False):
+def image_stamp(req, surveyname, ccd, iv=False, dq=False, sky=False, skysub=False,
+                outliers=False):
     import fitsio
     import tempfile
     import pylab as plt
@@ -6298,6 +6363,46 @@ def image_stamp(req, surveyname, ccd, iv=False, dq=False):
     os.close(ff)
     os.unlink(tmpfn)
 
+    if skysub:
+        tim = im.get_tractor_image(gaussPsf=True, hybridPsf=False,
+                                   readsky=True, subsky=True,
+                                   dq=False, invvar=False, pixels=True,
+                                   trim_edges=False, nanomaggies=False)
+        pix = tim.getImage()
+    elif sky:
+        primhdr = im.read_image_primary_header()
+        imghdr = im.read_image_header()
+        skymod = im.read_sky_model(primhdr=primhdr, imghdr=imghdr)
+        skyimg = np.zeros((im.height, im.width), np.float32)
+        skymod.addTo(skyimg)
+        pix = skyimg
+    elif outliers:
+        from legacypipe.survey import bricks_touching_wcs
+        from legacypipe.outliers import read_outlier_mask_file
+        tim = im.get_tractor_image(gaussPsf=True, hybridPsf=False,
+                                   readsky=False, subsky=False,
+                                   dq=False, invvar=False, pixels=False,
+                                   trim_edges=False, nanomaggies=False)
+        tim.dq = np.zeros(tim.shape, np.int16)
+        posneg_mask = np.zeros(tim.shape, np.uint8)
+        chipwcs = tim.subwcs
+        outlier_bricks = bricks_touching_wcs(chipwcs, survey=survey)
+        for b in outlier_bricks:
+            print('Reading outlier mask for brick', b.brickname,
+                  ':', survey.find_file('outliers_mask', brick=b.brickname, output=False))
+            ok = read_outlier_mask_file(survey, [tim], b.brickname, pos_neg_mask=posneg_mask,
+                                        subimage=False, output=False)
+        # OUTLIER_POS = 1
+        # OUTLIER_NEG = 2
+        # Create an image that can be used with the "RdBu' (red-white-blue) colormap,
+        # 0 = NEG, 1 = nil, 2=POS
+        # ie, posneg_mask value 0 -> 1
+        #                       1 -> 2
+        #                       2 -> 0
+        #                       3 -> ?? 2?
+        pixmap = np.array([1, 2, 0, 2])
+        pix = pixmap[posneg_mask]
+
     kwa = dict(origin='lower')
 
     cmap = 'gray'
@@ -6307,9 +6412,17 @@ def image_stamp(req, surveyname, ccd, iv=False, dq=False):
     elif dq:
         fn = fn.replace('_ooi_', '_ood_')
         cmap = 'tab10'
-    print('Reading', fn)
+    elif skysub:
+        fn = None
+    elif sky:
+        fn = None
+    elif outliers:
+        fn = None
+        cmap = 'RdBu'
 
-    pix = fitsio.read(fn, ext=c.image_hdu)
+    if fn is not None:
+        print('Reading', fn)
+        pix = fitsio.read(fn, ext=c.image_hdu)
     H,W = pix.shape
 
     # BIN
@@ -6319,6 +6432,7 @@ def image_stamp(req, surveyname, ccd, iv=False, dq=False):
     if dq:
         # Assume DQ codes (not bitmask)
         out = np.zeros((sh,sw), np.uint8)
+        # Scale down, taking the max per block
         for i in range(scale):
             for j in range(scale):
                 out = np.maximum(out, pix[i::scale, j::scale][:sh,:sw])
@@ -6330,6 +6444,11 @@ def image_stamp(req, surveyname, ccd, iv=False, dq=False):
         out /= scale**2
         if iv:
             mn,mx = 0,np.percentile(out.ravel(), 99)
+        elif sky:
+            mn,mx = None,None
+        elif outliers:
+            mn = 0
+            mx = 2
         else:
             mn,mx = np.percentile(out.ravel(), [25, 99])
         kwa.update(vmin=mn, vmax=mx)
@@ -6342,6 +6461,14 @@ def iv_stamp(req, surveyname, ccd):
     return image_stamp(req, surveyname, ccd, iv=True)
 def dq_stamp(req, surveyname, ccd):
     return image_stamp(req, surveyname, ccd, dq=True)
+
+def sky_stamp(req, surveyname, ccd):
+    return image_stamp(req, surveyname, ccd, sky=True)
+def skysub_stamp(req, surveyname, ccd):
+    return image_stamp(req, surveyname, ccd, skysub=True)
+def outlier_stamp(req, surveyname, ccd):
+    return image_stamp(req, surveyname, ccd, outliers=True)
+
 
 layers = {}
 def get_layer(name, default=None):
@@ -6569,6 +6696,17 @@ def get_layer(name, default=None):
         #resid = LsDr10ResidLayer(image, model, basename + '-resid', 'resid', survey, bands='griz')
         resid = LsDr10ResidLayer(image, model, basename, 'resid', survey, bands='griz')
         #drname=basename)
+        layers[basename] = image
+        layers[basename + '-model'] = model
+        layers[basename + '-resid'] = resid
+        layer = layers[name]
+
+    elif name in ['ls-dr10', 'ls-dr10-model', 'ls-dr10-resid']:
+        basename = 'ls-dr10'
+        survey = get_survey(basename)
+        image = LsDr10Layer(basename, 'image', survey, bands='griz')
+        model = LsDr10Layer(basename, 'model', survey, bands='griz')
+        resid = LsDr10ResidLayer(image, model, basename, 'resid', survey, bands='griz')
         layers[basename] = image
         layers[basename + '-model'] = model
         layers[basename + '-resid'] = resid
@@ -7049,6 +7187,8 @@ if __name__ == '__main__':
     #r = c.get('/vlass1.2/1/9/261/223.jpg')
     #r = c.get('/vlass1.2/1/10/526/447.jpg')
     #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
+    #r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
+    #r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
     #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
     #r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
     #r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')

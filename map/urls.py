@@ -229,6 +229,9 @@ urlpatterns = ([
     url(r'^image-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.image_stamp, name='image_stamp'),
     url(r'^iv-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.iv_stamp, name='iv_stamp'),
     url(r'^dq-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.dq_stamp, name='dq_stamp'),
+    url(r'^outlier-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.outlier_stamp, name='outlier_stamp'),
+    url(r'^sky-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.sky_stamp, name='sky_stamp'),
+    url(r'^skysub-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.skysub_stamp, name='skysub_stamp'),
 
     # Special DECaPS version of viewer.
     url(r'decaps', views.decaps),

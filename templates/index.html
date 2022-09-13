@@ -1798,6 +1798,16 @@ allLayers.push(tiles);
 
 {% if enable_dr10 %}
 
+tiles = mylayer_B('ls-dr10', 'Legacy Surveys DR10 images',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('ls-dr10-model', 'Legacy Surveys DR10 models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('ls-dr10-resid', 'Legacy Surveys DR10 residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 tiles = mylayer_B('ls-dr10-early', 'Legacy Surveys DR10-early',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
@@ -3669,6 +3679,14 @@ var dr9svsouthcat = new DecalsCatalogLayer(tileWatcher,
 
 
 {% if enable_dr10_overlays %}
+
+var dr10cat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr10',
+                                          'Legacy Surveys DR10 Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr10'});
+
 var dr10acat = new DecalsCatalogLayer(tileWatcher,
                                         'ls-dr10a',
                                           'Legacy Surveys DR10a Catalog',
@@ -4061,6 +4079,7 @@ var overlays = [
     dr9southcat,
     {% endif %}
     {% if enable_dr10_overlays %}
+    dr10cat,
     dr10acat,
     {% endif %}
     {% if enable_dr9sv_overlays %}
@@ -4315,6 +4334,9 @@ moresurveys = moresurveys.concat([
 
 baseTree1 = baseTree1.concat([
     {% if enable_dr10 %}
+    findlayer('ls-dr10'),
+    findlayer('ls-dr10-model'),
+    findlayer('ls-dr10-resid'),
     findlayer('ls-dr10a'),
     findlayer('ls-dr10a-model'),
     findlayer('ls-dr10a-resid'),
@@ -4592,6 +4614,7 @@ var overlayTree = [];
      {% endif %}    
 
      {% if enable_dr10 %}
+     findoverlay('ls-dr10'),
      findoverlay('ls-dr10a'),
      {% endif %}
 
