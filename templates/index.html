@@ -2323,12 +2323,14 @@ tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
                  'urlPatterns': [ [6, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+{% if enable_unwise_w3w4 %}
 tiles = mylayer_B('unwise-w3w4', 'unWISE W3/W4',
                 {'maxNativeZoom': 11,
                  'attribution': unwise_attrib,
                  'urlPatterns': [
                      [1, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+{% endif %}
 
 {% endif %}
 
@@ -4486,8 +4488,10 @@ baseTree1 = baseTree1.concat([
         findlayer('unwise-neo6'),
         {% if science %}
         findlayer('unwise-neo4'),
-        findlayer('unwise-w3w4'),
         findlayer('unwise-cat-model'),
+        {% if enable_unwise_w3w4 %}
+        findlayer('unwise-w3w4'),
+        {% endif %}
         findlayer('wssa'),
         {% endif %}
     ]),
