@@ -1617,51 +1617,57 @@ class MapLayer(object):
         if subimage:
             from astrometry.libkd.spherematch import match_radec
             bricks = self.get_bricks()
-            # HACK
-            #brickrad = 3600. * 0.262 / 2 * np.sqrt(2.) / 3600.
-            I,J,d = match_radec(ra, dec, bricks.ra, bricks.dec, 1., nearest=True)
+
+            brickrad = 0.2 + max(width, height) * self.pixscale / 3600.
+            I,J,d = match_radec(ra, dec, bricks.ra, bricks.dec, brickrad)
             if len(I) == 0:
                 raise RuntimeError('no overlap')
-            brick = bricks[J[0]]
-            print('RA,Dec', ra,dec, 'in brick', brick.brickname)
             scale = 0
-
             fitsio.write(out_fn, None, header=hdr, clobber=True)
-            for band in bands:
-                fn = self.get_filename(brick, band, scale)
-                print('Image filename', fn)
-                wcs = self.read_wcs(brick, band, scale, fn=fn)
-                if wcs is None:
-                    continue
-                ok,xx,yy = wcs.radec2pixelxy(ra, dec)
-                print('x,y', xx,yy)
-                H,W = wcs.shape
-                xx = int(np.round(xx - width/2)) - 1
-                x0 = max(0, xx)
-                x1 = min(x0 + width, W)
-                yy = int(np.round(yy - height/2)) - 1
-                y0 = max(0, yy)
-                y1 = min(y0 + height, H)
-                slc = (slice(y0, y1), slice(x0, x1))
-                subwcs = wcs.get_subimage(x0, y0, x1-x0, y1-y0)
-                try:
-                    img = self.read_image(brick, band, 0, slc, fn=fn)
-                except Exception as e:
-                    print('Failed to read image:', e)
-                    continue
-                ivfn = self.get_base_filename(brick, band, invvar=True)
-                print('Invvar filename', ivfn)
-                iv = self.read_image(brick, band, 0, slc, fn=ivfn)
-                hdr = fitsio.FITSHDR()
-                self.populate_fits_cutout_header(hdr)
-                hdr['BAND'] = band
-                hdr['IMAGETYP'] = 'image'
-                subwcs.add_to_header(hdr)
-                # Append image to FITS file
-                fitsio.write(out_fn, img, header=hdr)
-                # Add invvar
-                hdr['IMAGETYP'] = 'invvar'
-                fitsio.write(out_fn, iv, header=hdr)
+            for brick in bricks[J]:
+                print('Cutting out RA,Dec', ra,dec, 'in brick', brick.brickname)
+                for band in bands:
+                    fn = self.get_filename(brick, band, scale)
+                    print('Image filename', fn)
+                    wcs = self.read_wcs(brick, band, scale, fn=fn)
+                    if wcs is None:
+                        continue
+                    ok,xx,yy = wcs.radec2pixelxy(ra, dec)
+                    #print('x,y', xx,yy)
+                    H,W = wcs.shape
+                    xx = int(np.round(xx - width/2)) - 1
+                    yy = int(np.round(yy - height/2)) - 1
+                    x0 = np.clip(xx, 0, W-1)
+                    x1 = np.clip(xx + width - 1, 0, W-1)
+                    y0 = np.clip(yy, 0, H-1)
+                    y1 = np.clip(yy + height - 1, 0, H-1)
+                    print('X', x0, x1, 'Y', y0, y1)
+                    if x0 == x1 or y0 == y1:
+                        print('No overlap')
+                        continue
+                    slc = (slice(y0, y1+1), slice(x0, x1+1))
+                    subwcs = wcs.get_subimage(x0, y0, 1+x1-x0, 1+y1-y0)
+                    try:
+                        img = self.read_image(brick, band, 0, slc, fn=fn)
+                    except Exception as e:
+                        print('Failed to read image:', e)
+                        continue
+                    ivfn = self.get_base_filename(brick, band, invvar=True)
+                    print('Invvar filename', ivfn)
+                    iv = self.read_image(brick, band, 0, slc, fn=ivfn)
+                    hdr = fitsio.FITSHDR()
+                    self.populate_fits_cutout_header(hdr)
+                    hdr['BRICK'] = brick.brickname
+                    hdr['BRICK_X0'] = x0
+                    hdr['BRICK_Y0'] = y0
+                    hdr['BAND'] = band
+                    hdr['IMAGETYP'] = 'image'
+                    subwcs.add_to_header(hdr)
+                    # Append image to FITS file
+                    fitsio.write(out_fn, img, header=hdr)
+                    # Add invvar
+                    hdr['IMAGETYP'] = 'invvar'
+                    fitsio.write(out_fn, iv, header=hdr)
             return
 
         from astrometry.util.util import Tan
