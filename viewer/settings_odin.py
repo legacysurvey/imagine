@@ -5,7 +5,7 @@ STATIC_URL_PATH = 'static/'
 STATIC_URL = ROOT_URL + STATIC_URL_PATH
 
 HOSTNAME = 'odin.legacysurvey.org'
-TILE_URL = 'https://{s}.%s%s{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+#TILE_URL = 'https://{s}.%s%s{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
 DEBUG = True
 
@@ -24,7 +24,7 @@ SUBDOMAINS_B = SUBDOMAINS
 CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
 SUBDOMAINS = []
-TILE_URL = 'http://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+TILE_URL = 'https://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
 ENABLE_DR5  = False
 ENABLE_DR9 = True
