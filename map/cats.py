@@ -68,6 +68,8 @@ catversions = {
     'desi-tiles': [1,],
     'masks-dr8': [1,],
     'photoz-dr9': [1,],
+    'efeds-main': [1,],
+    'efeds-counterparts': [1,],
 }
 
 test_cats = []
@@ -113,6 +115,121 @@ def gaia_stars_for_wcs(req):
             for g,x,y in zip(stars, xx, yy)])
     return HttpResponse(json.dumps(reply),
                         content_type='application/json')
+
+# startree -i eFEDS_C001_Main_PointSources_CTP_redshift_V16.fits -o eFEDS_C001_Main_PointSources_CTP_redshift_V16.kd.fits -R ERO_RA_CORR -D ERO_DEC_CORR -TPk
+def cat_efeds_counterparts(req, ver):
+    import json
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    tag = 'efeds-counterparts'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+    margin = 0.01
+    rad += margin
+    fn = os.path.join(settings.DATA_DIR, 'erosita', 'eFEDS_C001_Main_PointSources_CTP_redshift_V16.kd.fits')
+    kd = tree_open(fn)
+    I = tree_search_radec(kd, rc, dc, rad)
+    if len(I) == 0:
+        return HttpResponse(json.dumps(dict(
+            name=[],
+            rd=[],
+            flux=[],
+            flux_err=[],)),
+            content_type='application/json')
+    cat = fits_table(fn, rows=I)
+    # "uncorrected"
+    cat.u_ra  = cat.ero_ra_corr
+    cat.u_dec = cat.ero_dec_corr
+    # "corrected"
+    cat.ra  = cat.ctp_nway_ls8_ra
+    cat.dec = cat.ctp_nway_ls8_dec
+    cat.cut((cat.ra  >= (ralo-margin) ) * (cat.ra  <= (rahi+margin)) *
+            (cat.dec >= (declo-margin) * (cat.dec <= (dechi+margin))))
+
+    j = json.dumps(dict(
+        name=['%s (id %i, nway %s)' % (n,i,ls) for i,n,ls in zip(cat.ero_id_src, cat.ero_name, cat.ctp_nway_ls8_unique_objid)],
+        rd=[(float(o.ra),float(o.dec)) for o in cat],
+        rd_u=[(float(o.u_ra),float(o.u_dec)) for o in cat],
+        flux=[(float(o.ero_ml_flux),)
+              for o in cat],
+        flux_err=[(float(o.ero_ml_flux_err),)
+                  for o in cat],
+        flux_bands=[('0.2-2.3 keV',)],
+    ))
+    j = j.replace('NaN', '"NaN"')
+    return HttpResponse(j, content_type='application/json')
+
+# eROSITA eFEDS MAIN catalog,
+# https://erosita.mpe.mpg.de/edr/eROSITAObservations/Catalogues/
+def cat_efeds_main(req, ver):
+    import json
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+
+    tag = 'efeds-main'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    '''
+    gunzip -cd data/erosita/eFEDS_c001_main_V6.2.fits.gz > /tmp/efeds-cat.fits
+    startree -i /tmp/efeds-cat.fits -o data/erosita/eFEDS_c001_main_V6.2.kd.fits -R ra_corr -D dec_corr -TPk
+    '''
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+    margin = 0.01
+    rad += margin
+    fn = os.path.join(settings.DATA_DIR, 'erosita', 'eFEDS_c001_main_V6.2.kd.fits')
+    kd = tree_open(fn)
+    I = tree_search_radec(kd, rc, dc, rad)
+    if len(I) == 0:
+        return HttpResponse(json.dumps(dict(
+            name=[],
+            rd=[],
+            flux=[],
+            flux_err=[],)),
+            content_type='application/json')
+
+    #cat = fits_table(os.path.join(settings.DATA_DIR, 'erosita', 'eFEDS_c001_main_V6.2.fits.gz'))
+    cat = fits_table(fn, rows=I)
+    # "uncorrected"
+    cat.u_ra  = cat.ra
+    cat.u_dec = cat.dec
+    # "corrected"
+    cat.ra  = cat.ra_corr
+    cat.dec = cat.dec_corr
+    cat.cut((cat.ra  >= (ralo-margin) ) * (cat.ra  <= (rahi+margin)) *
+            (cat.dec >= (declo-margin) * (cat.dec <= (dechi+margin))))
+    #cat.cut((cat.ra  >= ralo ) * (cat.ra  <= rahi) *
+    #        (cat.dec >= declo) * (cat.dec <= dechi))
+
+    import numpy as np
+    cat.radius = np.empty(len(cat))
+    # Point-like: 15" radius
+    cat.radius[cat.ext_like < 6] = 15.
+    # Extended: 60" radius
+    cat.radius[cat.ext_like >= 6] = 60.
+    
+    j = json.dumps(dict(
+        name=['%s (id %i)' % (n,i) for i,n in zip(cat.id_src, cat.name)],
+        rd=[(float(r), float(d)) for r,d in zip(cat.ra, cat.dec)],
+        rd_u=[(float(r), float(d)) for r,d in zip(cat.u_ra, cat.u_dec)],
+        flux=[(float(b), float(s), float(t), float(u)) for b,s,t,u in zip(cat.ml_flux_b1, cat.ml_flux_s, cat.ml_flux_t, cat.ml_flux_u)],
+        flux_err=[(float(b), float(s), float(t), float(u)) for b,s,t,u in zip(cat.ml_flux_err_b1, cat.ml_flux_err_s, cat.ml_flux_err_t, cat.ml_flux_err_u)],
+        flux_bands = ['0.2-0.5 keV', '0.5-2 keV', '2.3-5 keV', '5-8 keV'],
+        radius = [float(r) for r in cat.radius]
+    ))
+    j = j.replace('NaN', '"NaN"')
+    return HttpResponse(j, content_type='application/json')
 
 def cat_photoz_dr9(req, ver):
     '''

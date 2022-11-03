@@ -124,7 +124,7 @@ var QueryItems = function() {
 };
 var qstr = QueryItems();
 
-var zoom_initial = 14;
+var zoom_initial = 10;
 if ('zoom' in qstr) {
   zoom_initial = parseInt(qstr['zoom']);
   if (isNaN(zoom_initial))
@@ -924,6 +924,83 @@ function onTargetClick(e) {
 }
 
 
+var EfedsCatalog = CatalogOverlay.extend({
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this._labelsMinZoom = kwargs['labelsMinZoom'] || 6;
+    },
+    getLayer: function(result) {
+        var rdlist = result['rd'];
+        var rdulist = result['rd_u'];
+        var names = result['name'];
+        var flux = result['flux'];
+        var flux_err = result['flux_err'];
+        var circleList = new Array(rdlist.length * 2);
+        var clong = map.getCenter().lng;
+        var flux_bands = result['flux_bands'];
+        var showlabels = (map.getZoom() >= this._labelsMinZoom);
+        var radii = result['radius'];
+
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdulist[i][0];
+            var d = rdulist[i][1];
+            var rcorr = rdlist[i][0];
+            var dcorr = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            var color = 'grey';
+            if (radii === undefined) {
+                rad = this._radius;
+            } else {
+                // radius is in meters
+                rad = arcsecToMeters(radii[i]);
+            }
+            var tooltipStyle = { permanent: false, interactive: true, };
+            var circ = L.circle([lat, lng], rad,
+                                {'color':color, 'fillOpacity':0, 'weight':5});
+	        if (showlabels) {
+                var txt = this.getLabel(result, i);
+                if (txt.length > 0) {
+                    circ.bindTooltip(txt, tooltipStyle);
+                }
+	        }
+            circ.ra = r;
+            circ.dec = d;
+            circ.name = names[i];
+            circ.flux = flux[i];
+            circ.flux_err = flux_err[i];
+            circ.on('click', function(e) {
+                src = e.target;
+                var text = src.name;
+                text += '<br>Fluxes:<br>';
+                for (var j=0, nf=flux_bands.length; j<nf; j++) {
+                    text += src.flux[j].toExponential(2) + ' &pm; ' + src.flux_err[j].toExponential(2) + ' (' + flux_bands[j] + ')<br/>';
+                }
+                //text += src.flux[1].toExponential(2) + ' &pm; ' + src.flux_err[1].toExponential(2) + ' (0.5-2 keV)<br/>';
+                //text += src.flux[2].toExponential(2) + ' &pm; ' + src.flux_err[2].toExponential(2) + ' (2.3-5 keV)<br/>';
+                //text += src.flux[3].toExponential(2) + ' &pm; ' + src.flux_err[3].toExponential(2) + ' (5-8 keV)';
+                popup.setLatLng(e.latlng).setContent(text).openOn(map);
+                L.DomEvent.stopPropagation(e);
+            });
+            //circleList[i] = circ;
+
+            circleList[2*i + 1] = circ;
+
+            var lat = dec2lat(dcorr);
+            var lng = ra2long_C(rcorr, clong);
+            var color = 'maroon';
+            var circ2 = L.circle([lat, lng], 100.,
+                                 {'color':color, 'fillOpacity':0, 'weight':5});
+            circleList[2*i + 0] = circ2;
+
+        }
+        return L.layerGroup(circleList);
+    },
+});
+
+
+
+
 {% if enable_phat %}
 var PhatClusterCatalog = CatalogOverlay.extend({
     getLayer: function(result) {
@@ -1605,6 +1682,7 @@ map.attributionControl.options.prefix = '<a href="https://www.legacysurvey.org/s
 
 // default to 1.
 var tileversions = {
+    'erosita-efeds':3,
     'sfd':2,
     'decaps2': 2,
     'decaps2-model': 2,
@@ -1751,18 +1829,18 @@ tiles = mylayer_B('des-dr1', 'DES DR1',
 allLayers.push(tiles);
 
 
+//'urlPatterns': [ [0, maxZoom, tile_url], ],
 
-tiles = mylayer_B('odin-2band', 'ODIN N501/N673 images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+tiles = mylayer_B('erosita-efeds', 'eROSITA (eFEDS)',
+                  {
+                      'urlPatterns': [ [0, 10, tile_url],
+                                     ],
+//                      'urlPatterns': [ [0, 9, tile_url],
+//                                       [10, 10, static_tile_url],
+                      'maxNativeZoom': 10,
+                  });
 allLayers.push(tiles);
 
-tiles = mylayer_B('odin-n501', 'ODIN N501 image',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('odin-n673', 'ODIN N673 image',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
 
 tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
@@ -3481,6 +3559,20 @@ var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
                               'radius': 150, });
 {% endif %}
 
+var efeds_main = new EfedsCatalog('efeds-main', 'eROSITA eFEDS "main" catalog (Brunner+)',
+                             {'url_name': 'efeds-main',
+                              'minZoom': 9,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'efeds-main',
+                              'radius': 1500, });
+var efeds_counterparts = new EfedsCatalog('efeds-counterparts', 'eROSITA eFEDS "counterparts" catalog (Salvato+)',
+                             {'url_name': 'efeds-counterparts',
+                              'minZoom': 9,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'efeds-counterparts',
+                              'radius': arcsecToMeters(15), });
+
+
 {% if enable_desi_targets %}
 var desi_targets67 = new DesiTargetCatalog('targets-dr67', 'DESI Targets (DR6/DR7)',
                                   {'radius': 200,
@@ -3620,6 +3712,8 @@ desifiber._url_term = 'desifiber';
 // TODO: Make url terms a constant
 
 var overlays = [
+    efeds_main,
+    efeds_counterparts,
     {% if enable_phat %}
     phat_clusters,
     {% endif %}    
@@ -3820,13 +3914,8 @@ var baseTree1 = [
     findlayer('phat'),
     {% endif %}
 
-    findlayer('odin-2band'),
-    findlayer('odin-n501'),
-    findlayer('odin-n673'),
-    findlayer('ls-dr9.1.1'),
-    {% if enable_hsc_dr2 %}
-    findlayer('hsc-dr2'),
-    {% endif %}
+    findlayer('erosita-efeds'),
+    //findlayer('ls-dr9.1.1'),
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
         {% if enable_dr9_models %}
@@ -3960,6 +4049,9 @@ var baseTree1 = [
     {
         label: 'More surveys',
         children: [
+            {% if enable_hsc_dr2 %}
+            findlayer('hsc-dr2'),
+            {% endif %}
             {% if enable_des_dr1 %}
             findlayer('des-dr1'),
             {% endif %}
@@ -4034,6 +4126,9 @@ var overlayTree = [];
 {% endif %}
 
  overlayTree = overlayTree.concat([
+     findoverlay('efeds-main'),
+     findoverlay('efeds-counterparts'),
+
      {% if enable_phat %}
      findoverlay('phat-clusters'),
      {% endif %}    
@@ -4230,6 +4325,9 @@ var layerTree = L.control.layers.tree(baseTree,
      //console.log(sel);
      
      txts = [
+         {% if enable_dr9 %}
+         'Legacy Surveys DR9 images',
+         {% endif %}
          {% if enable_dr7 %}
          'Legacy Surveys DR6+DR7 images',
          {% endif %}

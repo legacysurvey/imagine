@@ -1,4 +1,3 @@
-from __future__ import print_function
 if __name__ == '__main__':
     import sys
     sys.path.insert(0, 'django-2.2.4')
@@ -126,6 +125,8 @@ tileversions = {
     'ls-dr9-north': [1],
     'ls-dr9-north-model': [1],
     'ls-dr9-north-resid': [1],
+
+    'erosita': [1,2,3],
 }
 
 test_layers = []
@@ -260,9 +261,9 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'odin-2band',
+           default_layer = 'erosita-efeds',
            default_radec = (None,None),
-           default_zoom = 12,
+           default_zoom = 10,
            rooturl=settings.ROOT_URL,
            maxZoom = 16,
            **kwargs):
@@ -354,8 +355,10 @@ def _index(req,
     # Nice spiral galaxy
     #ra, dec, zoom = 244.7, 7.4, 13
     # COSMOS
-    default_radec = 150.1622, 1.9913
-    default_zoom = 14
+    #default_radec = 150.1622, 1.9913
+    # EFEDS
+    default_radec = 132.6050, 0.2390
+    default_zoom = 10
     
     ra, dec = default_radec
     zoom = default_zoom
@@ -1410,7 +1413,7 @@ class MapLayer(object):
             if not self.tileversion_ok(ver):
                 # allow ver=1 for unknown versions
                 if ver != 1:
-                    raise RuntimeError('Invalid tile version %i for %s' % (ver, str(self)))
+                    raise RuntimeError('Invalid tile version %i for %s (name=%s)' % (ver, str(self), getattr(self, 'name', None)))
         else:
             # Set default version...?
             ver = tileversions[self.name][-1]
@@ -2454,6 +2457,142 @@ class ReDecalsResidLayer(UniqueBrickMixin, ResidMixin, ReDecalsLayer):
 
 class ReDecalsModelLayer(UniqueBrickMixin, ReDecalsLayer):
     pass
+
+
+class ErositaLayer(RebrickedMixin, MapLayer):
+    '''
+    imcopy /tmp/b1_ExpCorr_gs10.fits.gz"[1:9000]"     data/erosita/b1_ExpCorr_gs10_tile1.fits
+    imcopy /tmp/b1_ExpCorr_gs10.fits.gz"[9001:18000]" data/erosita/b1_ExpCorr_gs10_tile2.fits
+    '''
+
+    def __init__(self, name):
+        super().__init__(name, nativescale=10)
+        self.bands = '123'
+        self.basedir = os.path.join(settings.DATA_DIR, self.name)
+        self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
+        self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+        self.bricks = None
+        self.pixscale = 4.0
+
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+            '%(scale)i_%(band)s', '%(brickname).4s',
+            'erosita' + '-%(brickname)s-%(band)s.fits')
+
+    def get_brick_size_for_scale(self, scale):
+        return 10. * 2**scale
+
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        # Native scale: 4"/pixel, 9000 x 9000
+        #S = 9100
+        S = 5000
+        # if scale >= 7:
+        #     size = int(S * 1.2)
+        # elif scale == 6:
+        #     size = int(S * 1.1)
+        # else:
+        #     size = S
+        size = S
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        print('Returning WCS for scale', scale, 'brick', brick.brickname, ':', wcs)
+        return wcs
+
+    def get_bricks_for_scale(self, scale):
+        if scale in [0, None]:
+            return self.get_bricks()
+        scale = min(scale, 4)
+        from astrometry.util.fits import fits_table
+        fn = os.path.join(settings.DATA_DIR, 'erosita', 'erosita-bricks-%i.fits' % scale)
+        print('Erosita bricks for scale', scale, '->', fn)
+        b = fits_table(fn)
+        ### HACK -- eFEDS hard-coded
+        b.cut((b.ra1 < 146) * (b.ra2 > 126) * (b.dec1 < +6.0) * (b.dec2 > -3.5))
+        return b
+    
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        b = fits_table()
+        # by looking over the files by hand
+        b.crval1 = np.array([136.0]*2)
+        b.crval2 = np.array([1.5]*2)
+        b.crpix1 = np.array([9000.5, 0.5])
+        b.crpix2 = np.array([4500.5]*2)
+        b.cd1_1 = np.array([-4./3600]*2)
+        b.cd1_2 = np.array([0.]*2)
+        b.cd2_1 = np.array([0.]*2)
+        b.cd2_2 = np.array([+4./3600]*2)
+        #b.filename = np.array(['_ExpCorr_gs10_
+        b.width = np.array([9000]*2)
+        b.height = np.array([9000]*2)
+        b.ra1 = b.crval1 - b.width * self.pixscale / 3600.
+        b.ra2 = b.crval1 + b.width * self.pixscale / 3600.
+        b.dec1 = b.crval2 - b.height * self.pixscale / 3600.
+        b.dec2 = b.crval2 + b.height * self.pixscale / 3600.
+        b.brickname = np.array(['tile1','tile2'])
+        b.ra  = b.crval1
+        b.dec = b.crval2
+        self.bricks = b
+        return self.bricks
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        #from tractor.brightness import NanoMaggies
+        #zpscale = NanoMaggies.zeropointToScale(27.0)
+        #rgb = sdss_rgb([im/zpscale for im in imgs], bands,
+        #               scales=dict(g=(2,6.0*5.), r=(1,3.4*5.), z=(0,2.2*5.)), m=0.03)
+
+        import numpy as np
+        #b,g,r = imgs
+        # bands 1, 2, 3 == (0.2-0.5), (0.5-1.0), (1.0-2.0) keV
+        print('Bands:', bands)
+        r,g,b = imgs
+
+        r *= 2.
+
+        # print('Image ranges:')
+        # print(b.min(), b.max(), 'med', np.percentile(b.ravel(), [10, 25, 50, 70, 90]))
+        # print(g.min(), g.max(), 'med', np.percentile(g.ravel(), [10, 25, 50, 70, 90]))
+        # print(r.min(), r.max(), 'med', np.percentile(r.ravel(), [10, 25, 50, 70, 90]))
+        h,w = b.shape
+        rgb = np.empty((h,w,3), np.float32)
+        rgb[:,:,0] = np.clip(r / 1e-4,  0., 1.)
+        rgb[:,:,1] = np.clip(g / 1e-4, 0., 1.)
+        rgb[:,:,2] = np.clip(b / 1e-4, 0., 1.)
+        return rgb
+
+    def get_base_filename(self, brick, band, **kwargs):
+        path = os.path.join(self.basedir,
+                            'b%s_ExpCorr_gs4_%s.fits' % (band, brick.brickname))
+                            #'b%s_ExpCorr_gs10_%s.fits' % (band, brick.brickname))
+        print('Returning base filename:', path)
+        return path
+
+    def get_bands(self):
+        return self.bands
+    
+    def read_wcs(self, brick, band, scale, fn=None):
+        from map.coadds import read_tan_from_header
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        if fn is None:
+            return None
+        ext = self.get_fits_extension(scale, fn)
+        wcs = read_tan_from_header(fn, ext)
+        if scale == 0:
+            wcs.sin = 1
+        if scale == 0:
+            ps = self.pixscale/3600.
+            wcs.set_cd(-ps, 0., 0., ps)
+        print('Returning WCS for', brick.brickname, band, scale, '->', wcs)
+        return wcs
+
 
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
@@ -5567,6 +5706,9 @@ def get_layer(name, default=None):
     if '/' in name or '..' in name:
         pass
 
+    if name == 'erosita-efeds':
+        layer = ErositaLayer('erosita')
+
     if name == 'ztf':
         layer = ZtfLayer('ztf')
 
@@ -6102,8 +6244,12 @@ if __name__ == '__main__':
     #r = c.get('/exposure_panels/decals-dr5/496441/N11/?ra=121.2829&dec=29.6660&size=100')
     #r = c.get('/exposures/?ra=121.2829&dec=29.666&layer=decals-dr5')
     #r = c.get('/exposure_panels/decals-dr5/392401/N11/?ra=121.2829&dec=29.6660&size=100')
-    r = c.get('/ls-dr9.1.1/1/14/9549/8100.jpg')
-    r = c.get('/ls-dr9.1.1/1/13/4768/4040.jpg')
+    #r = c.get('/ls-dr9.1.1/1/14/9549/8100.jpg')
+    #r = c.get('/ls-dr9.1.1/1/13/4768/4040.jpg')
+    #r = c.get('/erosita-efeds/1/10/637/507.jpg')
+    #r = c.get('/erosita-efeds/1/10/639/507.jpg')
+    #r = c.get('/erosita-efeds/1/9/318/252.jpg')
+    r = c.get('/erosita-efeds/2/10/637/507.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

@@ -222,6 +222,8 @@ def top_levels(mp, opt):
 
         print('Bands', bands)
 
+        basescale = 5
+
         rgbkwargs = {}
         if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6',
                         'unwise-cat-model']:
@@ -236,12 +238,14 @@ def top_levels(mp, opt):
             bands = ['x']
         elif 'vlass' in opt.kind:
             bands = [1]
+        elif opt.kind == 'erosita-efeds':
+            bands = '123'
+            basescale = 6
         #else:
         #    bands = 'grz'
 
         ver = tileversions.get(opt.kind, [1])[-1]
         print('Version', ver)
-        basescale = 5
 
         pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                            '%(zoom)i', '%(x)i', '%(y)i.jpg')
@@ -736,6 +740,7 @@ def main():
               or 'dr9k' in opt.kind
               or 'dr9m' in opt.kind
               or opt.kind == 'ls-dr9.1.1'
+              or opt.kind == 'erosita-efeds'
     ):
         if opt.maxdec is None:
             opt.maxdec = 90.
@@ -748,6 +753,8 @@ def main():
 
         if opt.kind == 'galex' and opt.bands is None:
             opt.bands = 'nf'
+        if opt.kind == 'erosita-efeds' and opt.bands is None:
+            opt.bands = '123'
         if 'unwise' in opt.kind and opt.bands is None:
             opt.bands = '12'
         if 'ztf' in opt.kind and opt.bands is None:
@@ -909,7 +916,7 @@ def main():
                          'vlass1.2', 'ztf',
                          'ls-dr9-south', 'ls-dr9-south-model',
                          'ls-dr9-north', 'ls-dr9-north-model',
-                         'odin-2band', 'ls-dr9.1.1'
+                         'odin-2band', 'ls-dr9.1.1', 'erosita-efeds',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')

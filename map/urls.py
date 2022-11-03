@@ -17,6 +17,11 @@ urlpatterns = [
     url(r'^gfas', views.gfas),
     url(r'^ci', views.ci),
 
+    # eROSITA eFEDS main catalog
+    url(r'^efeds-main/(\d+)/cat.json', cats.cat_efeds_main),
+    # eROSITA eFEDS counterparts catalog
+    url(r'^efeds-counterparts/(\d+)/cat.json', cats.cat_efeds_counterparts),
+
     # Rongpu's DR9 photo-zs
     url(r'^photoz-dr9/(\d+)/cat.json', cats.cat_photoz_dr9),
 
