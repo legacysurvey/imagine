@@ -1696,8 +1696,9 @@ class MapLayer(object):
             rgb = self.get_rgb(ims, bands)
             self.write_jpeg(out_fn, rgb)
 
-            if 'sga' in req.GET or 'sga-parent' in req.GET:
-                render_sga_ellipse(out_fn, out_fn, wcs, req.GET)
+            if req is not None:
+                if 'sga' in req.GET or 'sga-parent' in req.GET:
+                    render_sga_ellipse(out_fn, out_fn, wcs, req.GET)
 
             return
 
