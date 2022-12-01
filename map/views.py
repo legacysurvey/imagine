@@ -6132,7 +6132,9 @@ if __name__ == '__main__':
     #r = c.get('/cfis-r/1/13/3518/3368.jpg')
     #r = c.get('/cfis-u/1/14/16383/8214.jpg')
     #r = c.get('/cfis-dr2/1/cat.json?ralo=0.0988&rahi=0.2226&declo=-0.3704&dechi=-0.3014#IC 3478')
-    r = c.get('/cfis-dr2/1/cat.json?ralo=359.9691&rahi=0.0309&declo=31.9854&dechi=32.0147')
+    #r = c.get('/cfis-dr2/1/cat.json?ralo=359.9691&rahi=0.0309&declo=31.9854&dechi=32.0147')
+    #r = c.get('/cfis-dr3-r/1/6/21/28.jpg')
+    r = c.get('/cfis-dr3-r/1/6/20/26.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

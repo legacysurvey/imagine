@@ -71,9 +71,8 @@ class CadcOAuth(BaseOAuth2):
         import base64
         code = response.get('access_token')
         print('CADC get_user_details: access token', code)
-        if not code.startswith('base64:'):
-            return None
-        code = code[len('base64:'):]
+        if code.startswith('base64:'):
+            code = code[len('base64:'):]
         code = base64.b64decode(code)
         # bytes -> string
         code = code.decode()
