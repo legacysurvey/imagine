@@ -447,6 +447,7 @@ def main():
     parser.add_option('--grass', action='store_true', help='progress plot')
 
     parser.add_option('--bands', default=None)
+    parser.add_option('--bandlist', default=None, help='Comma-separated list of bands')
 
     parser.add_option('-v', '--verbose', dest='verbose', action='count',
                       default=0, help='Make more verbose')
@@ -454,6 +455,8 @@ def main():
 
     opt,args = parser.parse_args()
 
+    if opt.bandlist is not None:
+        opt.bands = opt.bandlist.split(',')
     if opt.verbose == 0:
         lvl = logging.INFO
     else:
