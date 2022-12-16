@@ -1000,6 +1000,8 @@ class MapLayer(object):
             by = by[ok]
             if len(bx) == 0:
                 continue
+            if debug_ps is not None:
+                plt.plot(bx, by, 'r-')
             if polygons_intersect(xy, np.vstack((bx, by)).T):
                 if debug_ps is not None:
                     plt.plot(bx, by, '-')
@@ -1226,8 +1228,10 @@ class MapLayer(object):
         else:
             bricks = self.bricks_touching_general_wcs(wcs, scale=scale)
 
+        #print('Render into WCS: bricks', bricks)
+            
         if bricks is None or len(bricks) == 0:
-            print('No bricks touching WCS')
+            print('XXX No bricks touching WCS')
             return None
 
         if bands is None:
@@ -2793,7 +2797,28 @@ class WiroCLayer(ReDecalsLayer):
         rgb = rgb[:,:,np.newaxis].repeat(3, axis=2)
         print('rgb shape', rgb.shape)
         return rgb
+    def get_brick_size_for_scale(self, scale):
+        if scale in [0, None]:
+            return 0.7
+        return super().get_brick_size_for_scale(scale)
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        if scale in [0,None]:
+            print('Get scaled WCS: brick', brick)
+            pixscale = 0.58
+            cd = pixscale / 3600.
+            size = 4200
+            crpix = size/2. + 0.5
+            wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                      float(size), float(size))
+            return wcs
+        return super().get_scaled_wcs(brick, band, scale)
 
+    # def bricks_within_range(self, ra, dec, radius, scale=None):
+    #     print('bricks_within_range:', ra, dec, radius, scale)
+    #     B = super().bricks_within_range(ra, dec, radius, scale=scale)
+    #     print('Got', B, len(B))
+    #     return B
 
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
@@ -7453,7 +7478,8 @@ if __name__ == '__main__':
     #r = c.get('/bricks/?ralo=278.7940&rahi=278.9178&declo=32.3512&dechi=32.4086&layer=ls-dr10-south-resid-grz')
     #r = c.get('/exposures/?ra=208.7595&dec=34.8814&layer=ls-dr10')
     #r = c.get('/cutout.fits?ra=208.9270&dec=32.375&layer=ls-dr10&pixscale=0.262&bands=iz')#&bands=griz')
-    r = c.get('/jpeg-cutout?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
+    #r = c.get('/jpeg-cutout?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
+    r = c.get('/wiro-C/1/13/7397/4203.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
