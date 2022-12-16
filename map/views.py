@@ -2971,12 +2971,15 @@ class LegacySurveySplitLayer(MapLayer):
 
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
         from astrometry.util.fits import merge_tables
+        import numpy as np
         ccds_n = self.top.ccds_touching_box(north, south, east, west, Nmax=Nmax)
         ccds_s = self.bottom.ccds_touching_box(north, south, east, west, Nmax=Nmax)
         ccds = []
         if ccds_n is not None:
+            ccds_n.is_north = np.ones(len(ccds_n), bool)
             ccds.append(ccds_n)
         if ccds_s is not None:
+            ccds_s.is_north = np.zeros(len(ccds_n), bool)
             ccds.append(ccds_s)
         if not len(ccds):
             return None
@@ -5112,7 +5115,11 @@ def get_survey(name):
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
     elif name in ['ls-dr10']:
-        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+        north = get_survey('ls-dr9-north')
+        north.layer = 'ls-dr9-north'
+        south = get_survey('ls-dr10-south')
+        south.layer = 'ls-dr10-south'
+        survey = SplitSurveyData(north, south)
 
     elif name in ['ls-dr10-early']:
         survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
@@ -5880,8 +5887,11 @@ def exposures_common(req, tgz, copsf):
     nil,south = wcs.pixelxy2radec(size+0.5, 1)
     west,nil  = wcs.pixelxy2radec(1, size+0.5)
     east,nil  = wcs.pixelxy2radec(W, size+0.5)
-    
-    CCDs = survey.ccds_touching_wcs(wcs)
+
+    #print('Getting ccds_touching_wcs from', survey)
+    #CCDs = survey.ccds_touching_wcs(wcs)
+    print('Getting ccds_touching_wcs from', layer)
+    CCDs = layer.ccds_touching_box(north, south, east, west)
     debug(len(CCDs), 'CCDs')
     CCDs = touchup_ccds(CCDs, survey)
 
@@ -7419,7 +7429,9 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr10/1/6/14/25.jpg')
     #r = c.get('/wiro-C/1/13/7403/4208.jpg')
     #r = c.get('/ls-dr10/1/13/4095/3316.cat.json')
-    r = c.get('/bricks/?ralo=278.7940&rahi=278.9178&declo=32.3512&dechi=32.4086&layer=ls-dr10-south-resid-grz')
+
+    #r = c.get('/bricks/?ralo=278.7940&rahi=278.9178&declo=32.3512&dechi=32.4086&layer=ls-dr10-south-resid-grz')
+    r = c.get('/exposures/?ra=208.7595&dec=34.8814&layer=ls-dr10')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
