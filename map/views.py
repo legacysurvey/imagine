@@ -1695,22 +1695,20 @@ class MapLayer(object):
 
         xtile = ytile = -1
 
-        #rtn = self.get_tile(req, None, zoom, xtile, ytile, wcs=wcs, get_images=fits,
-        #                     savecache=False, bands=bands, tempfiles=tempfiles)
-
-        ims = self.render_into_wcs(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
-        if ims is None:
-            raise NoOverlapError('No overlap')
-
+        print('Cutout: bands', bands)
         if jpeg:
-            rgb = self.get_rgb(ims, bands)
+            ims,rgb = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
             self.write_jpeg(out_fn, rgb)
-
             if req is not None:
                 if 'sga' in req.GET or 'sga-parent' in req.GET:
                     render_sga_ellipse(out_fn, out_fn, wcs, req.GET)
-
             return
+        
+        #ims = self.render_into_wcs(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
+        ims,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
+                                get_images_only=True)
+        if ims is None:
+            raise NoOverlapError('No overlap')
 
         if hdr is not None:
             hdr['BANDS'] = ''.join([str(b) for b in bands])
@@ -3082,7 +3080,7 @@ class LegacySurveySplitLayer(MapLayer):
     def bricks_touching_radec_box(self, *args, **kwargs):
         from astrometry.util.fits import merge_tables
         BB = merge_tables([l.bricks_touching_radec_box(*args, **kwargs)
-                           for l in self.layers])
+                           for l in self.layers], columns='fillzero')
         return BB
 
     def get_filename(self, brick, band, scale, tempfiles=None):
@@ -3107,22 +3105,30 @@ class LegacySurveySplitLayer(MapLayer):
             if y < split:
                 print('Split Layer render_rgb: short-cutting to north')
                 #print('y below split -- north')
-                return self.top.render_rgb(wcs, zoom, x, y, bands=self.top_bands,
+                if bands is None:
+                    b = self.top_bands
+                else:
+                    b = bands
+                return self.top.render_rgb(wcs, zoom, x, y, bands=b,
                                            tempfiles=tempfiles,
                                            get_images_only=get_images_only)
             if y > split:
                 print('Split Layer render_rgb: short-cutting to south')
+                if bands is None:
+                    b = self.bottom_bands
+                else:
+                    b = bands
                 #print('y above split -- south')
-                return self.bottom.render_rgb(wcs, zoom, x, y, bands=self.bottom_bands,
+                return self.bottom.render_rgb(wcs, zoom, x, y, bands=b,
                                               tempfiles=tempfiles,
                                               get_images_only=get_images_only)
 
         # both!
-        topims,toprgb = self.top.render_rgb(wcs, zoom, x, y, bands=self.top_bands,
+        topims,toprgb = self.top.render_rgb(wcs, zoom, x, y, bands=bands, #self.top_bands,
                                             tempfiles=tempfiles,
                                             get_images_only=get_images_only)
 
-        botims,botrgb = self.bottom.render_rgb(wcs, zoom, x, y, bands=self.bottom_bands,
+        botims,botrgb = self.bottom.render_rgb(wcs, zoom, x, y, bands=bands, #self.bottom_bands,
                                                tempfiles=tempfiles,
                                                get_images_only=get_images_only)
         
@@ -3149,13 +3155,15 @@ class LegacySurveySplitLayer(MapLayer):
             # HACK
             bands = self.bottom_bands
         ims = []
-        for band in bands:
-            topim = None
-            botim = None
-            if band in self.top_bands:
-                topim = topims[self.top_bands.index(band)]
-            if band in self.bottom_bands:
-                botim = botims[self.bottom_bands.index(band)]
+        for ii,band in enumerate(bands):
+            topim = topims[ii]
+            botim = botims[ii]
+            # topim = None
+            # botim = None
+            # if band in self.top_bands:
+            #     topim = topims[self.top_bands.index(band)]
+            # if band in self.bottom_bands:
+            #     botim = botims[self.bottom_bands.index(band)]
             if topim is None and botim is None:
                 ims.append(None)
                 continue
@@ -3176,7 +3184,8 @@ class LegacySurveySplitLayer(MapLayer):
         return ims,botrgb
 
     def get_bands(self):
-        return self.top.get_bands()
+        #return self.top.get_bands()
+        return self.bottom_bands
     def get_rgb(self, *args, **kwargs):
         return self.top.get_rgb(*args, **kwargs)
     def get_scale(self, *args):
@@ -6893,6 +6902,7 @@ def get_layer(name, default=None):
         north = get_layer('ls-dr9-north' + suff)
         south = get_layer('ls-dr10-south' + suff + grzpart)
         layer = LegacySurveySplitLayer(name + grzpart, north, south, 32.375, bottom_bands=bands)
+        layer.bands = 'griz'
         layer.drname = 'Legacy Surveys DR10'
 
     elif name in ['ls-dr10-south', 'ls-dr10-south-model', 'ls-dr10-south-resid',
@@ -7431,7 +7441,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr10/1/13/4095/3316.cat.json')
 
     #r = c.get('/bricks/?ralo=278.7940&rahi=278.9178&declo=32.3512&dechi=32.4086&layer=ls-dr10-south-resid-grz')
-    r = c.get('/exposures/?ra=208.7595&dec=34.8814&layer=ls-dr10')
+    #r = c.get('/exposures/?ra=208.7595&dec=34.8814&layer=ls-dr10')
+    r = c.get('/cutout.fits?ra=208.9270&dec=32.375&layer=ls-dr10&pixscale=0.262&bands=iz')#&bands=griz')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
