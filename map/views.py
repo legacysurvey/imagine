@@ -7419,7 +7419,6 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr10/1/6/14/25.jpg')
     #r = c.get('/wiro-C/1/13/7403/4208.jpg')
     r = c.get('/ls-dr10/1/13/4095/3316.cat.json')
->>>>>>> master
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
