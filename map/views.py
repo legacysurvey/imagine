@@ -1495,7 +1495,10 @@ class MapLayer(object):
             return rimgs,None
         if bands is None:
             bands = self.get_bands()
-        rgb = self.get_rgb(rimgs, bands)
+        if rimgs is None:
+            rgb = None
+        else:
+            rgb = self.get_rgb(rimgs, bands)
         return rimgs, rgb
 
     def get_tile(self, req, ver, zoom, x, y,
@@ -3155,9 +3158,13 @@ class LegacySurveySplitLayer(MapLayer):
             # HACK
             bands = self.bottom_bands
         ims = []
+        topim = None
+        botim = None
         for ii,band in enumerate(bands):
-            topim = topims[ii]
-            botim = botims[ii]
+            if topims is not None:
+                topim = topims[ii]
+            if botims is not None:
+                botim = botims[ii]
             # topim = None
             # botim = None
             # if band in self.top_bands:
@@ -3178,8 +3185,11 @@ class LegacySurveySplitLayer(MapLayer):
 
         print('SplitLayer render_rgb: rgb: top', toprgb.shape if toprgb is not None else 'None', 'bottom', botrgb.shape if botrgb is not None else 'None')
 
+        if toprgb is not None and botrgb is None:
+            return ims,toprgb
         # Copy top into bottom
-        botrgb[topmask,:,:] = toprgb[topmask,:,:]
+        if botrgb is not None and toprgb is not None:
+            botrgb[topmask,:,:] = toprgb[topmask,:,:]
 
         return ims,botrgb
 
@@ -7442,7 +7452,8 @@ if __name__ == '__main__':
 
     #r = c.get('/bricks/?ralo=278.7940&rahi=278.9178&declo=32.3512&dechi=32.4086&layer=ls-dr10-south-resid-grz')
     #r = c.get('/exposures/?ra=208.7595&dec=34.8814&layer=ls-dr10')
-    r = c.get('/cutout.fits?ra=208.9270&dec=32.375&layer=ls-dr10&pixscale=0.262&bands=iz')#&bands=griz')
+    #r = c.get('/cutout.fits?ra=208.9270&dec=32.375&layer=ls-dr10&pixscale=0.262&bands=iz')#&bands=griz')
+    r = c.get('/jpeg-cutout?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

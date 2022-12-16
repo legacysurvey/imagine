@@ -776,10 +776,15 @@ def get_random_galaxy(layer=None):
     elif layer in ['ls-dr9-south', 'ls-dr9']:
         drnum = 9
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr9-south.fits')
+    elif 'ls-dr10-south' in layer:
+        drnum = 10
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr10-south.fits')
+    elif 'ls-dr10' in layer:
+        drnum = 10
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr10.fits')
     else:
         drnum = 9
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
-
 
     if (not layer in galaxycats) and not os.path.exists(galfn):
         if settings.CREATE_GALAXY_CATALOG:
@@ -2745,6 +2750,11 @@ if __name__ == '__main__':
     #layer = get_layer('hsc2')
     #create_galaxy_catalog(galfn, None, layer=layer)
 
+    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr10.fits')
+    layer = get_layer('ls-dr10')
+    create_galaxy_catalog(galfn, None, layer=layer)
+    sys.exit(0)
+    
     # galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
     # layer = get_layer('ls-dr9-north')
     # create_galaxy_catalog(galfn, None, layer=layer)
