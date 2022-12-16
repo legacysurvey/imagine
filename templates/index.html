@@ -3818,6 +3818,13 @@ var dr10cat = new DecalsCatalogLayer(tileWatcher,
                                            'minZoom': 12,
                                            'urlTerm': 'sources-dr10'});
 
+var dr10southcat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr10-south',
+                                          'Legacy Surveys DR10-south Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr10-south'});
+
 var dr10acat = new DecalsCatalogLayer(tileWatcher,
                                         'ls-dr10a',
                                           'Legacy Surveys DR10a Catalog',
@@ -4212,6 +4219,7 @@ var overlays = [
     {% if enable_dr10_overlays %}
     {% if enable_dr10 %}
     dr10cat,
+    dr10southcat,
     {% endif %}
     {% if enable_dr10a %}
     dr10acat,
@@ -4469,7 +4477,7 @@ moresurveys = moresurveys.concat([
 
 baseTree1 = baseTree1.concat([
     {% if enable_dr10 %}
-    findlayer('ls-dr10'),
+    findlayer('ls-dr10', [
     findlayer('ls-dr10-model'),
     findlayer('ls-dr10-resid'),
     findlayer('ls-dr10-grz'),
@@ -4481,6 +4489,7 @@ baseTree1 = baseTree1.concat([
     findlayer('ls-dr10-south-grz'),
     findlayer('ls-dr10-south-model-grz'),
     findlayer('ls-dr10-south-resid-grz'),
+    ]),
     {% endif %}
     {% if enable_dr10a %}
     findlayer('ls-dr10a'),
@@ -4766,6 +4775,7 @@ var overlayTree = [];
 
      {% if enable_dr10 %}
      findoverlay('ls-dr10'),
+     findoverlay('ls-dr10-south'),
      {% endif %}
      {% if enable_dr10a %}
      findoverlay('ls-dr10a'),
@@ -4913,6 +4923,9 @@ var layerTree = L.control.layers.tree(baseTree,
 
      // These are menus to collapse
      txts = [
+         {% if enable_dr10 %}
+         'Legacy Surveys DR10 images',
+         {% endif %}
          {% if enable_dr9 %}
          'Legacy Surveys DR9 images',
          'Legacy Surveys DR9.1.1 COSMOS deep images',

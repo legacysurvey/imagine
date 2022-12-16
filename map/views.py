@@ -3050,6 +3050,24 @@ class LegacySurveySplitLayer(MapLayer):
         if len(allcats) == 0:
             allcats = None
         else:
+            # Merge DRs with different lengths of WISE light curves...
+            lclen = 0
+            for c in allcats:
+                x = c.lc_flux_w1
+                _,w = x.shape
+                lclen = max(lclen, w)
+            for c in allcats:
+                for col in c.get_columns():
+                    if not col.startswith('lc_'):
+                        continue
+                    x = c.get(col)
+                    n,w = x.shape
+                    if w == lclen:
+                        continue
+                    y = np.zeros((n,lclen), x.dtype)
+                    y[:,:w] = x
+                    c.set(col, y)
+
             allcats = merge_tables(allcats, columns='fillzero')
         return allcats,hdr
 
