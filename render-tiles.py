@@ -194,443 +194,186 @@ def _bounce_decals_dr3(X):
 def top_levels(mp, opt):
     from map.views import save_jpeg, trymakedirs
 
-    if opt.kind in ['decaps2', 'decaps2-model', 'decaps2-resid',
-                    'decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
-                    'decals-dr7', 'decals-dr7-model', 'decals-dr7-resid',
-                    'mzls+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
-                    'des-dr1',
-                    'eboss',
-                    'unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
-                    'unwise-w3w4',
-                    'unwise-cat-model',
-                    'galex', 'sdss2', 'wssa', 'ztf',
-                    'ls-dr56', 'ls-dr67',
-                    'vlass1.2'] or True:
-        import pylab as plt
-        from viewer import settings
-        import fitsio
-        from scipy.ndimage.filters import gaussian_filter
-        from map.views import _unwise_to_rgb
-        tag = opt.kind
+    import pylab as plt
+    from viewer import settings
+    import fitsio
+    from scipy.ndimage.filters import gaussian_filter
+    from map.views import _unwise_to_rgb
+    tag = opt.kind
 
-        from map.views import get_layer
-        layer = get_layer(opt.kind)
+    from map.views import get_layer
+    layer = get_layer(opt.kind)
 
-        bands = layer.get_bands()
+    bands = layer.get_bands()
 
-        print('Layer:', layer)
-        #print('Survey:', layer.survey)
-        #print('  cache_dir:', layer.survey.cache_dir)
+    print('Layer:', layer)
+    #print('Survey:', layer.survey)
+    #print('  cache_dir:', layer.survey.cache_dir)
 
-        rgbkwargs = {}
-        if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
-                        'unwise-cat-model']:
-            bands = [1, 2]
-        elif opt.kind == 'unwise-w3w4':
-            bands = [3, 4]
-        elif opt.kind == 'sdss2':
-            bands = 'gri'
-        elif opt.kind == 'galex':
-            bands = ['n','f']
-        elif opt.kind == 'ztf':
-            bands = 'gri'
-        elif opt.kind == 'wssa':
-            bands = ['x']
-        elif 'vlass' in opt.kind:
-            bands = [1]
-        #else:
-        #    bands = 'grz'
+    rgbkwargs = {}
+    if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
+                    'unwise-cat-model']:
+        bands = [1, 2]
+    elif opt.kind == 'unwise-w3w4':
+        bands = [3, 4]
+    elif opt.kind == 'sdss2':
+        bands = 'gri'
+    elif opt.kind == 'galex':
+        bands = ['n','f']
+    elif opt.kind == 'ztf':
+        bands = 'gri'
+    elif opt.kind == 'wssa':
+        bands = ['x']
+    elif 'vlass' in opt.kind:
+        bands = [1]
+    #else:
+    #    bands = 'grz'
 
-        if opt.bands is not None:
-            bands = opt.bands
-        print('Bands', bands)
+    if opt.bands is not None:
+        bands = opt.bands
+    print('Bands', bands)
 
-        ver = tileversions.get(opt.kind, [1])[-1]
-        print('Version', ver)
-        basescale = 5
+    ver = tileversions.get(opt.kind, [1])[-1]
+    print('Version', ver)
+    basescale = 5
 
-        if opt.kind  in ['ls-dr10-early',]:
-            ## UGH, this is because there is some problem with the tiling so that scale 5, y=26 fails
-            ## to find any bricks touching, and rather than figure it out I just backed out the scale.
-            basescale = 6
+    #if opt.kind  in ['ls-dr10-early', 'ls-dr10', 'ls-dr10-model', 'ls-dr10-resid',
+    #                 'ls-dr10-grz', 'ls-dr10-model-grz', 'ls-dr10-resid-grz',]:
+    if 'ls-dr10' in opt.kind:
+        ## UGH, this is because there is some problem with the tiling so that scale 5, y=26 fails
+        ## to find any bricks touching, and rather than figure it out I just backed out the scale.
+        basescale = 6
+    
+    pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
+                       '%(zoom)i', '%(x)i', '%(y)i.jpg')
+    patdata = dict(ver=ver)
+
+    tilesize = 256
+    tiles = 2**basescale
+    side = tiles * tilesize
+
+    if opt.kind in ['ls-dr10', 'ls-dr10-model', 'ls-dr10-resid']:
+        # Split survey with different colormaps for north/south (grz/griz).
+        decsplit = 32.375
+
+        modres = opt.kind.replace('ls-dr10','')
         
-        pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
-                           '%(zoom)i', '%(x)i', '%(y)i.jpg')
-        patdata = dict(ver=ver)
+        import numpy as np
+        from astrometry.util.starutil_numpy import radectolb
+        import pylab as plt
+        from map.views import save_jpeg, trymakedirs
+        tilesplits = {}
+        dec = decsplit
+        fy = 1. - (np.log(np.tan(np.deg2rad(dec + 90)/2.)) - -np.pi) / (2.*np.pi)
+        for zoom in range(basescale, -1, -1):
+            n = 2**zoom
+            y = int(fy * n)
+            print('Zoom', zoom, '-> y', y)
+            # ok,rr,dd = wcs.pixelxy2radec([1,1], [1,256])
+            # #print('Decs', dd)
+            for x in range(n):
+                X = get_tile_wcs(zoom, x, y)
+                wcs = X[0]
+                H,W = wcs.shape
+                #px = W//2 + 0.5
+                #py = np.arange(1, H+1)
+                px,py = np.meshgrid(np.arange(1, W+1), np.arange(1, H+1))
+                rr,dd = wcs.pixelxy2radec(px, py)[-2:]
+                ll,bb = radectolb(rr.ravel(), dd.ravel())
+                ngc = (bb.reshape(dd.shape) > 0.)
+                topmask = (dd >= decsplit) * ngc
 
-        tilesize = 256
-        tiles = 2**basescale
-        side = tiles * tilesize
+                topfn = 'data/tiles/ls-dr9-north%s/1/%i/%i/%i.jpg' % (modres, zoom,x,y)
+                botfn = 'data/tiles/ls-dr10-south%s/1/%i/%i/%i.jpg' % (modres, zoom,x,y)
 
-        basepat = 'base-%s-%i-%%s.fits' % (opt.kind, basescale)
-
-        basefns = [basepat % band for band in bands]
-        if not all([os.path.exists(fn) for fn in basefns]):
-            bases = [np.zeros((side, side), np.float32) for band in bands]
-
-            args = []
-            xy = []
-            if opt.y1 is None:
-                opt.y1 = tiles
-            if opt.x0 is None:
-                opt.x0 = 0
-            if opt.x1 is None:
-                opt.x1 = tiles
-            for y in range(opt.y0, opt.y1):
-                for x in range(opt.x0, opt.x1):
-                    args.append((opt.kind, basescale, x, y, False, True))
-                    xy.append((x,y))
-
-            tiles = mp.map(_one_tile, args)
-
-            for ims,(x,y) in zip(tiles, xy):
-
-                #for a,(x,y) in zip(args, xy):
-                #print('_one_tile args:', a)
-                #ims = _one_tile(a)
-                #print('-> ', ims)
-
-                if ims is None:
-                    continue
-                for im,base in zip(ims, bases):
-                    if im is None:
-                        continue
-                    base[y*tilesize:(y+1)*tilesize,
-                         x*tilesize:(x+1)*tilesize] = im
-
-            for fn,base in zip(basefns, bases):
-                fitsio.write(fn, base, clobber=True)
-        else:
-            print('Reading', basefns)
-            bases = [fitsio.read(fn) for fn in basefns]
-
-        for scale in range(basescale, -1, -1):
-            print('Scale', scale)
-            tiles = 2**scale
-            for y in range(tiles):
-                for x in range(tiles):
-                    ims = [base[y*tilesize:(y+1)*tilesize,
-                                x*tilesize:(x+1)*tilesize] for base in bases]
-                    rgb = layer.get_rgb(ims, bands, **rgbkwargs)
-                    pp = patdata.copy()
-                    pp.update(zoom=scale, x=x, y=y)
-                    fn = pat % pp
-                    trymakedirs(fn)
-                    save_jpeg(fn, rgb)
-                    print('Wrote', fn)
-
-            for i,base in enumerate(bases):
-                if 'vlass' in opt.kind:
-                    base = np.maximum(np.maximum(base[::2,::2], base[1::2,::2]),
-                                      np.maximum(base[1::2,1::2], base[::2,1::2]))
+                if not os.path.exists(topfn):
+                    toprgb = np.zeros((256,256,3), np.uint8)
                 else:
-                    base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
-                bases[i] = base
+                    toprgb = plt.imread(topfn)
+                if not os.path.exists(botfn):
+                    botrgb = np.zeros((256,256,3), np.uint8)
+                else:
+                    botrgb = plt.imread(botfn)
 
+                for i in range(3):
+                    #botrgb[topmask,:,:] = toprgb[topmask,:,:]
+                    botrgb[:,:,i][topmask] = toprgb[:,:,i][topmask]
+                outfn = 'data/tiles/ls-dr10%s/1/%s/%i/%i.jpg' % (modres,zoom,x,y)
+                trymakedirs(outfn)
+                save_jpeg(outfn, botrgb)
+                print('Wrote', outfn)
+                
+        return
 
-    elif opt.kind in ['unwise', 'unwise-neo1', 'unwise-w3w4',]:
-        import pylab as plt
-        from viewer import settings
-        from map.views import _unwise_to_rgb
-        import fitsio
+    
+    basepat = 'base-%s-%i-%%s.fits' % (opt.kind, basescale)
 
-        if opt.kind == 'unwise-w3w4':
-            tag = 'unwise-w3w4'
-            bands = [3,4]
-            bounce = _bounce_map_unwise_w3w4
-        elif opt.kind == 'unwise-neo1':
-            tag = 'unwise-neo1'
-            bands = [1,2]
-            bounce = _bounce_map_unwise_neo1
-        else:
-            tag = 'unwise-w1w2'
-            bands = [1,2]
-            bounce = _bounce_map_unwise_w1w2
+    basefns = [basepat % band for band in bands]
+    print('Looking for', basefns)
+    if not all([os.path.exists(fn) for fn in basefns]):
+        bases = [np.zeros((side, side), np.float32) for band in bands]
 
-        pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
-                           '%(zoom)i', '%(x)i', '%(y)i.jpg')
-        ver = 1
-        patdata = dict(ver=ver)
+        args = []
+        xy = []
+        if opt.y1 is None:
+            opt.y1 = tiles
+        if opt.x0 is None:
+            opt.x0 = 0
+        if opt.x1 is None:
+            opt.x1 = tiles
+        for y in range(opt.y0, opt.y1):
+            for x in range(opt.x0, opt.x1):
+                args.append((opt.kind, basescale, x, y, False, True))
+                xy.append((x,y))
 
-        basescale = 4
+        tiles = mp.map(_one_tile, args)
 
-        tilesize = 256
-        tiles = 2**basescale
-        side = tiles * tilesize
+        for ims,(x,y) in zip(tiles, xy):
 
-        basepat = 'base-%s-%i-%%s.fits' % (opt.kind, basescale)
-        basefns = [basepat % band for band in bands]
+            #for a,(x,y) in zip(args, xy):
+            #print('_one_tile args:', a)
+            #ims = _one_tile(a)
+            #print('-> ', ims)
 
-        if not all([os.path.exists(fn) for fn in basefns]):
-            bases = [np.zeros((side, side), np.float32) for band in bands]
+            if ims is None:
+                continue
+            for im,base in zip(ims, bases):
+                if im is None:
+                    continue
+                base[y*tilesize:(y+1)*tilesize,
+                     x*tilesize:(x+1)*tilesize] = im
 
-            args = []
-            for y in range(tiles):
-                for x in range(tiles):
-                    #print 'Base tile', x, y
-                    args.append((req, ver, basescale, x, y))
-            tiles = mp.map(bounce, args)
-            for ims,arg in zip(tiles,args):
-                x,y = arg[-2:]
-                for im,base in zip(ims, bases):
-                    if im is None:
-                        continue
-                    base[y*tilesize:(y+1)*tilesize,
-                         x*tilesize:(x+1)*tilesize] = im
+        for fn,base in zip(basefns, bases):
+            fitsio.write(fn, base, clobber=True)
+    else:
+        print('Reading', basefns)
+        bases = [fitsio.read(fn) for fn in basefns]
 
-            for fn,base in zip(basefns, bases):
-                fitsio.write(fn, base, clobber=True)
-        else:
-            print('Reading', basefns)
-            bases = [fitsio.read(fn) for fn in basefns]
+    for scale in range(basescale, -1, -1):
+        print('Scale', scale)
+        print('Layer:', layer)
+        print('Bands:', bands)
 
-            if False:
-                # Messin' around
-                plt.figure(figsize=(8,8))
-                plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
-                #for S in [1000, 3000, 10000]:
-                #for Q in [10, 25, 50]:
-                S,Q = 3000,25
-                im = _unwise_to_rgb([w1base, w2base], S=S, Q=Q)
-                #plt.clf()
-                #plt.imshow(im)
-                plt.imsave('base-S%i-Q%s.png' % (S,Q), im)
-
-                # Try converting to galactic coords...
-                from astrometry.util.util import anwcs_create_mercator_2
-
-                print('Base images:', w1base.shape)
-                zoom = basescale
-                h,w = w1base.shape
-                zoomscale = 2.**zoom * (256./h)
-                print('Zoomscale', zoomscale)
-                wcs = anwcs_create_mercator_2(180., 0., w/2., h/2.,
-                                              zoomscale, w, h, 1)
-
-                wcs2 = anwcs_create_mercator_2(0., 0., w/2., h/2.,
-                                               zoomscale, w, h, 1)
-
-                print('WCS:')
-                for x,y in [(1,1), (1,h), (w,1), (w,h), (w/2,1), (w/2,h/2)]:
-                    print('x,y', (x,y), '-> RA,Dec', wcs.pixelxy2radec(x,y)[-2:])
-
-                ok,ras,nil  = wcs2.pixelxy2radec(np.arange(w), np.ones(w))
-                ok,nil,decs = wcs2.pixelxy2radec(np.ones(h), np.arange(h))
-                print('RAs', ras.shape)
-                print('Decs', decs.shape)
-
-                lls = ras
-                bbs = decs
-
-                ll,bb = np.meshgrid(lls, bbs)
-                print('LL,BB', ll.shape, bb.shape)
-
-                from astrometry.util.starutil_numpy import lbtoradec
-
-                ra,dec = lbtoradec(ll,bb)
-                print('RA,Dec', ra.shape, dec.shape)
-
-                ok,xx,yy = wcs.radec2pixelxy(ra, dec)
-                print('xx,yy', xx.shape, yy.shape)
-
-                lb1 = w1base[np.clip(np.round(yy-1).astype(int), 0, h-1),
-                             np.clip(np.round(xx-1).astype(int), 0, w-1)]
-                lb2 = w2base[np.clip(np.round(yy-1).astype(int), 0, h-1),
-                             np.clip(np.round(xx-1).astype(int), 0, w-1)]
-
-                lbim = _unwise_to_rgb(lb1, lb2, S=S,Q=Q)
-                plt.imsave('lb.png', lbim)
-
-                sys.exit(0)
-
-        from scipy.ndimage.filters import gaussian_filter
-
-        for scale in range(basescale-1, -1, -1):
-
-            for i,base in enumerate(bases):
-                base = gaussian_filter(base, 1.)
-                base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
-                bases[i] = base
-
-            tiles = 2**scale
-            
-            for y in range(tiles):
-                for x in range(tiles):
-                    ims = [base[y*tilesize:(y+1)*tilesize,
-                                x*tilesize:(x+1)*tilesize] for base in bases]
-                    tile = _unwise_to_rgb(ims, bands=bands)
-                    pp = patdata.copy()
-                    pp.update(zoom=scale, x=x, y=y)
-                    fn = pat % pp
-                    trymakedirs(fn)
-                    save_jpeg(fn, tile)
-                    print('Wrote', fn)
-
-
-    if opt.kind in ['depth-g', 'depth-r', 'depth-z']:
-        import pylab as plt
-        from viewer import settings
-        from scipy.ndimage.filters import gaussian_filter
-        from map.views import trymakedirs
-
-        tag = 'decam-' + opt.kind
-        #band = opt.kind[-1]
-        ver = 1
-        basescale = 5
-        pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
-                           '%(zoom)i', '%(x)i', '%(y)i.jpg')
-        patdata = dict(ver=ver)
-        tilesize = 256
-        tiles = 2**basescale
-        side = tiles * tilesize
-        
-        base = np.zeros((side, side, 3), np.float32)
+        tiles = 2**scale
         for y in range(tiles):
             for x in range(tiles):
-                dat = patdata.copy()
-                dat.update(zoom=basescale, x=x, y=y)
-                fn = pat % dat
-                if not os.path.exists(fn):
-                    print('Does not exist:', fn)
-                    continue
-                img = plt.imread(fn)
-                base[y*tilesize:(y+1)*tilesize,
-                     x*tilesize:(x+1)*tilesize,:] = img
+                ims = [base[y*tilesize:(y+1)*tilesize,
+                            x*tilesize:(x+1)*tilesize] for base in bases]
+                rgb = layer.get_rgb(ims, bands, **rgbkwargs)
+                pp = patdata.copy()
+                pp.update(zoom=scale, x=x, y=y)
+                fn = pat % pp
+                trymakedirs(fn)
+                save_jpeg(fn, rgb)
+                print('Wrote', fn)
 
-        for scale in range(basescale-1, -1, -1):
-
-            newbase = []
-            for i in range(3):
-                b = gaussian_filter(base[:,:,i], 1.)
-                b = (b[ ::2, ::2] + b[1::2, ::2] +
-                     b[1::2,1::2] + b[ ::2,1::2])/4.
-                newbase.append(b)
-            base = np.dstack(newbase)
-
-            tiles = 2**scale
-            for y in range(tiles):
-                for x in range(tiles):
-                    img = base[y*tilesize:(y+1)*tilesize,
-                               x*tilesize:(x+1)*tilesize, :]
-
-                    pp = patdata.copy()
-                    pp.update(zoom=scale, x=x, y=y)
-                    fn = pat % pp
-                    trymakedirs(fn)
-                    plt.imsave(fn, np.clip(np.round(img).astype(np.uint8), 0, 255))
-                    print('Wrote', fn)
-
-
-    ### HACK... factor this out...
-    if opt.kind in ['sdss',
-                    'decals-dr2', 'decals-dr2-model', 'decals-dr2-resid',
-                    'decals-dr3', 'decals-dr3-model', 'decals-dr3-resid',
-                    ]:
-        import pylab as plt
-        from viewer import settings
-        from legacypipe.survey import get_rgb
-        import fitsio
-        from scipy.ndimage.filters import gaussian_filter
-
-        tag = opt.kind
-
-        bouncemap = {
-            'sdss': _bounce_sdssco,
-            'decals-dr3': _bounce_decals_dr3,
-            'decals-dr3-model': _bounce_decals_dr3,
-            'decals-dr3-resid': _bounce_decals_dr3,
-            }
-        bounce = bouncemap[opt.kind]
-
-        rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
-
-        bands = 'grz'
-        if opt.kind in ['decals-dr2', 'decals-dr2-model',
-                        'decals-dr3', 'decals-dr3-model',]:
-            get_rgb = dr2_rgb
-            rgbkwargs = {}
-        elif opt.kind == 'sdssco':
-            rgbkwargs = {}
-
-        ver = tileversions.get(opt.kind, [1])[-1]
-        print('Version', ver)
-        basescale = 5
-
-        pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
-                           '%(zoom)i', '%(x)i', '%(y)i.jpg')
-        patdata = dict(ver=ver)
-
-        tilesize = 256
-        tiles = 2**basescale
-        side = tiles * tilesize
-
-        basepat = 'base-%s-%i-%%s.fits' % (opt.kind, basescale)
-
-        basefns = [basepat % band for band in bands]
-        if not all([os.path.exists(fn) for fn in basefns]):
-            bases = [np.zeros((side, side), np.float32) for band in bands]
-
-            args = []
-            kwa = dict()
-            if 'model' in opt.kind:
-                kwa.update(model=True, add_gz=True)
-            elif 'resid' in opt.kind:
-                kwa.update(resid=True, model_gz=True)
-
-            xy = []
-            if opt.y1 is None:
-                opt.y1 = tiles
-            if opt.x0 is None:
-                opt.x0 = 0
-            if opt.x1 is None:
-                opt.x1 = tiles
-            for y in range(opt.y0, opt.y1):
-                for x in range(opt.x0, opt.x1):
-                    args.append(((req, ver, basescale, x, y),kwa))
-                    xy.append((x,y))
-            tiles = mp.map(bounce, args)
-            for ims,(x,y) in zip(tiles, xy):
-                if ims is None:
-                    continue
-                for im,base in zip(ims, bases):
-                    if im is None:
-                        continue
-                    base[y*tilesize:(y+1)*tilesize,
-                         x*tilesize:(x+1)*tilesize] = im
-
-            for fn,base in zip(basefns, bases):
-                fitsio.write(fn, base, clobber=True)
-        else:
-            print('Reading', basefns)
-            bases = [fitsio.read(fn) for fn in basefns]
-
-        #for scale in range(basescale-1, -1, -1):
-        for scale in range(basescale, -1, -1):
-            print('Scale', scale)
-            tiles = 2**scale
-            for y in range(tiles):
-                for x in range(tiles):
-                    ims = [base[y*tilesize:(y+1)*tilesize,
-                                x*tilesize:(x+1)*tilesize] for base in bases]
-
-                    if opt.kind == 'sdss':
-                        bands = 'gri'
-                        rgb = sdss_rgb(ims, bands)
-                    else:
-                        rgb = get_rgb(ims, bands, **rgbkwargs)
-
-                    pp = patdata.copy()
-                    pp.update(zoom=scale, x=x, y=y)
-                    fn = pat % pp
-                    trymakedirs(fn)
-                    save_jpeg(fn, rgb)
-                    print('Wrote', fn)
-
-            for i,base in enumerate(bases):
-                #base = gaussian_filter(base, 1.)
+        for i,base in enumerate(bases):
+            if 'vlass' in opt.kind:
+                base = np.maximum(np.maximum(base[::2,::2], base[1::2,::2]),
+                                  np.maximum(base[1::2,1::2], base[::2,1::2]))
+            else:
                 base = (base[::2,::2] + base[1::2,::2] + base[1::2,1::2] + base[::2,1::2])/4.
-                bases[i] = base
-
+            bases[i] = base
 
 
 def _layer_get_filename(args):
@@ -683,6 +426,7 @@ def main():
 
     parser.add_option('--queue', action='store_true', default=False,
                       help='Print qdo commands')
+    parser.add_option('--queue-args', help='Add args to --queue commands')
 
     parser.add_option('--all', action='store_true', help='Render all tiles')
 
@@ -703,6 +447,7 @@ def main():
     parser.add_option('--grass', action='store_true', help='progress plot')
 
     parser.add_option('--bands', default=None)
+    parser.add_option('--bandlist', default=None, help='Comma-separated list of bands')
 
     parser.add_option('-v', '--verbose', dest='verbose', action='count',
                       default=0, help='Make more verbose')
@@ -710,6 +455,8 @@ def main():
 
     opt,args = parser.parse_args()
 
+    if opt.bandlist is not None:
+        opt.bands = opt.bandlist.split(',')
     if opt.verbose == 0:
         lvl = logging.INFO
     else:
@@ -863,9 +610,14 @@ def main():
             opt.maxra = 360
         if opt.minra is None:
             opt.minra = 0
-    elif opt.kind in ['ls-dr10-early', 'ls-dr10a', 'ls-dr10a-model']:
+    elif 'ls-dr10' in opt.kind:
+        #in ['ls-dr10-early', 'ls-dr10a', 'ls-dr10a-mode`l',
+        #              'ls-dr10', 'ls-dr10-model', 'ls-dr10-resid']:
         if opt.bands is None:
-            opt.bands = 'griz'
+            if opt.kind.endswith('-grz'):
+                opt.bands = 'grz'
+            else:
+                opt.bands = 'griz'
         if opt.maxdec is None:
             opt.maxdec = 40
         if opt.mindec is None:
@@ -964,7 +716,9 @@ def main():
                          'ls-dr9-south-B', 'ls-dr9-south-B-model',
                          'asteroids-i',
                          'ls-dr10-early', 'ls-dr10a', 'ls-dr10a-model',
-                         'pandas',
+                         'ls-dr10', 'ls-dr10-model',
+                         'ls-dr10-grz', 'ls-dr10-model-grz',
+                         'pandas', 'wiro-C',
                          'decaps2', 'decaps2-model',
         ]
             or opt.kind.startswith('dr8-test')
@@ -989,17 +743,20 @@ def main():
                 if len(opt.zoom) == 0:
                     opt.zoom = [1,2,3,4,5,6,7]
                 #step = 0.1
+                step = 1.
+                ras = np.arange(opt.minra, opt.maxra+step, step)
                 #ras = np.arange(opt.minra, opt.maxra+step, step)
-                step = 3.
-                #ras = np.arange(opt.minra, opt.maxra+step, step)
-                decs = np.arange(opt.mindec, opt.maxdec+step, step)
+                #decs = np.arange(opt.mindec, opt.maxdec+step, step)
+                decs = [opt.mindec, opt.maxdec]
                 for zoom in opt.zoom:
                     for declo,dechi in zip(decs, np.clip(decs[1:], opt.mindec, opt.maxdec)):
-                        rstep = step / np.maximum(0.05, np.cos(np.deg2rad((declo+dechi)/2.)))
-                        ras = np.arange(opt.minra, opt.maxra+rstep, rstep)
+                        #rstep = step / np.maximum(0.05, np.cos(np.deg2rad((declo+dechi)/2.)))
+                        #ras = np.arange(opt.minra, opt.maxra+rstep, rstep)
                         for ralo,rahi in zip(ras, np.clip(ras[1:], opt.minra, opt.maxra)):
                             cmd = ('python3 render-tiles.py --kind %s --bands %s --scale --minra %f --maxra %f --mindec %f --maxdec %f -z %i' %
                                    (opt.kind, opt.bands, ralo, rahi, declo, dechi, zoom))
+                            if opt.queue_args:
+                                cmd = cmd + ' ' + opt.queue_args
                             print(cmd)
                 sys.exit(0)
 

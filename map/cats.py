@@ -84,6 +84,7 @@ catversions = {
     'desi-daily-spectra': [1,],
     'ls-dr10a': [1,],
     'ls-dr10': [1,],
+    'ls-dr10-south': [1,],
 }
 
 test_cats = []

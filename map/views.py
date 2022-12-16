@@ -1469,25 +1469,8 @@ class MapLayer(object):
     def get_pixel_weights(self, band, brick, scale, **kwargs):
         return 1.
 
-    def get_tile(self, req, ver, zoom, x, y,
-                 wcs=None,
-                 savecache = None, forcecache = False,
-                 return_if_not_found=False,
-                 get_images=False,
-                 write_jpeg=False,
-                 ignoreCached=False,
-                 filename=None,
-                 bands=None,
-                 tempfiles=None,
-                ):
-        '''
-        *filename*: filename returned in http response
-        *wcs*: render into the given WCS rather than zoom/x/y Mercator
-        '''
+    def _check_tile_args(self, req, ver, zoom, x, y):
         from map.views import tileversions
-        if savecache is None:
-            savecache = settings.SAVE_CACHE
-
         zoom = int(zoom)
         zoomscale = 2.**zoom
         x = int(x)
@@ -1504,6 +1487,36 @@ class MapLayer(object):
         else:
             # Set default version...?
             ver = tileversions[self.name][-1]
+        return ver,zoom,x,y
+
+    def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False):
+        rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, tempfiles=tempfiles)
+        if get_images_only:
+            return rimgs,None
+        if bands is None:
+            bands = self.get_bands()
+        rgb = self.get_rgb(rimgs, bands)
+        return rimgs, rgb
+
+    def get_tile(self, req, ver, zoom, x, y,
+                 wcs=None,
+                 savecache = None, forcecache = False,
+                 return_if_not_found=False,
+                 get_images=False,
+                 write_jpeg=False,
+                 ignoreCached=False,
+                 filename=None,
+                 bands=None,
+                 tempfiles=None,
+                ):
+        '''
+        *filename*: filename returned in http response
+        *wcs*: render into the given WCS rather than zoom/x/y Mercator
+        '''
+        if savecache is None:
+            savecache = settings.SAVE_CACHE
+
+        ver,zoom,x,y = self._check_tile_args(req, ver, zoom, x, y)
 
         if (not get_images) and (wcs is None):
             tilefn = self.get_tile_filename(ver, zoom, x, y)
@@ -1525,23 +1538,20 @@ class MapLayer(object):
         # ok,ra,dec = wcs.pixelxy2radec([1, W/2, W, W, W, W/2, 1, 1],
         #                            [1, 1, 1, H/2, H, H, H, H/2])
         # print('WCS range: RA', ra.min(), ra.max(), 'Dec', dec.min(), dec.max())
-            
-        rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, tempfiles=tempfiles)
-        #print('rimgs:', rimgs)
+
+        rimgs, rgb = self.render_rgb(wcs, zoom, x, y, bands=bands, tempfiles=tempfiles,
+                                     get_images_only=(get_images and not write_jpeg))
+
         if rimgs is None:
             if get_images:
                 return None
             if return_if_not_found and not forcecache:
-                return
+                return None
             from django.http import HttpResponseRedirect
             return HttpResponseRedirect(settings.STATIC_URL + 'blank.jpg')
     
         if get_images and not write_jpeg:
             return rimgs
-    
-        if bands is None:
-            bands = self.get_bands()
-        rgb = self.get_rgb(rimgs, bands)
 
         if forcecache:
             savecache = True
@@ -1560,7 +1570,7 @@ class MapLayer(object):
         if ("lslga" in req.GET or "lslga-model" in req.GET
             or 'sga' in req.GET or 'sga-parent' in req.GET):
             render_sga_ellipse(tilefn, tilefn, wcs, req.GET)
-    
+
         return send_file(tilefn, 'image/jpeg', unlink=(not savecache),
                          filename=filename)
 
@@ -1696,8 +1706,9 @@ class MapLayer(object):
             rgb = self.get_rgb(ims, bands)
             self.write_jpeg(out_fn, rgb)
 
-            if 'sga' in req.GET or 'sga-parent' in req.GET:
-                render_sga_ellipse(out_fn, out_fn, wcs, req.GET)
+            if req is not None:
+                if 'sga' in req.GET or 'sga-parent' in req.GET:
+                    render_sga_ellipse(out_fn, out_fn, wcs, req.GET)
 
             return
 
@@ -2467,6 +2478,7 @@ class UniqueBrickMixin(object):
         H,W = bwcs.shape
         U = find_unique_pixels(bwcs, W, H, None, 
                                brick.ra1, brick.ra2, brick.dec1, brick.dec2)
+        print('Getting unique-area mask for brick', brick.brickname)
         return U
 
 class DecalsResidLayer(ResidMixin, UniqueBrickMixin, DecalsLayer):
@@ -2622,6 +2634,9 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
 
 class LsDr10Layer(ReDecalsLayer):
     def get_rgb(self, imgs, bands, **kwargs):
+        print('LsDr10Layer.get_rgb: self.bands', self.bands)
+        if self.bands == 'grz':
+            return super().get_rgb(imgs, bands, **kwargs)
         import numpy as np
         m=0.03
         Q=20
@@ -2710,8 +2725,8 @@ class LsDr10Layer(ReDecalsLayer):
         ccds = touchup_ccds(ccds, survey)
         return ccds
 
-#class LsDr10ModelLayer(UniqueBrickMixin, LsDr10Layer):
-#    pass
+class LsDr10ModelLayer(UniqueBrickMixin, LsDr10Layer):
+    pass
 class LsDr10ResidLayer(UniqueBrickMixin, ResidMixin, LsDr10Layer):
     pass
 
@@ -2762,6 +2777,21 @@ class Decaps2ModelLayer(Decaps2Layer, ReDecalsModelLayer):
     pass
 class Decaps2ResidLayer(Decaps2Layer, ReDecalsResidLayer):
     pass
+
+
+class WiroCLayer(ReDecalsLayer):
+    #def __init__(self, name):
+    def get_bands(self):
+        return ['NB_C']
+    def get_available_bands(self):
+        return ['NB_C']
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        #from legacypipe.survey import get_rgb as rgb
+        rgb,kwa = self.survey.get_rgb(imgs, bands, coadd_bw=True)
+        rgb = rgb[:,:,np.newaxis].repeat(3, axis=2)
+        print('rgb shape', rgb.shape)
+        return rgb
 
 
 class HscLayer(RebrickedMixin, MapLayer):
@@ -2833,11 +2863,13 @@ class HscLayer(RebrickedMixin, MapLayer):
 
 
 class LegacySurveySplitLayer(MapLayer):
-    def __init__(self, name, top, bottom, decsplit):
+    def __init__(self, name, top, bottom, decsplit, top_bands='grz', bottom_bands='grz'):
         super(LegacySurveySplitLayer, self).__init__(name)
         self.layers = [top, bottom]
         self.top = top
         self.bottom = bottom
+        self.top_bands = top_bands
+        self.bottom_bands = bottom_bands
         self.decsplit = decsplit
 
         self.tilesplits = {}
@@ -2849,9 +2881,9 @@ class LegacySurveySplitLayer(MapLayer):
             n = 2**zoom
             y = int(fy * n)
             #print('Zoom', zoom, '-> y', y)
-            X = get_tile_wcs(zoom, 0, y)
-            wcs = X[0]
-            ok,rr,dd = wcs.pixelxy2radec([1,1], [1,256])
+            #X = get_tile_wcs(zoom, 0, y)
+            #wcs = X[0]
+            #ok,rr,dd = wcs.pixelxy2radec([1,1], [1,256])
             #print('Decs', dd)
             self.tilesplits[zoom] = y
 
@@ -2864,6 +2896,15 @@ class LegacySurveySplitLayer(MapLayer):
         if ngc and dec > self.decsplit:
             return self.top
         return self.bottom
+
+    def get_bricks_for_scale(self, scale):
+        import numpy as np
+        from astrometry.util.fits import merge_tables
+        bl = self.bottom.get_bricks_for_scale(scale)
+        tl = self.top.get_bricks_for_scale(scale)
+        bnames = list(bl.brickname)
+        tin = np.isin(tl.brickname, bnames)
+        return merge_tables([bl, tl[~tin]], columns='fillzero')
 
     def brick_details_body(self, brick):
         layer = self.get_layer_for_radec(brick.ra, brick.dec)
@@ -3009,6 +3050,24 @@ class LegacySurveySplitLayer(MapLayer):
         if len(allcats) == 0:
             allcats = None
         else:
+            # Merge DRs with different lengths of WISE light curves...
+            lclen = 0
+            for c in allcats:
+                x = c.lc_flux_w1
+                _,w = x.shape
+                lclen = max(lclen, w)
+            for c in allcats:
+                for col in c.get_columns():
+                    if not col.startswith('lc_'):
+                        continue
+                    x = c.get(col)
+                    n,w = x.shape
+                    if w == lclen:
+                        continue
+                    y = np.zeros((n,lclen), x.dtype)
+                    y[:,:w] = x
+                    c.set(col, y)
+
             allcats = merge_tables(allcats, columns='fillzero')
         return allcats,hdr
 
@@ -3036,48 +3095,82 @@ class LegacySurveySplitLayer(MapLayer):
             return 1
         return 0
 
-    def render_into_wcs(self, wcs, zoom, x, y, general_wcs=False, **kwargs):
-        
-        ## FIXME -- generic WCS
-        #print('render_into_wcs zoom,x,y', zoom,x,y, 'wcs', wcs)
+    def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False):
+        print('Split Layer render_rgb: bands=', bands)
         if y != -1:
-            ## FIXME -- this is not the correct cut -- only listen to split for NGC --
-            ## but this doesn't get called anyway because the JavaScript layer has the smarts.
+            # FIXME -- this is not the correct cut -- only listen to split for NGC --
+            # but this doesn't get called anyway because the JavaScript layer has the smarts.
             split = self.tilesplits[zoom]
             if y < split:
+                print('Split Layer render_rgb: short-cutting to north')
                 #print('y below split -- north')
-                return self.top.render_into_wcs(wcs, zoom, x, y,
-                                                general_wcs=general_wcs, **kwargs)
+                return self.top.render_rgb(wcs, zoom, x, y, bands=self.top_bands,
+                                           tempfiles=tempfiles,
+                                           get_images_only=get_images_only)
             if y > split:
+                print('Split Layer render_rgb: short-cutting to south')
                 #print('y above split -- south')
-                return self.bottom.render_into_wcs(wcs, zoom, x, y,
-                                                   general_wcs=general_wcs, **kwargs)
+                return self.bottom.render_rgb(wcs, zoom, x, y, bands=self.bottom_bands,
+                                              tempfiles=tempfiles,
+                                              get_images_only=get_images_only)
 
         # both!
-        topims = self.top.render_into_wcs(wcs, zoom, x, y,
-                                          general_wcs=general_wcs, **kwargs)
-        botims = self.bottom.render_into_wcs(wcs, zoom, x, y,
-                                             general_wcs=general_wcs, **kwargs)
+        topims,toprgb = self.top.render_rgb(wcs, zoom, x, y, bands=self.top_bands,
+                                            tempfiles=tempfiles,
+                                            get_images_only=get_images_only)
 
-        if topims is None:
-            return botims
-        if botims is None:
-            return topims
+        botims,botrgb = self.bottom.render_rgb(wcs, zoom, x, y, bands=self.bottom_bands,
+                                               tempfiles=tempfiles,
+                                               get_images_only=get_images_only)
+        
+        if get_images_only and topims is None and botims is None:
+            return None,None
 
+        #if not(topims is None and botims is None):
+        # ASSUME that the WCS is axis-aligned!!
+        # Compute Decs for each Y in the WCS
         import numpy as np
         from astrometry.util.starutil_numpy import radectolb
-        # Compute Decs for each Y in the WCS -- this is assuming that the WCS is axis-aligned!!
         H,W = wcs.shape
+        #mask = np.zeros((H,W), bool)
         x = np.empty(H)
         x[:] = W//2 + 0.5
         y = np.arange(1, H+1)
         rr,dd = wcs.pixelxy2radec(x, y)[-2:]
         ll,bb = radectolb(rr, dd)
         ngc = (bb > 0.)
-        I = np.flatnonzero((dd >= self.decsplit) * ngc)
-        for b,t in zip(botims, topims):
-            b[I,:] = t[I,:]
-        return botims
+        #I = np.flatnonzero((dd >= self.decsplit) * ngc)
+        topmask = (dd >= self.decsplit) * ngc
+
+        if bands is None:
+            # HACK
+            bands = self.bottom_bands
+        ims = []
+        for band in bands:
+            topim = None
+            botim = None
+            if band in self.top_bands:
+                topim = topims[self.top_bands.index(band)]
+            if band in self.bottom_bands:
+                botim = botims[self.bottom_bands.index(band)]
+            if topim is None and botim is None:
+                ims.append(None)
+                continue
+            im = np.zeros(wcs.shape, np.float32)
+            if topim is not None:
+                im[topmask,:] = topim[topmask,:]
+            if botim is not None:
+                im[~topmask,:] = botim[~topmask,:]
+            ims.append(im)
+        if get_images_only:
+            return ims,None
+
+        print('SplitLayer render_rgb: rgb: top', toprgb.shape if toprgb is not None else 'None', 'bottom', botrgb.shape if botrgb is not None else 'None')
+
+        # Copy top into bottom
+        botrgb[topmask,:,:] = toprgb[topmask,:,:]
+
+        return ims,botrgb
 
     def get_bands(self):
         return self.top.get_bands()
@@ -5064,6 +5157,8 @@ def get_survey(name):
         'ls-dr9-north': ('Legacy Surveys DR9-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/north'),
         'ls-dr9-south': ('Legacy Surveys DR9-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/south'),
         'ls-dr9': ('Legacy Surveys DR9', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/'),
+        'ls-dr10-south': ('Legacy Surveys DR10-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr10/south'),
+        'ls-dr10': ('Legacy Surveys DR10', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr10'),
         }
 
     n,u = names_urls.get(name, ('',''))
@@ -5324,7 +5419,7 @@ def exposure_list(req):
 
     exps = []
     cmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
-    if name in ['ls-dr10-early']:
+    if 'ls-dr10' in name:
         cmap = dict(g='#0000cc', r='#008844', i='#448800', z='#cc0000')
     for t in T:
         if t.filter not in cmap:
@@ -6732,6 +6827,10 @@ def get_layer(name, default=None):
     elif name == 'hsc-dr2':
         layer = HscLayer('hsc-dr2')
 
+    elif name == 'wiro-C':
+        survey = get_survey('wiro-C')
+        layer = WiroCLayer('wiro-C', 'image', survey)
+
     elif name == 'outliers-ast':
         basename = 'asteroids-i'
         survey = get_survey(basename)
@@ -6768,15 +6867,43 @@ def get_layer(name, default=None):
         layers[basename + '-resid'] = resid
         layer = layers[name]
 
-    elif name in ['ls-dr10', 'ls-dr10-model', 'ls-dr10-resid']:
-        basename = 'ls-dr10'
+    elif name in ['ls-dr10', 'ls-dr10-model', 'ls-dr10-resid',
+                  'ls-dr10-grz', 'ls-dr10-model-grz', 'ls-dr10-resid-grz',]:
+        is_grz = name.endswith('-grz')
+        if is_grz:
+            name = name.replace('-grz','')
+            grzpart = '-grz'
+            bands = 'grz'
+        else:
+            grzpart = ''
+            bands = 'griz'
+
+        # suff: -model, -resid
+        suff = name.replace('ls-dr10', '')
+        north = get_layer('ls-dr9-north' + suff)
+        south = get_layer('ls-dr10-south' + suff + grzpart)
+        layer = LegacySurveySplitLayer(name + grzpart, north, south, 32.375, bottom_bands=bands)
+        layer.drname = 'Legacy Surveys DR10'
+
+    elif name in ['ls-dr10-south', 'ls-dr10-south-model', 'ls-dr10-south-resid',
+                  'ls-dr10-south-grz', 'ls-dr10-south-model-grz', 'ls-dr10-south-resid-grz',]:
+        if name.endswith('-grz'):
+            bands = 'grz'
+            grzpart = '-grz'
+        else:
+            bands = 'griz'
+            grzpart = ''
+        basename = 'ls-dr10-south'
         survey = get_survey(basename)
-        image = LsDr10Layer(basename, 'image', survey, bands='griz')
-        model = LsDr10Layer(basename, 'model', survey, bands='griz')
-        resid = LsDr10ResidLayer(image, model, basename, 'resid', survey, bands='griz')
-        layers[basename] = image
-        layers[basename + '-model'] = model
-        layers[basename + '-resid'] = resid
+        image = LsDr10Layer(basename + grzpart, 'image', survey, bands=bands,
+                            drname=basename)
+        model = LsDr10ModelLayer(basename + '-model' + grzpart, 'model', survey, bands=bands,
+                                 drname=basename)
+        resid = LsDr10ResidLayer(image, model, basename + '-resid' + grzpart, 'resid', survey, bands=bands,
+                                 drname=basename)
+        layers[basename            + grzpart] = image
+        layers[basename + '-model' + grzpart] = model
+        layers[basename + '-resid' + grzpart] = resid
         layer = layers[name]
 
     if layer is None:
@@ -7272,7 +7399,27 @@ if __name__ == '__main__':
     #r = c.get('/exposure_panels/ls-dr9-south-all/449377/S29/?ra=229.9982&dec=1.8043&size=100')
     #r = c.get('/exposure_panels/ls-dr10-early/338647/S12/?ra=203.4586&dec=-31.7212&size=100')
     #r = c.get('/image-stamp/ls-dr8-south/decam-569657-S22.jpg')
-    r = c.get('/masks-dr9/1/cat.json?ralo=349.1639&rahi=349.4361&declo=-6.9862&dechi=-6.8378')
+    #r = c.get('/masks-dr9/1/cat.json?ralo=349.1639&rahi=349.4361&declo=-6.9862&dechi=-6.8378')
+    #r = c.get('/ps1/1/14/10654/7197.jpg')
+    #r = c.get('/data-for-radec/?ra=251.0332&dec=11.3582&layer=ls-dr9&ralo=251.0223&rahi=251.0428&declo=11.3480&dechi=11.3676')
+    #r = c.get('/cutout.fits?ra=251.0332&dec=11.3582&layer=ls-dr9-south&subimage')
+    #r = c.get('/ls-dr10-grz/1/7/103/61.jpg')
+    #r = c.get('/ls-dr10-grz/1/7/115/58.jpg')
+    #r = c.get('/ls-dr10-grz/1/3/7/3.jpg')
+    #r = c.get('/ls-dr10-resid/1/13/6433/4792.jpg')
+    #r = c.get('/ls-dr9-resid/1/13/6433/4792.jpg')
+    #r = c.get('/ls-dr10-south-model/1/6/58/26.jpg')
+    #r = c.get('/ls-dr10-south-grz/1/12/1353/1658.jpg')
+    #r = c.get('/ls-dr10-south-model-grz/1/12/1353/1658.jpg')
+    #r = c.get('/ls-dr10-south-model/1/12/1353/1658.jpg')
+    #r = c.get('/data-for-radec/?ra=339.9781&dec=-16.1471&layer=ls-dr10&ralo=339.6822&rahi=340.2761&declo=-16.2991&dechi=-16.0039')
+    #r = c.get('/ls-dr10-grz/1/14/11528/6633.jpg')
+    #r = c.get('/ls-dr10-model/1/3/2/3.jpg')
+    #r = c.get('/sdss/1/14/304/8314.jpg')
+    #r = c.get('/ls-dr10/1/6/14/25.jpg')
+    #r = c.get('/wiro-C/1/13/7403/4208.jpg')
+    r = c.get('/ls-dr10/1/13/4095/3316.cat.json')
+>>>>>>> master
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
