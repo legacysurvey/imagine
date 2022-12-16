@@ -7269,7 +7269,10 @@ if __name__ == '__main__':
     #r = c.get('/usercatalog/1/cat.json?ralo=104.1755&rahi=104.4230&declo=20.3734&dechi=20.5008&cat=tmp02tajgo8')
     #r = c.get('/cutout.jpg?ra=91.1268&dec=-66.6530&layer=unwise-w3w4&pixscale=2.75&size=500')
     #r = c.get('/exposures/?ra=229.9982&dec=1.8043&layer=decals-dr7')
-    r = c.get('/exposure_panels/ls-dr9-south-all/449377/S29/?ra=229.9982&dec=1.8043&size=100')
+    #r = c.get('/exposure_panels/ls-dr9-south-all/449377/S29/?ra=229.9982&dec=1.8043&size=100')
+    #r = c.get('/exposure_panels/ls-dr10-early/338647/S12/?ra=203.4586&dec=-31.7212&size=100')
+    #r = c.get('/image-stamp/ls-dr8-south/decam-569657-S22.jpg')
+    r = c.get('/masks-dr9/1/cat.json?ralo=349.1639&rahi=349.4361&declo=-6.9862&dechi=-6.8378')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

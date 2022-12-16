@@ -1979,6 +1979,9 @@ def cat_masks_dr9(req, ver):
     os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
     os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-dr2')
     os.environ['GAIA_CAT_VER'] = '2'
+    os.environ['GAIA_CAT_SCHEME'] = 'ring'
+    os.environ['GAIA_CAT_PREFIX'] = 'chunk'
+
     survey = LegacySurveyData(survey_dir=os.getcwd())
     pixscale = wcs.pixel_scale()
     T,_ = get_reference_sources(survey, wcs, pixscale, None)
