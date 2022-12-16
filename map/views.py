@@ -2779,6 +2779,21 @@ class Decaps2ResidLayer(Decaps2Layer, ReDecalsResidLayer):
     pass
 
 
+class WiroCLayer(ReDecalsLayer):
+    #def __init__(self, name):
+    def get_bands(self):
+        return ['NB_C']
+    def get_available_bands(self):
+        return ['NB_C']
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        #from legacypipe.survey import get_rgb as rgb
+        rgb,kwa = self.survey.get_rgb(imgs, bands, coadd_bw=True)
+        rgb = rgb[:,:,np.newaxis].repeat(3, axis=2)
+        print('rgb shape', rgb.shape)
+        return rgb
+
+
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
         super(HscLayer, self).__init__(name)
@@ -6794,6 +6809,10 @@ def get_layer(name, default=None):
     elif name == 'hsc-dr2':
         layer = HscLayer('hsc-dr2')
 
+    elif name == 'wiro-C':
+        survey = get_survey('wiro-C')
+        layer = WiroCLayer('wiro-C', 'image', survey)
+
     elif name == 'outliers-ast':
         basename = 'asteroids-i'
         survey = get_survey(basename)
@@ -7376,7 +7395,9 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr10-grz/1/14/11528/6633.jpg')
     #r = c.get('/ls-dr10-model/1/3/2/3.jpg')
     #r = c.get('/sdss/1/14/304/8314.jpg')
-    r = c.get('/ls-dr10/1/6/14/25.jpg')
+    #r = c.get('/ls-dr10/1/6/14/25.jpg')
+    #r = c.get('/wiro-C/1/13/7403/4208.jpg')
+    r = c.get('/ls-dr10/1/13/4095/3316.cat.json')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
