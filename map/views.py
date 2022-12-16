@@ -7418,7 +7418,8 @@ if __name__ == '__main__':
     #r = c.get('/sdss/1/14/304/8314.jpg')
     #r = c.get('/ls-dr10/1/6/14/25.jpg')
     #r = c.get('/wiro-C/1/13/7403/4208.jpg')
-    r = c.get('/ls-dr10/1/13/4095/3316.cat.json')
+    #r = c.get('/ls-dr10/1/13/4095/3316.cat.json')
+    r = c.get('/bricks/?ralo=278.7940&rahi=278.9178&declo=32.3512&dechi=32.4086&layer=ls-dr10-south-resid-grz')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

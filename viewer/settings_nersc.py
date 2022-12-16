@@ -10,7 +10,7 @@ USER_QUERY_DIR = '/tmp/viewer-user'
 
 FORCE_SCRIPT_NAME = ROOT_URL
 
-STATIC_TILE_URL_B = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+STATIC_TILE_URL_B = 'https://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 SUBDOMAINS_B = SUBDOMAINS
 
 # no CORS -- so don't use subdomains, or specify hostname (www.legacysurvey.org vs legacysurvey.org)
