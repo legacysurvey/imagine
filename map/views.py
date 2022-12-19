@@ -6166,7 +6166,9 @@ def exposures_common(req, tgz, copsf):
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
                                     '<small>(observed %s @ %s = MJD %.6f)</small>' % (ccd.date_obs, ccd.ut, ccd.mjd_obs),
                                     '<small>(proposal id %s)</small>' % (ccd.propid),
-                                    '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % format_jpl_url(req, ra, dec, ccd),]),
+                                    '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % format_jpl_url(req, ra, dec, ccd),
+                                    '<small><a href="%s">Direct link to JPL query</a></small>' % jpl_direct_url(ra, dec, ccd),
+        ]),
                       theurl))
     return render(req, 'exposures.html',
                   dict(ra=ra, dec=dec, ccds=ccdsx, name=layername, layer=layername,
@@ -6174,6 +6176,43 @@ def exposures_common(req, tgz, copsf):
                        brick=brick, brickx=brickx, bricky=bricky, size=W,
                        showcut=showcut))
 
+def jpl_direct_url(ra, dec, ccd):
+    from astrometry.util.starutil_numpy import ra2hmsstring, dec2dmsstring
+
+    date = ccd.date_obs + 'T' + ccd.ut
+    date = date.replace(' ', 'T')
+    date = date[:19]
+    print('Date:', date)
+
+    camera = ccd.camera.strip()
+    # JPL's observer codes
+    obs_code = {
+        'decam': 'W84',
+        '90prime': 'V00',
+        'mosaic': '695',
+    }[camera]
+
+    rastr = ra2hmsstring(ra, separator='-')
+    decstr = dec2dmsstring(dec, separator='-')
+    if decstr.startswith('+'):
+        decstr = decstr[1:]
+    if decstr.startswith('-'):
+        decstr = 'M' + decstr[1:]
+
+    # search radius in degrees
+    r = '%.4f' % (10./3600)
+
+    url = ('https://ssd-api.jpl.nasa.gov/sb_ident.api?two-pass=true&suppress-first-pass=true&'
+           + 'req-elem=false&'
+           + 'mpc-code=%s&' % obs_code
+           + 'obs-time=%s&' % date
+           + 'fov-ra-center=%s&' % rastr
+           + 'fov-dec-center=%s&' % decstr
+           + 'fov-ra-hwidth=%s&' % r
+           + 'fov-dec-hwidth=%s' % r
+           )
+    print('URL', url)
+    return url
 
 def jpl_lookup(req):
     import sys
@@ -6239,7 +6278,6 @@ def jpl_lookup(req):
         if m is not None:
             d_url = 'https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=' + m['num']
             data[i][0] = '<a href="%s">%s</a>' % (d_url, name)
-    
     
     from django.shortcuts import render
     return render(req, 'jpl-small-body-results.html',
