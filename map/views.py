@@ -6171,6 +6171,10 @@ def exposures_common(req, tgz, copsf):
     url = url.replace('://', '://%s.')
     domains = settings.SUBDOMAINS
 
+    showcut = 'cut' in req.GET
+    if not showcut:
+        ccds = [(ccd,d,x,y) for ccd,d,x,y in ccds if ccd.ccd_cuts == 0]
+
     ccdsx = []
     for i,(ccd,_,x,y) in enumerate(ccds):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
@@ -6178,7 +6182,11 @@ def exposures_common(req, tgz, copsf):
         theurl = url % (domains[i%len(domains)], ccdlayer, int(ccd.expnum), ccd.ccdname.strip()) + '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
         expurl = my_reverse(req, 'ccd_detail_xhtml', args=(layername, '%s-%i-%s' % (ccd.camera.strip(), int(ccd.expnum), ccd.ccdname.strip())))
         expurl += '?rect=%i,%i,%i,%i' % (x-size, y-size, W, H)
-        ccdsx.append(('<br/>'.join(['CCD <a href="%s">%s %s %i %s</a>, %.1f sec (x,y ~ %i,%i)' % (expurl, ccd.camera, ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
+        cutstr = ''
+        if ccd.ccd_cuts != 0:
+            cutstr = ' <span style="color:red">(cut)</span>'
+
+        ccdsx.append(('<br/>'.join(['CCD <a href="%s">%s %s %i %s</a>, %.1f sec (x,y ~ %i,%i) %s' % (expurl, ccd.camera, ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y, cutstr),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
                                     '<small>(observed %s @ %s = MJD %.6f)</small>' % (ccd.date_obs, ccd.ut, ccd.mjd_obs),
                                     '<small>(proposal id %s)</small>' % (ccd.propid),
@@ -6187,7 +6195,8 @@ def exposures_common(req, tgz, copsf):
     return render(req, 'exposures.html',
                   dict(ra=ra, dec=dec, ccds=ccdsx, name=layername, layer=layername,
                        drname=getattr(survey, 'drname', layername),
-                       brick=brick, brickx=brickx, bricky=bricky, size=W))
+                       brick=brick, brickx=brickx, bricky=bricky, size=W,
+                       showcut=showcut))
 
 
 def jpl_lookup(req):

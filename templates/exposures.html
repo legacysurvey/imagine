@@ -4,6 +4,14 @@
 <h1>{{ drname }} exposures around RA,Dec = {{ ra }}, {{ dec }}</h1>
 
 <p>
+  {% if showcut %}
+  <a href="{% url 'exposures' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}">Don't show exposures that were cut from DR10</a>
+  {% else %}
+  <a href="{% url 'exposures' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}&cut">Show exposures that were cut from DR10</a>
+  {% endif %}
+</p>
+
+<p>
 <a href="{% url 'exposures_tgz' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}">Download a tarball of data</a>
 </p>
 
