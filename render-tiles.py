@@ -718,7 +718,7 @@ def main():
                          'ls-dr10-early', 'ls-dr10a', 'ls-dr10a-model',
                          'ls-dr10', 'ls-dr10-model',
                          'ls-dr10-grz', 'ls-dr10-model-grz',
-                         'pandas', 'wiro-C',
+                         'pandas', 'wiro-C', 'wiro-D',
                          'decaps2', 'decaps2-model',
         ]
             or opt.kind.startswith('dr8-test')

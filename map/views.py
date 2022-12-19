@@ -2796,7 +2796,6 @@ class WiroCLayer(ReDecalsLayer):
         #from legacypipe.survey import get_rgb as rgb
         rgb,kwa = self.survey.get_rgb(imgs, bands, coadd_bw=True)
         rgb = rgb[:,:,np.newaxis].repeat(3, axis=2)
-        print('rgb shape', rgb.shape)
         return rgb
     def get_brick_size_for_scale(self, scale):
         if scale in [0, None]:
@@ -2805,7 +2804,7 @@ class WiroCLayer(ReDecalsLayer):
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
         if scale in [0,None]:
-            print('Get scaled WCS: brick', brick)
+            #print('Get scaled WCS: brick', brick)
             pixscale = 0.58
             cd = pixscale / 3600.
             size = 4200
@@ -2815,11 +2814,11 @@ class WiroCLayer(ReDecalsLayer):
             return wcs
         return super().get_scaled_wcs(brick, band, scale)
 
-    # def bricks_within_range(self, ra, dec, radius, scale=None):
-    #     print('bricks_within_range:', ra, dec, radius, scale)
-    #     B = super().bricks_within_range(ra, dec, radius, scale=scale)
-    #     print('Got', B, len(B))
-    #     return B
+class WiroDLayer(WiroCLayer):
+    def get_bands(self):
+        return ['NB_D']
+    def get_available_bands(self):
+        return ['NB_D']
 
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
@@ -6886,6 +6885,10 @@ def get_layer(name, default=None):
         survey = get_survey('wiro-C')
         layer = WiroCLayer('wiro-C', 'image', survey)
 
+    elif name == 'wiro-D':
+        survey = get_survey('wiro-D')
+        layer = WiroDLayer('wiro-D', 'image', survey)
+
     elif name == 'outliers-ast':
         basename = 'asteroids-i'
         survey = get_survey(basename)
@@ -7481,198 +7484,10 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=208.9270&dec=32.375&layer=ls-dr10&pixscale=0.262&bands=iz')#&bands=griz')
     #r = c.get('/jpeg-cutout?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
     #r = c.get('/wiro-C/1/13/7397/4203.jpg')
-    r = c.get('/exposures/?ra=29.8320&dec=19.0114&layer=ls-dr10-grz')
+    #r = c.get('/exposures/?ra=29.8320&dec=19.0114&layer=ls-dr10-grz')
+    r = c.get('/wiro-D/1/14/14801/8410.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
         f.write(x)
     f.close()
-
-    #c.get('/jpl_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
-    sys.exit(0)
-    # http://a.legacysurvey.org/viewer-dev/mzls+bass-dr6/1/12/4008/2040.jpg
-    print('Got:', response.status_code)
-    print('Content:', response.content)
-    sys.exit(0)
-
-    class duck(object):
-        pass
-
-    req = duck()
-    req.META = dict()
-    req.GET = dict()
-
-    from map import views
-    view = views.get_layer('halpah').get_tile_view()
-    view(req, 1, 7, 44, 58)
-    # http://c.legacysurvey.org/viewer-dev/halpha/1/7/44/58.jpg
-    import sys
-    sys.exit(0)
-
-    req.GET['date'] = '2016-03-01 00:42'
-    req.GET['ra'] = '131.3078'
-    req.GET['dec'] = '20.7488'
-    req.GET['camera'] = 'decam'
-    jpl_lookup(req)
-
-    import sys
-    sys.exit(0)
-
-    assert(ra_ranges_overlap(359, 1, 0.5, 1.5) == True)
-    assert(ra_ranges_overlap(359, 1, 358, 0.)  == True)
-    assert(ra_ranges_overlap(359, 1, 358, 2.)  == True)
-    assert(ra_ranges_overlap(359, 1, 359.5, 0.5) == True)
-
-    assert(ra_ranges_overlap(359, 1, 357, 358) == False)
-    assert(ra_ranges_overlap(359, 1, 2, 3) == False)
-    assert(ra_ranges_overlap(359, 1, 179, 181) == False)
-    assert(ra_ranges_overlap(359, 1, 90, 270) == False)
-    
-    # vanilla
-    ra_ranges_overlap(0, 1, 0.5, 1.5)
-
-    # enclosed
-    ra_ranges_overlap(0, 1, -0.5, 1.5)
-
-    # not-enclosed
-    ra_ranges_overlap(0, 1, 1.5, -0.5)
-
-    print()
-    # greater
-    ra_ranges_overlap(0, 1, 2, 3)
-
-    # less
-    ra_ranges_overlap(0, 1, -2, -1)
-
-    # just touching
-    #ra_ranges_overlap(0, 1, 1, 2)
-
-    print()
-
-    # overlapping bottom of range
-    ra_ranges_overlap(0, 1, -0.5, 0.5)
-
-    # within
-    ra_ranges_overlap(0, 1, 0.25, 0.75)
-
-    sys.exit(0)
-
-
-
-    import os
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
-    import django
-
-    class duck(object):
-        pass
-
-
-
-    req = duck()
-    req.META = dict()
-    req.GET = dict()
-    req.GET['wcs'] = '{"imageh": 2523.0, "crval2": 30.6256920573, "crpix1": 1913.90799288, "crpix2": 1288.18061444, "crval1": 23.4321763196, "cd22": 2.68116215986e-05, "cd21": -0.000375943381269, "cd12": 0.000376062675113, "cd11": 2.6797256038e-05, "imagew": 3770.0}'
-    sdss_wcs(req)
-
-    import sys
-    sys.exit(0)
-    
-    # ver = 1
-    # zoom,x,y = 2, 1, 1
-    # req = duck()
-    # req.META = dict()
-    # map_unwise_w1w2(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
-
-    from tractor.brightness import NanoMaggies
-    import fitsio
-    import pylab as plt
-    import numpy as np
-    from astrometry.util.miscutils import estimate_mode
-    
-    # J,jhdr = fitsio.read('j0.fits', header=True)
-    # H,hhdr = fitsio.read('h0.fits', header=True)
-    # K,khdr = fitsio.read('k0.fits', header=True)
-    J,jhdr = fitsio.read('j2.fits', header=True)
-    H,hhdr = fitsio.read('h2.fits', header=True)
-    K,khdr = fitsio.read('k2.fits', header=True)
-
-    print('J', J.dtype, J.shape)
-
-    # Convert all to nanomaggies
-    J /= NanoMaggies.zeropointToScale(jhdr['MAGZP'])
-    H /= NanoMaggies.zeropointToScale(hhdr['MAGZP'])
-    K /= NanoMaggies.zeropointToScale(khdr['MAGZP'])
-
-    # Hacky sky subtraction
-    J -= np.median(J.ravel())
-    H -= np.median(H.ravel())
-    K -= np.median(K.ravel())
-
-    mo = estimate_mode(J)
-    print('J mode', mo)
-    J -= mo
-    mo = estimate_mode(H)
-    print('H mode', mo)
-    H -= mo
-    mo = estimate_mode(K)
-    print('K mode', mo)
-    K -= mo
-    
-    ha = dict(histtype='step', log=True, range=(-2e3, 2e3), bins=100)
-    plt.clf()
-    plt.hist(J.ravel(), color='b', **ha)
-    plt.hist(H.ravel(), color='g', **ha)
-    plt.hist(K.ravel(), color='r', **ha)
-    plt.savefig('jhk.png')
-
-    rgb = sdss_rgb([J,H,K], bands=['J','H','K'],
-                   scales=dict(J=(2,0.0072),
-                               H=(1,0.0032),
-                               K=(0,0.002)))
-
-    # scales=dict(J=0.0036,
-    #             H=0.0016,
-    #             K=0.001))
-
-    print('RGB', rgb.shape)
-    plt.clf()
-    plt.hist(rgb[:,:,0].ravel(), histtype='step', color='r', bins=256)
-    plt.hist(rgb[:,:,1].ravel(), histtype='step', color='g', bins=256)
-    plt.hist(rgb[:,:,2].ravel(), histtype='step', color='b', bins=256)
-    plt.savefig('rgb2.png')
-
-    plt.clf()
-    plt.imshow(rgb, interpolation='nearest', origin='lower')
-    plt.savefig('rgb.png')
-
-    sys.exit(0)
-    
-    # http://i.legacysurvey.org/static/tiles/decals-dr1j/1/13/2623/3926.jpg
-
-    ver = 1
-    zoom,x,y = 14, 16383, 7875
-    req = duck()
-    req.META = dict()
-    req.GET = dict()
-
-    r = index(req)
-
-    # r = map_sdssco(req, ver, zoom, x, y, savecache=True, ignoreCached=True,
-    #                hack_jpeg=True)
-    # print('got', r)
-    # sys.exit(0)
-
-    ver = 1
-    zoom,x,y = 13, 2623, 3926
-    req = duck()
-    req.META = dict()
-    #map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
-
-    zoom,x,y = 14, 5246, 7852
-    #map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
-
-    zoom,x,y = 16, 20990, 31418
-    #map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
-
-    zoom,x,y = 18, 83958, 125671
-    #map_sdss(req, ver, zoom, x, y, savecache=True, ignoreCached=True)
