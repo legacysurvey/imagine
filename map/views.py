@@ -6515,7 +6515,7 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
             tim.data -= hacksky
 
         rgb = get_rgb([tim.data], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        index = dict(g=2, r=1, i=0, z=0)[tim.band]
+        index = dict(g=2, r=1, i=0, z=0, Y=0)[tim.band]
         img = rgb[:,:,index]
         kwa.update(vmin=0, vmax=1)
 
