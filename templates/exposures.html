@@ -5,9 +5,9 @@
 
 <p>
   {% if showcut %}
-  <a href="{% url 'exposures' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}">Don't show exposures that were cut from DR10</a>
+  <a href="{% url 'exposures' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}">Don't show exposures that were cut from {{ drname }}</a>
   {% else %}
-  <a href="{% url 'exposures' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}&cut">Show exposures that were cut from DR10</a>
+  <a href="{% url 'exposures' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}&cut">Show exposures that were cut from {{ drname }}</a>
   {% endif %}
 </p>
 

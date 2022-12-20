@@ -5941,7 +5941,16 @@ def exposures_common(req, tgz, copsf):
 
     print('CCDs:', CCDs.columns())
 
-    CCDs = CCDs[np.lexsort((CCDs.ccdname, CCDs.expnum, CCDs.filter))]
+    showcut = 'cut' in req.GET
+    if not showcut:
+        CCDs.cut(CCDs.ccd_cuts == 0)
+    # Drop Y band images
+    CCDs.cut(np.isin(CCDs.filter, ['g','r','i','z']))
+
+    filterorder = dict(g=0, r=1, i=2, z=3)
+
+    CCDs = CCDs[np.lexsort((CCDs.ccdname, CCDs.expnum,
+                            [filterorder.get(f,f) for f in CCDs.filter]))]
 
     if tgz or copsf:
         if tgz:
@@ -6170,10 +6179,6 @@ def exposures_common(req, tgz, copsf):
     url = url.replace('://www.', '://')
     url = url.replace('://', '://%s.')
     domains = settings.SUBDOMAINS
-
-    showcut = 'cut' in req.GET
-    if not showcut:
-        ccds = [(ccd,d,x,y) for ccd,d,x,y in ccds if ccd.ccd_cuts == 0]
 
     ccdsx = []
     for i,(ccd,_,x,y) in enumerate(ccds):
@@ -6501,6 +6506,8 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         zpscale = NanoMaggies.zeropointToScale(im.ccdzpt)
         hacksky = ccd.ccdskycounts * im.exptime / zpscale
 
+    bandindex = dict(g=2, r=1, i=0, z=0, Y=0)[im.band]
+
     if kind == 'image':
         # HACK for some DR5 images...
         if im.sig1 == 0:
@@ -6514,24 +6521,33 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         if not has_sky:
             tim.data -= hacksky
 
-        rgb = get_rgb([tim.data], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        index = dict(g=2, r=1, i=0, z=0, Y=0)[tim.band]
-        img = rgb[:,:,index]
+        rgb = get_rgb([tim.data], [im.band]) #, mnmx=(-1,100.), arcsinh=1.)
+        img = rgb[:,:,bandindex]
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'weight':
         tim = im.get_tractor_image(pixels=False, dq=False, invvar=True, **trargs)
-        img = tim.getInvvar()
+        if tim is None:
+            # eg, all-zero invvar
+            img = np.zeros((size,size), np.float32)
+            padleft = padright = padtop = padbottom = 0
+        else:
+            img = tim.getInvvar()
         kwa.update(vmin=0)
 
     elif kind == 'weightedimage':
         tim = im.get_tractor_image(dq=False, invvar=True, **trargs)
-        if not has_sky:
-            tim.data -= hacksky
+        if tim is None:
+            # eg, all-zero invvar
+            img = np.zeros((size,size), np.float32)
+            padleft = padright = padtop = padbottom = 0
+        else:
+            if not has_sky:
+                tim.data -= hacksky
+            img = tim.data * (tim.inverr > 0)
         from legacypipe.survey import get_rgb
-        rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        index = dict(g=2, r=1, i=0, z=0)[tim.band]
-        img = rgb[:,:,index]
+        rgb = get_rgb([img], [im.band]) #, mnmx=(-1,100.), arcsinh=1.)
+        img = rgb[:,:,bandindex]
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'dq':
@@ -6539,10 +6555,14 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         if im.sig1 == 0:
             im.sig1 = 1.
         tim = im.get_tractor_image(pixels=False, dq=True, invvar=False, **trargs)
-        img = tim.dq
-        # remap bitmasks...
-        img = np.log2(1 + img.astype(np.float32))
-        img[img == 0.] -= 5.
+        if tim is None:
+            img = np.zeros((size,size), np.int16)
+            padleft = padright = padtop = padbottom = 0
+        else:
+            img = tim.dq
+            # remap bitmasks...
+            img = np.log2(1 + img.astype(np.float32))
+            img[img == 0.] -= 5.
         kwa.update(vmin=-5)
 
     #print('slc', slc)
@@ -7554,7 +7574,10 @@ if __name__ == '__main__':
     #r = c.get('/wiro-C/1/13/7397/4203.jpg')
     #r = c.get('/exposures/?ra=29.8320&dec=19.0114&layer=ls-dr10-grz')
     #r = c.get('/wiro-D/1/14/14801/8410.jpg')
-    r = c.get('/exposure_panels/ls-dr10/464032/N28/?ra=198.5474&dec=-14.5133&size=100')
+    #r = c.get('/exposure_panels/ls-dr10/464032/N28/?ra=198.5474&dec=-14.5133&size=100')
+    #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100&kind=weight')
+    #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100')
+    r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100&kind=weightedimage')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
