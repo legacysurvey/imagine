@@ -6483,18 +6483,37 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
 
     trargs = dict(slc=slc, gaussPsf=True, old_calibs_ok=True, tiny=1,
                   trim_edges=False)
-                  #readsky=False)
-    
+
+    # Try reading sky models
+    has_sky = True
+    try:
+        primhdr = im.read_image_primary_header()
+        imghdr = im.read_image_header()
+        sky = im.read_sky_model(primhdr=primhdr, imghdr=imghdr, **trargs)
+    except Exception as e:
+        print('Failed to read sky model:', e)
+        #import traceback
+        #traceback.print_exc()
+        trargs.update(readsky=False)
+        has_sky = False
+
+        from tractor.basics import NanoMaggies
+        zpscale = NanoMaggies.zeropointToScale(im.ccdzpt)
+        hacksky = ccd.ccdskycounts * im.exptime / zpscale
+
     if kind == 'image':
         # HACK for some DR5 images...
         if im.sig1 == 0:
             im.sig1 = 1.
+
         tim = im.get_tractor_image(invvar=False, dq=False, **trargs)
         from legacypipe.survey import get_rgb
         print('im=',im)
         print('tim=',tim)
         # hack a sky sub
-        #tim.data -= np.median(tim.data)
+        if not has_sky:
+            tim.data -= hacksky
+
         rgb = get_rgb([tim.data], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, i=0, z=0)[tim.band]
         img = rgb[:,:,index]
@@ -6507,6 +6526,8 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
 
     elif kind == 'weightedimage':
         tim = im.get_tractor_image(dq=False, invvar=True, **trargs)
+        if not has_sky:
+            tim.data -= hacksky
         from legacypipe.survey import get_rgb
         rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
         index = dict(g=2, r=1, i=0, z=0)[tim.band]
@@ -7532,7 +7553,8 @@ if __name__ == '__main__':
     #r = c.get('/jpeg-cutout?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
     #r = c.get('/wiro-C/1/13/7397/4203.jpg')
     #r = c.get('/exposures/?ra=29.8320&dec=19.0114&layer=ls-dr10-grz')
-    r = c.get('/wiro-D/1/14/14801/8410.jpg')
+    #r = c.get('/wiro-D/1/14/14801/8410.jpg')
+    r = c.get('/exposure_panels/ls-dr10/464032/N28/?ra=198.5474&dec=-14.5133&size=100')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
