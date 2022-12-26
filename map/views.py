@@ -1164,7 +1164,7 @@ class MapLayer(object):
         fitsio.write(tmpfn, I2, header=hdr, clobber=True)
         if not ro:
             os.rename(tmpfn, fn)
-            info('Wrote', fn)
+            print('Wrote', fn)
         else:
             print('Leaving temp file for get_scaled:', fn, '->', tmpfn)
             # import traceback
@@ -3340,7 +3340,7 @@ class PS1Layer(MapLayer):
         from astrometry.util.fits import fits_table
         basedir = settings.DATA_DIR
         self.bricks = fits_table(os.path.join(basedir, 'ps1skycells-sub.fits'))
-        print('Read', len(self.bricks), 'bricks')
+        print('Read', len(self.bricks), 'bricks (ps1 skycells)')
         self.bricks.cut(self.bricks.filter == 'r')
         print('Cut to', len(self.bricks), 'r-band bricks')
         self.bricks.ra += (360. * (self.bricks.ra < 0.))
@@ -5919,7 +5919,8 @@ def exposures_common(req, tgz, copsf):
 
     showcut = 'cut' in req.GET
     if not showcut:
-        CCDs.cut(CCDs.ccd_cuts == 0)
+        if 'ccd_cuts' in CCDs.get_columns():
+            CCDs.cut(CCDs.ccd_cuts == 0)
     # Drop Y band images
     CCDs.cut(np.isin(CCDs.filter, ['g','r','i','z']))
 
@@ -6164,8 +6165,9 @@ def exposures_common(req, tgz, copsf):
         expurl = my_reverse(req, 'ccd_detail_xhtml', args=(layername, '%s-%i-%s' % (ccd.camera.strip(), int(ccd.expnum), ccd.ccdname.strip())))
         expurl += '?rect=%i,%i,%i,%i' % (x-size, y-size, W, H)
         cutstr = ''
-        if ccd.ccd_cuts != 0:
-            cutstr = ' <span style="color:red">(cut)</span>'
+        if 'ccd_cuts' in ccd.get_columns():
+            if ccd.ccd_cuts != 0:
+                cutstr = ' <span style="color:red">(cut)</span>'
 
         ccdsx.append(('<br/>'.join(['CCD <a href="%s">%s %s %i %s</a>, %.1f sec (x,y ~ %i,%i) %s' % (expurl, ccd.camera, ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y, cutstr),
                                     '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
