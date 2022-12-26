@@ -676,9 +676,14 @@ def main():
             print(len(fns), 'PS1 image files')
             layer = get_layer(opt.kind)
             B = layer.get_bricks()
+            print(len(B), 'skycells total')
+            B.cut((B.ra  >= opt.minra ) * (B.ra  <= opt.maxra ) *
+                  (B.dec >= opt.mindec) * (B.dec <= opt.maxdec))
+            print(len(B), 'skycells in RA,Dec box')
             for i,brick in enumerate(B):
                 for band in opt.bands:
                     fn0 = layer.get_filename(brick, band, 0)
+                    print('PS1 image:', fn0)
                     if not os.path.exists(fn0):
                         continue
                     for scale in opt.zoom:
