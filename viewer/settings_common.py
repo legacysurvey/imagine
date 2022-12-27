@@ -119,8 +119,8 @@ DUST_DIR   = os.path.join(DATA_DIR, 'dust')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 try:
-    import secrets.django
-    SECRET_KEY = secrets.django.SECRET_KEY
+    import appsecrets.django as s
+    SECRET_KEY = s.SECRET_KEY
 except:
     import random
     SECRET_KEY = ''.join([random.choice("abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)")
@@ -210,8 +210,8 @@ DATABASES = {
 #         'ENGINE': 'django.db.backends.sqlite3',
 #         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
 #     },
-#     'cosmo': secrets.database.COSMO_DB,
-#     'dr2': secrets.database.DR2_DB,
+#     'cosmo': appsecrets.database.COSMO_DB,
+#     'dr2': appsecrets.database.DR2_DB,
 }
 #DATABASE_ROUTERS = ['cat.models.Router']
 
