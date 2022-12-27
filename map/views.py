@@ -6571,6 +6571,11 @@ def sanitize_header(hdr):
     # https://github.com/esheldon/fitsio/issues/357
     outhdr = fitsio.FITSHDR()
     for r in hdr.records():
+        #print('Header rec', r)
+        # fitsio 1.1.2 (viewer)
+        if r.get('name','').startswith('DECALS_DR9_'):
+            continue
+        # fitsio 1.1.8 (viewer-dev)
         if r.get('card_string','').startswith('DECALS_DR9_'):
             continue
         outhdr.add_record(r)
