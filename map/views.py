@@ -5934,7 +5934,7 @@ def exposures_common(req, tgz, copsf):
 
     #print('Getting ccds_touching_wcs from', survey)
     #CCDs = survey.ccds_touching_wcs(wcs)
-    print('Getting ccds_touching_wcs from', layer)
+    print('Getting ccds_touching_wcs from layername =', layername, 'obj =', layer)
     CCDs = layer.ccds_touching_box(north, south, east, west)
     debug(len(CCDs), 'CCDs')
     CCDs = touchup_ccds(CCDs, survey)
@@ -6166,6 +6166,7 @@ def exposures_common(req, tgz, copsf):
         swap_layers = {'ls-dr8': 'ls-dr10-all',
                        'decals-dr7': 'ls-dr10-all',
                        'decals-dr5': 'ls-dr10-all',
+                       'ls-dr67': 'ls-dr10-all',
         }
         for (c,d,x,y),s in zip(ccds,swap):
             if s:
@@ -7579,7 +7580,8 @@ if __name__ == '__main__':
     #r = c.get('/exposure_panels/ls-dr10/464032/N28/?ra=198.5474&dec=-14.5133&size=100')
     #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100&kind=weight')
     #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100')
-    r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100&kind=weightedimage')
+    #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100&kind=weightedimage')
+    r = c.get('/exposures/?ra=189.8480&dec=9.0102&layer=ls-dr67')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
