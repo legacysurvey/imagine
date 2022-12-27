@@ -6589,6 +6589,17 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
     plt.imsave(jpegfn, img, **kwa)
     return send_file(jpegfn, 'image/jpeg', unlink=True)
 
+def sanitize_header(hdr):
+    import fitsio
+    ### HACK -- sanitize header due to
+    # https://github.com/esheldon/fitsio/issues/357
+    outhdr = fitsio.FITSHDR()
+    for r in hdr.records():
+        if r['card_string'].startswith('DECALS_DR9_'):
+            continue
+        outhdr.add_record(r)
+    return outhdr
+
 def image_data(req, survey, ccd):
     import fitsio
     survey, c = get_ccd_object(survey, ccd)
@@ -6609,6 +6620,8 @@ def image_data(req, survey, ccd):
     primhdr = fitsio.read_header(fn)
     pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
 
+    hdr = sanitize_header(hdr)
+
     os.unlink(tmpfn)
     fits = fitsio.FITS(tmpfn, 'rw')
     fits.write(None, header=primhdr, clobber=True)
@@ -6628,6 +6641,8 @@ def dq_data(req, survey, ccd):
     primhdr = fitsio.read_header(fn)
     pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
 
+    hdr = sanitize_header(hdr)
+
     os.unlink(tmpfn)
     fits = fitsio.FITS(tmpfn, 'rw')
     fits.write(None, header=primhdr, clobber=True)
@@ -6646,6 +6661,8 @@ def iv_data(req, survey, ccd):
     os.close(ff)
     primhdr = fitsio.read_header(fn)
     pix,hdr = fitsio.read(fn, ext=c.image_hdu, header=True)
+
+    hdr = sanitize_header(hdr)
 
     os.unlink(tmpfn)
     fits = fitsio.FITS(tmpfn, 'rw')
