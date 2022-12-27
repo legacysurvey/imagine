@@ -1280,8 +1280,8 @@ class MapLayer(object):
 
                 # Check for pixel overlap area (projecting target WCS edges into this brick)
                 ok,xx,yy = bwcs.radec2pixelxy(target_ra, target_dec)
-                xx = xx.astype(np.int)
-                yy = yy.astype(np.int)
+                xx = xx.astype(np.int32)
+                yy = yy.astype(np.int32)
 
                 #print('Brick', brickname, 'band', band, 'shape', bwcs.shape, 'pixel coords', xx, yy)
 
@@ -4987,8 +4987,8 @@ class OutliersLayer(DecalsLayer):
                 continue
             # Check for pixel overlap area (projecting target WCS edges into this brick)
             ok,xx,yy = bwcs.radec2pixelxy(target_ra, target_dec)
-            xx = xx.astype(np.int)
-            yy = yy.astype(np.int)
+            xx = xx.astype(np.int32)
+            yy = yy.astype(np.int32)
             imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
             M = 10
             xlo = np.clip(xx.min() - M, 0, imW)
@@ -7571,7 +7571,8 @@ if __name__ == '__main__':
     #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100&kind=weight')
     #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100')
     #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100&kind=weightedimage')
-    r = c.get('/exposures/?ra=189.8480&dec=9.0102&layer=ls-dr67')
+    #r = c.get('/exposures/?ra=189.8480&dec=9.0102&layer=ls-dr67')
+    r = c.get('/iv-data/ls-dr9-south/decam-563185-N3-z')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
