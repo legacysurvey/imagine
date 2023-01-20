@@ -612,9 +612,9 @@ var sga_popup = function(json, i) {
 	s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
     s += '<br/>Group: ' + groupname;
         // matching map/cats.py : cat_sga
-        d25 = json['radiusArcsec'][i] * 2 / 60.;
+        r = json['radiusArcsec'][i] * 2 / 60.;
         s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
-        s += '<br/>D(25)='+d25.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
+        s += '<br/>D(26)='+r.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
         z = json['redshift'][i];
         t = json['type'][i];
         if (t.length > 0)
