@@ -44,6 +44,11 @@ debug = print
 if not settings.DEBUG_LOGGING:
     def debug(*args, **kwargs):
         pass
+info = print
+if not settings.INFO_LOGGING:
+    def info(*args, **kwargs):
+        pass
+
 
 tileversions = {
     'sfd': [1, 2],
@@ -522,7 +527,7 @@ def _index(req,
         
     galname = None
     if ra is None or dec is None:
-        print('Getting random galaxy position')
+        #print('Getting random galaxy position')
         ra,dec,galname = get_random_galaxy(layer=layer)
     
     hostname_url = req.build_absolute_uri('/')
@@ -557,7 +562,7 @@ def _index(req,
         import traceback
         traceback.print_exc()
 
-    print('Setting initial RA,Dec position', ra, dec)
+    #print('Setting initial RA,Dec position', ra, dec)
 
     args = dict(ra=ra, dec=dec,
                 maxZoom=maxZoom,
@@ -784,12 +789,12 @@ def name_query(req):
 
     # Check for RA,Dec in decimal degrees or H:M:S.
     words = obj.strip().split()
-    print('Parsing name query: words', words)
+    #print('Parsing name query: words', words)
     if len(words) == 2:
         try:
             rastr,decstr = words
             ra,dec = parse_radec_strings(rastr, decstr)
-            print('Parsed as:', ra,dec)
+            #print('Parsed as:', ra,dec)
             return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=obj)),
                                 content_type='application/json')
         except:
@@ -840,7 +845,7 @@ def data_for_radec(req):
     dec = float(req.GET['dec'])
     layername = request_layer_name(req)
     layer = get_layer(layername)
-    print('data_for_radec: layer', layer)
+    #print('data_for_radec: layer', layer)
     return layer.data_for_radec(req, ra, dec)
 
 class NoOverlapError(RuntimeError):
@@ -1132,7 +1137,7 @@ class MapLayer(object):
             return None
         ro = settings.READ_ONLY_BASEDIR
         if ro:
-            print('Read-only; not creating scaled', brick, band, scale)
+            print('create_scaled_image: Read-only', brick, band, scale)
             return None
         img = self.read_image(brick, band, scale-1, None, fn=sourcefn)
         wcs = self.read_wcs(brick, band, scale-1, fn=sourcefn)
@@ -1228,7 +1233,7 @@ class MapLayer(object):
             bricks = self.bricks_touching_general_wcs(wcs, scale=scale)
 
         if bricks is None or len(bricks) == 0:
-            print('No bricks touching WCS')
+            info('No bricks touching WCS')
             return None
 
         if bands is None:
@@ -1261,7 +1266,7 @@ class MapLayer(object):
                 #print('Reading', brickname, 'band', band, 'scale', scale)
                 # call get_filename to possibly generate scaled version
                 fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
-                print('Reading', brickname, 'band', band, 'scale', scale, '-> fn', fn)
+                info('Reading', brickname, 'band', band, 'scale', scale, '-> fn', fn)
                 if fn is None:
                     continue
 
@@ -1293,7 +1298,7 @@ class MapLayer(object):
                 yhi = np.clip(yy.max() + M, 0, imH)
                 #print('-- x range', xlo,xhi, 'y range', ylo,yhi)
                 if xlo >= xhi or ylo >= yhi:
-                    print('No pixel overlap')
+                    info('No pixel overlap')
                     continue
 
                 if debug_ps is not None:
@@ -1524,9 +1529,9 @@ class MapLayer(object):
 
         if (not get_images) and (wcs is None):
             tilefn = self.get_tile_filename(ver, zoom, x, y)
-            print('Tile image filename:', tilefn, 'exists?', os.path.exists(tilefn))
+            info('Tile image filename:', tilefn, 'exists?', os.path.exists(tilefn))
             if os.path.exists(tilefn) and not ignoreCached:
-                print('Sending tile', tilefn)
+                info('Sending tile', tilefn)
                 return send_file(tilefn, 'image/jpeg', expires=oneyear,
                                  modsince=req.META.get('HTTP_IF_MODIFIED_SINCE'),
                                  filename=filename)
@@ -1639,10 +1644,10 @@ class MapLayer(object):
             scale = 0
             fitsio.write(out_fn, None, header=hdr, clobber=True)
             for brick in bricks[J]:
-                print('Cutting out RA,Dec', ra,dec, 'in brick', brick.brickname)
+                info('Cutting out RA,Dec', ra,dec, 'in brick', brick.brickname)
                 for band in bands:
                     fn = self.get_filename(brick, band, scale)
-                    print('Image filename', fn)
+                    info('Image filename', fn)
                     wcs = self.read_wcs(brick, band, scale, fn=fn)
                     if wcs is None:
                         continue
@@ -1655,7 +1660,7 @@ class MapLayer(object):
                     x1 = np.clip(xx + width - 1, 0, W-1)
                     y0 = np.clip(yy, 0, H-1)
                     y1 = np.clip(yy + height - 1, 0, H-1)
-                    print('X', x0, x1, 'Y', y0, y1)
+                    #print('X', x0, x1, 'Y', y0, y1)
                     if x0 == x1 or y0 == y1:
                         print('No overlap')
                         continue
@@ -1667,7 +1672,7 @@ class MapLayer(object):
                         print('Failed to read image:', e)
                         continue
                     ivfn = self.get_base_filename(brick, band, invvar=True)
-                    print('Invvar filename', ivfn)
+                    #print('Invvar filename', ivfn)
                     iv = self.read_image(brick, band, 0, slc, fn=ivfn)
                     hdr = fitsio.FITSHDR()
                     self.populate_fits_cutout_header(hdr)
@@ -1699,7 +1704,7 @@ class MapLayer(object):
 
         xtile = ytile = -1
 
-        print('Cutout: bands', bands)
+        #print('Cutout: bands', bands)
         if jpeg:
             ims,rgb = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
             self.write_jpeg(out_fn, rgb)
@@ -1755,7 +1760,7 @@ class MapLayer(object):
         if not 'pixscale' in req.GET and 'zoom' in req.GET:
             zoom = int(req.GET.get('zoom'))
             pixscale = pixscale * 2**(native_zoom - zoom)
-            print('Request has zoom=', zoom, ': setting pixscale=', pixscale)
+            #print('Request has zoom=', zoom, ': setting pixscale=', pixscale)
 
         if bands is not None:
             bands = self.parse_bands(bands)
@@ -1795,7 +1800,7 @@ class MapLayer(object):
             tempfiles = []
             rtn = self.get_cutout(request, jpeg=True, tempfiles=tempfiles)
             for fn in tempfiles:
-                print('Deleting temp file', fn)
+                #print('Deleting temp file', fn)
                 os.unlink(fn)
             return rtn
         return view
@@ -1805,7 +1810,7 @@ class MapLayer(object):
             tempfiles = []
             rtn = self.get_cutout(request, fits=True, tempfiles=tempfiles)
             for fn in tempfiles:
-                print('Deleting temp file', fn)
+                #print('Deleting temp file', fn)
                 os.unlink(fn)
             return rtn
         return view
@@ -2439,8 +2444,8 @@ class DecapsLayer(DecalsDr3Layer):
             else:
                 host = host.replace('imagine.legacysurvey.org', 'legacysurvey.org')
             return HttpResponseRedirect('http://' + host + '/viewer' + req.path)
-        return super(Decaps2Layer, self).get_tile(req, ver, zoom, x, y, **kwargs)
-        
+        return super().get_tile(req, ver, zoom, x, y, **kwargs)
+
 class ResidMixin(object):
     def __init__(self, image_layer, model_layer, *args, **kwargs):
         '''
@@ -2636,7 +2641,7 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
 
 class LsDr10Layer(ReDecalsLayer):
     def get_rgb(self, imgs, bands, **kwargs):
-        print('LsDr10Layer.get_rgb: self.bands', self.bands)
+        #print('LsDr10Layer.get_rgb: self.bands', self.bands)
         if self.bands == 'grz':
             return super().get_rgb(imgs, bands, **kwargs)
         import numpy as np
@@ -2696,12 +2701,12 @@ class LsDr10Layer(ReDecalsLayer):
             if self.name == 'ls-dr10-early':
                 from legacypipe.survey import wcs_for_brick
                 import numpy as np
-                print('DR10-early looking for CCDs')
+                #print('DR10-early looking for CCDs')
                 targetwcs = wcs_for_brick(brick)
                 ccds = survey.ccds_touching_wcs(targetwcs)
                 ccds = touchup_ccds(ccds, survey)
 
-                print(len(ccds), 'CCDs')
+                #print(len(ccds), 'CCDs')
                 ccds.brick_x0 = np.zeros(len(ccds), np.int16)
                 ccds.brick_x1 = np.zeros(len(ccds), np.int16)
                 ccds.brick_y0 = np.zeros(len(ccds), np.int16)
@@ -2792,7 +2797,6 @@ class WiroCLayer(ReDecalsLayer):
         #from legacypipe.survey import get_rgb as rgb
         rgb,kwa = self.survey.get_rgb(imgs, bands, coadd_bw=True)
         rgb = rgb[:,:,np.newaxis].repeat(3, axis=2)
-        print('rgb shape', rgb.shape)
         return rgb
 
 
@@ -3101,13 +3105,13 @@ class LegacySurveySplitLayer(MapLayer):
         return 0
 
     def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False):
-        print('Split Layer render_rgb: bands=', bands)
+        #print('Split Layer render_rgb: bands=', bands)
         if y != -1:
             # FIXME -- this is not the correct cut -- only listen to split for NGC --
             # but this doesn't get called anyway because the JavaScript layer has the smarts.
             split = self.tilesplits[zoom]
             if y < split:
-                print('Split Layer render_rgb: short-cutting to north')
+                #print('Split Layer render_rgb: short-cutting to north')
                 #print('y below split -- north')
                 if bands is None:
                     b = self.top_bands
@@ -3117,7 +3121,7 @@ class LegacySurveySplitLayer(MapLayer):
                                            tempfiles=tempfiles,
                                            get_images_only=get_images_only)
             if y > split:
-                print('Split Layer render_rgb: short-cutting to south')
+                #print('Split Layer render_rgb: short-cutting to south')
                 if bands is None:
                     b = self.bottom_bands
                 else:
@@ -3184,7 +3188,7 @@ class LegacySurveySplitLayer(MapLayer):
         if get_images_only:
             return ims,None
 
-        print('SplitLayer render_rgb: rgb: top', toprgb.shape if toprgb is not None else 'None', 'bottom', botrgb.shape if botrgb is not None else 'None')
+        #print('SplitLayer render_rgb: rgb: top', toprgb.shape if toprgb is not None else 'None', 'bottom', botrgb.shape if botrgb is not None else 'None')
 
         if toprgb is not None and botrgb is None:
             return ims,toprgb
@@ -3204,23 +3208,23 @@ class LegacySurveySplitLayer(MapLayer):
 
     def get_tile_filename(self, ver, zoom, x, y):
         '''Pre-rendered JPEG tile filename.'''
-        print('SplitLayer.get_tile_filename: zoom', zoom, 'y', y)
+        #print('SplitLayer.get_tile_filename: zoom', zoom, 'y', y)
         split = self.tilesplits[zoom]
         ## FIXME -- this is not the correct cut -- ignores NGC/SGC difference
         if y < split:
             fn = self.top.get_tile_filename(ver, zoom, x, y)
-            print('Top fn', fn)
+            #print('Top fn', fn)
             return fn
             #return self.top.get_tile_filename(ver, zoom, x, y)
         if y > split:
             #return self.bottom.get_tile_filename(ver, zoom, x, y)
             fn = self.bottom.get_tile_filename(ver, zoom, x, y)
-            print('Bottom fn', fn)
+            #print('Bottom fn', fn)
             return fn
             
         tilefn = os.path.join(self.tiledir,
                               '%i' % ver, '%i' % zoom, '%i' % x, '%i.jpg' % y)
-        print('Middle:', tilefn)
+        #print('Middle:', tilefn)
         return tilefn
 
 class DesLayer(ReDecalsLayer):
@@ -3458,7 +3462,7 @@ class PS1Layer(MapLayer):
             return None
         import numpy as np
         H,W = bwcs.shape
-        print('Bwcs shape:', H,W)
+        #print('Bwcs shape:', H,W)
         U = np.ones((H,W), bool)
         # Mask 10 pix at edges
         U[:10,:] = False
@@ -3577,7 +3581,7 @@ class UnwiseLayer(MapLayer):
         return _unwise_to_rgb(imgs, **kwargs)
 
     def populate_fits_cutout_header(self, hdr):
-        print('unWISE populate FITS cutout header')
+        #print('unWISE populate FITS cutout header')
         hdr['SURVEY'] = 'unWISE'
         hdr['VERSION'] = self.name
 
@@ -3629,7 +3633,7 @@ class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
         scale = min(scale, 4)
         from astrometry.util.fits import fits_table
         fn = os.path.join(settings.DATA_DIR, 'unwise-bricks-%i.fits' % scale)
-        print('Unwise bricks for scale', scale, '->', fn)
+        #print('Unwise bricks for scale', scale, '->', fn)
         b = fits_table(fn)
         return b
 
@@ -3640,11 +3644,11 @@ class RebrickedUnwise(RebrickedMixin, UnwiseLayer):
         '''
         import numpy as np
         bricks = self.get_bricks_for_scale(scale)
-        print('(unwise) scale', scale, 'bricks touching RA,Dec box', ralo, rahi, declo, dechi)
+        #print('(unwise) scale', scale, 'bricks touching RA,Dec box', ralo, rahi, declo, dechi)
         I, = np.nonzero((bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
         ok = ra_ranges_overlap(ralo, rahi, bricks.ra1[I], bricks.ra2[I])
         I = I[ok]
-        print('-> bricks', bricks.brickname[I])
+        #print('-> bricks', bricks.brickname[I])
         if len(I) == 0:
             return None
         return bricks[I]
@@ -3789,7 +3793,7 @@ class GalexLayer(RebrickedUnwise):
         compress = '[compress R 100,100; qz 4]'
         fitsio.write(tmpfn + compress, img, header=hdr, clobber=True)
         os.rename(tmpfn, fn)
-        print('Wrote', fn)
+        #print('Wrote', fn)
 
     def create_scaled_image(self, brick, band, scale, fn, tempfiles=None):
         if scale == 0:
@@ -4329,8 +4333,8 @@ class PandasLayer(RebrickedMixin, MapLayer):
         import fitsio
         if fn is None:
             fn = self.get_filename(brick, band, scale)
-        print('read_image: brick', brick.brickname, 'band', band, 'scale', scale, 'fn', fn)
-        print('ext', brick.ext)
+        #print('read_image: brick', brick.brickname, 'band', band, 'scale', scale, 'fn', fn)
+        #print('ext', brick.ext)
         f = fitsio.FITS(fn)[brick.ext]
         med = getattr(brick, 'median_'+band)
         if slc is None:
@@ -4345,8 +4349,8 @@ class PandasLayer(RebrickedMixin, MapLayer):
             fn = self.get_filename(brick, band, scale)
         if fn is None:
             return None
-        print('read_wcs: brick', brick.brickname, 'band', band, 'scale', scale, 'fn', fn)
-        print('ext', brick.ext)
+        #print('read_wcs: brick', brick.brickname, 'band', band, 'scale', scale, 'fn', fn)
+        #print('ext', brick.ext)
         wcs = anwcs_wrapper(fn, int(brick.ext))
         import fitsio
         hdr = fitsio.read_header(fn, ext=int(brick.ext))
@@ -4705,9 +4709,9 @@ class SplitSurveyData(LegacySurveyData):
         if ccds_n is not None:
             ccds_n.is_north = np.ones(len(ccds_n), bool)
             ccds.append(ccds_n)
-        print('north CCDs:', ccds_n)
+        #print('north CCDs:', ccds_n)
         ccds_s = self.south.find_ccds(expnum=expnum, ccdname=ccdname, camera=camera)
-        print('south CCDs:', ccds_s)
+        #print('south CCDs:', ccds_s)
         if ccds_s is not None:
             ccds_s.is_north = np.zeros(len(ccds_s), bool)
             ccds.append(ccds_s)
@@ -4731,13 +4735,13 @@ class SplitSurveyData(LegacySurveyData):
         import numpy as np
         ns = []
         n = self.north.ccds_touching_wcs(wcs, **kwargs)
-        print('ccds_touching_wcs: north', n)
+        #print('ccds_touching_wcs: north', n)
         if n is not None:
             n.is_north = np.ones(len(n), bool)
             n.layer = np.array([self.north.layer] * len(n))
             ns.append(n)
         s = self.south.ccds_touching_wcs(wcs, **kwargs)
-        print('ccds_touching_wcs: south', s)
+        #print('ccds_touching_wcs: south', s)
         if s is not None:
             s.is_north = np.zeros(len(s), bool)
             s.layer = np.array([self.south.layer] * len(s))
@@ -5072,7 +5076,7 @@ def get_survey(name):
     import numpy as np
     name = clean_layer_name(name)
     name = layer_to_survey_name(name)
-    print('Survey name', name)
+    #print('Survey name', name)
 
     if name in surveys:
         #print('Cache hit for survey', name)
@@ -5168,7 +5172,7 @@ def get_survey(name):
 
     if survey is None:
         survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
-        print('Creating LegacySurveyData for', name, 'with survey', survey, 'dir', dirnm)
+        #print('Creating LegacySurveyData for', name, 'with survey', survey, 'dir', dirnm)
 
     names_urls = {
         'mzls+bass-dr6': ('MzLS+BASS DR6', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr6/'),
@@ -7577,8 +7581,13 @@ if __name__ == '__main__':
     #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100')
     #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100&kind=weightedimage')
     #r = c.get('/exposures/?ra=189.8480&dec=9.0102&layer=ls-dr67')
-    r = c.get('/iv-data/ls-dr9-south/decam-563185-N3-z')
-    f = open('out.jpg', 'wb')
+    #r = c.get('/iv-data/ls-dr9-south/decam-563185-N3-z')
+    #r = c.get('/cutout.fits?ra=186.5224&dec=11.8116&layer=ls-dr10&pixscale=1.00&bands=i')
+    #r = c.get('/fits-cutout/?ra=139.02988862264112&dec=0.3222405358699295&pixscale=0.2&layer=ls-dr10&size=500&bands=i')
+    r = c.get('/fits-cutout/?ra=139.02988862264112&dec=0.3222405358699295&pixscale=0.2&layer=ls-dr10&size=50&bands=i')
+    outfn = '/tmp/out.jpg'
+    print('Writing to', outfn)
+    f = open(outfn, 'wb')
     for x in r:
         #print('Got', type(x), len(x))
         f.write(x)
