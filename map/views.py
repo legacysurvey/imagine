@@ -7599,7 +7599,8 @@ if __name__ == '__main__':
     #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100')
     #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100&kind=weightedimage')
     #r = c.get('/exposures/?ra=189.8480&dec=9.0102&layer=ls-dr67')
-    r = c.get('/iv-data/ls-dr9-south/decam-563185-N3-z')
+    #r = c.get('/iv-data/ls-dr9-south/decam-563185-N3-z')
+    r = c.get('/cutout.fits?ra=186.5224&dec=11.8116&layer=ls-dr10&pixscale=1.00&bands=i')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
