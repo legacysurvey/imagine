@@ -3796,6 +3796,10 @@ class GalexLayer(RebrickedUnwise):
         #print('Wrote', fn)
 
     def create_scaled_image(self, brick, band, scale, fn, tempfiles=None):
+        ro = settings.READ_ONLY_BASEDIR
+        if ro:
+            print('Read-only; not creating scaled GALEX image for brick', brick, 'scale', scale, 'band', band)
+            return None
         if scale == 0:
             print('Galex: create_scaled_image, scale', scale, '-> create_coadd')
             return self.create_coadd_image(brick, band, scale, fn, tempfiles=tempfiles)
@@ -3834,8 +3838,10 @@ class GalexLayer(RebrickedUnwise):
         fnargs = dict(band=band, brickname=brickname, scale=scale)
         fn = self.get_scaled_pattern() % fnargs
         if not os.path.exists(fn):
-            print('Creating', fn)
-            self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
+            #print('Creating', fn)
+            r = self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
+            if r is None:
+                return None
             print('Created', fn)
         if not os.path.exists(fn):
             return None
@@ -3938,7 +3944,7 @@ class GalexLayer(RebrickedUnwise):
         import fitsio
         if fn is None:
             fn = self.get_filename(brick, band, scale)
-        print('Reading image from', fn)
+        #print('Reading image from', fn)
         ext = self.get_fits_extension(scale, fn)
         f = fitsio.FITS(fn)[ext]
         if slc is None:
