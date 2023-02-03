@@ -35,6 +35,9 @@ RUN apt install -y gpgv && \
     python3-pip \
     python3.10 \
     python3.10-dev \
+    iputils-ping \
+    dnsutils \
+    htop \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Pip installs
@@ -47,6 +50,12 @@ RUN for x in \
     astropy \
     photutils \
     zmq \
+    Django \
+    pillow \
+    psutil \
+    psycopg2 \
+    uwsgi \
+    requests \
     ; do \
     python3.10 -m pip install $x; \
     done; \
@@ -64,9 +73,9 @@ RUN git clone http://github.com/dstndstn/astrometry.net.git astrometry \
     && make install INSTALL_DIR=/usr/local PYTHON=python3.10 \
     && make clean
 
-ENV PYTHON=python3
-# python = python3
-RUN ln -s /usr/bin/python3 /usr/bin/python
+ENV PYTHON=python3.10
+# python = python3.10
+RUN ln -s /usr/bin/python3.10 /usr/bin/python
 
 # The Tractor
 RUN git clone http://github.com/dstndstn/tractor.git tractor \
@@ -76,16 +85,5 @@ RUN git clone http://github.com/dstndstn/tractor.git tractor \
     && rm -R $(find . -name "*.o" -o -name "*.so") \
     && (cd && PYTHONPATH=/usr/local/lib/python python3 -c "import tractor; print(tractor.__version__)")
 
-# DUST maps
-RUN mkdir -p dust/maps \
-  && cd dust/maps \
-  && wget -c http://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_ngp.fits \
-  && wget -c http://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_sgp.fits
-ENV DUST_DIR=/src/dust
-
-# Unwise PSF
-RUN git clone https://github.com/legacysurvey/unwise_psf.git
-#    && cd unwise_psf \
-#    && git checkout dr9.3
-
-ENV PYTHONPATH=/usr/local/lib/python:/src/unwise_psf/py:/src/legacypipe/py
+COPY entry.sh /app
+ENTRYPOINT ["/app/entry.sh"]
