@@ -6243,6 +6243,8 @@ def exposures_common(req, tgz, copsf):
     url = req.build_absolute_uri(url)
     # Deployment: http://{s}.DOMAIN/...
     url = url.replace('://www.', '://')
+    # Yuck!
+    url = url.replace('://decaps.', '://')
     url = url.replace('://', '://%s.')
     domains = settings.SUBDOMAINS
 
@@ -7669,7 +7671,8 @@ if __name__ == '__main__':
     #r = c.get('/exposures/?ra=189.8480&dec=9.0102&layer=ls-dr67')
     #r = c.get('/iv-data/ls-dr9-south/decam-563185-N3-z')
     #r = c.get('/cutout.fits?ra=186.5224&dec=11.8116&layer=ls-dr10&pixscale=1.00&bands=i')
-    r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
+    #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
+    r = c.get('/exposures/?ra=285.7324&dec=-63.7436&layer=ls-dr10', HTTP_HOST='decaps.legacysurvey.org')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
