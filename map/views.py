@@ -114,7 +114,10 @@ tileversions = {
     'unwise-neo3': [1],
     'unwise-neo4': [1],
     'unwise-neo6': [1],
+    'unwise-neo7': [1],
 
+    'unwise-neo7-mask': [1],
+    
     'unwise-cat-model': [1],
 
     'cutouts': [1],
@@ -1215,6 +1218,31 @@ class MapLayer(object):
         import numpy as np
         return np.int16
 
+    # Called by render_into_wcs
+    def resample_for_render(self, wcs, subwcs, img, coordtype):
+        from astrometry.util.resample import resample_with_wcs
+        Yo,Xo,Yi,Xi,[resamp] = resample_with_wcs(wcs, subwcs, [img],
+                                                 intType=coordtype)
+        return Yo,Xo,Yi,Xi,resamp
+
+    def initialize_accumulator_for_render(self, W, H, band):
+        import numpy as np
+        rimg = np.zeros((H,W), np.float32)
+        rw   = np.zeros((H,W), np.float32)
+        return rimg, rw
+
+    def finish_accumulator_for_render(self, acc):
+        import numpy as np
+        rimg, rw = acc
+        rimg /= np.maximum(rw, 1e-18)
+        return rimg
+
+    # Called by render_into_wcs
+    def accumulate_for_render(self, Yo, Xo, Yi, Xi, resamp, wt, img, acc):
+        rimg, rw = acc
+        rimg[Yo,Xo] += resamp * wt
+        rw  [Yo,Xo] += wt
+
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
                         scale=None, tempfiles=None):
         import numpy as np
@@ -1257,8 +1285,7 @@ class MapLayer(object):
 
         rimgs = []
         for band in bands:
-            rimg = np.zeros((H,W), np.float32)
-            rw   = np.zeros((H,W), np.float32)
+            acc = self.initialize_accumulator_for_render(W, H, band)
             bandbricks = self.bricks_for_band(bricks, band)
             for brick in bandbricks:
                 brickname = brick.brickname
@@ -1370,8 +1397,7 @@ class MapLayer(object):
 
                 #print('Resampling', img.shape)
                 try:
-                    Yo,Xo,Yi,Xi,[resamp] = resample_with_wcs(wcs, subwcs, [img],
-                                                             intType=coordtype)
+                    Yo,Xo,Yi,Xi,resamp = self.resample_for_render(wcs, subwcs, img, coordtype)
                 except OverlapError:
                     #debug('Resampling exception')
                     continue
@@ -1389,7 +1415,8 @@ class MapLayer(object):
                     Xo = Xo[I]
                     Yi = Yi[I]
                     Xi = Xi[I]
-                    resamp = resamp[I]
+                    if resamp is not None:
+                        resamp = resamp[I]
 
                     #print('get_brick_mask:', len(Yo), 'pixels')
 
@@ -1400,13 +1427,14 @@ class MapLayer(object):
                 #       'subwcs shape', subwcs.shape)
 
                 #if not np.all(np.isfinite(img[Yi,Xi])):
-                if not np.all(np.isfinite(resamp)):
-                    ok, = np.nonzero(np.isfinite(resamp))
-                    Yo = Yo[ok]
-                    Xo = Xo[ok]
-                    Yi = Yi[ok]
-                    Xi = Xi[ok]
-                    resamp = resamp[ok]
+                if resamp is not None:
+                    if not np.all(np.isfinite(resamp)):
+                        ok, = np.nonzero(np.isfinite(resamp))
+                        Yo = Yo[ok]
+                        Xo = Xo[ok]
+                        Yi = Yi[ok]
+                        Xi = Xi[ok]
+                        resamp = resamp[ok]
 
                 ok = self.filter_pixels(scale, img, wcs, subwcs, Yo,Xo,Yi,Xi)
                 if ok is not None:
@@ -1414,14 +1442,11 @@ class MapLayer(object):
                     Xo = Xo[ok]
                     Yi = Yi[ok]
                     Xi = Xi[ok]
-                    resamp = resamp[ok]
+                    if resamp is not None:
+                        resamp = resamp[ok]
 
                 wt = self.get_pixel_weights(band, brick, scale)
-
-                #rimg[Yo,Xo] += img[Yi,Xi] * wt
-                rimg[Yo,Xo] += resamp * wt
-                rw  [Yo,Xo] += wt
-
+                self.accumulate_for_render(Yo, Xo, Yi, Xi, resamp, wt, img, acc)
                 #print('Coadded', len(Yo), 'pixels;', (nz-np.sum(rw==0)), 'new')
 
                 if debug_ps is not None:
@@ -1460,7 +1485,7 @@ class MapLayer(object):
                     #plt.savefig('render-%s-%s.png' % (brickname, band))
                     debug_ps.savefig()
             #print('Median image weight:', np.median(rw.ravel()))
-            rimg /= np.maximum(rw, 1e-18)
+            rimg = self.finish_accumulator_for_render(acc)
             #print('Median image value:', np.median(rimg.ravel()))
             rimgs.append(rimg)
         return rimgs
@@ -3687,6 +3712,45 @@ class UnwiseCatalogModel(RebrickedUnwise):
     def get_fits_extension(self, scale, fn):
         return 1
 
+class UnwiseMask(RebrickedUnwise):
+    # Only works for scale=0
+    def get_bricks_for_scale(self, scale):
+        if scale in [0, None]:
+            return super().get_bricks_for_scale(scale)
+        return None
+    # One mask file per brick
+    def get_bands(self):
+        return '1'
+    # data/unwise-neo7/000/0000p757/unwise-0000p757-msk.fits.gz
+    def get_base_filename(self, brick, band, **kwargs):
+        brickname = brick.brickname
+        brickpre = brickname[:3]
+        fn = os.path.join(self.dir, brickpre, brickname,
+                          'unwise-%s-msk.fits.gz' % (brickname))
+        return fn
+
+    # Called by render_into_wcs
+    def resample_for_render(self, wcs, subwcs, img, coordtype):
+        from astrometry.util.resample import resample_with_wcs
+        Yo,Xo,Yi,Xi,_ = resample_with_wcs(wcs, subwcs, [],
+                                          intType=coordtype)
+        return Yo,Xo,Yi,Xi,None
+
+    def initialize_accumulator_for_render(self, W, H, band):
+        import numpy as np
+        rmask = np.zeros((H,W), np.int32)
+        return rmask
+
+    def finish_accumulator_for_render(self, acc):
+        rmask = acc
+        return rmask
+
+    # Called by render_into_wcs
+    def accumulate_for_render(self, Yo, Xo, Yi, Xi, resamp, wt, img, acc):
+        rmask = acc
+        rmask[Yo,Xo] = img[Yi, Xi]
+    
+    
 class UnwiseW3W4(RebrickedUnwise):
     def get_bands(self):
         # Note, not 'w1','w2'...
@@ -6929,6 +6993,10 @@ def get_layer(name, default=None):
         layer = RebrickedUnwise('unwise-neo7',
                                 os.path.join(settings.DATA_DIR, 'unwise-neo7'))
 
+    elif name == 'unwise-neo7-mask':
+        layer = UnwiseMask('unwise-neo7-mask',
+                           os.path.join(settings.DATA_DIR, 'unwise-neo7'))
+        
     elif name == 'unwise-w3w4':
         layer = UnwiseW3W4('unwise-w3w4', os.path.join(settings.DATA_DIR, 'unwise-w3w4'))
 
@@ -7600,7 +7668,8 @@ if __name__ == '__main__':
     #r = c.get('/exposure_panels/ls-dr10/899372/S27/?ra=349.9997&dec=-2.2077&size=100&kind=weightedimage')
     #r = c.get('/exposures/?ra=189.8480&dec=9.0102&layer=ls-dr67')
     #r = c.get('/iv-data/ls-dr9-south/decam-563185-N3-z')
-    r = c.get('/cutout.fits?ra=186.5224&dec=11.8116&layer=ls-dr10&pixscale=1.00&bands=i')
+    #r = c.get('/cutout.fits?ra=186.5224&dec=11.8116&layer=ls-dr10&pixscale=1.00&bands=i')
+    r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
