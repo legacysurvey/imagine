@@ -38,6 +38,7 @@ RUN apt install -y gpgv && \
     iputils-ping \
     dnsutils \
     htop \
+    less \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Pip installs
@@ -53,7 +54,7 @@ RUN for x in \
     Django \
     pillow \
     psutil \
-    psycopg2 \
+    psycopg2-binary \
     uwsgi \
     requests \
     ; do \
