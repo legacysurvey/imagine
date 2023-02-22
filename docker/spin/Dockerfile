@@ -62,8 +62,8 @@ RUN for x in \
     done; \
     rm -R /root/.cache/pip
 
-RUN mkdir /src
-WORKDIR /src
+RUN mkdir /app
+WORKDIR /app
 
 # Astrometry.net
 RUN git clone http://github.com/dstndstn/astrometry.net.git astrometry \
@@ -86,5 +86,11 @@ RUN git clone http://github.com/dstndstn/tractor.git tractor \
     && rm -R $(find . -name "*.o" -o -name "*.so") \
     && (cd && PYTHONPATH=/usr/local/lib/python python3 -c "import tractor; print(tractor.__version__)")
 
+RUN python3.10 -m pip install --no-cache tzdata
+
+ENV PYTHONPATH=/usr/local/lib/python
+
+RUN mkdir /app/viewer
+
 COPY entry.sh /app
-ENTRYPOINT ["/app/entry.sh"]
+#ENTRYPOINT ["/app/entry.sh"]
