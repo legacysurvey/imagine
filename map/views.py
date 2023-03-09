@@ -1934,6 +1934,7 @@ class DecalsLayer(MapLayer):
         if drname is None:
             drname = name
         self.drname = drname
+        self.have_ccd_data = True
 
         self.basedir = os.path.join(settings.DATA_DIR, self.drname)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.drname)
@@ -1962,12 +1963,7 @@ class DecalsLayer(MapLayer):
 
         bb = get_radec_bbox(req)
         if bb is not None:
-            ralo,rahi,declo,dechi = bb
-            caturl = (my_reverse(req, 'cat-fits', args=(self.name,)) +
-                      '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
-            html.extend(['<h1>%s Data for RA,Dec box:</h1>' % self.drname,
-                         '<p><a href="%s">Catalog</a></p>' % caturl])
-
+            html.extend(self.data_for_radec_box_html(req, *bb))
             html.extend(self.cutouts_html(req, ra, dec))
 
         brick_html = self.brick_details_body(brick)
@@ -2013,6 +2009,12 @@ class DecalsLayer(MapLayer):
             ]
         return html
 
+    def data_for_radec_box_html(self, req, ralo,rahi,declo,dechi):
+        caturl = (my_reverse(req, 'cat-fits', args=(self.name,)) +
+                  '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
+        return ['<h1>%s Data for RA,Dec box:</h1>' % self.survey.drname,
+                '<p><a href="%s">Catalog</a></p>' % caturl]
+
     def cutouts_html(self, req, ra, dec):
         qargs = '?ra=%.4f&dec=%.4f&layer=%s' % (ra, dec, self.name)
         cutout_jpg = my_reverse(req, 'cutout-jpeg') + qargs
@@ -2035,7 +2037,8 @@ class DecalsLayer(MapLayer):
             html = ['<h1>CCDs overlapping brick:</h1>']
         elif ra is not None and dec is not None:
             html = ['<h1>CCDs overlapping RA,Dec:</h1>']
-        html.extend(ccds_overlapping_html(req, ccds, self.name, ra=ra, dec=dec))
+        html.extend(ccds_overlapping_html(req, ccds, self.name, ra=ra, dec=dec,
+                                          ccd_link=self.have_ccd_data))
         return html
     
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
@@ -2771,19 +2774,70 @@ class ReDecalsModelLayer(UniqueBrickMixin, ReDecalsLayer):
 
 class Decaps2Layer(ReDecalsLayer):
 
-    # def brick_details_body(self, brick):
-    #     survey = self.survey
-    #     brickname = brick.brickname
-    #     html = [
-    #         '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
-    #         '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
-    #         '<ul>',
-    #         '<li><a href="%s/coadd/%s/%s/legacysurvey-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
-    #         '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
-    #         '</ul>',
-    #         ]
-    #     return html
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.have_ccd_data = False
 
+    def get_base_filename(self, brick, band, invvar=False, **kwargs):
+        # image-*.fits, invvar-*.fits, not .fz
+        fn = super().get_base_filename(brick, band, invvar=invvar, **kwargs)
+        if not os.path.exists(fn) and fn.endswith('.fz') and os.path.exists(fn[:-3]):
+            return fn[:-3]
+        return fn
+        
+    def data_for_radec_box_html(self, req, ralo,rahi,declo,dechi):
+        return []
+
+    def brick_details_body(self, brick):
+        survey = self.survey
+        brickname = brick.brickname
+        html = [
+            '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
+            '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
+            '<ul>',
+            '<li><a href="%s/coadd/%s/%s/legacysurvey-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
+            '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
+            '</ul>',
+            ]
+        return html
+
+    def ccds_overlapping_html(self, req, ccds, ra=None, dec=None, brick=None):
+
+        def img_url(req, layer, ccd, ccdtag):
+            fn = ccd.image_filename.strip()
+            if fn.startswith('/n/fink2/decaps2'):
+                url = 'http://decaps.skymaps.info/release/data/files/EXPOSURES/DR2/' + fn.replace('/n/fink2/decaps2/', '')
+            else:
+                url = 'http://decaps.skymaps.info/release/data/files/EXPOSURES/DR1/' + fn.replace('/n/fink2/decaps/', '')
+            return url
+        def dq_url(req, layer, ccd, ccdtag):
+            return img_url(req, layer, ccd, ccdtag).replace('_ooi_', '_ood_')
+        def iv_url(req, layer, ccd, ccdtag):
+            return img_url(req, layer, ccd, ccdtag).replace('_ooi_', '_oow_')
+        
+        if brick is not None:
+            html = ['<h1>CCDs overlapping brick:</h1>']
+        elif ra is not None and dec is not None:
+            html = ['<h1>CCDs overlapping RA,Dec:</h1>']
+        html.extend(ccds_overlapping_html(req, ccds, self.name, ra=ra, dec=dec,
+                                          ccd_link=self.have_ccd_data,
+                                          img_url=img_url, dq_url=dq_url, iv_url=iv_url))
+        return html
+
+    def cutouts_html(self, req, ra, dec):
+        qargs = '?ra=%.4f&dec=%.4f&layer=%s' % (ra, dec, self.name)
+        cutout_jpg = my_reverse(req, 'cutout-jpeg') + qargs
+        cutout_fits = my_reverse(req, 'cutout-fits') + qargs
+        cutout_subimage = my_reverse(req, 'cutout-fits') + qargs + '&subimage'
+    
+        html = ['<h1>%s Cutouts at RA,Dec:</h1>' % self.survey.drname,
+                '<ul>'
+                '<li><a href="%s">Image (JPG)</a></li>' % cutout_jpg,
+                '<li><a href="%s">Image (FITS)</a></li>' % cutout_fits,
+                '<li><a href="%s">Image (FITS; not resampled; including inverse-variance map)</a></li>' % cutout_subimage,
+                '</ul>'
+                ]
+        return html
 
     # Some of the DECaPS2 images do not have WCS headers, so create them based on the brick center.
     def read_wcs(self, brick, band, scale, fn=None):
@@ -2955,6 +3009,7 @@ class LegacySurveySplitLayer(MapLayer):
         self.top_bands = top_bands
         self.bottom_bands = bottom_bands
         self.decsplit = decsplit
+        self.have_ccd_data = True
 
         self.tilesplits = {}
 
@@ -3038,8 +3093,8 @@ class LegacySurveySplitLayer(MapLayer):
                 continue
 
             html.extend(layer.cutouts_html(req, ra, dec))
-
             html.extend(layer.ccds_overlapping_html(req, ccds, ra=ra, dec=dec, brick=brickname))
+
             from legacypipe.survey import wcs_for_brick
             brickwcs = wcs_for_brick(brick)
             ok,bx,by = brickwcs.radec2pixelxy(ra, dec)
@@ -5221,7 +5276,7 @@ def get_survey(name):
     elif name == 'decaps2':
         survey = Decaps2LegacySurveyData(survey_dir=dirnm)
         survey.drname = 'DECaPS 2'
-        survey.drurl = 'https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
+        survey.drurl = 'https://portal.nersc.gov/project/cosmo/temp/dstn/decaps2-coadd'#https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
         
     elif name == 'ls-dr67':
         north = get_survey('mzls+bass-dr6')
@@ -5954,28 +6009,52 @@ def format_jpl_url(req, ra, dec, ccd):
             (jpl_url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip()))
 
 
-def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None):
+def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None, ccd_link=True,
+                          img_url=None, dq_url=None, iv_url=None, img_ooi_url=None):
     jplstr = ''
     if ra is not None:
         jplstr = '<th>JPL</th>'
+
+    # callbacks
+    if img_url is None:
+        def img_url(req, layer, ccd, ccdtag):
+            return my_reverse(req, 'image_data', args=(layer, ccdtag))
+    if img_ooi_url is None:
+        def img_ooi_url(req, layer, ccd, ccdtag):
+            return my_reverse(req, 'image_data', args=(layer, ccdtag)) + '?type=ooi'
+    if dq_url is None:
+        def dq_url(req, layer, ccd, ccdtag):
+            return my_reverse(req, 'dq_data', args=(layer, ccdtag))
+    if iv_url is None:
+        def iv_url(req, layer, ccd, ccdtag):
+            return my_reverse(req, 'iv_data', args=(layer, ccdtag))
+
     html = ['<table class="ccds"><thead><tr><th>name</th><th>exptime</th><th>seeing</th><th>propid</th><th>date</th><th>image</th><th>image (ooi)</th><th>weight map</th><th>data quality map</th>%s</tr></thead><tbody>' % jplstr]
     for ccd in ccds:
         ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum,
                                    ccd.ccdname.strip(), ccd.filter.strip())
         ccdtag = ccdname.replace(' ','-')
-        imgurl = my_reverse(req, 'image_data', args=(layer, ccdtag))
-        dqurl  = my_reverse(req, 'dq_data', args=(layer, ccdtag))
-        ivurl  = my_reverse(req, 'iv_data', args=(layer, ccdtag))
-        imgooiurl = imgurl + '?type=ooi'
+
+        #http://decaps.skymaps.info/release/data/files/EXPOSURES/DR1/c4d_160825_030845_ooi_g_v1.fits.fz
+
+        imgurl = img_url(req, layer, ccd, ccdtag)
+        dqurl  = dq_url(req, layer, ccd, ccdtag)
+        ivurl  = iv_url(req, layer, ccd, ccdtag)
+        imgooiurl = img_ooi_url(req, layer, ccd, ccdtag)
         ooitext = ''
         if '_oki_' in ccd.image_filename:
             ooitext = '<a href="%s">ooi</a>' % imgooiurl
         jplstr = ''
         if ra is not None:
             jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(req, ra, dec, ccd)
-        html.append(('<tr><td><a href="%s">%s</a></td><td>%.1f</td><td>%.2f</td>' +
+        if ccd_link:
+            ccd_html = '<a href="%s">%s</a>' % (my_reverse(req, ccd_detail, args=(layer, ccdtag)), ccdname)
+        else:
+            ccd_html = ccdname
+        
+        html.append(('<tr><td>%s</td><td>%.1f</td><td>%.2f</td>' +
                      '<td>%s</td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td><a href="%s">oow</a></td><td><a href="%s">ood</a></td>%s</tr>') % (
-                         my_reverse(req, ccd_detail, args=(layer, ccdtag)), ccdname,
+                         ccd_html,
                          ccd.exptime, ccd.seeing, ccd.propid, ccd.date_obs + ' ' + ccd.ut[:8],
                          imgurl, ccd.image_filename.strip(), ooitext, ivurl, dqurl,
                          jplstr))
