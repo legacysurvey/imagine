@@ -2398,6 +2398,8 @@ class RebrickedMixin(object):
     def get_brick_size_for_scale(self, scale):
         if scale is None:
             scale = 0
+        if scale == 0:
+            return self.survey.bricksize * 2**scale
         return 0.25 * 2**scale
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None,
@@ -5336,6 +5338,10 @@ def get_survey(name):
         south = get_survey('dr9sv-south')
         south.layer = 'dr9sv-south'
         survey = SplitSurveyData(north, south)
+
+    elif name == 'dr10-deep':
+        survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+        survey.bricksize = 0.025
 
     #print('dirnm', dirnm, 'exists?', os.path.exists(dirnm))
 
