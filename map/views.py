@@ -2385,7 +2385,8 @@ class RebrickedMixin(object):
         print('Cut generic bricks to', len(allbricks))
         allbricks.writeto(fn)
         print('Wrote', fn)
-        
+        return allbricks
+
         # tmpfn = fn.replace('.gz','')
         # assert(tmpfn != fn)
         # allbricks.writeto(tmpfn)
@@ -6104,7 +6105,8 @@ def exposures_common(req, tgz, copsf):
         size = size // 2
 
     W,H = size*2, size*2
-    
+
+    # This is the WCS of the image cutout we're going to make
     pixscale = 0.262 / 3600.
     wcs = Tan(*[float(x) for x in [
         ra, dec, size+0.5, size+0.5, -pixscale, 0., 0., pixscale, W, H]])
@@ -6127,9 +6129,12 @@ def exposures_common(req, tgz, copsf):
     if not showcut:
         if 'ccd_cuts' in CCDs.get_columns():
             CCDs.cut(CCDs.ccd_cuts == 0)
+    print('Layer\'s bands:', layer.get_bands())
     # Drop Y band images
-    CCDs.cut(np.isin(CCDs.filter, ['g','r','i','z']))
-
+    #CCDs.cut(np.isin(CCDs.filter, ['g','r','i','z']))
+    CCDs.cut(np.isin(CCDs.filter, list(layer.get_bands())))
+    print('After cutting on bands:', len(CCDs), 'CCDs')
+    
     filterorder = dict(g=0, r=1, i=2, z=3)
 
     CCDs = CCDs[np.lexsort((CCDs.ccdname, CCDs.expnum,
@@ -7832,7 +7837,20 @@ if __name__ == '__main__':
     #r = c.get('/iv-data/ls-dr9-south/decam-563185-N3-z')
     #r = c.get('/cutout.fits?ra=186.5224&dec=11.8116&layer=ls-dr10&pixscale=1.00&bands=i')
     #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
-    r = c.get('/exposures/?ra=285.7324&dec=-63.7436&layer=ls-dr10', HTTP_HOST='decaps.legacysurvey.org')
+    #r = c.get('/exposures/?ra=285.7324&dec=-63.7436&layer=ls-dr10', HTTP_HOST='decaps.legacysurvey.org')
+    #r = c.get('/suprime-L464/1/15/19105/16183.jpg')
+    #r = c.get('/cutout.fits?ra=50.3230&dec=-43.3705&pixscale=0.2&layer=ls-dr10&size=50&bands=i')
+    #r = c.get('/cutout.fits?ra=359.8802978&dec=8.739146097&pixscale=0.262&layer=ls-dr10&size=50&bands=i')
+    #r = c.get('/cutout.fits?ra=50.3230&dec=-43.3705&pixscale=0.2&layer=ls-dr10&size=50&bands=i')
+    #r = c.get('/suprime-ia-v1/1/14/9557/8091.jpg')
+    #r = c.get('/suprime-ia-v1/1/13/4779/4044.jpg')
+    #r = c.get('/exposures/?ra=150.2467&dec=2.7740&layer=suprime-ia-v1')
+    #r = c.get('/exposure_panels/suprime-ia-v1/460480/det4/?ra=150.2467&dec=2.7740&size=100')
+    #r = c.get('/dr10-deep/1/14/9556/8091.jpg')
+    #r = c.get('/dr10-deep/1/13/4776/4044.jpg')
+    #r = c.get('/suprime-L505/1/14/9529/8067.jpg')
+    #r = c.get('/exposures/?ra=247.0169&dec=51.7755&layer=ls-dr9-north')
+    r = c.get('/exposures/?ra=204.0414&dec=-62.9467&layer=decaps2')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

@@ -2,6 +2,7 @@ from __future__ import print_function
 import os
 import sys
 from glob import glob
+import numpy as np
 
 #sys.path.insert(0, 'django-1.9')
 import django
@@ -258,7 +259,6 @@ def top_levels(mp, opt):
 
         modres = opt.kind.replace('ls-dr10','')
         
-        import numpy as np
         from astrometry.util.starutil_numpy import radectolb
         import pylab as plt
         from map.views import save_jpeg, trymakedirs
