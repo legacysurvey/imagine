@@ -2845,6 +2845,39 @@ class WiroDLayer(WiroCLayer):
     def get_available_bands(self):
         return ['NB_D']
 
+
+class SuprimeIALayer(ReDecalsLayer):
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        #from legacypipe.survey import get_rgb as rgb
+        rgb,kwa = self.survey.get_rgb(imgs, bands, coadd_bw=True)
+        rgb = rgb[:,:,np.newaxis].repeat(3, axis=2)
+        return rgb
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        if scale in [0,None]:
+            pixscale = 0.2
+            cd = pixscale / 3600.
+            size = 4800
+            crpix = size/2. + 0.5
+            wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                      float(size), float(size))
+            return wcs
+        return super().get_scaled_wcs(brick, band, scale)
+
+class SuprimeIAResidLayer(UniqueBrickMixin, ResidMixin, SuprimeIALayer):
+    pass
+
+class SuprimeAllIALayer(SuprimeIALayer):
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        self.survey.rgb_stretch_factor = 1.5
+        rgb,kwa = self.survey.get_rgb(imgs, bands, )
+        return rgb
+
+class SuprimeAllIAResidLayer(UniqueBrickMixin, ResidMixin, SuprimeAllIALayer):
+    pass
+
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
         super(HscLayer, self).__init__(name)
@@ -6288,6 +6321,7 @@ def jpl_direct_url(ra, dec, ccd):
         'decam': 'W84',
         '90prime': 'V00',
         'mosaic': '695',
+        'suprimecam': 'T09',
     }[camera]
 
     rastr = ra2hmsstring(ra, separator='-')
@@ -6575,7 +6609,9 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         zpscale = NanoMaggies.zeropointToScale(im.ccdzpt)
         hacksky = ccd.ccdskycounts * im.exptime / zpscale
 
-    bandindex = dict(g=2, r=1, i=0, z=0, Y=0)[im.band]
+    bandindex = dict(g=2, r=1, i=0, z=0, Y=0).get(im.band, -1)
+    #rgbkw = dict(coadd_bw = True)
+    rgbkw = {}
 
     if kind == 'image':
         # HACK for some DR5 images...
@@ -6590,8 +6626,11 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         if not has_sky:
             tim.data -= hacksky
 
-        rgb = get_rgb([tim.data], [im.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        img = rgb[:,:,bandindex]
+        rgb = get_rgb([tim.data], [im.band], **rgbkw) #, mnmx=(-1,100.), arcsinh=1.)
+        if bandindex >= 0:
+            img = rgb[:,:,bandindex]
+        else:
+            img = np.sum(rgb, axis=2)
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'weight':
@@ -6615,8 +6654,12 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
                 tim.data -= hacksky
             img = tim.data * (tim.inverr > 0)
         from legacypipe.survey import get_rgb
-        rgb = get_rgb([img], [im.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        img = rgb[:,:,bandindex]
+        rgb = get_rgb([img], [im.band], **rgbkw) #, mnmx=(-1,100.), arcsinh=1.)
+        if bandindex >= 0:
+            img = rgb[:,:,bandindex]
+        else:
+            img = np.sum(rgb, axis=2)
+        #img = rgb[:,:,bandindex]
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'dq':
@@ -7067,6 +7110,38 @@ def get_layer(name, default=None):
         survey = get_survey('wiro-D')
         layer = WiroDLayer('wiro-D', 'image', survey)
 
+    elif name in [
+            'suprime-L427', 'suprime-L427-model', 'suprime-L427-resid',
+            'suprime-L464', 'suprime-L464-model', 'suprime-L464-resid',
+            'suprime-L484', 'suprime-L484-model', 'suprime-L484-resid',
+            'suprime-L505', 'suprime-L505-model', 'suprime-L505-resid',
+            'suprime-L527', 'suprime-L527-model', 'suprime-L527-resid',
+    ]:
+        basename = name.replace('-model','').replace('-resid','')
+        bands = ['I-A-' + name.split('-')[1]]
+        survey = get_survey(basename)
+        image = SuprimeIALayer(basename, 'image', survey, bands=bands)
+        model = SuprimeIALayer(basename, 'model', survey, bands=bands)
+        resid = SuprimeIAResidLayer(image, model, basename, 'resid', survey, bands=bands)
+        layers[basename] = image
+        layers[basename + '-model'] = model
+        layers[basename + '-resid'] = resid
+        layer = layers[name]
+
+    elif name in [
+        'suprime-ia-v1', 'suprime-ia-v1-model', 'suprime-ia-v1-resid',
+    ]:
+        basename = name.replace('-model','').replace('-resid','')
+        bands = ['I-A-L%i' % f for f in [427,464,484,505,527]]
+        survey = get_survey(basename)
+        image = SuprimeAllIALayer(basename, 'image', survey, bands=bands)
+        model = SuprimeAllIALayer(basename, 'model', survey, bands=bands)
+        resid = SuprimeAllIAResidLayer(image, model, basename, 'resid', survey, bands=bands)
+        layers[basename] = image
+        layers[basename + '-model'] = model
+        layers[basename + '-resid'] = resid
+        layer = layers[name]
+        
     elif name == 'outliers-ast':
         basename = 'asteroids-i'
         survey = get_survey(basename)

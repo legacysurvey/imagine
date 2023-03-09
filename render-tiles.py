@@ -724,6 +724,12 @@ def main():
                          'ls-dr10', 'ls-dr10-model',
                          'ls-dr10-grz', 'ls-dr10-model-grz',
                          'pandas', 'wiro-C', 'wiro-D',
+                         'suprime-L427', 'suprime-L427-model',
+                         'suprime-L464', 'suprime-L464-model',
+                         'suprime-L484', 'suprime-L484-model',
+                         'suprime-L505', 'suprime-L505-model',
+                         'suprime-L527', 'suprime-L527-model',
+                         'suprime-ia-v1', 'suprime-ia-v1-model',
                          'decaps2', 'decaps2-model',
         ]
             or opt.kind.startswith('dr8-test')

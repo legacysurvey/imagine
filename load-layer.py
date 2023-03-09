@@ -178,12 +178,23 @@ def main():
     # /global/cscratch1/sd/dstn/wiro-C/coadd/cus/custom-034600m04950/legacysurvey-custom-034600m04950-*.jpg
     
     #survey_dir = '/global/cscratch1/sd/dstn/wiro-C/'
-    indir = 'data/wiro-C'
-    survey_dir = indir
-    name = 'wiro-C'
-    pretty = 'WIRO C filter'
+    # indir = 'data/wiro-C'
+    # survey_dir = indir
+    # name = 'wiro-C'
+    # pretty = 'WIRO C filter'
 
-    custom_brick = True
+    indir = 'data/suprime-L484'
+    survey_dir = indir
+    name = 'suprime-L484'
+    pretty = 'Suprime IA-L484 filter'
+
+    indir = '/pscratch/sd/d/dstn/suprime'
+    survey_dir = indir
+    name = 'suprime-ia-v1'
+    pretty = 'Suprime IA v1'
+    rsync = True
+    
+    custom_brick = False
     update = False
 
     datadir = 'data'
