@@ -246,6 +246,8 @@ def top_levels(mp, opt):
             opt.bands = ['N501', 'N673']
         elif opt.kind == 'odin-color-n419n673':
             opt.bands = ['N419', 'N673']
+        elif opt.kind == 'odin-cosmos':
+            opt.bands = ['N419', 'N501', 'N673']
         #else:
         #    bands = 'grz'
 
@@ -722,7 +724,7 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
 
-    elif opt.kind == 'odin-2band':
+    elif opt.kind in ['odin-2band', 'odin-cosmos']:
         if opt.maxdec is None:
             opt.maxdec = 4.76
         if opt.mindec is None:
@@ -731,8 +733,9 @@ def main():
             opt.minra = 147.4
         if opt.maxra is None:
             opt.maxra = 152.8
-        if opt.bands is None:
-            opt.bands = ['N501','N673']
+        if opt.kind == 'odin-2band':
+            if opt.bands is None:
+                opt.bands = ['N501','N673']
 
     elif opt.kind == 'odin-deep23-n419':
         if opt.maxdec is None:
@@ -964,6 +967,7 @@ def main():
                          'ls-dr9-north', 'ls-dr9-north-model',
                          'odin-2band', 'odin-deep23-n419', 'odin-n673', 'odin-n501', 'odin-n419',
                          'odin-all', 'odin-color-n501n673', 'odin-color-n419n673',
+                         'odin-cosmos',
                          'ls-dr9.1.1',
         ]
             or opt.kind.startswith('dr8-test')
@@ -983,6 +987,7 @@ def main():
             from map.views import get_layer
 
             layer = get_layer(opt.kind)
+            layer.nocreate = False
 
             if opt.queue:
                 if len(opt.zoom) == 0:
