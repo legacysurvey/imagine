@@ -10,7 +10,7 @@ RUN apt -y update && \
     gcc swig \
     python3 python3-distutils python3-dev python3-pip \
     curl wget \
-    git \
+    git less htop \
     libpcre3 libpcre3-dev libcairo2-dev libnetpbm10-dev netpbm libpng-dev libjpeg-dev zlib1g-dev \
     libbz2-dev libcfitsio-dev wcslib-dev \
   && \
@@ -18,9 +18,8 @@ RUN apt -y update && \
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install -e git+http://github.com/dstndstn/astrometry.net@0.86#egg=astrometry && \
     pip install -e git+https://github.com/dstndstn/tractor.git@dr9.6#egg=tractor
-RUN pip install -e git+http://github.com/legacysurvey/legacypipe@DR9.7.2#egg=legacypipe
-RUN apt install -y less
-RUN git clone https://github.com/legacysurvey/imagine.git && echo 1
+RUN pip install -e git+https://github.com/legacysurvey/legacypipe@DR10.1.0#egg=legacypipe
+RUN git clone https://github.com/legacysurvey/imagine.git
 RUN cd imagine/viewer && ln -s settings_test.py settings.py
 #ENV PS1="[container] \\u@\\h:\\w$ "
 #RUN echo "export PS1='[container] \\u@\\h:\\w$ '" >> $HOME/.bashrc

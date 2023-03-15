@@ -15,11 +15,13 @@ import os
 os.environ.setdefault('PHOTO_REDUX', '')
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "viewer.settings")
 
-#import sys
-#print 'sys.path:', sys.path
+import sys
+#print('sys.path:', sys.path)
 
 import django
 from django.core.wsgi import get_wsgi_application
+
+import numpy as np
 
 if False:
     application = get_wsgi_application()
