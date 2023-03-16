@@ -7850,7 +7850,8 @@ if __name__ == '__main__':
     #r = c.get('/dr10-deep/1/13/4776/4044.jpg')
     #r = c.get('/suprime-L505/1/14/9529/8067.jpg')
     #r = c.get('/exposures/?ra=247.0169&dec=51.7755&layer=ls-dr9-north')
-    r = c.get('/exposures/?ra=204.0414&dec=-62.9467&layer=decaps2')
+    #r = c.get('/exposures/?ra=204.0414&dec=-62.9467&layer=decaps2')
+    r = c.get('/dr10-deep/1/14/14831/8415.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
