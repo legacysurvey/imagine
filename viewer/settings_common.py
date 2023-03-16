@@ -14,7 +14,7 @@ REDIRECT_CUTOUTS_DECAPS = False
 
 SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
-SDSS_BASEDIR = '/global/cfs/cdirs/cosmo/data/sdss/dr14/'
+SDSS_BASEDIR = '/global/cfs/cdirs/sdss/data/sdss/dr14/'
 
 CREATE_GALAXY_CATALOG = False
 
