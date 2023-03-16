@@ -2586,9 +2586,6 @@ class SdssLayer(MapLayer):
         html.append('</body></html>')
         return HttpResponse('\n'.join(html))
 
-    def has_cutouts(self):
-        return True
-
     def get_bricks(self):
         if self.bricks is not None:
             return self.bricks
