@@ -2405,7 +2405,11 @@ class RebrickedMixin(object):
         if scale is None:
             scale = 0
         if scale == 0:
-            return self.survey.bricksize * 2**scale
+            try:
+                bs = self.survey.bricksize
+            except:
+                bs = 0.25
+            return bs * 2**scale
         return 0.25 * 2**scale
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None,
@@ -2581,6 +2585,9 @@ class SdssLayer(MapLayer):
         html.append('</tbody></table>')
         html.append('</body></html>')
         return HttpResponse('\n'.join(html))
+
+    def has_cutouts(self):
+        return True
 
     def get_bricks(self):
         if self.bricks is not None:
