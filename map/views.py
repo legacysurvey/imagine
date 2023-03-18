@@ -1934,6 +1934,7 @@ class DecalsLayer(MapLayer):
         if drname is None:
             drname = name
         self.drname = drname
+        self.have_ccd_data = True
 
         self.basedir = os.path.join(settings.DATA_DIR, self.drname)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.drname)
@@ -1962,12 +1963,7 @@ class DecalsLayer(MapLayer):
 
         bb = get_radec_bbox(req)
         if bb is not None:
-            ralo,rahi,declo,dechi = bb
-            caturl = (my_reverse(req, 'cat-fits', args=(self.name,)) +
-                      '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
-            html.extend(['<h1>%s Data for RA,Dec box:</h1>' % self.drname,
-                         '<p><a href="%s">Catalog</a></p>' % caturl])
-
+            html.extend(self.data_for_radec_box_html(req, *bb))
             html.extend(self.cutouts_html(req, ra, dec))
 
         brick_html = self.brick_details_body(brick)
@@ -2013,6 +2009,12 @@ class DecalsLayer(MapLayer):
             ]
         return html
 
+    def data_for_radec_box_html(self, req, ralo,rahi,declo,dechi):
+        caturl = (my_reverse(req, 'cat-fits', args=(self.name,)) +
+                  '?ralo=%f&rahi=%f&declo=%f&dechi=%f' % (ralo, rahi, declo, dechi))
+        return ['<h1>%s Data for RA,Dec box:</h1>' % self.survey.drname,
+                '<p><a href="%s">Catalog</a></p>' % caturl]
+
     def cutouts_html(self, req, ra, dec):
         qargs = '?ra=%.4f&dec=%.4f&layer=%s' % (ra, dec, self.name)
         cutout_jpg = my_reverse(req, 'cutout-jpeg') + qargs
@@ -2035,7 +2037,8 @@ class DecalsLayer(MapLayer):
             html = ['<h1>CCDs overlapping brick:</h1>']
         elif ra is not None and dec is not None:
             html = ['<h1>CCDs overlapping RA,Dec:</h1>']
-        html.extend(ccds_overlapping_html(req, ccds, self.name, ra=ra, dec=dec))
+        html.extend(ccds_overlapping_html(req, ccds, self.name, ra=ra, dec=dec,
+                                          ccd_link=self.have_ccd_data))
         return html
     
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
@@ -2382,7 +2385,8 @@ class RebrickedMixin(object):
         print('Cut generic bricks to', len(allbricks))
         allbricks.writeto(fn)
         print('Wrote', fn)
-        
+        return allbricks
+
         # tmpfn = fn.replace('.gz','')
         # assert(tmpfn != fn)
         # allbricks.writeto(tmpfn)
@@ -2395,6 +2399,8 @@ class RebrickedMixin(object):
     def get_brick_size_for_scale(self, scale):
         if scale is None:
             scale = 0
+        if scale == 0:
+            return self.survey.bricksize * 2**scale
         return 0.25 * 2**scale
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None,
@@ -2771,19 +2777,70 @@ class ReDecalsModelLayer(UniqueBrickMixin, ReDecalsLayer):
 
 class Decaps2Layer(ReDecalsLayer):
 
-    # def brick_details_body(self, brick):
-    #     survey = self.survey
-    #     brickname = brick.brickname
-    #     html = [
-    #         '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
-    #         '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
-    #         '<ul>',
-    #         '<li><a href="%s/coadd/%s/%s/legacysurvey-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
-    #         '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
-    #         '</ul>',
-    #         ]
-    #     return html
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.have_ccd_data = False
 
+    def get_base_filename(self, brick, band, invvar=False, **kwargs):
+        # image-*.fits, invvar-*.fits, not .fz
+        fn = super().get_base_filename(brick, band, invvar=invvar, **kwargs)
+        if not os.path.exists(fn) and fn.endswith('.fz') and os.path.exists(fn[:-3]):
+            return fn[:-3]
+        return fn
+        
+    def data_for_radec_box_html(self, req, ralo,rahi,declo,dechi):
+        return []
+
+    def brick_details_body(self, brick):
+        survey = self.survey
+        brickname = brick.brickname
+        html = [
+            '<h1>%s data for brick %s:</h1>' % (survey.drname, brickname),
+            '<p>Brick bounds: RA [%.4f to %.4f], Dec [%.4f to %.4f]</p>' % (brick.ra1, brick.ra2, brick.dec1, brick.dec2),
+            '<ul>',
+            '<li><a href="%s/coadd/%s/%s/legacysurvey-%s-image.jpg">JPEG image</a></li>' % (survey.drurl, brickname[:3], brickname, brickname),
+            '<li><a href="%s/coadd/%s/%s/">Coadded images</a></li>' % (survey.drurl, brickname[:3], brickname),
+            '</ul>',
+            ]
+        return html
+
+    def ccds_overlapping_html(self, req, ccds, ra=None, dec=None, brick=None):
+
+        def img_url(req, layer, ccd, ccdtag):
+            fn = ccd.image_filename.strip()
+            if fn.startswith('/n/fink2/decaps2'):
+                url = 'http://decaps.skymaps.info/release/data/files/EXPOSURES/DR2/' + fn.replace('/n/fink2/decaps2/', '')
+            else:
+                url = 'http://decaps.skymaps.info/release/data/files/EXPOSURES/DR1/' + fn.replace('/n/fink2/decaps/', '')
+            return url
+        def dq_url(req, layer, ccd, ccdtag):
+            return img_url(req, layer, ccd, ccdtag).replace('_ooi_', '_ood_')
+        def iv_url(req, layer, ccd, ccdtag):
+            return img_url(req, layer, ccd, ccdtag).replace('_ooi_', '_oow_')
+        
+        if brick is not None:
+            html = ['<h1>CCDs overlapping brick:</h1>']
+        elif ra is not None and dec is not None:
+            html = ['<h1>CCDs overlapping RA,Dec:</h1>']
+        html.extend(ccds_overlapping_html(req, ccds, self.name, ra=ra, dec=dec,
+                                          ccd_link=self.have_ccd_data,
+                                          img_url=img_url, dq_url=dq_url, iv_url=iv_url))
+        return html
+
+    def cutouts_html(self, req, ra, dec):
+        qargs = '?ra=%.4f&dec=%.4f&layer=%s' % (ra, dec, self.name)
+        cutout_jpg = my_reverse(req, 'cutout-jpeg') + qargs
+        cutout_fits = my_reverse(req, 'cutout-fits') + qargs
+        cutout_subimage = my_reverse(req, 'cutout-fits') + qargs + '&subimage'
+    
+        html = ['<h1>%s Cutouts at RA,Dec:</h1>' % self.survey.drname,
+                '<ul>'
+                '<li><a href="%s">Image (JPG)</a></li>' % cutout_jpg,
+                '<li><a href="%s">Image (FITS)</a></li>' % cutout_fits,
+                '<li><a href="%s">Image (FITS; not resampled; including inverse-variance map)</a></li>' % cutout_subimage,
+                '</ul>'
+                ]
+        return html
 
     # Some of the DECaPS2 images do not have WCS headers, so create them based on the brick center.
     def read_wcs(self, brick, band, scale, fn=None):
@@ -2844,6 +2901,39 @@ class WiroDLayer(WiroCLayer):
         return ['NB_D']
     def get_available_bands(self):
         return ['NB_D']
+
+
+class SuprimeIALayer(ReDecalsLayer):
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        #from legacypipe.survey import get_rgb as rgb
+        rgb,kwa = self.survey.get_rgb(imgs, bands, coadd_bw=True)
+        rgb = rgb[:,:,np.newaxis].repeat(3, axis=2)
+        return rgb
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        if scale in [0,None]:
+            pixscale = 0.2
+            cd = pixscale / 3600.
+            size = 4800
+            crpix = size/2. + 0.5
+            wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                      float(size), float(size))
+            return wcs
+        return super().get_scaled_wcs(brick, band, scale)
+
+class SuprimeIAResidLayer(UniqueBrickMixin, ResidMixin, SuprimeIALayer):
+    pass
+
+class SuprimeAllIALayer(SuprimeIALayer):
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        self.survey.rgb_stretch_factor = 1.5
+        rgb,kwa = self.survey.get_rgb(imgs, bands, )
+        return rgb
+
+class SuprimeAllIAResidLayer(UniqueBrickMixin, ResidMixin, SuprimeAllIALayer):
+    pass
 
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
@@ -2922,6 +3012,7 @@ class LegacySurveySplitLayer(MapLayer):
         self.top_bands = top_bands
         self.bottom_bands = bottom_bands
         self.decsplit = decsplit
+        self.have_ccd_data = True
 
         self.tilesplits = {}
 
@@ -3005,8 +3096,8 @@ class LegacySurveySplitLayer(MapLayer):
                 continue
 
             html.extend(layer.cutouts_html(req, ra, dec))
-
             html.extend(layer.ccds_overlapping_html(req, ccds, ra=ra, dec=dec, brick=brickname))
+
             from legacypipe.survey import wcs_for_brick
             brickwcs = wcs_for_brick(brick)
             ok,bx,by = brickwcs.radec2pixelxy(ra, dec)
@@ -5188,7 +5279,7 @@ def get_survey(name):
     elif name == 'decaps2':
         survey = Decaps2LegacySurveyData(survey_dir=dirnm)
         survey.drname = 'DECaPS 2'
-        survey.drurl = 'https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
+        survey.drurl = 'https://portal.nersc.gov/project/cosmo/temp/dstn/decaps2-coadd'#https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
         
     elif name == 'ls-dr67':
         north = get_survey('mzls+bass-dr6')
@@ -5248,6 +5339,10 @@ def get_survey(name):
         south = get_survey('dr9sv-south')
         south.layer = 'dr9sv-south'
         survey = SplitSurveyData(north, south)
+
+    elif name == 'dr10-deep':
+        survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+        survey.bricksize = 0.025
 
     #print('dirnm', dirnm, 'exists?', os.path.exists(dirnm))
 
@@ -5921,28 +6016,52 @@ def format_jpl_url(req, ra, dec, ccd):
             (jpl_url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip()))
 
 
-def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None):
+def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None, ccd_link=True,
+                          img_url=None, dq_url=None, iv_url=None, img_ooi_url=None):
     jplstr = ''
     if ra is not None:
         jplstr = '<th>JPL</th>'
+
+    # callbacks
+    if img_url is None:
+        def img_url(req, layer, ccd, ccdtag):
+            return my_reverse(req, 'image_data', args=(layer, ccdtag))
+    if img_ooi_url is None:
+        def img_ooi_url(req, layer, ccd, ccdtag):
+            return my_reverse(req, 'image_data', args=(layer, ccdtag)) + '?type=ooi'
+    if dq_url is None:
+        def dq_url(req, layer, ccd, ccdtag):
+            return my_reverse(req, 'dq_data', args=(layer, ccdtag))
+    if iv_url is None:
+        def iv_url(req, layer, ccd, ccdtag):
+            return my_reverse(req, 'iv_data', args=(layer, ccdtag))
+
     html = ['<table class="ccds"><thead><tr><th>name</th><th>exptime</th><th>seeing</th><th>propid</th><th>date</th><th>image</th><th>image (ooi)</th><th>weight map</th><th>data quality map</th>%s</tr></thead><tbody>' % jplstr]
     for ccd in ccds:
         ccdname = '%s %i %s %s' % (ccd.camera.strip(), ccd.expnum,
                                    ccd.ccdname.strip(), ccd.filter.strip())
         ccdtag = ccdname.replace(' ','-')
-        imgurl = my_reverse(req, 'image_data', args=(layer, ccdtag))
-        dqurl  = my_reverse(req, 'dq_data', args=(layer, ccdtag))
-        ivurl  = my_reverse(req, 'iv_data', args=(layer, ccdtag))
-        imgooiurl = imgurl + '?type=ooi'
+
+        #http://decaps.skymaps.info/release/data/files/EXPOSURES/DR1/c4d_160825_030845_ooi_g_v1.fits.fz
+
+        imgurl = img_url(req, layer, ccd, ccdtag)
+        dqurl  = dq_url(req, layer, ccd, ccdtag)
+        ivurl  = iv_url(req, layer, ccd, ccdtag)
+        imgooiurl = img_ooi_url(req, layer, ccd, ccdtag)
         ooitext = ''
         if '_oki_' in ccd.image_filename:
             ooitext = '<a href="%s">ooi</a>' % imgooiurl
         jplstr = ''
         if ra is not None:
             jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(req, ra, dec, ccd)
-        html.append(('<tr><td><a href="%s">%s</a></td><td>%.1f</td><td>%.2f</td>' +
+        if ccd_link:
+            ccd_html = '<a href="%s">%s</a>' % (my_reverse(req, ccd_detail, args=(layer, ccdtag)), ccdname)
+        else:
+            ccd_html = ccdname
+        
+        html.append(('<tr><td>%s</td><td>%.1f</td><td>%.2f</td>' +
                      '<td>%s</td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td><a href="%s">oow</a></td><td><a href="%s">ood</a></td>%s</tr>') % (
-                         my_reverse(req, ccd_detail, args=(layer, ccdtag)), ccdname,
+                         ccd_html,
                          ccd.exptime, ccd.seeing, ccd.propid, ccd.date_obs + ' ' + ccd.ut[:8],
                          imgurl, ccd.image_filename.strip(), ooitext, ivurl, dqurl,
                          jplstr))
@@ -5986,7 +6105,8 @@ def exposures_common(req, tgz, copsf):
         size = size // 2
 
     W,H = size*2, size*2
-    
+
+    # This is the WCS of the image cutout we're going to make
     pixscale = 0.262 / 3600.
     wcs = Tan(*[float(x) for x in [
         ra, dec, size+0.5, size+0.5, -pixscale, 0., 0., pixscale, W, H]])
@@ -6009,9 +6129,12 @@ def exposures_common(req, tgz, copsf):
     if not showcut:
         if 'ccd_cuts' in CCDs.get_columns():
             CCDs.cut(CCDs.ccd_cuts == 0)
+    print('Layer\'s bands:', layer.get_bands())
     # Drop Y band images
-    CCDs.cut(np.isin(CCDs.filter, ['g','r','i','z']))
-
+    #CCDs.cut(np.isin(CCDs.filter, ['g','r','i','z']))
+    CCDs.cut(np.isin(CCDs.filter, list(layer.get_bands())))
+    print('After cutting on bands:', len(CCDs), 'CCDs')
+    
     filterorder = dict(g=0, r=1, i=2, z=3)
 
     CCDs = CCDs[np.lexsort((CCDs.ccdname, CCDs.expnum,
@@ -6288,6 +6411,7 @@ def jpl_direct_url(ra, dec, ccd):
         'decam': 'W84',
         '90prime': 'V00',
         'mosaic': '695',
+        'suprimecam': 'T09',
     }[camera]
 
     rastr = ra2hmsstring(ra, separator='-')
@@ -6575,7 +6699,9 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         zpscale = NanoMaggies.zeropointToScale(im.ccdzpt)
         hacksky = ccd.ccdskycounts * im.exptime / zpscale
 
-    bandindex = dict(g=2, r=1, i=0, z=0, Y=0)[im.band]
+    bandindex = dict(g=2, r=1, i=0, z=0, Y=0).get(im.band, -1)
+    #rgbkw = dict(coadd_bw = True)
+    rgbkw = {}
 
     if kind == 'image':
         # HACK for some DR5 images...
@@ -6590,8 +6716,11 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         if not has_sky:
             tim.data -= hacksky
 
-        rgb = get_rgb([tim.data], [im.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        img = rgb[:,:,bandindex]
+        rgb = get_rgb([tim.data], [im.band], **rgbkw) #, mnmx=(-1,100.), arcsinh=1.)
+        if bandindex >= 0:
+            img = rgb[:,:,bandindex]
+        else:
+            img = np.sum(rgb, axis=2)
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'weight':
@@ -6615,8 +6744,12 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
                 tim.data -= hacksky
             img = tim.data * (tim.inverr > 0)
         from legacypipe.survey import get_rgb
-        rgb = get_rgb([img], [im.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        img = rgb[:,:,bandindex]
+        rgb = get_rgb([img], [im.band], **rgbkw) #, mnmx=(-1,100.), arcsinh=1.)
+        if bandindex >= 0:
+            img = rgb[:,:,bandindex]
+        else:
+            img = np.sum(rgb, axis=2)
+        #img = rgb[:,:,bandindex]
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'dq':
@@ -7067,6 +7200,38 @@ def get_layer(name, default=None):
         survey = get_survey('wiro-D')
         layer = WiroDLayer('wiro-D', 'image', survey)
 
+    elif name in [
+            'suprime-L427', 'suprime-L427-model', 'suprime-L427-resid',
+            'suprime-L464', 'suprime-L464-model', 'suprime-L464-resid',
+            'suprime-L484', 'suprime-L484-model', 'suprime-L484-resid',
+            'suprime-L505', 'suprime-L505-model', 'suprime-L505-resid',
+            'suprime-L527', 'suprime-L527-model', 'suprime-L527-resid',
+    ]:
+        basename = name.replace('-model','').replace('-resid','')
+        bands = ['I-A-' + name.split('-')[1]]
+        survey = get_survey(basename)
+        image = SuprimeIALayer(basename, 'image', survey, bands=bands)
+        model = SuprimeIALayer(basename, 'model', survey, bands=bands)
+        resid = SuprimeIAResidLayer(image, model, basename, 'resid', survey, bands=bands)
+        layers[basename] = image
+        layers[basename + '-model'] = model
+        layers[basename + '-resid'] = resid
+        layer = layers[name]
+
+    elif name in [
+        'suprime-ia-v1', 'suprime-ia-v1-model', 'suprime-ia-v1-resid',
+    ]:
+        basename = name.replace('-model','').replace('-resid','')
+        bands = ['I-A-L%i' % f for f in [427,464,484,505,527]]
+        survey = get_survey(basename)
+        image = SuprimeAllIALayer(basename, 'image', survey, bands=bands)
+        model = SuprimeAllIALayer(basename, 'model', survey, bands=bands)
+        resid = SuprimeAllIAResidLayer(image, model, basename, 'resid', survey, bands=bands)
+        layers[basename] = image
+        layers[basename + '-model'] = model
+        layers[basename + '-resid'] = resid
+        layer = layers[name]
+        
     elif name == 'outliers-ast':
         basename = 'asteroids-i'
         survey = get_survey(basename)
@@ -7672,7 +7837,20 @@ if __name__ == '__main__':
     #r = c.get('/iv-data/ls-dr9-south/decam-563185-N3-z')
     #r = c.get('/cutout.fits?ra=186.5224&dec=11.8116&layer=ls-dr10&pixscale=1.00&bands=i')
     #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
-    r = c.get('/exposures/?ra=285.7324&dec=-63.7436&layer=ls-dr10', HTTP_HOST='decaps.legacysurvey.org')
+    #r = c.get('/exposures/?ra=285.7324&dec=-63.7436&layer=ls-dr10', HTTP_HOST='decaps.legacysurvey.org')
+    #r = c.get('/suprime-L464/1/15/19105/16183.jpg')
+    #r = c.get('/cutout.fits?ra=50.3230&dec=-43.3705&pixscale=0.2&layer=ls-dr10&size=50&bands=i')
+    #r = c.get('/cutout.fits?ra=359.8802978&dec=8.739146097&pixscale=0.262&layer=ls-dr10&size=50&bands=i')
+    #r = c.get('/cutout.fits?ra=50.3230&dec=-43.3705&pixscale=0.2&layer=ls-dr10&size=50&bands=i')
+    #r = c.get('/suprime-ia-v1/1/14/9557/8091.jpg')
+    #r = c.get('/suprime-ia-v1/1/13/4779/4044.jpg')
+    #r = c.get('/exposures/?ra=150.2467&dec=2.7740&layer=suprime-ia-v1')
+    #r = c.get('/exposure_panels/suprime-ia-v1/460480/det4/?ra=150.2467&dec=2.7740&size=100')
+    #r = c.get('/dr10-deep/1/14/9556/8091.jpg')
+    #r = c.get('/dr10-deep/1/13/4776/4044.jpg')
+    #r = c.get('/suprime-L505/1/14/9529/8067.jpg')
+    #r = c.get('/exposures/?ra=247.0169&dec=51.7755&layer=ls-dr9-north')
+    r = c.get('/exposures/?ra=204.0414&dec=-62.9467&layer=decaps2')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

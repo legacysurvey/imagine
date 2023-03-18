@@ -2,6 +2,7 @@ from __future__ import print_function
 import os
 import sys
 from glob import glob
+import numpy as np
 
 #sys.path.insert(0, 'django-1.9')
 import django
@@ -258,7 +259,6 @@ def top_levels(mp, opt):
 
         modres = opt.kind.replace('ls-dr10','')
         
-        import numpy as np
         from astrometry.util.starutil_numpy import radectolb
         import pylab as plt
         from map.views import save_jpeg, trymakedirs
@@ -724,7 +724,14 @@ def main():
                          'ls-dr10', 'ls-dr10-model',
                          'ls-dr10-grz', 'ls-dr10-model-grz',
                          'pandas', 'wiro-C', 'wiro-D',
+                         'suprime-L427', 'suprime-L427-model',
+                         'suprime-L464', 'suprime-L464-model',
+                         'suprime-L484', 'suprime-L484-model',
+                         'suprime-L505', 'suprime-L505-model',
+                         'suprime-L527', 'suprime-L527-model',
+                         'suprime-ia-v1', 'suprime-ia-v1-model',
                          'decaps2', 'decaps2-model',
+                         'dr10-deep',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
