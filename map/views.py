@@ -144,17 +144,15 @@ try:
 except:
     pass
 
-# tileversions['dr9m-north'].append(2)
-# tileversions['dr9m-north-model'].append(2)
-# tileversions['dr9m-north-resid'].append(2)
-
 # Used in Spin liveness test
 def alive(req):
     return HttpResponse('yes')
-
-def tst(req):
-    from django.shortcuts import render
-    return render(req, 'tst.html')
+def checkflavour(req, flavour):
+    if flavour == settings.FLAVOUR:
+        return HttpResponse('yes flavour ' + flavour)
+    else:
+        return HttpResponse('bad flavour: web service is ' + settings.FLAVOUR + ', query is ' + flavour,
+                            status=500, reason='bad flavour')
 
 def tst(req):
     from django.shortcuts import render
@@ -2400,7 +2398,11 @@ class RebrickedMixin(object):
         if scale is None:
             scale = 0
         if scale == 0:
-            return self.survey.bricksize * 2**scale
+            try:
+                bs = self.survey.bricksize
+            except:
+                bs = 0.25
+            return bs * 2**scale
         return 0.25 * 2**scale
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None,
@@ -2576,6 +2578,9 @@ class SdssLayer(MapLayer):
         html.append('</tbody></table>')
         html.append('</body></html>')
         return HttpResponse('\n'.join(html))
+
+    #def has_cutouts(self):
+    #    return True
 
     def get_bricks(self):
         if self.bricks is not None:
@@ -7850,7 +7855,9 @@ if __name__ == '__main__':
     #r = c.get('/dr10-deep/1/13/4776/4044.jpg')
     #r = c.get('/suprime-L505/1/14/9529/8067.jpg')
     #r = c.get('/exposures/?ra=247.0169&dec=51.7755&layer=ls-dr9-north')
-    r = c.get('/exposures/?ra=204.0414&dec=-62.9467&layer=decaps2')
+    #r = c.get('/exposures/?ra=204.0414&dec=-62.9467&layer=decaps2')
+    #r = c.get('/dr10-deep/1/14/14831/8415.jpg')
+    r = c.get('/exposures/?ra=187.4274&dec=11.4106&layer=sdss')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

@@ -1,6 +1,6 @@
 from viewer.settings_common import *
 
-FLAVOUR = 'viewer'
+FLAVOUR = 'viewer-cutouts-dev'
 
 ENABLE_DR10_EARLY = False
 
