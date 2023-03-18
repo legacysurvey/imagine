@@ -144,17 +144,15 @@ try:
 except:
     pass
 
-# tileversions['dr9m-north'].append(2)
-# tileversions['dr9m-north-model'].append(2)
-# tileversions['dr9m-north-resid'].append(2)
-
 # Used in Spin liveness test
 def alive(req):
     return HttpResponse('yes')
-
-def tst(req):
-    from django.shortcuts import render
-    return render(req, 'tst.html')
+def checkflavour(req, flavour):
+    if flavour == settings.FLAVOUR:
+        return HttpResponse('yes flavour ' + flavour)
+    else:
+        return HttpResponse('bad flavour: web service is ' + settings.FLAVOUR + ', query is ' + flavour,
+                            status=500, reason='bad flavour')
 
 def tst(req):
     from django.shortcuts import render
