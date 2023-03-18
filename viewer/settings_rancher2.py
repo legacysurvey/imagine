@@ -1,5 +1,7 @@
 from viewer.settings_common import *
 
+FLAVOUR = 'viewer'
+
 ENABLE_DR10_EARLY = False
 
 ENABLE_DR10 = True
