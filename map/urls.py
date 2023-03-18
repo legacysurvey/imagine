@@ -34,6 +34,7 @@ urlpatterns = ([
 
     re_path(r'^alive', views.alive),
     re_path(r'^checkflavour/([\w-]+)', views.checkflavour),
+    re_path(r'^cutout/checkflavour/([\w-]+)', views.checkflavour),
 
     re_path(r'^tst', views.tst),
     re_path(r'^cat', views.cat),
