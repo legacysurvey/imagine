@@ -94,3 +94,7 @@ RUN mkdir /app/viewer
 
 COPY entry.sh /app
 #ENTRYPOINT ["/app/entry.sh"]
+
+#RUN pip install uwsgi-tools
+ADD https://github.com/che0/uwping/releases/download/14.0/uwping /usr/local/bin/uwping
+RUN chmod +x /usr/local/bin/uwping
