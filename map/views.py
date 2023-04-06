@@ -3007,7 +3007,61 @@ class HscLayer(RebrickedMixin, MapLayer):
         ext = self.get_fits_extension(scale, fn)
         return read_tan_from_header(fn, ext)
 
+class MerianLayer(HscLayer):
+    '''
+    table+5:
+       flags                             band                         physical
+    1 10000000 N540
+    +14: input exposures
 
+    TAN WCS in first extension HDU
+    
+    4100 pix x 0.168 "/pixel
+    (HSC gridding!)
+    has sky sub
+    zpt??
+
+    For RGB images, we'll take HSC g,z for B,R and use one of the Merian filters
+    (N540, N708) for G.
+
+    '''
+    def __init__(self, name):
+        super().__init__(name)
+        self.bands = ['N540'] #, 'N708']
+        self.basedir = os.path.join(settings.DATA_DIR, self.name)
+        self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
+        self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+        self.bricks = None
+        self.pixscale = 0.168
+
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+                            '%(scale)i%(band)s', '%(brickname).4s',
+                            'merian' + '-%(brickname)s-%(band)s.fits')
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        from tractor.brightness import NanoMaggies
+        zpscale = NanoMaggies.zeropointToScale(27.0)
+        rgb = sdss_rgb([im/zpscale for im in imgs], bands,
+                       scales=dict(N540=(1,3.4*5.)), m=0.03)
+        return rgb
+
+    def get_base_filename(self, brick, band, **kwargs):
+        path = os.path.join(self.basedir, brick.filename.strip().replace('-N540', '-'+band.upper()))
+        return path
+    
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        from astrometry.util.fits import fits_table
+        self.bricks = fits_table(os.path.join(self.basedir, 'merian-bricks.fits'))
+        return self.bricks
+
+    def get_brick_size_for_scale(self, scale):
+        if scale == 0:
+            return 4100 * self.pixscale / 3600.
+        return 0.25 * 2**scale
+    
 class LegacySurveySplitLayer(MapLayer):
     def __init__(self, name, top, bottom, decsplit, top_bands='grz', bottom_bands='grz'):
         super(LegacySurveySplitLayer, self).__init__(name)
