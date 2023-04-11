@@ -3126,6 +3126,11 @@ class LegacySurveySplitLayer(MapLayer):
             #print('Decs', dd)
             self.tilesplits[zoom] = y
 
+    def populate_fits_cutout_header(self, hdr):
+        hdr['SURVEY'] = 'LegacySurvey'
+        hdr['VERSION'] = self.drname.split(' ')[-1]
+        hdr['IMAGETYP'] = self.top.imagetype
+
     def get_layer_for_radec(self, ra, dec):
         if dec < self.decsplit:
             return self.bottom
@@ -7963,7 +7968,8 @@ if __name__ == '__main__':
     #r = c.get('/exposures/?ra=187.4274&dec=11.4106&layer=sdss')
     #r = c.get('/merian-n540/1/14/9511/8123.jpg')
     #r = c.get('/merian-n708/1/14/9511/8123.jpg')
-    r = c.get('/hsc-dr3/1/14/7818/8185.jpg')
+    #r = c.get('/hsc-dr3/1/14/7818/8185.jpg')
+    r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=i')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
