@@ -731,7 +731,7 @@ def main():
                          'suprime-L527', 'suprime-L527-model',
                          'suprime-ia-v1', 'suprime-ia-v1-model',
                          'decaps2', 'decaps2-model',
-                         'dr10-deep',
+                         'dr10-deep', 'dr10-deep-model',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
