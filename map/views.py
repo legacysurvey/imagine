@@ -7289,6 +7289,9 @@ def get_layer(name, default=None):
     elif name == 'hsc-dr2':
         layer = HscLayer('hsc-dr2')
 
+    elif name == 'hsc-dr3':
+        layer = HscLayer('hsc-dr3')
+
     elif name == 'wiro-C':
         survey = get_survey('wiro-C')
         layer = WiroCLayer('wiro-C', 'image', survey)
