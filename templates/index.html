@@ -2375,6 +2375,17 @@ tiles = mylayer_B('hsc-dr2', 'HSC DR2',
 allLayers.push(tiles);
 {% endif %}
 
+tiles = mylayer_B('merian-n540', 'Merian N540',
+                  {'attribution': '',
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('merian-n708', 'Merian N708',
+                  {'attribution': '',
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
 // tiles = mylayer_B('outliers-ast', 'Asteroids test: outliers',
 //                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 // allLayers.push(tiles);
@@ -4439,6 +4450,8 @@ moresurveys = moresurveys.concat([
     {% if enable_hsc_dr2 %}
     findlayer('hsc-dr2'),
     {% endif %}
+    findlayer('merian-n540'),
+    findlayer('merian-n708'),
     {% if enable_ps1 %}
     findlayer('ps1'),
     {% endif %}

@@ -3024,15 +3024,49 @@ class MerianLayer(HscLayer):
     For RGB images, we'll take HSC g,z for B,R and use one of the Merian filters
     (N540, N708) for G.
 
+
     '''
-    def __init__(self, name):
+    def __init__(self, name, hsc_layer):
         super().__init__(name)
-        self.bands = ['N540'] #, 'N708']
+        self.hsc = hsc_layer
+        self.bands = ['g', 'N540', 'z'] #, 'N708']
         self.basedir = os.path.join(settings.DATA_DIR, self.name)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
         self.bricks = None
         self.pixscale = 0.168
+
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, **kwargs):
+        import numpy as np
+        if bands is None:
+            bands = self.get_bands()
+        # Call HSC for g,z bands
+        hscbands = []
+        mybands = []
+        for b in bands:
+            if b in ['g','z']:
+                hscbands.append(b)
+            else:
+                mybands.append(b)
+        bmap = {}
+        if len(hscbands):
+            rimgs = self.hsc.render_into_wcs(wcs, zoom, x, y, bands=hscbands, **kwargs)
+            if rimgs is not None:
+                for b,img in zip(hscbands, rimgs):
+                    print('Band', b, 'from HSC: RMS', np.sqrt(np.mean(img**2)))
+                    bmap[b] = img
+        if len(mybands):
+            rimgs = super().render_into_wcs(wcs, zoom, x, y, bands=mybands, **kwargs)
+            if rimgs is not None:
+                for b,img in zip(mybands, rimgs):
+                    print('Band', b, 'from Merian: RMS', np.sqrt(np.mean(img**2)))
+                    bmap[b] = img
+        if len(bmap) == 0:
+            return None
+        res = []
+        for b in bands:
+            res.append(bmap.get(b))
+        return res
 
     def get_scaled_pattern(self):
         return os.path.join(self.scaleddir,
@@ -3043,11 +3077,15 @@ class MerianLayer(HscLayer):
         from tractor.brightness import NanoMaggies
         zpscale = NanoMaggies.zeropointToScale(27.0)
         rgb = sdss_rgb([im/zpscale for im in imgs], bands,
-                       scales=dict(N540=(1,3.4*5.)), m=0.03)
+                       scales=dict(#N540=(1,3.4*5.),
+                           N540=(1, 5.0 *5.),
+                           N708=(1, 3.0 *5.),
+                           g   =(2, 6.0 *5.),
+                           z   =(0, 2.2 *5.)), m=0.03)
         return rgb
 
     def get_base_filename(self, brick, band, **kwargs):
-        path = os.path.join(self.basedir, brick.filename.strip().replace('-N540', '-'+band.upper()))
+        path = os.path.join(self.basedir, brick.filename.strip().replace('N540', band.upper()))
         return path
     
     def get_bricks(self):
@@ -7290,6 +7328,14 @@ def get_layer(name, default=None):
         layers[basename + '-model'] = model
         layers[basename + '-resid'] = resid
         layer = layers[name]
+
+    elif name == 'merian-n540':
+        hsc = get_layer('hsc-dr2')
+        layer = MerianLayer('merian', hsc)
+    elif name == 'merian-n708':
+        hsc = get_layer('hsc-dr2')
+        layer = MerianLayer('merian', hsc)
+        layer.bands = ['g', 'N708', 'z']
         
     elif name == 'outliers-ast':
         basename = 'asteroids-i'
@@ -7911,7 +7957,10 @@ if __name__ == '__main__':
     #r = c.get('/exposures/?ra=247.0169&dec=51.7755&layer=ls-dr9-north')
     #r = c.get('/exposures/?ra=204.0414&dec=-62.9467&layer=decaps2')
     #r = c.get('/dr10-deep/1/14/14831/8415.jpg')
-    r = c.get('/exposures/?ra=187.4274&dec=11.4106&layer=sdss')
+    #r = c.get('/exposures/?ra=187.4274&dec=11.4106&layer=sdss')
+    #r = c.get('/merian-n540/1/14/9511/8123.jpg')
+    #r = c.get('/merian-n708/1/14/9511/8123.jpg')
+    r = c.get('/hsc-dr3/1/14/7818/8185.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
