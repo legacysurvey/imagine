@@ -3007,6 +3007,44 @@ class HscLayer(RebrickedMixin, MapLayer):
         ext = self.get_fits_extension(scale, fn)
         return read_tan_from_header(fn, ext)
 
+    def read_image(self, brick, band, scale, slc, fn=None):
+        import fitsio
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        debug('Reading image from', fn)
+        ext = self.get_fits_extension(scale, fn)
+        F = fitsio.FITS(fn)
+        f = F[ext]
+        if slc is None:
+            img = f.read()
+        else:
+            img = f[slc]
+        if scale == 0:
+            ### Zero out pixels where MASK has MP_NO_DATA set --
+            ### especially HSC-DR3 at the survey edges.
+            maskext = 2
+            f = F[maskext]
+            # check
+            hdr = f.read_header()
+            assert(hdr['EXTTYPE'] == 'MASK')
+            #
+            maskbit = hdr['MP_NO_DATA']
+            nodata = 1<<maskbit
+            #maskbit = hdr['MP_SAT']
+            #sat = 1<<maskbit
+            maskbit = hdr['MP_DETECTED']
+            det = 1<<maskbit
+            if slc is None:
+                mask = f.read()
+            else:
+                mask = f[slc]
+            # badpix = (mask & nodata != 0)
+            # badpix = (mask & (nodata | sat) == nodata)
+            badpix = (mask & (nodata | det) == nodata)
+            img[badpix] = 0.
+
+        return img
+
 class MerianLayer(HscLayer):
     '''
     table+5:
@@ -7969,7 +8007,9 @@ if __name__ == '__main__':
     #r = c.get('/merian-n540/1/14/9511/8123.jpg')
     #r = c.get('/merian-n708/1/14/9511/8123.jpg')
     #r = c.get('/hsc-dr3/1/14/7818/8185.jpg')
-    r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=i')
+    #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=i')
+    #r = c.get('/hsc-dr3/1/14/6219/8308.jpg')
+    r = c.get('/hsc-dr3/1/14/6220/8308.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
