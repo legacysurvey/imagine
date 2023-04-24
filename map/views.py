@@ -7449,6 +7449,8 @@ def get_layer(name, default=None):
         layer = LegacySurveySplitLayer(name + grzpart, north, south, 32.375, bottom_bands=bands)
         layer.bands = 'griz'
         layer.drname = 'Legacy Surveys DR10'
+        # "name" is going to be used to set the "layer" cache below!
+        name = name + grzpart
 
     elif name in ['ls-dr10-south', 'ls-dr10-south-model', 'ls-dr10-south-resid',
                   'ls-dr10-south-grz', 'ls-dr10-south-model-grz', 'ls-dr10-south-resid-grz',]:
@@ -8021,7 +8023,10 @@ if __name__ == '__main__':
     #r = c.get('/hsc-dr3/1/14/7818/8185.jpg')
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=i')
     #r = c.get('/hsc-dr3/1/14/6219/8308.jpg')
-    r = c.get('/hsc-dr3/1/14/6220/8308.jpg')
+    #r = c.get('/hsc-dr3/1/14/6220/8308.jpg')
+    #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=i')
+    r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10-grz&pixscale=0.262&bands=griz')
+    r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
