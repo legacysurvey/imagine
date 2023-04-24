@@ -1229,6 +1229,16 @@ class MapLayer(object):
         rw   = np.zeros((H,W), np.float32)
         return rimg, rw
 
+    def peek_accumulator_for_render(self, acc):
+        import numpy as np
+        rimg, rw = acc
+        return rimg / np.maximum(rw, 1e-18)
+
+    def peek_weight_for_render(self, acc):
+        import numpy as np
+        rimg, rw = acc
+        return rw
+
     def finish_accumulator_for_render(self, acc):
         import numpy as np
         rimg, rw = acc
@@ -1353,7 +1363,7 @@ class MapLayer(object):
                     yy3 = np.array([H]*100)
                     xx4 = np.array([1]*100)
                     yy4 = np.linspace(H, 1, 100)
-                    rr,dd = wcs.pixelxy2radec(np.hstack((xx1,xx2,xx3,xx4)), np.hstack((yy1,yy2,yy3,yy4)))
+                    rr,dd = wcs.pixelxy2radec(np.hstack((xx1,xx2,xx3,xx4)), np.hstack((yy1,yy2,yy3,yy4)))[:2]
                     plt.plot(rr, dd, 'm-', lw=2, alpha=0.5)
                     plt.title('black=brick, red=target')
                     debug_ps.savefig()
@@ -1473,7 +1483,9 @@ class MapLayer(object):
                     plt.title('dest')
 
                     plt.subplot(2,3,3)
-                    plt.imshow(rimg / np.maximum(rw, 1e-18),
+                    rimg = self.peek_accumulator_for_render(acc)
+                    rw = self.peek_weight_for_render(acc)
+                    plt.imshow(rimg,
                                interpolation='nearest', origin='lower',
                                vmin=-0.001, vmax=0.1)
                     plt.title('rimg')
