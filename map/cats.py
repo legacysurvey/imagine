@@ -1184,8 +1184,11 @@ def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', n
     # cut to RA,Dec rectangle
     margin = (dechi - declo) * 0.05
     rmargin = margin / np.cos(np.deg2rad(dc))
-    T.cut((T.dec > (declo-margin)) * (T.dec < (dechi+margin)) *
-          (T.ra  > (ralo-rmargin)) * (T.ra  < (rahi+rmargin)))
+    T.cut((T.dec > (declo-margin)) * (T.dec < (dechi+margin)))
+    if ralo > rahi:
+        T.cut(np.logical_or(T.ra  > (ralo-rmargin), T.ra  < (rahi+rmargin)))
+    else:
+        T.cut((T.ra  > (ralo-rmargin)) * (T.ra  < (rahi+rmargin)))
     
     if bgs:
         bgs_target = T.get(colprefix + 'bgs_target')
