@@ -5699,16 +5699,21 @@ def exposures_common(req, tgz, copsf):
     url = my_reverse(req, 'exposure_panels', args=('LAYER', '12345', 'EXTNAME'))
     url = url.replace('LAYER', '%s').replace('12345', '%i').replace('EXTNAME', '%s')
     url = req.build_absolute_uri(url)
-    # Deployment: http://{s}.DOMAIN/...
-    url = url.replace('://www.', '://')
-    url = url.replace('://', '://%s.')
     domains = settings.SUBDOMAINS
+    if len(domains):
+        # Deployment: http://{s}.DOMAIN/...
+        url = url.replace('://www.', '://')
+        url = url.replace('://', '://%s.')
 
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
         ccdlayer = getattr(ccd, 'layer', layername)
-        theurl = url % (domains[i%len(domains)], ccdlayer, int(ccd.expnum), ccd.ccdname.strip()) + '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
+        urlargs = [ccdlayer, int(ccd.expnum), ccd.ccdname.strip()]
+        if len(domains):
+            urlargs = [domains[i%len(domains)]] + urlargs
+        theurl = url % tuple(urlargs)
+        theurl +=  '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
         expurl = my_reverse(req, 'ccd_detail_xhtml', args=(layername, '%s-%i-%s' % (ccd.camera.strip(), int(ccd.expnum), ccd.ccdname.strip())))
         expurl += '?rect=%i,%i,%i,%i' % (x-size, y-size, W, H)
         ccdsx.append(('<br/>'.join(['CCD <a href="%s">%s %s %i %s</a>, %.1f sec (x,y ~ %i,%i)' % (expurl, ccd.camera, ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
