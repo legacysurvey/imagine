@@ -54,7 +54,7 @@ if True:
     allzbest = []
 
     # Cached files & dates
-    for date in ['202110', '202202']:
+    for date in ['202110', '202110-missing', '202202', '202302']:
         cachedfn = os.path.join(basedir, 'allzbest-%s.fits' % date)
         print('Reading cached spectra from', cachedfn, '...')
         T = fits_table(cachedfn)
@@ -62,11 +62,17 @@ if True:
         T.rename('dec', 'target_dec')
         allzbest.append(T)
     #cache_cutoff = '20211100'
-    cache_cutoff = '20220300'
+    #cache_cutoff = '20220300'
+    cache_cutoff = '20230300'
 
     print('Finding zbest(redrock) files...')
     
     tiles = glob('/global/cfs/cdirs/desi/spectro/redux/daily/tiles/cumulative/*')
+    # sort numerically
+    nt = np.array([int(f.split('/')[-1]) for f in tiles])
+    I = np.argsort(nt)
+    tiles = [tiles[i] for i in I]
+
     fns = []
     for tile in tiles:
         dates = glob(tile + '/*')
@@ -82,6 +88,7 @@ if True:
                 continue
         #fns.extend(glob(date + '/zbest-*.fits'))
         thisfns = glob(date + '/redrock-*.fits')
+        thisfns.sort()
         fns.extend(thisfns)
         print('Adding', len(thisfns), 'files from', date)
 
