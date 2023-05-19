@@ -77,14 +77,20 @@ catversions = {
     'desi-tiles': [1,],
     'masks-dr8': [1,],
     'photoz-dr9': [1,],
+    'desi-all-tiles': [1,],
     'desi-denali-tiles': [1,],
     'desi-denali-spectra': [1,],
     'desi-daily-tiles': [1,],
     'desi-daily-spectra': [1,],
+
     'desi-fuji-tiles': [1,],
     'desi-fuji-spectra': [1,],
     'desi-guadalupe-tiles': [1,],
     'desi-guadalupe-spectra': [1,],
+
+    #'ls-dr10a': [1,],
+    'ls-dr10': [1,],
+    'ls-dr10-south': [1,],
 }
 
 test_cats = []
@@ -312,13 +318,6 @@ def cat_desi_fuji_spectra_detail(req, targetid):
         return HttpResponse('No such targetid found in DESI Fuji spectra: %s' % targetid)
     return desi_healpix_spectrum(req, t, 'fuji')
 
-# def cat_desi_denali_spectra_detail(req, tile, fiber):
-#     return cat_desi_release_spectra_detail(req, tile, fiber, 'denali')
-
-
-
-
-
 def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
     import json
     T = cat_kd(req, ver, tag, kdfn, racol=racol, deccol=deccol)
@@ -428,51 +427,6 @@ def cat_desi_fuji_spectra(req, ver):
     tag = 'desi-fuji-spectra'
     return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
 
-def cat_desi_denali_spectra(req, ver):
-    # startree -i /global/cfs/cdirs/desi/spectro/redux/denali/zcatalog-denali-cumulative.fits -o data/desi-spectro-denali/zcatalog-denali-cumulative.kd.fits -PTk -R target_ra -D target_dec
-    kdfn = get_desi_spectro_kdfile('denali')
-    tag = 'desi-denali-spectra'
-    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
-# 
-#     names = []
-#     colors = []
-#     for ot,t,st,z,zerr,zw in zip(T.objtype, T.spectype, T.subtype, T.z, T.zerr, T.zwarn):
-#         #nm = 'z = %.3f \pm %.3f' % (z, zerr)
-#         c = '#3388ff'
-#         t = t.strip()
-#         nm = t
-#         st = st.strip()
-#         if st != '':
-#             nm += ':' + st
-#         if t != 'STAR':
-#             nm += ', z = %.3f' % z
-# 
-#         ot = ot.strip()
-#         if ot == 'SKY':
-#             c = '#448888'
-#             nm = ot
-#         elif t == 'STAR':
-#             c = '#ff4444'
-#         elif t == 'GALAXY':
-#             c = '#ffffff'
-#         elif t == 'QSO':
-#             c = '#4444ff'
-#             
-#         if zw > 0:
-#             nm += ' (ZWARN=0x%x)' %zw
-#             c = '#888888'
-#         names.append(nm)
-#         colors.append(c)
-# 
-#     res = dict(rd=[(float(r),float(d)) for r,d in zip(T.target_ra, T.target_dec)],
-#                targetid=[str(i) for i in T.targetid],
-#                fiberid=[int(i) for i in T.fiber],
-#                tileid=[int(i) for i in T.tileid],
-#                name=names,
-#                color=colors)
-#     return HttpResponse(json.dumps(res),
-#                         content_type='application/json')
-
 def cat_desi_release_tiles(req, ver, release):
     import json
     from astrometry.util.fits import fits_table
@@ -529,26 +483,6 @@ def cat_desi_release_tiles(req, ver, release):
     I = tree_search_radec(kd, rc, dc, rad + desi_radius)
     T = fits_table(fn, rows=I)
     return result(T)
-
-
-def cat_desi_denali_tiles(req, ver):
-    # text2fits -s, -f jsssjfffffssfffsfs /global/cfs/cdirs/desi/spectro/redux/denali/tiles-denali.csv data/desi-spectro-denali/tiles.fits
-    '''
-    T = fits_table('cosmo/webapp/viewer-desi/data/desi-spectro-denali/tiles.fits')
-    T.tilera  = np.zeros(len(T), np.float64)
-    T.tiledec = np.zeros(len(T), np.float64)
-    for itile,tileid in enumerate(T.tileid):
-        ts = '%06i' % tileid
-        fn = 'cosmo/webapp/viewer-desi/data/desi-tiles/%s/fiberassign-%s.fits.gz' % (ts[:3], ts)
-        F = fitsio.FITS(fn)
-        hdr = F[0].read_header()
-        ra,dec = hdr['TILERA'], hdr['TILEDEC']
-        T.tilera [itile] = ra
-        T.tiledec[itile] = dec
-    T.writeto('cosmo/webapp/viewer-desi/data/desi-spectro-denali/tiles2.fits')
-    # startree -i data/desi-spectro-denali/tiles2.fits -R tilera -D tiledec -PTk -o data/desi-spectro-denali/tiles2.kd.fits
-    '''
-    return cat_desi_release_tiles(req, ver, 'denali')
 
 def cat_desi_daily_tiles(req, ver):
     return cat_desi_release_tiles(req, ver, 'daily')
@@ -930,10 +864,15 @@ def get_random_galaxy(layer=None):
     elif layer in ['ls-dr9-south', 'ls-dr9']:
         drnum = 9
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr9-south.fits')
+    elif 'ls-dr10-south' in layer:
+        drnum = 10
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr10-south.fits')
+    elif 'ls-dr10' in layer:
+        drnum = 10
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr10.fits')
     else:
         drnum = 9
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
-
 
     if (not layer in galaxycats) and not os.path.exists(galfn):
         if settings.CREATE_GALAXY_CATALOG:
@@ -1211,8 +1150,6 @@ def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', n
     if names is not None:
         rtn.update(name=names)
     return HttpResponse(json.dumps(rtn), content_type='application/json')
-
-
 
 def desitarget_main_names(T, colprefix='main_'):
     from desitarget.targetmask import desi_mask, bgs_mask, mws_mask, scnd_mask
@@ -2139,6 +2076,9 @@ def cat_masks_dr9(req, ver):
     os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
     os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-dr2')
     os.environ['GAIA_CAT_VER'] = '2'
+    os.environ['GAIA_CAT_SCHEME'] = 'ring'
+    os.environ['GAIA_CAT_PREFIX'] = 'chunk'
+
     survey = LegacySurveyData(survey_dir=os.getcwd())
     pixscale = wcs.pixel_scale()
     T,_ = get_reference_sources(survey, wcs, pixscale, None)
@@ -2480,10 +2420,25 @@ def cat_user(req, ver):
                          for g,r,z in zip(10.**((cat.g - 22.5)/-2.5),
                                           10.**((cat.r - 22.5)/-2.5),
                                           10.**((cat.z - 22.5)/-2.5))])
+    else:
+        fluxbands = []
+        fluxes = []
+        for band in 'griz':
+            if 'flux_'+band in cols:
+                fluxbands.append(band)
+                fluxes.append(cat.get('flux_'+band))
+        if len(fluxbands) > 0:
+            allfluxes = []
+            for srcfluxes in zip(*fluxes):
+                #print('srcfluxes:', srcfluxes)
+                #print('zip:', dict(zip(fluxbands, srcfluxes)))
+                allfluxes.append(dict(zip(fluxbands, [float(f) for f in srcfluxes])))
+            D.update(fluxes = allfluxes)
+
     if 'gnobs' in cols and 'rnobs' in cols and 'znobs' in cols:
         D.update(nobs=[dict(g=int(g), r=int(r), z=int(z))
                        for g,r,z in zip(cat.gnobs, cat.rnobs, cat.znobs)])
-    if 'objids' in cols:
+    if 'objid' in cols:
         D.update(objids=[int(x) for x in cat.objid])
     if 'brickname' in cols:
         D.update(bricknames=cat.brickname.tolist())
@@ -2507,6 +2462,62 @@ def desi_fiberassign_filename(tileid):
     fn = os.path.join(settings.DATA_DIR, 'desi-tiles',
                       tilestr[:3], 'fiberassign-%s.fits.gz'%tilestr)
     return fn
+
+def cat_desi_all_tiles(req, subset, ver):
+    import numpy as np
+    import json
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    tag = 'desi-all-tiles'
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from astropy.table import Table
+    t = Table.read('data/tiles-main.ecsv')
+    from astrometry.util.fits import fits_table
+    T = fits_table()
+    T.tileid = t['TILEID'].data
+    T.ra = t['RA'].data
+    T.dec = t['DEC'].data
+    T.in_desi = t['IN_DESI'].data
+    T.program = t['PROGRAM'].data
+
+    T.cut(T.in_desi)
+    margin = 0.8
+    # not exactly right...
+    cosdec = np.cos(np.deg2rad((declo+dechi)/2.))
+    r0 = ralo - margin/cosdec
+    r1 = rahi + margin/cosdec
+    d0 = declo - margin
+    d1 = dechi + margin
+
+    T.cut((T.dec > d0) * (T.dec < d1))
+    if ralo > rahi:
+        # RA wrap
+        T.cut(np.logical_or(T.ra > r0, T.ra < r1))
+    else:
+        T.cut((T.ra > r0) * (T.ra < r1))
+
+    if subset == 'dark':
+        T.cut(T.program == 'DARK')
+    elif subset == 'bright':
+        T.cut(T.program == 'BRIGHT')
+
+    # rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    # tid = list(int(t) for t in T.tileid)
+    # rtn = dict(rd=rd, tileid=list(tid), program=list(T.program))
+    # return HttpResponse(json.dumps(rtn), content_type='application/json')
+    objs = []
+    for r,d,prog,tid in zip(T.ra, T.dec, T.program, T.tileid):
+        objs.append(dict(name='Tile %i (%s)' % (tid, prog),
+                         ra=r,
+                         dec=d,
+                         radius=1.6))
+    return HttpResponse(json.dumps({'objs':objs}), content_type='application/json')
 
 def cat_desi_tile(req, ver):
     from astrometry.util.fits import fits_table
@@ -2598,6 +2609,19 @@ def cat_tycho2(req, ver):
         if 'name' in T.columns():
             names = [t.strip() for t in T.name]
             rtn['name'] = names
+            for i,name in enumerate(names):
+                try:
+                    # Parse name as "Tycho-2 ###-###-###", then form Simbad link from the parsed
+                    # numbers.
+                    words = name.split()
+                    nums = words[1].split('-')
+                    tyc1 = int(nums[0])
+                    tyc2 = int(nums[1])
+                    tyc3 = int(nums[2])
+                    url = 'http://simbad.cds.unistra.fr/simbad/sim-id?Ident=TYC++%i+%i+%i&NbIdent=1' % (tyc1, tyc2, tyc3)
+                    names[i] = '<a href="%s">%s</a>' % (url, name)
+                except:
+                    pass
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def cat_ngc(req, ver):
@@ -2732,10 +2756,26 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     else:
         rd = list(zip(cat.ra, cat.dec))
         types = list([t[0] for t in cat.get('type')])
-        fluxes = [dict(g=float(g), r=float(r), z=float(z))
-                  for g,r,z in zip(cat.flux_g, cat.flux_r, cat.flux_z)]
-        nobs = [dict(g=int(g), r=int(r), z=int(z))
-                for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
+
+        havebands = []
+        havefluxes = []
+        havenobs = []
+        cols = cat.get_columns()
+        for band in 'griz':
+            if 'flux_'+band in cols:
+                havebands.append(band)
+                havefluxes.append(cat.get('flux_' + band))
+                havenobs.append(cat.get('nobs_' + band))
+        fluxes = []
+        for F in zip(*havefluxes):
+            fluxes.append(dict([(b,float(f)) for b,f in zip(havebands, F)]))
+        nobs = []
+        for N in zip(*havenobs):
+            nobs.append(dict([(b,int(f)) for b,f in zip(havebands, N)]))
+        #fluxes = [dict(g=float(g), r=float(r), z=float(z))
+        #          for g,r,z in zip(cat.flux_g, cat.flux_r, cat.flux_z)]
+        #nobs = [dict(g=int(g), r=int(r), z=int(z))
+        #        for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
         bricknames = list(cat.brickname)
         objids = [int(x) for x in cat.objid]
 
@@ -2806,6 +2846,11 @@ if __name__ == '__main__':
     #layer = get_layer('hsc2')
     #create_galaxy_catalog(galfn, None, layer=layer)
 
+    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr10.fits')
+    layer = get_layer('ls-dr10')
+    create_galaxy_catalog(galfn, None, layer=layer)
+    sys.exit(0)
+    
     # galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
     # layer = get_layer('ls-dr9-north')
     # create_galaxy_catalog(galfn, None, layer=layer)
@@ -2855,9 +2900,7 @@ if __name__ == '__main__':
     #r = c.get('/dr8/1/14/8194/5895.cat.json')
     #r = c.get('/decals-dr7/1/14/8639/7624.cat.json')
     #r = c.get('/mzls+bass-dr6/1/14/7517/6364.cat.json')
-    #r = c.get('/desi-spec/denali/1/cat.json?ralo=135.0397&rahi=135.3119&declo=0.4467&dechi=0.5986#NGC%207536')
-    #r = c.get('/desi-tiles/denali/1/cat.json?ralo=93.9551&rahi=233.3496&declo=15.2713&dechi=67.7710')
-    #r = c.get('/desi-spec-detail/denali/tile80740/fiber3975')
+    #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
     #r = c.get('/desi-spec-daily/1/cat.json?ralo=154.1814&rahi=154.3175&declo=-2.6274&dechi=-2.5515')
     #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
     #r = c.get('/desi-tile/1/cat.json?ralo=238.1458&rahi=238.4181&declo=-0.0750&dechi=0.0748&tile=1000')
@@ -2870,8 +2913,11 @@ if __name__ == '__main__':
     # print('Tile', tile, 'rd', get_desi_tile_radec(tile))
     # sys.exit(0)
     
-    r = c.get('/desi-spectrum/guadalupe/targetid39633049259870731')
-    r = c.get('/desi-spectrum/daily/targetid43977408013222855')
+    #r = c.get('/desi-spectrum/guadalupe/targetid39633049259870731')
+    #r = c.get('/desi-spectrum/daily/targetid43977408013222855')
+    #r = c.get('/ls-dr9/1/15/29479/18709.cat.json')
+    #r = c.get('/usercatalog/1/cat.json?ralo=61.2789&rahi=61.3408&declo=-74.8711&dechi=-74.8622&cat=tmpbclfdga8')
+
     f = open('out', 'wb')
     for x in r:
         f.write(x)

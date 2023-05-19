@@ -1,5 +1,9 @@
 from map.views import get_layer
 
+# if it looks like a duck and quacks like a duck...
+class duck(object):
+    pass
+
 def main():
     import argparse
     import os
@@ -26,6 +30,9 @@ def main():
     if opt.width is not None:
         W = opt.width
 
+    req = duck()
+    req.GET = {}
+
     fits = opt.output.endswith('.fits')
     jpeg = (opt.output.endswith('.jpg') or opt.output.endswith('.jpeg'))
     if not (fits or jpeg):
@@ -35,7 +42,7 @@ def main():
     layer = get_layer(opt.layer)
     tempfiles = []
     layer.write_cutout(opt.ra, opt.dec, opt.pixscale, W, H, opt.output,
-                       bands=opt.bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles)
+                       bands=opt.bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles, req=req)
     for fn in tempfiles:
         os.unlink(fn)
     return 0

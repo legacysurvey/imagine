@@ -5,16 +5,18 @@ import numpy as np
 from astrometry.util.file import read_file
 from legacypipe.survey import LegacySurveyData
 
-def delete_scaled_images(name, old_bricks, new_bricks):
+def delete_scaled_images(name, new_bricks, bands=None):
     from map.views import get_layer
     layer = get_layer(name)
     modlayer = get_layer(name + '-model')
+    if bands is None:
+        bands = layer.get_bands()
     print('Got layer:', layer)
     print('Got model layer:', modlayer)
     for scale in range(1, 8):
-        if scale >= len(old_bricks):
-            print('No old bricks for scale', scale)
-            break
+        #if scale >= len(old_bricks):
+        #    print('No old bricks for scale', scale)
+        #    break
         sbricks = set()
         delfiles = set()
         scale_bricks = layer.get_bricks_for_scale(scale)
@@ -27,7 +29,7 @@ def delete_scaled_images(name, old_bricks, new_bricks):
             for sb in SB.brickname:
                 sbricks.add(sb)
             for sb in SB:
-                for band in ['g','r','z']:
+                for band in bands:
                     fn = layer.get_scaled_filename(sb, band, scale)
                     delfiles.add(fn)
                     fn = modlayer.get_scaled_filename(sb, band, scale)
@@ -68,7 +70,7 @@ def print_tiles(bricks):
         
 
 def main():
-    if True:
+    if False:
         from astrometry.util.fits import fits_table
         from map.views import get_layer
         layer = get_layer('ls-dr10-early')
@@ -162,54 +164,76 @@ def main():
     sublayers = ['', '-model', '-resid']
     subpretty = {'':' images', '-model':' models', '-resid':' residuals'}
 
-    # rsync = True
-    # side = 'north'
-    # #side = 'south'
-    # survey_dir = '/global/cscratch1/sd/ziyaoz/dr9e4/%s' % side
-    # indir = survey_dir
-    # name = 'dr9sv-%s' % side
-    # pretty = 'DR9-SV %s' % side
-    # 
-    # rsync = True
-    # survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9'
-    # indir = '/global/cscratch1/sd/dstn/dr9.2'
-    # name = 'dr9-test-9.2'
-    # pretty = 'DR9.2 test'
-
-    # indir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9.1.1'
-    # indir = '/global/cscratch1/sd/landriau/dr9.1.1'
-    # indir = 'fake-dr9.1.1'
-    # name = 'ls-dr9.1.1'
-    # pretty = 'DR9.1.1 COSMOS deep'
-    # survey_dir = indir
-
-    # rsync = True
-    # update = False
-    # queue = False
-    # indir = '/global/cscratch1/sd/dstn/m33-2/south/'
-    # name = 'dr9-m33'
-    # pretty = 'DR9m-M33'
-    # survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m'
-    
-
-    # indir = 'data/asteroids-i'
-    # name = 'asteroids-i'
-    # pretty = 'Asteroids test'
-    # survey_dir = indir
-
     rsync = False
+    symlink = False
     update = True
     queue = False
-    
+    custom_brick = False
+
     survey_dir = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr10/'
     indir = 'data/ls-dr10-early'
     name = 'ls-dr10-early'
     pretty = 'LS DR10 early'
+
+    # /global/cscratch1/sd/dstn/wiro-C/coadd/cus/custom-034600m04950/legacysurvey-custom-034600m04950-*.jpg
     
+    #survey_dir = '/global/cscratch1/sd/dstn/wiro-C/'
+    # indir = 'data/wiro-C'
+    # survey_dir = indir
+    # name = 'wiro-C'
+    # pretty = 'WIRO C filter'
+
+    indir = 'data/suprime-L484'
+    survey_dir = indir
+    name = 'suprime-L484'
+    pretty = 'Suprime IA-L484 filter'
+
+    indir = '/pscratch/sd/d/dstn/suprime'
+    survey_dir = indir
+    name = 'suprime-ia-v1'
+    pretty = 'Suprime IA v1'
+    rsync = True
+    
+    custom_brick = False
+    update = False
+
     datadir = 'data'
 
     survey = LegacySurveyData(survey_dir=survey_dir)
-    allbricks = survey.get_bricks_readonly()
+    if not custom_brick:
+        allbricks = survey.get_bricks_readonly()
+    else:
+        from astrometry.util.fits import fits_table
+        from astrometry.util.util import Tan
+        allbricks = fits_table()
+        # just look for maskbits because it's the only one that's not band-specific
+        pat = os.path.join(survey_dir, 'coadd', 'cus', 'custom-*', 'legacysurvey-custom-*-maskbits.fits.fz')
+        ims = glob(pat)
+        print('Maskbits files:', pat, '->', ims)
+        allbricks.brickname = []
+        allbricks.ra = []
+        allbricks.dec = []
+        allbricks.ra1 = []
+        allbricks.ra2 = []
+        allbricks.dec1 = []
+        allbricks.dec2 = []
+        for fn in ims:
+            wcs = Tan(fn, 1)
+            brickname = fn.split('/')[-2]
+            allbricks.brickname.append(brickname)
+            H,W = wcs.shape
+            rr,dd = wcs.pixelxy2radec( [ (W+1)/2., 1, W, (W+1)/2., (W+1)/2. ],
+                                       [ (H+1)/2., (H+1)/2., (H+1)/2., 1, H ] )
+            allbricks.ra.append(rr[0])
+            allbricks.dec.append(dd[0])
+            allbricks.ra1.append(rr[2])
+            allbricks.ra2.append(rr[1])
+            allbricks.dec1.append(dd[3])
+            allbricks.dec2.append(dd[4])
+        allbricks.to_np_arrays()
+        allbricks.writeto(os.path.join(survey_dir, 'survey-bricks.fits.gz'))
+        survey.bricks = allbricks
+                
     basedir = os.path.join(datadir, name)
 
     from astrometry.util.fits import fits_table
@@ -259,7 +283,7 @@ def main():
         cmd = 'rsync -Rarv %s/./{images,survey-ccds*.fits} %s/%s' % (survey_dir, datadir, name)
         print(cmd)
         os.system(cmd)
-    else:
+    if symlink:
         # symlink
         if os.path.exists(basedir):
             print('Not symlinking', indir, 'to', basedir, ': already exists!')
@@ -301,7 +325,7 @@ def main():
 
         # Find and delete tiles that overlap each new brick.
         #print_tiles(bricks)
-        delete_scaled_images(name, old_bricks, bricks)
+        delete_scaled_images(name, bricks)
 
         sys.exit(0)
 
@@ -316,7 +340,8 @@ def main():
             dirs = fn.split('/')
             brickname = dirs[-2]
             brickset.add(brickname)
-    else:
+
+    if False:
         #B = fits_table('/global/cfs/cdirs/cosmo/data/legacysurvey/dr9/south/survey-bricks-dr9-south.fits.gz')
         #     brickset = set(B.brickname)
 
@@ -325,15 +350,13 @@ def main():
         bricks = [b for b in bricks if len(b)]
         brickset = set(bricks)
 
-
-        
-    print(len(brickset), 'bricks found')
-    I, = np.nonzero([b in brickset for b in allbricks.brickname])
-    bricks = allbricks[I]
-
-    brickfn = os.path.join(basedir, 'survey-bricks.fits.gz')
-    bricks.writeto(brickfn)
-    print('Wrote', brickfn)
+        print(len(brickset), 'bricks found')
+        I, = np.nonzero([b in brickset for b in allbricks.brickname])
+        bricks = allbricks[I]
+    
+        brickfn = os.path.join(basedir, 'survey-bricks.fits.gz')
+        bricks.writeto(brickfn)
+        print('Wrote', brickfn)
 
     for x in sublayers:
         cmd = 'python3 -u render-tiles.py --kind %s%s --bricks' % (name, x)

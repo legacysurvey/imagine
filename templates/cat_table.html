@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block header %}
+
+<style type="text/css">
+.ccds { text-align: center; border-bottom: 2px solid #6678b1; margin: 15px; }
+.ccds td { padding: 5px; }
+.ccds th { border-bottom: 2px solid #6678b1; }
+</style>
+
+{% endblock %}
+
+{% block body %}
+<body>
+
+  <table>
+    {% for k,v in cat_entries.items %}
+    <tr>
+      <th>{{k}}</th>
+      {% for vi in v %}
+      <td>{{vi}}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </table>
+
+</body>
+{% endblock %}

@@ -14,7 +14,7 @@ REDIRECT_CUTOUTS_DECAPS = False
 
 SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
-SDSS_BASEDIR = '/global/cfs/cdirs/cosmo/data/sdss/dr14/'
+SDSS_BASEDIR = '/global/cfs/cdirs/sdss/data/sdss/dr14/'
 
 CREATE_GALAXY_CATALOG = False
 
@@ -33,6 +33,8 @@ ENABLE_SCIENCE = True
 
 # Collab-private data!
 ENABLE_DESI_DATA = False
+
+ENABLE_PANDAS = False
 
 ENABLE_DESI_TARGETS = False
 ENABLE_SPECTRA = False
@@ -54,6 +56,12 @@ ENABLE_DR9_NORTH_RESIDS = False
 ENABLE_DR9_SOUTH = False
 ENABLE_DR9_SOUTH_MODELS = False
 ENABLE_DR9_SOUTH_RESIDS = False
+
+ENABLE_DR10 = False
+ENABLE_DR10_EARLY = False
+ENABLE_DR10A = False
+
+ENABLE_UNWISE_W3W4 = False
 
 ENABLE_DR56 = False
 ENABLE_DR67 = True
@@ -91,11 +99,11 @@ DOMAIN = HOSTNAME
 STATIC_URL_PATH = '/static/'
 STATIC_URL = ROOT_URL + STATIC_URL_PATH
 
-TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+TILE_URL = 'https://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
-STATIC_TILE_URL = 'http://{s}.%s%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL, STATIC_URL_PATH)
+STATIC_TILE_URL = 'https://{s}.%s%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL, STATIC_URL_PATH)
 
-CAT_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
+CAT_URL = 'https://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
 
 DISCUSS_CUTOUT_URL = 'https://www.legacysurvey.org/viewer/cutout.jpg'
 
@@ -111,8 +119,8 @@ DUST_DIR   = os.path.join(DATA_DIR, 'dust')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 try:
-    import secrets.django
-    SECRET_KEY = secrets.django.SECRET_KEY
+    import appsecrets.django as s
+    SECRET_KEY = s.SECRET_KEY
 except:
     import random
     SECRET_KEY = ''.join([random.choice("abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)")
@@ -166,6 +174,7 @@ ALLOWED_HOSTS = [
     'spin.legacysurvey.org',
     'viewer.legacysurvey.org', 'a.viewer.legacysurvey.org', 'b.viewer.legacysurvey.org', 'c.viewer.legacysurvey.org', 'd.viewer.legacysurvey.org',
     'dev.viewer.legacysurvey.org', 'dev-a.viewer.legacysurvey.org', 'dev-b.viewer.legacysurvey.org', 'dev-c.viewer.legacysurvey.org', 'dev-d.viewer.legacysurvey.org',
+    'lb.cosmo-viewer.production.svc.spin.nersc.org'
 ]
 
 # Application definition
@@ -201,8 +210,8 @@ DATABASES = {
 #         'ENGINE': 'django.db.backends.sqlite3',
 #         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
 #     },
-#     'cosmo': secrets.database.COSMO_DB,
-#     'dr2': secrets.database.DR2_DB,
+#     'cosmo': appsecrets.database.COSMO_DB,
+#     'dr2': appsecrets.database.DR2_DB,
 }
 #DATABASE_ROUTERS = ['cat.models.Router']
 

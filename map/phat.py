@@ -79,8 +79,8 @@ class PhatLayer(MapLayer):
 
             # Check for pixel overlap area
             ok,xx,yy = bwcs.radec2pixelxy(r, d)
-            xx = xx.astype(np.int)
-            yy = yy.astype(np.int)
+            xx = xx.astype(np.int32)
+            yy = yy.astype(np.int32)
             imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
             M = 10
             xlo = np.clip(xx.min() - M, 0, imW)

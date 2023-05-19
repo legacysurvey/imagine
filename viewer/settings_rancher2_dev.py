@@ -1,6 +1,11 @@
 from viewer.settings_common import *
 
-DEBUG_LOGGING = True
+FLAVOUR = 'viewer-dev'
+
+HOSTNAME = 'www.legacysurvey.org'
+
+DEBUG = True
+DEBUG_LOGGING = False
 
 USER_QUERY_DIR = '/tmp/viewer-dev-user'
 
@@ -10,9 +15,11 @@ ROOT_URL = '/viewer-dev'
 STATIC_URL_PATH = '/viewer-dev/static/'
 
 FORCE_SCRIPT_NAME = ROOT_URL
+#FORCE_SCRIPT_NAME = ''
 
 STATIC_URL = STATIC_URL_PATH
-TILE_URL = 'https://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+#TILE_URL = 'https://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+TILE_URL = 'https://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
 STATIC_TILE_URL = 'https://{s}.%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (DOMAIN, STATIC_URL_PATH)
 
@@ -26,7 +33,6 @@ ENABLE_DEV = True
 
 ENABLE_UNWISE_W3W4 = True
 
-ENABLE_PANDAS = True
 ENABLE_PHAT = True
 
 ENABLE_DECAPS = True
@@ -36,8 +42,6 @@ ENABLE_PS1 = True
 ENABLE_DR8 = True
 ENABLE_DR9SV = False
 ENABLE_DES_DR1 = True
-
-ENABLE_ZTF = True
 
 ENABLE_DESI_TARGETS = True
 ENABLE_SPECTRA = True
