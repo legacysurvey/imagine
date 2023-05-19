@@ -358,7 +358,7 @@ def _index(req,
         enable_phat = settings.ENABLE_PHAT,
         enable_pandas = settings.ENABLE_PANDAS,
         enable_desi_menu = True,
-        enable_odin = setting.ENABLE_ODIN,
+        enable_odin = settings.ENABLE_ODIN,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
     )
@@ -8170,7 +8170,8 @@ if __name__ == '__main__':
     #r = c.get('/hsc-dr3/1/14/6220/8308.jpg')
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=i')
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10-grz&pixscale=0.262&bands=griz')
-    r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
+    #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
+    r = c.get('/odin-N419/1/14/9549/8101.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

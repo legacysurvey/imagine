@@ -42,6 +42,8 @@ ENABLE_DR8 = False
 ENABLE_DR7 = False
 ENABLE_DR6 = False
 
+ENABLE_ODIN = True
+
 # public version
 ENABLE_SCIENCE = True
 

@@ -4551,10 +4551,12 @@ var baseTree1 = [
     {% endif %}
 ];
 
-{% if decaps_first %}
-baseTree1 = baseTree1.concat(decaps_tree);
-{% endif %}
-
+  {% if enable_decaps %}
+  {% if decaps_first %}
+  baseTree1 = baseTree1.concat(decaps_tree);
+  {% endif %}
+  {% endif %}
+  
 var moresurveys = [
     {% if enable_pandas %}
     findlayer('pandas'),
@@ -4569,10 +4571,12 @@ var moresurveys = [
     {% endif %}
 ];
 
-{% if decaps_first %}
-{% else %}
-moresurveys = moresurveys.concat(decaps_tree);
-{% endif %}
+  {% if enable_decaps %}
+  {% if decaps_first %}
+  {% else %}
+  moresurveys = moresurveys.concat(decaps_tree);
+  {% endif %}
+  {% endif %}
 
 moresurveys = moresurveys.concat([
     findlayer('galex'),
@@ -5035,7 +5039,9 @@ var overlayTree = [];
      findoverlay('photoz-dr9'),
      {% endif %}
      //findoverlay('masks-dr8'),
+     {% if enable_odin %}
      findoverlay('deepfields'),
+     {% endif %}
      findoverlay('const'),
      ]},
  ]);
