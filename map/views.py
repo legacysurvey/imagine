@@ -2060,7 +2060,7 @@ class RebrickedMixin(object):
 
         if self.nocreate:
             print('Not creating scaled image for', self.name,
-                  'brick', brick, 'band', band, 'scale', scale)
+                  'brick', brick.brickname, 'band', band, 'scale', scale)
             return None
 
         # Create scaled-down image (recursively).
@@ -4155,7 +4155,7 @@ class MultiCoaddLegacySurveyData(LegacySurveyData):
                 if os.path.exists(fn):
                     return fn
         return super().find_file(filetype, brick=brick, band=band, **kwargs)
-        
+
 class DR8LegacySurveyData(LegacySurveyData):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -5222,14 +5222,19 @@ def exposures_common(req, tgz, copsf):
     url = req.build_absolute_uri(url)
     # Deployment: http://{s}.DOMAIN/...
     url = url.replace('://www.', '://')
-    url = url.replace('://', '://%s.')
+
     domains = settings.SUBDOMAINS
+    if len(domains):
+        url = url.replace('://', '://%s.')
 
     ccdsx = []
     for i,(ccd,x,y) in enumerate(ccds):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
         ccdlayer = getattr(ccd, 'layer', layername)
-        theurl = url % (domains[i%len(domains)], ccdlayer, int(ccd.expnum), ccd.ccdname.strip()) + '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
+        if len(domains):
+            theurl = url % (domains[i%len(domains)], ccdlayer, int(ccd.expnum), ccd.ccdname.strip()) + '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
+        else:
+            theurl = url % (ccdlayer, int(ccd.expnum), ccd.ccdname.strip()) + '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
         expurl = my_reverse(req, 'ccd_detail_xhtml', args=(layername, '%s-%i-%s' % (ccd.camera.strip(), int(ccd.expnum), ccd.ccdname.strip())))
         expurl += '?rect=%i,%i,%i,%i' % (x-size, y-size, W, H)
         ccdsx.append(('<br/>'.join(['CCD <a href="%s">%s %s %i %s</a>, %.1f sec (x,y ~ %i,%i)' % (expurl, ccd.camera, ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y),
@@ -5428,17 +5433,24 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
     trargs = dict(slc=slc, gaussPsf=True, old_calibs_ok=True, tiny=1,
                   trim_edges=False)
                   #readsky=False)
-    
+
+    bandmap = dict(g=2, r=1, i=1, z=0, N419=2, N501=1, N673=0)
+
     if kind == 'image':
         tim = im.get_tractor_image(invvar=False, dq=False, **trargs)
         from legacypipe.survey import get_rgb
-        print('im=',im)
-        print('tim=',tim)
+        #print('im=',im)
+        #print('tim=',tim)
         # hack a sky sub
         #tim.data -= np.median(tim.data)
         rgb = get_rgb([tim.data], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        index = dict(g=2, r=1, z=0)[tim.band]
-        img = rgb[:,:,index]
+        # print('RGB:', rgb.shape)
+        # print('r mean:', np.mean(rgb[:,:,0]))
+        # print('g mean:', np.mean(rgb[:,:,1]))
+        # print('b mean:', np.mean(rgb[:,:,2]))
+        #index = bandmap.get(tim.band, 1)
+        #img = rgb[:,:,index]
+        img = np.sum(rgb, axis=2)
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'weight':
@@ -5450,8 +5462,9 @@ def exposure_panels(req, layer=None, expnum=None, extname=None):
         tim = im.get_tractor_image(dq=False, invvar=True, **trargs)
         from legacypipe.survey import get_rgb
         rgb = get_rgb([tim.data * (tim.inverr > 0)], [tim.band]) #, mnmx=(-1,100.), arcsinh=1.)
-        index = dict(g=2, r=1, z=0)[tim.band]
-        img = rgb[:,:,index]
+        #index = bandmap.get(tim.band, 1)
+        #img = rgb[:,:,index]
+        img = np.sum(rgb, axis=2)
         kwa.update(vmin=0, vmax=1)
 
     elif kind == 'dq':
@@ -6189,7 +6202,10 @@ if __name__ == '__main__':
     #r = c.get('/odin-color-n501n673/1/1/1/1.jpg')
     #r = c.get('/odin-color-n419n673/1/5/0/16.jpg')
     #r = c.get('/odin-n419/1/9/461/262.jpg')
-    r = c.get('/odin-cosmos/1/14/9549/8100.jpg')
+    #r = c.get('/odin-cosmos/1/14/9549/8100.jpg')
+    #r  = c.get('/odin-cosmos/1/9/300/253.jpg')
+    #r = c.get('/exposure_panels/odin-cosmos/964380/S8/?ra=150.1672&dec=2.1968&size=100')
+    r = c.get('/odin-N419/1/14/9549/8101.jpg')
     print('r:', type(r))
 
     f = open('out.jpg', 'wb')

@@ -724,7 +724,7 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
 
-    elif opt.kind in ['odin-2band', 'odin-cosmos']:
+    elif opt.kind in ['odin-2band']:
         if opt.maxdec is None:
             opt.maxdec = 4.76
         if opt.mindec is None:
@@ -733,10 +733,21 @@ def main():
             opt.minra = 147.4
         if opt.maxra is None:
             opt.maxra = 152.8
-        if opt.kind == 'odin-2band':
-            if opt.bands is None:
-                opt.bands = ['N501','N673']
+        if opt.bands is None:
+            opt.bands = ['N501','N673']
 
+    elif opt.kind == 'odin-cosmos':
+        if opt.bands is None:
+            opt.bands = ['N419', 'N501', 'N673']
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = -90
+        if opt.minra is None:
+            opt.minra = 0
+        if opt.maxra is None:
+            opt.maxra = 360
+                
     elif opt.kind == 'odin-deep23-n419':
         if opt.maxdec is None:
             opt.maxdec = 2.
