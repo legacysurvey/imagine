@@ -1,0 +1,4615 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block header %}
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+  ga('create', 'UA-5565065-29', 'auto');
+  ga('send', 'pageview');
+</script>
+<link rel="stylesheet" href="{% static "leaflet-1.7.1.css" %}" />
+<script src="{% static "leaflet-1.7.1.js" %}"></script>
+{# From https://github.com/mapbox/leaflet-pip #}
+<script src="{% static "leaflet-pip-20170913.js" %}"></script>
+{# From https://github.com/jjimenezshaw/Leaflet.Control.Layers.Tree #}
+<script src="{% static "L.Control.Layers.Tree-1.0.2.js" %}"></script>
+<link rel="stylesheet" href="{% static "L.Control.Layers.Tree-1.0.2.css" %}" />
+<script src="{% static "jquery-3.5.1.min.js" %}"></script>
+{# From http://kartena.github.io/Leaflet.zoomslider #}
+<link rel="stylesheet" href="{% static "leaflet-zoomslider-0.7.1.css" %}" />
+<script src="{% static "leaflet-zoomslider-0.7.1.js" %}"></script>
+{# https://github.com/jdfergason/Leaflet.Ellipse #}
+<script src="{% static "l.ellipse.js" %}"></script>
+<script src="{% static "utils.js" %}"></script>
+<link rel="stylesheet" href="{% static "styles.css" %}" />
+<style id='tile-filters'></style>
+
+{% comment %}
+<script src="{% static "leaflet.draw-0.2.4.js" %}"></script>
+<link rel="stylesheet" href="{% static "leaflet.draw-0.2.4.css" %}" />
+<script src="{% static "leaflet.measurecontrol-20150626.js" %}"></script>
+<link rel="stylesheet" href="{% static "leaflet.measurecontrol-20150626.css" %}" />
+{% endcomment %}
+
+<style type="text/css">
+  .gfa-label {
+  border: 0px solid #666;
+  }
+
+  
+.tooltipbg {
+  background: black;
+  opacity: 0.5;
+  border: 2px solid white;
+  }
+//  .leaflet-tooltip-left.tooltipbg::after {
+//  }
+  
+//.leaflet-tooltip-left.tooltipbg::before {
+ // border-left-color: cyan;
+//}
+//.leaflet-tooltip-right.tooltipbg::before {
+//  border-right-color: cyan;
+//  }
+
+</style>
+
+
+{% endblock %}
+
+{% block body %}
+<body id="thebody">
+<div id="map" />
+
+<script>
+//'use strict';
+
+ // this is just to reset the indent level for emacs javascript-mode;
+ // the "{#" is a django template comment.
+ {# }}} #}
+
+// Variables from django.
+var layer_initial = '{{ layer }}';
+var ra_initial = {{ ra }};
+var dec_initial = {{ dec }};
+var galname_initial = '{{ galname }}';
+var smallcat_url = '{{ smallcaturl|safe }}';
+var usercat2_url = '{{ usercatalogurl2|safe }}';
+var usercat_url = '{{ usercatalogurl|safe }}';
+var tile_url = '{{ tileurl|safe }}';
+var maxNativeZoom = {{ maxNativeZoom }};
+
+var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
+
+var ccds_url = '{{ ccdsurl|safe }}';
+var exposures_url = '{{ expsurl|safe }}';
+var bricks_url = '{{ bricksurl|safe }}';
+var sdss_plates_url = '{{ platesurl|safe }}';
+var cat_url = '{{ caturl|safe }}';
+var desitile_url = '{{ desitile_url|safe}}';
+var usercat_upload_url = '{{ uploadurl|safe }}';
+var name_query_url = '{{ namequeryurl|safe }}';
+
+var static_tile_url = '{{ static_tile_url|safe }}';
+var subdomains = {{ subdomains|safe }};
+
+var static_tile_url_B = '{{ static_tile_url_B|safe }}';
+var subdomains_B = {{ subdomains_B|safe }};
+
+var aws_tile_url = 'https://s3.us-west-1.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg';
+var max_aws_zoom = 14;
+
+var aws_unwise_url = 'https://s3.us-west-2.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg'
+
+var minZoom = 1;
+var maxZoom = {{ maxZoom }};
+
+// Function to search the current page URL's GET query portion URL?x=y
+var QueryItems = function() {
+    var terms = window.location.search.substr(1).split('&');
+    var items = {};
+    for (var i = 0; i < terms.length; ++i) {
+        var words = terms[i].split('=');
+        if (words.length == 1) {
+            items[words[0]] = true;
+        } else if (words.length == 2) {
+            items[words[0]] = decodeURIComponent(words[1].replace(/\+/g, ' '));
+        }
+    }
+    return items;
+};
+var qstr = QueryItems();
+
+var zoom_initial = 14;
+if ('zoom' in qstr) {
+  zoom_initial = parseInt(qstr['zoom']);
+  if (isNaN(zoom_initial))
+    zoom_initial = 12;
+  zoom_initial = Math.max(1, Math.min(maxZoom, zoom_initial));
+}
+
+
+function arcsecToMeters(arcsec) {
+    return arcsec * 30.87;
+}
+
+var MyTileLayer = L.TileLayer.extend({
+
+    /*
+    getTiles: function() {
+        var tiles = [];
+   	    for (var key in this._tiles) {
+            var c = this._tiles[key].coords;
+            var code = '' + c.z + ':' + c.x + ':' + c.y;
+            tiles.push(code);
+        }
+        return tiles;
+    },
+    */
+
+    _abortLoading: function() {
+		var i, tile;
+		for (i in this._tiles) {
+			if (this._tiles[i].coords.z !== this._tileZoom) {
+                tile = this._tiles[i].el;
+				if (!tile.complete) {
+                    var coords = this._tiles[i].coords;
+                    this.fire('tileabort', {
+                        tile: tile,
+                        coords: coords
+                    });
+                }
+			}
+		}
+        L.TileLayer.prototype._abortLoading.call(this);
+    },
+
+});
+
+// A subclass that switches URL patterns depending on zoom range.
+var ZoomRangeTileLayer = MyTileLayer.extend({
+    options: {
+        urlPatterns: [],
+    },
+	getTileUrl: function (tilePoint) {
+        var urlpat = this._getUrlPattern(tilePoint.z);
+		return L.Util.template(urlpat, L.extend({
+			s: this._getSubdomain(tilePoint),
+			z: tilePoint.z,
+			x: tilePoint.x,
+			y: tilePoint.y
+		}, this.options));
+	},
+    _getUrlPattern: function (zoom) {
+        var url = this._url;
+        for (var i=0; i<this.options.urlPatterns.length; i++) {
+            var zlo  = this.options.urlPatterns[i][0];
+            var zhi  = this.options.urlPatterns[i][1];
+            var zurl = this.options.urlPatterns[i][2];
+            if ((zoom >= zlo) && (zoom <= zhi)) {
+                url = zurl;
+            }
+        }
+        return url;
+    },
+});
+
+var SplitTileLayer = MyTileLayer.extend({
+
+    // new SplitTileLayer(static_tile_url_B, ysplits,
+    //                    north_args, mid_args, south_args);
+    initialize: function(url, args, ysplits, north_args, mid_args, south_args) {
+        L.TileLayer.prototype.initialize.call(this, url, args);
+        this._url = url;
+        this._ysplits = ysplits;
+        this._north_args = north_args;
+        this._mid_args = mid_args;
+        this._south_args = south_args;
+    },
+
+	getTileUrl: function (tile) {
+        tilesize = this.getTileSize();
+        tw = tilesize.x;
+        th = tilesize.y;
+        px = tw * tile.x + tw/2;
+        py = th * tile.y + th/2;
+        tilelatlng = map.unproject(L.point(px, py), tile.z);
+        var ysplit = this._ysplits[tile.z];
+        // check NGC/SGC
+        if (!latlong_is_ngc(tilelatlng)) {
+            // SGC -- south, except for way zoomed-out layers
+            if ((tile.z < 5) && (tile.y == ysplit))
+                opts = this._mid_args;
+            else
+                opts = this._south_args;
+        } else {
+            // y=0 is the top!
+            var urlpat;
+            var opts;
+            if (tile.y < ysplit)
+                opts = this._north_args;
+            else if (tile.y > ysplit)
+                opts = this._south_args;
+            else
+                opts = this._mid_args;
+        }
+        urlpat = this._getUrlPattern(tile.z, opts['urlPatterns']);
+		var url = L.Util.template(urlpat, L.extend({
+			s: this._getSubdomain(tile),
+			z: tile.z,
+			x: tile.x,
+			y: tile.y
+		}, opts));
+        //console.log('-> ', url);
+        return url;
+	},
+
+    _getUrlPattern: function (zoom, patterns) {
+        for (var i=0; i<patterns.length; i++) {
+            var zlo  = patterns[i][0];
+            var zhi  = patterns[i][1];
+            if ((zoom >= zlo) && (zoom <= zhi)) {
+                return patterns[i][2];
+            }
+        }
+        return this._url;
+    },
+});
+
+ 
+// for attaching leaflet.Labels to circles
+L.Circle.include(L.BaseMarkerMethods);
+
+var CatalogOverlay = L.Evented.extend({
+
+    initialize: function(name, pretty, kwargs) {
+        //console.log('CatalogOverlay: ' + name + ',' + pretty);
+        //console.log('CatalogOverlay: ' + name + ': options');
+        //console.log('    ' + this.options);
+        this.options = {};
+        this._counter = 1;
+        this._url = kwargs['url'] || smallcat_url;
+        this._url_term = kwargs['urlTerm'] || name;
+        this._checkbox = null;
+        this._status = null;
+        this._show = false;
+        this._name = name;
+        this._url_name = kwargs['url_name'] || this._name;
+        this._dr_name  = kwargs['dr_name'] || this._url_name;
+        this._url_args = kwargs['url_args'] || {};
+        this._pretty = pretty;
+        this._layers = {};
+        this._group = L.layerGroup([]);
+	    // ~ 100 arcsec
+        this._radius = kwargs['radius'] || 3000;
+        this._minZoom = kwargs['minZoom'] || 3;
+        this._labelsMinZoom = kwargs['labelsMinZoom'] || 6;
+        this._color = kwargs['color'] || '#ffffff';
+        this._style = {'fillOpacity':0,
+                       'weight':5,
+                      };
+        this._oldZoom = zoom_initial;
+        map.on('overlayadd',    this.overlayAdded.bind(this));
+        map.on('overlayremove', this.overlayRemoved.bind(this));
+        map.on('moveend',       this.mapBoundsChanged.bind(this));
+        map.on('zoomend',       this.onMapZoomEnd.bind(this));
+
+        $(document).ready(this.ready.bind(this));
+    },
+
+    ready: function() {
+        //console.log(this._name + ' ready function called');
+        this._checkbox = getOverlayCheckbox(this._pretty);
+        // _checkbox is a jQuery node
+        //console.log('checkbox:', this._checkbox);
+        if (!this._checkbox) {
+            console.log('BUG line 278');
+            return;
+        }
+
+        // add status span after the layer name span
+        var nxt = this._checkbox.next();
+        var stat = L.DomUtil.create('span', 'layer-status');
+        var statid = this._name + '_status';
+        stat.id = statid
+        nxt.after(stat);
+        nxt.after('&nbsp;');
+        // find it with jQuery
+        this._status = $('#' + statid);
+    },
+
+    getGroup: function() {
+        return this._group;
+    },
+
+    overlayAdded: function(e) {
+        if (layerMatchesEvent(this, e)) {
+            console.log('overlayAdded: ' + this._name);
+            this._show = true;
+	        if (map.getZoom() >= this._minZoom) {
+                console.log(this._name + ': LOADING!')
+	            this.load();
+	        }
+        }
+    },
+
+    overlayRemoved: function(e) {
+        if (layerMatchesEvent(this, e)) {
+	        this._show = false;
+            this.removeAllLayers();
+        }
+    },
+
+    mapBoundsChanged: function() {
+        //console.log('Map bounds changed: zoom: ' + map.getZoom());
+        if (this._show && map.getZoom() >= this._minZoom) {
+            this.load();
+        }
+    },
+
+    onMapZoomEnd: function() {
+        //console.log(this._name + ': map zoom end; oldzoom: ' + this._oldZoom +
+        //', new zoom: ' + map.getZoom());
+        var zoom = map.getZoom();
+        if ((this._oldZoom >= this._minZoom) && (zoom < this._minZoom)) {
+            //console.log(this._name + ': zoomed out past boundary');
+            if (this._show) {
+                //console.log(this._name + ': removing');
+                // By the time we get here, onTileUnload() has already fired.
+                this._show = false;
+                // remove any extra ones that have stuck around (fast zoom-outs)
+                this.removeAllLayers();
+            }
+            if (this._checkbox) {
+                this._checkbox.attr('disabled', 'disabled');
+            }
+
+        } else if ((this._oldZoom < this._minZoom) && (zoom >= this._minZoom)) {
+            //console.log(this._name + ': zoomed in past boundary');
+            if (this._checkbox) {
+                this._checkbox.removeAttr('disabled');
+                if (this._checkbox.prop('checked')) {
+                    // SEE layerMatchesEvent()
+                    this.overlayAdded({layer:{_name:this._name}});
+                }
+            }
+        }
+        this._oldZoom = zoom;
+    },
+
+    load: function() {
+        var b = map.getBounds();
+        var url = L.Util.template(this._url, L.extend({
+            s: subdomains[0],
+	        ralo: long2ra(b.getEast()).toFixed(4),
+	        rahi: long2ra(b.getWest()).toFixed(4),
+	        declo: lat2dec(b.getSouth()).toFixed(4),
+	        dechi: lat2dec(b.getNorth()).toFixed(4),
+            id: this._url_name,
+            layer: layer_name,
+            ver: getcatversion(this._name),
+        }, this._url_args));
+        this._counter += 1;
+        this._status && this._status.html('loading...');
+        console.log('Loading: ' + this._name + ' for counter ' + this._counter);
+        $.getJSON(url, this.loaded.bind(this, this._counter));
+        console.log('Called getJSON');
+    },
+
+    loaded: function(counter, result) {
+        console.log('Loaded catalog for ' + this._name);
+        if (counter != this._counter) {
+            console.log(this._name + ': loaded counter ' + counter + ' but ' +
+                        this._counter + ' is current.');
+            return;
+        }
+        this._status && this._status.html('');
+        if (!this._show) {
+            return;
+        }
+        var circles = this.getLayer(result);
+        //console.log('Got marker layer ' + circles);
+        // remove old layers
+        for (var k in this._layers) {
+	        if (k < counter) {
+	            //console.log(this._name + ': removing previous counter ' + k);
+	            this._group.removeLayer(this._layers[k]);
+	            delete this._layers[k];
+                //console.log(this._name + ': now contains layers:', this._group.getLayers());
+	        } else {
+	            console.log(this._name + ': k ' + k + ' vs counter ' + counter);
+	        }
+        }
+        this._group.clearLayers();
+        this._group.addLayer(circles);
+        // save this new layer
+        this._layers[counter] = circles;
+        //console.log(this._name + ': saved counter ' + counter);
+        this.fire('loaded', {'counter':counter, 'result':result});
+    },
+
+    removeAllLayers: function() {
+        for (var key in this._layers) {
+	        //console.log(this._name + ' removeAllLayers: removing ' + key);
+	        var circles = this._layers[key];
+	        this._group.removeLayer(circles);
+	        delete this._layers[key];
+        }
+        this._group.clearLayers();
+    },
+
+    getLayer: function(result) {
+        var showlabels = (map.getZoom() >= this._labelsMinZoom);
+        var rdlist = result['rd'];
+        var circleList = new Array(rdlist.length);
+        var clong = map.getCenter().lng;
+        var radii = result['radiusArcsec'];
+        var abratio = result['abRatio'];
+        var posAngle = result['posAngle'];
+        var weights = result['weight'];
+        var tooltipStyle = this.getTooltipStyle();
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            var style = this._style;
+            if (style == undefined) {
+                style = {};
+            }
+            var color = this.getColor(result, i);
+            if (color !== undefined) {
+                style = Object.assign(style, {'color':color});
+            }
+            if (weights !== undefined) {
+                style = Object.assign(style, {'weight':weights[i]});
+            }
+            var radius = this._radius;
+            if (radii) {
+	            // arcsec to meters:
+	            var meters = (radii[i] * 30.87) || 30;
+                radius = meters;
+            }
+            if (abratio && posAngle) {
+                var circ = L.ellipse([lat, lng], [radius,radius*abratio[i]], posAngle[i], style);
+            } else {
+                var circ = L.circle([lat, lng], radius, style);
+            }
+	        if (showlabels) {
+                var txt = this.getLabel(result, i);
+                if (txt.length > 0) {
+                    circ.bindTooltip(txt, tooltipStyle);
+                }
+	        }
+            var txt = this.getPopupText(result, i);
+            if (txt.length > 0) {
+                circ.popupText = txt;
+                circ.on('click', function(e) {
+                    popup.setLatLng(e.latlng)
+                         .setContent(e.target.popupText)
+                         .openOn(map);
+                    L.DomEvent.stopPropagation(e);
+                });
+            }
+            circleList[i] = circ;
+        }
+        return L.layerGroup(circleList);
+    },
+
+    getTooltipStyle() {
+        return { permanent: true, interactive: true,
+                 className: 'spectrumTooltip' };
+    },
+
+    getLabel: function(json, i) {
+        return json['name'][i];
+    },
+
+    getPopupText: function(json, i) {
+        return '';
+    },
+    
+    getColor: function(json, i) {
+        if (!('color' in json)) {
+            //return undefined;
+            return self._color;
+        }
+        return json['color'][i];
+    },
+
+    getLinkHere: function() {
+        return this._url_term;
+    },
+
+    initLinkHere: function(val) {
+    },
+
+});
+
+var BrightCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        var oname = json['name'][i];
+        var name = oname;
+        var altnames = json['altname'];
+        if (altnames[i].length > 0) {
+            name = name + ' (' + altnames[i] + ')';
+        }
+	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
+            oname.replace(' ','+') + '">' + name + '</a>';
+        return name;
+    },
+});
+
+var GalaxyCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        var oname = json['name'][i];
+        var name = oname;
+	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
+            oname.replace(' ','+') + '">' + name + '</a>';
+        return name;
+    },
+});
+
+var GCsPNeCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        var oname = json['name'][i];
+        var name = oname;
+        if ('altname' in json) {
+            var altnames = json['altname'];
+            if (altnames[i].length > 0) {
+                name = name + ' (' + altnames[i] + ')';
+            }
+        }
+	    name = '<a href="http://simbad.u-strasbg.fr/simbad/sim-basic?Ident=' +
+            oname.replace(' ','+') + '">' + name + '</a>';
+        return name;
+    },
+});
+
+var StarMaskCatalog = CatalogOverlay.extend({
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this._style = {'fillOpacity':0,
+                       'weight':3,
+                      };
+      },
+
+    getLabel: function(json, i) {
+        return json['name'][i];
+    },
+    getPopupText: function(json, i) {
+        return '';
+    },
+    getTooltipStyle() {
+        return { permanent: false, interactive: true,
+        className: 'tooltipbg',
+      };
+    },
+});
+
+var sga_popup = function(json, i) {
+        var ra = json['rd'][i][0];
+        var dec = json['rd'][i][1];
+        var name = json['name'][i];
+        var pgc = json['pgc'][i];
+    var groupname = json['groupname'][i];
+	s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
+    s += '<br/>Group: ' + groupname;
+        // matching map/cats.py : cat_sga
+        d25 = json['radiusArcsec'][i] * 2 / 60.;
+        s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
+        s += '<br/>D(25)='+d25.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
+        z = json['redshift'][i];
+        t = json['type'][i];
+        if (t.length > 0)
+            s += 'Type: '+t+' ';
+        if (z != -1.0)
+            s += ', Redshift='+z.toFixed(4);
+        return s;
+}
+
+var SGACatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        return sga_popup(json, i);
+    },
+
+    getPopupText: function(json, i) {
+        return sga_popup(json, i);
+    },
+
+    getTooltipStyle() {
+        return { permanent: false, interactive: true, };
+    },
+
+    getLayer: function(result) {
+        layergroup = CatalogOverlay.prototype.getLayer.call(this, result);
+        // Add crosshairs
+        var rdlist = result['rd'];
+        var clong = map.getCenter().lng;
+        var radii = result['radiusArcsec'];
+        var abratio = result['abRatio'];
+        var posAngle = result['posAngle'];
+        var plines = [];
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            var style = Object.create(this._style);
+            var color = this.getColor(result, i);
+            if (color !== undefined) {
+                style = Object.assign(style, {'color':color});
+            }
+            var radius = this._radius;
+            if (radii) {
+                // arcsec -> degrees
+                radius = radii[i] / 3600.;
+            }
+            if (abratio && posAngle) {
+                var ab = abratio[i];
+                var pa = -posAngle[i];
+            } else {
+                var ab = 1.0;
+                var pa = 0.;
+            }
+            var cosdec = Math.cos(lat * Math.PI / 180.0);
+            pa = pa * Math.PI / 180.0;
+            lng1 = lng + radius * Math.cos(pa) / cosdec;
+            lng2 = lng - radius * Math.cos(pa) / cosdec;
+            lat1 = lat + radius * Math.sin(pa);
+            lat2 = lat - radius * Math.sin(pa);
+            plines.push([[lat1, lng1], [lat2, lng2]]);
+            lng1 = lng + ab * radius * -Math.sin(pa) / cosdec;
+            lng2 = lng - ab * radius * -Math.sin(pa) / cosdec;
+            lat1 = lat + ab * radius * Math.cos(pa);
+            lat2 = lat - ab * radius * Math.cos(pa);
+            plines.push([[lat1, lng1], [lat2, lng2]]);
+        }
+        style = Object.assign(style, {'weight': 1});
+        layergroup.addLayer(L.polyline(plines, style));
+        return layergroup;
+    },
+
+});
+
+var PhotozCatalog = CatalogOverlay.extend({
+    //initialize: function(name, pretty, kwargs) {
+    //    CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+    //    this._radius = 
+    //},
+    getLabel: function(json, i) {
+        return 'z = ' + json['phot_z_mean'][i].toFixed(3) + ' &plusmn; ' +
+            json['phot_z_std'][i].toFixed(3);
+    },
+    //getPopupText: function(json, i) {
+    //    return sga_popup(json, i);
+    //},
+    getTooltipStyle() {
+        return { permanent: false, interactive: true, };
+    },
+    getLayer: function(result) {
+        //console.log('getLayer: style', self._style);
+        var wt = [];
+        var rads = [];
+        var dz = result['phot_z_std'];
+        for (var i=0, len=dz.length; i<len; i++) {
+            if (dz[i] > 0.2) {
+                wt.push(2);
+                rads.push(100 / 30.);
+            } else {
+                wt.push(5);
+                rads.push(150 / 30.);
+            }
+        }
+        result['weight'] = wt;
+        result['radiusArcsec'] = rads;
+        return CatalogOverlay.prototype.getLayer.call(this, result);
+    },
+});
+
+var MangaCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+      var label = '<a href="https://dr16.sdss.org/marvin/galaxy/' + json['plate'][i] + '-' + json['ifudsgn'][i] + '/">' + json['name'][i]
+                        + '  (' + json['plate'][i]+'-'+json['ifudsgn'][i] + ')</a>';
+        return label;
+    },
+
+    getLayer: function(result) {
+        var showlabels = (map.getZoom() >= this._labelsMinZoom);
+        var rdlist = result['rd'];
+        var group = [];
+        var clong = map.getCenter().lng;
+        var tooltipStyle = this.getTooltipStyle();
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            var style = this._style;
+  /*
+            var color = this.getColor(result, i);
+            if (color !== undefined) {
+                style = Object.assign(style, {'color':color});
+            }
+   */
+            var color = 'yellow';
+            var poly = [];
+            var jhex = result['hexes'][i];
+            console.log('Manga row ' + i + ': hex size ' + jhex.length);
+            for (var j=0, plen=jhex.length; j<plen; j++) {
+                poly.push([dec2lat(jhex[j][1]), ra2long_C(jhex[j][0], clong)]);
+            }
+            var hex = L.polygon(poly, {fill:false, color:color, weight:4});
+
+	        if (showlabels) {
+                var txt = this.getLabel(result, i);
+                if (txt.length > 0) {
+                    hex.bindTooltip(txt, tooltipStyle);
+                }
+	        }
+            var txt = this.getPopupText(result, i);
+            if (txt.length > 0) {
+                hex.popupText = txt;
+                hex.on('click', function(e) {
+                    popup.setLatLng(e.latlng)
+                         .setContent(e.target.popupText)
+                         .openOn(map);
+                    L.DomEvent.stopPropagation(e);
+                });
+            }
+
+            group.push(hex);
+
+            var fibers = [];
+            var jfibs = result['fibers'][i];
+            for (var j=0, plen=jfibs.length; j<plen; j++) {
+                circ = L.circle([dec2lat(jfibs[j][1]), ra2long_C(jfibs[j][0], clong)],
+                                arcsecToMeters(1.0),
+                                {'color':'yellow', 'fillOpacity':0.0, 'weight':1,
+                                 'opacity': 0.3});
+                fibers.push(circ);
+
+                group.push(circ);
+            }
+            //group.push(L.layerGroup(fibers));
+
+        }
+
+        return L.layerGroup(group);
+    },
+
+
+});
+
+var SdssSpectraCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        zw = '';
+        zwval = json['zwarning'][i];
+        //console.log('zwarning: ' + zwval);
+        if (zwval > 0) {
+            zw = ' (Zwarn=0x' + zwval.toString(16) + ')';
+        }
+        var label = '<a href="https://dr14.sdss.org/optical/spectrum/view?mjd=' +
+            json['mjd'][i] + '&fiberid=' + json['fiber'][i] + '&plateid=' +
+            json['plate'][i] + '&zwarning=0&matches=any">' + json.name[i] + zw + '</a>';
+        return label;
+    },
+
+    getColor: function(json, i) {
+        var label = json.name[i];
+        if (label.startsWith("QSO")) {
+            return "#4444ff";
+        } else if (label.startsWith("GALAXY")) {
+            return "#ffffff";
+        } else if (label.startsWith("STAR")) {
+            return "#ff4444";
+        } else {
+            return "#888888";
+        }
+    },
+});
+
+var Deep2SpectraCatalog = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        var label = json.name[i];
+        return label;
+    },
+});
+
+var DesiTargetCatalog = CatalogOverlay.extend({
+    getLayer: function(result) {
+        var targetids = result['targetid'];
+        var rdlist = result['rd'];
+        var fluxes = result['fluxes'];
+        var nobs = result['nobs'];
+        var labels = result['name'];
+        var colors = result['color'];
+        var radii = result['radius'];
+
+        var circleList = new Array(rdlist.length);
+        var clong = map.getCenter().lng;
+        var zoom = map.getZoom();
+
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            var color = 'blue';
+            var weight = 5;
+            if (typeof(defaultcolor) != 'undefined') {
+                color = defaultcolor;
+            }
+            if (colors !== undefined) {
+                color = colors[i];
+            }
+            if (radii === undefined) {
+                rad = this._radius;
+            } else {
+                // radius is in meters
+                rad = radii[i];
+                rad = arcsecToMeters(rad);
+            }
+
+            var circ = L.circle([lat, lng], rad,
+                                {'color':color, 'fillOpacity':0,
+                                'weight':5, 'opacity': 0.2});
+            if (labels !== undefined && zoom > 13) {
+                var txt = labels[i];
+                if (txt.length > 0) {
+                    circ.bindTooltip(txt, { permanent: true, interactive: true });
+                }
+            }
+    
+            circ.ra = r;
+            circ.dec = d;
+            //circ.type = typ;
+            circ.fluxes = (fluxes     ? fluxes[i] : {});
+            circ.nobs   = (nobs       ? nobs  [i] : {});
+            circ.targetid = targetids ? targetids[i] : '';
+            circ.on('click', onTargetClick);
+            circleList[i] = circ;
+        }
+        return L.layerGroup(circleList);
+    },
+});
+
+function onTargetClick(e) {
+    console.log('onTargetClick');
+    src = e.target;
+    fluxstr = '';
+    if ('g' in src.fluxes) {
+        fluxstr += 'g=' + fluxToMag(src.fluxes.g).toFixed(2);
+    }
+    if ('r' in src.fluxes) {
+        fluxstr += ', r=' + fluxToMag(src.fluxes.r).toFixed(2);
+    }
+    if ('z' in src.fluxes) {
+        fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
+    }
+    if ('W1' in src.fluxes) {
+        fluxstr += ', W1=' + fluxToMag(src.fluxes.W1).toFixed(2);
+    }
+    if ('W2' in src.fluxes) {
+        fluxstr += ', W2=' + fluxToMag(src.fluxes.W2).toFixed(2);
+    }
+    nobs_str = '';
+    if (src.nobs) {
+        nobs_g = 0
+        if ('g' in src.nobs) {
+    	    nobs_g = src.nobs.g;
+        }
+        nobs_r = 0
+        if ('r' in src.nobs) {
+    	    nobs_r = src.nobs.r;
+        }
+        nobs_z = 0
+        if ('z' in src.nobs) {
+    	    nobs_z = src.nobs.z;
+        }
+        nobs_str = '<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z;
+    }
+    txt = 'Target RA,Dec = ' + src.ra.toFixed(4) + ', ' + src.dec.toFixed(4) +
+        '<br/>Mags: ' + fluxstr +
+        nobs_str +
+        '<br/>Targetid: ' + src.targetid;
+    console.log('Popup text: ' + txt);
+    popup.setLatLng(e.latlng).setContent(txt).openOn(map);
+    explode;
+    L.DomEvent.stopPropagation(e);
+}
+
+
+{% if enable_phat %}
+var PhatClusterCatalog = CatalogOverlay.extend({
+    getLayer: function(result) {
+        var rdlist = result['rd'];
+        var names = result['name'];
+        var mags = result['mag'];
+        var vs = result['velocity'];
+        var zs = result['metallicity'];
+        var youngs = result['young'];
+
+        var circleList = new Array(rdlist.length);
+        var clong = map.getCenter().lng;
+
+        for (var i=0, len=rdlist.length; i<len; i++) {
+            var r = rdlist[i][0];
+            var d = rdlist[i][1];
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            var color = 'cyan';
+            if (!youngs[i]) {
+                color = 'red';
+            }
+            rad = this._radius;
+            var circ = L.circle([lat, lng], rad,
+                                {'color':color, 'fillOpacity':0, 'weight':5});
+
+            circ.bindTooltip(names[i], { permanent: true, interactive: true });
+    
+            circ.ra = r;
+            circ.dec = d;
+            circ.name = names[i];
+            circ.mag = mags[i];
+            circ.velocity = vs[i];
+            circ.metallicity = zs[i];
+            circ.on('click', function(e) {
+                src = e.target;
+                var text = src.name;
+                text += '<br>Mag: ' + src.mag.toFixed(3);
+                //var text = names[i];
+                //if (vs[i] != 0.0) {
+                if (src.velocity != 0.0) {
+                    text += '<br>Velocity: ' + src.velocity.toFixed(1) + ' km/s';
+                }
+                z = src.metallicity;
+                if (z != 0.0) {
+                    text += '<br>Metallicity: ' + z.toFixed(3);
+                }
+                popup.setLatLng(e.latlng).setContent(text).openOn(map);
+                L.DomEvent.stopPropagation(e);
+            });
+            circleList[i] = circ;
+        }
+        return L.layerGroup(circleList);
+    },
+});
+{% endif %}
+
+
+{% if enable_ps1 %}
+var Ps1CatalogOverlay = CatalogOverlay.extend({
+    getLabel: function(json, i) {
+        //return '';
+        var label = json.name[i];
+        return label;
+    },
+});
+{% endif %}
+
+{% comment %}
+var url = '';
+var maskOverlay = L.imageOverlay(url, map.getBounds(), { opacity: 0.5,
+                                                         interactive: true,
+                                                         crossOrigin: true,
+                                                         //zIndex: 11,
+                                                         //bubblingMouseEvents: false,
+                                                       });
+ //maskOverlay.addTo(map);
+ //maskOverlay.remove();
+ // tooltips
+ maskOverlay.on('load', function(e){});
+ maskOverlay.setUrl();
+ maskOverlay.setBounds();
+ map.on('overlayadd', overlayAdded);
+ map.on('overlayremove', overlayRemoved);
+{% endcomment %}
+
+
+function layerMatchesEvent(layer, event) {
+    return (layer._name == event.layer._name);
+}
+
+var TileWatcher = L.Evented.extend({
+
+    initialize: function() {
+        // string keys z:x:y of currently visible tiles
+        this._visibleTiles = {};
+    },
+
+    listenToLayer: function(layer) {
+        layer.on('tileloadstart', this.tileLoadStart.bind(this));
+        layer.on('tileunload',    this.tileUnload.bind(this));
+        layer.on('tileerror',     this.tileError.bind(this));
+        layer.on('tileabort',     this.tileAbort.bind(this));
+    },
+
+    getVisibleTiles: function() {
+        return this._visibleTiles;
+    },
+
+    _eventToKey: function(e) {
+        var coord = e.coords;
+        var x = coord.x;
+        var zoom = coord.z;
+        var maxtile = 1 << zoom;
+        x = x % maxtile;
+        var key = '' + zoom + ':' + x + ':' + coord.y;
+        return key;
+    },
+
+    tileLoadStart: function(e) {
+        var key = this._eventToKey(e);
+        console.log('Tile load start: ' + key);
+        if (key in this._visibleTiles) {
+            //console.log('tile was already in visible tiles');
+        } else {
+            e.key = key;
+
+            var maxtile = 1 << e.coords.z;
+            e.coords.wrapx = e.coords.x % maxtile;
+
+            //console.log('firing tilevisible: ' + key + ', event ', e);
+            this._visibleTiles[key] = true;
+            this.fire('tilevisible', e);
+        }
+    },
+    
+    tileUnload: function(e) {
+        //console.log('Tile unload: ' + this._eventToKey(e));
+        this._tileGone(e);
+    },
+
+    tileAbort: function(e) {
+        //console.log('Tile abort: ' + this._eventToKey(e));
+        this._tileGone(e);
+    },
+
+    tileError: function(e) {
+        //console.log('Tile error: ' + this._eventToKey(e));
+        this._tileGone(e);
+    },
+
+    _tileGone: function(e) {
+        var key = this._eventToKey(e);
+        delete this._visibleTiles[key];
+        e.key = key;
+        this.fire('tileinvisible', e);
+        //console.log('firing tileinvisible: ' + key + ', event ', e);
+    },
+
+});
+
+var TiledOverlay = CatalogOverlay.extend({
+
+    initialize: function(tw, name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        // count of how many tile loads are outstanding
+        this._loadingTiles = 0;
+        this._tw = tw;
+        tw.on('tilevisible',   this.tileVisible.bind(this));
+        tw.on('tileinvisible', this.tileInvisible.bind(this));
+    },
+
+    tileVisible: function(e) {
+        if (!this._show) {
+            return;
+        }
+        var coords = e.coords;
+        console.log('Layer ' + this._name + ': tile visible: z ' + coords.z + ', x,y' +
+                           coords.wrapx + ', ' + coords.y);
+        if (coords.z === undefined) {
+            return;
+        }
+        if (coords.z < this._minZoom) {
+            return;
+        }
+        this.load(coords.z, coords.wrapx, coords.y);
+    },
+
+    load: function(zoom, x, y) {
+        //console.log('Loading tiled catalog: URL pattern: ' + this._url +
+        //            ' x,y,zoom: ' + x + ',' + y + ', ' + zoom);
+        var s = getSubdomain(x, y);
+	    var url = L.Util.template(this._url, L.extend({
+            s: s,
+            z: zoom,
+            x: x,
+            y: y,
+            id: this._url_name,
+            ver: getcatversion(this._name),
+	    }));
+        this._loadingTiles += 1;
+        this.setStatusText();
+        $.getJSON(url, this.loaded.bind(this, zoom, x, y));
+    },
+
+    setStatusText: function() {
+        if (this._loadingTiles == 0) {
+            this._status && this._status.html('');
+        } else {
+            this._status && this._status.html('loading ' + this._loadingTiles
+                                              + '...');
+        }
+    },
+
+    tileInvisible: function(e) {
+        var key = e.key;
+        if (!(key in this._layers)) {
+            return;
+        }
+        var circles = this._layers[key];
+        this._group.removeLayer(circles);
+    },
+
+    // override superclass
+    mapBoundsChanged: function() {
+    },
+
+    overlayAdded: function(e) {
+        if (!layerMatchesEvent(this, e)) {
+            return;
+        }
+        console.log('overlayAdded: ' + this._name);
+        this._show = true;
+	    if (map.getZoom() < this._minZoom) {
+            return;
+        }
+        // load all visible tiles
+        for (var key in this._tw.getVisibleTiles()) {
+            //console.log('Adding overlay ' + this._name + ': tile ' + key);
+            // parse into zoom:x:y
+            var words = key.split(':');
+            var zoom = parseInt(words[0]);
+            var x = parseInt(words[1]);
+            var y = parseInt(words[2]);
+            this.load(zoom, x, y);
+        }
+    },
+
+    loaded: function(zoom, tilex, tiley, result) {
+        //console.log('Loaded: zoom ' + zoom + ' x,y ' + tilex + ',' + tiley);
+        // waiting for how many tiles now?
+        this._loadingTiles -= 1;
+        this.setStatusText();
+        if (!this._show) {
+            console.log('not shown');
+            return;
+        }
+        var circles = this.getLayer(result);
+        this._group.addLayer(circles);
+        // save this new layer
+        var key = ''+zoom+':'+tilex+':'+tiley;
+        this._layers[key] = circles;
+        this.fire('loaded', {'zoom':zoom, 'x':tilex, 'y':tiley, 'result':result});
+    },
+});
+
+var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
+    var rdlist = result['rd'];
+    var objtype = result['sourcetype'];
+    var fluxes = result['fluxes'];
+    var nobs = result['nobs'];
+    var bricknames = result['bricknames'];
+    var objids = result['objids'];
+    var labels = result['names'];
+    var circleList = new Array(rdlist.length);
+    var clong = map.getCenter().lng;
+    var radii = result['radius'];
+    var colors = result['color'];
+
+    var abratios = result['abratio'];
+    var posangles = result['posangle'];
+    
+    for (var i=0, len=rdlist.length; i<len; i++) {
+        var r = rdlist[i][0];
+        var d = rdlist[i][1];
+        var lat = dec2lat(d);
+
+        //console.log('RA,Dec ' + r + ', ' + d);
+
+        var lng = ra2long_C(r, clong);
+        var color = 'blue';
+        if (typeof(defaultcolor) != 'undefined') {
+            color = defaultcolor;
+        }
+        var typ = 'nil';
+        if (colors !== undefined) {
+            color = colors[i];
+        } else if (objtype !== undefined) {
+            typ = objtype[i];
+            // PSF
+            if (objtype[i] == 'P') {
+                color = '#9AFE2E'; //#D8F781'; //'green';
+            } else if (objtype[i] == 'R') {
+	            // Rex
+                color = 'orange';
+            } else if (objtype[i] == 'D') {
+                color = 'red';
+            } else if (objtype[i] == 'E') {
+                color = '#58ACFA'; // blue
+            } else if ((objtype[i] == 'C') || (objtype[i] == 'S')) {
+                // COMP / SER
+                color = '#DA81F5'; // magenta
+            }
+        }
+        if (radii === undefined) {
+            rad = radius;
+        } else {
+            // radius is in meters
+            rad = radii[i];
+        }
+        //console.log('Lat,Long,Radius ' + lat + ', ' + lng + ', ' + rad);
+        rad = arcsecToMeters(rad);
+
+        if ((abratios === undefined) || (posangles === undefined)) {
+            var circ = L.circle([lat, lng], rad,
+                                {'color':color, 'fillOpacity':0, 'weight':5});
+        } else {
+            var circ = L.ellipse([lat, lng], [rad, rad*abratios[i]], posangles[i],
+                                 {'color':color, 'fillOpacity':0, 'weight':5});
+        }
+        if (labels === undefined) {
+        } else {
+            var txt = labels[i];
+            if (typeof(tooltipStyle) != 'undefined') {
+              ttstyle = tooltipStyle;
+            } else {
+              ttstyle = { permanent: true, interactive: true };
+            }
+            if (txt.length > 0) {
+                circ.bindTooltip(txt, ttstyle);
+            }
+        }
+
+        circ.ra = r;
+        circ.dec = d;
+        circ.type = typ;
+        circ.fluxes = (fluxes ? fluxes[i] : {});
+        circ.nobs   = (nobs   ? nobs  [i] : {});
+        circ.brickname = bricknames ? bricknames[i] : '';
+        circ.objid     = objids     ? objids    [i] : '';
+        circ.on('click', onSourceClick);
+        circleList[i] = circ;
+    }
+    return L.layerGroup(circleList);
+};
+
+// DECaLS catalog
+var DecalsCatalogLayer = TiledOverlay.extend({
+    getLayer: function(result) {
+        return decals_getLayer(result, 1);
+    },
+
+    /* Consider accessing list of available tiles directly via MyTileLayer.getTiles()
+       rather than using the TileWatcher stuff.
+
+        overlayAdded: function(e) {
+            console.log('DecalsCatalogLayer: overlayAdded: map layers:');
+            var alltiles = [];
+            map.eachLayer(function(layer) {
+                console.log('Layer: ' + layer._name + ' / ' + layer.name + ': ', layer);
+                try {
+                    tiles = layer.getTiles();
+                    for (var k in tiles) {
+                        code = tiles[k];
+                        if (code in alltiles) {
+                        } else {
+                            alltiles.push(code);
+                            console.log('  tile ' + code);
+                        }
+                    }
+                    console.log('Total of', alltiles.length);
+                } catch {}
+            });
+            TiledOverlay.prototype.overlayAdded.call(this, e);
+        },
+    */
+    
+});
+
+// User catalogs
+{% include "user-cat.js" %}
+// DESI tiles
+{% include "desi-tiles.js" %}
+
+function getkeys(obj) {
+    var s = '';
+    for (var k in obj) {
+        if (s.length) {
+            s += ', ';
+        }
+        s += k;
+    }
+    return s;
+}
+
+function getSubdomain(x,y) {
+	return subdomains[Math.abs(x + y) % subdomains.length];
+}
+
+function fluxToMag(f) {
+    return -2.5 * (Math.log(f)/Math.log(10.) - 9);
+}
+
+function exposures_radec_url(ra, dec) {
+    return '{% url 'exposures' %}?ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4) + '&layer=' + layer_name;
+}
+
+function exposures_radec_link(ra, dec) {
+    {% if enable_cutouts %}
+    url = exposures_radec_url(ra, dec);
+    return '<a href="' + url + '">' +
+        ra.toFixed(4) + ', ' + dec.toFixed(4) + '</a>';
+    {% else %}
+    return ra.toFixed(4) + ', ' + dec.toFixed(4);
+    {% endif %}
+}
+
+function onSourceClick(e) {
+    console.log('onSourceClick');
+    src = e.target;
+    fluxstr = '';
+    if ('g' in src.fluxes) {
+        fluxstr += 'g=' + fluxToMag(src.fluxes.g).toFixed(2);
+    }
+    if ('r' in src.fluxes) {
+        fluxstr += ', r=' + fluxToMag(src.fluxes.r).toFixed(2);
+    }
+    if ('z' in src.fluxes) {
+        fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
+    }
+    nobs_g = 0
+    if ('g' in src.nobs) {
+	    nobs_g = src.nobs.g;
+    }
+    nobs_r = 0
+    if ('r' in src.nobs) {
+	    nobs_r = src.nobs.r;
+    }
+    nobs_z = 0
+    if ('z' in src.nobs) {
+	    nobs_z = src.nobs.z;
+    }
+    txt = 'Source RA,Dec = ' + exposures_radec_link(src.ra, src.dec) +
+        '<br/>Source type: ' + src.type +
+        '<br/>Mags: ' + fluxstr +
+        '<br/>Brick: ' + src.brickname + ', Objid: ' + src.objid +
+	    '<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z;
+    console.log('Popup text: ' + txt);
+    popup.setLatLng(e.latlng).setContent(txt).openOn(map);
+    L.DomEvent.stopPropagation(e);
+}
+
+function brick_detail(ovname, name, aparams) {
+    return 'Brick: <a href="{% url 'brick_detail_blank' %}' + name
+        + '/?layer=' + layer_name + '">' + name + '</a>';
+}
+
+function ccd_detail(layer_name, name, aparams) {
+    return 'CCD: <a href="{% url 'ccd_detail_blank' %}' + layer_name + '/'
+                     + name.replace(' ','-')
+                     + '/"' + aparams + '>' + name + '</a>';
+}
+
+function sdss_ccd_detail(layer_name, name, aparams) {
+    // HACK -- name is 'SDSS R/C/F ##/##/##' -- parse!
+    var words = name.split(' ');
+    var rcf = words[2].split('/');
+    var run = rcf[0];
+    var camcol = rcf[1];
+    var field = rcf[2];
+    return 'CCD: <a href="https://dr12.sdss.org/fields/runCamcolField?run='
+          + run + '&camcol=' + camcol + '&field=' + field
+          + '"' + aparams + '>' + name + '</a>';
+}
+
+function exp_detail(layer_name, name, aparams) {
+    return 'Exposure: <a href="{% url 'exp_detail_blank' %}' + layer_name + '/' +
+        name.replace(' ','-') + '/"' + aparams + '>' + name + '</a>';
+}
+
+function plate_detail(layer_name, name, aparams) {
+    //console.log('Plate_detail: ' + layer_name + ', ' + name + ', ' + aparams);
+    return '<a href="https://dr14.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
+}
+
+function linkHereURL(latlng) {
+    var ra  = long2ra(latlng.lng);
+    var dec = lat2dec(latlng.lat);
+
+    var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
+    var linkqstr = radecstr + '&layer=' + layer_name;
+    var zoomstr = '&zoom=' + map.getZoom();
+
+    var linkurl = '?' + linkqstr + zoomstr;
+    if ('plate' in qstr) {
+        linkurl += '&plate=' + qstr['plate'];
+    }
+    for (var i=0,len=overlays.length; i<len; i++) {
+        console.log('Overlay ' + overlays[i]._name + ' shown? ' + overlays[i]._show);
+        if (overlays[i]._show) {
+            linkurl += '&' + overlays[i].getLinkHere()
+        }
+    }
+    if ('mark' in qstr) {
+        linkurl += '&mark=' + qstr['mark'];
+    }
+    if ('poly' in qstr) {
+        linkurl += '&poly=' + qstr['poly'];
+    }
+    if ('tile' in qstr) {
+        linkurl += '&tile=' + qstr['tile'];
+    }
+    return linkurl;
+}
+ 
+function onMapClick(e) {
+    var ra  = long2ra(e.latlng.lng);
+    var dec = lat2dec(e.latlng.lat);
+
+    var radecstr = 'ra=' + ra.toFixed(4) + '&dec=' + dec.toFixed(4);
+    var linkqstr = radecstr + '&layer=' + layer_name;
+    var zoomstr = '&zoom=' + map.getZoom();
+
+    var pixscale = 0.25 * Math.pow(2, 14 - map.getZoom());
+    var pixstr = '&pixscale=' + pixscale.toFixed(2);
+
+    var cutout = '{% url 'cutout-jpeg' %}?' + linkqstr + pixstr;
+    var cutout_fits = '{% url 'cutout-fits' %}?' + linkqstr + pixstr;
+    var linkurl = linkHereURL(e.latlng);
+
+    //var abs_cutout = hostname_url + cutout;
+    var abs_cutout = '{{ discuss_cutout_url }}?' + linkqstr + pixstr;
+    var abs_link = hostname_url + '{% url 'index' %}' + linkurl;
+
+    var discuss = 'http://discuss.legacysurvey.org/new-topic?title=Interesting+object&body=' +
+        '%3Cimg+src%3D%22' + encodeURIComponent(abs_cutout) + '%22%3E' +
+        '%0A' +
+        encodeURIComponent(abs_link) +
+        '&category=Interesting+things';
+
+    var datalink = '{% url 'data_for_radec' %}?' + radecstr + '&layer=' + layer_name;
+
+    // add ra,dec lo,hi bounds to data-for-radec link
+    var b = map.getBounds();
+    datalink += ('&ralo=' + long2ra(b.getEast()).toFixed(4) +
+                 '&rahi=' + long2ra(b.getWest()).toFixed(4) +
+                 '&declo=' + lat2dec(b.getSouth()).toFixed(4) +
+                 '&dechi=' + lat2dec(b.getNorth()).toFixed(4));
+
+    var spacer = ' &nbsp;|&nbsp; ';
+
+    var txt =
+        'RA,Dec = ' + ra.toFixed(4) + ', ' + dec.toFixed(4) +
+        '<br/><a href="' + linkurl +
+        '">Link Here</a>' + spacer +
+        {% if science %}
+          '<a href="' + datalink + '">Data</a>' + spacer +
+          '<a href="' + cutout + '">Cutout</a> (<a href="' + cutout_fits + '">FITS</a>)' + spacer +
+          {% if enable_cutouts %}
+            '<a href="' + exposures_radec_url(ra,dec) + '">Single Exposures</a>' + spacer +
+          {% endif %}
+        '<a href="http://simbad.u-strasbg.fr/simbad/sim-coo?Coord=' + ra.toFixed(4) + 'd' + dec.toFixed(4) + 'd' + '&CooFrame=ICRS&CooEpoch=2000&CooEqui=2000&Radius=2&Radius.unit=arcmin&submit=submit+query&CoordList=">Look up in Simbad</a>' + spacer +
+        {% endif %}
+        '<a href="' + discuss + '">Discuss This Object</a>';
+
+    for (var i=0; i<polygonOverlays.length; i++) {
+        var overlay = polygonOverlays[i];
+        var objs = overlay.under(e.latlng);
+        for (var j=0; j<objs.length; j++) {
+            txt += '<br/>' + overlay._detail(overlay._url_name, objs[j], '');
+        }
+    }
+
+    popup.setLatLng(e.latlng).setContent(txt).openOn(map);
+}
+
+function updateInfoBox(latlng) {
+    var ra  = long2ra(latlng.lng);
+    var dec = lat2dec(latlng.lat);
+    lastLatLng = latlng;
+    if (infoBoxActive) {
+	    info._div.innerHTML = 'RA,Dec = ' + ra.toFixed(4) + ", " + dec.toFixed(4) +
+            ", zoom " + map.getZoom();
+    }
+}
+
+function onMouseMove(e) {
+    //console.log('mouse move: ' + e.latlng);
+    updateInfoBox(e.latlng);
+    if (inbrickccdAdded) {
+        inbrickccdUpdate(e);
+    }
+}
+
+function inbrickccdUpdate(props) {
+    if (props == undefined) {
+        props = { 'latlng': lastLatLng };
+    }
+    if (!inbrickccdAdded) {
+        inbrickccdAdded = true;
+        inbrickccd.addTo(map);
+    }
+
+    var txt = '';
+    for (var i=0; i<polygonOverlays.length; i++) {
+        var overlay = polygonOverlays[i];
+        if (overlay._detail_list == undefined) {
+            continue;
+        }
+        var objs = overlay.under(props.latlng);
+        txt += overlay._detail_list(overlay, objs);
+    }
+                                      
+    inbrickccd._div.innerHTML = txt;
+}
+
+
+// "Bricks", "CCDs", etc button checked
+function overlayAdded(e) {
+    //console.log('OverlayAdded:', e);
+    console.log('  added overlay name: ' + e.layer._name);
+    if (inbrickccdAdded) {
+        return;
+    }
+    for (var i=0; i<polygonOverlays.length; i++) {
+        if (polygonOverlays[i]._show) {
+            inbrickccdAdded = true;
+            inbrickccd.addTo(map);
+            break;
+        }
+    }
+}
+
+// "Sources", "Bricks", "CCDs" button unchecked
+function overlayRemoved(e) {
+    if (!inbrickccdAdded) {
+        return;
+    }
+    var show = false;
+    for (var i=0; i<polygonOverlays.length; i++) {
+        if (polygonOverlays[i]._show) {
+            show = true;
+        }
+    }
+    if (!show) {
+        map.removeControl(inbrickccd);
+        inbrickccdAdded = false;
+    }
+}
+
+// List of bricks / CCDs under the mouse position
+var inbrickccd = L.control({'position': 'bottomleft'});
+inbrickccd.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'inbrickccd');
+    return this._div;
+};
+var inbrickccdAdded = false;
+
+var map = L.map('map', {
+    zoomsliderControl: false,
+    zoomControl: false,
+    //worldCopyJump: true,
+    tap: false,
+});
+var popup = L.popup();
+
+map.attributionControl.options.prefix = '<a href="https://www.legacysurvey.org/svtips/">Tips &amp; Tricks | ' +
+     map.attributionControl.options.prefix + ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
+
+// default to 1.
+var tileversions = {
+    'sfd':2,
+    'decaps2': 2,
+    'decaps2-model': 2,
+    'decaps2-resid': 2,
+    'decaps': 2,
+    'decaps-model': 2,
+    'decaps-resid': 2,
+    'dr9k-north': 2,
+    'dr9k-north-model': 2,
+    'dr9k-north-resid': 2,
+    'dr9k-south': 2,
+    'dr9k-south-model': 2,
+    'dr9k-south-resid': 2,
+};
+var catversions  = {
+};
+
+function getversion(layer) {
+    if (layer in tileversions) {
+        return tileversions[layer];
+    }
+    return 1;
+}
+
+function getcatversion(layer) {
+    if (layer in catversions) {
+        return catversions[layer];
+    }
+    return 1;
+}
+
+var allLayers = [];
+
+var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>';
+var unwise_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; unWISE / NASA/JPL-Caltech / D.Lang (Perimeter Institute)</a>';
+var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
+var des_attrib = '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">The Dark Energy Survey Data Release 1</a>';
+var hsc_attrib = '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>';
+var vlass_attrib = '<a href="https://public.nrao.edu/media-use/">&copy;</a> <a href="https://public.nrao.edu/vlass/">NRAO / VLA Sky Survey</a>';
+var galex_attrib = '<a href="https://www.jpl.nasa.gov/imagepolicy/">&copy;</a> <a href="http://www.galex.caltech.edu/">GALEX, Courtesy NASA/JPL-Caltech</a>';
+var halpha_attrib = '<a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">&copy;</a> <a href="https://amundsen.swarthmore.edu/SHASSA/">SHASSA</a>/<a href="https://www1.phys.vt.edu/~halpha/">VTSS</a>/<a href="http://www.astro.wisc.edu/wham-site/">WHAM</a> <a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">composite by Doug Finkbeiner (skymaps.info)</a>';
+var sfd_attrib = '<a href="https://dustmaps.readthedocs.io/en/latest/maps.html#sfd">&copy; SFD</a>';
+var ps1_attrib = 'Pan-STARRS1';
+
+var mylayer = function (name, pretty, kwargs) {
+    var args = {
+        maxZoom: maxZoom,
+        minZoom: minZoom,
+        maxNativeZoom: maxNativeZoom,
+        attribution: decals_attrib,
+        id: name,
+        ver: getversion(name),
+        unloadInvisibleTiles: true,
+        subdomains: subdomains,
+    };
+    for (var key in kwargs) {
+        args[key] = kwargs[key];
+    }
+    var tiles = new ZoomRangeTileLayer(static_tile_url, args);
+    tiles.name = name;
+    tiles.pretty = pretty;
+    return tiles;
+};
+
+var tiles;
+
+var defaultTile = null;
+
+var mylayer_B = function (name, pretty, kwargs) {
+    var args = {
+        maxZoom: maxZoom,
+        minZoom: minZoom,
+        maxNativeZoom: maxNativeZoom,
+        attribution: decals_attrib,
+        id: name,
+        ver: getversion(name),
+        unloadInvisibleTiles: true,
+        subdomains: subdomains_B,
+    };
+    for (var key in kwargs) {
+        args[key] = kwargs[key];
+    }
+    var tiles = new ZoomRangeTileLayer(static_tile_url_B, args);
+    tiles.name = name;
+    tiles.pretty = pretty;
+    return tiles;
+};
+
+function split_layer(name, pretty, decsplit,
+                     north_name, north_urls, north_kwargs,
+                     mid_name,   mid_urls,   mid_kwargs,
+                     south_name, south_urls, south_kwargs,
+                     kwargs) {
+    var args = {
+        maxZoom: maxZoom,
+        minZoom: minZoom,
+        maxNativeZoom: maxNativeZoom,
+        attribution: decals_attrib,
+        unloadInvisibleTiles: true,
+        subdomains: subdomains_B,
+    };
+    for (var key in kwargs) {
+        args[key] = kwargs[key];
+    }
+    var north_args = Object.assign(
+        {},
+        args,
+        { id: north_name, ver: getversion(north_name),
+          urlPatterns: north_urls},
+        north_kwargs);
+    var mid_args = Object.assign(
+        {},
+        args,
+        { id: mid_name, ver: getversion(mid_name),
+          urlPatterns: mid_urls},
+        mid_kwargs);
+    var south_args = Object.assign(
+        {},
+        args,
+        { id: south_name, ver: getversion(south_name),
+          urlPatterns: south_urls},
+        south_kwargs);
+
+    //console.log('split_layer: north', north_args, 'mid', mid_args, 'south', south_args);
+    
+    var ysplits = {};
+    for (var zoom=0; zoom<20; zoom++) {
+        // Thanks, https://en.wikipedia.org/wiki/Web_Mercator
+        y = Math.pow(2, zoom) / (2. * Math.PI) *
+            (Math.PI - Math.log(Math.tan(Math.PI/4. + (Math.PI / 180. * decsplit) / 2.)));
+        ysplits[zoom] = Math.floor(y);
+        //console.log('Dec split', decsplit, 'zoom', zoom, '-> y', ysplits[zoom]);
+    }
+    var tiles = new SplitTileLayer(tile_url, args, ysplits,
+                                   north_args, mid_args, south_args);
+    tiles.name = name;
+    tiles.pretty = pretty;
+    return tiles;
+};
+                                            
+tiles = mylayer_B('des-dr1', 'DES DR1',
+                  {'attribution': des_attrib,
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
+
+// tiles = mylayer_B('odin-2band', 'ODIN N501/N673 images',
+//                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+// allLayers.push(tiles);
+
+tiles = mylayer_B('odin-color-n501n673', 'ODIN color images (N501/N673)',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('odin-color-n419n673', 'ODIN color images (N419/N673)',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('odin-n673', 'ODIN N673 image',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('odin-n501', 'ODIN N501 image',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('odin-n419', 'ODIN N419 image',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('odin-cosmos', 'ODIN COSMOS (N419/N501/N673) image',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
+{% if enable_dr9 %}
+tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
+                    32.375,
+                    // North
+                    'ls-dr9-north', [
+                      [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
+                      [15, maxZoom, tile_url], ],
+                    //'ls-dr9-north', [ [0, max_aws_zoom, aws_tile_url], ],
+                    {'id':'ls-dr9-north'},
+                    // Mid
+		            'ls-dr9', [ [0, maxZoom, tile_url], ],
+		            //'ls-dr9', [ [0, max_aws_zoom, aws_tile_url], ],
+                    {'id':'ls-dr9'},
+                    // South
+                    'ls-dr9-south', [
+                      [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg'],
+                      [15, maxZoom, tile_url], ],
+                    //'ls-dr9-south', [ [0, max_aws_zoom, aws_tile_url], ],
+                    {'id':'ls-dr9-south'},
+                    //{ 'maxNativeZoom': max_aws_zoom }
+                    {}
+                   );
+allLayers.push(tiles);
+{% if enable_dr9_models %}
+tiles = split_layer('ls-dr9-model', 'Legacy Surveys DR9 models',
+                    32.375,
+                    // North
+                    'ls-dr9-north-model', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'ls-dr9-model', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'ls-dr9-south-model', [ [0, maxZoom, tile_url], ], {},
+                    //{ 'maxNativeZoom': max_aws_zoom }
+                    {}
+                   );
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr9_resids %}
+tiles = split_layer('ls-dr9-resid', 'Legacy Surveys DR9 residuals',
+                    32.375,
+                    // North
+                    'ls-dr9-north-resid', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'ls-dr9-resid', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'ls-dr9-south-resid', [ [0, maxZoom, tile_url], ], {},
+                    //{ 'maxNativeZoom': max_aws_zoom, },
+                    {}
+                   );
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+{% if enable_dr9_north %}
+tiles = mylayer_B('ls-dr9-north', 'Legacy Surveys DR9-north images',
+                  {
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],
+                   //'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
+                   //'maxNativeZoom':max_aws_zoom,
+                   //'id': 'dr9-north'
+                  });
+allLayers.push(tiles);
+{% if enable_dr9_north_models %}
+tiles = mylayer_B('ls-dr9-north-model', 'Legacy Surveys DR9-north models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr9_north_resids %}
+tiles = mylayer_B('ls-dr9-north-resid', 'Legacy Surveys DR9-north residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+{% if enable_dr9_south %}
+tiles = mylayer_B('ls-dr9-south', 'Legacy Surveys DR9-south images',
+                  {//'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
+                   //'maxNativeZoom':max_aws_zoom,
+                   //'id': 'dr9-south'}
+                  'urlPatterns': [ [0, maxZoom, tile_url], ],
+                  }
+);
+allLayers.push(tiles);
+{% if enable_dr9_south_models %}
+tiles = mylayer_B('ls-dr9-south-model', 'Legacy Surveys DR9-south models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr9_south_resids %}
+tiles = mylayer_B('ls-dr9-south-resid', 'Legacy Surveys DR9-south residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+
+
+
+
+
+{% if enable_dr9sv %}
+tiles = split_layer('dr9sv', 'Legacy Surveys DR9-SV images',
+                    32.375,
+                    // North
+                    'dr9sv-north', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'dr9sv', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'dr9sv-south', [ [0, maxZoom, tile_url], ], {},
+                    {}
+                   );
+allLayers.push(tiles);
+{% if enable_dr9sv_models %}
+tiles = split_layer('dr9sv-model', 'Legacy Surveys DR9-SV models',
+                    32.375,
+                    // North
+                    'dr9sv-north-model', [ [0, maxZoom, tile_url], ],
+                    // Mid
+                    'dr9sv-model', [ [0, maxZoom, tile_url], ],
+                    // South
+                    'dr9sv-south-model', [ [0, maxZoom, tile_url], ],
+                   );
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr9sv_resids %}
+tiles = split_layer('dr9sv-resid', 'Legacy Surveys DR9-SV residuals',
+                    32.375,
+                    // North
+                    'dr9sv-north-resid', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'dr9sv-resid', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'dr9sv-south-resid', [ [0, maxZoom, tile_url], ], {},
+                    {});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+{% if enable_dr9sv_north %}
+tiles = mylayer_B('dr9sv-north', 'Legacy Surveys DR9-SV-north images',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% if enable_dr9sv_north_models %}
+tiles = mylayer_B('dr9sv-north-model', 'Legacy Surveys DR9-SV-north models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr9sv_north_resids %}
+tiles = mylayer_B('dr9sv-north-resid', 'Legacy Surveys DR9-SV-north residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+{% if enable_dr9sv_south %}
+tiles = mylayer_B('dr9sv-south', 'Legacy Surveys DR9-SV-south images',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ], });
+allLayers.push(tiles);
+{% if enable_dr9sv_south_models %}
+tiles = mylayer_B('dr9sv-south-model', 'Legacy Surveys DR9-SV-south models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr9sv_south_resids %}
+tiles = mylayer_B('dr9sv-south-resid', 'Legacy Surveys DR9-SV-south residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+
+{% if enable_dr8 %}
+tiles = split_layer('ls-dr8', 'Legacy Surveys DR8 images',
+                    32.375,
+                    // North
+                    //'dr8-north', [ [0, maxZoom, tile_url], ],
+                    'ls-dr8-north', [ [0, max_aws_zoom, aws_tile_url], ], {'id':'dr8-north'},
+                    // Mid
+		            //'dr8', [ [0, maxZoom, tile_url], ],
+		            'ls-dr8', [ [0, max_aws_zoom, aws_tile_url], ], {'id':'dr8'},
+                    // South
+                    //'dr8-south', [ [0, maxZoom, tile_url], ]
+                    'ls-dr8-south', [ [0, max_aws_zoom, aws_tile_url], ], {'id':'dr8-south'},
+                    { 'maxNativeZoom': max_aws_zoom }
+                   );
+allLayers.push(tiles);
+{% if enable_dr8_models %}
+tiles = split_layer('ls-dr8-model', 'Legacy Surveys DR8 models',
+                    32.375,
+                    // North
+                    'ls-dr8-north-model', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'ls-dr8-model', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'ls-dr8-south-model', [ [0, maxZoom, tile_url], ], {},
+                    { 'maxNativeZoom': max_aws_zoom }
+                   );
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr8_resids %}
+tiles = split_layer('ls-dr8-resid', 'Legacy Surveys DR8 residuals',
+                    32.375,
+                    // North
+                    'ls-dr8-north-resid', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'ls-dr8-resid', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'ls-dr8-south-resid', [ [0, maxZoom, tile_url], ], {},
+                    { 'maxNativeZoom': max_aws_zoom, },
+                   );
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+{% if enable_dr8_north %}
+tiles = mylayer_B('ls-dr8-north', 'Legacy Surveys DR8-north images',
+                  {'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
+                   'maxNativeZoom':max_aws_zoom,
+                   'id': 'dr8-north'});
+allLayers.push(tiles);
+{% if enable_dr8_north_models %}
+tiles = mylayer_B('ls-dr8-north-model', 'Legacy Surveys DR8-north models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr8_north_resids %}
+tiles = mylayer_B('ls-dr8-north-resid', 'Legacy Surveys DR8-north residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+{% if enable_dr8_south %}
+tiles = mylayer_B('ls-dr8-south', 'Legacy Surveys DR8-south images',
+                  {'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
+                   'maxNativeZoom':max_aws_zoom,
+                   'id': 'dr8-south'});
+allLayers.push(tiles);
+{% if enable_dr8_south_models %}
+tiles = mylayer_B('ls-dr8-south-model', 'Legacy Surveys DR8-south models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr8_south_resids %}
+tiles = mylayer_B('ls-dr8-south-resid', 'Legacy Surveys DR8-south residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+{% if enable_dr67 %}
+tiles = split_layer('ls-dr67', 'Legacy Surveys DR6+DR7 images',
+                    32.,
+                    // North
+                    'mzls+bass-dr6', [ [13, maxZoom, tile_url], ], {},
+                    // Mid
+                    'ls-dr67', [ [14, maxZoom, tile_url], ], {},
+                    // South
+                    'decals-dr7', [ [11, maxZoom, tile_url], ], {},
+                    {});
+allLayers.push(tiles);
+{% endif %}
+
+testLayers = [];
+{% if enable_dev %}
+{% for name,pretty in test_layers %}
+  tiles = mylayer_B('{{name}}', '{{pretty}}',
+                    {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+  allLayers.push(tiles);
+  testLayers.push(tiles);
+{% endfor %}
+{% endif %}
+
+
+
+{% if enable_dr7 %}
+tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
+                  {'urlPatterns': [ [11, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% if enable_dr7_models %}
+tiles = mylayer_B('decals-dr7-model', 'DECaLS DR7 models',
+                  {'urlPatterns': [ [10, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% if enable_dr7_resids %}
+tiles = mylayer_B('decals-dr7-resid', 'DECaLS DR7 residuals',
+                {'urlPatterns': [ [10, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+
+
+{% endif %}
+
+{% if enable_dr6 %}
+tiles = mylayer_B('mzls+bass-dr6', 'MzLS+BASS DR6 images',
+                {'urlPatterns': [ [13, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+if (defaultTile == null) {
+    defaultTile = tiles;
+}
+
+{% if enable_dr6_models %}
+tiles = mylayer_B('mzls+bass-dr6-model', 'MzLS+BASS DR6 models',
+                  {'urlPatterns': [ [13, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+                                            
+{% if enable_dr6_resids %}
+tiles = mylayer_B('mzls+bass-dr6-resid', 'MzLS+BASS DR6 residuals',
+                  {'urlPatterns': [ [13, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+{% if enable_dr5 %}
+tiles = mylayer_B('decals-dr5', 'DECaLS DR5 images',
+                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+if (defaultTile == null) {
+    defaultTile = tiles;
+}
+
+{% if enable_dr5_models %}
+tiles = mylayer_B('decals-dr5-model', 'DECaLS DR5 models',
+                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+{% if enable_dr5_resids %}
+tiles = mylayer_B('decals-dr5-resid', 'DECaLS DR5 residuals',
+                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+{% endif %}
+
+{% if enable_decaps %}
+tiles = mylayer_B('decaps', 'DECaPS images',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('decaps-model', 'DECaPS models',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('decaps-resid', 'DECaPS residuals',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+{% if enable_eboss %}
+tiles = mylayer('eboss', 'special eBOSS region',
+                {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+{% if enable_phat %}
+tiles = mylayer('phat', 'PHAT image',
+                  {'attribution': 'PHAT collaboration',
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],
+                   'maxNativeZoom': maxZoom,});
+allLayers.push(tiles);
+{% endif %}
+
+{% if enable_m33 %}
+tiles = mylayer_B('m33', 'M33 image',
+                  {'attribution': 'M33 collaboration',
+                   'urlPatterns': [ [17, maxZoom, tile_url], ],
+                   'maxNativeZoom': maxZoom,});
+allLayers.push(tiles);
+{% endif %}
+
+tiles = mylayer_B('sdss', 'SDSS',
+                  {'attribution': sdss_attrib,
+                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('ztf', 'ZTF',
+                  {'attribution': 'ZTF',
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],
+                   'maxNativeZoom': 12,});
+allLayers.push(tiles);
+
+{% if enable_ps1 %}
+tiles = mylayer_B('ps1', 'Pan-STARRS1',
+                  {'attribution': ps1_attrib,
+                   'urlPatterns': [ [8, maxZoom, tile_url], ],});
+                  //'urlPatterns': [ [14, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+{% if enable_hsc_dr2 %}
+tiles = mylayer_B('hsc-dr2', 'HSC DR2',
+                  {'attribution': hsc_attrib,
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+{% if enable_vlass %}
+tiles = mylayer_B('vlass1.2', 'VLASS 1.2',
+                  {'attribution': vlass_attrib,
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+{% endif %}
+
+{% if enable_unwise %}
+tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
+                {'maxNativeZoom': 12,
+                 'attribution': unwise_attrib,
+                 'urlPatterns': [ [6, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
+                {'maxNativeZoom': 11,
+                 'attribution': unwise_attrib,
+                 'urlPatterns': [
+                     [1, 11, aws_unwise_url],]});
+                 //[12, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
+                {'maxNativeZoom': 12,
+                 'attribution': unwise_attrib,
+                 'urlPatterns': [ [6, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+{% comment %}
+tiles = mylayer('2mass', '2MASS',
+                {'maxNativeZoom': 12,
+                 'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endcomment %}
+
+tiles = mylayer_B('galex', 'GALEX',
+                {'maxNativeZoom': 12,
+                 'attribution': galex_attrib,
+                 'urlPatterns': [ [10, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('sfd', 'SFD dust map',
+                {'maxNativeZoom':10,
+                 'attribution': sfd_attrib,
+                 'urlPatterns': [ [7, 10, tile_url],], });
+allLayers.push(tiles);
+
+tiles = mylayer_B('wssa', 'WISE 12-micron dust map',
+                {'maxNativeZoom':10,
+                 'urlPatterns': [ [9, 10, tile_url],], });
+allLayers.push(tiles);
+
+tiles = mylayer_B('halpha', 'Halpha map',
+                {'maxNativeZoom':10,
+                 'attribution': halpha_attrib,
+                 'urlPatterns': [ [7, 10, tile_url],],});
+allLayers.push(tiles);
+
+
+var added = false;
+var layer_name = layer_initial;
+var baseMaps = {};
+//console.log('Requested layer: "' + layer_name + '"');
+for (var i in allLayers) {
+    var layer = allLayers[i];
+    baseMaps[layer.pretty] = layer;
+    //console.log('vs layer name "' + layer.name + '"');
+    if (layer_name == layer.name) {
+        layer.addTo(map);
+        added = true;
+    }
+}
+if (!added) {
+    defaultTile.addTo(map);
+}
+// may be overridden by 'qstr' below.
+var last_layer_name = layer_name;
+
+function doGoto(fly) {
+    ra  = $('#gotora').val();
+    dec = $('#gotodec').val();
+    zoom = $('#gotozoom').val();
+    console.log('RA ' + ra + ', Dec ' + dec + ', Zoom ' + zoom);
+    ra = parseFloat(ra);
+    dec = parseFloat(dec);
+    zoom = parseInt(zoom);
+    console.log('RA ' + ra + ', Dec ' + dec + ', Zoom ' + zoom);
+    if (fly) {
+      clong = map.getCenter().lng;
+      duration = $('#gotodur').val();
+      dest = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
+      console.log('Fly from', map.getCenter(), 'to', dest, 'zoom', zoom, 'duration', duration);
+      updateInfoBox(map.getCenter());
+      map.flyTo(dest, zoom,
+                { animate:true, duration:duration });
+    } else {
+      map.setView(L.latLng(dec2lat(dec), ra2long_C(ra, 0)), zoom);
+    }
+}
+
+function submitGoto(e) {
+    console.log('submit goto ' + typeof(e) + getkeys(e));
+    e.stopPropagation();
+    doGoto(false);
+}
+
+function submitGotoFly(e) {
+    console.log('submit goto fly ' + typeof(e) + getkeys(e));
+    e.stopPropagation();
+    infoBoxActive = true;
+    doGoto(true);
+}
+
+function cancelGoto(e) {
+    console.log('cancel goto ' + typeof(e));
+    infoBoxActive = true;
+    onMouseMove({ latlng: map.getCenter() });
+    e.stopPropagation();
+}
+
+function gotoKeypress(e) {
+    if (e.which == 13) {
+	    // Enter key
+	    doGoto(false);
+    }
+}
+function gotoDurKeypress(e) {
+    if (e.which == 13) {
+	    // Enter key (in Duration box)
+	    doGoto(true);
+    }
+}
+
+function infoBoxClicked(e) {
+    console.log('Info box clicked');
+    if (!infoBoxActive) {
+	    return;
+    }
+    infoBoxActive = false;
+    ra  = long2ra(map.getCenter().lng);
+    dec = lat2dec(map.getCenter().lat);
+    ra = ra.toFixed(4);
+    // trim trailing zeros
+    while (ra.length && ra.charAt(ra.length-1) == '0') {
+	    ra = ra.substring(0, ra.length-1);
+    }
+    dec = dec.toFixed(4);
+    while (dec.length && dec.charAt(dec.length-1) == '0') {
+	    dec = dec.substring(0, dec.length-1);
+    }
+
+    info._div.innerHTML = '<center><form>RA,Dec '
+	    + '<input name="ra"  id="gotora"  value="' + ra
+	    + '" size=6>, '
+	    + '<input name="dec" id="gotodec" value="' + dec
+	    + '" size=6>, '
+	    + 'zoom <input name="zoom" id="gotozoom" value="' + map.getZoom() + '" size=4>'
+	    + '<br/><br/>'
+	    + '<input type="button" value="Go" class="gotobutton" id="gotosubmit">'
+	    + '<input type="button" value="Cancel" class="gotobutton" id="gotocancel">'
+        + '<br/><br/>'
+	    + 'Duration: <input name="dur" id="gotodur" value="5" size="4"> '
+        + '<input type="button" value="Fly" class="gotobutton" id="gotofly">'
+	    + '</form></center>';
+    $('#gotosubmit').click(submitGoto);
+    $('#gotofly').click(submitGotoFly);
+    $('#gotocancel').click(cancelGoto);
+    $('#gotora').keypress(gotoKeypress);
+    $('#gotodec').keypress(gotoKeypress);
+    $('#gotozoom').keypress(gotoKeypress);
+    $('#gotodur').keypress(gotoDurKeypress);
+}
+
+var infoBoxActive = true;
+var info = L.control({'position':'topleft'});
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info');
+    this._div.innerHTML = 'RA,Dec = ' + ra_initial.toFixed(4) + ", " + dec_initial.toFixed(4) + ", zoom " + zoom_initial;
+    return this._div;
+};
+info.addTo(map);
+
+// from static/leaflet-zoomslider -- add the zoom slider manually so it goes *after* the RA,Dec box.
+map.addControl(new L.Control.Zoomslider());
+
+disableMouseEventPropagation(info);
+var container = info.getContainer();
+L.DomEvent.on(container, 'click', infoBoxClicked);
+
+{% if science %}
+// upload catalog input field
+var upload = L.control({'position':'bottomleft'});
+upload.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'upload');
+    this._div.innerHTML = 'Custom catalog upload (FITS table; RA,Dec,[name]): <form action="' + usercat_upload_url + '" method="POST" enctype="multipart/form-data"><input type="file" name="catalog" id="usercat_file" /><span id="upload_status"></span><input type="submit" value="Upload" id="usercat_submit" /></form>'
+    return this._div;
+};
+upload.addTo(map);
+{% endif %}
+
+// Named object search field
+var objquery = L.control({'position':'bottomleft'});
+objquery.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'objquery');
+    this._div.innerHTML = 'Jump to object: <input type="text" id="objquery" value="NGC 5614" size="25"/> <span id="objquerystatus"></span>';
+    return this._div;
+};
+objquery.addTo(map);
+disableMouseEventPropagation(objquery);
+
+{% if science %}
+// Brightness & contrast sliders
+function addCSSFilterSlider(filterType) {
+    let sliderControl = L.control({'position': 'bottomleft'})
+    sliderControl.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', filterType);
+        // Add input
+        this._div.innerHTML = '<input type="range" min="0" max="10" value="1" step="0.1" class="slider" id="' + filterType + '">';
+        // Add status text
+        this._div.innerHTML += '<span id="' + filterType + '-status">' + filterType.charAt(0).toUpperCase() + filterType.slice(1) + ': 1</span>';
+        return this._div;
+    }
+    sliderControl.addTo(map);
+    let slider = document.getElementById(filterType);
+    slider.oninput = function() {
+        // Put all filters into one css rule
+        let sliders = document.querySelectorAll('input[type="range"]');
+        let css = '-webkit-filter: '
+        sliders.forEach(s => {
+            css += s.id + '(' + s.value + ') ';
+        })
+        css += ';'
+        // Update css
+        let styleElement = document.getElementById('tile-filters');
+        styleElement.innerHTML = '.leaflet-tile { '+ css + '}';
+        // Update slider status text
+        let statusElement = document.getElementById(this.id+'-'+'status');
+        statusElement.innerHTML = this.id.charAt(0).toUpperCase() + this.id.slice(1) + ': ' + this.value;
+    }
+    disableMouseEventPropagation(sliderControl);
+}
+addCSSFilterSlider('brightness');
+addCSSFilterSlider('contrast');
+{% endif %}
+
+{% if science %}
+{% else %}
+// FAQ box
+var faqbox = L.control({'position':'bottomleft'});
+faqbox.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'faqbox');
+    this._div.innerHTML = '<a href="https://djschlegel.wordpress.com/faq-legacy-survey-sky-image/">FAQ</a>';
+    return this._div;
+};
+faqbox.addTo(map);
+disableMouseEventPropagation(faqbox);
+
+{% endif %}
+
+
+// A list of object names mapped to [lat,lng,zoom], for history navgation
+var hashLocations = {};
+
+var objqueryString = '';
+ 
+function objQueryLoaded(result) {
+    console.log('Result: ' + result);
+    if ("error" in result) {
+        $('#objquerystatus').html(result["error"]);
+        return;
+    }
+    var ra = result['ra'];
+    var dec = result['dec'];
+    var lat = dec2lat(dec);
+    var lng = ra2long_C(ra, 0.);
+    var zoom = map.getZoom();
+    map.setView(L.latLng(lat, lng), zoom);
+    $('#objquerystatus').html("");
+    location.hash = result['name'];
+    hashLocations[location.hash] = [lat, lng, zoom];
+    console.log('Saved hash location:', location.hash, '=', hashLocations[location.hash]);
+
+    // if DESI tile query, also add overlay checkbox
+    var words = objqueryString.split(" ");
+    if (words.length === 2 && words[0] === "TILE") {
+
+        if ('tile' in qstr) {
+            qstr['tile'] = qstr['tile'] + ',' + words[1];
+        } else {
+            qstr['tile'] = words[1];
+        }
+        var linkurl = linkHereURL(map.getCenter());
+        console.log('Link URL:', linkurl);
+        window.location.href = linkurl;
+
+        // var layer = addDesiTile(words[1]);
+        // 
+        // //var sel = $(".leaflet-layerstree-opened");
+        // //var sel = $(".leaflet-layerstree-header");
+        // //var sel = $(".leaflet-layerstree-hide");
+        // //var sel = $(".leaflet-layerstree-opened.leaflet-layerstree-hide");
+        // 
+        // // var sel = $(".leaflet-layerstree-closed.leaflet-layerstree-hide");
+        // // sel = sel.parent().next();
+        // // sel.each(function(index,obj){
+        // //     console.log('hidden element', index, ':', obj);
+        // //     console.log($(obj).text())
+        // // });
+        // 
+        // var sel = $(".leaflet-layerstree-header");
+        // sel.each(function(index,obj){
+        //     console.log('header', index, obj);
+        //     console.log($(obj).text());
+        // });
+        // 
+        // //sel = sel.children().children().filter(".leaflet-layerstree-opened");
+        // //sel = sel.not(children.filter(".leaflet-layerstree-hide"));
+        // 
+        // //sel = sel.text();
+        // //for (var i=0; i<sel.length; i++) {
+        // //    console.log('hidden element', i, ':', sel[i]);
+        // //}
+        // 
+        // // this expands all nodes...
+        // //  layerTree.setOverlayTree({ label: 'Overlays', children: overlayTree });
+        // //  layerTree.collapseTree(false);
+        // //  layerTree.collapseTree(true);
+        // 
+        // //if (layerTree !== undefined)
+        // //layerTree._addLayer(layer.layer, layerTree._layers.length, true);
+        // //layerTree._update();
+        // //}
+    }
+}
+
+$(document).ready(function() {
+
+    $('#objquery').keydown(function(event) {
+        // when Enter is hit in the Object name search box
+        if (event.keyCode == 13) {
+            var qstring = $('#objquery').val();
+            objqueryString = qstring;
+            
+            // [this is old...]
+            // Check if query is DESI tile
+            var splited = qstring.split(" ");
+            if (splited.length === 2 && splited[0] === "DESI") {
+                window.location.href = window.location.origin +
+                                       window.location.pathname +
+                                       "?desi_tile=" + splited[1] +
+                                       '&layer=' + layer_name +
+                                       '&desifoot&desifiber' +
+                                       '&zoom=8';
+                return;
+            }
+
+            // Check if query is BRICK
+            if (splited[0] === "BRICK") {
+                // Default input syntax: "BRICK 1234p567"
+                var brickParam = splited[1];
+                // Alternative input syntax: "BRICK 1234 567"
+                if (splited.length === 3) {
+                    brickParam = splited[1] + parameterizeDec(splited[2]);
+                }
+                window.location.href = window.location.origin +
+                                       window.location.pathname +
+                                       "?brick=" + brickParam +
+                                       '&layer=' + layer_name;
+                return;
+            }
+
+            var url = L.Util.template(name_query_url, L.extend({
+                obj: qstring,
+            }));
+            if (qstring.length == 0) {
+                url += '&layer=' + layer_name;
+            }
+            $.getJSON(url, objQueryLoaded);
+            $('#objquerystatus').html('Searching...');
+            return false;
+        }
+    });
+    // stop event propagation to the map layer
+    $('#objquery').click(function(event) {
+        return false;
+    });
+
+    // stop event propagation to the map layer
+    $('#upload').click(function(event) {
+        console.log('upload clicked.');
+        return false;
+    });
+
+    $('#usercat_file').click(function(event) {
+        event.stopPropagation();
+    });
+    $('#usercat_submit').click(function(event) {
+        event.stopPropagation();
+    });
+
+    // set initial hash location
+    var loc = [map.getCenter().lat, map.getCenter().lng, map.getZoom()];
+    //console.log('Initial location:', loc);
+    {% if galname %}
+    location.hash = galname_initial;
+    {% endif %}
+    hashLocations[location.hash] = loc;
+    //console.log('Initial hashLocations:', hashLocations);
+
+});
+
+function onHashChange() {
+    console.log('Hash changed to', location.hash);
+    if (location.hash in hashLocations) {
+        var loc = hashLocations[location.hash];
+        console.log('Known hash location:', loc);
+        var lat = loc[0];
+        var lng = loc[1];
+        var zoom = loc[2];
+        map.setView(L.latLng(lat, lng), zoom);
+    }
+}
+
+L.DomEvent.addListener(window, 'hashchange', onHashChange);
+
+var PolygonOverlay = CatalogOverlay.extend({
+
+    initialize: function(name, pretty, kwargs) {
+        CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        if ('doHighlight' in kwargs) {
+            this._doHighlight = kwargs['doHighlight'];
+        } else {
+            this._doHighlight = true;
+        }
+        this._detail = kwargs['detail']
+        this._detail_list = kwargs['detail_list']
+        this._highlighted = null;
+        this._filled = {};
+        this._current = {};
+        this._color = 'blue';
+    },
+
+    loaded: function(counter, result) {
+        // reset current polygon list.
+        this._current = {};
+        CatalogOverlay.prototype.loaded.call(this, counter, result);
+    },
+
+    getLabel: function(json, i) {
+        return '';
+    },
+
+    getLayer: function(result) {
+        var objs = result['polys'];
+        //console.log('Received ' + objs.length + ' Objs');
+        var drawList = [];
+        var clong = map.getCenter().lng;
+        for (var i=0, len=objs.length; i<len; i++) {
+            var name = objs[i].name;
+            var rd = objs[i].radecs;
+            var poly = [];
+            for (var j=0, plen=rd.length; j<plen; j++) {
+                poly.push([dec2lat(rd[j][1]), ra2long_C(rd[j][0], clong)]);
+            }
+            var color = objs[i].color || this._color;
+            var c = L.polygon(poly, {fill:false, color:color, weight:4 });
+            c.orig_color = color;
+            c.name = name;
+            if (this._doHighlight) {
+                c.on('mouseover', this.mouseOver.bind(this));
+                c.on('mouseout',  this.mouseOut.bind(this));
+            }
+            drawList.push(c);
+            this._current[name] = c;
+        }
+        return L.layerGroup(drawList);
+    },
+
+    mouseOver: function(e) {
+        e.target.setStyle({color: 'yellow'});
+        var obj = e.target;
+        this._highlighted = obj.name;
+        // remove other objs from fills
+        for (var i=0, len=this._filled.length; i<len; i++) {
+            if (this._filled[i] != obj.name) {
+                this.unhighlight(this._filled[i]);
+            }
+        }
+        if (!(obj.name in this._filled)) {
+            this.highlight(obj);
+        }
+        inbrickccdUpdate(e);
+    },
+
+    unhighlight: function(name) {
+        this._group.removeLayer(this._filled[name]);
+        delete this._filled[name];
+    },
+
+    highlight: function(obj) {
+        var cf = L.polygon(obj.getLatLngs(),
+                           {fill:true, fillOpacity:0.05, color:'yellow',
+                            weight:1});
+        this._filled[obj.name] = cf;
+        cf.addTo(this._group);
+        cf.bringToBack();
+    },
+
+    mouseOut: function(e) {
+        var obj = e.target;
+        obj.setStyle({color: obj.orig_color});
+        this._highlighted = null;
+        if (obj.name in this._filled) {
+            this.unhighlight(obj.name);
+        }
+        inbrickccdUpdate(e);
+    },
+
+    under: function(latlng) {
+        var objs = [];
+        if (!this._show) {
+            return [];
+        }
+        var geos = [];
+        for (var name in this._current) {
+            var obj = this._current[name];
+            var gj = obj.toGeoJSON();
+            gj.properties['name'] = name;
+            geos.push(gj);
+        }
+        var geo = {type:'FeatureCollection', features:geos};
+        var leafgeo = L.geoJson(geo);
+        var inside = leafletPip.pointInLayer(latlng, leafgeo);
+        for (var i=0; i<inside.length; i++) {
+            objs.push(inside[i].feature.properties.name);
+        }
+        if (this._doHighlight) {
+            if (this._highlighted != null) {
+                if (objs.indexOf(this._highlighted) == -1) {
+                    objs.push(this._highlighted);
+                }
+            }
+        }
+        return objs;
+    },
+
+});
+
+var CircleOverlay = PolygonOverlay.extend({
+    getLayer: function(result) {
+        var objs = result['objs'];
+        //console.log('Received ' + objs.length + ' objs');
+        var objList = [];
+        var clong = map.getCenter().lng;
+        for (var i=0, len=objs.length; i<len; i++) {
+            var name = objs[i].name;
+	        var meters = 30 * 3600 * objs[i].radius;
+            var ra = objs[i].ra;
+            var dec = objs[i].dec;
+            var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
+            var color = objs[i].color || this._color;
+            var c = L.circle(latlng, meters, {fill:false, color:color, weight:5 });
+            c.orig_color = color;
+            c.name = name;
+            if (this._doHighlight) {
+                c.on('mouseover', this.mouseOver.bind(this));
+                c.on('mouseout',  this.mouseOut.bind(this));
+            }
+            objList.push(c);
+            this._current[name] = c;
+        }
+        return L.layerGroup(objList);
+    },
+
+    highlight: function(obj) {
+        var cf = L.circle(obj.getLatLng(), obj.getRadius(),
+                           {fill:true, fillOpacity:0.05, color:'yellow',
+                            weight:1});
+        this._filled[obj.name] = cf;
+        cf.addTo(this._group);
+        cf.bringToBack();
+    },
+
+    under: function(latlng) {
+        if (!this._show) {
+            return [];
+        }
+        var objs = [];
+        var geos = [];
+        for (var name in this._current) {
+            var obj = this._current[name];
+	        if (latlng.distanceTo(obj.getLatLng()) < obj.getRadius()) {
+		        objs.push(obj.name);
+	        }
+        }
+        if (this._doHighlight) {
+            if (this._highlighted != null) {
+                if (objs.indexOf(this._highlighted) == -1) {
+                    objs.push(this._highlighted);
+                }
+            }
+        }
+        return objs;
+    },
+
+});
+
+var tileWatcher = new TileWatcher();
+for (var k in baseMaps) {
+    tileWatcher.listenToLayer(baseMaps[k]);
+}
+
+var exp_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In ' + ov._dr_name + ' Exposures: <ul>'
+    //console.log('Highlighted: ' + ov._highlighted);
+    for (var j=0; j<objs.length; j++) {
+        //console.log(' exposure: ' + objs[j]);
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + exp_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    //console.log('Text: ' + txt);
+    return txt;
+};
+
+var ccd_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In ' + ov._dr_name + ' CCDs: <ul>'
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + ccd_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
+var sdss_ccd_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In ' + ov._dr_name + ' CCDs: <ul>'
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + sdss_ccd_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
+var plate_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In SDSS Spectro Plates: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + plate_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
+
+{% if enable_dr5_overlays %}
+var ccdOverlay5 = new PolygonOverlay('decals-dr5-ccds',
+                                     'DECaLS DR5 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds5',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'decals-dr5',
+                                     'dr_name': 'DR5',
+                                    });
+var expOverlay5 = new CircleOverlay('decals-dr5-exps',
+                                    'DECaLS DR5 Exposures',
+                                    {'url':exposures_url,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'exps5',
+                                     'detail': exp_detail,
+                                     'detail_list': exp_detail_list,
+                                     'url_name': 'decals-dr5',
+                                     'dr_name': 'DR5',
+                                    });
+{% endif %}
+
+{% if enable_dr6_overlays %}
+var ccdOverlay6 = new PolygonOverlay('mzls+bass-dr6-ccds',
+                                     'MzLS+BASS DR6 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds6',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'mzls+bass-dr6',
+                                     'dr_name': 'DR6',
+                                    });
+{% endif %}
+
+{% if enable_dr7_overlays %}
+var ccdOverlay7 = new PolygonOverlay('decals-dr7-ccds',
+                                     'DECaLS DR7 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds7',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'decals-dr7',
+                                     'dr_name': 'DR7',
+                                    });
+var expOverlay7 = new CircleOverlay('decals-dr7-exps',
+                                    'DECaLS DR7 Exposures',
+                                    {'url':exposures_url,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'exps7',
+                                     'detail': exp_detail,
+                                     'detail_list': exp_detail_list,
+                                     'url_name': 'decals-dr7',
+                                     'dr_name': 'DR7',
+                                    });
+{% endif %}
+
+{% if enable_dr8_overlays %}
+var ccdOverlay8 = new PolygonOverlay('dr8-ccds',
+                                     'Legacy Surveys DR8 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds8',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr8',
+                                     'dr_name': 'DR8',
+                                    });
+{% endif %}
+
+{% if enable_dr8_north_overlays %}
+var ccdOverlay8n = new PolygonOverlay('dr8-north-ccds',
+                                     'Legacy Surveys DR8-north CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds8n',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr8-north',
+                                     'dr_name': 'DR8',
+                                    });
+{% endif %}
+
+{% if enable_dr8_south_overlays %}
+var ccdOverlay8s = new PolygonOverlay('dr8-south-ccds',
+                                     'Legacy Surveys DR8-south CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds8s',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr8-south',
+                                     'dr_name': 'DR8',
+                                    });
+var expOverlay8s = new CircleOverlay('dr8-south-exps',
+                                    'Legacy Surveys DR8-south Exposures',
+                                    {'url':exposures_url,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'exps8',
+                                     'detail': exp_detail,
+                                     'detail_list': exp_detail_list,
+                                     'url_name': 'ls-dr8-south',
+                                     'dr_name': 'DR8',
+                                    });
+{% endif %}
+
+
+
+{% if enable_dr9_overlays %}
+var ccdOverlay9 = new PolygonOverlay('dr9-ccds',
+                                     'Legacy Surveys DR9 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds9',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr9',
+                                     'dr_name': 'DR9',
+                                    });
+{% endif %}
+
+{% if enable_dr9_north_overlays %}
+var ccdOverlay9n = new PolygonOverlay('dr9-north-ccds',
+                                     'Legacy Surveys DR9-north CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds9n',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr9-north',
+                                     'dr_name': 'DR9',
+                                    });
+{% endif %}
+
+{% if enable_dr9_south_overlays %}
+var ccdOverlay9s = new PolygonOverlay('dr9-south-ccds',
+                                     'Legacy Surveys DR9-south CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds9s',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr9-south',
+                                     'dr_name': 'DR9',
+                                    });
+var expOverlay9s = new CircleOverlay('dr9-south-exps',
+                                    'Legacy Surveys DR9-south Exposures',
+                                    {'url':exposures_url,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'exps9',
+                                     'detail': exp_detail,
+                                     'detail_list': exp_detail_list,
+                                     'url_name': 'ls-dr9-south',
+                                     'dr_name': 'DR9',
+                                    });
+{% endif %}
+
+
+
+
+{% if enable_dr9sv_overlays %}
+var ccdOverlay9sv = new PolygonOverlay('dr9sv-ccds',
+                                     'Legacy Surveys DR9-SV CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds9sv',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'dr9sv',
+                                     'dr_name': 'DR9-SV',
+                                    });
+{% endif %}
+
+{% if enable_dr9sv_north_overlays %}
+var ccdOverlay9svn = new PolygonOverlay('dr9sv-north-ccds',
+                                     'Legacy Surveys DR9-SV-north CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds9svn',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'dr9sv-north',
+                                     'dr_name': 'DR9-SV',
+                                    });
+{% endif %}
+
+{% if enable_dr9sv_south_overlays %}
+var ccdOverlay9svs = new PolygonOverlay('dr9sv-south-ccds',
+                                     'Legacy Surveys DR9-SV-south CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccds9svs',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'dr9sv-south',
+                                     'dr_name': 'DR9-SV',
+                                    });
+var expOverlay9svs = new CircleOverlay('dr9sv-south-exps',
+                                    'Legacy Surveys DR9-SV-south Exposures',
+                                    {'url':exposures_url,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'exps9sv',
+                                     'detail': exp_detail,
+                                     'detail_list': exp_detail_list,
+                                     'url_name': 'dr9sv-south',
+                                     'dr_name': 'DR9-SV',
+                                    });
+{% endif %}
+                                                     
+var brickOverlay = new PolygonOverlay('decals-bricks', 'Legacy Surveys Bricks',
+                                      {'url': bricks_url,
+                                       'minZoom': 1,
+                                       'labelMinZoom': 100,
+                                       'doHighlight': false,
+                                       'urlTerm': 'bricks',
+                                       'detail': brick_detail,
+                                       'detail_list': function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In: '
+    for (var j=0; j<objs.length; j++) {
+        txt += brick_detail(ov._url_name, objs[j], '');
+    }
+    return txt;
+},
+});
+
+
+var unwise_tile_detail = function(layer_name, name, aparams) {
+    return 'Tile: ' + name;
+    //<a href="{% url 'brick_detail_blank' %}' + name
+    //+ '/?layer=' + layer_name + '">' + name + '</a>';
+    //return '';
+}
+var unwise_tile_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In: '
+    var nin = 0;
+    for (var j=0; j<objs.length; j++) {
+        if (nin > 0)
+            txt += ', ';
+        txt += unwise_tile_detail(ov._url_name, objs[j], '');
+        nin += 1;
+    }
+    return txt;
+}
+    
+var unwiseTileOverlay = new PolygonOverlay('unwise-tiles',
+                                 'unWISE tiles',
+                                 {'url':ccds_url,
+                                 'minZoom': 6,
+                                 'labelMinZoom': 100,
+                                 'urlTerm': 'unwise_tile',
+                                 'detail': unwise_tile_detail,
+                                 'detail_list': unwise_tile_detail_list,
+                                 'url_name': 'unwise-tiles',
+                                 'dr_name': 'unWISE',
+                                 });
+unwiseTileOverlay._color = '#9040f0';
+
+
+var ccdOverlaySdss = new PolygonOverlay('sdss-ccds',
+                                 'SDSS CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': 'ccdssdss',
+                                     'detail': sdss_ccd_detail,
+                                     'detail_list': sdss_ccd_detail_list,
+                                     'url_name': 'sdss',
+                                     'dr_name': 'SDSS',
+                                    });
+
+
+
+{% if enable_spectra %}
+url = sdss_plates_url;
+if ('plate' in qstr) {
+    url += '&plate=' + qstr['plate'];
+}
+var plateOverlay = new CircleOverlay('sdss-plates',
+                                     'SDSS Spectro Plates',
+                                    {'url': url,
+                                     'labelMinZoom': 100,
+                                     'detail': plate_detail,
+                                     'detail_list': plate_detail_list,
+                                    });
+{% endif %}
+
+{% comment %}
+These are overlays that have entries when you click on the map,
+and entries in the "in brick/ccd" panel.
+{% endcomment %}
+
+var polygonOverlays = [ 
+    {% if enable_dr5_overlays %}
+    ccdOverlay5, expOverlay5,
+    {% endif %}
+    {% if enable_dr6_overlays %}
+    ccdOverlay6,
+    {% endif %}
+    {% if enable_dr7_overlays %}
+    ccdOverlay7, expOverlay7,
+    {% endif %}
+    {% if enable_dr8_overlays %}
+    ccdOverlay8,
+    {% endif %}
+    {% if enable_dr8_north_overlays %}
+    ccdOverlay8n,
+    {% endif %}
+    {% if enable_dr8_south_overlays %}
+    ccdOverlay8s, expOverlay8s,
+    {% endif %}
+    {% if enable_dr9_overlays %}
+    ccdOverlay9,
+    {% endif %}
+    {% if enable_dr9_north_overlays %}
+    ccdOverlay9n,
+    {% endif %}
+    {% if enable_dr9_south_overlays %}
+    ccdOverlay9s, expOverlay9s,
+    {% endif %}
+    {% if enable_dr9sv_overlays %}
+    ccdOverlay9sv,
+    {% endif %}
+    {% if enable_dr9sv_north_overlays %}
+    ccdOverlay9svn,
+    {% endif %}
+    {% if enable_dr9sv_south_overlays %}
+    ccdOverlay9svs, expOverlay9svs,
+    {% endif %}
+    brickOverlay,
+    {% if enable_unwise %}
+    unwiseTileOverlay,
+    {% endif %}
+    ccdOverlaySdss,
+    {% if enable_spectra %}
+    plateOverlay,
+    {% endif %}
+];
+
+{% if enable_dr5_overlays %}
+var decalscat5 = new DecalsCatalogLayer(tileWatcher,
+                                        'decals-dr5',
+                                        'DECaLS DR5 Catalog',
+                                        {'url': cat_url,
+                                         'minZoom': 12,
+                                         'urlTerm': 'sources-dr5'});
+{% endif %}
+
+{% if enable_dr6_overlays %}
+var mzlsbasscat6 = new DecalsCatalogLayer(tileWatcher,
+                                          'mzls+bass-dr6',
+                                          'MzLS+BASS DR6 Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr6'});
+{% endif %}
+
+{% if enable_dr7_overlays %}
+var decalscat7 = new DecalsCatalogLayer(tileWatcher,
+                                        'decals-dr7',
+                                        'DECaLS DR7 Catalog',
+                                        {'url': cat_url,
+                                         'minZoom': 12,
+                                         'urlTerm': 'sources-dr7'});
+{% endif %}
+
+{% if enable_dr8_overlays %}
+var dr8cat = new DecalsCatalogLayer(tileWatcher,
+                                    'ls-dr8',
+                                    'Legacy Surveys DR8 Catalog',
+                                    {'url': cat_url,
+                                     'minZoom': 12,
+                                     'urlTerm': 'sources-dr8'});
+{% endif %}
+
+{% if enable_dr8_north_overlays %}
+var dr8northcat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr8-north',
+                                          'Legacy Surveys DR8-north Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr8n'});
+{% endif %}
+{% if enable_dr8_south_overlays %}
+var dr8southcat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr8-south',
+                                          'Legacy Surveys DR8-south Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr8s'});
+{% endif %}
+
+{% if enable_dr9_overlays %}
+var dr9cat = new DecalsCatalogLayer(tileWatcher,
+                                    'ls-dr9',
+                                    'Legacy Surveys DR9 Catalog',
+                                    {'url': cat_url,
+                                     'minZoom': 12,
+                                     'urlTerm': 'sources-dr9'});
+{% endif %}
+
+{% if enable_dr9_north_overlays %}
+var dr9northcat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr9-north',
+                                          'Legacy Surveys DR9-north Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr9n'});
+{% endif %}
+{% if enable_dr9_south_overlays %}
+var dr9southcat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr9-south',
+                                          'Legacy Surveys DR9-south Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr9s'});
+{% endif %}
+
+
+{% if enable_dr9sv_overlays %}
+var dr9svcat = new DecalsCatalogLayer(tileWatcher,
+                                    'dr9sv',
+                                    'Legacy Surveys DR9-SV Catalog',
+                                    {'url': cat_url,
+                                     'minZoom': 12,
+                                     'urlTerm': 'sources-dr9sv'});
+{% endif %}
+
+{% if enable_dr9sv_north_overlays %}
+var dr9svnorthcat = new DecalsCatalogLayer(tileWatcher,
+                                        'dr9sv-north',
+                                          'Legacy Surveys DR9-SV-north Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr9svn'});
+{% endif %}
+{% if enable_dr9sv_south_overlays %}
+var dr9svsouthcat = new DecalsCatalogLayer(tileWatcher,
+                                        'dr9sv-south',
+                                          'Legacy Surveys DR9-SV-south Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr9svs'});
+{% endif %}
+
+var bright = new BrightCatalog('bright', 'Bright stars', {});
+
+var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {'minZoom':10});
+
+{% if enable_ps1 %}
+var ps1cat = new Ps1CatalogOverlay('ps1-cat', 'PS1 catalog', {'radius':150});
+{% endif %}
+
+var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
+                             {'url_name': 'ngc',
+                              'minZoom': 5,
+                              'labelsMinZoom': 7,
+                             'urlTerm': 'ngc',});
+
+var GCsPNe = new GCsPNeCatalog('GCs-PNe', 'Star clusters & Planetary Nebulae',
+                             {'url_name': 'GCs-PNe',
+                              'minZoom': 5,
+                              'labelsMinZoom': 7,
+                             'urlTerm': 'GCs-PNe',});
+
+var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (LS-DR9)',
+                             {'url_name': 'masks-dr9',
+                              'minZoom': 5,
+                              'labelsMinZoom': 7,
+                             'urlTerm': 'masks-dr9',});
+                             
+// var starmasks8 = new StarMaskCatalog('masks-dr8', 'Gaia masks (DR8)',
+//                              {'url_name': 'masks-dr8',
+//                               'minZoom': 5,
+//                               'labelsMinZoom': 7,
+//                              'urlTerm': 'masks-dr8',});
+
+var sga_parent = new SGACatalog('sga-parent', 'HyperLEDA/SGA galaxies',
+                             {'minZoom': 5,
+                              'labelsMinZoom': 7,
+                              'urlTerm': 'sga-parent',});
+
+var sga_ell = new SGACatalog('sga', 'Siena Galaxy Atlas',
+                             {'minZoom': 7,
+                              'labelsMinZoom': 7,
+                              'urlTerm': 'sga',});
+
+var photoz = new PhotozCatalog('photoz-dr9', 'DR9 Photo-z',
+                                 {'minZoom': 12,
+                                 'labelsMinZoom': 14,
+                                 'urlTerm': 'photoz-dr9',
+                                 'radius': 150,});
+
+var GaiaDr2Catalog = CatalogOverlay.extend({
+    getColor: function(json, i) {
+        return '#8888ff';
+    },
+
+    getLabel(json, i) {
+        var ra = json['rd'][i][0];
+        var dec = json['rd'][i][1];
+        var txt = 'RA,Dec ' + ra.toFixed(4) + ', ' + dec.toFixed(4);
+        var pmra = json['pmra'][i];
+        var pmdec = json['pmdec'][i];
+        var parallax = json['parallax'][i];
+        var pmra_err = json['pmra_err'][i];
+        var pmdec_err = json['pmdec_err'][i];
+        var parallax_err = json['parallax_err'][i];
+        if (pmra != 0.0) {
+            txt = txt + '<br>pmRA,Dec ' + pmra.toFixed(1) + ', ' + pmdec.toFixed(1) +
+                                        ' &pm; ' + pmra_err.toFixed(1) + ', ' + pmdec_err.toFixed(1) + ' mas/yr, ' +
+                                        'parallax ' + parallax.toFixed(1) + '&pm; ' + parallax_err.toFixed(1) + ' mas';
+        }
+        txt = txt + '<br>G ' + json['gmag'][i].toFixed(2) + ', BP ' + json['bpmag'][i].toFixed(2) + ', RP ' + json['rpmag'][i].toFixed(2);
+        txt = txt + '<br>Source id: ' + json['sourceid'][i];
+        return txt;
+    },
+
+    getTooltipStyle() {
+    return { permanent: false, interactive: true, };
+    },
+
+    getPopupText(json, i) {
+    return this.getLabel(json, i);
+    },
+});
+
+var GaiaDr3Catalog = GaiaDr2Catalog.extend({
+    getColor: function(json, i) {
+        return '#3289a8';
+    },
+});
+
+var gaia2 = new GaiaDr2Catalog('gaia-dr2', 'Gaia DR2 catalog',
+                             {'url_name': 'gaia-dr2',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'gaia-dr2',
+                              'radius': 220,
+                              });
+
+var gaia3 = new GaiaDr3Catalog('gaia-edr3', 'Gaia EDR3 catalog',
+                             {'url_name': 'gaia-edr3',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'gaia-edr3',
+                              'radius': 150,
+                              });
+
+
+var SdssCatalog = CatalogOverlay.extend({
+
+    getColor: function(json, i) {
+        if (json['sourcetype'][i] == 'P') {
+            return '#9AFE2E';
+        }
+        return '#888888';
+    },
+
+    getLabel(json, i) {
+        return '';
+    },
+
+    getPopupText(json, i) {
+        var ra = json['rd'][i][0];
+        var dec = json['rd'][i][1];
+        var txt = 'RA,Dec ' + ra.toFixed(4) + ', ' + dec.toFixed(4);
+        if (json['sourcetype'][i] == 'P') {
+            var tt = 'PSF';
+        } else {
+            var tt = 'CModel';
+        }
+        txt = txt + '<br>' + tt + ' mags: ';
+        txt += 'u=' + fluxToMag(json['fluxes'][i]['u']).toFixed(2) + ', ';
+        txt += 'g=' + fluxToMag(json['fluxes'][i]['g']).toFixed(2) + ', ';
+        txt += 'r=' + fluxToMag(json['fluxes'][i]['r']).toFixed(2) + ', ';
+        txt += 'i=' + fluxToMag(json['fluxes'][i]['i']).toFixed(2) + ', ';
+        txt += 'z=' + fluxToMag(json['fluxes'][i]['z']).toFixed(2);
+        //txt = txt + '<br>Source id: ' + json['sourceid'][i];
+        return txt;
+    },
+
+    getTooltipStyle() {
+        return { permanent: false, interactive: true, };
+    },
+    
+});
+
+var HscCatalog = CatalogOverlay.extend({
+    getTooltipStyle() {
+    return { permanent: false, interactive: true, };
+    },
+    getPopupText(json, i) {
+    return this.getLabel(json, i);
+    },
+
+});
+
+var hsccosmos = new HscCatalog('hsc-dr2-cosmos', 'HSC DR2 COSMOS catalog',
+                             {'url_name': 'hsc-dr2-cosmos',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'hsc-dr2-cosmos',
+                              'radius': 100,
+                              });
+
+var sdsscat = new SdssCatalog('sdss-cat', 'SDSS catalog',
+                             {'url_name': 'sdss-cat',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'sdss-cat',
+                              'radius': 100,
+                              });
+
+{% if enable_phat %}
+var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
+                             {'url_name': 'phat-clusters',
+                              'minZoom': 11,
+                              'labelsMinZoom': 99,
+                              'urlTerm': 'phat-clusters',
+                              'radius': 150, });
+{% endif %}
+
+{% if enable_desi_targets %}
+var desi_targets67 = new DesiTargetCatalog('targets-dr67', 'DESI Targets (DR6/DR7)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+var desi_bgs_targets67 = new DesiTargetCatalog('targets-bgs-dr67', 'DESI BGS Targets (DR6/DR7)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+var desi_bright_targets67 = new DesiTargetCatalog('targets-bright-dr67', 'DESI Bright-time Targets (DR6/DR7)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+var desi_dark_targets67 = new DesiTargetCatalog('targets-dark-dr67', 'DESI Dark-time Targets (DR6/DR7)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+var desi_sky_targets67 = new DesiTargetCatalog('targets-sky-dr67', 'DESI Sky Targets (DR6/DR7)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+var desi_cmx_targets7 = new DesiTargetCatalog('targets-cmx-dr7', 'DESI Commissioning Targets (DR7)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+var desi_targets8 = new DesiTargetCatalog('targets-dr8', 'DESI Targets (DR8)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+var desi_sv_targets8 = new DesiTargetCatalog('targets-sv-dr8', 'DESI Targets (SV-DR8)',
+                                  {'radius': 200,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 11, });
+
+
+var desi_targets_dr9_sv1_sec_bright = new DesiTileLayer('targets-dr9-sv1-sec-bright',
+                                                 'DESI Bright-time Secondary Targets (DR9/SV1)',
+                                  {//'radius': 200,
+                                   //'labelsMinZoom': 10,
+                                      'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv1_sec_dark = new DesiTileLayer('targets-dr9-sv1-sec-dark',
+                                                 'DESI Dark-time Secondary Targets (DR9/SV1)',
+                                  {//'radius': 200,
+                                   //'labelsMinZoom': 10,
+                                      'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv1_dark = new DesiTileLayer('targets-dr9-sv1-dark',
+                                                 'DESI Dark-time Targets (DR9/SV1)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv1_bright = new DesiTileLayer('targets-dr9-sv1-bright',
+                                                 'DESI Bright-time Targets (DR9/SV1)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv1_supp = new DesiTileLayer('targets-dr9-sv1-supp',
+                                                 'DESI Supplemental Targets (DR9/SV1)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+
+{% endif %}
+
+{% if enable_spectra %}
+url = smallcat_url;
+if ('plate' in qstr) {
+    url += '&plate=' + qstr['plate'];
+}
+var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
+                                  {'url': url,
+                                   'radius': 300,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 8,
+                                   'urlTerm': 'spectra'});
+
+var manga = new MangaCatalog('manga', 'MaNGa IFU Spectra',
+                                  {'url': url,
+                                   'radius': 300,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 8,
+                                   'urlTerm': 'manga'});
+
+var specDeep2 = new Deep2SpectraCatalog('spec-deep2', 'DEEP2 Spectra',
+                                  {'radius': 100,
+                                   'labelsMinZoom': 11,
+                                   'minZoom': 9,
+                                   'urlTerm': 'spectra-deep2'});
+{% endif %}
+
+// Constellations
+var conGroup = L.layerGroup([]);
+var conBoundaryGroup = L.layerGroup([]);
+
+var Constellations = L.LayerGroup.extend({
+    initialize: function() {
+      L.LayerGroup.prototype.initialize.call(this);
+      this.addLayer(conGroup);
+      this._show = false;
+      this.on('add', function(e) {
+        console.log('Constellations added.');
+        this._show = true;
+      });
+      this.on('remove', function(e) {
+        console.log('Constellations removed.');
+        this._show = false;
+      });
+    },
+    _name: 'const',
+    _pretty: 'Constellations',
+    _url_term: 'const',
+    //getGroup: function() { return conGroup; },
+    getGroup: function() { return this; },
+    getLinkHere: function() { return 'const'; },
+    initLinkHere: function(val) {},
+    under: function(latlng) {
+        if (!this._show) {
+            return [];
+        }
+        var name = getConstellationLatLng(latlng);
+        return [name];
+    },
+    // popup menu addition
+    _detail: function(urlname, obj, s) { return ''; },
+    _detail_list: function(me, objs) { return objs; },
+});
+var constellations = new Constellations();
+
+polygonOverlays.push(constellations);
+
+
+// Deep fields
+var deepGroup = L.layerGroup([]);
+
+/*
+from astrometry.util.starutil_numpy import *
+for ra,dec,name in [('00:37', '-44:00', 'ELAIS-S1'),
+                    ('01:30', '-00:00', 'SHELA'),
+                    ('02:22', '-04:45', 'XMM-LSS'),
+                    ('03:32', '-28:06', 'E-CDFS'),
+                    ('04:10', '-48:10', 'EDF-S'),
+                    ('10:00', '+02:10', 'E-COSMOS'),
+                    ('23:02', '+00:16', 'DEEP2-F3'),
+                    ]:
+    r = hmsstring2ra(ra)
+    d = dmsstring2dec(dec)
+    print('[% +9.4f, % +8.4f, "%s"],' % (r, d, name))
+*/
+var deeps = [
+[  +9.2500, -44.0000, "ELAIS-S1"],
+[ +22.5000,  -0.0000, "SHELA"],
+[ +35.5000,  -4.7500, "XMM-LSS"],
+[ +53.0000, -28.1000, "E-CDFS"],
+[ +62.5000, -48.1667, "EDF-S"],
+[+150.0000,  +2.1667, "E-COSMOS"],
+[+345.5000,  +0.2667, "DEEP2-F3"],
+];
+var buildDeepFields = function() {
+    var clong = map.getCenter().lng;
+    for (var i in deeps) {
+        var f = deeps[i];
+        var ra = f[0];
+        var dec = f[1];
+        var name = f[2];
+        var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
+        var circ = L.circle(latlng, 0., {'color':'red', 'opacity':0.,
+                                         'fillOpacity':0, 'weight':5});
+        circ.bindTooltip(name,
+                         {interactive: true, permanent: true,
+                          direction: 'center' });
+        deepGroup.addLayer(circ);
+    }
+};
+
+var DeepFields = L.LayerGroup.extend({
+    initialize: function() {
+      L.LayerGroup.prototype.initialize.call(this);
+      this.addLayer(deepGroup);
+      this._show = false;
+      this.on('add', function(e) {
+        console.log('Deep Fields added.');
+        this._show = true;
+      });
+      this.on('remove', function(e) {
+        console.log('Deep Fields removed.');
+        this._show = false;
+      });
+    },
+    _name: 'deepfields',
+    _pretty: 'Deep Fields',
+    _url_term: 'deepfields',
+    //getGroup: function() { return deepGroup; },
+    getGroup: function() { return this; },
+    getLinkHere: function() { return 'deepfields'; },
+    initLinkHere: function(val) {},
+    under: function(latlng) { return []; },
+    // popup menu addition
+    _detail: function(urlname, obj, s) { return ''; },
+    _detail_list: function(me, objs) { return objs; },
+});
+var deepfields = new DeepFields();
+polygonOverlays.push(deepfields);
+
+
+
+
+{% include "desi-footprint.js" %}
+
+var desifoot = new DesiFootprint('desi-footprint', 'DESI Footprint', {});
+desifoot._url_term = 'desifoot';
+var desifiber = new DesiFiberPos('desi-fiberpos', 'DESI Fibers', {});
+desifiber._url_term = 'desifiber';
+// TODO: Make url terms a constant
+
+var overlays = [
+    {% if enable_phat %}
+    phat_clusters,
+    {% endif %}    
+    {% if enable_dr5_overlays %}
+    decalscat5,
+    {% endif %}
+    {% if enable_dr6_overlays %}
+    mzlsbasscat6,
+    {% endif %}
+    {% if enable_dr7_overlays %}
+    decalscat7,
+    {% endif %}
+    {% if enable_dr8_overlays %}
+    dr8cat,
+    {% endif %}
+    {% if enable_dr8_north_overlays %}
+    dr8northcat,
+    {% endif %}
+    {% if enable_dr8_south_overlays %}
+    dr8southcat,
+    {% endif %}
+    {% if enable_dr9_overlays %}
+    dr9cat,
+    {% endif %}
+    {% if enable_dr9_north_overlays %}
+    dr9northcat,
+    {% endif %}
+    {% if enable_dr9_south_overlays %}
+    dr9southcat,
+    {% endif %}
+    {% if enable_dr9sv_overlays %}
+    dr9svcat,
+    {% endif %}
+    {% if enable_dr9sv_north_overlays %}
+    dr9svnorthcat,
+    {% endif %}
+    {% if enable_dr9sv_south_overlays %}
+    dr9svsouthcat,
+    {% endif %}
+    {% if enable_dr5_overlays %}
+    ccdOverlay5,
+    {% endif %}
+    {% if enable_dr6_overlays %}
+    ccdOverlay6,
+    {% endif %}
+    {% if enable_dr7_overlays %}
+    ccdOverlay7,
+    {% endif %}
+    {% if enable_dr8_overlays %}
+    ccdOverlay8,
+    {% endif %}
+    {% if enable_dr8_north_overlays %}
+    ccdOverlay8n,
+    {% endif %}
+    {% if enable_dr8_south_overlays %}
+    ccdOverlay8s,
+    expOverlay8s,
+    {% endif %}
+    {% if enable_dr9_overlays %}
+    ccdOverlay9,
+    {% endif %}
+    {% if enable_dr9_north_overlays %}
+    ccdOverlay9n,
+    {% endif %}
+    {% if enable_dr9_south_overlays %}
+    ccdOverlay9s,
+    expOverlay9s,
+    {% endif %}
+    {% if enable_dr9sv_overlays %}
+    ccdOverlay9sv,
+    {% endif %}
+    {% if enable_dr9sv_north_overlays %}
+    ccdOverlay9svn,
+    {% endif %}
+    {% if enable_dr9sv_south_overlays %}
+    ccdOverlay9svs,
+    expOverlay9svs,
+    {% endif %}
+    {% if enable_dr5_overlays %}
+    expOverlay5,
+    {% endif %}
+    {% if enable_dr7_overlays %}
+    expOverlay7,
+    {% endif %}
+
+    brickOverlay,
+    {% if enable_unwise %}
+    unwiseTileOverlay,
+    {% endif %}
+    ccdOverlaySdss,
+    gals, sga_parent, sga_ell, //lslga_model, starmasks8,
+    starmasks9, GCsPNe, bright, tycho2,
+    photoz,
+    {% if enable_ps1 %}
+    ps1cat,
+    {% endif %}
+    gaia2,
+    gaia3,
+    hsccosmos,
+    sdsscat,
+    {% if enable_spectra %}
+    manga, spec, plateOverlay, specDeep2,
+    {% endif %}
+    {% if enable_desi_targets %}
+    desi_sv_targets8,
+    desi_targets8,
+    desi_targets67,
+    desi_bgs_targets67,
+    desi_sky_targets67,
+    desi_dark_targets67,
+    desi_bright_targets67,
+    desi_cmx_targets7,
+    desi_targets_dr9_sv1_sec_dark,
+    desi_targets_dr9_sv1_sec_bright,
+    desi_targets_dr9_sv1_dark,
+    desi_targets_dr9_sv1_bright,
+    desi_targets_dr9_sv1_supp,
+    {% endif %}
+    constellations,
+    deepfields,
+    desifoot,
+    desifiber,
+];
+
+
+
+if ('blink' in qstr) {
+    last_layer_name = qstr['blink'];
+}
+
+for (k in qstr) {
+    console.log('qstring key: ' + k);
+}
+
+
+{% if enable_dev %}
+{% for name,pretty in test_ccds %}
+var ccds = new PolygonOverlay('{{name}}-ccds', '{{pretty}}',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelMinZoom': 100,
+                                     'urlTerm': '{{name}}',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': '{{name}}',
+                                    });
+ overlays.push(ccds);
+ polygonOverlays.push(ccds);
+ 
+{% endfor %}
+
+for (var i=0; i<polygonOverlays.length; i++) {
+    polygonOverlays[i].on('loaded', function() { inbrickccdUpdate(); });
+}
+
+ 
+{% for name,pretty in test_cats %}
+  var testcat = new DecalsCatalogLayer(tileWatcher,
+                                       '{{name}}', '{{pretty}}',
+                                        {'url': cat_url,
+                                         'minZoom': 12,
+                                         'urlTerm': '{{name}}'});
+  overlays.push(testcat);
+{% endfor %}
+{% endif %}
+
+
+
+var namedLayers = {};
+for (var i in allLayers) {
+    var layer = allLayers[i];
+    //console.log('layer.name ' + layer.name + ' pretty ' + layer.pretty);
+    namedLayers[layer.name] = layer;
+}
+
+ // var findlayer = function(name, children=undefined) {
+function findlayer(name, children=[]) {
+    rtn = { label: namedLayers[name].pretty, layer: namedLayers[name] };
+    if (children.length) {
+        rtn['children'] = children;
+    }
+    return rtn;
+}
+ 
+var testTree = [];
+{% if enable_dev %}
+{% for name,pretty in test_layers %}
+  testTree.push(findlayer('{{name}}'));
+{% endfor %}
+{% endif %}
+
+console.log('testTree:', testTree);
+
+var baseTree1 = [
+    {% if enable_m33 %}
+    findlayer('m33'),
+    {% endif %}
+    {% if enable_phat %}
+    findlayer('phat'),
+    {% endif %}
+
+    //findlayer('odin-2band'),
+    findlayer('odin-color-n501n673'),
+    findlayer('odin-color-n419n673'),
+    findlayer('odin-n673'),
+    findlayer('odin-n501'),
+    findlayer('odin-n419'),
+    findlayer('odin-cosmos'),
+    findlayer('ls-dr9.1.1'),
+    {% if enable_hsc_dr2 %}
+    findlayer('hsc-dr2'),
+    {% endif %}
+    {% if enable_dr9 %}
+    findlayer('ls-dr9', [
+        {% if enable_dr9_models %}
+        findlayer('ls-dr9-model'),
+        {% endif %}
+        {% if enable_dr9_resids %}
+        findlayer('ls-dr9-resid'),
+        {% endif %}
+    ]),
+    {% endif %}
+
+    {% if enable_dr9_north %}
+    findlayer('ls-dr9-north', [
+        findlayer('ls-dr9-north-model'),
+        findlayer('ls-dr9-north-resid'),
+    ]),
+    {% endif %}
+    {% if enable_dr9_south %}
+    findlayer('ls-dr9-south', [
+        {% if enable_dr9_models %}
+        findlayer('ls-dr9-south-model'),
+        {% endif %}
+        {% if enable_dr9_resids %}
+        findlayer('ls-dr9-south-resid'),
+        {% endif %}
+    ]),
+    {% endif %}
+
+
+    {% if enable_older %}
+     { label: 'Older Legacy Surveys',
+       children: [
+
+    {% if enable_dr9sv %}
+    findlayer('dr9sv', [
+        findlayer('dr9sv-model'),
+        findlayer('dr9sv-resid'),
+    ]),
+    {% endif %}
+    {% if enable_dr9sv_north %}
+    findlayer('dr9sv-north', [
+        findlayer('dr9sv-north-model'),
+        findlayer('dr9sv-north-resid'),
+    ]),
+    {% endif %}
+    {% if enable_dr9sv_south %}
+    findlayer('dr9sv-south', [
+        findlayer('dr9sv-south-model'),
+        findlayer('dr9sv-south-resid'),
+    ]),
+    {% endif %}
+    {% if enable_dr8 %}
+    findlayer('ls-dr8', [
+        {% if enable_dr8_models %}
+        findlayer('ls-dr8-model'),
+        {% endif %}
+        {% if enable_dr8_resids %}
+        findlayer('ls-dr8-resid'),
+        {% endif %}
+    ]),
+    {% endif %}
+    {% if enable_dr8_north %}
+    findlayer('ls-dr8-north', [
+        {% if enable_dr8_models %}
+        findlayer('ls-dr8-north-model'),
+        {% endif %}
+        {% if enable_dr8_resids %}
+        findlayer('ls-dr8-north-resid'),
+        {% endif %}
+    ]),
+    {% endif %}
+    {% if enable_dr8_south %}
+    findlayer('ls-dr8-south', [
+        {% if enable_dr8_models %}
+        findlayer('ls-dr8-south-model'),
+        {% endif %}
+        {% if enable_dr8_resids %}
+        findlayer('ls-dr8-south-resid'),
+        {% endif %}
+    ]),
+    {% endif %}
+    {% if enable_dr67 %}
+    findlayer('ls-dr67'),
+    {% endif %}
+    {% if enable_dr7 %}
+    findlayer('decals-dr7', [
+        findlayer('decals-dr7-model'),
+        findlayer('decals-dr7-resid'),
+    ]),
+    {% endif %}
+    {% if enable_dr6 %}
+    //{
+    findlayer('mzls+bass-dr6', [
+        findlayer('mzls+bass-dr6-model'),
+        findlayer('mzls+bass-dr6-resid'),
+    ]),
+    {% endif %}
+    {% if enable_dr5 %}
+    findlayer('decals-dr5', [
+        {% if enable_dr5_model %}
+        findlayer('decals-dr5-model'),
+        {% endif %}
+        {% if enable_dr5_resid %}
+        findlayer('decals-dr5-resid'),
+        {% endif %}
+    ]),
+    {% endif %}
+    {% if enable_eboss %}
+    findlayer('eboss'),
+    {% endif %}
+    {% if enable_decaps %}
+    findlayer('decaps', [
+        findlayer('decaps-model'),
+        findlayer('decaps-resid'),
+    ]),
+    {% endif %}
+
+     ]},
+    {% endif %}
+
+    {% if enable_unwise %}
+    findlayer('unwise-neo6', [
+        {% if science %}
+        findlayer('unwise-neo4'),
+        findlayer('unwise-cat-model'),
+        findlayer('wssa'),
+        {% endif %}
+    ]),
+    {% endif %}
+    {% if science %}
+    {
+        label: 'More surveys',
+        children: [
+            {% if enable_des_dr1 %}
+            findlayer('des-dr1'),
+            {% endif %}
+            findlayer('galex'),
+            findlayer('halpha'),
+            {% if enable_ps1 %}
+            findlayer('ps1'),
+            {% endif %}
+            findlayer('sdss'),
+            findlayer('sfd'),
+            {% if enable_vlass %}
+            findlayer('vlass1.2'),
+            {% endif %}
+            {% if enable_ztf %}
+            findlayer('ztf'),
+            {% endif %}
+        ],
+    },
+    {% endif %}
+];
+
+var baseTree = [];
+for (var x in testTree) {
+  baseTree.push(testTree[x]);
+}
+for (var x in baseTree1) {
+  baseTree.push(baseTree1[x]);
+}
+
+console.log('baseTree:', baseTree);
+
+bt = { label: 'Images', children: baseTree };
+baseTree = bt;
+
+var namedOverlays = {};
+for (var i=0,len=overlays.length; i<len; i++) {
+    namedOverlays[overlays[i]._name] = overlays[i];
+    // The '.getGroup()' object is the one passed into the overlay tree, so
+    // tag a name onto it.
+    group = overlays[i].getGroup();
+    group._name = overlays[i]._name;
+}
+
+function findoverlay(name, children=[]) {
+    rtn =  { label: namedOverlays[name]._pretty,
+             layer: namedOverlays[name].getGroup() };
+    if (children.length) {
+        rtn['children'] = children;
+    }
+    return rtn;
+}
+
+var overlayTree = [];
+
+{% if usercatalogs %}
+  addUserCatalogs();
+{% endif %}
+
+{% if desitiles %}
+  {% for tileid in desitiles %}
+    addDesiTile({{tileid}});
+  {% endfor %}
+{% endif %}
+
+{% if enable_dev %}
+  {% for name,pretty in test_cats %}
+    overlayTree.push(findoverlay('{{name}}'));
+  {% endfor %}
+  {% for name,pretty in test_ccds %}
+    overlayTree.push(findoverlay('{{name}}-ccds'));
+  {% endfor %}
+{% endif %}
+
+ overlayTree = overlayTree.concat([
+     {% if enable_phat %}
+     findoverlay('phat-clusters'),
+     {% endif %}    
+
+     {% if science %}
+     { label: 'Boundaries', children: [
+
+     findoverlay('decals-bricks'),
+     {% if enable_dr9_overlays %}
+     findoverlay('dr9-ccds', [
+       {% if enable_dr9_north_overlays %}
+       findoverlay('dr9-north-ccds'),
+       {% endif %}
+       {% if enable_dr9_south_overlays %}
+       findoverlay('dr9-south-ccds'),
+       findoverlay('dr9-south-exps'),
+       {% endif %}
+       findoverlay('masks-dr9'),
+     ]),
+     {% endif %}
+     {% if enable_dr9sv_overlays %}
+     findoverlay('dr9sv-ccds', [
+       {% if enable_dr9sv_north_overlays %}
+       findoverlay('dr9sv-north-ccds'),
+       {% endif %}
+       {% if enable_dr9sv_south_overlays %}
+       findoverlay('dr9sv-south-ccds'),
+       {% endif %}
+     ]),
+     {% endif %}
+     {% if enable_dr8_overlays %}
+     findoverlay('dr8-ccds', [
+       {% if enable_dr8_north_overlays %}
+       findoverlay('dr8-north-ccds'),
+       {% endif %}
+       {% if enable_dr8_south_overlays %}
+       findoverlay('dr8-south-ccds'),
+       {% endif %}
+       {% if enable_dr8_south_overlays %}
+       findoverlay('dr8-south-exps'),
+       {% endif %}
+     ]),
+     {% endif %}
+     {% if enable_dr7_overlays %}
+     findoverlay('decals-dr7-ccds', [
+       {% if enable_dr7_overlays %}
+       findoverlay('decals-dr7-exps', [
+         {% if enable_dr5_overlays %}
+         findoverlay('decals-dr5-exps'),
+         {% endif %}
+       ]),
+       {% endif %}
+         {% if enable_dr6_overlays %}
+         findoverlay('mzls+bass-dr6-ccds'),
+         {% endif %}
+         {% if enable_dr5_overlays %}
+         findoverlay('decals-dr5-ccds'),
+         {% endif %}
+     ]),
+     {% endif %}
+     findoverlay('sdss-ccds'),
+     {% if enable_unwise %}
+     findoverlay('unwise-tiles'),
+     {% endif %}
+
+     ]},
+     // end of Boundaries
+     {% endif %}
+                                        
+     {% if science %}
+     { label: 'Imaging catalogs', children: [
+
+     {% if enable_dr9_overlays %}
+     findoverlay('ls-dr9', [
+       {% if enable_dr9_north_overlays %}
+       findoverlay('ls-dr9-north'),
+       {% endif %}
+       {% if enable_dr9_south_overlays %}
+       findoverlay('ls-dr9-south'),
+       {% endif %}
+       ]),
+     {% endif %}
+
+     {% if enable_dr8_overlays %}
+     findoverlay('ls-dr8', [
+       {% if enable_dr8_north_overlays %}
+       findoverlay('ls-dr8-north'),
+       {% endif %}
+       {% if enable_dr8_south_overlays %}
+       findoverlay('ls-dr8-south'),
+       {% endif %}
+       ]),
+     {% endif %}
+
+     {% if enable_dr7_overlays %}
+     { label: 'DECaLS DR7 catalog',
+       layer: namedOverlays['decals-dr7'].getGroup(),
+       children: [
+           {% if enable_dr6_overlays %}
+           findoverlay('mzls+bass-dr6'),
+           {% endif %}
+           {% if enable_dr5_overlays %}
+           findoverlay('decals-dr5'),
+           {% endif %}
+       ],
+     },
+     {% endif %}
+
+     findoverlay('gaia-dr2'),
+     findoverlay('gaia-edr3'),
+     {% if enable_ps1 %}
+     findoverlay('ps1-cat'),
+     {% endif %}
+     findoverlay('hsc-dr2-cosmos'),
+     findoverlay('sdss-cat'),
+
+     ]},
+     // end of Imaging catalogs
+     {% endif %}
+
+     {% if enable_dr9sv_overlays %}
+     findoverlay('dr9sv', [
+       {% if enable_dr9sv_north_overlays %}
+       findoverlay('dr9sv-north'),
+       {% endif %}
+       {% if enable_dr9sv_south_overlays %}
+       findoverlay('dr9sv-south'),
+       {% endif %}
+       ]),
+     {% endif %}
+
+     {% if enable_spectra %}
+     { label: 'Spectroscopy',
+       children: [
+           findoverlay('manga'),
+           findoverlay('spec'),
+           findoverlay('sdss-plates'),
+           findoverlay('spec-deep2'),
+       ],
+     },
+     {% endif %}
+
+     { label: 'DESI',
+       children: [
+         {% if desitiles %}
+           { label: 'DESI Individual Tiles',
+             children: desi_tile_list },
+         {% endif %}
+         {% if enable_desi_footprint %}
+           findoverlay('desi-footprint'),
+           findoverlay('desi-fiberpos'),
+         {% endif %}
+         {% if enable_desi_targets %}
+           findoverlay('targets-dr9-sv1-dark'),
+           findoverlay('targets-dr9-sv1-bright'),
+           findoverlay('targets-dr9-sv1-sec-dark'),
+           findoverlay('targets-dr9-sv1-sec-bright'),
+           //findoverlay('targets-dr9-sv1-supp'),
+           findoverlay('targets-dr8'),
+           //findoverlay('targets-sv-dr8'),
+           //findoverlay('targets-cmx-dr7'),
+           //findoverlay('targets-dr67'),
+           //findoverlay('targets-bgs-dr67'),
+           //findoverlay('targets-sky-dr67'),
+           //findoverlay('targets-bright-dr67'),
+           //findoverlay('targets-dark-dr67'),
+         {% endif %}
+       ]},,
+
+     { label: 'Bright Objects', children: [
+     findoverlay('bright'),
+     findoverlay('tycho2'),
+     findoverlay('GCs-PNe'),
+     findoverlay('gals'),
+     findoverlay('sga'),
+     {% if science %}
+     findoverlay('sga-parent'),
+     findoverlay('photoz-dr9'),
+     {% endif %}
+     //findoverlay('masks-dr8'),
+     findoverlay('deepfields'),
+     findoverlay('const'),
+     ]},
+ ]);
+
+
+var layerTree = L.control.layers.tree(baseTree,
+                      { label: 'Overlays', children: overlayTree },
+                      { collapsed: false }).addTo(map);
+
+ $(document).ready(function() {
+     // This is fragile wrt the DOM structure of the tree layer control widget.
+     var sel = $(".leaflet-layerstree-opened").parent().parent();
+     //console.log('Parents:');
+     //console.log(sel);
+     
+     txts = [
+         {% if enable_dr7 %}
+         'Legacy Surveys DR6+DR7 images',
+         {% endif %}
+         {% if enable_dr9_north %}
+         'Legacy Surveys DR9-north images',
+         {% endif %}
+         {% if enable_dr9_south %}
+         'Legacy Surveys DR9-south images',
+         {% endif %}
+         'Older Legacy Surveys',
+         'More surveys',
+         {% if enable_dr8 %}
+         'Legacy Surveys DR8 images',
+         {% endif %}
+         {% if enable_dr8_north %}
+         'Legacy Surveys DR8-north images',
+         {% endif %}
+         {% if enable_dr8_south %}
+         'Legacy Surveys DR8-south images',
+         {% endif %}
+         'DECaLS DR7 images',
+         'MzLS+BASS DR6 images',
+         'DECaLS DR5 images',
+         'DECaPS images',
+         'unWISE W1/W2 NEO6',
+         'DECaLS DR7 catalog',
+         'DECaLS DR7 CCDs',
+         'DECaLS DR7 Exposures',
+         'Other catalogs',
+         'Spectroscopy',
+         'DESI',
+         //'DESI Targets (DR8)',
+         {% if enable_dr9sv_overlays %}
+         'Legacy Surveys DR9-SV Catalog',
+         'Legacy Surveys DR9-SV CCDs',
+         {% endif %}
+         {% if enable_dr8_overlays %}
+         'Legacy Surveys DR8 Catalog',
+         'Legacy Surveys DR8 CCDs',
+         {% endif %}
+         'Boundaries',
+         'Imaging catalogs',
+            ];
+
+     for (var i=0,len=txts.length; i<len; i++) {
+         var txt = txts[i];
+         var sel = $(".leaflet-layerstree-header").filter(":contains('" + txt + "')");
+         sel = sel.children().children().filter(".leaflet-layerstree-opened");
+         sel.trigger('click');
+     }
+ });
+ 
+/*
+  The overlays DOM looks like this:
+
+  <div class="leaflet-control-layers-overlays">
+  <label>
+  <input class="leaflet-control-layers-selector" type="checkbox">
+  <span> Sources</span>
+  </label>
+  <label>
+  <input class="leaflet-control-layers-selector" type="checkbox">
+  <span> Bricks</span>
+  </label>
+  <label>
+  </div>
+*/
+// We iterate through the <input> tags, getting the text from the next sibling.
+function getOverlayCheckbox(name) {
+    var ov = false;
+    var ovs = $('.leaflet-control-layers-overlays .leaflet-control-layers-selector');
+    ovs.each(function(i) {
+        var o = $(this);
+        var text = $.trim(o.next().text());
+        //console.log('Looking for overlay "' + name + '", found "' + text + '"');
+        if (text == name) {
+            ov = o;
+        }
+    });
+    return ov;
+}
+
+function onMapZoomEnd(e) {
+    // update the RA,Dec,zoom info box
+    if (typeof(lastLatLng) != 'undefined') {
+        onMouseMove({ latlng: lastLatLng });
+    }
+}
+
+map.setView([ dec2lat(dec_initial), ra2long_C(ra_initial, 180.) ], zoom_initial);
+var lastLatLng = map.getCenter();
+
+if ('mark' in qstr) {
+    var coords = qstr['mark'];
+    coords = coords.split(';');
+    //console.log('coords: ' + coords.length);
+    var clong = map.getCenter().lng;
+    var circleList = new Array(coords.length);
+    for (var i=0; i<coords.length; i++) {
+        var words = coords[i].split(',');
+        var r = Number.parseFloat(words[0]);
+        var d = Number.parseFloat(words[1]);
+        var lat = dec2lat(d);
+        var lng = ra2long_C(r, clong);
+        var rad = arcsecToMeters(5.);
+        var color = 'yellow';
+        var circ = L.circle([lat, lng], rad,
+                            {'color':color, 'fillOpacity':0, 'weight':5});
+        circleList[i] = circ;
+    }
+    var lg = L.layerGroup(circleList);
+    map.addLayer(lg);
+}
+
+if ('poly' in qstr) {
+    var coords = qstr['poly'];
+    segments = coords.split(';');
+    var bounds = L.latLngBounds([map.getCenter()]);
+    var group = [];
+    var clong = map.getCenter().lng;
+    for (var i=0; i<segments.length; i++) {
+        coords = segments[i].split(',');
+        var nc = coords.length/2;
+        var poly = [];
+        for (var j=0; j<nc; j++) {
+            var r = Number.parseFloat(coords[j*2+0]);
+            var d = Number.parseFloat(coords[j*2+1]);
+            var lat = dec2lat(d);
+            var lng = ra2long_C(r, clong);
+            bounds.extend(L.latLng(lat,lng));
+            poly.push([lat, lng]);
+        }
+        var color = 'orange';
+        var pline = L.polygon(poly, {fill:false, color:color, weight:4});
+        group.push(pline);
+    }
+    var lg = L.layerGroup(group);
+    map.addLayer(lg);
+    var z = map.getBoundsZoom(bounds);
+    map.setZoom(z);
+}
+
+function onViewReset(e) {
+    updateInfoBox(map.getCenter());
+}
+
+map.on('mousemove', onMouseMove);
+map.on('viewreset', onViewReset);
+map.on('overlayadd', overlayAdded);
+map.on('overlayremove', overlayRemoved);
+map.on('click', onMapClick);
+map.on('zoomend', onMapZoomEnd);
+
+map.on('baselayerchange', function(e) {
+    console.log('baselayerchange: ' + e);
+    console.log('layer: ' + e.layer);
+    console.log('layer_name: ' + e.layer.name);
+    last_layer_name = layer_name;
+    layer_name = e.layer.name;
+    console.log('new layer_name: ' + layer_name + ', new last_layer_name: ' + last_layer_name);
+});
+
+// When space bar is pressed, switch back to previous layer.  This allows a quick "blink" between layers.
+function keyDown(e) {
+    //console.log('keyDown ' + e + ' keycode ' + e.keyCode + ', char ' + e.char + ' charCode ' + e.charCode);
+    //console.log('objquery has focus? ' + $('#objquery').is(":focus"));
+
+    if ($('#objquery').is(":focus")) {
+        return;
+    }
+
+    // space bar
+    if (e.keyCode == 32) {
+        //console.log('space bar!');
+        //console.log('layer_name ' + layer_name + ', last_layer_name ' + last_layer_name);
+        if (last_layer_name != layer_name) {
+            console.log('Switching from layer ' + layer_name + ' back to previous layer ' + last_layer_name);
+            var toadd = false;
+            var torm  = false;
+            for (i in allLayers) {
+                layer = allLayers[i];
+                if (layer_name == layer.name) {
+                    torm = layer;
+                } else if (last_layer_name == layer.name) {
+                    toadd = layer;
+                }
+            }
+            if (toadd && torm) {
+                torm.removeFrom(map);
+                toadd.addTo(map);
+            }
+        }
+        e.preventDefault();
+        e.stopPropagation();
+    }
+}
+document.addEventListener('keydown', keyDown);
+//map.getContainer().addEventListener('keypress', keyDown);
+
+// A scale bar that shows arcsec / arcmin / degrees rather than meters
+var AstroControl = L.Control.Scale.extend({
+    options: {
+	    imperial: false,
+	    maxWidth: 300,
+    },
+    _updateMetric: function (maxMeters) {
+	    // meters -> arcsec
+	    var maxArcsec = maxMeters / 30.87;
+	    var maxUnit = maxArcsec;
+	    var unitName = 'arcsec';
+
+	    if (maxArcsec > 7200) {
+	        // degrees
+	        maxUnit /= 3600;
+	        unitName = 'deg';
+	    } else if (maxArcsec >= 180) {
+	        // arcmin
+	        maxUnit /= 60;
+	        unitName = 'arcmin';
+	    }
+	    var unit = this._getRoundNum(maxUnit);
+        var ratio = unit/maxUnit;
+		this._mScale.style.width = Math.round(this.options.maxWidth * ratio) + 'px';
+	    this._mScale.innerHTML = unit + ' ' + unitName;
+    },
+
+    // Yep, astronomers even have different ideas about what numbers are round.
+    // _getRoundNum: function (num) {
+    // 	var pow10 = Math.pow(10, (Math.floor(num) + '').length - 1),
+    // 	d = num / pow10;
+    // 	d = d >= 10 ? 10 : d >= 5 ? 5 : d >= 3 ? 3 : d >= 2 ? 2 : 1;
+    // 	return pow10 * d;
+    // }
+
+});
+
+new AstroControl().addTo(map);
+
+console.log('adding layers from qstr');
+for (var i=0,len=overlays.length; i<len; i++) {
+    ov = overlays[i]
+    if (ov._url_term in qstr) {
+        console.log('adding layer ' + ov._url_term + ', ' + ov._pretty + ': ' + qstr[ov._url_term]);
+        ov.initLinkHere(qstr[ov._url_term]);
+        map.addLayer(ov.getGroup());
+    }
+}
+console.log('done adding layers from qstr');
+
+{% include "constellations.js" %}
+
+buildDeepFields();
+
+{% comment %}
+AstroPolylineMeasure = L.Polyline.Measure.extend({
+});
+AstroMeasureControl = L.Control.MeasureControl.extend({
+    onAdd: function(map) {
+        var className = 'leaflet-control-draw';
+        this._container = L.DomUtil.create('div', 'leaflet-bar');
+	    
+	    // This is the only line changed --
+        this.handler = new AstroPolylineMeasure(map, this.options.handler);
+
+        this.handler.on('enabled', function () {
+            L.DomUtil.addClass(this._container, 'enabled');
+        }, this);
+        this.handler.on('disabled', function () {
+            L.DomUtil.removeClass(this._container, 'enabled');
+        }, this);
+        var link = L.DomUtil.create('a', className+'-measure', this._container);
+        link.href = '#';
+        link.title = L.Control.MeasureControl.TITLE;
+        L.DomEvent
+            .addListener(link, 'click', L.DomEvent.stopPropagation)
+            .addListener(link, 'click', L.DomEvent.preventDefault)
+            .addListener(link, 'click', this.toggle, this);
+        return this._container;
+    }
+});
+//new AstroMeasureControl().addTo(map);
+{% endcomment %}
+
+</script>
+</body>
+{% endblock %}
