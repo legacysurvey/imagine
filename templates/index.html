@@ -70,9 +70,13 @@
 
  // this is just to reset the indent level for emacs javascript-mode;
  // the "{#" is a django template comment.
- {# }}} #}
+ {# }}}} #}
 
 // Variables from django.
+
+// enable_desi_menu = {{ enable_desi_menu }}
+// enable_desi_footprint = {{ enable_desi_footprint }}
+
 var layer_initial = '{{ layer }}';
 var ra_initial = {{ ra }};
 var dec_initial = {{ dec }};
@@ -84,7 +88,8 @@ var tile_url = '{{ tileurl|safe }}';
 var maxNativeZoom = {{ maxNativeZoom }};
 
 var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
-
+var root_url = '{{ root_url }}';  // eg /viewer-dev
+ 
 var ccds_url = '{{ ccdsurl|safe }}';
 var exposures_url = '{{ expsurl|safe }}';
 var bricks_url = '{{ bricksurl|safe }}';
@@ -124,13 +129,20 @@ var QueryItems = function() {
 };
 var qstr = QueryItems();
 
-var zoom_initial = 14;
+var zoom_initial = 12;
+
+if ('plate' in qstr) {
+  zoom_initial = 8;
+}
 if ('zoom' in qstr) {
   zoom_initial = parseInt(qstr['zoom']);
   if (isNaN(zoom_initial))
     zoom_initial = 12;
   zoom_initial = Math.max(1, Math.min(maxZoom, zoom_initial));
 }
+
+var sparseMode = ('sparse' in qstr);
+
 
 
 function arcsecToMeters(arcsec) {
@@ -409,10 +421,11 @@ var CatalogOverlay = L.Evented.extend({
         }
         this._status && this._status.html('');
         if (!this._show) {
+            console.log('Not showing layer ' + this._name);
             return;
         }
         var circles = this.getLayer(result);
-        //console.log('Got marker layer ' + circles);
+        console.log('Got marker layer ' + circles);
         // remove old layers
         for (var k in this._layers) {
 	        if (k < counter) {
@@ -600,9 +613,9 @@ var sga_popup = function(json, i) {
 	s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
     s += '<br/>Group: ' + groupname;
         // matching map/cats.py : cat_sga
-        d25 = json['radiusArcsec'][i] * 2 / 60.;
+        r = json['radiusArcsec'][i] * 2 / 60.;
         s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
-        s += '<br/>D(25)='+d25.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
+        s += '<br/>D(26)='+r.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
         z = json['redshift'][i];
         t = json['type'][i];
         if (t.length > 0)
@@ -699,10 +712,10 @@ var PhotozCatalog = CatalogOverlay.extend({
         for (var i=0, len=dz.length; i<len; i++) {
             if (dz[i] > 0.2) {
                 wt.push(2);
-                rads.push(100 / 30.);
+                rads.push(40 / 30.);
             } else {
                 wt.push(5);
-                rads.push(150 / 30.);
+                rads.push(50 / 30.);
             }
         }
         result['weight'] = wt;
@@ -793,7 +806,7 @@ var SdssSpectraCatalog = CatalogOverlay.extend({
         if (zwval > 0) {
             zw = ' (Zwarn=0x' + zwval.toString(16) + ')';
         }
-        var label = '<a href="https://dr14.sdss.org/optical/spectrum/view?mjd=' +
+        var label = '<a href="https://dr16.sdss.org/optical/spectrum/view?mjd=' +
             json['mjd'][i] + '&fiberid=' + json['fiber'][i] + '&plateid=' +
             json['plate'][i] + '&zwarning=0&matches=any">' + json.name[i] + zw + '</a>';
         return label;
@@ -1262,6 +1275,7 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
             } else {
               ttstyle = { permanent: true, interactive: true };
             }
+            txt = '' + txt;
             if (txt.length > 0) {
                 circ.bindTooltip(txt, ttstyle);
             }
@@ -1361,26 +1375,37 @@ function onSourceClick(e) {
     if ('r' in src.fluxes) {
         fluxstr += ', r=' + fluxToMag(src.fluxes.r).toFixed(2);
     }
+    if ('i' in src.fluxes) {
+        fluxstr += ', i=' + fluxToMag(src.fluxes.i).toFixed(2);
+    }
     if ('z' in src.fluxes) {
         fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
     }
-    nobs_g = 0
+    nobsstr = '';
     if ('g' in src.nobs) {
-	    nobs_g = src.nobs.g;
+	    nobsstr += 'g=' + src.nobs.g;
     }
-    nobs_r = 0
     if ('r' in src.nobs) {
-	    nobs_r = src.nobs.r;
+	    nobsstr += ', r=' + src.nobs.r;
     }
-    nobs_z = 0
+    if ('i' in src.nobs) {
+	    nobsstr += ', i=' + src.nobs.i;
+    }
     if ('z' in src.nobs) {
-	    nobs_z = src.nobs.z;
+	    nobsstr += ', z=' + src.nobs.z;
     }
+    console.log('layer_name ' + layer_name);
     txt = 'Source RA,Dec = ' + exposures_radec_link(src.ra, src.dec) +
         '<br/>Source type: ' + src.type +
         '<br/>Mags: ' + fluxstr +
-        '<br/>Brick: ' + src.brickname + ', Objid: ' + src.objid +
-	    '<br/>Number of exposures: g=' + nobs_g + ', r=' + nobs_r + ', z=' + nobs_z;
+        '<br/>Brick: ' + src.brickname + ', Objid: ' +
+        '<a href="' + layer_name + '/cat' + // url cat-table
+        '?ralo=' + (src.ra - 0.001) + '&rahi=' + (src.ra + 0.001) +
+        '&declo=' + (src.dec - 0.001) + '&dechi=' + (src.dec + 0.001) +
+        '&objid=' + src.objid + '">' +
+        src.objid +
+        '</a>' +
+	    '<br/>Number of exposures: ' + nobsstr;
     console.log('Popup text: ' + txt);
     popup.setLatLng(e.latlng).setContent(txt).openOn(map);
     L.DomEvent.stopPropagation(e);
@@ -1416,7 +1441,7 @@ function exp_detail(layer_name, name, aparams) {
 
 function plate_detail(layer_name, name, aparams) {
     //console.log('Plate_detail: ' + layer_name + ', ' + name + ', ' + aparams);
-    return '<a href="https://dr14.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
+    return '<a href="https://dr16.sdss.org/optical/spectrum/search?plateid=' + name + '&action=search"' + aparams + '>Plate ' + name + '</a>';
 }
 
 function linkHereURL(latlng) {
@@ -1503,7 +1528,9 @@ function onMapClick(e) {
         var overlay = polygonOverlays[i];
         var objs = overlay.under(e.latlng);
         for (var j=0; j<objs.length; j++) {
-            txt += '<br/>' + overlay._detail(overlay._url_name, objs[j], '');
+            if (typeof(overlay._detail) != 'undefined') {
+                txt += '<br/>' + overlay._detail(overlay._url_name, objs[j], '');
+            }
         }
     }
 
@@ -1750,7 +1777,166 @@ tiles = mylayer_B('des-dr1', 'DES DR1',
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 
+tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep images',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
 
+{% if enable_pandas %}
+tiles = mylayer_B('pandas', 'PANDAS',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+tiles = mylayer_B('ls-dr9.1.1-model', 'Legacy Surveys DR9.1.1 COSMOS deep models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('ls-dr9.1.1-resid', 'Legacy Surveys DR9.1.1 COSMOS deep residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
+{% if enable_dr10 %}
+
+tiles = split_layer('ls-dr10', 'Legacy Surveys DR10 images', 32.375,
+                    // North
+                    'ls-dr9-north', [
+                      [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
+                      [15, maxZoom, tile_url], ],
+                    {'id':'ls-dr9-north'},
+                    // Mid
+		            'ls-dr10', [ [0, maxZoom, tile_url], ],
+                    {'id':'ls-dr10'},
+                    // South
+                    'ls-dr10-south', [
+                      [0, maxZoom, tile_url], ],
+                    {'id':'ls-dr10-south'},
+                    {}
+                   );
+allLayers.push(tiles);
+
+tiles = split_layer('ls-dr10-model', 'Legacy Surveys DR10 models', 32.375,
+                    // North
+                    'ls-dr9-north-model', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'ls-dr10-model', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'ls-dr10-south-model', [ [0, maxZoom, tile_url], ], {},
+                    {}
+                   );
+allLayers.push(tiles);
+
+tiles = split_layer('ls-dr10-resid', 'Legacy Surveys DR10 residuals', 32.375,
+                    // North
+                    'ls-dr9-north-resid', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'ls-dr10-resid', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'ls-dr10-south-resid', [ [0, maxZoom, tile_url], ], {},
+                    {}
+                   );
+allLayers.push(tiles);
+
+
+tiles = mylayer_B('ls-dr10-south', 'Legacy Surveys DR10-south images',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('ls-dr10-south-model', 'Legacy Surveys DR10-south models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('ls-dr10-south-resid', 'Legacy Surveys DR10-south residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
+tiles = split_layer('ls-dr10-grz', 'Legacy Surveys DR10 images (grz)', 32.375,
+                    // North
+                    'ls-dr9-north', [
+                      [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
+                      [15, maxZoom, tile_url], ],
+                    {'id':'ls-dr9-north'},
+                    // Mid
+		            'ls-dr10-grz', [ [0, maxZoom, tile_url], ],
+                    {'id':'ls-dr10-grz'},
+                    // South
+                    'ls-dr10-south-grz', [
+                      [0, maxZoom, tile_url], ],
+                    {'id':'ls-dr10-south-grz'},
+                    {}
+                   );
+allLayers.push(tiles);
+
+tiles = split_layer('ls-dr10-model-grz', 'Legacy Surveys DR10 models (grz)', 32.375,
+                    // North
+                    'ls-dr9-north-model', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'ls-dr10-model-grz', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'ls-dr10-south-model-grz', [ [0, maxZoom, tile_url], ], {},
+                    {}
+                   );
+allLayers.push(tiles);
+
+tiles = split_layer('ls-dr10-resid-grz', 'Legacy Surveys DR10 residuals (grz)', 32.375,
+                    // North
+                    'ls-dr9-north-resid', [ [0, maxZoom, tile_url], ], {},
+                    // Mid
+                    'ls-dr10-resid-grz', [ [0, maxZoom, tile_url], ], {},
+                    // South
+                    'ls-dr10-south-resid-grz', [ [0, maxZoom, tile_url], ], {},
+                    {}
+                   );
+allLayers.push(tiles);
+
+
+tiles = mylayer_B('ls-dr10-south-grz', 'Legacy Surveys DR10-south images (grz)',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('ls-dr10-south-model-grz', 'Legacy Surveys DR10-south models (grz)',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('ls-dr10-south-resid-grz', 'Legacy Surveys DR10-south residuals (grz)',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
+
+{% endif %}
+{% if enable_dr10_early %}
+
+tiles = mylayer_B('ls-dr10-early', 'Legacy Surveys DR10-early',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('ls-dr10-early-grz', 'Legacy Surveys DR10-early (grz)',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+{% endif %}
+{% if enable_dr10a %}
+
+tiles = mylayer_B('ls-dr10a', 'Legacy Surveys DR10a images',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('ls-dr10a-model', 'Legacy Surveys DR10a models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('ls-dr10a-resid', 'Legacy Surveys DR10a residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
+tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep images',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('ls-dr9.1.1-model', 'Legacy Surveys DR9.1.1 COSMOS deep models',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('ls-dr9.1.1-resid', 'Legacy Surveys DR9.1.1 COSMOS deep residuals',
+                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
 
 // tiles = mylayer_B('odin-2band', 'ODIN N501/N673 images',
 //                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
@@ -1799,8 +1985,9 @@ tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
                     {'id':'ls-dr9'},
                     // South
                     'ls-dr9-south', [
-                      [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg'],
-                      [15, maxZoom, tile_url], ],
+                      //[0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg'],
+                      //[15, maxZoom, tile_url], ],
+                      [0, maxZoom, tile_url], ],
                     //'ls-dr9-south', [ [0, max_aws_zoom, aws_tile_url], ],
                     {'id':'ls-dr9-south'},
                     //{ 'maxNativeZoom': max_aws_zoom }
@@ -2121,7 +2308,7 @@ allLayers.push(tiles);
 {% endif %}
 
 {% if enable_decaps %}
-tiles = mylayer_B('decaps', 'DECaPS images',
+tiles = mylayer_B('decaps', 'DECaPS1 images',
                   {//'maxNativeZoom': 13,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
@@ -2134,6 +2321,41 @@ tiles = mylayer_B('decaps-resid', 'DECaPS residuals',
                   {//'maxNativeZoom': 13,
                    'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+
+
+tiles = mylayer_B('decaps2', 'DECaPS 2 images',
+                  {//'maxNativeZoom': 13,
+                   //'urlPatterns': [ [14, maxZoom, tile_url], ],});
+                   'urlPatterns': [ [1 , maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('decaps2-model', 'DECaPS 2 models',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('decaps2-resid', 'DECaPS 2 residuals',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
+
+tiles = mylayer_B('decaps2-riy', 'DECaPS 2 images (riY)',
+                  {//'maxNativeZoom': 13,
+                   //'urlPatterns': [ [14, maxZoom, tile_url], ],});
+                   'urlPatterns': [ [1 , maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('decaps2-model-riy', 'DECaPS 2 models (riY)',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+tiles = mylayer_B('decaps2-resid-riy', 'DECaPS 2 residuals (riY)',
+                  {//'maxNativeZoom': 13,
+                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
 {% endif %}
 
 {% if enable_eboss %}
@@ -2182,7 +2404,32 @@ tiles = mylayer_B('hsc-dr2', 'HSC DR2',
                   {'attribution': hsc_attrib,
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+
+tiles = mylayer_B('hsc-dr3', 'HSC DR3',
+                  {'attribution': hsc_attrib,
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
 {% endif %}
+
+tiles = mylayer_B('merian-n540', 'Merian N540',
+                  {'attribution': '',
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+tiles = mylayer_B('merian-n708', 'Merian N708',
+                  {'attribution': '',
+                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+
+
+// tiles = mylayer_B('outliers-ast', 'Asteroids test: outliers',
+//                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+// allLayers.push(tiles);
+// 
+// tiles = mylayer_B('asteroids-i', 'Asteroids test: images',
+//                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+// allLayers.push(tiles);
 
 {% if enable_vlass %}
 tiles = mylayer_B('vlass1.2', 'VLASS 1.2',
@@ -2204,14 +2451,33 @@ tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
                  'attribution': unwise_attrib,
                  'urlPatterns': [
                      [1, 11, aws_unwise_url],]});
-                 //[12, maxZoom, tile_url], ],});
+ //[12, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+
+tiles = mylayer_B('unwise-neo7', 'unWISE W1/W2 NEO7',
+                {'maxNativeZoom': 11,
+                 'attribution': unwise_attrib,
+                 'urlPatterns': [
+                     [1, maxZoom, tile_url], ],});
+ //[1, 11, aws_unwise_url],]});
+allLayers.push(tiles);
+
 
 tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
                 {'maxNativeZoom': 12,
                  'attribution': unwise_attrib,
                  'urlPatterns': [ [6, maxZoom, tile_url], ],});
 allLayers.push(tiles);
+
+{% if enable_unwise_w3w4 %}
+tiles = mylayer_B('unwise-w3w4', 'unWISE W3/W4',
+                {'maxNativeZoom': 11,
+                 'attribution': unwise_attrib,
+                 'urlPatterns': [
+                     [1, maxZoom, tile_url], ],});
+allLayers.push(tiles);
+{% endif %}
+
 {% endif %}
 
 {% comment %}
@@ -2380,7 +2646,7 @@ L.DomEvent.on(container, 'click', infoBoxClicked);
 var upload = L.control({'position':'bottomleft'});
 upload.onAdd = function (map) {
     this._div = L.DomUtil.create('div', 'upload');
-    this._div.innerHTML = 'Custom catalog upload (FITS table; RA,Dec,[name]): <form action="' + usercat_upload_url + '" method="POST" enctype="multipart/form-data"><input type="file" name="catalog" id="usercat_file" /><span id="upload_status"></span><input type="submit" value="Upload" id="usercat_submit" /></form>'
+    this._div.innerHTML = 'Custom catalog upload (FITS or CSV; RA,Dec,[name,color,radius]): <form action="' + usercat_upload_url + '" method="POST" enctype="multipart/form-data"><input type="file" name="catalog" id="usercat_file" /><span id="upload_status"></span><input type="submit" value="Upload" id="usercat_submit" /></form>'
     return this._div;
 };
 upload.addTo(map);
@@ -2427,8 +2693,10 @@ function addCSSFilterSlider(filterType) {
     }
     disableMouseEventPropagation(sliderControl);
 }
-addCSSFilterSlider('brightness');
-addCSSFilterSlider('contrast');
+if (!sparseMode) {
+  addCSSFilterSlider('brightness');
+  addCSSFilterSlider('contrast');
+}
 {% endif %}
 
 {% if science %}
@@ -2665,8 +2933,10 @@ var PolygonOverlay = CatalogOverlay.extend({
     },
 
     mouseOver: function(e) {
-        e.target.setStyle({color: 'yellow'});
         var obj = e.target;
+        //if (obj.doHighlight) {
+        //obj.setStyle({color: 'yellow'});
+        //}
         this._highlighted = obj.name;
         // remove other objs from fills
         for (var i=0, len=this._filled.length; i<len; i++) {
@@ -2735,29 +3005,64 @@ var PolygonOverlay = CatalogOverlay.extend({
 });
 
 var CircleOverlay = PolygonOverlay.extend({
+    initialize: function(name, pretty, kwargs) {
+        PolygonOverlay.prototype.initialize.call(this, name, pretty, kwargs);
+        this._style = {'fill':false, 'color':color, 'weight':5 };
+    },
     getLayer: function(result) {
         var objs = result['objs'];
-        //console.log('Received ' + objs.length + ' objs');
+        console.log('Creating CircleOverlays for ' + objs.length + ' objects');
         var objList = [];
         var clong = map.getCenter().lng;
+        var tooltipStyle = this.getTooltipStyle();
+        var showlabels = (map.getZoom() >= this._labelsMinZoom);
+        var style = this._style;
         for (var i=0, len=objs.length; i<len; i++) {
             var name = objs[i].name;
-	        var meters = 30 * 3600 * objs[i].radius;
+	        var meters = arcsecToMeters(3600 * objs[i].radius);
             var ra = objs[i].ra;
             var dec = objs[i].dec;
             var latlng = L.latLng(dec2lat(dec), ra2long_C(ra, clong));
             var color = objs[i].color || this._color;
-            var c = L.circle(latlng, meters, {fill:false, color:color, weight:5 });
+            style = Object.assign(style, {'color':color});
+            var c = L.circle(latlng, meters, style);
             c.orig_color = color;
             c.name = name;
             if (this._doHighlight) {
                 c.on('mouseover', this.mouseOver.bind(this));
                 c.on('mouseout',  this.mouseOut.bind(this));
             }
+	        if (showlabels) {
+                var txt = this.getLabel(result, i);
+                if (txt.length > 0) {
+                    c.bindTooltip(txt, tooltipStyle);
+                }
+	        }
+            var txt = this.getPopupText(result, i);
+            if (txt.length > 0) {
+                c.popupText = txt;
+                c.on('click', function(e) {
+                    popup.setLatLng(e.latlng)
+                         .setContent(e.target.popupText)
+                         .openOn(map);
+                    L.DomEvent.stopPropagation(e);
+                });
+            }
             objList.push(c);
             this._current[name] = c;
         }
         return L.layerGroup(objList);
+    },
+    getTooltipStyle() {
+        return { permanent: true, interactive: true,
+                 className: 'spectrumTooltip' };
+    },
+
+    getLabel: function(json, i) {
+        return json['objs'][i]['name'];
+    },
+    getPopupText: function(json, i) {
+        return '';
     },
 
     highlight: function(obj) {
@@ -2863,7 +3168,7 @@ var ccdOverlay5 = new PolygonOverlay('decals-dr5-ccds',
                                      'DECaLS DR5 CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds5',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -2873,7 +3178,7 @@ var ccdOverlay5 = new PolygonOverlay('decals-dr5-ccds',
 var expOverlay5 = new CircleOverlay('decals-dr5-exps',
                                     'DECaLS DR5 Exposures',
                                     {'url':exposures_url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'exps5',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
@@ -2887,7 +3192,7 @@ var ccdOverlay6 = new PolygonOverlay('mzls+bass-dr6-ccds',
                                      'MzLS+BASS DR6 CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds6',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -2901,7 +3206,7 @@ var ccdOverlay7 = new PolygonOverlay('decals-dr7-ccds',
                                      'DECaLS DR7 CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds7',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -2911,7 +3216,7 @@ var ccdOverlay7 = new PolygonOverlay('decals-dr7-ccds',
 var expOverlay7 = new CircleOverlay('decals-dr7-exps',
                                     'DECaLS DR7 Exposures',
                                     {'url':exposures_url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'exps7',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
@@ -2925,7 +3230,7 @@ var ccdOverlay8 = new PolygonOverlay('dr8-ccds',
                                      'Legacy Surveys DR8 CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds8',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -2939,7 +3244,7 @@ var ccdOverlay8n = new PolygonOverlay('dr8-north-ccds',
                                      'Legacy Surveys DR8-north CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds8n',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -2953,7 +3258,7 @@ var ccdOverlay8s = new PolygonOverlay('dr8-south-ccds',
                                      'Legacy Surveys DR8-south CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds8s',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -2963,7 +3268,7 @@ var ccdOverlay8s = new PolygonOverlay('dr8-south-ccds',
 var expOverlay8s = new CircleOverlay('dr8-south-exps',
                                     'Legacy Surveys DR8-south Exposures',
                                     {'url':exposures_url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'exps8',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
@@ -2974,12 +3279,38 @@ var expOverlay8s = new CircleOverlay('dr8-south-exps',
 
 
 
+{% if enable_dr10_overlays %}
+
+var ccdOverlay10 = new PolygonOverlay('dr10-ccds',
+                                     'Legacy Surveys DR10 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelsMinZoom': 100,
+                                     'urlTerm': 'ccds10',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr10-early',
+                                     'dr_name': 'DR10',
+                                    });
+var expOverlay10 = new CircleOverlay('dr10-exps',
+                                    'Legacy Surveys DR10 Exposures',
+                                    {'url':exposures_url,
+                                     'labelsMinZoom': 7,
+                                     'urlTerm': 'exps10',
+                                     'detail': exp_detail,
+                                     'detail_list': exp_detail_list,
+                                     'url_name': 'ls-dr10-early',
+                                     'dr_name': 'DR10',
+                                    });
+{% endif %}
+
 {% if enable_dr9_overlays %}
+
 var ccdOverlay9 = new PolygonOverlay('dr9-ccds',
                                      'Legacy Surveys DR9 CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -2993,7 +3324,7 @@ var ccdOverlay9n = new PolygonOverlay('dr9-north-ccds',
                                      'Legacy Surveys DR9-north CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9n',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3007,7 +3338,7 @@ var ccdOverlay9s = new PolygonOverlay('dr9-south-ccds',
                                      'Legacy Surveys DR9-south CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9s',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3017,7 +3348,7 @@ var ccdOverlay9s = new PolygonOverlay('dr9-south-ccds',
 var expOverlay9s = new CircleOverlay('dr9-south-exps',
                                     'Legacy Surveys DR9-south Exposures',
                                     {'url':exposures_url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'exps9',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
@@ -3034,7 +3365,7 @@ var ccdOverlay9sv = new PolygonOverlay('dr9sv-ccds',
                                      'Legacy Surveys DR9-SV CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9sv',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3048,7 +3379,7 @@ var ccdOverlay9svn = new PolygonOverlay('dr9sv-north-ccds',
                                      'Legacy Surveys DR9-SV-north CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9svn',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3062,7 +3393,7 @@ var ccdOverlay9svs = new PolygonOverlay('dr9sv-south-ccds',
                                      'Legacy Surveys DR9-SV-south CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccds9svs',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3072,7 +3403,7 @@ var ccdOverlay9svs = new PolygonOverlay('dr9sv-south-ccds',
 var expOverlay9svs = new CircleOverlay('dr9sv-south-exps',
                                     'Legacy Surveys DR9-SV-south Exposures',
                                     {'url':exposures_url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'exps9sv',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
@@ -3084,7 +3415,7 @@ var expOverlay9svs = new CircleOverlay('dr9sv-south-exps',
 var brickOverlay = new PolygonOverlay('decals-bricks', 'Legacy Surveys Bricks',
                                       {'url': bricks_url,
                                        'minZoom': 1,
-                                       'labelMinZoom': 100,
+                                       'labelsMinZoom': 100,
                                        'doHighlight': false,
                                        'urlTerm': 'bricks',
                                        'detail': brick_detail,
@@ -3122,7 +3453,7 @@ var unwiseTileOverlay = new PolygonOverlay('unwise-tiles',
                                  'unWISE tiles',
                                  {'url':ccds_url,
                                  'minZoom': 6,
-                                 'labelMinZoom': 100,
+                                 'labelsMinZoom': 100,
                                  'urlTerm': 'unwise_tile',
                                  'detail': unwise_tile_detail,
                                  'detail_list': unwise_tile_detail_list,
@@ -3136,7 +3467,7 @@ var ccdOverlaySdss = new PolygonOverlay('sdss-ccds',
                                  'SDSS CCDs',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': 'ccdssdss',
                                      'detail': sdss_ccd_detail,
                                      'detail_list': sdss_ccd_detail_list,
@@ -3152,12 +3483,13 @@ if ('plate' in qstr) {
     url += '&plate=' + qstr['plate'];
 }
 var plateOverlay = new CircleOverlay('sdss-plates',
-                                     'SDSS Spectro Plates',
+                                     'SDSS Spectro Plates (DR16)',
                                     {'url': url,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'detail': plate_detail,
                                      'detail_list': plate_detail_list,
                                     });
+console.log('plateOverlay: ' + plateOverlay);
 {% endif %}
 
 {% comment %}
@@ -3165,6 +3497,174 @@ These are overlays that have entries when you click on the map,
 and entries in the "in brick/ccd" panel.
 {% endcomment %}
 
+
+ var DesiTileOverlay = CircleOverlay.extend({
+     highlight: function(obj) {
+     },
+
+    getTooltipStyle() {
+        var z = map.getZoom()
+        return { permanent: (z >= 12),
+                 interactive: true,
+                 //className: (z == 12 ? 'spectrumTooltipSmall' : 'spectrumTooltip'),
+               };
+    },
+/*
+     getPopupText: function(json, i) {
+      return json['objs'][i]['name'];
+  },
+*/
+});
+
+{% if enable_desi_data %}
+var denali_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In DESI Denali tiles: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + denali_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
+var desi_daily_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In DESI Daily tiles: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + denali_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+
+
+var denali_detail = function(ov, objs, aparams) {
+     return objs;
+ };
+
+var desi_tiles_denali = new DesiTileOverlay('desi-tiles-denali',
+                                     'DESI Denali tiles',
+                                    {'url': smallcat_url,
+                                     'url_args': { 'id': 'desi-tiles/denali',
+                                                   'ver': getcatversion('desi-tiles/denali') },
+                                     'labelsMinZoom': 100,
+                                     'detail_list': denali_detail_list,
+                                     'detail': denali_detail,
+                                    });
+desi_tiles_denali._style = {'fillOpacity': 0.05 };
+
+var DesiSpectraCatalog = CatalogOverlay.extend({
+    //getLabel: function(json, i) {
+    //getColor: function(json, i) {
+    getLabel: function(json, i) {
+        return '<a href="' + root_url + 'desi-spec-detail/denali/tile' + json['tileid'][i] +
+            '/fiber' + json['fiberid'][i] + '">' + json['name'][i] + '</a>';
+    },
+});
+
+var desi_spec_denali = new DesiSpectraCatalog('desi-spec-denali', 'DESI Denali spectra',
+                                  {'url': smallcat_url,
+                                   'radius': 300,
+                                   'labelsMinZoom': 12,
+                                   'minZoom': 10,
+                                   //'urlTerm': 'desi-spec/denali',
+                                   });
+
+//////////////// Daily
+
+var DesiDailySpectraCatalog = CatalogOverlay.extend({
+    // getLayer: function(result) {
+    //     console.log('getLayer()');
+    //     return CatalogOverlay.prototype.getLayer.call(this, result);
+    // },
+    getLabel: function(json, i) {
+        return '<a href="' + root_url + 'desi-spectrum/daily/'
+            + 'targetid' + json['targetid'][i]
+            + '">' + json['name'][i] + '</a>';
+        //tile' + json['tileid'][i] +
+            //+ '/fiber' + json['fiberid'][i] 
+    },
+    getTooltipStyle() {
+        var z = map.getZoom()
+        return { permanent: (z >= 12),
+                 interactive: true,
+                 className: (z == 12 ? 'spectrumTooltipSmall' : 'spectrumTooltip'),
+               };
+        //className: 'tooltipbg',
+    },
+    getPopupText: function(json, i) {
+        var rd = json['rd'][i];
+        var ra = rd[0];
+        var dec = rd[1];
+        return this.getLabel(json, i)
+            + '<br/>RA,Dec: ' + ra.toFixed(4) + ', ' + dec.toFixed(4)
+            + '<br/>Targetid: ' + json['targetid'][i];
+    },
+
+});
+
+var desi_tiles_daily = new DesiTileOverlay('desi-tiles-daily',
+                                     'DESI daily tiles',
+                                    {'url': smallcat_url,
+                                     'url_args': { 'id': 'desi-tiles/daily',
+                                                   'ver': getcatversion('desi-tiles/daily') },
+                                     'labelsMinZoom': 100,
+                                     'detail_list': desi_daily_detail_list,
+                                     'detail': denali_detail,
+                                    });
+desi_tiles_daily._style = {'fillOpacity': 0.05 };
+
+var desi_spec_daily = new DesiDailySpectraCatalog('desi-spec-daily', 'DESI daily spectra',
+                                  {'url': smallcat_url,
+                                   'radius': 300,
+                                   'labelsMinZoom': 10,
+                                   'minZoom': 8,
+                                   //'urlTerm': 'desi-spec/denali',
+                                   });
+
+
+
+{% endif %}
+
+////////////////////// DESI All tiles
+
+var desi_dark_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In DESI dark-time tiles: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + desi_dark_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+var desi_dark_detail = function(ov, objs, aparams) {
+     return objs;
+ };
+
+var desi_tiles_dark = new DesiTileOverlay('desi-tiles-dark',
+                                     'DESI dark-time tiles',
+                                    {'url': smallcat_url,
+                                     'url_args': { 'id': 'desi-all-tiles/dark',
+                                                   'ver': getcatversion('desi-all-tiles/dark') },
+                                     'labelsMinZoom': 100,
+                                     'detail_list': desi_dark_detail_list,
+                                     'detail': desi_dark_detail,
+                                    });
+desi_tiles_dark._style = {'fillOpacity': 0.05 };
+
+ 
 var polygonOverlays = [ 
     {% if enable_dr5_overlays %}
     ccdOverlay5, expOverlay5,
@@ -3183,6 +3683,10 @@ var polygonOverlays = [
     {% endif %}
     {% if enable_dr8_south_overlays %}
     ccdOverlay8s, expOverlay8s,
+    {% endif %}
+    {% if enable_dr10_overlays %}
+    ccdOverlay10,
+    expOverlay10,
     {% endif %}
     {% if enable_dr9_overlays %}
     ccdOverlay9,
@@ -3210,8 +3714,19 @@ var polygonOverlays = [
     {% if enable_spectra %}
     plateOverlay,
     {% endif %}
+    desi_tiles_dark,
+    {% if enable_desi_data %}
+    desi_tiles_denali,
+    desi_tiles_daily,
+    {% endif %}
 ];
 
+console.log('Polygon overlays: ' + polygonOverlays.length);
+for (var i=0; i<polygonOverlays.length; i++) {
+console.log('polygon overlay ' + i + ':');
+console.log(polygonOverlays[i]);
+}
+ 
 {% if enable_dr5_overlays %}
 var decalscat5 = new DecalsCatalogLayer(tileWatcher,
                                         'decals-dr5',
@@ -3318,6 +3833,33 @@ var dr9svsouthcat = new DecalsCatalogLayer(tileWatcher,
                                            'urlTerm': 'sources-dr9svs'});
 {% endif %}
 
+
+{% if enable_dr10_overlays %}
+
+var dr10cat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr10',
+                                          'Legacy Surveys DR10 Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr10'});
+
+var dr10southcat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr10-south',
+                                          'Legacy Surveys DR10-south Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr10-south'});
+
+var dr10acat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr10a',
+                                          'Legacy Surveys DR10a Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr10a'});
+{% endif %}
+
+
+
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
 var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {'minZoom':10});
@@ -3364,7 +3906,7 @@ var photoz = new PhotozCatalog('photoz-dr9', 'DR9 Photo-z',
                                  {'minZoom': 12,
                                  'labelsMinZoom': 14,
                                  'urlTerm': 'photoz-dr9',
-                                 'radius': 150,});
+                                 'radius': 50,});
 
 var GaiaDr2Catalog = CatalogOverlay.extend({
     getColor: function(json, i) {
@@ -3558,6 +4100,35 @@ var desi_targets_dr9_sv1_supp = new DesiTileLayer('targets-dr9-sv1-supp',
                                                  'DESI Supplemental Targets (DR9/SV1)',
                                                  {'minZoom': 10, 'rscale':0.5});
 
+
+var desi_targets_dr9_sv3_dark = new DesiTileLayer('targets-dr9-sv3-dark',
+                                                 'DESI Dark-time Targets (DR9/SV3)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv3_bright = new DesiTileLayer('targets-dr9-sv3-bright',
+                                                 'DESI Bright-time Targets (DR9/SV3)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv3_sec_dark = new DesiTileLayer('targets-dr9-sv3-sec-dark',
+                                                 'DESI Dark-time Secondary Targets (DR9/SV3)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_sv3_sec_bright = new DesiTileLayer('targets-dr9-sv3-sec-bright',
+                                                 'DESI Bright-time Secondary Targets (DR9/SV3)',
+                                                 {'minZoom': 8, 'rscale':0.5});
+
+
+var desi_targets_dr9_main_dark = new DesiTileLayer('targets-dr9-main-dark',
+                                                 'DESI Dark-time Targets (DR9/Main)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_main_bright = new DesiTileLayer('targets-dr9-main-bright',
+                                                 'DESI Bright-time Targets (DR9/Main)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_main_sec_dark = new DesiTileLayer('targets-dr9-main-sec-dark',
+                                                 'DESI Dark-time Secondary Targets (DR9/Main)',
+                                                 {'minZoom': 10, 'rscale':0.5});
+var desi_targets_dr9_main_sec_bright = new DesiTileLayer('targets-dr9-main-sec-bright',
+                                                 'DESI Bright-time Secondary Targets (DR9/Main)',
+                                                 {'minZoom': 8, 'rscale':0.5});
+
+
 {% endif %}
 
 {% if enable_spectra %}
@@ -3565,7 +4136,7 @@ url = smallcat_url;
 if ('plate' in qstr) {
     url += '&plate=' + qstr['plate'];
 }
-var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra',
+var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra (DR16)',
                                   {'url': url,
                                    'radius': 300,
                                    'labelsMinZoom': 11,
@@ -3710,6 +4281,11 @@ var desifiber = new DesiFiberPos('desi-fiberpos', 'DESI Fibers', {});
 desifiber._url_term = 'desifiber';
 // TODO: Make url terms a constant
 
+{% include "decam-footprint.js" %}
+
+var decamfoot = new DecamOverlay('decam-footprint', 'DECam Footprint', {});
+decamfoot._url_term = 'decamfoot';
+
 var overlays = [
     {% if enable_phat %}
     phat_clusters,
@@ -3741,6 +4317,15 @@ var overlays = [
     {% if enable_dr9_south_overlays %}
     dr9southcat,
     {% endif %}
+    {% if enable_dr10_overlays %}
+    {% if enable_dr10 %}
+    dr10cat,
+    dr10southcat,
+    {% endif %}
+    {% if enable_dr10a %}
+    dr10acat,
+    {% endif %}
+    {% endif %}
     {% if enable_dr9sv_overlays %}
     dr9svcat,
     {% endif %}
@@ -3768,6 +4353,10 @@ var overlays = [
     {% if enable_dr8_south_overlays %}
     ccdOverlay8s,
     expOverlay8s,
+    {% endif %}
+    {% if enable_dr10_overlays %}
+    ccdOverlay10,
+    expOverlay10,
     {% endif %}
     {% if enable_dr9_overlays %}
     ccdOverlay9,
@@ -3828,11 +4417,29 @@ var overlays = [
     desi_targets_dr9_sv1_dark,
     desi_targets_dr9_sv1_bright,
     desi_targets_dr9_sv1_supp,
+    desi_targets_dr9_sv3_dark,
+    desi_targets_dr9_sv3_bright,
+    desi_targets_dr9_sv3_sec_dark,
+    desi_targets_dr9_sv3_sec_bright,
+    desi_targets_dr9_main_dark,
+    desi_targets_dr9_main_bright,
+    desi_targets_dr9_main_sec_dark,
+    desi_targets_dr9_main_sec_bright,
+    {% endif %}
+    {% if enable_desi_data %}
+    desi_tiles_denali,
+    desi_spec_denali,
+    desi_tiles_daily,
+    desi_spec_daily,
     {% endif %}
     constellations,
+    {% if enable_odin %}
     deepfields,
+    {% endif %}
+    decamfoot,
     desifoot,
     desifiber,
+    desi_tiles_dark,
 ];
 
 
@@ -3851,7 +4458,7 @@ for (k in qstr) {
 var ccds = new PolygonOverlay('{{name}}-ccds', '{{pretty}}',
                                     {'url':ccds_url,
                                      'minZoom': 8,
-                                     'labelMinZoom': 100,
+                                     'labelsMinZoom': 100,
                                      'urlTerm': '{{name}}',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
@@ -3862,7 +4469,10 @@ var ccds = new PolygonOverlay('{{name}}-ccds', '{{pretty}}',
  
 {% endfor %}
 
+console.log('Polygon overlays: ' + polygonOverlays.length);
 for (var i=0; i<polygonOverlays.length; i++) {
+console.log('polygon overlay ' + i + ':');
+console.log(polygonOverlays[i]);
     polygonOverlays[i].on('loaded', function() { inbrickccdUpdate(); });
 }
 
@@ -3904,14 +4514,28 @@ var testTree = [];
 
 console.log('testTree:', testTree);
 
+{% if enable_decaps %}
+var decaps_tree = [
+    findlayer('decaps2', [
+        findlayer('decaps2-model'),
+        findlayer('decaps2-resid'),
+    ]),
+    findlayer('decaps2-riy', [
+        findlayer('decaps2-model-riy'),
+        findlayer('decaps2-resid-riy'),
+    ]),
+    findlayer('decaps', [
+        findlayer('decaps-model'),
+        findlayer('decaps-resid'),
+    ]),
+];
+{% endif %}
+
 var baseTree1 = [
     {% if enable_m33 %}
     findlayer('m33'),
     {% endif %}
-    {% if enable_phat %}
-    findlayer('phat'),
-    {% endif %}
-
+    {% if enable_odin %}
     //findlayer('odin-2band'),
     findlayer('odin-color-n501n673'),
     findlayer('odin-color-n419n673'),
@@ -3922,7 +4546,89 @@ var baseTree1 = [
     findlayer('ls-dr9.1.1'),
     {% if enable_hsc_dr2 %}
     findlayer('hsc-dr2'),
+    findlayer('hsc-dr3'),
     {% endif %}
+    {% endif %}
+];
+
+{% if decaps_first %}
+baseTree1 = baseTree1.concat(decaps_tree);
+{% endif %}
+
+var moresurveys = [
+    {% if enable_pandas %}
+    findlayer('pandas'),
+    {% endif %}
+    {% if enable_phat %}
+    findlayer('phat'),
+    {% endif %}
+    //findlayer('outliers-ast'),
+    //findlayer('asteroids-i'),
+    {% if enable_des_dr1 %}
+    findlayer('des-dr1'),
+    {% endif %}
+];
+
+{% if decaps_first %}
+{% else %}
+moresurveys = moresurveys.concat(decaps_tree);
+{% endif %}
+
+moresurveys = moresurveys.concat([
+    findlayer('galex'),
+    findlayer('halpha'),
+
+    {% if enable_odin %}
+    {% else %}
+    {% if enable_hsc_dr2 %}
+    findlayer('hsc-dr2'),
+    findlayer('hsc-dr3'),
+    {% endif %}
+    {% endif %}
+
+    findlayer('merian-n540'),
+    findlayer('merian-n708'),
+    {% if enable_ps1 %}
+    findlayer('ps1'),
+    {% endif %}
+    findlayer('sdss'),
+    findlayer('sfd'),
+    {% if enable_vlass %}
+    findlayer('vlass1.2'),
+    {% endif %}
+    {% if enable_ztf %}
+    findlayer('ztf'),
+    {% endif %}
+]);
+
+baseTree1 = baseTree1.concat([
+    {% if enable_dr10 %}
+    findlayer('ls-dr10', [
+    findlayer('ls-dr10-model'),
+    findlayer('ls-dr10-resid'),
+    findlayer('ls-dr10-south', [
+      findlayer('ls-dr10-south-model'),
+      findlayer('ls-dr10-south-resid'),
+    ]),
+    findlayer('ls-dr10-grz', [
+      findlayer('ls-dr10-model-grz'),
+      findlayer('ls-dr10-resid-grz'),
+      findlayer('ls-dr10-south-grz'),
+      findlayer('ls-dr10-south-model-grz'),
+      findlayer('ls-dr10-south-resid-grz'),
+      ]),
+    ]),
+    {% endif %}
+    {% if enable_dr10a %}
+    findlayer('ls-dr10a'),
+    findlayer('ls-dr10a-model'),
+    findlayer('ls-dr10a-resid'),
+    {% endif %}
+    {% if enable_dr10_early %}
+    findlayer('ls-dr10-early'),
+    findlayer('ls-dr10-early-grz'),
+    {% endif %}
+
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
         {% if enable_dr9_models %}
@@ -3931,7 +4637,10 @@ var baseTree1 = [
         {% if enable_dr9_resids %}
         findlayer('ls-dr9-resid'),
         {% endif %}
-    ]),
+        findlayer('ls-dr9.1.1', [,
+         findlayer('ls-dr9.1.1-model'),
+         findlayer('ls-dr9.1.1-resid'),
+        ]),
     {% endif %}
 
     {% if enable_dr9_north %}
@@ -3948,6 +4657,11 @@ var baseTree1 = [
         {% if enable_dr9_resids %}
         findlayer('ls-dr9-south-resid'),
         {% endif %}
+    ]),
+    {% endif %}
+
+    {% if enable_dr9 %}
+    // nested in dr9
     ]),
     {% endif %}
 
@@ -4033,21 +4747,19 @@ var baseTree1 = [
     {% if enable_eboss %}
     findlayer('eboss'),
     {% endif %}
-    {% if enable_decaps %}
-    findlayer('decaps', [
-        findlayer('decaps-model'),
-        findlayer('decaps-resid'),
-    ]),
-    {% endif %}
 
      ]},
     {% endif %}
 
     {% if enable_unwise %}
-    findlayer('unwise-neo6', [
+    findlayer('unwise-neo7', [
+        findlayer('unwise-neo6'),
         {% if science %}
         findlayer('unwise-neo4'),
         findlayer('unwise-cat-model'),
+        {% if enable_unwise_w3w4 %}
+        findlayer('unwise-w3w4'),
+        {% endif %}
         findlayer('wssa'),
         {% endif %}
     ]),
@@ -4055,27 +4767,10 @@ var baseTree1 = [
     {% if science %}
     {
         label: 'More surveys',
-        children: [
-            {% if enable_des_dr1 %}
-            findlayer('des-dr1'),
-            {% endif %}
-            findlayer('galex'),
-            findlayer('halpha'),
-            {% if enable_ps1 %}
-            findlayer('ps1'),
-            {% endif %}
-            findlayer('sdss'),
-            findlayer('sfd'),
-            {% if enable_vlass %}
-            findlayer('vlass1.2'),
-            {% endif %}
-            {% if enable_ztf %}
-            findlayer('ztf'),
-            {% endif %}
-        ],
+        children: moresurveys,
     },
     {% endif %}
-];
+]);
 
 var baseTree = [];
 for (var x in testTree) {
@@ -4130,14 +4825,15 @@ var overlayTree = [];
 {% endif %}
 
  overlayTree = overlayTree.concat([
-     {% if enable_phat %}
-     findoverlay('phat-clusters'),
-     {% endif %}    
-
      {% if science %}
      { label: 'Boundaries', children: [
 
+     findoverlay('decam-footprint'),
      findoverlay('decals-bricks'),
+     {% if enable_dr10_overlays %}
+     findoverlay('dr10-ccds'),
+     findoverlay('dr10-exps'),
+     {% endif %}
      {% if enable_dr9_overlays %}
      findoverlay('dr9-ccds', [
        {% if enable_dr9_north_overlays %}
@@ -4201,6 +4897,18 @@ var overlayTree = [];
                                         
      {% if science %}
      { label: 'Imaging catalogs', children: [
+
+     {% if enable_phat %}
+     findoverlay('phat-clusters'),
+     {% endif %}    
+
+     {% if enable_dr10 %}
+     findoverlay('ls-dr10'),
+     findoverlay('ls-dr10-south'),
+     {% endif %}
+     {% if enable_dr10a %}
+     findoverlay('ls-dr10a'),
+     {% endif %}
 
      {% if enable_dr9_overlays %}
      findoverlay('ls-dr9', [
@@ -4272,17 +4980,33 @@ var overlayTree = [];
      },
      {% endif %}
 
+     {% if enable_desi_menu %}
      { label: 'DESI',
        children: [
          {% if desitiles %}
            { label: 'DESI Individual Tiles',
              children: desi_tile_list },
          {% endif %}
+         findoverlay('desi-tiles-dark'),
          {% if enable_desi_footprint %}
            findoverlay('desi-footprint'),
            findoverlay('desi-fiberpos'),
          {% endif %}
+         {% if enable_desi_data %}
+           findoverlay('desi-tiles-denali'),
+           findoverlay('desi-spec-denali'),
+           findoverlay('desi-tiles-daily'),
+           findoverlay('desi-spec-daily'),
+         {% endif %}
          {% if enable_desi_targets %}
+           findoverlay('targets-dr9-main-dark'),
+           findoverlay('targets-dr9-main-bright'),
+           findoverlay('targets-dr9-main-sec-dark'),
+           findoverlay('targets-dr9-main-sec-bright'),
+           findoverlay('targets-dr9-sv3-dark'),
+           findoverlay('targets-dr9-sv3-bright'),
+           findoverlay('targets-dr9-sv3-sec-dark'),
+           findoverlay('targets-dr9-sv3-sec-bright'),
            findoverlay('targets-dr9-sv1-dark'),
            findoverlay('targets-dr9-sv1-bright'),
            findoverlay('targets-dr9-sv1-sec-dark'),
@@ -4297,7 +5021,8 @@ var overlayTree = [];
            //findoverlay('targets-bright-dr67'),
            //findoverlay('targets-dark-dr67'),
          {% endif %}
-       ]},,
+       ]},
+       {% endif %}
 
      { label: 'Bright Objects', children: [
      findoverlay('bright'),
@@ -4325,10 +5050,16 @@ var layerTree = L.control.layers.tree(baseTree,
      var sel = $(".leaflet-layerstree-opened").parent().parent();
      //console.log('Parents:');
      //console.log(sel);
-     
+
+     // These are menus to collapse
      txts = [
-         {% if enable_dr7 %}
-         'Legacy Surveys DR6+DR7 images',
+         {% if enable_dr10 %}
+         'Legacy Surveys DR10 images',
+         'Legacy Surveys DR10-south images',
+         {% endif %}
+         {% if enable_dr9 %}
+         'Legacy Surveys DR9 images',
+         'Legacy Surveys DR9.1.1 COSMOS deep images',
          {% endif %}
          {% if enable_dr9_north %}
          'Legacy Surveys DR9-north images',
@@ -4347,17 +5078,21 @@ var layerTree = L.control.layers.tree(baseTree,
          {% if enable_dr8_south %}
          'Legacy Surveys DR8-south images',
          {% endif %}
+         {% if enable_dr7 %}
+         'Legacy Surveys DR6+DR7 images',
+         {% endif %}
          'DECaLS DR7 images',
          'MzLS+BASS DR6 images',
          'DECaLS DR5 images',
          'DECaPS images',
-         'unWISE W1/W2 NEO6',
+         'DECaPS 2 images',
+         'unWISE W1/W2 NEO7',
          'DECaLS DR7 catalog',
          'DECaLS DR7 CCDs',
          'DECaLS DR7 Exposures',
          'Other catalogs',
          'Spectroscopy',
-         'DESI',
+         'Bright Objects',
          //'DESI Targets (DR8)',
          {% if enable_dr9sv_overlays %}
          'Legacy Surveys DR9-SV Catalog',
@@ -4369,6 +5104,7 @@ var layerTree = L.control.layers.tree(baseTree,
          {% endif %}
          'Boundaries',
          'Imaging catalogs',
+         'DESI',
             ];
 
      for (var i=0,len=txts.length; i<len; i++) {
@@ -4447,8 +5183,16 @@ if ('poly' in qstr) {
     var bounds = L.latLngBounds([map.getCenter()]);
     var group = [];
     var clong = map.getCenter().lng;
+    var color = 'orange';
     for (var i=0; i<segments.length; i++) {
-        coords = segments[i].split(',');
+        var seg = segments[i];
+        if (seg.startsWith('color:')) {
+            var cc = seg.substring(6, seg.length);
+            color = cc;
+            console.log('Setting color to ' + color);
+            continue;
+        }
+        coords = seg.split(',');
         var nc = coords.length/2;
         var poly = [];
         for (var j=0; j<nc; j++) {
@@ -4459,7 +5203,6 @@ if ('poly' in qstr) {
             bounds.extend(L.latLng(lat,lng));
             poly.push([lat, lng]);
         }
-        var color = 'orange';
         var pline = L.polygon(poly, {fill:false, color:color, weight:4});
         group.push(pline);
     }
