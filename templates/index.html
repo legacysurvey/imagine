@@ -1211,14 +1211,15 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
     var bricknames = result['bricknames'];
     var objids = result['objids'];
     var labels = result['names'];
-    var circleList = new Array(rdlist.length);
-    var clong = map.getCenter().lng;
+    var bands = result['bands'];
     var radii = result['radius'];
     var colors = result['color'];
-
     var abratios = result['abratio'];
     var posangles = result['posangle'];
-    
+
+    var circleList = new Array(rdlist.length);
+    var clong = map.getCenter().lng;
+
     for (var i=0, len=rdlist.length; i<len; i++) {
         var r = rdlist[i][0];
         var d = rdlist[i][1];
@@ -1280,6 +1281,9 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
                 circ.bindTooltip(txt, ttstyle);
             }
         }
+        if (bands === undefined) {
+            bands = ['g', 'r', 'i', 'z'];
+        }
 
         circ.ra = r;
         circ.dec = d;
@@ -1288,6 +1292,7 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
         circ.nobs   = (nobs   ? nobs  [i] : {});
         circ.brickname = bricknames ? bricknames[i] : '';
         circ.objid     = objids     ? objids    [i] : '';
+        circ.bands = bands;
         circ.on('click', onSourceClick);
         circleList[i] = circ;
     }
@@ -1367,32 +1372,30 @@ function exposures_radec_link(ra, dec) {
 
 function onSourceClick(e) {
     console.log('onSourceClick');
-    src = e.target;
-    fluxstr = '';
-    if ('g' in src.fluxes) {
-        fluxstr += 'g=' + fluxToMag(src.fluxes.g).toFixed(2);
-    }
-    if ('r' in src.fluxes) {
-        fluxstr += ', r=' + fluxToMag(src.fluxes.r).toFixed(2);
-    }
-    if ('i' in src.fluxes) {
-        fluxstr += ', i=' + fluxToMag(src.fluxes.i).toFixed(2);
-    }
-    if ('z' in src.fluxes) {
-        fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
-    }
-    nobsstr = '';
-    if ('g' in src.nobs) {
-	    nobsstr += 'g=' + src.nobs.g;
-    }
-    if ('r' in src.nobs) {
-	    nobsstr += ', r=' + src.nobs.r;
-    }
-    if ('i' in src.nobs) {
-	    nobsstr += ', i=' + src.nobs.i;
-    }
-    if ('z' in src.nobs) {
-	    nobsstr += ', z=' + src.nobs.z;
+    var src = e.target;
+    var bands = src.bands;
+    var first = true;
+    var fluxstr = '';
+    var nobsstr = '';
+    for (var i=0, len=src.bands.length; i<len; i++) {
+        var b = src.bands[i];
+        //console.log('Band', b);
+        //console.log('fluxes', src.fluxes);
+        //console.log('flux', src.fluxes[b]);
+        if (b in src.fluxes) {
+            if (!first) {
+                fluxstr += ', ';
+                nobsstr += ', ';
+            }
+            var flux = src.fluxes[b];
+            if (flux > 0) {
+                fluxstr += b + '=' + fluxToMag(flux).toFixed(2);
+            } else {
+                fluxstr += b + '(flux)=' + flux.toFixed(2) + ' nMgy';
+            }
+            nobsstr += b + '=' + src.nobs[b];
+            first = false;
+        }
     }
     console.log('layer_name ' + layer_name);
     txt = 'Source RA,Dec = ' + exposures_radec_link(src.ra, src.dec) +

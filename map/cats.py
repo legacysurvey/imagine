@@ -2662,6 +2662,7 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         bricknames = []
         objids = []
         nobs = []
+        bands = []
     else:
         rd = list(zip(cat.ra, cat.dec))
         types = list([t[0] for t in cat.get('type')])
@@ -2670,26 +2671,30 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         havefluxes = []
         havenobs = []
         cols = cat.get_columns()
-        for band in 'griz':
-            if 'flux_'+band in cols:
+
+        print('Layer bands:', layer.get_bands())
+        print('Catalog columns:', cols)
+        bands = layer.get_bands()
+        bands = [b.lower() for b in bands]
+
+        for band in bands:
+            fluxcol = 'flux_' + band
+            if fluxcol in cols:
                 havebands.append(band)
-                havefluxes.append(cat.get('flux_' + band))
-                havenobs.append(cat.get('nobs_' + band))
+                havefluxes.append(cat.get(fluxcol))
+                nobscol = 'nobs_' + band
+                havenobs.append(cat.get(nobscol))
         fluxes = []
         for F in zip(*havefluxes):
             fluxes.append(dict([(b,float(f)) for b,f in zip(havebands, F)]))
         nobs = []
         for N in zip(*havenobs):
             nobs.append(dict([(b,int(f)) for b,f in zip(havebands, N)]))
-        #fluxes = [dict(g=float(g), r=float(r), z=float(z))
-        #          for g,r,z in zip(cat.flux_g, cat.flux_r, cat.flux_z)]
-        #nobs = [dict(g=int(g), r=int(r), z=int(z))
-        #        for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
         bricknames = list(cat.brickname)
         objids = [int(x) for x in cat.objid]
 
     json = json.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes, nobs=nobs,
-                                 bricknames=bricknames, objids=objids))
+                           bricknames=bricknames, objids=objids, bands=bands))
     if docache:
         trymakedirs(cachefn)
 
