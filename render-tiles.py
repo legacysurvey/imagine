@@ -476,7 +476,7 @@ def main():
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                        'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
                        'unwise-w3w4',
-                       'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'ztf']
+                       'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
               or 'dr9f' in opt.kind
@@ -699,7 +699,7 @@ def main():
                          'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                          'unwise-w3w4',
                          'unwise-cat-model',
-                        'galex', 'wssa', 'des-dr1', 'hsc2',
+                         'galex', 'wssa', 'des-dr1', 'hsc2', 'hsc-dr3',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
                         'dr8-south', 'dr8-south-model', 'dr8-south-resid',
                         'dr9c', 'dr9c-model', 'dr9c-resid',

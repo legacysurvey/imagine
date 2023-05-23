@@ -1234,6 +1234,16 @@ class MapLayer(object):
         rw   = np.zeros((H,W), np.float32)
         return rimg, rw
 
+    def peek_accumulator_for_render(self, acc):
+        import numpy as np
+        rimg, rw = acc
+        return rimg / np.maximum(rw, 1e-18)
+
+    def peek_weight_for_render(self, acc):
+        import numpy as np
+        rimg, rw = acc
+        return rw
+
     def finish_accumulator_for_render(self, acc):
         import numpy as np
         rimg, rw = acc
@@ -1358,7 +1368,7 @@ class MapLayer(object):
                     yy3 = np.array([H]*100)
                     xx4 = np.array([1]*100)
                     yy4 = np.linspace(H, 1, 100)
-                    rr,dd = wcs.pixelxy2radec(np.hstack((xx1,xx2,xx3,xx4)), np.hstack((yy1,yy2,yy3,yy4)))
+                    rr,dd = wcs.pixelxy2radec(np.hstack((xx1,xx2,xx3,xx4)), np.hstack((yy1,yy2,yy3,yy4)))[:2]
                     plt.plot(rr, dd, 'm-', lw=2, alpha=0.5)
                     plt.title('black=brick, red=target')
                     debug_ps.savefig()
@@ -1478,7 +1488,9 @@ class MapLayer(object):
                     plt.title('dest')
 
                     plt.subplot(2,3,3)
-                    plt.imshow(rimg / np.maximum(rw, 1e-18),
+                    rimg = self.peek_accumulator_for_render(acc)
+                    rw = self.peek_weight_for_render(acc)
+                    plt.imshow(rimg,
                                interpolation='nearest', origin='lower',
                                vmin=-0.001, vmax=0.1)
                     plt.title('rimg')
@@ -3012,7 +3024,137 @@ class HscLayer(RebrickedMixin, MapLayer):
         ext = self.get_fits_extension(scale, fn)
         return read_tan_from_header(fn, ext)
 
+    def read_image(self, brick, band, scale, slc, fn=None):
+        import fitsio
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        debug('Reading image from', fn)
+        ext = self.get_fits_extension(scale, fn)
+        F = fitsio.FITS(fn)
+        f = F[ext]
+        if slc is None:
+            img = f.read()
+        else:
+            img = f[slc]
+        if scale == 0:
+            ### Zero out pixels where MASK has MP_NO_DATA set --
+            ### especially HSC-DR3 at the survey edges.
+            maskext = 2
+            f = F[maskext]
+            # check
+            hdr = f.read_header()
+            assert(hdr['EXTTYPE'] == 'MASK')
+            #
+            maskbit = hdr['MP_NO_DATA']
+            nodata = 1<<maskbit
+            #maskbit = hdr['MP_SAT']
+            #sat = 1<<maskbit
+            maskbit = hdr['MP_DETECTED']
+            det = 1<<maskbit
+            if slc is None:
+                mask = f.read()
+            else:
+                mask = f[slc]
+            # badpix = (mask & nodata != 0)
+            # badpix = (mask & (nodata | sat) == nodata)
+            badpix = (mask & (nodata | det) == nodata)
+            img[badpix] = 0.
 
+        return img
+
+class MerianLayer(HscLayer):
+    '''
+    table+5:
+       flags                             band                         physical
+    1 10000000 N540
+    +14: input exposures
+
+    TAN WCS in first extension HDU
+    
+    4100 pix x 0.168 "/pixel
+    (HSC gridding!)
+    has sky sub
+    zpt??
+
+    For RGB images, we'll take HSC g,z for B,R and use one of the Merian filters
+    (N540, N708) for G.
+
+
+    '''
+    def __init__(self, name, hsc_layer):
+        super().__init__(name)
+        self.hsc = hsc_layer
+        self.bands = ['g', 'N540', 'z'] #, 'N708']
+        self.basedir = os.path.join(settings.DATA_DIR, self.name)
+        self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
+        self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+        self.bricks = None
+        self.pixscale = 0.168
+
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, **kwargs):
+        import numpy as np
+        if bands is None:
+            bands = self.get_bands()
+        # Call HSC for g,z bands
+        hscbands = []
+        mybands = []
+        for b in bands:
+            if b in ['g','z']:
+                hscbands.append(b)
+            else:
+                mybands.append(b)
+        bmap = {}
+        if len(hscbands):
+            rimgs = self.hsc.render_into_wcs(wcs, zoom, x, y, bands=hscbands, **kwargs)
+            if rimgs is not None:
+                for b,img in zip(hscbands, rimgs):
+                    print('Band', b, 'from HSC: RMS', np.sqrt(np.mean(img**2)))
+                    bmap[b] = img
+        if len(mybands):
+            rimgs = super().render_into_wcs(wcs, zoom, x, y, bands=mybands, **kwargs)
+            if rimgs is not None:
+                for b,img in zip(mybands, rimgs):
+                    print('Band', b, 'from Merian: RMS', np.sqrt(np.mean(img**2)))
+                    bmap[b] = img
+        if len(bmap) == 0:
+            return None
+        res = []
+        for b in bands:
+            res.append(bmap.get(b))
+        return res
+
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+                            '%(scale)i%(band)s', '%(brickname).4s',
+                            'merian' + '-%(brickname)s-%(band)s.fits')
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        from tractor.brightness import NanoMaggies
+        zpscale = NanoMaggies.zeropointToScale(27.0)
+        rgb = sdss_rgb([im/zpscale for im in imgs], bands,
+                       scales=dict(#N540=(1,3.4*5.),
+                           N540=(1, 5.0 *5.),
+                           N708=(1, 3.0 *5.),
+                           g   =(2, 6.0 *5.),
+                           z   =(0, 2.2 *5.)), m=0.03)
+        return rgb
+
+    def get_base_filename(self, brick, band, **kwargs):
+        path = os.path.join(self.basedir, brick.filename.strip().replace('N540', band.upper()))
+        return path
+    
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        from astrometry.util.fits import fits_table
+        self.bricks = fits_table(os.path.join(self.basedir, 'merian-bricks.fits'))
+        return self.bricks
+
+    def get_brick_size_for_scale(self, scale):
+        if scale == 0:
+            return 4100 * self.pixscale / 3600.
+        return 0.25 * 2**scale
+    
 class LegacySurveySplitLayer(MapLayer):
     def __init__(self, name, top, bottom, decsplit, top_bands='grz', bottom_bands='grz'):
         super(LegacySurveySplitLayer, self).__init__(name)
@@ -7217,6 +7359,9 @@ def get_layer(name, default=None):
     elif name == 'hsc-dr2':
         layer = HscLayer('hsc-dr2')
 
+    elif name == 'hsc-dr3':
+        layer = HscLayer('hsc-dr3')
+
     elif name == 'wiro-C':
         survey = get_survey('wiro-C')
         layer = WiroCLayer('wiro-C', 'image', survey)
@@ -7256,6 +7401,14 @@ def get_layer(name, default=None):
         layers[basename + '-model'] = model
         layers[basename + '-resid'] = resid
         layer = layers[name]
+
+    elif name == 'merian-n540':
+        hsc = get_layer('hsc-dr2')
+        layer = MerianLayer('merian', hsc)
+    elif name == 'merian-n708':
+        hsc = get_layer('hsc-dr2')
+        layer = MerianLayer('merian', hsc)
+        layer.bands = ['g', 'N708', 'z']
         
     elif name == 'outliers-ast':
         basename = 'asteroids-i'
@@ -7885,6 +8038,12 @@ if __name__ == '__main__':
     #r = c.get('/exposures/?ra=204.0414&dec=-62.9467&layer=decaps2')
     #r = c.get('/dr10-deep/1/14/14831/8415.jpg')
     #r = c.get('/exposures/?ra=187.4274&dec=11.4106&layer=sdss')
+    #r = c.get('/merian-n540/1/14/9511/8123.jpg')
+    #r = c.get('/merian-n708/1/14/9511/8123.jpg')
+    #r = c.get('/hsc-dr3/1/14/7818/8185.jpg')
+    #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=i')
+    #r = c.get('/hsc-dr3/1/14/6219/8308.jpg')
+    #r = c.get('/hsc-dr3/1/14/6220/8308.jpg')
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=i')
     r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10-grz&pixscale=0.262&bands=griz')
     r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
