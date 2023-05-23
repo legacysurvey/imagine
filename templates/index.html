@@ -3783,6 +3783,15 @@ var dr8southcat = new DecalsCatalogLayer(tileWatcher,
                                            'urlTerm': 'sources-dr8s'});
 {% endif %}
 
+{% if enable_odin %}
+var odin_cat_cosmos = new DecalsCatalogLayer(tileWatcher,
+                                             'odin-cosmos',
+                                             'ODIN COSMOS catalog',
+                                             {'url': cat_url,
+                                              'minZoom': 12,
+                                              'urlTerm': 'odin-cosmos'});
+{% endif %}
+  
 {% if enable_dr9_overlays %}
 var dr9cat = new DecalsCatalogLayer(tileWatcher,
                                     'ls-dr9',
@@ -4290,6 +4299,9 @@ var decamfoot = new DecamOverlay('decam-footprint', 'DECam Footprint', {});
 decamfoot._url_term = 'decamfoot';
 
 var overlays = [
+    {% if enable_odin %}
+    odin_cat_cosmos,
+    {% endif %}
     {% if enable_phat %}
     phat_clusters,
     {% endif %}    
@@ -4901,13 +4913,17 @@ var overlayTree = [];
      ]},
      // end of Boundaries
      {% endif %}
-                                        
+
      {% if science %}
      { label: 'Imaging catalogs', children: [
 
      {% if enable_phat %}
      findoverlay('phat-clusters'),
-     {% endif %}    
+     {% endif %}
+
+     {% if enable_odin %}
+     findoverlay('odin-cosmos'),
+     {% endif %}
 
      {% if enable_dr10 %}
      findoverlay('ls-dr10'),

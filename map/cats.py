@@ -85,6 +85,7 @@ catversions = {
     'ls-dr10a': [1,],
     'ls-dr10': [1,],
     'ls-dr10-south': [1,],
+    'odin-cosmos': [1,],
 }
 
 test_cats = []

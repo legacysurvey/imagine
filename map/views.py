@@ -8171,7 +8171,16 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=i')
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10-grz&pixscale=0.262&bands=griz')
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
-    r = c.get('/odin-N419/1/14/9549/8101.jpg')
+    #r = c.get('/odin-N419/1/14/9549/8101.jpg')
+    print()
+    print('DR9')
+    print()
+    r = c.get('/ls-dr9/1/15/19159/16037.cat.json')
+    print()
+    print('ODIN')
+    print()
+    r = c.get('/odin-cosmos/1/15/19161/16037.cat.json')
+    
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
