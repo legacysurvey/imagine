@@ -12,11 +12,17 @@ layer_regex = r'\{id\}|' + survey_regex
 urlpatterns_desi = [
 ]
 
+# DESI public
+urlpatterns_desi.append(
+    # All DESI tiles (tiles-main.ecsv)
+    re_path(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
+)
+
 if settings.ENABLE_DESI_DATA:
     # Private
     urlpatterns_desi.extend([
         # All DESI tiles (tiles-main.ecsv)
-        re_path(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
+        #re_path(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
 
         # DESI spectroscopy -- daily
         re_path(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),
