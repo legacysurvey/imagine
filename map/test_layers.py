@@ -28,12 +28,12 @@ test_ccds = []
 # test_layers.append(("suprime-L527-model", "Suprime IA-L527 filter models"))
 # test_layers.append(("suprime-L527-resid", "Suprime IA-L527 filter residuals"))
 
-test_layers.append(("suprime-ia-v1", "Suprime IA v1 images"))
-test_layers.append(("suprime-ia-v1-model", "Suprime IA v1 models"))
-test_layers.append(("suprime-ia-v1-resid", "Suprime IA v1 residuals"))
-
-test_layers.append(('suprime-L505', 'Suprime IA L505'))
-
-test_layers.append(('dr10-deep', 'DR10 deep image'))
-test_layers.append(('dr10-deep-model', 'DR10 deep model'))
-test_layers.append(('dr10-deep-resid', 'DR10 deep resid'))
+# test_layers.append(("suprime-ia-v1", "Suprime IA v1 images"))
+# test_layers.append(("suprime-ia-v1-model", "Suprime IA v1 models"))
+# test_layers.append(("suprime-ia-v1-resid", "Suprime IA v1 residuals"))
+# 
+# test_layers.append(('suprime-L505', 'Suprime IA L505'))
+# 
+# test_layers.append(('dr10-deep', 'DR10 deep image'))
+# test_layers.append(('dr10-deep-model', 'DR10 deep model'))
+# test_layers.append(('dr10-deep-resid', 'DR10 deep resid'))

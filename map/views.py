@@ -382,6 +382,7 @@ def _index(req,
     #ra, dec, zoom = 244.7, 7.4, 13
 
     ra, dec = default_radec
+    radec_set = False
     zoom = default_zoom
 
     plate = req.GET.get('plate', None)
@@ -405,6 +406,7 @@ def _index(req,
     #     pass
     try:
         ra,dec = parse_radec_strings(req.GET.get('ra'), req.GET.get('dec'))
+        radec_set = True
     except:
         pass
 
@@ -433,7 +435,7 @@ def _index(req,
         tid = req.GET.get('targetid')
         tid = int(tid)
         print('Looking up TARGETID', tid)
-        t = lookup_targetid(tid)
+        t = lookup_targetid(tid, 'daily')
         if t is not None:
             ra = t.ra
             dec = t.dec
@@ -507,11 +509,12 @@ def _index(req,
                 fiberid = int(req.GET.get('fiber'), 10)
             except:
                 pass
-        try:
-            ra,dec = get_desi_tile_radec(tile, fiberid=fiberid)
-            print('Tile RA,Dec', ra,dec)
-        except:
-            pass
+        if not radec_set:
+            try:
+                ra,dec = get_desi_tile_radec(tile, fiberid=fiberid)
+                print('Tile RA,Dec', ra,dec)
+            except:
+                pass
 
     # if 'targetid' in req.GET:
     #     try:
@@ -781,7 +784,7 @@ def name_query(req):
         from map.cats import lookup_targetid
         tid = int(words[1])
         try:
-            t = lookup_targetid(tid)
+            t = lookup_targetid(tid, 'daily')
             ra = t.ra
             dec = t.dec
         except RuntimeError as e:
@@ -3452,15 +3455,25 @@ class LegacySurveySplitLayer(MapLayer):
         #I = np.flatnonzero((dd >= self.decsplit) * ngc)
         topmask = (dd >= self.decsplit) * ngc
 
+        topbandmap = {}
+
         if bands is None:
+
+            topbandmap.update(dict([(b,i) for i,b in enumerate(self.top_bands)]))
+            
             # HACK
             bands = self.bottom_bands
+        else:
+            topbandmap.update(dict([(b,i) for i,b in enumerate(bands)]))
+            
         ims = []
         topim = None
         botim = None
         for ii,band in enumerate(bands):
             if topims is not None:
-                topim = topims[ii]
+                if ii not in topbandmap:
+                    continue
+                topim = topims[topbandmap[band]]
             if botims is not None:
                 botim = botims[ii]
             # topim = None
@@ -6527,18 +6540,27 @@ def exposures_common(req, tgz, copsf):
     url = my_reverse(req, 'exposure_panels', args=('LAYER', '12345', 'EXTNAME'))
     url = url.replace('LAYER', '%s').replace('12345', '%i').replace('EXTNAME', '%s')
     url = req.build_absolute_uri(url)
+
     # Deployment: http://{s}.DOMAIN/...
     url = url.replace('://www.', '://')
     # Yuck!
     url = url.replace('://decaps.', '://')
-    url = url.replace('://', '://%s.')
+
     domains = settings.SUBDOMAINS
+    if len(domains):
+        # Deployment: http://{s}.DOMAIN/...
+        url = url.replace('://www.', '://')
+        url = url.replace('://', '://%s.')
 
     ccdsx = []
     for i,(ccd,_,x,y) in enumerate(ccds):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
         ccdlayer = getattr(ccd, 'layer', layername)
-        theurl = url % (domains[i%len(domains)], ccdlayer, int(ccd.expnum), ccd.ccdname.strip()) + '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
+        urlargs = [ccdlayer, int(ccd.expnum), ccd.ccdname.strip()]
+        if len(domains):
+            urlargs = [domains[i%len(domains)]] + urlargs
+        theurl = url % tuple(urlargs)
+        theurl +=  '?ra=%.4f&dec=%.4f&size=%i' % (ra, dec, size*2)
         expurl = my_reverse(req, 'ccd_detail_xhtml', args=(layername, '%s-%i-%s' % (ccd.camera.strip(), int(ccd.expnum), ccd.ccdname.strip())))
         expurl += '?rect=%i,%i,%i,%i' % (x-size, y-size, W, H)
         cutstr = ''
@@ -7915,6 +7937,8 @@ if __name__ == '__main__':
     #r = c.get('/targets-dr9-sv3-sec-dark/1/cat.json?ralo=149.7358&rahi=150.2803&declo=2.0732&dechi=2.3768')
     #r = c.get('/?zoom=15&targetid=39627788403084375')
     #r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
+    #r = c.get('/desi-spec-daily/1/cat.json?ralo=10.2550&rahi=10.2890&declo=21.2163&dechi=21.2337')
+    #r = c.get('/decaps-model/2/14/10246/10688.jpg')
     #r = c.get('/sga/1/cat.json?ralo=184.8415&rahi=185.3366&declo=25.4764&dechi=25.7223')
     #r = c.get('/ccd/ls-dr9.1.1/decam-166877-S6.xhtml?ra=152.3613&dec=0.2671')
     #r = c.get('/outliers-ast/1/14/9557/8044.jpg')
@@ -7929,6 +7953,10 @@ if __name__ == '__main__':
     #r = c.get('/pandas/1/14/16363/6307.jpg')
     #r = c.get('/pandas/1/14/15897/6126.jpg')
     #r = c.get('/pandas/1/14/15903/6126.jpg')
+    # tile 10489 / observed 20220324
+    #r = c.get('/desi-tile/1/cat.json?ralo=216.5628&rahi=217.1074&declo=0.8761&dechi=1.1755&tile=10489')
+    #r = c.get('/desi-spec-daily/1/cat.json?ralo=141.9359&rahi=142.0720&declo=30.0046&dechi=30.0694')
+    #r = c.get('/?targetid=39627733692582430')
     #r = c.get('/pandas/1/13/8184/3174.jpg')
     #r = c.get('/ls-dr10-early/1/13/8191/4680.jpg')
     #r = c.get('/ls-dr10-early/1/12/4095/2340.jpg')
@@ -7965,6 +7993,10 @@ if __name__ == '__main__':
     #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
     #r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
     #r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
+    #r = c.get('/desi-tile/1/cat.json?ralo=22.8159&rahi=24.7961&declo=30.3444&dechi=31.2786&tile=3371')
+    #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=359.9755&rahi=0.0374&declo=-9.5112&dechi=-9.4776')
+    #r = c.get('/desi-spec-daily/1/cat.json?ralo=359.9755&rahi=0.0374&declo=-9.5112&dechi=-9.4776')
+
     #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
     #r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
     #r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
@@ -8045,8 +8077,10 @@ if __name__ == '__main__':
     #r = c.get('/hsc-dr3/1/14/6219/8308.jpg')
     #r = c.get('/hsc-dr3/1/14/6220/8308.jpg')
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=i')
-    r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10-grz&pixscale=0.262&bands=griz')
-    r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
+    #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10-grz&pixscale=0.262&bands=griz')
+    #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
+    #r = c.get('/ls-dr10-south/1/15/17740/13629.jpg')
+    r = c.get('/ls-dr10/1/8/138/103.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

@@ -170,7 +170,7 @@ var addDesiTile = function(tileid) {
     added_desi_tiles.push(tileid);
     
     var name = 'desitile-' + tileid;
-    var pretty = 'DESI Tile '+tileid;
+    var pretty = 'DESI Tile ' + tileid + ' (fiberassign)';
     var layer = new DesiTileLayer(name, pretty,
         {'url': desitile_url, 'url_args': {'tile': ''+tileid}});
     var group = layer.getGroup();
@@ -181,6 +181,27 @@ var addDesiTile = function(tileid) {
                   layer: group };
     desi_tile_list.push(layer);
     map.addLayer(group);
+
+    // Spectra
+    var name = 'desi-spec-daily-tile' + tileid;
+    var pretty = 'DESI Tile ' + tileid + ' (spectra)';
+    var layer = new DesiSpectraCatalog(name, pretty, 'daily',
+                                       {'url': smallcat_url + '&tile=' + tileid,
+                                        'url_name': 'desi-spec-daily',
+                                        'urlTerm': 'tile='+tileid,
+                                        'radius': 600,
+                                       });
+    //'url_args': {'tile': ''+tileid}});
+    var group = layer.getGroup();
+    group._name = name;
+    //overlayTree.push({ label: pretty,
+    //                   layer: group });
+    var layer = { label: pretty,
+                  layer: group };
+    desi_tile_list.push(layer);
+    map.addLayer(group);
+
+    
     return layer;
 }
                              
