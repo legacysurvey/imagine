@@ -334,6 +334,76 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
     if tileid is not None:
         T.cut(T.tileid == tileid)
 
+    J = {}
+    print('Got', len(T), 'spectra')
+    if len(T) > 1000:
+        import numpy as np
+        from scipy.spatial import ConvexHull
+        
+        # Split into a 3x3 grid?  Cluster?
+        # Then find convex hull and send polygon & count?
+        ralo = float(req.GET['ralo'])
+        rahi = float(req.GET['rahi'])
+        declo = float(req.GET['declo'])
+        dechi = float(req.GET['dechi'])
+
+        T.ra_wrap = T.ra + -360 * (T.ra > 180)
+        if ralo > rahi:
+            ralo -= 360
+        assert(ralo < rahi)
+        assert(declo < dechi)
+
+        cluster_edges = []
+        cluster_labels = []
+
+        Iloose = []
+
+        # grid
+        nra = ndec = 3
+        for i in range(ndec):
+            for j in range(nra):
+                r1 = ralo +  j * (rahi - ralo) / nra
+                r2 = ralo + (j+1) * (rahi - ralo) / nra
+                d1 = declo +  i * (dechi - declo) / ndec
+                d2 = declo + (i+1) * (dechi - declo) / ndec
+                I = np.flatnonzero((T.ra_wrap >= r1) * (T.ra_wrap < r2) *
+                                   (T.dec >= d1)  * (T.dec < d2))
+                print(len(I), 'in grid cell', j, i)
+                if len(I) == 0:
+                    continue
+
+                if len(I) < 100:
+                    Iloose.append(I)
+                    continue
+
+                try:
+                    ch = ConvexHull(np.vstack((T.ra_wrap[I], T.dec[I])).T)
+                except:
+                    import traceback
+                    print_exc()
+                    continue
+                Ivert = I[ch.vertices]
+                ch = np.vstack((T.ra[Ivert], T.dec[Ivert])).T
+                #print('Convex hull:', ch)
+                chw = np.vstack((T.ra_wrap[Ivert], T.dec[Ivert])).T
+                c = np.mean(chw, axis=0)
+                cra,cdec = c
+                if cra < 0:
+                    cra += 360.
+                print('Center of convex hull:', cra,cdec)
+
+                cluster_edges.append([(float(r),float(d)) for r,d in ch])
+                cluster_labels.append([float(cra), float(cdec), '%i spectra' % len(I)])
+
+        J.update(cluster_edges=cluster_edges,
+                 cluster_labels=cluster_labels)
+        if len(Iloose):
+            I = np.hstack(Iloose)
+            T.cut(I)
+            # Continue to add the loose ones into J...
+        else:
+            return HttpResponse(json.dumps(J), content_type='application/json')
+
     cols = T.get_columns()
     rd = list((float(r),float(d)) for r,d in zip(T.get(racol), T.get(deccol)))
         
@@ -372,8 +442,8 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
         names.append(nm)
         colors.append(c)
 
-    J = dict(rd=rd, name=names, color=colors,
-             targetid=[str(i) for i in T.targetid])
+    J.update(dict(rd=rd, name=names, color=colors,
+                  targetid=[str(i) for i in T.targetid]))
     if 'fiber' in cols:
         J.update(fiberid=[int(i) for i in T.fiber])
     if 'tileid' in cols:

@@ -455,6 +455,7 @@ var CatalogOverlay = L.Evented.extend({
     },
 
     getLayer: function(result) {
+        console.log('CatalogOverlay.getLayer()');
         var showlabels = (map.getZoom() >= this._labelsMinZoom);
         var rdlist = result['rd'];
         var circleList = new Array(rdlist.length);
@@ -464,6 +465,17 @@ var CatalogOverlay = L.Evented.extend({
         var posAngle = result['posAngle'];
         var weights = result['weight'];
         var tooltipStyle = this.getTooltipStyle();
+
+        // HACK
+        //console.log('showlabels: ' + showlabels + ', rdlist length: ' + rdlist.length +
+        //', tooltypeStyle: ' + tooltipStyle);
+        if (rdlist.length > 100) {
+            //showlabels = false;
+            //console.log('Tooltip style before: ' + tooltipStyle);
+            tooltipStyle['permanent'] = false;
+            //console.log('Tooltip style after: ' + tooltipStyle);
+        }
+
         for (var i=0, len=rdlist.length; i<len; i++) {
             var r = rdlist[i][0];
             var d = rdlist[i][1];
@@ -2985,6 +2997,7 @@ var CircleOverlay = PolygonOverlay.extend({
         var clong = map.getCenter().lng;
         var tooltipStyle = this.getTooltipStyle();
         var showlabels = (map.getZoom() >= this._labelsMinZoom);
+        
         var style = this._style;
         for (var i=0, len=objs.length; i<len; i++) {
             var name = objs[i].name;
@@ -3614,10 +3627,53 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
         CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
         this.release = release;
     },
-    // getLayer: function(result) {
-    //     console.log('getLayer()');
-    //     return CatalogOverlay.prototype.getLayer.call(this, result);
-    // },
+
+    getLayer: function(result) {
+        console.log('DESI spectra catalog: getLayer()');
+        rd = result['rd'];
+        if (rd !== undefined) {
+            lg = CatalogOverlay.prototype.getLayer.call(this, result);
+        } else {
+            lg = L.layerGroup([]);
+        }
+
+        cl_labels = result['cluster_labels'];
+
+        cl_edges = result['cluster_edges'];
+        if (cl_edges !== undefined) {
+            var clong = map.getCenter().lng;
+            for (var i=0, len=cl_edges.length; i<len; i++) {
+                var rd = cl_edges[i];
+                var poly = [];
+                for (var j=0, plen=rd.length; j<plen; j++) {
+                    poly.push([dec2lat(rd[j][1]), ra2long_C(rd[j][0], clong)]);
+                }
+                var c = L.polygon(poly, {fill:false, color:"white", weight:4 });
+
+                if (cl_labels !== undefined) {
+                    c.bindTooltip(cl_labels[i][2], {permanent:true});
+                }
+                lg.addLayer(c);
+            }
+        }
+        /*
+          var clong = map.getCenter().lng;
+          for (var i=0, len=cl_labels.length; i<len; i++) {
+          var ra = cl_labels[i][0];
+          var dec = cl_labels[i][1];
+          var text = cl_labels[i][2];
+          var poly = [];
+          for (var j=0, plen=rd.length; j<plen; j++) {
+          poly.push([dec2lat(rd[j][1]), ra2long_C(rd[j][0], clong)]);
+          }
+          var c = L.polygon(poly, {fill:false, color:"white", weight:4 });
+          lg.addLayer(c);
+          }
+          }
+        */
+        return lg;
+    },
+
     getLabel: function(json, i) {
         return '<a href="' + root_url + 'desi-spectrum/' + this.release + '/'
             + 'targetid' + json['targetid'][i]
@@ -3641,7 +3697,6 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
             + '<br/>RA,Dec: ' + ra.toFixed(4) + ', ' + dec.toFixed(4)
             + '<br/>Targetid: ' + json['targetid'][i];
     },
-
 });
 
 {% endif %}
@@ -3651,8 +3706,8 @@ var desi_spec_edr = new DesiSpectraCatalog(
     'desi-spec-edr', 'DESI EDR spectra', 'edr',
     {'url': smallcat_url,
      'radius': 300,
-     'labelsMinZoom': 12,
-     'minZoom': 11,
+     'labelsMinZoom': 10,
+     'minZoom': 6,
     });
 {% endif %}
   
