@@ -70,7 +70,7 @@
 
  // this is just to reset the indent level for emacs javascript-mode;
  // the "{#" is a django template comment.
- {# }}}} #}
+ {# }}}}} #}
 
 // Variables from django.
 
@@ -3469,6 +3469,56 @@ and entries in the "in brick/ccd" panel.
 {% endcomment %}
 
 
+{% if enable_desi_data or enable_desi_edr %}
+var DesiTileOverlay = CircleOverlay.extend({
+     highlight: function(obj) {
+     },
+
+    getTooltipStyle() {
+        var z = map.getZoom()
+        return { permanent: (z >= 12),
+                 interactive: true,
+                 //className: (z == 12 ? 'spectrumTooltipSmall' : 'spectrumTooltip'),
+               };
+    },
+/*
+     getPopupText: function(json, i) {
+      return json['objs'][i]['name'];
+  },
+*/
+});
+{% endif %}
+{% if enable_desi_edr %}
+
+var desi_edr_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In DESI EDR tiles: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + edr_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+var edr_detail = function(ov, objs, aparams) {
+     return objs;
+};
+var desi_tiles_edr = new DesiTileOverlay('desi-tiles-edr',
+                                         'DESI EDR tiles',
+                                         {'url': smallcat_url,
+                                          'url_args': { 'id': 'desi-tiles/edr',
+                                                        'ver': getcatversion('desi-tiles/edr') },
+                                          'labelsMinZoom': 100,
+                                          'detail_list': desi_edr_detail_list,
+                                          'detail': edr_detail,
+                                         });
+desi_tiles_edr._style = {'fillOpacity': 0.05 };
+
+{% endif %}
+
 {% if enable_desi_targets %}
 var guadalupe_detail_list = function(ov, objs) {
     if (objs.length == 0) { return ''; }
@@ -3521,23 +3571,6 @@ var daily_detail = function(ov, objs, aparams) {
      return objs;
 };
 
-var DesiTileOverlay = CircleOverlay.extend({
-     highlight: function(obj) {
-     },
-
-    getTooltipStyle() {
-        var z = map.getZoom()
-        return { permanent: (z >= 12),
-                 interactive: true,
-                 //className: (z == 12 ? 'spectrumTooltipSmall' : 'spectrumTooltip'),
-               };
-    },
-/*
-     getPopupText: function(json, i) {
-      return json['objs'][i]['name'];
-  },
-*/
-});
 
 var desi_tiles_guadalupe = new DesiTileOverlay('desi-tiles-guadalupe',
                                      'DESI Guadalupe tiles',
@@ -3574,7 +3607,7 @@ desi_tiles_daily._style = {'fillOpacity': 0.05 };
 
 {% endif %}
 
-{% if enable_desi_data %}
+{% if enable_desi_data or enable_desi_edr %}
 
 var DesiSpectraCatalog = CatalogOverlay.extend({
     initialize: function(name, pretty, release, kwargs) {
@@ -3611,6 +3644,20 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
 
 });
 
+{% endif %}
+
+{% if enable_desi_edr %}
+var desi_spec_edr = new DesiSpectraCatalog(
+    'desi-spec-edr', 'DESI EDR spectra', 'edr',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 12,
+     'minZoom': 11,
+    });
+{% endif %}
+  
+{% if enable_desi_data %}
+
 var desi_spec_daily = new DesiSpectraCatalog(
     'desi-spec-daily', 'DESI daily spectra', 'daily',
     {'url': smallcat_url,
@@ -3637,8 +3684,6 @@ var desi_spec_fuji = new DesiSpectraCatalog(
     });
 
 {% endif %}
-
-////////////////////// DESI All tiles
 
 var polygonOverlays = [ 
     {% if enable_dr5_overlays %}
@@ -3688,6 +3733,9 @@ var polygonOverlays = [
     ccdOverlaySdss,
     {% if enable_spectra %}
     plateOverlay,
+    {% endif %}
+    {% if enable_desi_edr %}
+    desi_tiles_edr,
     {% endif %}
     {% if enable_desi_data %}
     desi_tiles_guadalupe,
@@ -4325,6 +4373,10 @@ var overlays = [
     desi_targets_dr9_main_sec_dark,
     desi_targets_dr9_main_sec_bright,
     {% endif %}
+    {% if enable_desi_edr %}
+    desi_tiles_edr,
+    desi_spec_edr,
+    {% endif %}
     {% if enable_desi_data %}
     desi_tiles_guadalupe,
     desi_spec_guadalupe,
@@ -4866,11 +4918,15 @@ var overlayTree = [];
            { label: 'DESI Individual Tiles',
              children: desi_tile_list },
          {% endif %}
-         {% if enable_desi_footprint %}
+           {% if enable_desi_footprint %}
            findoverlay('desi-footprint'),
            findoverlay('desi-fiberpos'),
-         {% endif %}
-         {% if enable_desi_data %}
+           {% endif %}
+           {% if enable_desi_edr %}
+           findoverlay('desi-tiles-edr'),
+           findoverlay('desi-spec-edr'),
+           {% endif %}
+           {% if enable_desi_data %}
            findoverlay('desi-tiles-guadalupe'),
            findoverlay('desi-spec-guadalupe'),
            findoverlay('desi-tiles-fuji'),
@@ -4983,7 +5039,10 @@ var layerTree = L.control.layers.tree(baseTree,
          {% endif %}
          'Boundaries',
          'Imaging catalogs',
+         {% if enable_desi_edr %}
+         {% else %}
          'DESI',
+         {% endif %}
             ];
 
      for (var i=0,len=txts.length; i<len; i++) {

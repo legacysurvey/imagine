@@ -77,6 +77,8 @@ catversions = {
     'desi-tiles': [1,],
     'masks-dr8': [1,],
     'photoz-dr9': [1,],
+    'desi-edr-tiles': [1,],
+    'desi-edr-spectra': [1,],
     'desi-daily-tiles': [1,],
     'desi-daily-spectra': [1,],
     'desi-fuji-tiles': [1,],
@@ -259,7 +261,9 @@ def desi_healpix_spectrum(req, obj, release):
         return HttpResponse(f)
         
 def get_desi_spectro_kdfile(release):
-    if release == 'daily':
+    if release == 'edr':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-edr', 'zpix-all.kd.fits')
+    elif release == 'daily':
         return os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')
     elif release == 'guadalupe':
         return os.path.join(settings.DATA_DIR, 'desi-spectro-guadalupe', 'zpix-all.kd.fits')
@@ -315,6 +319,8 @@ def cat_desi_fuji_spectra_detail(req, targetid):
 def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
     import json
     T = cat_kd(req, ver, tag, kdfn, racol=racol, deccol=deccol)
+    print('Got', len(T), 'spectra')
+
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])), #, z=[], zerr=[])),
                             content_type='application/json')
@@ -421,6 +427,11 @@ def cat_desi_fuji_spectra(req, ver):
     tag = 'desi-fuji-spectra'
     return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
 
+def cat_desi_edr_spectra(req, ver):
+    kdfn = get_desi_spectro_kdfile('edr')
+    tag = 'desi-edr-spectra'
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
+
 def cat_desi_release_tiles(req, ver, release):
     import json
     from astrometry.util.fits import fits_table
@@ -488,6 +499,9 @@ def cat_desi_guadalupe_tiles(req, ver):
 def cat_desi_fuji_tiles(req, ver):
     #startree -i /global/cfs/cdirs/desi/spectro/redux/fuji/tiles-fuji.fits -R tilera -D tiledec -PTk -o data/desi-spectro-fuji/tiles2.kd.fits
     return cat_desi_release_tiles(req, ver, 'fuji')
+
+def cat_desi_edr_tiles(req, ver):
+    return cat_desi_release_tiles(req, ver, 'edr')
 
 def cat_photoz_dr9(req, ver):
     '''

@@ -435,7 +435,11 @@ def _index(req,
         tid = req.GET.get('targetid')
         tid = int(tid)
         print('Looking up TARGETID', tid)
-        t = lookup_targetid(tid, 'daily')
+        if settings.ENABLE_DESI_DATA:
+            t = lookup_targetid(tid, 'daily')
+        else:
+            t = lookup_targetid(tid, 'edr')
+
         if t is not None:
             ra = t.ra
             dec = t.dec
@@ -566,6 +570,9 @@ def _index(req,
         import traceback
         traceback.print_exc()
 
+    enable_desi_edr = False
+    kwargs.update(enable_desi_edr=enable_desi_edr)
+
     #print('Setting initial RA,Dec position', ra, dec)
 
     args = dict(ra=ra, dec=dec,
@@ -632,7 +639,7 @@ def decaps(req):
 def dr5(req):
     return _index(req, enable_decaps=True,
                   enable_ps1=False,
-                  enable_desi_targets=True,
+                  enable_desi_targets=False,
                   default_layer='decals-dr5',
                   default_radec=(234.7, 13.6),
                   rooturl=settings.ROOT_URL + '/dr5',
@@ -641,7 +648,7 @@ def dr5(req):
 def dr6(req):
     return _index(req, enable_decaps=True,
                   enable_ps1=False,
-                  enable_desi_targets=True,
+                  enable_desi_targets=False,
                   default_layer='mzls+bass-dr6',
                   default_radec=(175.32, 47.69),
                   rooturl=settings.ROOT_URL + '/dr6',
@@ -8080,7 +8087,11 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10-grz&pixscale=0.262&bands=griz')
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
     #r = c.get('/ls-dr10-south/1/15/17740/13629.jpg')
-    r = c.get('/ls-dr10/1/8/138/103.jpg')
+    #r = c.get('/ls-dr10/1/8/138/103.jpg')
+    #r = c.get('/')
+    #r = c.get('/desi-tiles/edr/1/cat.json?ralo=142.1851&rahi=158.0273&declo=-2.1857&dechi=6.5009')
+    #r = c.get('/desi-spec-edr/1/cat.json?ralo=149.6482&rahi=150.6384&declo=3.5210&dechi=4.0636')
+    r = c.get('/desi-spec-edr/1/cat.json?ralo=149.5747&rahi=150.5649&declo=3.0891&dechi=3.6320')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

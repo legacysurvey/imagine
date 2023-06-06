@@ -13,10 +13,15 @@ urlpatterns_desi = [
 ]
 
 # DESI public
-urlpatterns_desi.append(
+urlpatterns_desi.extend([
     # All DESI tiles (tiles-main.ecsv)
     re_path(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
-)
+
+    # DESI EDR tiles
+    re_path(r'^desi-tiles/edr/(\d+)/cat.json', cats.cat_desi_edr_tiles),
+    # DESI EDR spectra
+    re_path(r'^desi-spec-edr/(\d+)/cat.json', cats.cat_desi_edr_spectra),
+])
 
 if settings.ENABLE_DESI_DATA:
     # Private
