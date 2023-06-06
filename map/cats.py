@@ -77,18 +77,12 @@ catversions = {
     'desi-tiles': [1,],
     'masks-dr8': [1,],
     'photoz-dr9': [1,],
-    'desi-all-tiles': [1,],
-    'desi-denali-tiles': [1,],
-    'desi-denali-spectra': [1,],
     'desi-daily-tiles': [1,],
     'desi-daily-spectra': [1,],
-
     'desi-fuji-tiles': [1,],
     'desi-fuji-spectra': [1,],
     'desi-guadalupe-tiles': [1,],
     'desi-guadalupe-spectra': [1,],
-
-    #'ls-dr10a': [1,],
     'ls-dr10': [1,],
     'ls-dr10-south': [1,],
 }
