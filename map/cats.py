@@ -230,8 +230,14 @@ def desi_healpix_spectrum(req, obj, release):
     hp = '%i' % obj.healpix
     hp_pre = '%i' % (obj.healpix//100)
 
-    fn = ('/global/cfs/cdirs/desi/spectro/redux/%s/healpix/%s/%s/%s/%s/coadd-%s-%s-%s.fits' %
-          (release, surv, prog,hp_pre, hp, surv, prog, hp))
+    if release == 'edr':
+        basedir = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji'
+    else:
+        basedir = '/global/cfs/cdirs/desi/spectro/redux/%s' % release
+
+    
+    fn = os.path.join(basedir, 'healpix', surv, prog, hp_pre, hp,
+                      'coadd-%s-%s-%s.fits' % (surv, prog, hp))
 
     spectra = read_spectra(fn)
     spectra = spectra.select(targets=[obj.targetid])
@@ -315,6 +321,13 @@ def cat_desi_fuji_spectra_detail(req, targetid):
     if t is None:
         return HttpResponse('No such targetid found in DESI Fuji spectra: %s' % targetid)
     return desi_healpix_spectrum(req, t, 'fuji')
+
+def cat_desi_edr_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    t = lookup_targetid(targetid, 'edr')
+    if t is None:
+        return HttpResponse('No such targetid found in DESI EDR spectra: %s' % targetid)
+    return desi_healpix_spectrum(req, t, 'edr')
 
 def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
     import json
@@ -2919,15 +2932,16 @@ def get_desi_tile_radec(tileid, fiberid=None):
 if __name__ == '__main__':
     import sys
 
-    from map.views import get_layer
-    #galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
-    #layer = get_layer('hsc2')
-    #create_galaxy_catalog(galfn, None, layer=layer)
-
-    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr10.fits')
-    layer = get_layer('ls-dr10')
-    create_galaxy_catalog(galfn, None, layer=layer)
-    sys.exit(0)
+    if False:
+        from map.views import get_layer
+        #galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
+        #layer = get_layer('hsc2')
+        #create_galaxy_catalog(galfn, None, layer=layer)
+    
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr10.fits')
+        layer = get_layer('ls-dr10')
+        create_galaxy_catalog(galfn, None, layer=layer)
+        sys.exit(0)
     
     # galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
     # layer = get_layer('ls-dr9-north')
@@ -2995,6 +3009,7 @@ if __name__ == '__main__':
     #r = c.get('/desi-spectrum/daily/targetid43977408013222855')
     #r = c.get('/ls-dr9/1/15/29479/18709.cat.json')
     #r = c.get('/usercatalog/1/cat.json?ralo=61.2789&rahi=61.3408&declo=-74.8711&dechi=-74.8622&cat=tmpbclfdga8')
+    r = c.get('/desi-spectrum/edr/targetid39627883857055540')
 
     f = open('out', 'wb')
     for x in r:
@@ -3019,5 +3034,4 @@ if __name__ == '__main__':
     from django.test import Client
     c = Client()
     c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
-
     sys.exit(0)

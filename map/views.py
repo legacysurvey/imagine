@@ -571,6 +571,7 @@ def _index(req,
         traceback.print_exc()
 
     enable_desi_edr = False
+    enable_desi_edr = (req.GET.get('desi-edr-open') == 'sesame')
     kwargs.update(enable_desi_edr=enable_desi_edr)
 
     #print('Setting initial RA,Dec position', ra, dec)
@@ -8092,9 +8093,11 @@ if __name__ == '__main__':
     #r = c.get('/desi-tiles/edr/1/cat.json?ralo=142.1851&rahi=158.0273&declo=-2.1857&dechi=6.5009')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=149.6482&rahi=150.6384&declo=3.5210&dechi=4.0636')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=149.5747&rahi=150.5649&declo=3.0891&dechi=3.6320')
-    r = c.get('/desi-spec-edr/1/cat.json?ralo=149.9105&rahi=150.9007&declo=3.6203&dechi=4.1629')
+    #r = c.get('/desi-spec-edr/1/cat.json?ralo=149.9105&rahi=150.9007&declo=3.6203&dechi=4.1629')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=150.0909&rahi=150.3385&declo=2.5967&dechi=2.7325')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=150.1528&rahi=150.2766&declo=2.6306&dechi=2.6985')
+    #r = c.get('/desi-spectrum/edr/targetid39627883857055540')
+    r = c.get('/desi-spec-edr/1/cat.json?ralo=142.1631&rahi=158.0054&declo=-1.4500&dechi=7.2317')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
