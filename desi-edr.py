@@ -4,15 +4,25 @@ import numpy as np
 from astrometry.util.fits import fits_table, merge_tables
 from desi_spectro_kdtree import create_desi_spectro_kdtree
 
-os.system('startree -i /global/cfs/cdirs/desi/public/edr/spectro/redux/fuji/tiles-fuji.fits -R tilera -D tiledec -PTk -o data/desi-edr/tiles2.kd.fits')
+basedir = 'data/dei-spectro-edr'
+
+os.system('startree -i /global/cfs/cdirs/desi/public/edr/spectro/redux/fuji/tiles-fuji.fits -R tilera -D tiledec -PTk -o %s/tiles2.kd.fits' % basedir)
 
 if True:
     from astrometry.util.fits import fits_table
     import numpy as np
     from scipy.spatial import ConvexHull
-    desi_radius = 1.628
+    #desi_radius = 1.628 # 114 / 297
+    #desi_radius = 1.629 # 114 / 266
+    #desi_radius = 1.630 # 114 / 238
+    #desi_radius = 1.640 # 111 /  86
+    #desi_radius = 1.650 # 109 /  33
+    #desi_radius = 1.660 # 108 /  17
+    #desi_radius = 1.670 # 107 /   8
+    #desi_radius = 1.680 # 106 /   1
+    desi_radius = 1.690 # 106 /   1
     release = 'edr'
-    fn = os.path.join('data', 'desi-spectro-%s/tiles2.kd.fits' % release)
+    fn = os.path.join(basedir, 'tiles2.kd.fits')
     tiles = fits_table(fn)
     print(len(tiles), 'tiles')
 
@@ -57,8 +67,9 @@ if True:
 
     import json
     J = json.dumps([list(c.ravel()) for c in cluster_hulls])
-    open('tile-clusters.json', 'w').write(J)
-    sys.exit(0)
+    open(os.path.join(basedir, 'tile-clusters.json'), 'w').write(J)
+
+    tile_clusters = cluster_hulls
 
 TT = []
 for surv,prog in [('cmx','other'), ('special','dark'),
@@ -75,6 +86,40 @@ for surv,prog in [('cmx','other'), ('special','dark'),
     T.program = np.array([prog]*len(T))
     TT.append(T)
 T = merge_tables(TT)
-fn = 'data/desi-edr/zpix-all.fits'
+
+in_cluster = np.zeros(len(T), bool)
+
+T.tile_cluster = np.zeros(len(T), np.int16)
+T.tile_cluster[:] = -1
+
+from astrometry.util.miscutils import point_in_poly
+
+for cl_i,rd in enumerate(tile_clusters):
+    ra,dec = rd[:,0],rd[:,1]
+    #if ra_wrap:
+    #ra_w = ra + -360 * (ra > 180)
+    #else:
+    ra_w = ra
+    poly = np.vstack((ra_w,dec)).T
+
+    #isin = point_in_poly(T.ra_wrap, T.dec, np.vstack((ra_w,dec)).T)
+    isin = point_in_poly(T.target_ra, T.target_dec, np.vstack((ra_w,dec)).T)
+    I = np.flatnonzero(isin)
+    print(len(I), 'spectra in cluster', cl_i)
+    assert(np.all(in_cluster[I] == False))
+    T.tile_cluster[I] = cl_i
+    in_cluster[I] = True
+
+from collections import Counter
+print('Tile_cluster membership:', Counter(T.tile_cluster))
+print('In a cluster:', Counter(in_cluster))
+
+print('not in a cluster:')
+I = np.flatnonzero(T.tile_cluster == -1)
+for i in I:
+    print('https://www.legacysurvey.org/viewer/?ra=%.4f&dec=%.4f&layer=ls-dr9&zoom=8&desi-tiles-edr&desi-spec-edr' % (T.target_ra[i], T.target_dec[i]))
+assert(len(I) == 0)
+
+fn = os.path.join(basedir, 'zpix-all.fits'
 T.writeto(fn)
-create_desi_spectro_kdtree(fn, 'data/desi-edr/zpix-all.kd.fits', racol='target_ra', deccol='target_dec')
+create_desi_spectro_kdtree(fn, '%s/zpix-all.kd.fits' % basedir, racol='target_ra', deccol='target_dec')

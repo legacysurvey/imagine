@@ -377,39 +377,46 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
 
         Iloose = []
 
-        # cluster nearby spectra
-        # This is too slow!
-        # from astrometry.libkd.spherematch import cluster_radec
-        # print('Clustering...')
-        # I = cluster_radec(T.ra, T.dec, 10./60., singles=True)
-        # print('Found', len(I), 'clusters')
-
         from astrometry.util.miscutils import point_in_poly, clip_polygon
-        #from collections import Counter
 
         Iclusters = []
 
-        if tile_clusters is None:
-            tile_clusters = []
-        for cl_i,rd in enumerate(tile_clusters):
-            #print('Tile cluster boundary:', rd.shape)
-            ra,dec = rd[:,0],rd[:,1]
-            if ra_wrap:
-                ra_w = ra + -360 * (ra > 180)
-            else:
-                ra_w = ra
-            # completely outside RA,Dec region?
-            if min(ra_w) > rahi or max(ra_w) < ralo or min(dec) > dechi or max(dec) < declo:
-                #print('Tile not nearby, skipping')
-                continue
-            poly = np.vstack((ra_w,dec)).T
-            #print('Poly', poly.shape)
-            isin = point_in_poly(T.ra_wrap, T.dec, np.vstack((ra_w,dec)).T)
-            I = np.flatnonzero(isin)
-            print(len(I), 'spectra in cluster', cl_i)
-            if len(I) == 0:
-                continue
-            Iclusters.append((I, (ra,ra_w,dec)))
+        # Use pre-computed cluster membership!
+        if tile_clusters is not None:
+            cl = np.unique(T.tile_cluster)
+            print(len(cl), 'unique clusters')
+            for cl_i in cl:
+                rd = tile_clusters[cl_i]
+                ra,dec = rd[:,0],rd[:,1]
+                if ra_wrap:
+                    ra_w = ra + -360 * (ra > 180)
+                else:
+                    ra_w = ra
+                I = np.flatnonzero(T.tile_cluster == cl_i)
+                print(len(I), 'spectra in cluster', cl_i)
+                Iclusters.append((I, (ra,ra_w,dec)))
+
+        # if tile_clusters is None:
+        #     tile_clusters = []
+        # for cl_i,rd in enumerate(tile_clusters):
+        #     #print('Tile cluster boundary:', rd.shape)
+        #     ra,dec = rd[:,0],rd[:,1]
+        #     if ra_wrap:
+        #         ra_w = ra + -360 * (ra > 180)
+        #     else:
+        #         ra_w = ra
+        #     # completely outside RA,Dec region?
+        #     if min(ra_w) > rahi or max(ra_w) < ralo or min(dec) > dechi or max(dec) < declo:
+        #         #print('Tile not nearby, skipping')
+        #         continue
+        #     poly = np.vstack((ra_w,dec)).T
+        #     #print('Poly', poly.shape)
+        #     isin = point_in_poly(T.ra_wrap, T.dec, np.vstack((ra_w,dec)).T)
+        #     I = np.flatnonzero(isin)
+        #     print(len(I), 'spectra in cluster', cl_i)
+        #     if len(I) == 0:
+        #         continue
+        #     Iclusters.append((I, (ra,ra_w,dec)))
 
         if len(Iclusters) > 1:
             for I,(ra,ra_w,dec) in Iclusters:
@@ -417,7 +424,11 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
                     Iloose.append(I)
                     continue
                 K = np.flatnonzero((ra_w > ralo) * (ra_w < rahi) * (dec > declo) * (dec < dechi))
-                cra,cdec = np.mean(np.vstack((ra_w[K], dec[K])), axis=1)
+                if len(K) > 0:
+                    cra,cdec = np.mean(np.vstack((ra_w[K], dec[K])), axis=1)
+                else:
+                    cra = (ralo + rahi) / 2.
+                    cdec = (declo + dechi) / 2.
                 if cra < 0:
                     cra += 360.
                 #cliprd = clip_polygon(np.vstack((ra_w,dec)).T,
@@ -435,71 +446,6 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
             # grid
             nra = ndec = 3
 
-        # Dang nope we have the zpix files, so no tile identifiers!
-        # Spectra within a tile are clustered, so:
-        # - Find the convex hull of each tile
-        # - Cluster tiles by finding overlaps between their convex hulls
-
-        # from astrometry.util.miscutils import polygons_intersect
-        # T.about()
-        # tiles = np.unique(T.tileid)
-        # print(len(tiles), 'tiles')
-        # if len(tiles) > 1:
-        # 
-        #     clusters = {}
-        #     clnum = 1
-        #     #tile_hulls = {}
-        #     
-        #     for tile in tiles:
-        #         I = np.flatnonzero(T.tileid == tile)
-        #         print('Tile', tile, 'has', len(I), 'spectra')
-        #         try:
-        #             ch = ConvexHull(np.vstack((T.ra_wrap[I], T.dec[I])).T)
-        #         except:
-        #             import traceback
-        #             print_exc()
-        #             continue
-        #         #tile_hulls[tile] = (T.ra_wrap[I[ch.vertices]], T.dec[I[ch.vertices]])
-        #         hull = np.vstack((T.ra_wrap[I[ch.vertices]], T.dec[I[ch.vertices]])).T
-        #         print('Hull', hull.shape)
-        # 
-        #         #newclusters = {}
-        #         merge = []
-        #         for cnum,(chull,cn) in clusters.items():
-        #             if not polygons_intersect(chull, hull):
-        #                 continue
-        #             print('Intersection with existing cluster', cnum) # with', cn, 'points')
-        #             merge.append(cnum)
-        #         #     print('cluster hull:', chull.shape)
-        #         #     pts = np.hstack((chull, hull))
-        #         #     print('combined:', pts.shape)
-        #         #     newhull = ConvexHull(pts)
-        #         #     newhull = pts[newhull.vertices,:]
-        #         #     newn = cn + len(I)
-        #         #     newclusters[cnum] = (newhull, newn)
-        #         # clusters.update(newclusters)
-        # 
-        #         if len(merge) > 0:
-        #             pts = []
-        #             newn = len(I)
-        #             for cnum in merge:
-        #                 chull,cn = clusters[cnum]
-        #                 pts.append(chull)
-        #                 newn += cn
-        #                 del clusters[cnum]
-        #             pts = np.hstack(pt)
-        #             print('combined hull points:', pts.shape)
-        #             ch = ConvexHull(pts)
-        #             newhull = pts[ch.vertices, :]
-        #             print('Updating cluster', merge[0], ': now has', newn, 'points')
-        #             clusters[merge[0]] = (newhull, newn)
-        #         else:
-        #             # Create new cluster!
-        #             print('Creating new cluster', clnum)
-        #             clusters[clnum] = (hull, len(I))
-        #             clnum += 1
-
-        
         for i in range(ndec):
             for j in range(nra):
                 r1 = ralo +  j * (rahi - ralo) / nra
@@ -530,8 +476,7 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
                 cra,cdec = c
                 if cra < 0:
                     cra += 360.
-                print('Center of convex hull:', cra,cdec)
-
+                #print('Center of convex hull:', cra,cdec)
                 cluster_edges.append([(float(r),float(d)) for r,d in ch])
                 cluster_labels.append([float(cra), float(cdec), '%i spectra' % len(I)])
 
