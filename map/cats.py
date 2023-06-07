@@ -329,7 +329,8 @@ def cat_desi_edr_spectra_detail(req, targetid):
         return HttpResponse('No such targetid found in DESI EDR spectra: %s' % targetid)
     return desi_healpix_spectrum(req, t, 'edr')
 
-def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
+def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
+                             tile_clusters=None):
     import json
     T = cat_kd(req, ver, tag, kdfn, racol=racol, deccol=deccol)
     print('Got', len(T), 'spectra')
@@ -360,9 +361,14 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
         declo = float(req.GET['declo'])
         dechi = float(req.GET['dechi'])
 
-        T.ra_wrap = T.ra + -360 * (T.ra > 180)
-        if ralo > rahi:
+        ra_wrap = ralo > rahi
+        if ra_wrap:
+            # Move RAs to +- 0
+            T.ra_wrap = T.ra + -360 * (T.ra > 180)
             ralo -= 360
+        else:
+            T.ra_wrap = T.ra
+
         assert(ralo < rahi)
         assert(declo < dechi)
 
@@ -371,8 +377,129 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
 
         Iloose = []
 
-        # grid
-        nra = ndec = 3
+        # cluster nearby spectra
+        # This is too slow!
+        # from astrometry.libkd.spherematch import cluster_radec
+        # print('Clustering...')
+        # I = cluster_radec(T.ra, T.dec, 10./60., singles=True)
+        # print('Found', len(I), 'clusters')
+
+        from astrometry.util.miscutils import point_in_poly, clip_polygon
+        #from collections import Counter
+
+        Iclusters = []
+
+        if tile_clusters is None:
+            tile_clusters = []
+        for cl_i,rd in enumerate(tile_clusters):
+            #print('Tile cluster boundary:', rd.shape)
+            ra,dec = rd[:,0],rd[:,1]
+            if ra_wrap:
+                ra_w = ra + -360 * (ra > 180)
+            else:
+                ra_w = ra
+            # completely outside RA,Dec region?
+            if min(ra_w) > rahi or max(ra_w) < ralo or min(dec) > dechi or max(dec) < declo:
+                #print('Tile not nearby, skipping')
+                continue
+            poly = np.vstack((ra_w,dec)).T
+            #print('Poly', poly.shape)
+            isin = point_in_poly(T.ra_wrap, T.dec, np.vstack((ra_w,dec)).T)
+            I = np.flatnonzero(isin)
+            print(len(I), 'spectra in cluster', cl_i)
+            if len(I) == 0:
+                continue
+            Iclusters.append((I, (ra,ra_w,dec)))
+
+        if len(Iclusters) > 1:
+            for I,(ra,ra_w,dec) in Iclusters:
+                if len(I) < 100:
+                    Iloose.append(I)
+                    continue
+                K = np.flatnonzero((ra_w > ralo) * (ra_w < rahi) * (dec > declo) * (dec < dechi))
+                cra,cdec = np.mean(np.vstack((ra_w[K], dec[K])), axis=1)
+                if cra < 0:
+                    cra += 360.
+                #cliprd = clip_polygon(np.vstack((ra_w,dec)).T,
+                #                      np.array([[ralo,declo],[ralo,dechi],[rahi,dechi],[rahi,declo]]))
+                #cliprd = np.array(cliprd)
+                #ra,dec = cliprd[:,0], cliprd[:,1]
+                cluster_edges.append([(float(r),float(d)) for r,d in zip(ra,dec)])
+                cluster_labels.append([float(cra), float(cdec), '%i spectra' % len(I)])
+
+
+            # No grid!
+            nra = ndec = 0
+
+        else:
+            # grid
+            nra = ndec = 3
+
+        # Dang nope we have the zpix files, so no tile identifiers!
+        # Spectra within a tile are clustered, so:
+        # - Find the convex hull of each tile
+        # - Cluster tiles by finding overlaps between their convex hulls
+
+        # from astrometry.util.miscutils import polygons_intersect
+        # T.about()
+        # tiles = np.unique(T.tileid)
+        # print(len(tiles), 'tiles')
+        # if len(tiles) > 1:
+        # 
+        #     clusters = {}
+        #     clnum = 1
+        #     #tile_hulls = {}
+        #     
+        #     for tile in tiles:
+        #         I = np.flatnonzero(T.tileid == tile)
+        #         print('Tile', tile, 'has', len(I), 'spectra')
+        #         try:
+        #             ch = ConvexHull(np.vstack((T.ra_wrap[I], T.dec[I])).T)
+        #         except:
+        #             import traceback
+        #             print_exc()
+        #             continue
+        #         #tile_hulls[tile] = (T.ra_wrap[I[ch.vertices]], T.dec[I[ch.vertices]])
+        #         hull = np.vstack((T.ra_wrap[I[ch.vertices]], T.dec[I[ch.vertices]])).T
+        #         print('Hull', hull.shape)
+        # 
+        #         #newclusters = {}
+        #         merge = []
+        #         for cnum,(chull,cn) in clusters.items():
+        #             if not polygons_intersect(chull, hull):
+        #                 continue
+        #             print('Intersection with existing cluster', cnum) # with', cn, 'points')
+        #             merge.append(cnum)
+        #         #     print('cluster hull:', chull.shape)
+        #         #     pts = np.hstack((chull, hull))
+        #         #     print('combined:', pts.shape)
+        #         #     newhull = ConvexHull(pts)
+        #         #     newhull = pts[newhull.vertices,:]
+        #         #     newn = cn + len(I)
+        #         #     newclusters[cnum] = (newhull, newn)
+        #         # clusters.update(newclusters)
+        # 
+        #         if len(merge) > 0:
+        #             pts = []
+        #             newn = len(I)
+        #             for cnum in merge:
+        #                 chull,cn = clusters[cnum]
+        #                 pts.append(chull)
+        #                 newn += cn
+        #                 del clusters[cnum]
+        #             pts = np.hstack(pt)
+        #             print('combined hull points:', pts.shape)
+        #             ch = ConvexHull(pts)
+        #             newhull = pts[ch.vertices, :]
+        #             print('Updating cluster', merge[0], ': now has', newn, 'points')
+        #             clusters[merge[0]] = (newhull, newn)
+        #         else:
+        #             # Create new cluster!
+        #             print('Creating new cluster', clnum)
+        #             clusters[clnum] = (hull, len(I))
+        #             clnum += 1
+
+        
         for i in range(ndec):
             for j in range(nra):
                 r1 = ralo +  j * (rahi - ralo) / nra
@@ -513,7 +640,14 @@ def cat_desi_fuji_spectra(req, ver):
 def cat_desi_edr_spectra(req, ver):
     kdfn = get_desi_spectro_kdfile('edr')
     tag = 'desi-edr-spectra'
-    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
+    clusters = open(os.path.join(settings.DATA_DIR, 'desi-spectro-edr', 'tile-clusters.json')).read()
+    import json
+    import numpy as np
+    clusters = json.loads(clusters)
+    clusters = [np.array(cl).reshape(-1,2) for cl in clusters]
+
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec',
+                                    tile_clusters=clusters)
 
 def cat_desi_release_tiles(req, ver, release):
     import json
