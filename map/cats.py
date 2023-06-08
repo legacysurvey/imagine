@@ -319,8 +319,6 @@ def cat_desi_fuji_spectra_detail(req, targetid):
 def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
     import json
     T = cat_kd(req, ver, tag, kdfn, racol=racol, deccol=deccol)
-    print('Got', len(T), 'spectra')
-
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])), #, z=[], zerr=[])),
                             content_type='application/json')
