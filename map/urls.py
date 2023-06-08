@@ -19,8 +19,10 @@ urlpatterns_desi.extend([
 
     # DESI EDR tiles
     re_path(r'^desi-tiles/edr/(\d+)/cat.json', cats.cat_desi_edr_tiles),
-    # DESI EDR spectra
+    # DESI EDR spectra overlay
     re_path(r'^desi-spec-edr/(\d+)/cat.json', cats.cat_desi_edr_spectra),
+    # DESI EDR spectrum viewer
+    re_path(r'^desi-spectrum/edr/targetid(\d+)', cats.cat_desi_edr_spectra_detail),
 ])
 
 if settings.ENABLE_DESI_DATA:

@@ -34,6 +34,8 @@ ENABLE_SCIENCE = True
 # Collab-private data!
 ENABLE_DESI_DATA = False
 
+ENABLE_MERIAN = False
+
 ENABLE_PANDAS = False
 
 ENABLE_DESI_TARGETS = False

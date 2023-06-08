@@ -2393,6 +2393,7 @@ allLayers.push(tiles);
 
 {% endif %}
 
+  {% if enable_merian %}
 tiles = mylayer_B('merian-n540', 'Merian N540',
                   {'attribution': '',
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
@@ -2402,7 +2403,8 @@ tiles = mylayer_B('merian-n708', 'Merian N708',
                   {'attribution': '',
                    'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
-
+  {% endif %}
+  
 
 // tiles = mylayer_B('outliers-ast', 'Asteroids test: outliers',
 //                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
@@ -3651,26 +3653,15 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
                 var c = L.polygon(poly, {fill:false, color:"white", weight:4 });
 
                 if (cl_labels !== undefined) {
-                    c.bindTooltip(cl_labels[i][2], {permanent:true});
+                    var lab = cl_labels[i];
+                    var loc = L.latLng(dec2lat(lab[1]), ra2long_C(lab[0], clong));
+                    var cl = L.circle(loc, {radius:0});
+                    cl.bindTooltip(lab[2], {permanent:true, direction:'center'});
+                    lg.addLayer(cl);
                 }
                 lg.addLayer(c);
             }
         }
-        /*
-          var clong = map.getCenter().lng;
-          for (var i=0, len=cl_labels.length; i<len; i++) {
-          var ra = cl_labels[i][0];
-          var dec = cl_labels[i][1];
-          var text = cl_labels[i][2];
-          var poly = [];
-          for (var j=0, plen=rd.length; j<plen; j++) {
-          poly.push([dec2lat(rd[j][1]), ra2long_C(rd[j][0], clong)]);
-          }
-          var c = L.polygon(poly, {fill:false, color:"white", weight:4 });
-          lg.addLayer(c);
-          }
-          }
-        */
         return lg;
     },
 
@@ -4573,8 +4564,10 @@ moresurveys = moresurveys.concat([
     findlayer('hsc-dr2'),
     findlayer('hsc-dr3'),
     {% endif %}
+    {% if enable_merian %}
     findlayer('merian-n540'),
     findlayer('merian-n708'),
+    {% endif %}
     {% if enable_ps1 %}
     findlayer('ps1'),
     {% endif %}

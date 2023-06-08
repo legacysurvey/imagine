@@ -230,8 +230,14 @@ def desi_healpix_spectrum(req, obj, release):
     hp = '%i' % obj.healpix
     hp_pre = '%i' % (obj.healpix//100)
 
-    fn = ('/global/cfs/cdirs/desi/spectro/redux/%s/healpix/%s/%s/%s/%s/coadd-%s-%s-%s.fits' %
-          (release, surv, prog,hp_pre, hp, surv, prog, hp))
+    if release == 'edr':
+        basedir = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji'
+    else:
+        basedir = '/global/cfs/cdirs/desi/spectro/redux/%s' % release
+
+    
+    fn = os.path.join(basedir, 'healpix', surv, prog, hp_pre, hp,
+                      'coadd-%s-%s-%s.fits' % (surv, prog, hp))
 
     spectra = read_spectra(fn)
     spectra = spectra.select(targets=[obj.targetid])
@@ -316,7 +322,15 @@ def cat_desi_fuji_spectra_detail(req, targetid):
         return HttpResponse('No such targetid found in DESI Fuji spectra: %s' % targetid)
     return desi_healpix_spectrum(req, t, 'fuji')
 
-def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
+def cat_desi_edr_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    t = lookup_targetid(targetid, 'edr')
+    if t is None:
+        return HttpResponse('No such targetid found in DESI EDR spectra: %s' % targetid)
+    return desi_healpix_spectrum(req, t, 'edr')
+
+def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
+                             tile_clusters=None):
     import json
     T = cat_kd(req, ver, tag, kdfn, racol=racol, deccol=deccol)
     if T is None:
@@ -345,9 +359,14 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
         declo = float(req.GET['declo'])
         dechi = float(req.GET['dechi'])
 
-        T.ra_wrap = T.ra + -360 * (T.ra > 180)
-        if ralo > rahi:
+        ra_wrap = ralo > rahi
+        if ra_wrap:
+            # Move RAs to +- 0
+            T.ra_wrap = T.ra + -360 * (T.ra > 180)
             ralo -= 360
+        else:
+            T.ra_wrap = T.ra
+
         assert(ralo < rahi)
         assert(declo < dechi)
 
@@ -356,8 +375,75 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
 
         Iloose = []
 
-        # grid
-        nra = ndec = 3
+        from astrometry.util.miscutils import point_in_poly, clip_polygon
+
+        Iclusters = []
+
+        # Use pre-computed cluster membership!
+        if tile_clusters is not None:
+            cl = np.unique(T.tile_cluster)
+            print(len(cl), 'unique clusters')
+            for cl_i in cl:
+                rd = tile_clusters[cl_i]
+                ra,dec = rd[:,0],rd[:,1]
+                if ra_wrap:
+                    ra_w = ra + -360 * (ra > 180)
+                else:
+                    ra_w = ra
+                I = np.flatnonzero(T.tile_cluster == cl_i)
+                print(len(I), 'spectra in cluster', cl_i)
+                Iclusters.append((I, (ra,ra_w,dec)))
+
+        # if tile_clusters is None:
+        #     tile_clusters = []
+        # for cl_i,rd in enumerate(tile_clusters):
+        #     #print('Tile cluster boundary:', rd.shape)
+        #     ra,dec = rd[:,0],rd[:,1]
+        #     if ra_wrap:
+        #         ra_w = ra + -360 * (ra > 180)
+        #     else:
+        #         ra_w = ra
+        #     # completely outside RA,Dec region?
+        #     if min(ra_w) > rahi or max(ra_w) < ralo or min(dec) > dechi or max(dec) < declo:
+        #         #print('Tile not nearby, skipping')
+        #         continue
+        #     poly = np.vstack((ra_w,dec)).T
+        #     #print('Poly', poly.shape)
+        #     isin = point_in_poly(T.ra_wrap, T.dec, np.vstack((ra_w,dec)).T)
+        #     I = np.flatnonzero(isin)
+        #     print(len(I), 'spectra in cluster', cl_i)
+        #     if len(I) == 0:
+        #         continue
+        #     Iclusters.append((I, (ra,ra_w,dec)))
+
+        if len(Iclusters) > 1:
+            for I,(ra,ra_w,dec) in Iclusters:
+                if len(I) < 100:
+                    Iloose.append(I)
+                    continue
+                K = np.flatnonzero((ra_w > ralo) * (ra_w < rahi) * (dec > declo) * (dec < dechi))
+                if len(K) > 0:
+                    cra,cdec = np.mean(np.vstack((ra_w[K], dec[K])), axis=1)
+                else:
+                    cra = (ralo + rahi) / 2.
+                    cdec = (declo + dechi) / 2.
+                if cra < 0:
+                    cra += 360.
+                #cliprd = clip_polygon(np.vstack((ra_w,dec)).T,
+                #                      np.array([[ralo,declo],[ralo,dechi],[rahi,dechi],[rahi,declo]]))
+                #cliprd = np.array(cliprd)
+                #ra,dec = cliprd[:,0], cliprd[:,1]
+                cluster_edges.append([(float(r),float(d)) for r,d in zip(ra,dec)])
+                cluster_labels.append([float(cra), float(cdec), '%i spectra' % len(I)])
+
+
+            # No grid!
+            nra = ndec = 0
+
+        else:
+            # grid
+            nra = ndec = 3
+
         for i in range(ndec):
             for j in range(nra):
                 r1 = ralo +  j * (rahi - ralo) / nra
@@ -388,8 +474,7 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
                 cra,cdec = c
                 if cra < 0:
                     cra += 360.
-                print('Center of convex hull:', cra,cdec)
-
+                #print('Center of convex hull:', cra,cdec)
                 cluster_edges.append([(float(r),float(d)) for r,d in ch])
                 cluster_labels.append([float(cra), float(cdec), '%i spectra' % len(I)])
 
@@ -498,7 +583,14 @@ def cat_desi_fuji_spectra(req, ver):
 def cat_desi_edr_spectra(req, ver):
     kdfn = get_desi_spectro_kdfile('edr')
     tag = 'desi-edr-spectra'
-    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
+    clusters = open(os.path.join(settings.DATA_DIR, 'desi-spectro-edr', 'tile-clusters.json')).read()
+    import json
+    import numpy as np
+    clusters = json.loads(clusters)
+    clusters = [np.array(cl).reshape(-1,2) for cl in clusters]
+
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec',
+                                    tile_clusters=clusters)
 
 def cat_desi_release_tiles(req, ver, release):
     import json
@@ -2917,15 +3009,16 @@ def get_desi_tile_radec(tileid, fiberid=None):
 if __name__ == '__main__':
     import sys
 
-    from map.views import get_layer
-    #galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
-    #layer = get_layer('hsc2')
-    #create_galaxy_catalog(galfn, None, layer=layer)
-
-    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr10.fits')
-    layer = get_layer('ls-dr10')
-    create_galaxy_catalog(galfn, None, layer=layer)
-    sys.exit(0)
+    if False:
+        from map.views import get_layer
+        #galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
+        #layer = get_layer('hsc2')
+        #create_galaxy_catalog(galfn, None, layer=layer)
+    
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr10.fits')
+        layer = get_layer('ls-dr10')
+        create_galaxy_catalog(galfn, None, layer=layer)
+        sys.exit(0)
     
     # galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
     # layer = get_layer('ls-dr9-north')
@@ -2993,6 +3086,7 @@ if __name__ == '__main__':
     #r = c.get('/desi-spectrum/daily/targetid43977408013222855')
     #r = c.get('/ls-dr9/1/15/29479/18709.cat.json')
     #r = c.get('/usercatalog/1/cat.json?ralo=61.2789&rahi=61.3408&declo=-74.8711&dechi=-74.8622&cat=tmpbclfdga8')
+    r = c.get('/desi-spectrum/edr/targetid39627883857055540')
 
     f = open('out', 'wb')
     for x in r:
@@ -3017,5 +3111,4 @@ if __name__ == '__main__':
     from django.test import Client
     c = Client()
     c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
-
     sys.exit(0)

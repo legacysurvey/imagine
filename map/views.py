@@ -285,6 +285,7 @@ def _index(req,
            decaps_first = False,
            **kwargs):
     kwkeys = dict(
+        enable_merian = settings.ENABLE_MERIAN,
         science = settings.ENABLE_SCIENCE,
         enable_older = settings.ENABLE_OLDER,
         enable_unwise = settings.ENABLE_UNWISE,
@@ -571,6 +572,7 @@ def _index(req,
         traceback.print_exc()
 
     enable_desi_edr = False
+    enable_desi_edr = (req.GET.get('desi-edr-open') == 'sesame')
     kwargs.update(enable_desi_edr=enable_desi_edr)
 
     #print('Setting initial RA,Dec position', ra, dec)
@@ -8096,7 +8098,11 @@ if __name__ == '__main__':
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=150.0909&rahi=150.3385&declo=2.5967&dechi=2.7325')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=150.1528&rahi=150.2766&declo=2.6306&dechi=2.6985')
     #r = c.get('/suprime-L464/1/14/9558/8092.jpg')
-    r = c.get('/suprime-L427/1/12/2388/2021.jpg')
+    #r = c.get('/suprime-L427/1/12/2388/2021.jpg')
+    #r = c.get('/desi-spectrum/edr/targetid39627883857055540')
+    #r = c.get('/desi-spec-edr/1/cat.json?ralo=142.1631&rahi=158.0054&declo=-1.4500&dechi=7.2317')
+    #r = c.get('/desi-spec-edr/1/cat.json?ralo=192.2168&rahi=223.9014&declo=-8.6896&dechi=8.6462')
+    r = c.get('/desi-spec-edr/1/cat.json?ralo=154.9292&rahi=186.6138&declo=21.5757&dechi=36.7037')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
