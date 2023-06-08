@@ -572,7 +572,6 @@ def _index(req,
         traceback.print_exc()
 
     enable_desi_edr = False
-    enable_desi_edr = (req.GET.get('desi-edr-open') == 'sesame')
     kwargs.update(enable_desi_edr=enable_desi_edr)
 
     #print('Setting initial RA,Dec position', ra, dec)
