@@ -628,11 +628,35 @@ def cat_desi_release_tiles(req, ver, release):
                 name += ' (%s)' % ', '.join(details)
 
             cc = {
-                ('dark','main'):  '#22aadd',
-                ('bright','main'): '#cc8800',
-                ('dark','special'): '#77ccee',
-                ('bright','special'): '#ffbb33',
-                }.get((prog, surv), '#888888')
+                ('sv1', 'backup'): '#999999', # HSV V=0.6
+                ('sv1', 'bright'): '#996600', # darker orange
+                ('sv1', 'dark'):   '#177699', # darker blue
+                ('sv2', 'backup'): '#999999', # HSV V=0.7
+                ('sv2', 'bright'): '#b37700', #
+                ('sv2', 'dark'):   '#1b8ab3', #
+                ('sv3', 'backup'): '#cccccc', # HSV V=0.8
+                ('sv3', 'bright'): '#cc8800',
+                ('sv3', 'dark'):   '#1f9ecc',
+                ('main', 'dark'):  '#22aadd',
+                ('main', 'bright'): '#cc8800',
+                ('special', 'dark'): '#77ccee',
+                ('special', 'bright'): '#ffbb33',
+                }.get((surv, prog), '#888888')
+
+            '''
+            cmx other
+            special dark
+            sv1 backup
+            sv1 bright
+            sv1 dark
+            sv1 other
+            sv2 backup
+            sv2 bright
+            sv2 dark
+            sv3 backup
+            sv3 bright
+            sv3 dark
+            '''
                 
             res.append(dict(name=name, ra=t.tilera, dec=t.tiledec, radius=desi_radius,
                             color=cc))
