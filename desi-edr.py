@@ -3,8 +3,9 @@ import os
 import numpy as np
 from astrometry.util.fits import fits_table, merge_tables
 from desi_spectro_kdtree import create_desi_spectro_kdtree
+from collections import Counter
 
-basedir = 'data/dei-spectro-edr'
+basedir = 'data/desi-spectro-edr'
 
 os.system('startree -i /global/cfs/cdirs/desi/public/edr/spectro/redux/fuji/tiles-fuji.fits -R tilera -D tiledec -PTk -o %s/tiles2.kd.fits' % basedir)
 
@@ -53,10 +54,10 @@ if True:
             pts.append(np.vstack((ra, dec)).T)
         pts = np.vstack(pts)
         if cluster:
-            print('Stacked points:', pts.shape)
+            #print('Stacked points:', pts.shape)
             ch = ConvexHull(pts)
             hull = pts[ch.vertices,:]
-            print('Convex hull:', hull.shape)
+            #print('Convex hull:', hull.shape)
         else:
             hull = pts
 
@@ -71,22 +72,34 @@ if True:
 
     tile_clusters = cluster_hulls
 
-TT = []
-for surv,prog in [('cmx','other'), ('special','dark'),
-                  ('sv1','backup'), ('sv1','bright'), ('sv1','dark'), ('sv1','other'),
-                  ('sv2','backup'), ('sv2','bright'), ('sv2','dark'),
-                  ('sv3','backup'), ('sv3','bright'), ('sv3','dark'),
-                  ]:
-    #fn = '/global/cfs/cdirs/desi/spectro/redux/fuji/zcatalog/zpix-%s-%s.fits' % (surv, prog)
-    fn = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji/zcatalog/zpix-%s-%s.fits' % (surv, prog)
-    
-    T = fits_table(fn, columns=['target_ra','target_dec','targetid','z','zerr','zwarn','spectype','subtype',
-                                'healpix', 'objtype'])
-    T.survey = np.array([surv]*len(T))
-    T.program = np.array([prog]*len(T))
-    TT.append(T)
-T = merge_tables(TT)
 
+
+if False:
+    TT = []
+    for surv,prog in [('cmx','other'), ('special','dark'),
+                      ('sv1','backup'), ('sv1','bright'), ('sv1','dark'), ('sv1','other'),
+                      ('sv2','backup'), ('sv2','bright'), ('sv2','dark'),
+                      ('sv3','backup'), ('sv3','bright'), ('sv3','dark'),
+                      ]:
+        #fn = '/global/cfs/cdirs/desi/spectro/redux/fuji/zcatalog/zpix-%s-%s.fits' % (surv, prog)
+        fn = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji/zcatalog/zpix-%s-%s.fits' % (surv, prog)
+        
+        T = fits_table(fn, columns=['target_ra','target_dec','targetid','z','zerr','zwarn','spectype','subtype',
+                                    'healpix', 'objtype'])
+        T.survey = np.array([surv]*len(T))
+        T.program = np.array([prog]*len(T))
+        TT.append(T)
+    T = merge_tables(TT)
+
+else:
+    T = fits_table('/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji/zcatalog/zall-pix-fuji.fits',
+                   columns=['survey', 'program', 'zcat_primary', 'target_ra','target_dec','targetid',
+                            'z','zerr','zwarn','spectype','subtype', 'healpix', 'objtype'])
+    print(len(T), 'zall')
+    print('ZCAT_PRIMARY', Counter(T.zcat_primary))
+    T.cut(np.flatnonzero(T.zcat_primary))
+    T.delete_column('zcat_primary')
+    
 in_cluster = np.zeros(len(T), bool)
 
 T.tile_cluster = np.zeros(len(T), np.int16)
@@ -120,6 +133,6 @@ for i in I:
     print('https://www.legacysurvey.org/viewer/?ra=%.4f&dec=%.4f&layer=ls-dr9&zoom=8&desi-tiles-edr&desi-spec-edr' % (T.target_ra[i], T.target_dec[i]))
 assert(len(I) == 0)
 
-fn = os.path.join(basedir, 'zpix-all.fits'
+fn = os.path.join(basedir, 'zpix-all.fits')
 T.writeto(fn)
 create_desi_spectro_kdtree(fn, '%s/zpix-all.kd.fits' % basedir, racol='target_ra', deccol='target_dec')
