@@ -278,6 +278,7 @@ def desi_healpix_spectrum(req, obj, release):
     os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
 
     if outdir is None:
+        # temp dir contents get deleted after this function returns (when td gets deleted)
         td = tempfile.TemporaryDirectory()
         outdir = td.name
 
@@ -631,7 +632,7 @@ def cat_desi_edr_spectra(req, ver):
     return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec',
                                     tile_clusters=clusters)
 
-def cat_desi_release_tiles(req, ver, release):
+def cat_desi_release_tiles(req, ver, release, color_function=None):
     import json
     from astrometry.util.fits import fits_table
     from astrometry.libkd.spherematch import tree_open, tree_search_radec
@@ -647,6 +648,25 @@ def cat_desi_release_tiles(req, ver, release):
 
     desi_radius = 1.628
     fn = os.path.join(settings.DATA_DIR, 'desi-spectro-%s/tiles2.kd.fits' % release)
+
+    if color_function is None:
+        def color_function(t, surv, prog):
+            cc = {
+                ('sv1', 'backup'): '#999999', # HSV V=0.6
+                ('sv1', 'bright'): '#996600', # darker orange
+                ('sv1', 'dark'):   '#177699', # darker blue
+                ('sv2', 'backup'): '#999999', # HSV V=0.7
+                ('sv2', 'bright'): '#b37700', #
+                ('sv2', 'dark'):   '#1b8ab3', #
+                ('sv3', 'backup'): '#cccccc', # HSV V=0.8
+                ('sv3', 'bright'): '#cc8800',
+                ('sv3', 'dark'):   '#1f9ecc',
+                ('main', 'dark'):  '#22aadd',
+                ('main', 'bright'): '#cc8800',
+                ('special', 'dark'): '#77ccee',
+                ('special', 'bright'): '#ffbb33',
+                }.get((surv, prog), '#888888')
+            return cc
 
     def result(T):
         res = []
@@ -665,37 +685,7 @@ def cat_desi_release_tiles(req, ver, release):
             if len(details):
                 name += ' (%s)' % ', '.join(details)
 
-            cc = {
-                ('sv1', 'backup'): '#999999', # HSV V=0.6
-                ('sv1', 'bright'): '#996600', # darker orange
-                ('sv1', 'dark'):   '#177699', # darker blue
-                ('sv2', 'backup'): '#999999', # HSV V=0.7
-                ('sv2', 'bright'): '#b37700', #
-                ('sv2', 'dark'):   '#1b8ab3', #
-                ('sv3', 'backup'): '#cccccc', # HSV V=0.8
-                ('sv3', 'bright'): '#cc8800',
-                ('sv3', 'dark'):   '#1f9ecc',
-                ('main', 'dark'):  '#22aadd',
-                ('main', 'bright'): '#cc8800',
-                ('special', 'dark'): '#77ccee',
-                ('special', 'bright'): '#ffbb33',
-                }.get((surv, prog), '#888888')
-
-            '''
-            cmx other
-            special dark
-            sv1 backup
-            sv1 bright
-            sv1 dark
-            sv1 other
-            sv2 backup
-            sv2 bright
-            sv2 dark
-            sv3 backup
-            sv3 bright
-            sv3 dark
-            '''
-                
+            cc = color_function(t, surv, prog)
             res.append(dict(name=name, ra=t.tilera, dec=t.tiledec, radius=desi_radius,
                             color=cc))
         return HttpResponse(json.dumps(dict(objs=res)),
@@ -723,7 +713,34 @@ def cat_desi_fuji_tiles(req, ver):
     return cat_desi_release_tiles(req, ver, 'fuji')
 
 def cat_desi_edr_tiles(req, ver):
-    return cat_desi_release_tiles(req, ver, 'edr')
+    def tilecolor(t, surv, prog):
+        other = '#7f7f7f'
+        if surv == 'sv1' and prog == 'other':
+            return other
+        return {
+            'sv1': '#77a8d0',
+            'sv2': '#37a436',
+            'sv3': '#ffae73',
+            }.get(surv, other)
+    # sv1: dark 2077b4 mid 77a8d0 light aac9e1
+    # sv1/sec: dark 000000 mid 3f3f3f light 7f7f7f
+    # sv2: 2ba02b / 37a436 / 5fb45b
+    # sv3: ff7f0f / ffae73 / ffcca9
+    # All combos:
+    #   cmx other
+    #   special dark
+    #   sv1 backup
+    #   sv1 bright
+    #   sv1 dark
+    #   sv1 other
+    #   sv2 backup
+    #   sv2 bright
+    #   sv2 dark
+    #   sv3 backup
+    #   sv3 bright
+    #   sv3 dark
+
+    return cat_desi_release_tiles(req, ver, 'edr', color_function=tilecolor)
 
 def cat_photoz_dr9(req, ver):
     '''
