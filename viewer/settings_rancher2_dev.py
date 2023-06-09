@@ -9,6 +9,8 @@ DEBUG_LOGGING = False
 
 USER_QUERY_DIR = '/tmp/viewer-dev-user'
 
+DESI_PROSPECT_DIR = '/tmp/desi-prospect'
+
 READ_ONLY_BASEDIR = True
 
 ROOT_URL = '/viewer-dev'

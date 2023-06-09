@@ -226,6 +226,22 @@ def desi_healpix_spectrum(req, obj, release):
     import os
     import prospect.viewer
 
+    # Check the cache!
+    outdir = None
+    if settings.DESI_PROSPECT_DIR is not None:
+        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % obj.targetid)
+        fn = os.path.join(outdir, 'prospect.html')
+        if os.path.exists(fn):
+            print('Cache hit for', fn)
+            return HttpResponse(open(fn))
+        if not os.path.exists(outdir):
+            try:
+                os.makedirs(outdir)
+            except:
+                pass
+        if not os.path.exists(outdir):
+            outdir = None
+
     prog = obj.program.strip()
     surv = obj.survey.strip()
     hp = '%i' % obj.healpix
@@ -260,13 +276,17 @@ def desi_healpix_spectrum(req, obj, release):
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
     os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
-    #if True:
-    #    d = tempfile.mkdtemp()
-    with tempfile.TemporaryDirectory() as d:
-        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d)
-        f = open(os.path.join(d, 'prospect.html'))
-        return HttpResponse(f)
-        
+
+    if outdir is None:
+        td = tempfile.TemporaryDirectory()
+        outdir = td.name
+
+    prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir,
+                                with_vi_widgets=False)
+    fn = os.path.join(outdir, 'prospect.html')
+    print('Wrote prospect output', fn)
+    return HttpResponse(open(fn))
+
 def get_desi_spectro_kdfile(release):
     if release == 'edr':
         return os.path.join(settings.DATA_DIR, 'desi-spectro-edr', 'zpix-all.kd.fits')
@@ -333,10 +353,20 @@ def cat_desi_fuji_spectra_detail(req, targetid):
 
 def cat_desi_edr_spectra_detail(req, targetid):
     targetid = int(targetid)
-    t = lookup_targetid(targetid, 'edr')
+    release = 'edr'
+
+    # Quick-check cache (without looking up object)
+    if settings.DESI_PROSPECT_DIR is not None:
+        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+        fn = os.path.join(outdir, 'prospect.html')
+        if os.path.exists(fn):
+            print('Cache hit for', fn)
+            return HttpResponse(open(fn))
+
+    t = lookup_targetid(targetid, release)
     if t is None:
         return HttpResponse('No such targetid found in DESI EDR spectra: %s' % targetid)
-    return desi_healpix_spectrum(req, t, 'edr')
+    return desi_healpix_spectrum(req, t, release)
 
 def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
                              tile_clusters=None):
@@ -623,16 +653,15 @@ def cat_desi_release_tiles(req, ver, release):
         for t in T:
             name = 'Tile %i' % t.tileid
             details = []
-            prog = None
+            surv = t.survey.strip()
+            if surv != 'unknown':
+                details.append(surv)
             if 'program' in t.get_columns():
                 prog = t.program.strip()
             else:
                 prog = t.faprgrm.strip()
             if prog != 'unknown':
                 details.append(prog)
-            surv = t.survey.strip()
-            if surv != 'unknown':
-                details.append(surv)
             if len(details):
                 name += ' (%s)' % ', '.join(details)
 

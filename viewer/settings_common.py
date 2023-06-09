@@ -10,6 +10,8 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 
 USER_QUERY_DIR = '/tmp/viewer-user'
 
+DESI_PROSPECT_DIR = None
+
 REDIRECT_CUTOUTS_DECAPS = False
 
 SDSS_PHOTOOBJS = None
