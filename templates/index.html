@@ -3503,6 +3503,9 @@ var DesiTileOverlay = CircleOverlay.extend({
     getStyle() {
         var z = map.getZoom();
         var op = 0.05 * Math.pow(0.8, z);
+        if (z >= 11) {
+            op = 0.0;
+        }
         console.log('DESI Tile opacity:', op);
         return {'fillOpacity': op};
     },

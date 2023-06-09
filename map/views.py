@@ -8101,7 +8101,8 @@ if __name__ == '__main__':
     #r = c.get('/desi-spectrum/edr/targetid39627883857055540')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=142.1631&rahi=158.0054&declo=-1.4500&dechi=7.2317')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=192.2168&rahi=223.9014&declo=-8.6896&dechi=8.6462')
-    r = c.get('/desi-spec-edr/1/cat.json?ralo=154.9292&rahi=186.6138&declo=21.5757&dechi=36.7037')
+    #r = c.get('/desi-spec-edr/1/cat.json?ralo=154.9292&rahi=186.6138&declo=21.5757&dechi=36.7037')
+    r = c.get('/desi-spectrum/edr/targetid39627848784286649')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

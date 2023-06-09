@@ -207,7 +207,8 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     
     os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
     with tempfile.TemporaryDirectory() as d:
-        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d)
+        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d,
+                                    with_vi_widgets=False)
         f = open(os.path.join(d, 'prospect.html')) #'specviewer_specviewer.html'))
         return HttpResponse(f)
         
@@ -291,14 +292,22 @@ def lookup_targetid(targetid, release):
     I = kd.search(np.array([targetid]).astype(np.uint64), 0.5, 0, 0)
     if len(I) == 0:
         return None
-    print('Found', len(I), 'entries for targetid', targetid)
+    ## The kd-search for uint64 for return matches outside the search range!  uint64 vs float is weird!
+    #print('Found', len(I), 'entries for targetid', targetid)
     # Read only the allzbest table rows within range.
     T = fits_table(fn, rows=I)
-    print('Matched targetids:', T.targetid)
+    #print('Matched targetids:', T.targetid)
     I = np.flatnonzero(T.targetid == targetid)
     if len(I) == 0:
         return None
-    i = I[0]
+    T.cut(I)
+    if len(T) > 1:
+        print('Matched targetids:', T.targetid)
+        print('Surveys:', T.survey)
+        print('Programs:', T.program)
+    else:
+        print('Found targetid', T.targetid[0], 'in survey', T.survey[0], 'program', T.program[0])
+    i = 0
     return T[i]
 
 def cat_desi_daily_spectra_detail(req, targetid):
