@@ -36,6 +36,9 @@ ENABLE_SCIENCE = True
 # Collab-private data!
 ENABLE_DESI_DATA = False
 
+# DESI Early Data Release
+ENABLE_DESI_EDR = True
+
 ENABLE_MERIAN = False
 
 ENABLE_PANDAS = False
