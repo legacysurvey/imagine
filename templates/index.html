@@ -80,6 +80,7 @@
 var layer_initial = '{{ layer }}';
 var ra_initial = {{ ra }};
 var dec_initial = {{ dec }};
+var zoom_initial = {{ zoom }};
 var galname_initial = '{{ galname }}';
 var smallcat_url = '{{ smallcaturl|safe }}';
 var usercat2_url = '{{ usercatalogurl2|safe }}';
@@ -113,9 +114,14 @@ var aws_unwise_url = 'https://s3.us-west-2.amazonaws.com/{id}.legacysurvey.org/{
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
 
+console.log('window.location is', window.location);
+
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
-    var terms = window.location.search.substr(1).split('&');
+    var terms = window.location.search.substr(1);
+    terms += '{{ append_args|safe }}';
+    console.log('search terms:', terms);
+    terms = terms.split('&');
     var items = {};
     for (var i = 0; i < terms.length; ++i) {
         var words = terms[i].split('=');
@@ -129,7 +135,6 @@ var QueryItems = function() {
 };
 var qstr = QueryItems();
 
-var zoom_initial = 12;
 if ('plate' in qstr) {
   zoom_initial = 8;
 }

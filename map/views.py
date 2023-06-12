@@ -367,6 +367,7 @@ def _index(req,
         enable_desi_menu = True,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
+        append_args = '',
     )
 
     for k in kwargs.keys():
@@ -573,6 +574,7 @@ def _index(req,
         traceback.print_exc()
 
     args = dict(ra=ra, dec=dec,
+                zoom=zoom,
                 maxZoom=maxZoom,
                 decaps_first=decaps_first,
                 galname=galname,
@@ -610,6 +612,28 @@ def _index(req,
     # (it's not supposed to be **args, trust me)
     return render(req, 'index.html', args)
 
+def desi_edr(req):
+    # q = req.META['QUERY_STRING']
+    # path = req.get_full_path()
+    # print('Path:', path)
+    # if '?' in path: #path.endswith('?'):
+    #     q += '&'
+    # q += 'desi-tiles-edr&desi-spec-edr'
+    # 
+    # req.GET = req.GET.copy()
+    # req.GET['desi-tiles-edr'] = True
+    # req.GET['desi-spec-edr'] = True
+    # req.META['QUERY_STRING'] = q
+    # print('req.get_full_path:', req.get_full_path())
+    # print('req.get_full_path_info:', req.get_full_path_info())
+    # print('req.get_raw_uri:', req.get_raw_uri())
+    return _index(req,
+                  default_layer='ls-dr9',
+                  default_radec=(191.9530, 57.9458),
+                  default_zoom=3,
+                  rooturl=settings.ROOT_URL + '/desi-edr',
+                  append_args = '&desi-tiles-edr&desi-spec-edr',
+    )
 
 def decaps(req):
     return _index(req,
@@ -8098,7 +8122,8 @@ if __name__ == '__main__':
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=142.1631&rahi=158.0054&declo=-1.4500&dechi=7.2317')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=192.2168&rahi=223.9014&declo=-8.6896&dechi=8.6462')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=154.9292&rahi=186.6138&declo=21.5757&dechi=36.7037')
-    r = c.get('/desi-spectrum/edr/targetid39627848784286649')
+    #r = c.get('/desi-spectrum/edr/targetid39627848784286649')
+    r = c.get('/desi-edr')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

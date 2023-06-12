@@ -255,6 +255,9 @@ urlpatterns = ([
     re_path(r'^sky-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.sky_stamp, name='sky_stamp'),
     re_path(r'^skysub-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.skysub_stamp, name='skysub_stamp'),
 
+    # Special DESI-EDR version of viewer.
+    re_path(r'desi-edr', views.desi_edr),
+
     # Special DECaPS version of viewer.
     re_path(r'decaps', views.decaps),
 
