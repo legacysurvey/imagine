@@ -285,6 +285,7 @@ def _index(req,
            decaps_first = False,
            **kwargs):
     kwkeys = dict(
+        enable_desi_edr = settings.ENABLE_DESI_EDR,
         enable_merian = settings.ENABLE_MERIAN,
         science = settings.ENABLE_SCIENCE,
         enable_older = settings.ENABLE_OLDER,
@@ -570,11 +571,6 @@ def _index(req,
     except:
         import traceback
         traceback.print_exc()
-
-    enable_desi_edr = False
-    kwargs.update(enable_desi_edr=enable_desi_edr)
-
-    #print('Setting initial RA,Dec position', ra, dec)
 
     args = dict(ra=ra, dec=dec,
                 maxZoom=maxZoom,
