@@ -1722,6 +1722,8 @@ var attribs = {
     'sfd': '<a href="https://dustmaps.readthedocs.io/en/latest/maps.html#sfd">&copy; SFD</a>',
     'wssa': '<a href="https://faun.rc.fas.harvard.edu/ameisner/wssa/processing.html">WISE 12-micron map processed by Aaron Meisner</a>',
     'halpha': '<a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">&copy;</a> <a href="https://amundsen.swarthmore.edu/SHASSA/">SHASSA</a>/<a href="https://www1.phys.vt.edu/~halpha/">VTSS</a>/<a href="http://www.astro.wisc.edu/wham-site/">WHAM</a> <a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">composite by Doug Finkbeiner (skymaps.info)</a>',
+    'vlass': '<a href="https://public.nrao.edu/media-use/">&copy;</a> <a href="https://public.nrao.edu/vlass/">NRAO / VLA Sky Survey</a>',
+    'des': '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">The Dark Energy Survey Data Release 1</a>',
 };
 
 
@@ -1729,8 +1731,6 @@ var attribs = {
 
 var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>';
 var unwise_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; unWISE / NASA/JPL-Caltech / D.Lang (Perimeter Institute)</a>';
-var des_attrib = '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">The Dark Energy Survey Data Release 1</a>';
-var vlass_attrib = '<a href="https://public.nrao.edu/media-use/">&copy;</a> <a href="https://public.nrao.edu/vlass/">NRAO / VLA Sky Survey</a>';
 var ps1_attrib = 'Pan-STARRS1';
 
 var mylayer = function (name, pretty, kwargs) {
@@ -1860,11 +1860,6 @@ function split_layer(name, pretty, decsplit,
     return tiles;
 };
                                             
-tiles = mylayer_B('des-dr1', 'DES DR1',
-                  {'attribution': des_attrib,
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
 tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep images',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
@@ -2472,14 +2467,6 @@ allLayers.push(tiles);
 // tiles = mylayer_B('asteroids-i', 'Asteroids test: images',
 //                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 // allLayers.push(tiles);
-
-{% if enable_vlass %}
-tiles = mylayer_B('vlass1.2', 'VLASS 1.2',
-                  {'attribution': vlass_attrib,
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-{% endif %}
 
 {% if enable_unwise %}
 tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
@@ -4622,9 +4609,7 @@ var moresurveys = [
     {% endif %}
     //findlayer('outliers-ast'),
     //findlayer('asteroids-i'),
-    {% if enable_des_dr1 %}
     findlayer('des-dr1'),
-    {% endif %}
 ];
 
 {% if decaps_first %}
@@ -4647,9 +4632,7 @@ moresurveys = moresurveys.concat([
     {% endif %}
     findlayer('sdss'),
     findlayer('sfd'),
-    {% if enable_vlass %}
     findlayer('vlass1.2'),
-    {% endif %}
     {% if enable_ztf %}
     findlayer('ztf'),
     {% endif %}

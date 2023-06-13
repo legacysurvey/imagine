@@ -314,6 +314,16 @@ def _index(req,
             'hsc-dr3': ['HSC DR3', [def_url], maxnative, 'hsc'],
         })
 
+    if settings.ENABLE_VLASS:
+        tile_layers.update({
+            'vlass1.2': ['VLASS 1.2', [def_url], maxnative, 'vlass'],
+        })
+
+    if settings.ENABLE_DES_DR1:
+        tile_layers.update({
+            'des-dr1': ['DES DR1', [def_url], maxnative, 'des'],
+        })
+
     keys = tile_layers.keys()
     for k in keys:
         over = settings.LAYER_OVERRIDES.get(k)
@@ -330,7 +340,7 @@ def _index(req,
         science = settings.ENABLE_SCIENCE,
         enable_older = settings.ENABLE_OLDER,
         enable_unwise = settings.ENABLE_UNWISE,
-        enable_vlass = settings.ENABLE_VLASS,
+        #enable_vlass = settings.ENABLE_VLASS,
         enable_dev = settings.ENABLE_DEV,
         enable_m33 = False,
         enable_unwise_w3w4 = settings.ENABLE_UNWISE_W3W4,
@@ -385,7 +395,7 @@ def _index(req,
 
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
-        enable_des_dr1 = settings.ENABLE_DES_DR1,
+        #enable_des_dr1 = settings.ENABLE_DES_DR1,
         enable_ztf = settings.ENABLE_ZTF,
         enable_dr5_models = settings.ENABLE_DR5,
         enable_dr5_resids = settings.ENABLE_DR5,
