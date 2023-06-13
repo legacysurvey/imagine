@@ -75,6 +75,8 @@ ENABLE_EBOSS = False
 
 ENABLE_HSC_DR2 = True
 
+ENABLE_MERIAN = False
+
 ENABLE_VLASS = True
 
 ENABLE_PHAT = False

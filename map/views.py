@@ -287,6 +287,7 @@ def _index(req,
     kwkeys = dict(
         science = settings.ENABLE_SCIENCE,
         enable_older = settings.ENABLE_OLDER,
+        enable_merian = settings.ENABLE_MERIAN,
         enable_unwise = settings.ENABLE_UNWISE,
         enable_vlass = settings.ENABLE_VLASS,
         enable_dev = settings.ENABLE_DEV,
@@ -3154,6 +3155,7 @@ class MerianLayer(HscLayer):
         return path
     
     def get_bricks(self):
+        print('Merian get_bricks')
         if self.bricks is not None:
             return self.bricks
         from astrometry.util.fits import fits_table
@@ -8088,13 +8090,14 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
     #r = c.get('/ls-dr10-south/1/15/17740/13629.jpg')
     #r = c.get('/ls-dr10/1/8/138/103.jpg')
-    #r = c.get('/')
+    r = c.get('/')
     #r = c.get('/desi-tiles/edr/1/cat.json?ralo=142.1851&rahi=158.0273&declo=-2.1857&dechi=6.5009')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=149.6482&rahi=150.6384&declo=3.5210&dechi=4.0636')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=149.5747&rahi=150.5649&declo=3.0891&dechi=3.6320')
-    r = c.get('/desi-spec-edr/1/cat.json?ralo=149.9105&rahi=150.9007&declo=3.6203&dechi=4.1629')
+    #r = c.get('/desi-spec-edr/1/cat.json?ralo=149.9105&rahi=150.9007&declo=3.6203&dechi=4.1629')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=150.0909&rahi=150.3385&declo=2.5967&dechi=2.7325')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=150.1528&rahi=150.2766&declo=2.6306&dechi=2.6985')
+    
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
