@@ -3455,40 +3455,40 @@ class LegacySurveySplitLayer(MapLayer):
                                               tempfiles=tempfiles,
                                               get_images_only=get_images_only)
 
-        # both!
-        topims,toprgb = self.top.render_rgb(wcs, zoom, x, y, bands=bands, #self.top_bands,
-                                            tempfiles=tempfiles,
-                                            get_images_only=get_images_only)
-
-        botims,botrgb = self.bottom.render_rgb(wcs, zoom, x, y, bands=bands, #self.bottom_bands,
-                                               tempfiles=tempfiles,
-                                               get_images_only=get_images_only)
-        
-        if get_images_only and topims is None and botims is None:
-            return None,None
-
-        #if not(topims is None and botims is None):
         # ASSUME that the WCS is axis-aligned!!
         # Compute Decs for each Y in the WCS
         import numpy as np
         from astrometry.util.starutil_numpy import radectolb
         H,W = wcs.shape
-        #mask = np.zeros((H,W), bool)
         x = np.empty(H)
         x[:] = W//2 + 0.5
         y = np.arange(1, H+1)
         rr,dd = wcs.pixelxy2radec(x, y)[-2:]
         ll,bb = radectolb(rr, dd)
         ngc = (bb > 0.)
-        #I = np.flatnonzero((dd >= self.decsplit) * ngc)
         topmask = (dd >= self.decsplit) * ngc
 
+        botonly = np.all(np.logical_not(topmask))
+
+        if not botonly:
+            topims,toprgb = self.top.render_rgb(wcs, zoom, x, y, bands=bands, #self.top_bands,
+                                                tempfiles=tempfiles,
+                                                get_images_only=get_images_only)
+        if np.all(topmask):
+            return topims,toprgb
+
+        botims,botrgb = self.bottom.render_rgb(wcs, zoom, x, y, bands=bands, #self.bottom_bands,
+                                               tempfiles=tempfiles,
+                                               get_images_only=get_images_only)
+        if botonly:
+            return botims,botrgb
+
+        if get_images_only and topims is None and botims is None:
+            return None,None
+
         topbandmap = {}
-
         if bands is None:
-
             topbandmap.update(dict([(b,i) for i,b in enumerate(self.top_bands)]))
-            
             # HACK
             bands = self.bottom_bands
         else:
@@ -3499,18 +3499,12 @@ class LegacySurveySplitLayer(MapLayer):
         botim = None
         for ii,band in enumerate(bands):
             if topims is not None:
-                if ii not in topbandmap:
+                if band not in topbandmap:
                     continue
                 topim = topims[topbandmap[band]]
             if botims is not None:
                 botim = botims[ii]
-            # topim = None
-            # botim = None
-            # if band in self.top_bands:
-            #     topim = topims[self.top_bands.index(band)]
-            # if band in self.bottom_bands:
-            #     botim = botims[self.bottom_bands.index(band)]
-            if topim is None and botim is None:
+            if (topim is None) and (botim is None):
                 ims.append(None)
                 continue
             im = np.zeros(wcs.shape, np.float32)
@@ -8123,7 +8117,8 @@ if __name__ == '__main__':
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=192.2168&rahi=223.9014&declo=-8.6896&dechi=8.6462')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=154.9292&rahi=186.6138&declo=21.5757&dechi=36.7037')
     #r = c.get('/desi-spectrum/edr/targetid39627848784286649')
-    r = c.get('/desi-edr')
+    #r = c.get('/desi-edr')
+    r = c.get('/fits-cutout?ra=147.48496&dec=-0.23134231&size=2000&layer=ls-dr10&pixscale=0.262&bands=r')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
