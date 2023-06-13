@@ -287,16 +287,26 @@ def _index(req,
 
     ls_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>'
     hsc_attrib = '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>'
+    sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>'
 
     tileurl = settings.TILE_URL
     subdomains = settings.SUBDOMAINS
+
+    prod_url = settings.STATIC_TILE_URL_B
+    #'https://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
 
     tile_layers = {
         'ls-dr10-south': ['Legacy Surveys DR10-south images',
                           [[0, maxZoom, tileurl]],
                           subdomains, ls_attrib,],
-        'hsc-dr3': ['HSC DR3', [[0, maxZoom, tileurl]], subdomains, hsc_attrib],
+        'sdss': ['SDSS', [[0, 13, prod_url], [14, maxZoom, tileurl]], subdomains, sdss_attrib],
     }
+
+    if settings.ENABLE_HSC_DR2:
+        tile_layers.update({
+            'hsc-dr2': ['HSC DR2', [[0, maxZoom, tileurl]], subdomains, hsc_attrib],
+            'hsc-dr3': ['HSC DR3', [[0, maxZoom, tileurl]], subdomains, hsc_attrib],
+        })
 
     keys = tile_layers.keys()
     for k in keys:
@@ -382,7 +392,7 @@ def _index(req,
         enable_dr6_overlays = settings.ENABLE_DR6,
         enable_dr7_overlays = settings.ENABLE_DR7,
         enable_eboss = settings.ENABLE_EBOSS,
-        enable_hsc_dr2 = settings.ENABLE_HSC_DR2,
+        #enable_hsc_dr2 = settings.ENABLE_HSC_DR2,
         enable_desi_targets = settings.ENABLE_DESI_TARGETS,
         enable_desi_data = settings.ENABLE_DESI_DATA,
         enable_desi_footprint = True,

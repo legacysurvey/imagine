@@ -1683,7 +1683,6 @@ var allLayers = [];
 
 var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>';
 var unwise_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; unWISE / NASA/JPL-Caltech / D.Lang (Perimeter Institute)</a>';
-var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
 var des_attrib = '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">The Dark Energy Survey Data Release 1</a>';
 var hsc_attrib = '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>';
 var vlass_attrib = '<a href="https://public.nrao.edu/media-use/">&copy;</a> <a href="https://public.nrao.edu/vlass/">NRAO / VLA Sky Survey</a>';
@@ -2395,11 +2394,6 @@ tiles = mylayer_B('m33', 'M33 image',
 allLayers.push(tiles);
 {% endif %}
 
-tiles = mylayer_B('sdss', 'SDSS',
-                  {'attribution': sdss_attrib,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
 tiles = mylayer_B('ztf', 'ZTF',
                   {'attribution': 'ZTF',
                    'urlPatterns': [ [1, maxZoom, tile_url], ],
@@ -2412,15 +2406,6 @@ tiles = mylayer_B('ps1', 'Pan-STARRS1',
                    'urlPatterns': [ [8, maxZoom, tile_url], ],});
                   //'urlPatterns': [ [14, maxZoom, tile_url], ],});
 allLayers.push(tiles);
-{% endif %}
-
-{% if enable_hsc_dr2 %}
-tiles = mylayer_B('hsc-dr2', 'HSC DR2',
-                  {'attribution': hsc_attrib,
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
 {% endif %}
 
   {% if enable_merian %}
@@ -4535,6 +4520,16 @@ for (var i in allLayers) {
     namedLayers[layer.name] = layer;
 }
 
+function drop_null(lst) {
+    var rtn = [];
+    for (var i in lst) {
+        var x = lst[i];
+        if (x != null)
+            rtn.push(x);
+    }
+    return rtn;
+}
+
 function findlayer(name, children=[]) {
     //console.log('findlayer', name);
     if (!(name in namedLayers)) {
@@ -4550,13 +4545,14 @@ function findlayer(name, children=[]) {
                 layer.addTo(map);
                 added = true;
             }
-
+        } else {
+            return null;
         }
     }
 
     rtn = { label: namedLayers[name].pretty, layer: namedLayers[name] };
     if (children.length) {
-        rtn['children'] = children;
+        rtn['children'] = drop_null(children);
     }
     return rtn;
 }
@@ -4619,10 +4615,9 @@ moresurveys = moresurveys.concat(decaps_tree);
 moresurveys = moresurveys.concat([
     findlayer('galex'),
     findlayer('halpha'),
-    {% if enable_hsc_dr2 %}
     findlayer('hsc-dr2'),
     findlayer('hsc-dr3'),
-    {% endif %}
+    findlayer('hsc-dr4'),
     {% if enable_merian %}
     findlayer('merian-n540'),
     findlayer('merian-n708'),
@@ -4639,6 +4634,8 @@ moresurveys = moresurveys.concat([
     findlayer('ztf'),
     {% endif %}
 ]);
+
+moresurveys = drop_null(moresurveys);
 
 baseTree1 = baseTree1.concat([
     {% if enable_dr10 %}
