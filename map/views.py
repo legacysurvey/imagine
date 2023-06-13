@@ -285,27 +285,33 @@ def _index(req,
            decaps_first = False,
            **kwargs):
 
-    ls_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>'
-    hsc_attrib = '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>'
-    sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>'
 
     tileurl = settings.TILE_URL
-    subdomains = settings.SUBDOMAINS
+    subs = settings.SUBDOMAINS
+    def_url = [0, maxZoom, tileurl, subs]
 
     prod_url = settings.STATIC_TILE_URL_B
     #'https://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+    prod_subs = settings.SUBDOMAINS_B
+    prod_backstop = [0, maxZoom, prod_url, prod_subs]
+
+    # default maxNativeZoom
+    maxnative = 14;
 
     tile_layers = {
         'ls-dr10-south': ['Legacy Surveys DR10-south images',
-                          [[0, maxZoom, tileurl]],
-                          subdomains, ls_attrib,],
-        'sdss': ['SDSS', [[0, 13, prod_url], [14, maxZoom, tileurl]], subdomains, sdss_attrib],
+                          [def_url],  maxnative, 'ls'],
+        'sdss': ['SDSS', [[14, maxZoom, tileurl, subs], prod_backstop], maxnative, 'sdss'],
+        'galex': ['GALEX', [[0, 9, prod_url, prod_subs], def_url], 12, 'galex'],
+        'sfd': ['SFD Dust', [[7, 10, tileurl, subs], prod_backstop], 10, 'sfd'],
+        'wssa': ['WISE 12-micron dust map', [[9, 10, tileurl, subs], prod_backstop], 10, 'wssa'],
+        'halpha': ['Halpha map', [[7, 10, tileurl, subs], prod_backstop], 10, 'halpha'],
     }
 
     if settings.ENABLE_HSC_DR2:
         tile_layers.update({
-            'hsc-dr2': ['HSC DR2', [[0, maxZoom, tileurl]], subdomains, hsc_attrib],
-            'hsc-dr3': ['HSC DR3', [[0, maxZoom, tileurl]], subdomains, hsc_attrib],
+            'hsc-dr2': ['HSC DR2', [def_url], maxnative, 'hsc'],
+            'hsc-dr3': ['HSC DR3', [def_url], maxnative, 'hsc'],
         })
 
     keys = tile_layers.keys()
@@ -314,9 +320,8 @@ def _index(req,
         if over is None:
             continue
         orig = tile_layers[k]
-        urls,subs = over
+        urls = over
         orig[1] = urls
-        orig[2] = subs
 
     kwkeys = dict(
         tile_layers=tile_layers,

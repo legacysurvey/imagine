@@ -214,6 +214,39 @@ var ZoomRangeTileLayer = MyTileLayer.extend({
     },
 });
 
+
+// A subclass that switches URL patterns depending on zoom range (incl subdomains)
+var ZoomRangeTileLayer2 = MyTileLayer.extend({
+    options: {
+        urlPatterns: [],
+    },
+    initialize: function(options) {
+        L.TileLayer.prototype.initialize.call(this, '', options);
+        //this.urlPatterns = patterns;
+    },
+	getTileUrl: function (tilePoint) {
+        var zoom = tilePoint.z;
+        for (var i=0; i<this.options.urlPatterns.length; i++) {
+            var zlo  = this.options.urlPatterns[i][0];
+            var zhi  = this.options.urlPatterns[i][1];
+            if ((zoom < zlo) || (zoom > zhi))
+                continue;
+            var zurl = this.options.urlPatterns[i][2];
+            var zsubs = this.options.urlPatterns[i][3];
+		    var index = Math.abs(tilePoint.x + tilePoint.y) % zsubs.length;
+		    var sub = zsubs[index];
+		    return L.Util.template(zurl, L.extend({
+			    s: sub,
+			    z: tilePoint.z,
+			    x: tilePoint.x,
+			    y: tilePoint.y
+		    }, this.options));
+        }
+	},
+});
+
+
+
 var SplitTileLayer = MyTileLayer.extend({
 
     // new SplitTileLayer(static_tile_url_B, ysplits,
@@ -1681,14 +1714,23 @@ function getcatversion(layer) {
 
 var allLayers = [];
 
+var attribs = {
+    'ls': '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>',
+    'hsc': '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>',
+    'sdss': '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>',
+    'galex': '<a href="https://www.jpl.nasa.gov/imagepolicy/">&copy;</a> <a href="http://www.galex.caltech.edu/">GALEX, Courtesy NASA/JPL-Caltech</a>',
+    'sfd': '<a href="https://dustmaps.readthedocs.io/en/latest/maps.html#sfd">&copy; SFD</a>',
+    'wssa': '<a href="https://faun.rc.fas.harvard.edu/ameisner/wssa/processing.html">WISE 12-micron map processed by Aaron Meisner</a>',
+    'halpha': '<a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">&copy;</a> <a href="https://amundsen.swarthmore.edu/SHASSA/">SHASSA</a>/<a href="https://www1.phys.vt.edu/~halpha/">VTSS</a>/<a href="http://www.astro.wisc.edu/wham-site/">WHAM</a> <a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">composite by Doug Finkbeiner (skymaps.info)</a>',
+};
+
+
+
+
 var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>';
 var unwise_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; unWISE / NASA/JPL-Caltech / D.Lang (Perimeter Institute)</a>';
 var des_attrib = '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">The Dark Energy Survey Data Release 1</a>';
-var hsc_attrib = '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>';
 var vlass_attrib = '<a href="https://public.nrao.edu/media-use/">&copy;</a> <a href="https://public.nrao.edu/vlass/">NRAO / VLA Sky Survey</a>';
-var galex_attrib = '<a href="https://www.jpl.nasa.gov/imagepolicy/">&copy;</a> <a href="http://www.galex.caltech.edu/">GALEX, Courtesy NASA/JPL-Caltech</a>';
-var halpha_attrib = '<a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">&copy;</a> <a href="https://amundsen.swarthmore.edu/SHASSA/">SHASSA</a>/<a href="https://www1.phys.vt.edu/~halpha/">VTSS</a>/<a href="http://www.astro.wisc.edu/wham-site/">WHAM</a> <a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">composite by Doug Finkbeiner (skymaps.info)</a>';
-var sfd_attrib = '<a href="https://dustmaps.readthedocs.io/en/latest/maps.html#sfd">&copy; SFD</a>';
 var ps1_attrib = 'Pan-STARRS1';
 
 var mylayer = function (name, pretty, kwargs) {
@@ -1720,30 +1762,32 @@ var get_tile_layer = function(name) {
     console.log('Layer', name, ':', layer);
 
     var pretty = layer[0];
-    var zooms = layer[1];
-    var subdomains = layer[2];
+    var urls = layer[1];
+    var maxnativezoom = layer[2];
     var attrib = layer[3];
+    if (attrib in attribs)
+        attrib = attribs[attrib];
 
     var args = {
         maxZoom: maxZoom,
         minZoom: minZoom,
-        maxNativeZoom: maxNativeZoom,
+        maxNativeZoom: maxnativezoom,
         attribution: attrib,
         id: name,
         ver: getversion(name),
         unloadInvisibleTiles: true,
-        subdomains: subdomains,
-        urlPatterns: zooms,
+        urlPatterns: urls,
     };
     //for (var key in kwargs) {
     //args[key] = kwargs[key];
     //}
-    var tiles = new ZoomRangeTileLayer('xxx', args);
+    var tiles = new ZoomRangeTileLayer2(args);
     tiles.name = name;
     tiles.pretty = pretty;
     return tiles;
 }
 
+ 
 var mylayer_B = function (name, pretty, kwargs) {
     var args = {
         maxZoom: maxZoom,
@@ -2484,30 +2528,6 @@ tiles = mylayer('2mass', '2MASS',
                  'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endcomment %}
-
-tiles = mylayer_B('galex', 'GALEX',
-                {'maxNativeZoom': 12,
-                 'attribution': galex_attrib,
-                 'urlPatterns': [ [10, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('sfd', 'SFD dust map',
-                {'maxNativeZoom':10,
-                 'attribution': sfd_attrib,
-                 'urlPatterns': [ [7, 10, tile_url],], });
-allLayers.push(tiles);
-
-tiles = mylayer_B('wssa', 'WISE 12-micron dust map',
-                {'maxNativeZoom':10,
-                 'urlPatterns': [ [9, 10, tile_url],], });
-allLayers.push(tiles);
-
-tiles = mylayer_B('halpha', 'Halpha map',
-                {'maxNativeZoom':10,
-                 'attribution': halpha_attrib,
-                 'urlPatterns': [ [7, 10, tile_url],],});
-allLayers.push(tiles);
-
 
 var added = false;
 var layer_name = layer_initial;
