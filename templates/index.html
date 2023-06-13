@@ -214,39 +214,6 @@ var ZoomRangeTileLayer = MyTileLayer.extend({
     },
 });
 
-
-// A subclass that switches URL patterns depending on zoom range (incl subdomains)
-var ZoomRangeTileLayer2 = MyTileLayer.extend({
-    options: {
-        urlPatterns: [],
-    },
-    initialize: function(options) {
-        L.TileLayer.prototype.initialize.call(this, '', options);
-        //this.urlPatterns = patterns;
-    },
-	getTileUrl: function (tilePoint) {
-        var zoom = tilePoint.z;
-        for (var i=0; i<this.options.urlPatterns.length; i++) {
-            var zlo  = this.options.urlPatterns[i][0];
-            var zhi  = this.options.urlPatterns[i][1];
-            if ((zoom < zlo) || (zoom > zhi))
-                continue;
-            var zurl = this.options.urlPatterns[i][2];
-            var zsubs = this.options.urlPatterns[i][3];
-		    var index = Math.abs(tilePoint.x + tilePoint.y) % zsubs.length;
-		    var sub = zsubs[index];
-		    return L.Util.template(zurl, L.extend({
-			    s: sub,
-			    z: tilePoint.z,
-			    x: tilePoint.x,
-			    y: tilePoint.y
-		    }, this.options));
-        }
-	},
-});
-
-
-
 var SplitTileLayer = MyTileLayer.extend({
 
     // new SplitTileLayer(static_tile_url_B, ysplits,
@@ -308,6 +275,102 @@ var SplitTileLayer = MyTileLayer.extend({
         return this._url;
     },
 });
+
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+// A subclass that switches URL patterns depending on zoom range (incl subdomains)
+var ZoomRangeTileLayer2 = MyTileLayer.extend({
+    options: {
+        urlPatterns: [],
+    },
+    initialize: function(options) {
+        L.TileLayer.prototype.initialize.call(this, '', options);
+        //this.urlPatterns = patterns;
+    },
+	getTileUrl: function (tilePoint) {
+        var zoom = tilePoint.z;
+        for (var i=0; i<this.options.urlPatterns.length; i++) {
+            var zlo  = this.options.urlPatterns[i][0];
+            var zhi  = this.options.urlPatterns[i][1];
+            if ((zoom < zlo) || (zoom > zhi))
+                continue;
+            var zurl = this.options.urlPatterns[i][2];
+            var zsubs = this.options.urlPatterns[i][3];
+		    var index = Math.abs(tilePoint.x + tilePoint.y) % zsubs.length;
+		    var sub = zsubs[index];
+		    return L.Util.template(zurl, L.extend({
+			    s: sub,
+			    z: tilePoint.z,
+			    x: tilePoint.x,
+			    y: tilePoint.y
+		    }, this.options));
+        }
+	},
+});
+
+var SplitTileLayer2 = MyTileLayer.extend({
+    initialize: function(ysplits, north_layer, mid_layer, south_layer, options) {
+        L.TileLayer.prototype.initialize.call(this, '', options);
+        this._ysplits = ysplits;
+        this._north_layer = north_layer;
+        this._mid_layer = mid_layer;
+        this._south_layer = south_layer;
+    },
+	getTileUrl: function (tile) {
+        tilesize = this.getTileSize();
+        tw = tilesize.x;
+        th = tilesize.y;
+        px = tw * tile.x + tw/2;
+        py = th * tile.y + th/2;
+        tilelatlng = map.unproject(L.point(px, py), tile.z);
+        var ysplit = this._ysplits[tile.z];
+        // check NGC/SGC
+        if (!latlong_is_ngc(tilelatlng)) {
+            // SGC -- south, except for way zoomed-out layers
+            if ((tile.z < 5) && (tile.y == ysplit))
+                layer = this._mid_layer;
+            else
+                layer = this._south_layer;
+        } else {
+            // y=0 is the top!
+            var urlpat;
+            var opts;
+            if (tile.y < ysplit)
+                layer = this._north_layer;
+            else if (tile.y > ysplit)
+                layer = this._south_layer;
+            else
+                layer = this._mid_layer;
+        }
+        var url = layer.getTileUrl(tile);
+        return url;
+	},
+});
+
+function split_layer_2(name, pretty, decsplit,
+                       north_layer, mid_layer, south_layer, kwargs) {
+    var args = {
+        maxZoom: maxZoom,
+        minZoom: minZoom,
+        maxNativeZoom: maxNativeZoom,
+    };
+    for (var key in kwargs) {
+        args[key] = kwargs[key];
+    }
+    var ysplits = {};
+    for (var zoom=0; zoom<20; zoom++) {
+        // Thanks, https://en.wikipedia.org/wiki/Web_Mercator
+        y = Math.pow(2, zoom) / (2. * Math.PI) *
+            (Math.PI - Math.log(Math.tan(Math.PI/4. + (Math.PI / 180. * decsplit) / 2.)));
+        ysplits[zoom] = Math.floor(y);
+    }
+    var tiles = new SplitTileLayer2(ysplits, north_layer, mid_layer, south_layer, args);
+    tiles.name = name;
+    tiles.pretty = pretty;
+    return tiles;
+};
+
 
  
 // for attaching leaflet.Labels to circles
@@ -1860,77 +1923,61 @@ function split_layer(name, pretty, decsplit,
     return tiles;
 };
                                             
-tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
 
-{% if enable_pandas %}
-tiles = mylayer_B('pandas', 'PANDAS',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
 
-tiles = mylayer_B('ls-dr9.1.1-model', 'Legacy Surveys DR9.1.1 COSMOS deep models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
+var added = false;
+var layer_name = layer_initial;
+var baseMaps = {};
+var namedLayers = {};
 
-tiles = mylayer_B('ls-dr9.1.1-resid', 'Legacy Surveys DR9.1.1 COSMOS deep residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
+
 
 
 {% if enable_dr10 %}
 
-tiles = split_layer('ls-dr10', 'Legacy Surveys DR10 images', 32.375,
-                    // North
-                    'ls-dr9-north', [
-                      [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
-                      [15, maxZoom, tile_url], ],
-                    {'id':'ls-dr9-north'},
-                    // Mid
-		            'ls-dr10', [ [0, maxZoom, tile_url], ],
-                    {'id':'ls-dr10'},
-                    // South
-                    'ls-dr10-south', [
-                      [0, maxZoom, tile_url], ],
-                    {'id':'ls-dr10-south'},
-                    {}
-                   );
+// initialize layers
+findlayer('ls-dr9-north');
+findlayer('ls-dr10');
+findlayer('ls-dr10-south');
+
+findlayer('ls-dr9-north-model');
+findlayer('ls-dr10-model');
+findlayer('ls-dr10-south-model');
+
+findlayer('ls-dr9-north-resid');
+findlayer('ls-dr10-resid');
+findlayer('ls-dr10-south-resid');
+
+tiles = split_layer_2('ls-dr10', 'Legacy Surveys DR10 images', 32.375,
+                      namedLayers['ls-dr9-north'],
+                      namedLayers['ls-dr10'],
+                      namedLayers['ls-dr10-south'],
+                      {attribution: attribs['ls']});
 allLayers.push(tiles);
 
-tiles = split_layer('ls-dr10-model', 'Legacy Surveys DR10 models', 32.375,
-                    // North
-                    'ls-dr9-north-model', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr10-model', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'ls-dr10-south-model', [ [0, maxZoom, tile_url], ], {},
-                    {}
-                   );
+tiles = split_layer_2('ls-dr10-model', 'Legacy Surveys DR10 models', 32.375,
+                      namedLayers['ls-dr9-north-model'],
+                      namedLayers['ls-dr10-model'],
+                      namedLayers['ls-dr10-south-model'],
+                      {attribution: attribs['ls']});
 allLayers.push(tiles);
 
-tiles = split_layer('ls-dr10-resid', 'Legacy Surveys DR10 residuals', 32.375,
-                    // North
-                    'ls-dr9-north-resid', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr10-resid', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'ls-dr10-south-resid', [ [0, maxZoom, tile_url], ], {},
-                    {}
-                   );
+tiles = split_layer_2('ls-dr10-resid', 'Legacy Surveys DR10 residuals', 32.375,
+                      namedLayers['ls-dr9-north-resid'],
+                      namedLayers['ls-dr10-resid'],
+                      namedLayers['ls-dr10-south-resid'],
+                      {attribution: attribs['ls']});
 allLayers.push(tiles);
 
-
-tiles = mylayer_B('ls-dr10-south', 'Legacy Surveys DR10-south images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('ls-dr10-south-model', 'Legacy Surveys DR10-south models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('ls-dr10-south-resid', 'Legacy Surveys DR10-south residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
+//tiles = mylayer_B('ls-dr10-south', 'Legacy Surveys DR10-south images',
+//                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+//allLayers.push(tiles);
+//tiles = mylayer_B('ls-dr10-south-model', 'Legacy Surveys DR10-south models',
+//                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+//allLayers.push(tiles);
+//tiles = mylayer_B('ls-dr10-south-resid', 'Legacy Surveys DR10-south residuals',
+//                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
+//allLayers.push(tiles);
 
 tiles = split_layer('ls-dr10-grz', 'Legacy Surveys DR10 images (grz)', 32.375,
                     // North
@@ -2008,20 +2055,6 @@ tiles = mylayer_B('ls-dr10a-resid', 'Legacy Surveys DR10a residuals',
                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 allLayers.push(tiles);
 {% endif %}
-
-tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('ls-dr9.1.1-model', 'Legacy Surveys DR9.1.1 COSMOS deep models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('ls-dr9.1.1-resid', 'Legacy Surveys DR9.1.1 COSMOS deep residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
 
 {% if enable_dr9 %}
 tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
@@ -2516,9 +2549,7 @@ tiles = mylayer('2mass', '2MASS',
 allLayers.push(tiles);
 {% endcomment %}
 
-var added = false;
-var layer_name = layer_initial;
-var baseMaps = {};
+
 //console.log('Requested layer: "' + layer_name + '"');
 for (var i in allLayers) {
     var layer = allLayers[i];
@@ -3711,6 +3742,7 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
         return { permanent: (z >= 12),
                  interactive: true,
                  className: (z == 12 ? 'spectrumTooltipSmall' : 'spectrumTooltip'),
+                 bubblingMouseEvents: false,
                };
         //className: 'tooltipbg',
     },
@@ -4520,7 +4552,6 @@ console.log(polygonOverlays[i]);
 
 
 
-var namedLayers = {};
 for (var i in allLayers) {
     var layer = allLayers[i];
     //console.log('layer.name ' + layer.name + ' pretty ' + layer.pretty);
@@ -4542,7 +4573,7 @@ function findlayer(name, children=[]) {
     if (!(name in namedLayers)) {
         //console.log('name not in namedLayers');
         if (name in tile_layers) {
-            //console.log('name in tile_layers');
+            console.log('Creating layer', name);
             var layer = get_tile_layer(name);
             baseMaps[layer.pretty] = layer;
             allLayers.push(layer);
@@ -4601,9 +4632,7 @@ baseTree1 = baseTree1.concat(decaps_tree);
 {% endif %}
 
 var moresurveys = [
-    {% if enable_pandas %}
     findlayer('pandas'),
-    {% endif %}
     {% if enable_phat %}
     findlayer('phat'),
     {% endif %}

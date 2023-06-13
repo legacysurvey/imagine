@@ -299,14 +299,45 @@ def _index(req,
     maxnative = 14;
 
     tile_layers = {
-        'ls-dr10-south': ['Legacy Surveys DR10-south images',
-                          [def_url],  maxnative, 'ls'],
         'sdss': ['SDSS', [[14, maxZoom, tileurl, subs], prod_backstop], maxnative, 'sdss'],
         'galex': ['GALEX', [[0, 9, prod_url, prod_subs], def_url], 12, 'galex'],
         'sfd': ['SFD Dust', [[7, 10, tileurl, subs], prod_backstop], 10, 'sfd'],
         'wssa': ['WISE 12-micron dust map', [[9, 10, tileurl, subs], prod_backstop], 10, 'wssa'],
         'halpha': ['Halpha map', [[7, 10, tileurl, subs], prod_backstop], 10, 'halpha'],
+
     }
+
+    if settings.ENABLE_DR10:
+        tile_layers.update({
+            'ls-dr10-south': ['Legacy Surveys DR10-south images',
+                              [def_url],  maxnative, 'ls'],
+	    'ls-dr10': ['Legacy Surveys DR10 images', [def_url], maxnative, 'ls'],
+
+            'ls-dr10-south-model': ['Legacy Surveys DR10-south models',
+                              [def_url],  maxnative, 'ls'],
+	    'ls-dr10-model': ['Legacy Surveys DR10 models', [def_url], maxnative, 'ls'],
+            'ls-dr10-south-resid': ['Legacy Surveys DR10-south residuals',
+                              [def_url],  maxnative, 'ls'],
+	    'ls-dr10-resid': ['Legacy Surveys DR10 residuals', [def_url], maxnative, 'ls'],
+        })
+
+    if settings.ENABLE_DR9 or settings.ENABLE_DR10:
+        tile_layers.update({
+            'ls-dr9-north': ['Legacy Surveys DR9-north images',
+                             [[0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg', []],
+                              def_url], maxnative, 'ls'],
+            'ls-dr9-north-model': ['Legacy Surveys DR9-north models', [def_url], maxnative, 'ls'],
+            'ls-dr9-north-resid': ['Legacy Surveys DR9-north residuals', [def_url], maxnative, 'ls'],
+        })
+
+    if settings.ENABLE_DR9:
+        tile_layers.update({
+            'ls-dr9.1.1': ['Legacy Surveys DR9.1.1 COSMOS deep images', [def_url], maxZoom, 'ls'],
+            'ls-dr9.1.1-model': ['Legacy Surveys DR9.1.1 COSMOS deep models', [def_url],
+                                 maxZoom, 'ls'],
+            'ls-dr9.1.1-resid': ['Legacy Surveys DR9.1.1 COSMOS deep residuals', [def_url],
+                                 maxZoom, 'ls'],
+        })
 
     if settings.ENABLE_HSC_DR2:
         tile_layers.update({
@@ -323,6 +354,9 @@ def _index(req,
         tile_layers.update({
             'des-dr1': ['DES DR1', [def_url], maxnative, 'des'],
         })
+
+    if settings.ENABLE_PANDAS:
+        tile_layers['pandas'] = ['PANDAS', [def_url], maxnative, 'The Pan-Andromeda Archaeological Survey']
 
     keys = tile_layers.keys()
     for k in keys:
@@ -413,7 +447,7 @@ def _index(req,
         enable_desi_footprint = True,
         enable_spectra = settings.ENABLE_SPECTRA,
         enable_phat = settings.ENABLE_PHAT,
-        enable_pandas = settings.ENABLE_PANDAS,
+        #enable_pandas = settings.ENABLE_PANDAS,
         enable_desi_menu = True,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
@@ -7547,7 +7581,7 @@ def get_layer(name, default=None):
         layer = layers[name]
 
     elif name in ['ls-dr10', 'ls-dr10-model', 'ls-dr10-resid',
-                  'ls-dr10-grz', 'ls-dr10-model-grz', 'ls-dr10-resid-grz',]:
+                  'ls-dr10-grz', 'ls-dr10-model-grz', 'ls-dr10-resid-grz']:
         is_grz = name.endswith('-grz')
         if is_grz:
             name = name.replace('-grz','')
@@ -8173,7 +8207,8 @@ if __name__ == '__main__':
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=192.2168&rahi=223.9014&declo=-8.6896&dechi=8.6462')
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=154.9292&rahi=186.6138&declo=21.5757&dechi=36.7037')
     #r = c.get('/desi-spectrum/edr/targetid39627848784286649')
-    r = c.get('/desi-edr')
+    #r = c.get('/desi-edr')
+    r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
