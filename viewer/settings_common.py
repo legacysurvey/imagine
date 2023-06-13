@@ -8,6 +8,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
+LAYER_OVERRIDES = {}
+
 USER_QUERY_DIR = '/tmp/viewer-user'
 
 DESI_PROSPECT_DIR = None

@@ -284,7 +284,32 @@ def _index(req,
            maxZoom = 16,
            decaps_first = False,
            **kwargs):
+
+    ls_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>'
+    hsc_attrib = '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>'
+
+    tileurl = settings.TILE_URL
+    subdomains = settings.SUBDOMAINS
+
+    tile_layers = {
+        'ls-dr10-south': ['Legacy Surveys DR10-south images',
+                          [[0, maxZoom, tileurl]],
+                          subdomains, ls_attrib,],
+        'hsc-dr3': ['HSC DR3', [[0, maxZoom, tileurl]], subdomains, hsc_attrib],
+    }
+
+    keys = tile_layers.keys()
+    for k in keys:
+        over = settings.LAYER_OVERRIDES.get(k)
+        if over is None:
+            continue
+        orig = tile_layers[k]
+        urls,subs = over
+        orig[1] = urls
+        orig[2] = subs
+
     kwkeys = dict(
+        tile_layers=tile_layers,
         enable_desi_edr = settings.ENABLE_DESI_EDR,
         enable_merian = settings.ENABLE_MERIAN,
         science = settings.ENABLE_SCIENCE,
@@ -372,7 +397,7 @@ def _index(req,
 
     for k in kwargs.keys():
         if not k in kwkeys:
-            raise RuntimeError('unknown kwarg "%s" in map.index()' % k)
+            raise RuntimeError('unknown kwarg "%s" in map._index()' % k)
     for k,v in kwkeys.items():
         if not k in kwargs:
             kwargs[k] = v
