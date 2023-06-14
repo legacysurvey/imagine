@@ -7271,14 +7271,6 @@ def get_layer(name, default=None):
         layer = LegacySurveySplitLayer(name, north, south, 32.375)
         layer.drname = 'Legacy Surveys DR9'
 
-    elif name in ['dr9sv', 'dr9sv-model', 'dr9sv-resid']:
-        suff = name[5:]
-        north = get_layer('dr9sv-north' + suff)
-        south = get_layer('dr9sv-south' + suff)
-        ### NOTE, must also change the javascript in template/index.html !
-        layer = LegacySurveySplitLayer(name, north, south, 32.375)
-        layer.drname = 'Legacy Surveys DR9-SV'
-
     elif name == 'phat':
         layer = PhatLayer('phat')
 
@@ -7844,15 +7836,7 @@ if __name__ == '__main__':
     #r = c.get('/dr8/1/14/16023/6558.cat.json')
     #r = c.get('/cutout.fits?ra=212.1944&dec=4.9083&layer=dr8-south&pixscale=0.27')
     #r = c.get('/cutout_panels/dr8-south/680175/N5/?ra=5.4638&dec=22.4002&size=100')
-    #r = c.get('/dr9sv-north/1/11/1225/827.jpg')
-    #r = c.get('/dr9sv-south/1/12/2412/1671.jpg')
-    #r = c.get('/dr9sv-north/1/10/378/377.jpg')
-    #r = c.get('/dr9sv-north/1/9/189/188.jpg')
-    #r = c.get('/dr9sv-north/1/11/1220/823.jpg')
-    #r = c.get('/dr9sv-north/1/10/396/372.jpg')
-    #r = c.get('/bricks/?ralo=33.5412&rahi=33.5722&declo=-2.2242&dechi=-2.2070&layer=dr9sv')
     #r = c.get('/manga/1/cat.json?ralo=194.4925&rahi=194.5544&declo=29.0022&dechi=29.0325')
-    #r = c.get('/bricks/?ralo=33.5412&rahi=33.5722&declo=-2.2242&dechi=-2.2070&layer=dr9sv')
     #r = c.get('/manga/1/cat.json?ralo=194.4925&rahi=194.5544&declo=29.0022&dechi=29.0325')
     #r = c.get('/fornax-model/1/11/1823/1233.jpg')
     #r = c.get('/dr9-test-9.2/1/14/14809/8145.jpg')
