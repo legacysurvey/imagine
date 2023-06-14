@@ -296,22 +296,26 @@ def _index(req,
         'sfd': ['SFD Dust', [[7, 10, tileurl, subs], prod_backstop], 10, 'sfd'],
         'wssa': ['WISE 12-micron dust map', [[9, 10, tileurl, subs], prod_backstop], 10, 'wssa'],
         'halpha': ['Halpha map', [[7, 10, tileurl, subs], prod_backstop], 10, 'halpha'],
-
     }
 
     if settings.ENABLE_DR10:
-        tile_layers.update({
+        dr10layers = {
             'ls-dr10-south': ['Legacy Surveys DR10-south images',
                               [def_url],  maxnative, 'ls'],
 	    'ls-dr10': ['Legacy Surveys DR10 images', [def_url], maxnative, 'ls'],
-
             'ls-dr10-south-model': ['Legacy Surveys DR10-south models',
                               [def_url],  maxnative, 'ls'],
 	    'ls-dr10-model': ['Legacy Surveys DR10 models', [def_url], maxnative, 'ls'],
             'ls-dr10-south-resid': ['Legacy Surveys DR10-south residuals',
                               [def_url],  maxnative, 'ls'],
 	    'ls-dr10-resid': ['Legacy Surveys DR10 residuals', [def_url], maxnative, 'ls'],
-        })
+        }
+        # Add regular and "-grz" versions of the above layers.
+        for k,v in dr10layers.items():
+            tile_layers[k] = v
+            grz = v.copy()
+            grz[0] += ' (grz)'
+            tile_layers[k + '-grz'] = grz
 
     if settings.ENABLE_DR9 or settings.ENABLE_DR10:
         tile_layers.update({
@@ -349,6 +353,13 @@ def _index(req,
 
     if settings.ENABLE_PANDAS:
         tile_layers['pandas'] = ['PANDAS', [def_url], maxnative, 'The Pan-Andromeda Archaeological Survey']
+
+    if settings.ENABLE_PS1:
+        tile_layers['ps1'] = ['Pan-STARRS1', [[8, maxZoom, tileurl, subs], prod_backstop],
+                              maxnative, 'ps1']
+
+    if settings.ENABLE_ZTF:
+        tile_layers['ztf'] = ['ZTF', [def_url], 12, 'Zwicky Transient Factory']
 
     keys = tile_layers.keys()
     for k in keys:
@@ -422,7 +433,7 @@ def _index(req,
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         #enable_des_dr1 = settings.ENABLE_DES_DR1,
-        enable_ztf = settings.ENABLE_ZTF,
+        #enable_ztf = settings.ENABLE_ZTF,
         enable_dr5_models = settings.ENABLE_DR5,
         enable_dr5_resids = settings.ENABLE_DR5,
         enable_dr6_models = settings.ENABLE_DR6,
