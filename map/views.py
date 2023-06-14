@@ -276,6 +276,10 @@ def _index(req,
     prod_subs = settings.SUBDOMAINS_B
     prod_backstop = [0, maxZoom, prod_url, prod_subs]
 
+    aws_tile_url = 'https://s3.us-west-1.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg'
+    max_aws_zoom = 14
+    aws_url = [0, max_aws_zoom, aws_tile_url, []]
+
     # default maxNativeZoom
     maxnative = 14;
 
@@ -327,6 +331,22 @@ def _index(req,
                                  maxZoom, 'ls'],
             'ls-dr9.1.1-resid': ['Legacy Surveys DR9.1.1 COSMOS deep residuals', [def_url],
                                  maxZoom, 'ls'],
+        })
+
+    if settings.ENABLE_DR8:
+        tile_layers.update({
+            'ls-dr8': ['Legacy Surveys DR8 images', [aws_url, def_url], maxnative, 'ls',
+                       {'id':'dr8'}],
+            'ls-dr8-north': ['Legacy Surveys DR8-north images', [aws_url, def_url], maxnative, 'ls',
+                             {'id':'dr8-north'}],
+            'ls-dr8-south': ['Legacy Surveys DR8-south images', [aws_url, def_url], maxnative, 'ls',
+                             {'id':'dr8-south'}],
+            'ls-dr8-model': ['Legacy Surveys DR8 models', [def_url], maxnative, 'ls'],
+            'ls-dr8-north-model': ['Legacy Surveys DR8-north models', [def_url], maxnative, 'ls'],
+            'ls-dr8-south-model': ['Legacy Surveys DR8-south models', [def_url], maxnative, 'ls'],
+            'ls-dr8-resid': ['Legacy Surveys DR8 residuals', [def_url], maxnative, 'ls'],
+            'ls-dr8-north-resid': ['Legacy Surveys DR8-north residuals', [def_url], maxnative, 'ls'],
+            'ls-dr8-south-resid': ['Legacy Surveys DR8-south residuals', [def_url], maxnative, 'ls'],
         })
 
     if settings.ENABLE_HSC_DR2:
@@ -391,7 +411,7 @@ def _index(req,
         enable_unwise = settings.ENABLE_UNWISE,
         #enable_vlass = settings.ENABLE_VLASS,
         enable_dev = settings.ENABLE_DEV,
-        enable_m33 = False,
+        #enable_m33 = False,
         enable_unwise_w3w4 = settings.ENABLE_UNWISE_W3W4,
         enable_cutouts = settings.ENABLE_CUTOUTS,
         enable_dr67 = settings.ENABLE_DR67,
