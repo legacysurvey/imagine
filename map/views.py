@@ -68,18 +68,6 @@ tileversions = {
     'phat': [1,],
     'm33': [1,],
 
-    'dr9sv-north': [1],
-    'dr9sv-north-model': [1],
-    'dr9sv-north-resid': [1],
-
-    'dr9sv-south': [1],
-    'dr9sv-south-model': [1],
-    'dr9sv-south-resid': [1],
-
-    'dr9sv': [1],
-    'dr9sv-model': [1],
-    'dr9sv-resid': [1],
-
     'ls-dr8-north': [1],
     'ls-dr8-north-model': [1],
     'ls-dr8-north-resid': [1],
@@ -387,6 +375,7 @@ def _index(req,
         enable_dr5 = settings.ENABLE_DR5,
         enable_dr6 = settings.ENABLE_DR6,
         enable_dr7 = settings.ENABLE_DR7,
+
         enable_dr8 = settings.ENABLE_DR8,
         enable_dr8_overlays = settings.ENABLE_DR8,
         enable_dr8_models = settings.ENABLE_DR8_MODELS,
@@ -399,18 +388,6 @@ def _index(req,
         enable_dr8_south_models = settings.ENABLE_DR8_MODELS,
         enable_dr8_south_resids = settings.ENABLE_DR8_RESIDS,
         enable_dr8_south_overlays = settings.ENABLE_DR8,
-        enable_dr9sv = settings.ENABLE_DR9SV,
-        enable_dr9sv_overlays = settings.ENABLE_DR9SV,
-        enable_dr9sv_models = settings.ENABLE_DR9SV,
-        enable_dr9sv_resids = settings.ENABLE_DR9SV,
-        enable_dr9sv_north = settings.ENABLE_DR9SV,
-        enable_dr9sv_north_models = settings.ENABLE_DR9SV,
-        enable_dr9sv_north_resids = settings.ENABLE_DR9SV,
-        enable_dr9sv_north_overlays = settings.ENABLE_DR9SV,
-        enable_dr9sv_south = settings.ENABLE_DR9SV,
-        enable_dr9sv_south_models = settings.ENABLE_DR9SV,
-        enable_dr9sv_south_resids = settings.ENABLE_DR9SV,
-        enable_dr9sv_south_overlays = settings.ENABLE_DR9SV,
 
         enable_dr9 = settings.ENABLE_DR9,
         enable_dr9_overlays = settings.ENABLE_DR9,
@@ -5576,13 +5553,6 @@ def get_survey(name):
         north.layer = 'ls-dr9-north'
         south = get_survey('ls-dr10-south')
         south.layer = 'ls-dr10-south'
-        survey = SplitSurveyData(north, south)
-
-    elif name == 'dr9sv':
-        north = get_survey('dr9sv-north')
-        north.layer = 'dr9sv-north'
-        south = get_survey('dr9sv-south')
-        south.layer = 'dr9sv-south'
         survey = SplitSurveyData(north, south)
 
     elif name == 'dr10-deep':
