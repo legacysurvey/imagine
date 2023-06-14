@@ -66,8 +66,6 @@ ENABLE_DR9_SOUTH_MODELS = False
 ENABLE_DR9_SOUTH_RESIDS = False
 
 ENABLE_DR10 = False
-ENABLE_DR10_EARLY = False
-ENABLE_DR10A = False
 
 ENABLE_UNWISE_W3W4 = False
 
@@ -86,6 +84,7 @@ ENABLE_HSC_DR2 = True
 ENABLE_VLASS = True
 
 ENABLE_PHAT = False
+ENABLE_M33 = False
 
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False

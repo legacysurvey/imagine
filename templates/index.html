@@ -2314,41 +2314,6 @@ allLayers.push(tiles);
 
 {% endif %}
 
-{% if enable_eboss %}
-tiles = mylayer('eboss', 'special eBOSS region',
-                {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-{% if enable_phat %}
-tiles = mylayer('phat', 'PHAT image',
-                  {'attribution': 'PHAT collaboration',
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],
-                   'maxNativeZoom': maxZoom,});
-allLayers.push(tiles);
-{% endif %}
-
-{% if enable_m33 %}
-tiles = mylayer_B('m33', 'M33 image',
-                  {'attribution': 'M33 collaboration',
-                   'urlPatterns': [ [17, maxZoom, tile_url], ],
-                   'maxNativeZoom': maxZoom,});
-allLayers.push(tiles);
-{% endif %}
-
-  {% if enable_merian %}
-tiles = mylayer_B('merian-n540', 'Merian N540',
-                  {'attribution': '',
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('merian-n708', 'Merian N708',
-                  {'attribution': '',
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-  {% endif %}
-  
-
 // tiles = mylayer_B('outliers-ast', 'Asteroids test: outliers',
 //                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 // allLayers.push(tiles);
@@ -2397,14 +2362,6 @@ allLayers.push(tiles);
 {% endif %}
 
 {% endif %}
-
-{% comment %}
-tiles = mylayer('2mass', '2MASS',
-                {'maxNativeZoom': 12,
-                 'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endcomment %}
-
 
 //console.log('Requested layer: "' + layer_name + '"');
 for (var i in allLayers) {
@@ -4358,20 +4315,24 @@ var decaps_tree = [
 {% endif %}
 
 var baseTree1 = [
-    {% if enable_m33 %}
     findlayer('m33'),
-    {% endif %}
 ];
 
 {% if decaps_first %}
 baseTree1 = baseTree1.concat(decaps_tree);
 {% endif %}
 
+{% if merian_first %}
+baseTree1 = baseTree1.concat([
+    findlayer('merian-n540'),
+    findlayer('merian-n708'),
+    findlayer('hsc-dr3'),
+]);
+{% endif %}
+
 var moresurveys = [
     findlayer('pandas'),
-    {% if enable_phat %}
     findlayer('phat'),
-    {% endif %}
     //findlayer('outliers-ast'),
     //findlayer('asteroids-i'),
     findlayer('des-dr1'),
@@ -4386,8 +4347,8 @@ moresurveys = moresurveys.concat([
     findlayer('galex'),
     findlayer('halpha'),
     findlayer('hsc-dr2'),
+    {% if not merian_first %}
     findlayer('hsc-dr3'),
-    {% if enable_merian %}
     findlayer('merian-n540'),
     findlayer('merian-n708'),
     {% endif %}
@@ -4514,9 +4475,7 @@ baseTree1 = baseTree1.concat([
         {% endif %}
     ]),
     {% endif %}
-    {% if enable_eboss %}
     findlayer('eboss'),
-    {% endif %}
 
      ]},
     {% endif %}

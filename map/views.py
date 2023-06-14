@@ -263,6 +263,7 @@ def _index(req,
            rooturl=settings.ROOT_URL,
            maxZoom = 16,
            decaps_first = False,
+           merian_first = False,
            **kwargs):
 
 
@@ -346,8 +347,26 @@ def _index(req,
         tile_layers['ps1'] = ['Pan-STARRS1', [[8, maxZoom, tileurl, subs], prod_backstop],
                               maxnative, 'ps1']
 
+    # 2MASS...
+
     if settings.ENABLE_ZTF:
         tile_layers['ztf'] = ['ZTF', [def_url], 12, 'Zwicky Transient Factory']
+
+    if settings.ENABLE_EBOSS:
+        tile_layers['eboss'] = ['special eBOSS region', [def_url], maxnative, 'ls']
+
+    if settings.ENABLE_PHAT:
+        tile_layers['phat'] = ['PHAT image', [def_url], maxnative, 'PHAT collaboration']
+
+    if settings.ENABLE_M33:
+        tile_layers['m33'] = ['HST M33 image', [[17, maxZoom, tileurl, subs], prod_backstop],
+                              maxZoom, 'M33 collaboration']
+
+    if settings.ENABLE_MERIAN:
+        tile_layers.update({
+            'merian-n540': ['Merian N540', [def_url], maxnative, 'MERIAN collaboration'],
+            'merian-n708': ['Merian N708', [def_url], maxnative, 'MERIAN collaboration'],
+        })
 
     keys = tile_layers.keys()
     for k in keys:
@@ -361,7 +380,7 @@ def _index(req,
     kwkeys = dict(
         tile_layers=tile_layers,
         enable_desi_edr = settings.ENABLE_DESI_EDR,
-        enable_merian = settings.ENABLE_MERIAN,
+        #enable_merian = settings.ENABLE_MERIAN,
         science = settings.ENABLE_SCIENCE,
         enable_older = settings.ENABLE_OLDER,
         enable_unwise = settings.ENABLE_UNWISE,
@@ -639,6 +658,7 @@ def _index(req,
                 zoom=zoom,
                 maxZoom=maxZoom,
                 decaps_first=decaps_first,
+                merian_first=merian_first,
                 galname=galname,
                 layer=layer, tileurl=tileurl,
                 hostname_url=hostname_url,
@@ -7889,7 +7909,6 @@ if __name__ == '__main__':
     #r = c.get('/exps/?ralo=246.8384&rahi=247.3335&declo=32.6943&dechi=32.9266&layer=ls-dr9-south')
     #r = c.get('/exposure_panels/ls-dr9-south/624475/S21/?ra=128.6599&dec=20.0039&size=100&kind=dq')
     #r = c.get('/')
-    #r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=247.4432&rahi=247.5669&declo=29.9699&dechi=30.0297')
     #r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=119.8540&rahi=120.3490&declo=37.6292&dechi=37.8477')
     #r = c.get('/targets-dr9-sv1-dark/1/cat.json?ralo=119.8828&rahi=120.3779&declo=37.6129&dechi=37.8315')
     #r = c.get('/ls-dr9-south/1/6/60/26.jpg')
