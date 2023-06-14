@@ -2091,67 +2091,22 @@ allLayers.push(tiles);
 
 
 {% if enable_dr67 %}
-tiles = split_layer('ls-dr67', 'Legacy Surveys DR6+DR7 images',
-                    32.,
-                    // North
-                    'mzls+bass-dr6', [ [13, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr67', [ [14, maxZoom, tile_url], ], {},
-                    // South
-                    'decals-dr7', [ [11, maxZoom, tile_url], ], {},
-                    {});
+findlayer('decals-dr7')
+findlayer('mzls+bass-dr6')
+findlayer('ls-dr67')
+
+tiles = split_layer_2('ls-dr67', 'Legacy Surveys DR6+DR7', 32.375,
+                      namedLayers['mzls+bass-dr6'],
+                      namedLayers['ls-dr67'],
+                      namedLayers['decals-dr7'],
+                      {attribution: attribs['ls']});
 allLayers.push(tiles);
 {% endif %}
 
-testLayers = [];
-{% if enable_dev %}
-{% for name,pretty in test_layers %}
-  tiles = mylayer_B('{{name}}', '{{pretty}}',
-                    {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-  allLayers.push(tiles);
-  testLayers.push(tiles);
-{% endfor %}
-{% endif %}
-
-{% if enable_dr7 %}
-tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
-                  {'urlPatterns': [ [11, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% if enable_dr7_models %}
-tiles = mylayer_B('decals-dr7-model', 'DECaLS DR7 models',
-                  {'urlPatterns': [ [10, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr7_resids %}
-tiles = mylayer_B('decals-dr7-resid', 'DECaLS DR7 residuals',
-                {'urlPatterns': [ [10, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-
-
-{% endif %}
-
-{% if enable_dr6 %}
-tiles = mylayer_B('mzls+bass-dr6', 'MzLS+BASS DR6 images',
-                {'urlPatterns': [ [13, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-if (defaultTile == null) {
-    defaultTile = tiles;
-}
-
-{% if enable_dr6_models %}
-tiles = mylayer_B('mzls+bass-dr6-model', 'MzLS+BASS DR6 models',
-                  {'urlPatterns': [ [13, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-                                            
-{% if enable_dr6_resids %}
-tiles = mylayer_B('mzls+bass-dr6-resid', 'MzLS+BASS DR6 residuals',
-                  {'urlPatterns': [ [13, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
+//
+//if (defaultTile == null) {
+//    defaultTile = tiles;
+//}
 
 {% if enable_dr5 %}
 tiles = mylayer_B('decals-dr5', 'DECaLS DR5 images',
@@ -2242,9 +2197,6 @@ for (var i in allLayers) {
         layer.addTo(map);
         added = true;
     }
-}
-if (!added) {
-    defaultTile.addTo(map);
 }
 // may be overridden by 'qstr' below.
 var last_layer_name = layer_name;

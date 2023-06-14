@@ -351,6 +351,28 @@ def _index(req,
             'ls-dr8-south-resid': ['Legacy Surveys DR8-south residuals', [def_url], maxnative, 'ls'],
         })
 
+    if settings.ENABLE_DR67 or settings.ENABLE_DR7:
+        tile_layers.update({
+            'decals-dr7': ['DECaLS DR7 images', [[11, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls'],
+        })
+    if settings.ENABLE_DR7:
+        tile_layers.update({
+            'decals-dr7-model': ['DECaLS DR7 models', [[10, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls'],
+            'decals-dr7-resid': ['DECaLS DR7 residuals', [[10, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls'],
+        })
+
+    if settings.ENABLE_DR6 or settings.ENABLE_DR67:
+        tile_layers['mzls+bass-dr6'] = ['MzLS+BASS DR6 images', [[13, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls']
+
+    if settings.ENABLE_DR6:
+        tile_layers.update({
+            'mzls+bass-dr6-model': ['MzLS+BASS DR6 models', [[13, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls'],
+            'mzls+bass-dr6-resid': ['MzLS+BASS DR6 residuals', [[13, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls'],
+        })
+
+    if settings.ENABLE_DR67:
+        tile_layers['ls-dr67'] = ['Legacy Surveys DR6+DR7 images', [[14, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls']
+
     if settings.ENABLE_UNWISE:
         tile_layers.update({
             'unwise-neo4': ['unWISE W1/W2 NEO4', [[6, maxZoom, tileurl, subs], prod_backstop],
