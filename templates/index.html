@@ -1932,6 +1932,16 @@ var baseMaps = {};
 var namedLayers = {};
 
 
+var testLayers = [];
+var testTree = [];
+{% if enable_dev %}
+
+{% for name,pretty in test_layers %}
+testTree.push(findlayer('{{name}}'));
+testLayers.push(namedLayers['{{name}}']);
+{% endfor %}
+
+{% endif %}
 
 // initialize layers
 
@@ -4147,14 +4157,6 @@ function findlayer(name, children=[]) {
     return rtn;
 }
  
-var testTree = [];
-{% if enable_dev %}
-{% for name,pretty in test_layers %}
-  testTree.push(findlayer('{{name}}'));
-{% endfor %}
-{% endif %}
-
-console.log('testTree:', testTree);
 
 {% if enable_decaps %}
 var decaps_tree = [
@@ -4373,11 +4375,9 @@ console.log('baseTree:', baseTree);
 bt = { label: 'Images', children: baseTree };
 baseTree = bt;
 
-
 if (!added) {
     defaultTile.addTo(map);
 }
-
 
 var namedOverlays = {};
 for (var i=0,len=overlays.length; i<len; i++) {

@@ -407,6 +407,20 @@ def _index(req,
             'merian-n708': ['Merian N708', [def_url], maxnative, 'MERIAN collaboration'],
         })
 
+    test_layers = []
+    try:
+        from map.test_layers import test_layers as tl
+        for la in tl:
+            if not la in test_layers:
+                test_layers.append(la)
+
+                name,pretty = la
+                tile_layers.update({name: [pretty, [def_url], maxnative, '']})
+
+    except:
+        import traceback
+        traceback.print_exc()
+
     keys = tile_layers.keys()
     for k in keys:
         over = settings.LAYER_OVERRIDES.get(k)
@@ -662,16 +676,6 @@ def _index(req,
         ra,dec,galname = get_random_galaxy(layer=layer)
     
     hostname_url = req.build_absolute_uri('/')
-
-    test_layers = []
-    try:
-        from map.test_layers import test_layers as tl
-        for la in tl:
-            if not la in test_layers:
-                test_layers.append(la)
-    except:
-        import traceback
-        traceback.print_exc()
 
     test_cats = []
     try:
