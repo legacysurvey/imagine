@@ -2103,8 +2103,6 @@ testLayers = [];
 {% endfor %}
 {% endif %}
 
-
-
 {% if enable_dr7 %}
 tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
                   {'urlPatterns': [ [11, maxZoom, tile_url], ],});
@@ -2224,47 +2222,6 @@ allLayers.push(tiles);
 // tiles = mylayer_B('asteroids-i', 'Asteroids test: images',
 //                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
 // allLayers.push(tiles);
-
-{% if enable_unwise %}
-tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
-                {'maxNativeZoom': 12,
-                 'attribution': unwise_attrib,
-                 'urlPatterns': [ [6, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
-                {'maxNativeZoom': 11,
-                 'attribution': unwise_attrib,
-                 'urlPatterns': [
-                     [1, 11, aws_unwise_url],]});
- //[12, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('unwise-neo7', 'unWISE W1/W2 NEO7',
-                {'maxNativeZoom': 11,
-                 'attribution': unwise_attrib,
-                 'urlPatterns': [
-                     [1, maxZoom, tile_url], ],});
- //[1, 11, aws_unwise_url],]});
-allLayers.push(tiles);
-
-
-tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
-                {'maxNativeZoom': 12,
-                 'attribution': unwise_attrib,
-                 'urlPatterns': [ [6, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-{% if enable_unwise_w3w4 %}
-tiles = mylayer_B('unwise-w3w4', 'unWISE W3/W4',
-                {'maxNativeZoom': 11,
-                 'attribution': unwise_attrib,
-                 'urlPatterns': [
-                     [1, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-{% endif %}
 
 //console.log('Requested layer: "' + layer_name + '"');
 for (var i in allLayers) {

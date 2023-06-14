@@ -280,6 +280,8 @@ def _index(req,
     max_aws_zoom = 14
     aws_url = [0, max_aws_zoom, aws_tile_url, []]
 
+    aws_unwise_url = 'https://s3.us-west-2.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg'
+
     # default maxNativeZoom
     maxnative = 14;
 
@@ -348,6 +350,18 @@ def _index(req,
             'ls-dr8-north-resid': ['Legacy Surveys DR8-north residuals', [def_url], maxnative, 'ls'],
             'ls-dr8-south-resid': ['Legacy Surveys DR8-south residuals', [def_url], maxnative, 'ls'],
         })
+
+    if settings.ENABLE_UNWISE:
+        tile_layers.update({
+            'unwise-neo4': ['unWISE W1/W2 NEO4', [[6, maxZoom, tileurl, subs], prod_backstop],
+                            12, 'unwise'],
+            'unwise-neo6': ['unWISE W1/W2 NEO6', [[1, 11, aws_unwise_url, []]], 11, 'unwise'],
+            'unwise-neo7': ['unWISE W1/W2 NEO7', [def_url], 11, 'unwise'],
+            'unwise-cat-model': ['unWISE Catalog model', [[6, maxZoom, tileurl, subs], prod_backstop],
+                                 12, 'unwise'],
+        })
+    if settings.ENABLE_UNWISE_W3W4:
+        tile_layers['unwise-w3w4'] = ['unWISE W3/W4', [def_url], 11, 'unwise']
 
     if settings.ENABLE_HSC_DR2:
         tile_layers.update({
