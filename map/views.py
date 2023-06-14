@@ -426,8 +426,6 @@ def _index(req,
         enable_dr9_south_overlays = settings.ENABLE_DR9_SOUTH,
 
         enable_dr10 = settings.ENABLE_DR10,
-        enable_dr10a = settings.ENABLE_DR10A,
-        enable_dr10_early = settings.ENABLE_DR10_EARLY,
         enable_dr10_overlays = settings.ENABLE_DR10,
 
         enable_decaps = settings.ENABLE_DECAPS,
@@ -2865,39 +2863,8 @@ class LsDr10Layer(ReDecalsLayer):
         return rgb
 
     def get_ccds_for_brick(self, survey, brick):
-        ccdsfn = survey.find_file('ccds-table', brick=brick.brickname)
-        if not os.path.exists(ccdsfn):
-            # LS-DR10-early, we didn't save the per-brick CCDs table (d'oh).
-            if self.name == 'ls-dr10-early':
-                from legacypipe.survey import wcs_for_brick
-                import numpy as np
-                #print('DR10-early looking for CCDs')
-                targetwcs = wcs_for_brick(brick)
-                ccds = survey.ccds_touching_wcs(targetwcs)
-                ccds = touchup_ccds(ccds, survey)
-
-                #print(len(ccds), 'CCDs')
-                ccds.brick_x0 = np.zeros(len(ccds), np.int16)
-                ccds.brick_x1 = np.zeros(len(ccds), np.int16)
-                ccds.brick_y0 = np.zeros(len(ccds), np.int16)
-                ccds.brick_y1 = np.zeros(len(ccds), np.int16)
-                rr = np.array([brick.ra1,  brick.ra1,  brick.ra2,  brick.ra2])
-                dd = np.array([brick.dec1, brick.dec2, brick.dec1, brick.dec2])
-                B = 3600
-                for i,ccd in enumerate(ccds):
-                    wcs = survey.get_approx_wcs(ccd)
-                    _,bx,by = wcs.radec2pixelxy(rr, dd)
-                    ccds.brick_x0[i] = max(0, np.floor(min(bx-1)))
-                    ccds.brick_y0[i] = max(0, np.floor(min(by-1)))
-                    ccds.brick_x1[i] = min(B-1, np.ceil(max(bx-1)))
-                    ccds.brick_y1[i] = min(B-1, np.ceil(max(by-1)))
-                filtorder = dict(g=0, r=1, i=2, z=3, Y=4)
-                fo = np.array([filtorder.get(f, 5) for f in ccds.filter])
-                I = np.lexsort((ccds.ccdname, ccds.expnum, fo))
-                ccds = ccds[I]
-                return ccds
-            return None
         from astrometry.util.fits import fits_table
+        ccdsfn = survey.find_file('ccds-table', brick=brick.brickname)
         ccds = fits_table(ccdsfn)
         ccds = touchup_ccds(ccds, survey)
         return ccds
@@ -5611,19 +5578,6 @@ def get_survey(name):
         south.layer = 'ls-dr10-south'
         survey = SplitSurveyData(north, south)
 
-    elif name in ['ls-dr10-early']:
-        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
-    elif name in ['ls-dr10-early-grz']:
-        survey = DR8LegacySurveyData(survey_dir=dirnm.replace('-grz',''), cache_dir=cachedir)
-
-    elif name in ['ls-dr10a', 'ls-dr10a-model', 'ls-dr10a-resid']:
-        if name in ['ls-dr10a-model', 'ls-dr10a-resid']:
-            dirnm = os.path.join(basedir, 'ls-dr10a')
-        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
-
-    elif name in ['ls-dr9-south-B']:
-        survey = DR8LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
-
     elif name == 'dr9sv':
         north = get_survey('dr9sv-north')
         north.layer = 'dr9sv-north'
@@ -5830,7 +5784,8 @@ def ccd_list(req):
         x = np.array([1, 1, c.width, c.width])
         y = np.array([1, c.height, c.height, 1])
         r,d = wcs.pixelxy2radec(x, y)
-        if name in ['ls-dr10-early', 'ls-dr10a']:
+        filters = set(c.filter)
+        if 'i' in filters or 'Y' in filters:
             ccmap = dict(g='#0000cc', r='#008844', i='#448800', z='#cc0000', Y='#cc4444')
         else:
             ccmap = dict(g='#00ff00', r='#ff0000', z='#cc00cc')
@@ -5858,7 +5813,7 @@ def get_exposure_table(name):
     from astrometry.util.fits import fits_table
     name = str(name)
     name = clean_layer_name(name)
-    if name in ['decals-dr5', 'decals-dr7', 'ls-dr8-south', 'ls-dr9-south', 'ls-dr10-early']:
+    if name in ['decals-dr5', 'decals-dr7', 'ls-dr8-south', 'ls-dr9-south', 'ls-dr10-south']:
         fn = os.path.join(settings.DATA_DIR, name, 'exposures.fits')
         if not os.path.exists(fn):
             import numpy as np
@@ -7556,33 +7511,6 @@ def get_layer(name, default=None):
         survey = get_survey(basename)
         layer = AsteroidsLayer(basename, 'image', survey)
 
-    elif name in ['ls-dr10-early']:
-        survey = get_survey(name)
-        image = LsDr10Layer(name, 'image', survey, bands='griz')
-        layers[name] = image
-        layer = layers[name]
-
-    elif name in ['ls-dr10-early-grz']:
-        survey = get_survey(name.replace('-grz',''))
-        image = ReDecalsLayer(name, 'image', survey, bands='grz')
-        layers[name] = image
-        layer = layers[name]
-        
-    elif name in ['ls-dr10a', 'ls-dr10a-model', 'ls-dr10a-resid']:
-        basename = 'ls-dr10a'
-        survey = get_survey(basename)
-        image = LsDr10Layer(basename, 'image', survey, bands='griz')
-        #model = LsDr10Layer(basename + '-model', 'model', survey, bands='griz')
-        model = LsDr10Layer(basename, 'model', survey, bands='griz')
-        #drname=basename)
-        #resid = LsDr10ResidLayer(image, model, basename + '-resid', 'resid', survey, bands='griz')
-        resid = LsDr10ResidLayer(image, model, basename, 'resid', survey, bands='griz')
-        #drname=basename)
-        layers[basename] = image
-        layers[basename + '-model'] = model
-        layers[basename + '-resid'] = resid
-        layer = layers[name]
-
     elif name in ['ls-dr10', 'ls-dr10-model', 'ls-dr10-resid',
                   'ls-dr10-grz', 'ls-dr10-model-grz', 'ls-dr10-resid-grz']:
         is_grz = name.endswith('-grz')
@@ -8073,19 +8001,12 @@ if __name__ == '__main__':
     #r = c.get('/desi-spec-daily/1/cat.json?ralo=141.9359&rahi=142.0720&declo=30.0046&dechi=30.0694')
     #r = c.get('/?targetid=39627733692582430')
     #r = c.get('/pandas/1/13/8184/3174.jpg')
-    #r = c.get('/ls-dr10-early/1/13/8191/4680.jpg')
-    #r = c.get('/ls-dr10-early/1/12/4095/2340.jpg')
-    #r = c.get('/ls-dr10-early/1/11/2047/1170.jpg')
-    #r = c.get('/ls-dr10-early/1/12/4095/2352.jpg')
-    #r = c.get('/ls-dr10-early/1/11/2047/1176.jpg')
     #r = c.get('/decaps2/2/14/8191/11625.jpg')
     #r = c.get('/decaps2/2/13/4095/5812.jpg') # native
     #r = c.get('/decaps2/2/12/2047/2906.jpg') # s1
     #r = c.get('/decaps2/2/12/1023/1453.jpg')
     #r = c.get('/decaps2/2/12/2048/2905.jpg')
-    #r = c.get('/ls-dr10-early/1/5/29/26.jpg')
     #r = c.get('/decaps2-model/2/14/8230/12122.jpg')
-    #r = c.get('/exps/?ralo=256.6791&rahi=261.0352&declo=1.8646&dechi=4.2560&layer=ls-dr10-early')
     #r = c.get('/ls-dr10a/1/13/5233/4095.jpg')
     #r = c.get('/ls-dr10a/1/14/10467/8191.jpg')
     #r = c.get('/cutout.jpg?ra=194.7876&dec=-63.1429&layer=decaps2&pixscale=64')
@@ -8106,27 +8027,23 @@ if __name__ == '__main__':
     #r = c.get('/vlass1.2/1/9/261/223.jpg')
     #r = c.get('/vlass1.2/1/10/526/447.jpg')
     #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
-    #r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
     #r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
     #r = c.get('/desi-tile/1/cat.json?ralo=22.8159&rahi=24.7961&declo=30.3444&dechi=31.2786&tile=3371')
     #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=359.9755&rahi=0.0374&declo=-9.5112&dechi=-9.4776')
     #r = c.get('/desi-spec-daily/1/cat.json?ralo=359.9755&rahi=0.0374&declo=-9.5112&dechi=-9.4776')
 
     #r = c.get('/vlass1.2/1/13/4193/3581.jpg')
-    #r = c.get('/data-for-radec/?ra=211.0416&dec=33.3452&layer=ls-dr10-early&ralo=210.9791&rahi=211.1029&declo=33.3176&dechi=33.3744')
     #r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
     #r = c.get('/cutout.fits?ra=46.8323&dec=-62.4296&layer=ls-dr9&pixscale=1.00')
     #r = c.get('/decaps2/2/14/6039/12119.jpg')
     #r = c.get('/decaps2/2/13/3018/6058.jpg')
     #r = c.get('/decaps2/2/12/1509/3028.jpg')
     #r = c.get('/decaps2/2/11/754/1514.jpg')
-    #r = c.get('/outlier-stamp/ls-dr10-early/decam-885706-S30.jpg')
     #r = c.get('/ls-dr10/1/14/979/8573.jpg')
     #r = c.get('/usercatalog/1/cat.json?ralo=104.1755&rahi=104.4230&declo=20.3734&dechi=20.5008&cat=tmp02tajgo8')
     #r = c.get('/cutout.jpg?ra=91.1268&dec=-66.6530&layer=unwise-w3w4&pixscale=2.75&size=500')
     #r = c.get('/exposures/?ra=229.9982&dec=1.8043&layer=decals-dr7')
     #r = c.get('/exposure_panels/ls-dr9-south-all/449377/S29/?ra=229.9982&dec=1.8043&size=100')
-    #r = c.get('/exposure_panels/ls-dr10-early/338647/S12/?ra=203.4586&dec=-31.7212&size=100')
     #r = c.get('/image-stamp/ls-dr8-south/decam-569657-S22.jpg')
     #r = c.get('/masks-dr9/1/cat.json?ralo=349.1639&rahi=349.4361&declo=-6.9862&dechi=-6.8378')
     #r = c.get('/ps1/1/14/10654/7197.jpg')
