@@ -317,6 +317,11 @@ def _index(req,
 
     if settings.ENABLE_DR9:
         tile_layers.update({
+            'ls-dr9-south': ['Legacy Surveys DR9-south images',
+                             [[0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg', []],
+                              def_url], maxnative, 'ls'],
+            'ls-dr9-south-model': ['Legacy Surveys DR9-south models', [def_url], maxnative, 'ls'],
+            'ls-dr9-south-resid': ['Legacy Surveys DR9-south residuals', [def_url], maxnative, 'ls'],
             'ls-dr9.1.1': ['Legacy Surveys DR9.1.1 COSMOS deep images', [def_url], maxZoom, 'ls'],
             'ls-dr9.1.1-model': ['Legacy Surveys DR9.1.1 COSMOS deep models', [def_url],
                                  maxZoom, 'ls'],
