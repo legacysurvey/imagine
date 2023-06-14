@@ -159,14 +159,6 @@ def checkflavour(req, flavour):
         return HttpResponse('bad flavour: web service is ' + settings.FLAVOUR + ', query is ' + flavour,
                             status=500, reason='bad flavour')
 
-def tst(req):
-    from django.shortcuts import render
-    return render(req, 'tst.html')
-
-def cat(req):
-    from django.shortcuts import render
-    return render(req, 'cat.html')
-
 def my_reverse(req, *args, **kwargs):
     ### FIXME -- does this work for decaps.legacysurvey.org ??
     # Or need something like:
@@ -799,7 +791,7 @@ def query_simbad(q):
     from urllib.request import urlopen
     from urllib.parse import urlencode
 
-    url = 'http://simbad.u-strasbg.fr/simbad/sim-id?output.format=votable&output.params=coo(d)&output.max=1&Ident='
+    url = 'https://simbad.u-strasbg.fr/simbad/sim-id?output.format=votable&output.params=coo(d)&output.max=1&Ident='
     url += urlencode(dict(q=q)).replace('q=','')
     print('URL', url)
     f = urlopen(url)
@@ -829,7 +821,7 @@ def query_ned(q):
         from urllib.request import urlopen
         from urllib.parse import urlencode
 
-    url = 'http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/NSV?'
+    url = 'https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/NSV?'
     url += urlencode(dict(q=q)).replace('q=','')
     print('URL', url)
     '''
@@ -950,7 +942,7 @@ ccds_table_css = '''<style type="text/css">
 .ccds th { border-bottom: 2px solid #6678b1; }
 </style>'''
 
-html_tag = '''<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+html_tag = '''<html xmlns="https://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
 <link rel="icon" type="image/png" href="%s/favicon.png" />
 <link rel="shortcut icon" href="%s/favicon.ico" />
@@ -2607,7 +2599,7 @@ class DecapsLayer(DecalsDr3Layer):
                 host = 'legacysurvey.org'
             else:
                 host = host.replace('imagine.legacysurvey.org', 'legacysurvey.org')
-            return HttpResponseRedirect('http://' + host + '/viewer' + req.path)
+            return HttpResponseRedirect('https://' + host + '/viewer' + req.path)
         return super().get_tile(req, ver, zoom, x, y, **kwargs)
 
 class ResidMixin(object):
@@ -5642,12 +5634,12 @@ def get_survey(name):
         #print('Creating LegacySurveyData for', name, 'with survey', survey, 'dir', dirnm)
 
     names_urls = {
-        'mzls+bass-dr6': ('MzLS+BASS DR6', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr6/'),
-        'decals-dr5': ('DECaLS DR5', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr5/'),
-        'decals-dr7': ('DECaLS DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr7/'),
-        'eboss': ('eBOSS', 'http://legacysurvey.org/'),
-        #'decals': ('DECaPS', 'http://legacysurvey.org/'),
-        'ls-dr67': ('Legacy Surveys DR6+DR7', 'http://portal.nersc.gov/cfs/cosmo/data/legacysurvey/'),
+        'mzls+bass-dr6': ('MzLS+BASS DR6', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr6/'),
+        'decals-dr5': ('DECaLS DR5', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr5/'),
+        'decals-dr7': ('DECaLS DR7', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr7/'),
+        'eboss': ('eBOSS', 'https://legacysurvey.org/'),
+        #'decals': ('DECaPS', 'https://legacysurvey.org/'),
+        'ls-dr67': ('Legacy Surveys DR6+DR7', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/'),
         'ls-dr8-north': ('Legacy Surveys DR8-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/north'),
         'ls-dr8-south': ('Legacy Surveys DR8-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/south'),
         'ls-dr8': ('Legacy Surveys DR8', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr8/'),
@@ -6144,7 +6136,7 @@ PROPID {c.propid}.  RA,Dec boresight {c.ra_bore:.4f}, {c.dec_bore:.4f}
 </ul>
 <div>Image (~raw, not sky-subtracted)<br/>
 Mouse: <span id="image_coords"></span>  Click: <span id="image_click"></span></div><br/>
-<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
+<svg version="1.1" baseProfile="full" xmlns="https://www.w3.org/2000/svg"
   width="{swa}" height="{sha}">
   <g transform="translate({axspace} 0)">
     <image x="0" y="0" width="{sw}" height="{sh}" href="{imgstamp}" id="image_stamp" />
@@ -6158,7 +6150,7 @@ Mouse: <span id="image_coords"></span>  Click: <span id="image_click"></span></d
 <br />
 <div>Inverse-variance map<br/>
 Mouse: <span id="iv_coords"></span>  Click: <span id="iv_click"></span></div><br/>
-<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
+<svg version="1.1" baseProfile="full" xmlns="https://www.w3.org/2000/svg"
   width="{swa}" height="{sha}">
   <g transform="translate({axspace} 0)">
     <image x="0" y="0" width="{sw}" height="{sh}" href="{ivstamp}" id="iv_stamp" />
@@ -6172,7 +6164,7 @@ Mouse: <span id="iv_coords"></span>  Click: <span id="iv_click"></span></div><br
 <br />
 <div>Data quality map (not including outlier-masks)<br/>
 Mouse: <span id="dq_coords"></span>  Click: <span id="dq_click"></span></div><br/>
-<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg"
+<svg version="1.1" baseProfile="full" xmlns="https://www.w3.org/2000/svg"
   width="{swa}" height="{sha}">
   <g transform="translate({axspace} 0)">
     <image x="0" y="0" width="{sw}" height="{sh}" href="{dqstamp}" id="dq_stamp" />
@@ -6653,14 +6645,14 @@ def exposures_common(req, tgz, copsf):
     url = url.replace('LAYER', '%s').replace('12345', '%i').replace('EXTNAME', '%s')
     url = req.build_absolute_uri(url)
 
-    # Deployment: http://{s}.DOMAIN/...
+    # Deployment: https://{s}.DOMAIN/...
     url = url.replace('://www.', '://')
     # Yuck!
     url = url.replace('://decaps.', '://')
 
     domains = settings.SUBDOMAINS
     if len(domains):
-        # Deployment: http://{s}.DOMAIN/...
+        # Deployment: https://{s}.DOMAIN/...
         url = url.replace('://www.', '://')
         url = url.replace('://', '://%s.')
 

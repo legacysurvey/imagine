@@ -2865,7 +2865,7 @@ def cat_tycho2(req, ver):
                     tyc1 = int(nums[0])
                     tyc2 = int(nums[1])
                     tyc3 = int(nums[2])
-                    url = 'http://simbad.cds.unistra.fr/simbad/sim-id?Ident=TYC++%i+%i+%i&NbIdent=1' % (tyc1, tyc2, tyc3)
+                    url = 'https://simbad.cds.unistra.fr/simbad/sim-id?Ident=TYC++%i+%i+%i&NbIdent=1' % (tyc1, tyc2, tyc3)
                     names[i] = '<a href="%s">%s</a>' % (url, name)
                 except:
                     pass
