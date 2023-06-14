@@ -3749,13 +3749,6 @@ var dr10southcat = new DecalsCatalogLayer(tileWatcher,
                                           {'url': cat_url,
                                            'minZoom': 12,
                                            'urlTerm': 'sources-dr10-south'});
-
-var dr10acat = new DecalsCatalogLayer(tileWatcher,
-                                        'ls-dr10a',
-                                          'Legacy Surveys DR10a Catalog',
-                                          {'url': cat_url,
-                                           'minZoom': 12,
-                                           'urlTerm': 'sources-dr10a'});
 {% endif %}
 
 
@@ -4145,9 +4138,6 @@ var overlays = [
     {% if enable_dr10 %}
     dr10cat,
     dr10southcat,
-    {% endif %}
-    {% if enable_dr10a %}
-    dr10acat,
     {% endif %}
     {% endif %}
     {% if enable_dr5_overlays %}
