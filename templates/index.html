@@ -1995,94 +1995,12 @@ tiles = split_layer_2('ls-dr10-resid-grz', 'Legacy Surveys DR10 residuals (grz)'
                       namedLayers['ls-dr10-south-resid-grz'],
                       {attribution: attribs['ls']});
 allLayers.push(tiles);
-
-
-//tiles = mylayer_B('ls-dr10-south', 'Legacy Surveys DR10-south images',
-//                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-//allLayers.push(tiles);
-//tiles = mylayer_B('ls-dr10-south-model', 'Legacy Surveys DR10-south models',
-//                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-//allLayers.push(tiles);
-//tiles = mylayer_B('ls-dr10-south-resid', 'Legacy Surveys DR10-south residuals',
-//                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-//allLayers.push(tiles);
-
-// tiles = split_layer('ls-dr10-grz', 'Legacy Surveys DR10 images (grz)', 32.375,
-//                     // North
-//                     'ls-dr9-north', [
-//                       [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
-//                       [15, maxZoom, tile_url], ],
-//                     {'id':'ls-dr9-north'},
-//                     // Mid
-// 		            'ls-dr10-grz', [ [0, maxZoom, tile_url], ],
-//                     {'id':'ls-dr10-grz'},
-//                     // South
-//                     'ls-dr10-south-grz', [
-//                       [0, maxZoom, tile_url], ],
-//                     {'id':'ls-dr10-south-grz'},
-//                     {}
-//                    );
-// allLayers.push(tiles);
-// 
-// tiles = split_layer('ls-dr10-model-grz', 'Legacy Surveys DR10 models (grz)', 32.375,
-//                     // North
-//                     'ls-dr9-north-model', [ [0, maxZoom, tile_url], ], {},
-//                     // Mid
-//                     'ls-dr10-model-grz', [ [0, maxZoom, tile_url], ], {},
-//                     // South
-//                     'ls-dr10-south-model-grz', [ [0, maxZoom, tile_url], ], {},
-//                     {}
-//                    );
-// allLayers.push(tiles);
-// 
-// tiles = split_layer('ls-dr10-resid-grz', 'Legacy Surveys DR10 residuals (grz)', 32.375,
-//                     // North
-//                     'ls-dr9-north-resid', [ [0, maxZoom, tile_url], ], {},
-//                     // Mid
-//                     'ls-dr10-resid-grz', [ [0, maxZoom, tile_url], ], {},
-//                     // South
-//                     'ls-dr10-south-resid-grz', [ [0, maxZoom, tile_url], ], {},
-//                     {}
-//                    );
-// allLayers.push(tiles);
-// 
-// 
-// tiles = mylayer_B('ls-dr10-south-grz', 'Legacy Surveys DR10-south images (grz)',
-//                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-// allLayers.push(tiles);
-// tiles = mylayer_B('ls-dr10-south-model-grz', 'Legacy Surveys DR10-south models (grz)',
-//                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-// allLayers.push(tiles);
-// tiles = mylayer_B('ls-dr10-south-resid-grz', 'Legacy Surveys DR10-south residuals (grz)',
-//                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-// allLayers.push(tiles);
-
 {% endif %}
 
 
-{% if enable_dr10_early %}
 
-tiles = mylayer_B('ls-dr10-early', 'Legacy Surveys DR10-early',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
 
-tiles = mylayer_B('ls-dr10-early-grz', 'Legacy Surveys DR10-early (grz)',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
 
-{% endif %}
-{% if enable_dr10a %}
-
-tiles = mylayer_B('ls-dr10a', 'Legacy Surveys DR10a images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('ls-dr10a-model', 'Legacy Surveys DR10a models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('ls-dr10a-resid', 'Legacy Surveys DR10a residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
 
 {% if enable_dr9 %}
 tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
@@ -3345,7 +3263,7 @@ var ccdOverlay10 = new PolygonOverlay('dr10-ccds',
                                      'urlTerm': 'ccds10',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
-                                     'url_name': 'ls-dr10-early',
+                                     'url_name': 'ls-dr10',
                                      'dr_name': 'DR10',
                                     });
 var expOverlay10 = new CircleOverlay('dr10-exps',
@@ -3355,7 +3273,7 @@ var expOverlay10 = new CircleOverlay('dr10-exps',
                                      'urlTerm': 'exps10',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
-                                     'url_name': 'ls-dr10-early',
+                                     'url_name': 'ls-dr10',
                                      'dr_name': 'DR10',
                                     });
 {% endif %}
@@ -4696,15 +4614,6 @@ baseTree1 = baseTree1.concat([
       ]),
     ]),
     {% endif %}
-    {% if enable_dr10a %}
-    findlayer('ls-dr10a'),
-    findlayer('ls-dr10a-model'),
-    findlayer('ls-dr10a-resid'),
-    {% endif %}
-    {% if enable_dr10_early %}
-    findlayer('ls-dr10-early'),
-    findlayer('ls-dr10-early-grz'),
-    {% endif %}
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
         {% if enable_dr9_models %}
@@ -4987,9 +4896,6 @@ var overlayTree = [];
      {% if enable_dr10 %}
      findoverlay('ls-dr10'),
      findoverlay('ls-dr10-south'),
-     {% endif %}
-     {% if enable_dr10a %}
-     findoverlay('ls-dr10a'),
      {% endif %}
 
      {% if enable_dr9_overlays %}
