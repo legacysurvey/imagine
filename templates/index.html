@@ -2103,32 +2103,6 @@ tiles = split_layer_2('ls-dr67', 'Legacy Surveys DR6+DR7', 32.375,
 allLayers.push(tiles);
 {% endif %}
 
-//
-//if (defaultTile == null) {
-//    defaultTile = tiles;
-//}
-
-{% if enable_dr5 %}
-tiles = mylayer_B('decals-dr5', 'DECaLS DR5 images',
-                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-if (defaultTile == null) {
-    defaultTile = tiles;
-}
-
-{% if enable_dr5_models %}
-tiles = mylayer_B('decals-dr5-model', 'DECaLS DR5 models',
-                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-{% if enable_dr5_resids %}
-tiles = mylayer_B('decals-dr5-resid', 'DECaLS DR5 residuals',
-                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
 {% if enable_decaps %}
 tiles = mylayer_B('decaps', 'DECaPS1 images',
                   {//'maxNativeZoom': 13,
@@ -4278,16 +4252,10 @@ baseTree1 = baseTree1.concat([
         findlayer('mzls+bass-dr6-resid'),
     ]),
     {% endif %}
-    {% if enable_dr5 %}
     findlayer('decals-dr5', [
-        {% if enable_dr5_model %}
         findlayer('decals-dr5-model'),
-        {% endif %}
-        {% if enable_dr5_resid %}
         findlayer('decals-dr5-resid'),
-        {% endif %}
     ]),
-    {% endif %}
     findlayer('eboss'),
 
      ]},
