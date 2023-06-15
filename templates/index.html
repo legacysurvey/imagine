@@ -186,99 +186,6 @@ var MyTileLayer = L.TileLayer.extend({
 
 });
 
-// A subclass that switches URL patterns depending on zoom range.
-var ZoomRangeTileLayer = MyTileLayer.extend({
-    options: {
-        urlPatterns: [],
-    },
-	getTileUrl: function (tilePoint) {
-        var urlpat = this._getUrlPattern(tilePoint.z);
-		return L.Util.template(urlpat, L.extend({
-			s: this._getSubdomain(tilePoint),
-			z: tilePoint.z,
-			x: tilePoint.x,
-			y: tilePoint.y
-		}, this.options));
-	},
-    _getUrlPattern: function (zoom) {
-        var url = this._url;
-        for (var i=0; i<this.options.urlPatterns.length; i++) {
-            var zlo  = this.options.urlPatterns[i][0];
-            var zhi  = this.options.urlPatterns[i][1];
-            var zurl = this.options.urlPatterns[i][2];
-            if ((zoom >= zlo) && (zoom <= zhi)) {
-                url = zurl;
-            }
-        }
-        return url;
-    },
-});
-
-var SplitTileLayer = MyTileLayer.extend({
-
-    // new SplitTileLayer(static_tile_url_B, ysplits,
-    //                    north_args, mid_args, south_args);
-    initialize: function(url, args, ysplits, north_args, mid_args, south_args) {
-        L.TileLayer.prototype.initialize.call(this, url, args);
-        this._url = url;
-        this._ysplits = ysplits;
-        this._north_args = north_args;
-        this._mid_args = mid_args;
-        this._south_args = south_args;
-    },
-
-	getTileUrl: function (tile) {
-        tilesize = this.getTileSize();
-        tw = tilesize.x;
-        th = tilesize.y;
-        px = tw * tile.x + tw/2;
-        py = th * tile.y + th/2;
-        tilelatlng = map.unproject(L.point(px, py), tile.z);
-        var ysplit = this._ysplits[tile.z];
-        // check NGC/SGC
-        if (!latlong_is_ngc(tilelatlng)) {
-            // SGC -- south, except for way zoomed-out layers
-            if ((tile.z < 5) && (tile.y == ysplit))
-                opts = this._mid_args;
-            else
-                opts = this._south_args;
-        } else {
-            // y=0 is the top!
-            var urlpat;
-            var opts;
-            if (tile.y < ysplit)
-                opts = this._north_args;
-            else if (tile.y > ysplit)
-                opts = this._south_args;
-            else
-                opts = this._mid_args;
-        }
-        urlpat = this._getUrlPattern(tile.z, opts['urlPatterns']);
-		var url = L.Util.template(urlpat, L.extend({
-			s: this._getSubdomain(tile),
-			z: tile.z,
-			x: tile.x,
-			y: tile.y
-		}, opts));
-        //console.log('-> ', url);
-        return url;
-	},
-
-    _getUrlPattern: function (zoom, patterns) {
-        for (var i=0; i<patterns.length; i++) {
-            var zlo  = patterns[i][0];
-            var zhi  = patterns[i][1];
-            if ((zoom >= zlo) && (zoom <= zhi)) {
-                return patterns[i][2];
-            }
-        }
-        return this._url;
-    },
-});
-
-
-/////////////////////////////////////////////////////////////////////////////////////////
-
 // A subclass that switches URL patterns depending on zoom range (incl subdomains)
 var ZoomRangeTileLayer2 = MyTileLayer.extend({
     options: {
@@ -1794,27 +1701,6 @@ var attribs = {
 
 var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>';
 
-
-var mylayer = function (name, pretty, kwargs) {
-    var args = {
-        maxZoom: maxZoom,
-        minZoom: minZoom,
-        maxNativeZoom: maxNativeZoom,
-        attribution: decals_attrib,
-        id: name,
-        ver: getversion(name),
-        unloadInvisibleTiles: true,
-        subdomains: subdomains,
-    };
-    for (var key in kwargs) {
-        args[key] = kwargs[key];
-    }
-    var tiles = new ZoomRangeTileLayer(static_tile_url, args);
-    tiles.name = name;
-    tiles.pretty = pretty;
-    return tiles;
-};
-
 var tiles;
 
 var defaultTile = null;
@@ -1851,81 +1737,6 @@ var get_tile_layer = function(name) {
     tiles.pretty = pretty;
     return tiles;
 }
-
- 
-var mylayer_B = function (name, pretty, kwargs) {
-    var args = {
-        maxZoom: maxZoom,
-        minZoom: minZoom,
-        maxNativeZoom: maxNativeZoom,
-        attribution: decals_attrib,
-        id: name,
-        ver: getversion(name),
-        unloadInvisibleTiles: true,
-        subdomains: subdomains_B,
-    };
-    for (var key in kwargs) {
-        args[key] = kwargs[key];
-    }
-    var tiles = new ZoomRangeTileLayer(static_tile_url_B, args);
-    tiles.name = name;
-    tiles.pretty = pretty;
-    return tiles;
-};
-
-function split_layer(name, pretty, decsplit,
-                     north_name, north_urls, north_kwargs,
-                     mid_name,   mid_urls,   mid_kwargs,
-                     south_name, south_urls, south_kwargs,
-                     kwargs) {
-    var args = {
-        maxZoom: maxZoom,
-        minZoom: minZoom,
-        maxNativeZoom: maxNativeZoom,
-        attribution: decals_attrib,
-        unloadInvisibleTiles: true,
-        subdomains: subdomains_B,
-    };
-    for (var key in kwargs) {
-        args[key] = kwargs[key];
-    }
-    var north_args = Object.assign(
-        {},
-        args,
-        { id: north_name, ver: getversion(north_name),
-          urlPatterns: north_urls},
-        north_kwargs);
-    var mid_args = Object.assign(
-        {},
-        args,
-        { id: mid_name, ver: getversion(mid_name),
-          urlPatterns: mid_urls},
-        mid_kwargs);
-    var south_args = Object.assign(
-        {},
-        args,
-        { id: south_name, ver: getversion(south_name),
-          urlPatterns: south_urls},
-        south_kwargs);
-
-    //console.log('split_layer: north', north_args, 'mid', mid_args, 'south', south_args);
-    
-    var ysplits = {};
-    for (var zoom=0; zoom<20; zoom++) {
-        // Thanks, https://en.wikipedia.org/wiki/Web_Mercator
-        y = Math.pow(2, zoom) / (2. * Math.PI) *
-            (Math.PI - Math.log(Math.tan(Math.PI/4. + (Math.PI / 180. * decsplit) / 2.)));
-        ysplits[zoom] = Math.floor(y);
-        //console.log('Dec split', decsplit, 'zoom', zoom, '-> y', ysplits[zoom]);
-    }
-    var tiles = new SplitTileLayer(tile_url, args, ysplits,
-                                   north_args, mid_args, south_args);
-    tiles.name = name;
-    tiles.pretty = pretty;
-    return tiles;
-};
-                                            
-
 
 var added = false;
 var layer_name = layer_initial;
@@ -2103,14 +1914,6 @@ tiles = split_layer_2('ls-dr67', 'Legacy Surveys DR6+DR7', 32.375,
                       {attribution: attribs['ls']});
 allLayers.push(tiles);
 {% endif %}
-
-// tiles = mylayer_B('outliers-ast', 'Asteroids test: outliers',
-//                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-// allLayers.push(tiles);
-// 
-// tiles = mylayer_B('asteroids-i', 'Asteroids test: images',
-//                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-// allLayers.push(tiles);
 
 //console.log('Requested layer: "' + layer_name + '"');
 for (var i in allLayers) {
