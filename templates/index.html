@@ -1789,10 +1789,11 @@ var attribs = {
     'vlass': '<a href="https://public.nrao.edu/media-use/">&copy;</a> <a href="https://public.nrao.edu/vlass/">NRAO / VLA Sky Survey</a>',
     'des': '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">The Dark Energy Survey Data Release 1</a>',
     'ps1': 'Pan-STARRS1',
+    'unwise': '<a href="https://www.legacysurvey.org/acknowledgment">&copy; unWISE / NASA/JPL-Caltech / D.Lang (Perimeter Institute)</a>',
 };
 
 var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>';
-var unwise_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; unWISE / NASA/JPL-Caltech / D.Lang (Perimeter Institute)</a>';
+
 
 var mylayer = function (name, pretty, kwargs) {
     var args = {
@@ -2101,57 +2102,6 @@ tiles = split_layer_2('ls-dr67', 'Legacy Surveys DR6+DR7', 32.375,
                       namedLayers['decals-dr7'],
                       {attribution: attribs['ls']});
 allLayers.push(tiles);
-{% endif %}
-
-{% if enable_decaps %}
-tiles = mylayer_B('decaps', 'DECaPS1 images',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('decaps-model', 'DECaPS models',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('decaps-resid', 'DECaPS residuals',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
-tiles = mylayer_B('decaps2', 'DECaPS 2 images',
-                  {//'maxNativeZoom': 13,
-                   //'urlPatterns': [ [14, maxZoom, tile_url], ],});
-                   'urlPatterns': [ [1 , maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('decaps2-model', 'DECaPS 2 models',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('decaps2-resid', 'DECaPS 2 residuals',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
-
-tiles = mylayer_B('decaps2-riy', 'DECaPS 2 images (riY)',
-                  {//'maxNativeZoom': 13,
-                   //'urlPatterns': [ [14, maxZoom, tile_url], ],});
-                   'urlPatterns': [ [1 , maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('decaps2-model-riy', 'DECaPS 2 models (riY)',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('decaps2-resid-riy', 'DECaPS 2 residuals (riY)',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
 {% endif %}
 
 // tiles = mylayer_B('outliers-ast', 'Asteroids test: outliers',

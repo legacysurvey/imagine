@@ -380,6 +380,23 @@ def _index(req,
             'decals-dr5-resid': ['DECaLS DR5 residuals', [[14, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls'],
         })
 
+    if settings.ENABLE_DECAPS1:
+        tile_layers.update({
+            'decaps': ['DECaPS1 images', [[14, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls'],
+            'decaps-model': ['DECaPS1 models', [[14, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls'],
+            'decaps-resid': ['DECaPS1 residuals', [[14, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls'],
+        })
+
+    if settings.ENABLE_DECAPS:
+        tile_layers.update({
+            'decaps2': ['DECaPS2 images', [def_url], maxnative, 'ls'],
+            'decaps2-model': ['DECaPS2 models', [def_url], maxnative, 'ls'],
+            'decaps2-resid': ['DECaPS2 residuals', [def_url], maxnative, 'ls'],
+            'decaps2-riy': ['DECaPS2 images (riY)', [def_url], maxnative, 'ls'],
+            'decaps2-model-riy': ['DECaPS2 models (riY)', [def_url], maxnative, 'ls'],
+            'decaps2-resid-riy': ['DECaPS2 residuals (riY)', [def_url], maxnative, 'ls'],
+        })
+
     if settings.ENABLE_UNWISE:
         tile_layers.update({
             'unwise-neo4': ['unWISE W1/W2 NEO4', [[6, maxZoom, tileurl, subs], prod_backstop],
