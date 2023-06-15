@@ -183,7 +183,10 @@ ALLOWED_HOSTS = [
     'spin.legacysurvey.org',
     'viewer.legacysurvey.org', 'a.viewer.legacysurvey.org', 'b.viewer.legacysurvey.org', 'c.viewer.legacysurvey.org', 'd.viewer.legacysurvey.org',
     'dev.viewer.legacysurvey.org', 'dev-a.viewer.legacysurvey.org', 'dev-b.viewer.legacysurvey.org', 'dev-c.viewer.legacysurvey.org', 'dev-d.viewer.legacysurvey.org',
-    'lb.cosmo-viewer.production.svc.spin.nersc.org'
+    'lb.cosmo-viewer.production.svc.spin.nersc.org',
+    'lb2.cosmo-viewer.production.svc.spin.nersc.org',
+    'www2.legacysurvey.org',
+
 ]
 
 # Application definition
