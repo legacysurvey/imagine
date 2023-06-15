@@ -3624,36 +3624,36 @@ class LegacySurveySplitLayer(MapLayer):
                 #print('y above split -- south')
                 return self.bottom.render_rgb(wcs, zoom, x, y, bands=b, **kwa)
 
-        # both!
-        topims,toprgb = self.top.render_rgb(wcs, zoom, x, y, bands=bands, **kwa)
-
-        botims,botrgb = self.bottom.render_rgb(wcs, zoom, x, y, bands=bands, **kwa)
-
-        if get_images_only and topims is None and botims is None:
-            return None,None
-
-        #if not(topims is None and botims is None):
         # ASSUME that the WCS is axis-aligned!!
         # Compute Decs for each Y in the WCS
         import numpy as np
         from astrometry.util.starutil_numpy import radectolb
         H,W = wcs.shape
-        #mask = np.zeros((H,W), bool)
         x = np.empty(H)
         x[:] = W//2 + 0.5
         y = np.arange(1, H+1)
         rr,dd = wcs.pixelxy2radec(x, y)[-2:]
         ll,bb = radectolb(rr, dd)
         ngc = (bb > 0.)
-        #I = np.flatnonzero((dd >= self.decsplit) * ngc)
         topmask = (dd >= self.decsplit) * ngc
 
+        botonly = np.all(np.logical_not(topmask))
+
+        if not botonly:
+            topims,toprgb = self.top.render_rgb(wcs, zoom, x, y, bands=bands, **kwa)
+            if np.all(topmask):
+                return topims,toprgb
+
+        botims,botrgb = self.bottom.render_rgb(wcs, zoom, x, y, bands=bands, **kwa)
+        if botonly:
+            return botims,botrgb
+
+        if get_images_only and topims is None and botims is None:
+            return None,None
+
         topbandmap = {}
-
         if bands is None:
-
             topbandmap.update(dict([(b,i) for i,b in enumerate(self.top_bands)]))
-            
             # HACK
             bands = self.bottom_bands
         else:
@@ -3664,18 +3664,12 @@ class LegacySurveySplitLayer(MapLayer):
         botim = None
         for ii,band in enumerate(bands):
             if topims is not None:
-                if ii not in topbandmap:
+                if band not in topbandmap:
                     continue
                 topim = topims[topbandmap[band]]
             if botims is not None:
                 botim = botims[ii]
-            # topim = None
-            # botim = None
-            # if band in self.top_bands:
-            #     topim = topims[self.top_bands.index(band)]
-            # if band in self.bottom_bands:
-            #     botim = botims[self.bottom_bands.index(band)]
-            if topim is None and botim is None:
+            if (topim is None) and (botim is None):
                 ims.append(None)
                 continue
             im = np.zeros(wcs.shape, np.float32)
@@ -8223,7 +8217,7 @@ if __name__ == '__main__':
     #r = c.get('/desi-edr')
     #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
-    r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
+    #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

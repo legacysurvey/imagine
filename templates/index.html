@@ -116,6 +116,8 @@ var aws_unwise_url = 'https://s3.us-west-2.amazonaws.com/{id}.legacysurvey.org/{
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
 
+console.log('window.location is', window.location);
+
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
     var terms = window.location.search.substr(1);
