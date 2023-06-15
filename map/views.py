@@ -1128,9 +1128,19 @@ class MapLayer(object):
         #print('bricknames for band', band, ':', len(bricks), 'bricks; no has_%s column' % band)
         return bricks
 
-    def get_filename(self, brick, band, scale, tempfiles=None):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
+        if invvar and not self.has_invvar():
+            return None
+        kwa = {}
+        if invvar:
+            kwa.update(invvar=True)
         if scale == 0:
-            return self.get_base_filename(brick, band)
+            return self.get_base_filename(brick, band, **kwa)
+
+        ## HACK -- no invvars for scaled images.
+        if invvar:
+            return None
+
         fn = self.get_scaled_filename(brick, band, scale)
         #print('Filename:', fn)
         if os.path.exists(fn):
@@ -1142,6 +1152,9 @@ class MapLayer(object):
         if os.path.exists(fn):
             return fn
         return None
+
+    def has_invvar(self):
+        return False
 
     def needs_recreating(self, brick, band, scale):
         fn = self.get_filename(brick, band, scale)
@@ -1288,7 +1301,7 @@ class MapLayer(object):
         rw  [Yo,Xo] += wt
 
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
-                        scale=None, tempfiles=None):
+                        scale=None, tempfiles=None, invvar=False):
         import numpy as np
         from astrometry.util.resample import resample_with_wcs, OverlapError
 
@@ -1296,6 +1309,11 @@ class MapLayer(object):
 
         if scale is None:
             scale = self.get_scale(zoom, x, y, wcs)
+
+        # FIXME -- no scaled invvars
+        if scale >= 1 and invvar:
+            return None
+
         if not general_wcs:
             bricks = self.bricks_touching_aa_wcs(wcs, scale=scale)
         else:
@@ -1335,8 +1353,8 @@ class MapLayer(object):
                 brickname = brick.brickname
                 #print('Reading', brickname, 'band', band, 'scale', scale)
                 # call get_filename to possibly generate scaled version
-                fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
-                info('Reading', brickname, 'band', band, 'scale', scale, '-> fn', fn)
+                fn = self.get_filename(brick, band, scale, tempfiles=tempfiles, invvar=invvar)
+                info('Reading', brickname, 'band', band, 'scale', scale, ('invvar' if invvar else ''), '-> fn', fn)
                 if fn is None:
                     continue
 
@@ -1565,8 +1583,10 @@ class MapLayer(object):
             ver = tileversions[self.name][-1]
         return ver,zoom,x,y
 
-    def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False):
-        rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, tempfiles=tempfiles)
+    def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
+                   invvar=False):
+        rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, tempfiles=tempfiles,
+                                     invvar=invvar)
         if get_images_only:
             return rimgs,None
         if bands is None:
@@ -1690,6 +1710,7 @@ class MapLayer(object):
                      bands=None,
                      fits=False, jpeg=False,
                      subimage=False,
+                     with_invvar=False,
                      tempfiles=None,
                      get_images=False,
                      req=None):
@@ -1741,9 +1762,6 @@ class MapLayer(object):
                     except Exception as e:
                         print('Failed to read image:', e)
                         continue
-                    ivfn = self.get_base_filename(brick, band, invvar=True)
-                    #print('Invvar filename', ivfn)
-                    iv = self.read_image(brick, band, 0, slc, fn=ivfn)
                     hdr = fitsio.FITSHDR()
                     self.populate_fits_cutout_header(hdr)
                     hdr['BRICK'] = brick.brickname
@@ -1754,9 +1772,12 @@ class MapLayer(object):
                     subwcs.add_to_header(hdr)
                     # Append image to FITS file
                     fitsio.write(out_fn, img, header=hdr)
-                    # Add invvar
-                    hdr['IMAGETYP'] = 'invvar'
-                    fitsio.write(out_fn, iv, header=hdr)
+                    if self.has_invvar():
+                        # Add invvar
+                        ivfn = self.get_base_filename(brick, band, invvar=True)
+                        iv = self.read_image(brick, band, 0, slc, fn=ivfn)
+                        hdr['IMAGETYP'] = 'invvar'
+                        fitsio.write(out_fn, iv, header=hdr)
             return
 
         from astrometry.util.util import Tan
@@ -1788,6 +1809,10 @@ class MapLayer(object):
                                 get_images_only=True)
         if ims is None:
             raise NoOverlapError('No overlap')
+        ivs = None
+        if with_invvar and self.has_invvar():
+            ivs,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
+                                    get_images_only=True, invvar=True)
 
         if hdr is not None:
             hdr['BANDS'] = ''.join([str(b) for b in bands])
@@ -1796,6 +1821,8 @@ class MapLayer(object):
             wcs.add_to_header(hdr)
 
         if get_images:
+            if with_invvar:
+                return ims,ivs,hdr
             return ims,hdr
 
         if ims is None:
@@ -1808,7 +1835,19 @@ class MapLayer(object):
         else:
             cube = ims[0]
         del ims
+
+        hdr['IMAGETYP'] = 'IMAGE'
         fitsio.write(out_fn, cube, clobber=True, header=hdr)
+
+        if ivs is not None:
+            if len(bands) > 1:
+                for i,im in enumerate(ivs):
+                    cube[i,:,:] = im
+            else:
+                cube = ivs[0]
+            del ivs
+            hdr['IMAGETYP'] = 'INVVAR'
+            fitsio.write(out_fn, cube, clobber=False, header=hdr)
 
     def get_cutout(self, req, fits=False, jpeg=False, outtag=None, tempfiles=None):
         native_pixscale = self.pixscale
@@ -1839,6 +1878,8 @@ class MapLayer(object):
 
         subimage = ('subimage' in req.GET)
 
+        with_invvar = ('invvar' in req.GET)
+
         if fits:
             suff = '.fits'
             filetype = 'image/fits'
@@ -1860,7 +1901,7 @@ class MapLayer(object):
 
         self.write_cutout(ra, dec, pixscale, width, height, out_fn, bands=bands,
                           fits=fits, jpeg=jpeg, subimage=subimage, tempfiles=tempfiles,
-                          req=req)
+                          with_invvar=with_invvar, req=req)
 
         return send_file(out_fn, filetype, unlink=True, filename=nice_fn)
 
@@ -2190,7 +2231,10 @@ class DecalsLayer(MapLayer):
         if invvar:
             return self.survey.find_file('invvar', brick=brickname, band=band)
         return self.survey.find_file(self.imagetype, brick=brickname, band=band)
-    
+
+    def has_invvar(self):
+        return True
+
     def get_rgb(self, imgs, bands, **kwargs):
         return dr2_rgb(imgs, bands, **self.rgbkwargs)
 
@@ -2213,32 +2257,6 @@ class DecalsInvvarLayer(DecalsLayer):
         return None
     def get_scaled_filename(self, brick, band, scale):
         return None
-
-class DecalsDr3Layer(DecalsLayer):
-    '''The data model changed (added .fz compression) as of DR5; this
-    class retrofits pre-DR5 filenames.
-    '''
-    def get_base_filename(self, brick, band, **kwargs):
-        brickname = brick.brickname
-        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
-        if fn is not None:
-            if self.imagetype == 'image':
-                fn = fn.replace('.fits.fz', '.fits')
-            elif self.imagetype == 'model':
-                fn = fn.replace('.fits.fz', '.fits.gz')
-        return fn
-
-    # Allow fpacked (or not) scaled images.
-    def get_scaled_filename(self, brick, band, scale):
-        fn = super(DecalsDr3Layer, self).get_scaled_filename(brick, band, scale)
-        if not os.path.exists(fn) and os.path.exists(fn + '.fz'):
-            return fn + '.fz'
-        return fn
-
-    def get_fits_extension(self, scale, fn):
-        if fn.endswith('.fz'):
-            return 1
-        return super(DecalsDr3Layer, self).get_fits_extension(scale, fn)
 
 class RebrickedMixin(object):
 
@@ -2335,12 +2353,15 @@ class RebrickedMixin(object):
         print('Wrote', fn)
         return fn
 
-    def get_filename(self, brick, band, scale, tempfiles=None):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
         #print('RebrickedMixin.get_filename: brick', brick, 'band', band, 'scale', scale)
         if scale == 0:
             #return self.get_base_filename(brick, band)
             return super(RebrickedMixin, self).get_filename(brick, band, scale,
-                                                            tempfiles=tempfiles)
+                                                            tempfiles=tempfiles, invvar=invvar)
+        if invvar:
+            return None
+
         fn = self.get_scaled_filename(brick, band, scale)
         #print('Filename:', fn)
         if os.path.exists(fn):
@@ -2483,8 +2504,33 @@ class RebrickedMixin(object):
         J = np.sort(J)
         return B[J]
         
-class DecapsLayer(DecalsDr3Layer):
+class DecapsLayer(DecalsLayer):
 
+    def has_invvar(self):
+        return False
+
+    def get_base_filename(self, brick, band, **kwargs):
+        brickname = brick.brickname
+        fn = self.survey.find_file(self.imagetype, brick=brickname, band=band)
+        if fn is not None:
+            if self.imagetype == 'image':
+                fn = fn.replace('.fits.fz', '.fits')
+            elif self.imagetype == 'model':
+                fn = fn.replace('.fits.fz', '.fits.gz')
+        return fn
+
+    # Allow fpacked (or not) scaled images.
+    def get_scaled_filename(self, brick, band, scale):
+        fn = super().get_scaled_filename(brick, band, scale)
+        if not os.path.exists(fn) and os.path.exists(fn + '.fz'):
+            return fn + '.fz'
+        return fn
+
+    def get_fits_extension(self, scale, fn):
+        if fn.endswith('.fz'):
+            return 1
+        return super().get_fits_extension(scale, fn)
+    
     def brick_details_body(self, brick):
         survey = self.survey
         brickname = brick.brickname
@@ -2549,7 +2595,7 @@ class ResidMixin(object):
     def read_wcs(self, brick, band, scale, fn=None):
         return self.image_layer.read_wcs(brick, band, scale, fn=fn)
 
-    def get_filename(self, brick, band, scale, tempfiles=None):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
         mfn = self.model_layer.get_filename(brick, band, scale, tempfiles=tempfiles)
         ifn = self.image_layer.get_filename(brick, band, scale, tempfiles=tempfiles)
         return ifn
@@ -2656,7 +2702,7 @@ class SdssLayer(MapLayer):
             return None
         return bricks[I]
 
-    def get_filename(self, brick, band, scale, tempfiles=None):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
         brickname = brick.brickname
         brickpre = brickname[:3]
         fn = os.path.join(self.basedir, 'coadd', brickpre,
@@ -3415,21 +3461,26 @@ class LegacySurveySplitLayer(MapLayer):
                            for l in self.layers], columns='fillzero')
         return BB
 
-    def get_filename(self, brick, band, scale, tempfiles=None):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
         layer = self.get_layer_for_radec(brick.ra, brick.dec)
-        return layer.get_filename(brick, band, scale, tempfiles=tempfiles)
+        return layer.get_filename(brick, band, scale, tempfiles=tempfiles, invvar=invvar)
 
     def get_base_filename(self, brick, band, **kwargs):
         layer = self.get_layer_for_radec(brick.ra, brick.dec)
         return layer.get_base_filename(brick, band, **kwargs)
+
+    def has_invvar(self):
+        return True
 
     def get_fits_extension(self, scale, fn):
         if fn.endswith('.fz'):
             return 1
         return 0
 
-    def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False):
+    def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
+                   invvar=False):
         #print('Split Layer render_rgb: bands=', bands)
+        kwa = dict(tempfiles=tempfiles, get_images_only=get_images_only, invvar=invvar)
         if y != -1:
             # FIXME -- this is not the correct cut -- only listen to split for NGC --
             # but this doesn't get called anyway because the JavaScript layer has the smarts.
@@ -3441,9 +3492,7 @@ class LegacySurveySplitLayer(MapLayer):
                     b = self.top_bands
                 else:
                     b = bands
-                return self.top.render_rgb(wcs, zoom, x, y, bands=b,
-                                           tempfiles=tempfiles,
-                                           get_images_only=get_images_only)
+                return self.top.render_rgb(wcs, zoom, x, y, bands=b, **kwa)
             if y > split:
                 #print('Split Layer render_rgb: short-cutting to south')
                 if bands is None:
@@ -3451,9 +3500,7 @@ class LegacySurveySplitLayer(MapLayer):
                 else:
                     b = bands
                 #print('y above split -- south')
-                return self.bottom.render_rgb(wcs, zoom, x, y, bands=b,
-                                              tempfiles=tempfiles,
-                                              get_images_only=get_images_only)
+                return self.bottom.render_rgb(wcs, zoom, x, y, bands=b, **kwa)
 
         # ASSUME that the WCS is axis-aligned!!
         # Compute Decs for each Y in the WCS
@@ -3471,15 +3518,11 @@ class LegacySurveySplitLayer(MapLayer):
         botonly = np.all(np.logical_not(topmask))
 
         if not botonly:
-            topims,toprgb = self.top.render_rgb(wcs, zoom, x, y, bands=bands, #self.top_bands,
-                                                tempfiles=tempfiles,
-                                                get_images_only=get_images_only)
-        if np.all(topmask):
-            return topims,toprgb
+            topims,toprgb = self.top.render_rgb(wcs, zoom, x, y, bands=bands, **kwa)
+            if np.all(topmask):
+                return topims,toprgb
 
-        botims,botrgb = self.bottom.render_rgb(wcs, zoom, x, y, bands=bands, #self.bottom_bands,
-                                               tempfiles=tempfiles,
-                                               get_images_only=get_images_only)
+        botims,botrgb = self.bottom.render_rgb(wcs, zoom, x, y, bands=bands, **kwa)
         if botonly:
             return botims,botrgb
 
@@ -3563,6 +3606,9 @@ class DesLayer(ReDecalsLayer):
         self.dir = os.path.join(settings.DATA_DIR, name)
 
     def has_cutouts(self):
+        return False
+
+    def has_invvar(self):
         return False
 
     def get_base_filename(self, brick, band, **kwargs):
@@ -3702,7 +3748,7 @@ class PS1Layer(MapLayer):
             return None
         return bricks[I]
 
-    def get_filename(self, brick, band, scale, tempfiles=None):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
         brickname = brick.brickname
         cell = brickname[:4]
         fn = os.path.join(self.basedir, 'skycells', cell,
@@ -4197,7 +4243,7 @@ class GalexLayer(RebrickedUnwise):
         bricks.brickname = np.array(bricknames)
         return bricks
 
-    def get_filename(self, brick, band, scale, tempfiles=None):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
         #print('galex get_filename: scale', scale, 'band', band, 'brick', brick.brickname)
         if scale == -1:
             return self.get_base_filename(brick, band)
@@ -5248,6 +5294,9 @@ class OutliersLayer(DecalsLayer):
 
         self.cached_brick = None
         self.cached_image = None
+
+    def has_invvar(self):
+        return False
 
     def get_base_filename(self, brick, band, invvar=False, **kwargs):
         return self.survey.find_file(self.imagetype, brick=brick.brickname, band=band)
@@ -8118,7 +8167,10 @@ if __name__ == '__main__':
     #r = c.get('/desi-spec-edr/1/cat.json?ralo=154.9292&rahi=186.6138&declo=21.5757&dechi=36.7037')
     #r = c.get('/desi-spectrum/edr/targetid39627848784286649')
     #r = c.get('/desi-edr')
-    r = c.get('/fits-cutout?ra=147.48496&dec=-0.23134231&size=2000&layer=ls-dr10&pixscale=0.262&bands=r')
+    #r = c.get('/fits-cutout?ra=147.48496&dec=-0.23134231&size=2000&layer=ls-dr10&pixscale=0.262&bands=r')
+    #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
+    #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
+    r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
