@@ -1000,9 +1000,29 @@ def main():
 
         survey = get_survey(surveyname)
         print('Survey:', type(survey), survey)
-        
-        B = survey.get_bricks()
-        print(len(B), 'bricks')
+
+        if opt.kind == 'odin-all':
+            B = fits_table('data/bricks-0.fits')
+            print(len(B), 'original bricks')
+            # DEEP FIELDS
+            deeps = [
+                [  +9.2500, -44.0000, "ELAIS-S1"],
+                [ +22.5000,  -0.0000, "SHELA"],
+                [ +35.5000,  -4.7500, "XMM-LSS"],
+                [ +53.0000, -28.1000, "E-CDFS"],
+                [ +62.5000, -48.1667, "EDF-S"],
+                [+150.0000,  +2.1667, "E-COSMOS"],
+                [+345.5000,  +0.2667, "DEEP2-F3"],
+            ]
+            deep_ra = np.array([d[0] for d in deeps])
+            deep_dec = np.array([d[1] for d in deeps])
+            I,J,d = match_radec(B.ra, B.dec, deep_ra, deep_dec, 10., nearest=True)
+            B.cut(I)
+            print('Cut to', len(B), 'near deep fields')
+        else:
+            B = survey.get_bricks()
+            print(len(B), 'bricks')
+
         B.cut((B.dec >= opt.mindec) * (B.dec < opt.maxdec))
         print(len(B), 'in Dec range')
         B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
@@ -1013,8 +1033,9 @@ def main():
 
         has_band = {}
         for b in bands:
-            B.set('has_%s' % b, np.zeros(len(B), bool))
-            has_band[b] = B.get('has_%s' % b)
+            bb = b.lower()
+            B.set('has_%s' % bb, np.zeros(len(B), bool))
+            has_band[b] = B.get('has_%s' % bb)
         exists = np.zeros(len(B), bool)
 
         for i,brick in enumerate(B.brickname):

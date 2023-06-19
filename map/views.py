@@ -8172,15 +8172,24 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10-grz&pixscale=0.262&bands=griz')
     #r = c.get('/cutout.fits?ra=190.1086&dec=1.2005&layer=ls-dr10&pixscale=0.262&bands=griz')
     #r = c.get('/odin-N419/1/14/9549/8101.jpg')
-    print()
-    print('DR9')
-    print()
-    r = c.get('/ls-dr9/1/15/19159/16037.cat.json')
-    print()
-    print('ODIN')
-    print()
-    r = c.get('/odin-cosmos/1/15/19161/16037.cat.json')
-    
+    # print()
+    # print('DR9')
+    # print()
+    # r = c.get('/ls-dr9/1/15/19159/16037.cat.json')
+    # print()
+    # print('ODIN')
+    # print()
+    # r = c.get('/odin-cosmos/1/15/19161/16037.cat.json')
+
+    #r = c.get('/odin-color-n419n673/1/10/923/525.jpg')
+    # r = c.get('/odin-n419/1/14/14768/8407.jpg')
+    # r = c.get('/odin-n673/1/14/14768/8407.jpg')
+    # r = c.get('/odin-color-n419n673/1/14/14768/8407.jpg')
+
+    #r = c.get('/odin-color-n419n673/1/13/7383/4203.jpg')
+
+    r = c.get('/odin-color-n419n673/1/14/9643/8147.jpg')
+
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
