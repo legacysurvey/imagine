@@ -19,8 +19,10 @@ urlpatterns_desi.extend([
 
     # DESI EDR tiles
     re_path(r'^desi-tiles/edr/(\d+)/cat.json', cats.cat_desi_edr_tiles),
-    # DESI EDR spectra
+    # DESI EDR spectra overlay
     re_path(r'^desi-spec-edr/(\d+)/cat.json', cats.cat_desi_edr_spectra),
+    # DESI EDR spectrum viewer
+    re_path(r'^desi-spectrum/edr/targetid(\d+)', cats.cat_desi_edr_spectra_detail),
 ])
 
 if settings.ENABLE_DESI_DATA:
@@ -51,9 +53,6 @@ urlpatterns = ([
     re_path(r'^alive', views.alive),
     re_path(r'^checkflavour/([\w-]+)', views.checkflavour),
     re_path(r'^cutout/checkflavour/([\w-]+)', views.checkflavour),
-
-    re_path(r'^tst', views.tst),
-    re_path(r'^cat', views.cat),
 
     re_path(r'^urls', views.urls, name='urls'),
 
@@ -252,6 +251,9 @@ urlpatterns = ([
     re_path(r'^outlier-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.outlier_stamp, name='outlier_stamp'),
     re_path(r'^sky-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.sky_stamp, name='sky_stamp'),
     re_path(r'^skysub-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.skysub_stamp, name='skysub_stamp'),
+
+    # Special DESI-EDR version of viewer.
+    re_path(r'desi-edr', views.desi_edr),
 
     # Special DECaPS version of viewer.
     re_path(r'decaps', views.decaps),

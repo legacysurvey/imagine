@@ -1,5 +1,19 @@
 from viewer.settings_common import *
 
+INDEX_KWARGS = dict(merian_first=True)
+
+FLAVOUR = 'viewer-merian'
+ROOT_URL = '/viewer-merian'
+STATIC_URL_PATH = '/viewer-merian/static/'
+FORCE_SCRIPT_NAME = ROOT_URL
+
+print('Merian: original TILE URL', TILE_URL)
+
+MY_TILE_URL = 'https://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+print('My tile URL:', MY_TILE_URL)
+
+LAYER_OVERRIDES = dict()
+
 DEBUG = True
 
 DEBUG_LOGGING = True

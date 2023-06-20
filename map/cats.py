@@ -207,7 +207,8 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     
     os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
     with tempfile.TemporaryDirectory() as d:
-        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d)
+        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d,
+                                    with_vi_widgets=False)
         f = open(os.path.join(d, 'prospect.html')) #'specviewer_specviewer.html'))
         return HttpResponse(f)
         
@@ -225,13 +226,35 @@ def desi_healpix_spectrum(req, obj, release):
     import os
     import prospect.viewer
 
+    # Check the cache!
+    outdir = None
+    if settings.DESI_PROSPECT_DIR is not None:
+        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % obj.targetid)
+        fn = os.path.join(outdir, 'prospect.html')
+        if os.path.exists(fn):
+            print('Cache hit for', fn)
+            return HttpResponse(open(fn))
+        if not os.path.exists(outdir):
+            try:
+                os.makedirs(outdir)
+            except:
+                pass
+        if not os.path.exists(outdir):
+            outdir = None
+
     prog = obj.program.strip()
     surv = obj.survey.strip()
     hp = '%i' % obj.healpix
     hp_pre = '%i' % (obj.healpix//100)
 
-    fn = ('/global/cfs/cdirs/desi/spectro/redux/%s/healpix/%s/%s/%s/%s/coadd-%s-%s-%s.fits' %
-          (release, surv, prog,hp_pre, hp, surv, prog, hp))
+    if release == 'edr':
+        basedir = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji'
+    else:
+        basedir = '/global/cfs/cdirs/desi/spectro/redux/%s' % release
+
+    
+    fn = os.path.join(basedir, 'healpix', surv, prog, hp_pre, hp,
+                      'coadd-%s-%s-%s.fits' % (surv, prog, hp))
 
     spectra = read_spectra(fn)
     spectra = spectra.select(targets=[obj.targetid])
@@ -253,13 +276,18 @@ def desi_healpix_spectrum(req, obj, release):
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
     os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
-    #if True:
-    #    d = tempfile.mkdtemp()
-    with tempfile.TemporaryDirectory() as d:
-        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d)
-        f = open(os.path.join(d, 'prospect.html'))
-        return HttpResponse(f)
-        
+
+    if outdir is None:
+        # temp dir contents get deleted after this function returns (when td gets deleted)
+        td = tempfile.TemporaryDirectory()
+        outdir = td.name
+
+    prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir,
+                                with_vi_widgets=False)
+    fn = os.path.join(outdir, 'prospect.html')
+    print('Wrote prospect output', fn)
+    return HttpResponse(open(fn))
+
 def get_desi_spectro_kdfile(release):
     if release == 'edr':
         return os.path.join(settings.DATA_DIR, 'desi-spectro-edr', 'zpix-all.kd.fits')
@@ -285,14 +313,22 @@ def lookup_targetid(targetid, release):
     I = kd.search(np.array([targetid]).astype(np.uint64), 0.5, 0, 0)
     if len(I) == 0:
         return None
-    print('Found', len(I), 'entries for targetid', targetid)
+    ## The kd-search for uint64 for return matches outside the search range!  uint64 vs float is weird!
+    #print('Found', len(I), 'entries for targetid', targetid)
     # Read only the allzbest table rows within range.
     T = fits_table(fn, rows=I)
-    print('Matched targetids:', T.targetid)
+    #print('Matched targetids:', T.targetid)
     I = np.flatnonzero(T.targetid == targetid)
     if len(I) == 0:
         return None
-    i = I[0]
+    T.cut(I)
+    if len(T) > 1:
+        print('Matched targetids:', T.targetid)
+        print('Surveys:', T.survey)
+        print('Programs:', T.program)
+    else:
+        print('Found targetid', T.targetid[0], 'in survey', T.survey[0], 'program', T.program[0])
+    i = 0
     return T[i]
 
 def cat_desi_daily_spectra_detail(req, targetid):
@@ -316,11 +352,27 @@ def cat_desi_fuji_spectra_detail(req, targetid):
         return HttpResponse('No such targetid found in DESI Fuji spectra: %s' % targetid)
     return desi_healpix_spectrum(req, t, 'fuji')
 
-def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
+def cat_desi_edr_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    release = 'edr'
+
+    # Quick-check cache (without looking up object)
+    if settings.DESI_PROSPECT_DIR is not None:
+        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+        fn = os.path.join(outdir, 'prospect.html')
+        if os.path.exists(fn):
+            print('Cache hit for', fn)
+            return HttpResponse(open(fn))
+
+    t = lookup_targetid(targetid, release)
+    if t is None:
+        return HttpResponse('No such targetid found in DESI EDR spectra: %s' % targetid)
+    return desi_healpix_spectrum(req, t, release)
+
+def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
+                             tile_clusters=None):
     import json
     T = cat_kd(req, ver, tag, kdfn, racol=racol, deccol=deccol)
-    print('Got', len(T), 'spectra')
-
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])), #, z=[], zerr=[])),
                             content_type='application/json')
@@ -347,9 +399,14 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
         declo = float(req.GET['declo'])
         dechi = float(req.GET['dechi'])
 
-        T.ra_wrap = T.ra + -360 * (T.ra > 180)
-        if ralo > rahi:
+        ra_wrap = ralo > rahi
+        if ra_wrap:
+            # Move RAs to +- 0
+            T.ra_wrap = T.ra + -360 * (T.ra > 180)
             ralo -= 360
+        else:
+            T.ra_wrap = T.ra
+
         assert(ralo < rahi)
         assert(declo < dechi)
 
@@ -358,8 +415,75 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
 
         Iloose = []
 
-        # grid
-        nra = ndec = 3
+        from astrometry.util.miscutils import point_in_poly, clip_polygon
+
+        Iclusters = []
+
+        # Use pre-computed cluster membership!
+        if tile_clusters is not None:
+            cl = np.unique(T.tile_cluster)
+            print(len(cl), 'unique clusters')
+            for cl_i in cl:
+                rd = tile_clusters[cl_i]
+                ra,dec = rd[:,0],rd[:,1]
+                if ra_wrap:
+                    ra_w = ra + -360 * (ra > 180)
+                else:
+                    ra_w = ra
+                I = np.flatnonzero(T.tile_cluster == cl_i)
+                print(len(I), 'spectra in cluster', cl_i)
+                Iclusters.append((I, (ra,ra_w,dec)))
+
+        # if tile_clusters is None:
+        #     tile_clusters = []
+        # for cl_i,rd in enumerate(tile_clusters):
+        #     #print('Tile cluster boundary:', rd.shape)
+        #     ra,dec = rd[:,0],rd[:,1]
+        #     if ra_wrap:
+        #         ra_w = ra + -360 * (ra > 180)
+        #     else:
+        #         ra_w = ra
+        #     # completely outside RA,Dec region?
+        #     if min(ra_w) > rahi or max(ra_w) < ralo or min(dec) > dechi or max(dec) < declo:
+        #         #print('Tile not nearby, skipping')
+        #         continue
+        #     poly = np.vstack((ra_w,dec)).T
+        #     #print('Poly', poly.shape)
+        #     isin = point_in_poly(T.ra_wrap, T.dec, np.vstack((ra_w,dec)).T)
+        #     I = np.flatnonzero(isin)
+        #     print(len(I), 'spectra in cluster', cl_i)
+        #     if len(I) == 0:
+        #         continue
+        #     Iclusters.append((I, (ra,ra_w,dec)))
+
+        if len(Iclusters) > 1:
+            for I,(ra,ra_w,dec) in Iclusters:
+                if len(I) < 100:
+                    Iloose.append(I)
+                    continue
+                K = np.flatnonzero((ra_w > ralo) * (ra_w < rahi) * (dec > declo) * (dec < dechi))
+                if len(K) > 0:
+                    cra,cdec = np.mean(np.vstack((ra_w[K], dec[K])), axis=1)
+                else:
+                    cra = (ralo + rahi) / 2.
+                    cdec = (declo + dechi) / 2.
+                if cra < 0:
+                    cra += 360.
+                #cliprd = clip_polygon(np.vstack((ra_w,dec)).T,
+                #                      np.array([[ralo,declo],[ralo,dechi],[rahi,dechi],[rahi,declo]]))
+                #cliprd = np.array(cliprd)
+                #ra,dec = cliprd[:,0], cliprd[:,1]
+                cluster_edges.append([(float(r),float(d)) for r,d in zip(ra,dec)])
+                cluster_labels.append([float(cra), float(cdec), '%i spectra' % len(I)])
+
+
+            # No grid!
+            nra = ndec = 0
+
+        else:
+            # grid
+            nra = ndec = 3
+
         for i in range(ndec):
             for j in range(nra):
                 r1 = ralo +  j * (rahi - ralo) / nra
@@ -390,8 +514,7 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec'):
                 cra,cdec = c
                 if cra < 0:
                     cra += 360.
-                print('Center of convex hull:', cra,cdec)
-
+                #print('Center of convex hull:', cra,cdec)
                 cluster_edges.append([(float(r),float(d)) for r,d in ch])
                 cluster_labels.append([float(cra), float(cdec), '%i spectra' % len(I)])
 
@@ -500,9 +623,16 @@ def cat_desi_fuji_spectra(req, ver):
 def cat_desi_edr_spectra(req, ver):
     kdfn = get_desi_spectro_kdfile('edr')
     tag = 'desi-edr-spectra'
-    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
+    clusters = open(os.path.join(settings.DATA_DIR, 'desi-spectro-edr', 'tile-clusters.json')).read()
+    import json
+    import numpy as np
+    clusters = json.loads(clusters)
+    clusters = [np.array(cl).reshape(-1,2) for cl in clusters]
 
-def cat_desi_release_tiles(req, ver, release):
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec',
+                                    tile_clusters=clusters)
+
+def cat_desi_release_tiles(req, ver, release, color_function=None):
     import json
     from astrometry.util.fits import fits_table
     from astrometry.libkd.spherematch import tree_open, tree_search_radec
@@ -519,31 +649,43 @@ def cat_desi_release_tiles(req, ver, release):
     desi_radius = 1.628
     fn = os.path.join(settings.DATA_DIR, 'desi-spectro-%s/tiles2.kd.fits' % release)
 
+    if color_function is None:
+        def color_function(t, surv, prog):
+            cc = {
+                ('sv1', 'backup'): '#999999', # HSV V=0.6
+                ('sv1', 'bright'): '#996600', # darker orange
+                ('sv1', 'dark'):   '#177699', # darker blue
+                ('sv2', 'backup'): '#999999', # HSV V=0.7
+                ('sv2', 'bright'): '#b37700', #
+                ('sv2', 'dark'):   '#1b8ab3', #
+                ('sv3', 'backup'): '#cccccc', # HSV V=0.8
+                ('sv3', 'bright'): '#cc8800',
+                ('sv3', 'dark'):   '#1f9ecc',
+                ('main', 'dark'):  '#22aadd',
+                ('main', 'bright'): '#cc8800',
+                ('special', 'dark'): '#77ccee',
+                ('special', 'bright'): '#ffbb33',
+                }.get((surv, prog), '#888888')
+            return cc
+
     def result(T):
         res = []
         for t in T:
             name = 'Tile %i' % t.tileid
             details = []
-            prog = None
+            surv = t.survey.strip()
+            if surv != 'unknown':
+                details.append(surv)
             if 'program' in t.get_columns():
                 prog = t.program.strip()
             else:
                 prog = t.faprgrm.strip()
             if prog != 'unknown':
                 details.append(prog)
-            surv = t.survey.strip()
-            if surv != 'unknown':
-                details.append(surv)
             if len(details):
                 name += ' (%s)' % ', '.join(details)
 
-            cc = {
-                ('dark','main'):  '#22aadd',
-                ('bright','main'): '#cc8800',
-                ('dark','special'): '#77ccee',
-                ('bright','special'): '#ffbb33',
-                }.get((prog, surv), '#888888')
-                
+            cc = color_function(t, surv, prog)
             res.append(dict(name=name, ra=t.tilera, dec=t.tiledec, radius=desi_radius,
                             color=cc))
         return HttpResponse(json.dumps(dict(objs=res)),
@@ -571,7 +713,34 @@ def cat_desi_fuji_tiles(req, ver):
     return cat_desi_release_tiles(req, ver, 'fuji')
 
 def cat_desi_edr_tiles(req, ver):
-    return cat_desi_release_tiles(req, ver, 'edr')
+    def tilecolor(t, surv, prog):
+        other = '#7f7f7f'
+        if surv == 'sv1' and prog == 'other':
+            return other
+        return {
+            'sv1': '#77a8d0',
+            'sv2': '#37a436',
+            'sv3': '#ffae73',
+            }.get(surv, other)
+    # sv1: dark 2077b4 mid 77a8d0 light aac9e1
+    # sv1/sec: dark 000000 mid 3f3f3f light 7f7f7f
+    # sv2: 2ba02b / 37a436 / 5fb45b
+    # sv3: ff7f0f / ffae73 / ffcca9
+    # All combos:
+    #   cmx other
+    #   special dark
+    #   sv1 backup
+    #   sv1 bright
+    #   sv1 dark
+    #   sv1 other
+    #   sv2 backup
+    #   sv2 bright
+    #   sv2 dark
+    #   sv3 backup
+    #   sv3 bright
+    #   sv3 dark
+
+    return cat_desi_release_tiles(req, ver, 'edr', color_function=tilecolor)
 
 def cat_photoz_dr9(req, ver):
     '''
@@ -2696,7 +2865,7 @@ def cat_tycho2(req, ver):
                     tyc1 = int(nums[0])
                     tyc2 = int(nums[1])
                     tyc3 = int(nums[2])
-                    url = 'http://simbad.cds.unistra.fr/simbad/sim-id?Ident=TYC++%i+%i+%i&NbIdent=1' % (tyc1, tyc2, tyc3)
+                    url = 'https://simbad.cds.unistra.fr/simbad/sim-id?Ident=TYC++%i+%i+%i&NbIdent=1' % (tyc1, tyc2, tyc3)
                     names[i] = '<a href="%s">%s</a>' % (url, name)
                 except:
                     pass
@@ -2919,15 +3088,16 @@ def get_desi_tile_radec(tileid, fiberid=None):
 if __name__ == '__main__':
     import sys
 
-    from map.views import get_layer
-    #galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
-    #layer = get_layer('hsc2')
-    #create_galaxy_catalog(galfn, None, layer=layer)
-
-    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr10.fits')
-    layer = get_layer('ls-dr10')
-    create_galaxy_catalog(galfn, None, layer=layer)
-    sys.exit(0)
+    if False:
+        from map.views import get_layer
+        #galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
+        #layer = get_layer('hsc2')
+        #create_galaxy_catalog(galfn, None, layer=layer)
+    
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr10.fits')
+        layer = get_layer('ls-dr10')
+        create_galaxy_catalog(galfn, None, layer=layer)
+        sys.exit(0)
     
     # galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
     # layer = get_layer('ls-dr9-north')
@@ -2995,6 +3165,7 @@ if __name__ == '__main__':
     #r = c.get('/desi-spectrum/daily/targetid43977408013222855')
     #r = c.get('/ls-dr9/1/15/29479/18709.cat.json')
     #r = c.get('/usercatalog/1/cat.json?ralo=61.2789&rahi=61.3408&declo=-74.8711&dechi=-74.8622&cat=tmpbclfdga8')
+    r = c.get('/desi-spectrum/edr/targetid39627883857055540')
 
     f = open('out', 'wb')
     for x in r:
@@ -3019,5 +3190,4 @@ if __name__ == '__main__':
     from django.test import Client
     c = Client()
     c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
-
     sys.exit(0)

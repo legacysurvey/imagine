@@ -9,6 +9,8 @@ DEBUG_LOGGING = False
 
 USER_QUERY_DIR = '/tmp/viewer-dev-user'
 
+DESI_PROSPECT_DIR = '/tmp/desi-prospect'
+
 READ_ONLY_BASEDIR = True
 
 ROOT_URL = '/viewer-dev'
@@ -40,7 +42,6 @@ ENABLE_EBOSS = True
 ENABLE_DR5 = True
 ENABLE_PS1 = True
 ENABLE_DR8 = True
-ENABLE_DR9SV = False
 ENABLE_DES_DR1 = True
 
 ENABLE_DESI_TARGETS = True
@@ -59,5 +60,3 @@ ENABLE_DR9_SOUTH_MODELS = True
 ENABLE_DR9_SOUTH_RESIDS = True
 
 ENABLE_DR10 = True
-#ENABLE_DR10A = True
-#ENABLE_DR10_EARLY = True
