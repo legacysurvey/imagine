@@ -208,13 +208,18 @@ var ZoomRangeTileLayer = MyTileLayer.extend({
             var zsubs = this.options.urlPatterns[i][3];
 		    var index = Math.abs(tilePoint.x + tilePoint.y) % zsubs.length;
 		    var sub = zsubs[index];
-		    return L.Util.template(zurl, L.extend({
+		    var url = L.Util.template(zurl, L.extend({
 			    s: sub,
 			    z: tilePoint.z,
 			    x: tilePoint.x,
 			    y: tilePoint.y
 		    }, this.options));
+            console.log('ZoomRangeTileLayer: returning url ' + url);
+            return url;
         }
+        console.log('ZoomRangeTileLayer: did not find a matching layer for zoom ' + tilePoint.z +
+                    ', x,y ' + tilePoint.x + ', ' + tilePoint.y);
+        return null;
 	},
 });
 

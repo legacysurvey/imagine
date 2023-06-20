@@ -1181,10 +1181,12 @@ class MapLayer(object):
 
         if debug_ps is not None:
             plt.clf()
-            plt.plot(xy[:,0], xy[:,1], 'k-')
+            plt.plot(xy[:,0], xy[:,1], 'k-', label='Target WCS')
 
         for i,brick in enumerate(B):
             bwcs = self.get_scaled_wcs(brick, None, scale)
+            #print('Scaled wcs (scale=%i):' % scale, bwcs)
+            #print('Brick width, height', brick.width, brick.height)
             bh,bw = bwcs.shape
             # walk the boundary
             xl,xm,xh = 0.5, (bw+1)/2., bw+0.5
@@ -1214,15 +1216,18 @@ class MapLayer(object):
             by = by[ok]
             if len(bx) == 0:
                 continue
-            if debug_ps is not None:
-                plt.plot(bx, by, 'r-')
+            #if debug_ps is not None:
+            #    plt.plot(bx, by, 'r-')
             if polygons_intersect(xy, np.vstack((bx, by)).T):
                 if debug_ps is not None:
-                    plt.plot(bx, by, '-')
+                    plt.plot(bx, by, '-', label=brick.brickname)
                 keep.append(i)
-            #else:
-            #    plt.plot(bx, by, 'r-')
+                print('Brick', brick.brickname, ': RA,Dec bounding box intersection')
+            else:
+                plt.plot(bx, by, 'r-', label=brick.brickname + ': no intersection')
         if debug_ps is not None:
+            plt.title('bricks_touching_aa_wcs')
+            plt.legend()
             debug_ps.savefig()
 
         # print('Looking for bricks touching WCS', wcs)
@@ -3366,11 +3371,10 @@ class MerianLayer(HscLayer):
         return path
     
     def get_bricks(self):
-        print('Merian get_bricks')
         if self.bricks is not None:
             return self.bricks
         from astrometry.util.fits import fits_table
-        self.bricks = fits_table(os.path.join(self.basedir, 'merian-bricks.fits'))
+        self.bricks = fits_table(os.path.join(self.basedir, 'merian-bricks.fits.gz'))
         return self.bricks
 
     def get_brick_size_for_scale(self, scale):
@@ -7615,10 +7619,10 @@ def get_layer(name, default=None):
         layer = layers[name]
 
     elif name == 'merian-n540':
-        hsc = get_layer('hsc-dr2')
+        hsc = get_layer('hsc-dr3')
         layer = MerianLayer('merian', hsc)
     elif name == 'merian-n708':
-        hsc = get_layer('hsc-dr2')
+        hsc = get_layer('hsc-dr3')
         layer = MerianLayer('merian', hsc)
         layer.bands = ['g', 'N708', 'z']
         
@@ -8241,7 +8245,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
-    r = c.get('/')
+    #r = c.get('/')
+    r = c.get('/merian-n540/1/14/14885/8321.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

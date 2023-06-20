@@ -9,10 +9,21 @@ FORCE_SCRIPT_NAME = ROOT_URL
 
 print('Merian: original TILE URL', TILE_URL)
 
+# Nope can't do subdomains because of password!
+#MY_TILE_URL = 'https://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 MY_TILE_URL = 'https://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 print('My tile URL:', MY_TILE_URL)
+MY_SUBDOMAINS = SUBDOMAINS
 
-LAYER_OVERRIDES = dict()
+maxZoom = 16
+maxnative = 14
+my_url = [0, maxZoom, MY_TILE_URL, MY_SUBDOMAINS]
+LAYER_OVERRIDES = {
+    #'merian-n540': ['Merian N540', [my_url], maxnative, 'MERIAN collaboration'],
+    #'merian-n708': ['Merian N708', [my_url], maxnative, 'MERIAN collaboration'],
+    'merian-n540': [my_url],
+    'merian-n708': [my_url],
+}
 
 DEBUG = True
 

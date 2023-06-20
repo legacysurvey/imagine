@@ -99,6 +99,10 @@ for (tract,patch),bandfiles in tract_patches.items():
     T.patch.append(patch)
 
     #tract_patches.add((tract,patch))
+T.rename('naxis1', 'width')
+T.rename('naxis2', 'height')
+# viewer code assumes the filename is for the N540 filter and modifies it for N708.
+T.filename = np.array([fn.replace('N708', 'N540') for fn in T.filename])
 
 T.to_np_arrays()
 T.writeto('merian-bricks.fits')
