@@ -1420,20 +1420,32 @@ class MapLayer(object):
     
     def get_fits_extension(self, scale, fn):
         return 0
-    
-    def read_image(self, brick, band, scale, slc, fn=None):
+
+    def open_file(self, brick, band, scale, fn=None):
         import fitsio
         if fn is None:
             fn = self.get_filename(brick, band, scale)
-        debug('Reading image from', fn)
         ext = self.get_fits_extension(scale, fn)
         f = fitsio.FITS(fn)[ext]
+        debug('Opening FITS image', fn, 'ext', ext)
+        return f
+
+    def read_image(self, brick, band, scale, slc, fn=None, openfile=None):
+        if openfile is None:
+            import fitsio
+            if fn is None:
+                fn = self.get_filename(brick, band, scale)
+            debug('Reading image from', fn)
+            ext = self.get_fits_extension(scale, fn)
+            f = fitsio.FITS(fn)[ext]
+        else:
+            f = openfile
         if slc is None:
             return f.read()
         img = f[slc]
         return img
 
-    def read_wcs(self, brick, band, scale, fn=None):
+    def read_wcs(self, brick, band, scale, fn=None, openfile=None):
         from map.coadds import read_tan_wcs
         if fn is None:
             fn = self.get_filename(brick, band, scale)
@@ -1539,8 +1551,9 @@ class MapLayer(object):
                 if fn is None:
                     continue
 
+                openfile = self.open_file(brick, band, scale, fn=fn)
                 try:
-                    bwcs = self.read_wcs(brick, band, scale, fn=fn)
+                    bwcs = self.read_wcs(brick, band, scale, fn=fn, openfile=openfile)
                     if bwcs is None:
                         print('No such file:', brickname, band, scale, 'fn', fn)
                         continue
@@ -1608,7 +1621,7 @@ class MapLayer(object):
                 subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
                 slc = slice(ylo,yhi), slice(xlo,xhi)
                 try:
-                    img = self.read_image(brick, band, scale, slc, fn=fn)
+                    img = self.read_image(brick, band, scale, slc, fn=fn, openfile=openfile)
                 except:
                     print('Failed to read image:', brickname, band, scale, 'fn', fn)
                     savecache = False
@@ -2763,7 +2776,7 @@ class ResidMixin(object):
         self.model_layer = model_layer
         self.rgbkwargs = dict(mnmx=(-5,5))
 
-    def read_image(self, brick, band, scale, slc, fn=None):
+    def read_image(self, brick, band, scale, slc, fn=None, openfile=None):
         # Note, we drop the fn arg.
         img = self.image_layer.read_image(brick, band, scale, slc)
         if img is None:
@@ -3203,17 +3216,21 @@ class HscLayer(RebrickedMixin, MapLayer):
         from astrometry.util.util import Tan
         # Scaled tiles (which are 0.5-degree on a side for scale=1) need to be:
         # 0.25 * 3600 / 0.168 ~ 5360 pix
-        if scale >= 7:
-            size = 6200
+        if scale == 0:
+            W = brick.width
+            H = brick.height
+        elif scale >= 7:
+            W = H = 6200
         elif scale == 6:
-            size = 5600
+            W = H = 5600
         else:
-            size = 5360
+            W = H = 5360
         pixscale = self.pixscale * 2**scale
         cd = pixscale / 3600.
-        crpix = size/2. + 0.5
-        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
-                  float(size), float(size))
+        crx = W/2. + 0.5
+        cry = H/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crx, cry, -cd, 0., 0., cd,
+                  float(W), float(H))
         return wcs
 
     def get_rgb(self, imgs, bands, **kwargs):
@@ -3241,28 +3258,52 @@ class HscLayer(RebrickedMixin, MapLayer):
 
     def get_bands(self):
         return self.bands
-    
-    def read_wcs(self, brick, band, scale, fn=None):
+
+    def get_fits_extension(self, scale, fn):
+        return 1
+
+    def open_file(self, brick, band, scale, fn=None):
+        import fitsio
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        ext = self.get_fits_extension(scale, fn)
+        F = fitsio.FITS(fn)
+        debug('Opening FITS image', fn, 'ext', ext)
+        return F,ext
+
+    def read_wcs(self, brick, band, scale, fn=None, openfile=None):
+        hdr,W,H = None,None,None
+        if openfile is not None:
+            F,ext = openfile
+            f = F[ext]
+            hdr = f.read_header()
+            info = f.get_info()
+            H,W = info['dims']
         from map.coadds import read_tan_from_header
         if fn is None:
             fn = self.get_filename(brick, band, scale)
         if fn is None:
             return None
         ext = self.get_fits_extension(scale, fn)
-        return read_tan_from_header(fn, ext)
+        debug('Reading WCS from', fn, 'hdu', ext)
+        return read_tan_from_header(fn, ext, hdr=hdr, W=W, H=H)
 
-    def read_image(self, brick, band, scale, slc, fn=None):
-        import fitsio
-        if fn is None:
-            fn = self.get_filename(brick, band, scale)
-        debug('Reading image from', fn)
-        ext = self.get_fits_extension(scale, fn)
-        F = fitsio.FITS(fn)
+    def read_image(self, brick, band, scale, slc, fn=None, openfile=None):
+        assert(openfile is not None)
+        F,ext = openfile
         f = F[ext]
-        if slc is None:
-            img = f.read()
-        else:
-            img = f[slc]
+        # import fitsio
+        # if fn is None:
+        #     fn = self.get_filename(brick, band, scale)
+        # debug('Reading image from', fn)
+        # ext = self.get_fits_extension(scale, fn)
+        # F = fitsio.FITS(fn)
+        # f = F[ext]
+        # if slc is None:
+        #     img = f.read()
+        # else:
+        #     img = f[slc]
+        img = super().read_image(brick, band, scale, slc, fn=fn, openfile=f)
         if scale == 0:
             ### Zero out pixels where MASK has MP_NO_DATA set --
             ### especially HSC-DR3 at the survey edges.
