@@ -54,9 +54,6 @@ urlpatterns = ([
     re_path(r'^checkflavour/([\w-]+)', views.checkflavour),
     re_path(r'^cutout/checkflavour/([\w-]+)', views.checkflavour),
 
-    re_path(r'^tst', views.tst),
-    re_path(r'^cat', views.cat),
-
     re_path(r'^urls', views.urls, name='urls'),
 
     re_path(r'^gfas', views.gfas),
@@ -254,6 +251,9 @@ urlpatterns = ([
     re_path(r'^outlier-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.outlier_stamp, name='outlier_stamp'),
     re_path(r'^sky-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.sky_stamp, name='sky_stamp'),
     re_path(r'^skysub-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.skysub_stamp, name='skysub_stamp'),
+
+    # Special DESI-EDR version of viewer.
+    re_path(r'desi-edr', views.desi_edr),
 
     # Special DECaPS version of viewer.
     re_path(r'decaps', views.decaps),

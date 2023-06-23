@@ -207,7 +207,8 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     
     os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
     with tempfile.TemporaryDirectory() as d:
-        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d)
+        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d,
+                                    with_vi_widgets=False)
         f = open(os.path.join(d, 'prospect.html')) #'specviewer_specviewer.html'))
         return HttpResponse(f)
         
@@ -224,6 +225,22 @@ def desi_healpix_spectrum(req, obj, release):
     import tempfile
     import os
     import prospect.viewer
+
+    # Check the cache!
+    outdir = None
+    if settings.DESI_PROSPECT_DIR is not None:
+        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % obj.targetid)
+        fn = os.path.join(outdir, 'prospect.html')
+        if os.path.exists(fn):
+            print('Cache hit for', fn)
+            return HttpResponse(open(fn))
+        if not os.path.exists(outdir):
+            try:
+                os.makedirs(outdir)
+            except:
+                pass
+        if not os.path.exists(outdir):
+            outdir = None
 
     prog = obj.program.strip()
     surv = obj.survey.strip()
@@ -259,13 +276,18 @@ def desi_healpix_spectrum(req, obj, release):
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
     os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
-    #if True:
-    #    d = tempfile.mkdtemp()
-    with tempfile.TemporaryDirectory() as d:
-        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d)
-        f = open(os.path.join(d, 'prospect.html'))
-        return HttpResponse(f)
-        
+
+    if outdir is None:
+        # temp dir contents get deleted after this function returns (when td gets deleted)
+        td = tempfile.TemporaryDirectory()
+        outdir = td.name
+
+    prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir,
+                                with_vi_widgets=False)
+    fn = os.path.join(outdir, 'prospect.html')
+    print('Wrote prospect output', fn)
+    return HttpResponse(open(fn))
+
 def get_desi_spectro_kdfile(release):
     if release == 'edr':
         return os.path.join(settings.DATA_DIR, 'desi-spectro-edr', 'zpix-all.kd.fits')
@@ -291,14 +313,22 @@ def lookup_targetid(targetid, release):
     I = kd.search(np.array([targetid]).astype(np.uint64), 0.5, 0, 0)
     if len(I) == 0:
         return None
-    print('Found', len(I), 'entries for targetid', targetid)
+    ## The kd-search for uint64 for return matches outside the search range!  uint64 vs float is weird!
+    #print('Found', len(I), 'entries for targetid', targetid)
     # Read only the allzbest table rows within range.
     T = fits_table(fn, rows=I)
-    print('Matched targetids:', T.targetid)
+    #print('Matched targetids:', T.targetid)
     I = np.flatnonzero(T.targetid == targetid)
     if len(I) == 0:
         return None
-    i = I[0]
+    T.cut(I)
+    if len(T) > 1:
+        print('Matched targetids:', T.targetid)
+        print('Surveys:', T.survey)
+        print('Programs:', T.program)
+    else:
+        print('Found targetid', T.targetid[0], 'in survey', T.survey[0], 'program', T.program[0])
+    i = 0
     return T[i]
 
 def cat_desi_daily_spectra_detail(req, targetid):
@@ -324,10 +354,20 @@ def cat_desi_fuji_spectra_detail(req, targetid):
 
 def cat_desi_edr_spectra_detail(req, targetid):
     targetid = int(targetid)
-    t = lookup_targetid(targetid, 'edr')
+    release = 'edr'
+
+    # Quick-check cache (without looking up object)
+    if settings.DESI_PROSPECT_DIR is not None:
+        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+        fn = os.path.join(outdir, 'prospect.html')
+        if os.path.exists(fn):
+            print('Cache hit for', fn)
+            return HttpResponse(open(fn))
+
+    t = lookup_targetid(targetid, release)
     if t is None:
         return HttpResponse('No such targetid found in DESI EDR spectra: %s' % targetid)
-    return desi_healpix_spectrum(req, t, 'edr')
+    return desi_healpix_spectrum(req, t, release)
 
 def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
                              tile_clusters=None):
@@ -592,7 +632,7 @@ def cat_desi_edr_spectra(req, ver):
     return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec',
                                     tile_clusters=clusters)
 
-def cat_desi_release_tiles(req, ver, release):
+def cat_desi_release_tiles(req, ver, release, color_function=None):
     import json
     from astrometry.util.fits import fits_table
     from astrometry.libkd.spherematch import tree_open, tree_search_radec
@@ -609,24 +649,8 @@ def cat_desi_release_tiles(req, ver, release):
     desi_radius = 1.628
     fn = os.path.join(settings.DATA_DIR, 'desi-spectro-%s/tiles2.kd.fits' % release)
 
-    def result(T):
-        res = []
-        for t in T:
-            name = 'Tile %i' % t.tileid
-            details = []
-            prog = None
-            if 'program' in t.get_columns():
-                prog = t.program.strip()
-            else:
-                prog = t.faprgrm.strip()
-            if prog != 'unknown':
-                details.append(prog)
-            surv = t.survey.strip()
-            if surv != 'unknown':
-                details.append(surv)
-            if len(details):
-                name += ' (%s)' % ', '.join(details)
-
+    if color_function is None:
+        def color_function(t, surv, prog):
             cc = {
                 ('sv1', 'backup'): '#999999', # HSV V=0.6
                 ('sv1', 'bright'): '#996600', # darker orange
@@ -642,22 +666,26 @@ def cat_desi_release_tiles(req, ver, release):
                 ('special', 'dark'): '#77ccee',
                 ('special', 'bright'): '#ffbb33',
                 }.get((surv, prog), '#888888')
+            return cc
 
-            '''
-            cmx other
-            special dark
-            sv1 backup
-            sv1 bright
-            sv1 dark
-            sv1 other
-            sv2 backup
-            sv2 bright
-            sv2 dark
-            sv3 backup
-            sv3 bright
-            sv3 dark
-            '''
-                
+    def result(T):
+        res = []
+        for t in T:
+            name = 'Tile %i' % t.tileid
+            details = []
+            surv = t.survey.strip()
+            if surv != 'unknown':
+                details.append(surv)
+            if 'program' in t.get_columns():
+                prog = t.program.strip()
+            else:
+                prog = t.faprgrm.strip()
+            if prog != 'unknown':
+                details.append(prog)
+            if len(details):
+                name += ' (%s)' % ', '.join(details)
+
+            cc = color_function(t, surv, prog)
             res.append(dict(name=name, ra=t.tilera, dec=t.tiledec, radius=desi_radius,
                             color=cc))
         return HttpResponse(json.dumps(dict(objs=res)),
@@ -685,7 +713,34 @@ def cat_desi_fuji_tiles(req, ver):
     return cat_desi_release_tiles(req, ver, 'fuji')
 
 def cat_desi_edr_tiles(req, ver):
-    return cat_desi_release_tiles(req, ver, 'edr')
+    def tilecolor(t, surv, prog):
+        other = '#7f7f7f'
+        if surv == 'sv1' and prog == 'other':
+            return other
+        return {
+            'sv1': '#77a8d0',
+            'sv2': '#37a436',
+            'sv3': '#ffae73',
+            }.get(surv, other)
+    # sv1: dark 2077b4 mid 77a8d0 light aac9e1
+    # sv1/sec: dark 000000 mid 3f3f3f light 7f7f7f
+    # sv2: 2ba02b / 37a436 / 5fb45b
+    # sv3: ff7f0f / ffae73 / ffcca9
+    # All combos:
+    #   cmx other
+    #   special dark
+    #   sv1 backup
+    #   sv1 bright
+    #   sv1 dark
+    #   sv1 other
+    #   sv2 backup
+    #   sv2 bright
+    #   sv2 dark
+    #   sv3 backup
+    #   sv3 bright
+    #   sv3 dark
+
+    return cat_desi_release_tiles(req, ver, 'edr', color_function=tilecolor)
 
 def cat_photoz_dr9(req, ver):
     '''
@@ -2810,7 +2865,7 @@ def cat_tycho2(req, ver):
                     tyc1 = int(nums[0])
                     tyc2 = int(nums[1])
                     tyc3 = int(nums[2])
-                    url = 'http://simbad.cds.unistra.fr/simbad/sim-id?Ident=TYC++%i+%i+%i&NbIdent=1' % (tyc1, tyc2, tyc3)
+                    url = 'https://simbad.cds.unistra.fr/simbad/sim-id?Ident=TYC++%i+%i+%i&NbIdent=1' % (tyc1, tyc2, tyc3)
                     names[i] = '<a href="%s">%s</a>' % (url, name)
                 except:
                     pass
