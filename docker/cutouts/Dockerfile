@@ -16,8 +16,22 @@ RUN apt -y update && \
   && \
   apt clean
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install -e git+http://github.com/dstndstn/astrometry.net@0.86#egg=astrometry && \
-    pip install -e git+https://github.com/dstndstn/tractor.git@dr9.6#egg=tractor
+
+RUN git clone https://github.com/dstndstn/astrometry.net.git astrometry \
+  && cd astrometry \
+  && git checkout 0.94 \
+  && make install INSTALL_DIR=/usr/local
+
+RUN pip install Cython
+
+RUN git clone https://github.com/dstndstn/tractor.git tractor \
+  && cd tractor \
+  && git checkout dr10.4 \
+  && pip install --install-option="--with-cython" -v .
+
+#RUN pip install -e git+http://github.com/dstndstn/astrometry.net@0.86#egg=astrometry && \
+#    pip install -e git+https://github.com/dstndstn/tractor.git@dr9.6#egg=tractor
+
 RUN pip install -e git+https://github.com/legacysurvey/legacypipe@DR10.1.0#egg=legacypipe
 RUN git clone https://github.com/legacysurvey/imagine.git
 RUN cd imagine/viewer && ln -s settings_test.py settings.py

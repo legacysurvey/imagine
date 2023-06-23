@@ -1,7 +1,7 @@
 numpy
 scipy
 matplotlib
-mkl-fft
+#mkl-fft
 astropy
 fitsio
 Django
