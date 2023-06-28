@@ -98,3 +98,12 @@ COPY entry.sh /app
 #RUN pip install uwsgi-tools
 ADD https://github.com/che0/uwping/releases/download/14.0/uwping /usr/local/bin/uwping
 RUN chmod +x /usr/local/bin/uwping
+
+RUN echo "cosmo:x:58191" >> /etc/group
+RUN echo "desi:x:58102" >> /etc/group
+RUN echo "dstn:x:44591" >> /etc/group
+RUN echo "dstn:x:44591:44591:Dustin:/app:/bin/bash" >> /etc/passwd
+
+#RUN apt -y update && apt install -y netstat
+RUN python3.10 -m pip install --no-cache numba
+RUN python3.10 -m pip install --no-cache bokeh==2.4.3
