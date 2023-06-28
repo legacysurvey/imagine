@@ -1454,7 +1454,6 @@ class MapLayer(object):
         return rimg / np.maximum(rw, 1e-18)
 
     def peek_weight_for_render(self, acc):
-        import numpy as np
         rimg, rw = acc
         return rw
 
@@ -1521,7 +1520,7 @@ class MapLayer(object):
             bandbricks = self.bricks_for_band(bricks, band)
             for brick in bandbricks:
                 brickname = brick.brickname
-                #print('Reading', brickname, 'band', band, 'scale', scale)
+                print('Reading', brickname, 'band', band, 'scale', scale)
                 # call get_filename to possibly generate scaled version
                 fn = self.get_filename(brick, band, scale, tempfiles=tempfiles, invvar=invvar)
                 info('Reading', brickname, 'band', band, 'scale', scale, ('invvar' if invvar else ''), '-> fn', fn)
@@ -1718,9 +1717,9 @@ class MapLayer(object):
                     plt.title('rw')
                     #plt.savefig('render-%s-%s.png' % (brickname, band))
                     debug_ps.savefig()
-            #print('Median image weight:', np.median(rw.ravel()))
+            print('Median image weight:', np.median(self.peek_weight_for_render(acc).ravel()))
             rimg = self.finish_accumulator_for_render(acc)
-            #print('Median image value:', np.median(rimg.ravel()))
+            print('Median image value:', np.median(rimg.ravel()))
             rimgs.append(rimg)
         return rimgs
 
@@ -4207,16 +4206,26 @@ class UnwiseMask(RebrickedUnwise):
     def initialize_accumulator_for_render(self, W, H, band):
         import numpy as np
         rmask = np.zeros((H,W), np.int32)
-        return rmask
+        rmask_set = np.zeros((H,W), bool)
+        return rmask,rmask_set
 
     def finish_accumulator_for_render(self, acc):
-        rmask = acc
+        rmask,rmask_set = acc
         return rmask
+
+    def peek_accumulator_for_render(self, acc):
+        rmask,rmask_set = acc
+        return rmask
+
+    def peek_weight_for_render(self, acc):
+        rmask,rmask_set = acc
+        return rmask_set
 
     # Called by render_into_wcs
     def accumulate_for_render(self, Yo, Xo, Yi, Xi, resamp, wt, img, acc):
-        rmask = acc
+        rmask,rmask_set = acc
         rmask[Yo,Xo] = img[Yi, Xi]
+        rmask_set[Yo,Xo] = True
     
     
 class UnwiseW3W4(RebrickedUnwise):
@@ -8235,6 +8244,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
+    #r = c.get('/fits-cutout?ra=50.527333&dec=-15.400056&layer=ls-dr10&pixscale=0.262&bands=grz&size=687&invvar')
+    r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
