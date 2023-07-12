@@ -1053,6 +1053,48 @@ def data_for_radec(req):
 class NoOverlapError(RuntimeError):
     pass
 
+class RenderAccumulator(object):
+    pass
+
+class RenderAccumulatorImage(RenderAccumulator):
+    def __init__(self, W, H):
+        import numpy as np
+        self.rimg = np.zeros((H,W), np.float32)
+        self.rw   = np.zeros((H,W), np.float32)
+
+    def peek(self):
+        import numpy as np
+        return self.rimg / np.maximum(self.rw, 1e-18)
+
+    def peek_weight(self):
+        return self.rw
+
+    def finish(self):
+        import numpy as np
+        return self.rimg / np.maximum(self.rw, 1e-18)
+
+    def accumulate(self, Yo, Xo, Yi, Xi, resamp, wt, img):
+        self.rimg[Yo,Xo] += resamp * wt
+        self.rw  [Yo,Xo] += wt
+
+class RenderAccumulatorMask(RenderAccumulator):
+    def __init__(self, W, H):
+        import numpy as np
+        self.rmask = np.zeros((H,W), np.int32)
+        self.rw    = np.zeros((H,W), bool)
+
+    def peek(self):
+        return self.rmask
+
+    def peek_weight(self):
+        return self.rw
+
+    def finish(self):
+        return self.rmask
+
+    def accumulate(self, Yo, Xo, Yi, Xi, resamp, wt, img):
+        self.rmask[Yo,Xo] = img[Yi, Xi]
+        self.rw   [Yo,Xo] = True
 
 class MapLayer(object):
     '''
@@ -1298,17 +1340,21 @@ class MapLayer(object):
         #print('bricknames for band', band, ':', len(bricks), 'bricks; no has_%s column' % band)
         return bricks
 
-    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
         if invvar and not self.has_invvar():
+            return None
+        if maskbits and not self.has_maskbits():
             return None
         kwa = {}
         if invvar:
             kwa.update(invvar=True)
+        if maskbits:
+            kwa.update(maskbits=True)
         if scale == 0:
             return self.get_base_filename(brick, band, **kwa)
 
-        ## HACK -- no invvars for scaled images.
-        if invvar:
+        ## HACK -- no invvars or maskbits for scaled images.
+        if invvar or maskbits:
             return None
 
         fn = self.get_scaled_filename(brick, band, scale)
@@ -1324,6 +1370,8 @@ class MapLayer(object):
         return None
 
     def has_invvar(self):
+        return False
+    def has_maskbits(self):
         return False
 
     def needs_recreating(self, brick, band, scale):
@@ -1442,35 +1490,14 @@ class MapLayer(object):
                                                  intType=coordtype)
         return Yo,Xo,Yi,Xi,resamp
 
-    def initialize_accumulator_for_render(self, W, H, band):
-        import numpy as np
-        rimg = np.zeros((H,W), np.float32)
-        rw   = np.zeros((H,W), np.float32)
-        return rimg, rw
-
-    def peek_accumulator_for_render(self, acc):
-        import numpy as np
-        rimg, rw = acc
-        return rimg / np.maximum(rw, 1e-18)
-
-    def peek_weight_for_render(self, acc):
-        rimg, rw = acc
-        return rw
-
-    def finish_accumulator_for_render(self, acc):
-        import numpy as np
-        rimg, rw = acc
-        rimg /= np.maximum(rw, 1e-18)
-        return rimg
-
-    # Called by render_into_wcs
-    def accumulate_for_render(self, Yo, Xo, Yi, Xi, resamp, wt, img, acc):
-        rimg, rw = acc
-        rimg[Yo,Xo] += resamp * wt
-        rw  [Yo,Xo] += wt
+    def initialize_accumulator_for_render(self, W, H, band,
+                                          invvar=False, maskbits=False):
+        if maskbits:
+            return RenderAccumulatorMask(W, H)
+        return RenderAccumulatorImage(W, H)
 
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
-                        scale=None, tempfiles=None, invvar=False):
+                        scale=None, tempfiles=None, invvar=False, maskbits=False):
         import numpy as np
         from astrometry.util.resample import resample_with_wcs, OverlapError
 
@@ -1479,8 +1506,8 @@ class MapLayer(object):
         if scale is None:
             scale = self.get_scale(zoom, x, y, wcs)
 
-        # FIXME -- no scaled invvars
-        if scale >= 1 and invvar:
+        # FIXME -- no scaled invvars or maskbits
+        if scale >= 1 and (invvar or maskbits):
             return None
 
         if not general_wcs:
@@ -1496,6 +1523,9 @@ class MapLayer(object):
 
         if bands is None:
             bands = self.get_bands()
+
+        if maskbits:
+            bands = [bands[0]]
 
         W = int(wcs.get_width())
         H = int(wcs.get_height())
@@ -1516,14 +1546,15 @@ class MapLayer(object):
 
         rimgs = []
         for band in bands:
-            acc = self.initialize_accumulator_for_render(W, H, band)
+            acc = self.initialize_accumulator_for_render(W, H, band, invvar=invvar, maskbits=maskbits)
             bandbricks = self.bricks_for_band(bricks, band)
             for brick in bandbricks:
                 brickname = brick.brickname
                 print('Reading', brickname, 'band', band, 'scale', scale)
                 # call get_filename to possibly generate scaled version
-                fn = self.get_filename(brick, band, scale, tempfiles=tempfiles, invvar=invvar)
-                info('Reading', brickname, 'band', band, 'scale', scale, ('invvar' if invvar else ''), '-> fn', fn)
+                fn = self.get_filename(brick, band, scale, tempfiles=tempfiles, invvar=invvar,
+                                       maskbits=maskbits)
+                info('Reading', brickname, 'band', band, 'scale', scale, ('invvar' if invvar else ''), ('maskbits' if maskbits else ''), '-> fn', fn)
                 if fn is None:
                     continue
 
@@ -1677,7 +1708,8 @@ class MapLayer(object):
                         resamp = resamp[ok]
 
                 wt = self.get_pixel_weights(band, brick, scale)
-                self.accumulate_for_render(Yo, Xo, Yi, Xi, resamp, wt, img, acc)
+
+                acc.accumulate(Yo, Xo, Yi, Xi, resamp, wt, img)
                 #print('Coadded', len(Yo), 'pixels;', (nz-np.sum(rw==0)), 'new')
 
                 if debug_ps is not None:
@@ -1706,8 +1738,8 @@ class MapLayer(object):
                     plt.title('dest')
 
                     plt.subplot(2,3,3)
-                    rimg = self.peek_accumulator_for_render(acc)
-                    rw = self.peek_weight_for_render(acc)
+                    rimg = acc.peek()
+                    rw = acc.peek_weight()
                     plt.imshow(rimg,
                                interpolation='nearest', origin='lower',
                                vmin=-0.001, vmax=0.1)
@@ -1717,8 +1749,8 @@ class MapLayer(object):
                     plt.title('rw')
                     #plt.savefig('render-%s-%s.png' % (brickname, band))
                     debug_ps.savefig()
-            print('Median image weight:', np.median(self.peek_weight_for_render(acc).ravel()))
-            rimg = self.finish_accumulator_for_render(acc)
+            print('Median image weight:', np.median(acc.peek_weight().ravel()))
+            rimg = acc.finish()
             print('Median image value:', np.median(rimg.ravel()))
             rimgs.append(rimg)
         return rimgs
@@ -1753,9 +1785,9 @@ class MapLayer(object):
         return ver,zoom,x,y
 
     def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
-                   invvar=False):
+                   invvar=False, maskbits=False):
         rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, tempfiles=tempfiles,
-                                     invvar=invvar)
+                                     invvar=invvar, maskbits=maskbits)
         if get_images_only:
             return rimgs,None
         if bands is None:
@@ -1879,7 +1911,9 @@ class MapLayer(object):
                      bands=None,
                      fits=False, jpeg=False,
                      subimage=False,
+                     with_image=True,
                      with_invvar=False,
+                     with_maskbits=False,
                      tempfiles=None,
                      get_images=False,
                      req=None):
@@ -1973,15 +2007,22 @@ class MapLayer(object):
                     render_sga_ellipse(out_fn, out_fn, wcs, req.GET)
             return
         
-        #ims = self.render_into_wcs(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
-        ims,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
-                                get_images_only=True)
-        if ims is None:
-            raise NoOverlapError('No overlap')
+        ims = None
+        if with_image:
+            #ims = self.render_into_wcs(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
+            ims,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
+                                    get_images_only=True)
+            if ims is None:
+                raise NoOverlapError('No overlap')
         ivs = None
         if with_invvar and self.has_invvar():
             ivs,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
                                     get_images_only=True, invvar=True)
+
+        maskbits = None
+        if with_maskbits and self.has_maskbits():
+            maskbits,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
+                                         get_images_only=True, maskbits=True)
 
         if hdr is not None:
             hdr['BANDS'] = ''.join([str(b) for b in bands])
@@ -1994,19 +2035,22 @@ class MapLayer(object):
                 return ims,ivs,hdr
             return ims,hdr
 
-        if ims is None:
-            hdr['OVERLAP'] = False
-            cube = None
-        elif len(bands) > 1:
-            cube = np.empty((len(bands), height, width), np.float32)
-            for i,im in enumerate(ims):
-                cube[i,:,:] = im
-        else:
-            cube = ims[0]
-        del ims
-
-        hdr['IMAGETYP'] = 'IMAGE'
-        fitsio.write(out_fn, cube, clobber=True, header=hdr)
+        clobber=True
+        if with_image:
+            if ims is None:
+                hdr['OVERLAP'] = False
+                cube = None
+            elif len(bands) > 1:
+                cube = np.empty((len(bands), height, width), np.float32)
+                for i,im in enumerate(ims):
+                    cube[i,:,:] = im
+            else:
+                cube = ims[0]
+            del ims
+    
+            hdr['IMAGETYP'] = 'IMAGE'
+            fitsio.write(out_fn, cube, clobber=clobber, header=hdr)
+            clobber = False
 
         if ivs is not None:
             if len(bands) > 1:
@@ -2016,7 +2060,15 @@ class MapLayer(object):
                 cube = ivs[0]
             del ivs
             hdr['IMAGETYP'] = 'INVVAR'
-            fitsio.write(out_fn, cube, clobber=False, header=hdr)
+            fitsio.write(out_fn, cube, clobber=clobber, header=hdr)
+            clobber = False
+
+        if maskbits is not None:
+            cube = maskbits[0]
+            print('Writing maskbits HDU')
+            hdr['IMAGETYP'] = 'MASKBITS'
+            fitsio.write(out_fn, cube, clobber=clobber, header=hdr)
+            clobber = False
 
     def get_cutout(self, req, fits=False, jpeg=False, outtag=None, tempfiles=None):
         native_pixscale = self.pixscale
@@ -2395,13 +2447,17 @@ class DecalsLayer(MapLayer):
             '%(scale)i%(band)s', '%(brickname).3s',
             self.imagetype + '-%(brickname)s-%(band)s.fits')
 
-    def get_base_filename(self, brick, band, invvar=False, **kwargs):
+    def get_base_filename(self, brick, band, invvar=False, maskbits=False, **kwargs):
         brickname = brick.brickname
         if invvar:
             return self.survey.find_file('invvar', brick=brickname, band=band)
+        if maskbits:
+            return self.survey.find_file('maskbits', brick=brickname)
         return self.survey.find_file(self.imagetype, brick=brickname, band=band)
 
     def has_invvar(self):
+        return True
+    def has_maskbits(self):
         return True
 
     def get_rgb(self, imgs, bands, **kwargs):
@@ -2522,12 +2578,13 @@ class RebrickedMixin(object):
         print('Wrote', fn)
         return fn
 
-    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
         #print('RebrickedMixin.get_filename: brick', brick, 'band', band, 'scale', scale)
         if scale == 0:
             #return self.get_base_filename(brick, band)
             return super(RebrickedMixin, self).get_filename(brick, band, scale,
-                                                            tempfiles=tempfiles, invvar=invvar)
+                                                            tempfiles=tempfiles, invvar=invvar,
+                                                            maskbits=maskbits)
         if invvar:
             return None
 
@@ -2764,7 +2821,7 @@ class ResidMixin(object):
     def read_wcs(self, brick, band, scale, fn=None):
         return self.image_layer.read_wcs(brick, band, scale, fn=fn)
 
-    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
         mfn = self.model_layer.get_filename(brick, band, scale, tempfiles=tempfiles)
         ifn = self.image_layer.get_filename(brick, band, scale, tempfiles=tempfiles)
         return ifn
@@ -2871,7 +2928,7 @@ class SdssLayer(MapLayer):
             return None
         return bricks[I]
 
-    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
         brickname = brick.brickname
         brickpre = brickname[:3]
         fn = os.path.join(self.basedir, 'coadd', brickpre,
@@ -3599,15 +3656,17 @@ class LegacySurveySplitLayer(MapLayer):
                            for l in self.layers], columns='fillzero')
         return BB
 
-    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
         layer = self.get_layer_for_radec(brick.ra, brick.dec)
-        return layer.get_filename(brick, band, scale, tempfiles=tempfiles, invvar=invvar)
+        return layer.get_filename(brick, band, scale, tempfiles=tempfiles, invvar=invvar, maskbits=maskbits)
 
     def get_base_filename(self, brick, band, **kwargs):
         layer = self.get_layer_for_radec(brick.ra, brick.dec)
         return layer.get_base_filename(brick, band, **kwargs)
 
     def has_invvar(self):
+        return True
+    def has_maskbits(self):
         return True
 
     def get_fits_extension(self, scale, fn):
@@ -3616,9 +3675,10 @@ class LegacySurveySplitLayer(MapLayer):
         return 0
 
     def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
-                   invvar=False):
+                   invvar=False, maskbits=False):
         #print('Split Layer render_rgb: bands=', bands)
-        kwa = dict(tempfiles=tempfiles, get_images_only=get_images_only, invvar=invvar)
+        kwa = dict(tempfiles=tempfiles, get_images_only=get_images_only, invvar=invvar,
+                   maskbits=maskbits)
         if y != -1:
             # FIXME -- this is not the correct cut -- only listen to split for NGC --
             # but this doesn't get called anyway because the JavaScript layer has the smarts.
@@ -3886,7 +3946,7 @@ class PS1Layer(MapLayer):
             return None
         return bricks[I]
 
-    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
         brickname = brick.brickname
         cell = brickname[:4]
         fn = os.path.join(self.basedir, 'skycells', cell,
@@ -4203,31 +4263,9 @@ class UnwiseMask(RebrickedUnwise):
                                           intType=coordtype)
         return Yo,Xo,Yi,Xi,None
 
-    def initialize_accumulator_for_render(self, W, H, band):
-        import numpy as np
-        rmask = np.zeros((H,W), np.int32)
-        rmask_set = np.zeros((H,W), bool)
-        return rmask,rmask_set
+    def initialize_accumulator_for_render(self, W, H, band, **kwargs):
+        return RenderAccumulatorMask(W, H)
 
-    def finish_accumulator_for_render(self, acc):
-        rmask,rmask_set = acc
-        return rmask
-
-    def peek_accumulator_for_render(self, acc):
-        rmask,rmask_set = acc
-        return rmask
-
-    def peek_weight_for_render(self, acc):
-        rmask,rmask_set = acc
-        return rmask_set
-
-    # Called by render_into_wcs
-    def accumulate_for_render(self, Yo, Xo, Yi, Xi, resamp, wt, img, acc):
-        rmask,rmask_set = acc
-        rmask[Yo,Xo] = img[Yi, Xi]
-        rmask_set[Yo,Xo] = True
-    
-    
 class UnwiseW3W4(RebrickedUnwise):
     def get_bands(self):
         # Note, not 'w1','w2'...
@@ -4391,7 +4429,7 @@ class GalexLayer(RebrickedUnwise):
         bricks.brickname = np.array(bricknames)
         return bricks
 
-    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
         #print('galex get_filename: scale', scale, 'band', band, 'brick', brick.brickname)
         if scale == -1:
             return self.get_base_filename(brick, band)
