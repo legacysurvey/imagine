@@ -1340,21 +1340,17 @@ class MapLayer(object):
         #print('bricknames for band', band, ':', len(bricks), 'bricks; no has_%s column' % band)
         return bricks
 
-    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
         if invvar and not self.has_invvar():
-            return None
-        if maskbits and not self.has_maskbits():
             return None
         kwa = {}
         if invvar:
             kwa.update(invvar=True)
-        if maskbits:
-            kwa.update(maskbits=True)
         if scale == 0:
             return self.get_base_filename(brick, band, **kwa)
 
-        ## HACK -- no invvars or maskbits for scaled images.
-        if invvar or maskbits:
+        ## HACK -- no invvars for scaled images.
+        if invvar:
             return None
 
         fn = self.get_scaled_filename(brick, band, scale)
@@ -1371,6 +1367,7 @@ class MapLayer(object):
 
     def has_invvar(self):
         return False
+
     def has_maskbits(self):
         return False
 
@@ -2070,6 +2067,16 @@ class MapLayer(object):
             fitsio.write(out_fn, cube, clobber=clobber, header=hdr)
             clobber = False
 
+        if ivs is not None:
+            if len(bands) > 1:
+                for i,im in enumerate(ivs):
+                    cube[i,:,:] = im
+            else:
+                cube = ivs[0]
+            del ivs
+            hdr['IMAGETYP'] = 'INVVAR'
+            fitsio.write(out_fn, cube, clobber=False, header=hdr)
+
     def get_cutout(self, req, fits=False, jpeg=False, outtag=None, tempfiles=None):
         native_pixscale = self.pixscale
         native_zoom = self.nativescale
@@ -2457,6 +2464,7 @@ class DecalsLayer(MapLayer):
 
     def has_invvar(self):
         return True
+
     def has_maskbits(self):
         return True
 
@@ -3666,6 +3674,7 @@ class LegacySurveySplitLayer(MapLayer):
 
     def has_invvar(self):
         return True
+
     def has_maskbits(self):
         return True
 
@@ -8283,7 +8292,11 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
     #r = c.get('/fits-cutout?ra=50.527333&dec=-15.400056&layer=ls-dr10&pixscale=0.262&bands=grz&size=687&invvar')
-    r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
+    #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
+    #r = c.get('/fits-cutout?ra=147.48496&dec=-0.23134231&size=2000&layer=ls-dr10&pixscale=0.262&bands=r')
+    #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
+    #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
+    #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
