@@ -79,6 +79,8 @@ catversions = {
     'photoz-dr9': [1,],
     'desi-edr-tiles': [1,],
     'desi-edr-spectra': [1,],
+    'desi-dr1-tiles': [1,],
+    'desi-dr1-spectra': [1,],
     'desi-daily-tiles': [1,],
     'desi-daily-spectra': [1,],
     'desi-fuji-tiles': [1,],
@@ -214,7 +216,7 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
         
     return HttpResponse('tile %i fiber %i' % (tile, fiber))
 
-def desi_healpix_spectrum(req, obj, release):
+def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     from glob import glob
     from desispec.io import read_spectra
     import numpy as np
@@ -225,6 +227,9 @@ def desi_healpix_spectrum(req, obj, release):
     import tempfile
     import os
     import prospect.viewer
+
+    if redrock_template_dir is None:
+        redrock_template_dir = os.path.join(settings.DATA_DIR, 'redrock-templates')
 
     # Check the cache!
     outdir = None
@@ -249,6 +254,8 @@ def desi_healpix_spectrum(req, obj, release):
 
     if release == 'edr':
         basedir = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji'
+    elif release == 'dr1':
+        basedir = '/global/cfs/cdirs/desi/spectro/redux/iron'
     else:
         basedir = '/global/cfs/cdirs/desi/spectro/redux/%s' % release
 
@@ -275,7 +282,7 @@ def desi_healpix_spectrum(req, obj, release):
     #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
-    os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
+    os.environ['RR_TEMPLATE_DIR'] = redrock_template_dir
 
     if outdir is None:
         # temp dir contents get deleted after this function returns (when td gets deleted)
@@ -291,6 +298,8 @@ def desi_healpix_spectrum(req, obj, release):
 def get_desi_spectro_kdfile(release):
     if release == 'edr':
         return os.path.join(settings.DATA_DIR, 'desi-spectro-edr', 'zpix-all.kd.fits')
+    elif release == 'dr1':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-dr1', 'zpix-all.kd.fits')
     elif release == 'daily':
         return os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')
     elif release == 'guadalupe':
@@ -368,6 +377,26 @@ def cat_desi_edr_spectra_detail(req, targetid):
     if t is None:
         return HttpResponse('No such targetid found in DESI EDR spectra: %s' % targetid)
     return desi_healpix_spectrum(req, t, release)
+
+def cat_desi_dr1_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    release = 'dr1'
+
+    # Quick-check cache (without looking up object)
+    if settings.DESI_PROSPECT_DIR is not None:
+        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+        fn = os.path.join(outdir, 'prospect.html')
+        if os.path.exists(fn):
+            print('Cache hit for', fn)
+            return HttpResponse(open(fn))
+
+    t = lookup_targetid(targetid, release)
+    if t is None:
+        return HttpResponse('No such targetid found in DESI DR1 spectra: %s' % targetid)
+
+    rr_templ = os.path.join(settings.DATA_DIR, 'desi-spectro-dr1', 'redrock-templates')
+
+    return desi_healpix_spectrum(req, t, release, redrock_template_dir=rr_templ)
 
 def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
                              tile_clusters=None):
@@ -632,6 +661,13 @@ def cat_desi_edr_spectra(req, ver):
     return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec',
                                     tile_clusters=clusters)
 
+def cat_desi_dr1_spectra(req, ver):
+    kdfn = get_desi_spectro_kdfile('dr1')
+    tag = 'desi-dr1-spectra'
+    import json
+    import numpy as np
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
+
 def cat_desi_release_tiles(req, ver, release, color_function=None):
     import json
     from astrometry.util.fits import fits_table
@@ -741,6 +777,19 @@ def cat_desi_edr_tiles(req, ver):
     #   sv3 dark
 
     return cat_desi_release_tiles(req, ver, 'edr', color_function=tilecolor)
+
+def cat_desi_dr1_tiles(req, ver):
+    def tilecolor(t, surv, prog):
+        other = '#7f7f7f'
+        if surv == 'sv1' and prog == 'other':
+            return other
+        return {
+            'main': '#3b79ab',
+            'sv1': '#77a8d0',
+            'sv2': '#37a436',
+            'sv3': '#ffae73',
+            }.get(surv, other)
+    return cat_desi_release_tiles(req, ver, 'dr1')#, color_function=tilecolor)
 
 def cat_photoz_dr9(req, ver):
     '''

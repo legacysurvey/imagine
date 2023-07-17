@@ -323,6 +323,7 @@ def _index(req,
 
     if settings.ENABLE_DR9:
         tile_layers.update({
+            'ls-dr9': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
             'ls-dr9-south': ['Legacy Surveys DR9-south images',
                              [[0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg', []],
                               def_url], maxnative, 'ls'],
@@ -803,6 +804,15 @@ def desi_edr(req):
                   default_zoom=3,
                   rooturl=settings.ROOT_URL + '/desi-edr',
                   append_args = '&desi-tiles-edr&desi-spec-edr',
+    )
+
+def desi_dr1(req):
+    return _index(req,
+                  default_layer='ls-dr9',
+                  default_radec=(0.0, 0.0),
+                  default_zoom=5,
+                  rooturl=settings.ROOT_URL + '/desi-dr1',
+                  append_args = '&desi-tiles-dr1&desi-spec-dr1',
     )
 
 def decaps(req):
