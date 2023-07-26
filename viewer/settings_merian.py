@@ -23,6 +23,8 @@ LAYER_OVERRIDES = {
     #'merian-n708': ['Merian N708', [my_url], maxnative, 'MERIAN collaboration'],
     'merian-n540': [my_url],
     'merian-n708': [my_url],
+    'merian-n540-bw': [my_url],
+    'merian-n708-bw': [my_url],
 }
 
 DEBUG = True

@@ -269,7 +269,7 @@ def _index(req,
            **kwargs):
 
     kwargs.update(settings.INDEX_KWARGS)
-    
+
     tileurl = settings.TILE_URL
     subs = settings.SUBDOMAINS
     def_url = [0, maxZoom, tileurl, subs]
@@ -451,9 +451,12 @@ def _index(req,
                               maxZoom, 'M33 collaboration']
 
     if settings.ENABLE_MERIAN:
+        ### See viewer/settings_merian.py : LAYER_OVERRIDES
         tile_layers.update({
-            'merian-n540': ['Merian N540', [def_url], maxnative, 'MERIAN collaboration'],
-            'merian-n708': ['Merian N708', [def_url], maxnative, 'MERIAN collaboration'],
+            'merian-n540': ['Merian N540 color', [def_url], maxnative, 'MERIAN collaboration'],
+            'merian-n708': ['Merian N708 color', [def_url], maxnative, 'MERIAN collaboration'],
+            'merian-n540-bw': ['Merian N540 only', [def_url], maxnative, 'MERIAN collaboration'],
+            'merian-n708-bw': ['Merian N708 only', [def_url], maxnative, 'MERIAN collaboration'],
         })
 
     test_layers = []
@@ -478,6 +481,10 @@ def _index(req,
         orig = tile_layers[k]
         urls = over
         orig[1] = urls
+
+    # DEBUG
+    #import json
+    #tile_layers = json.dumps(tile_layers, indent=2)
 
     kwkeys = dict(
         merian_first=False,
@@ -1297,7 +1304,7 @@ class MapLayer(object):
         pass
 
     def bricks_for_band(self, bricks, band):
-        has = getattr(bricks, 'has_%s' % band, None)
+        has = getattr(bricks, 'has_%s' % band.lower(), None)
         if has is not None:
             rtn = bricks[has]
             # print('bricknames for band', band, ':', len(bricks), 'bricks; returning',
@@ -1550,7 +1557,9 @@ class MapLayer(object):
                 info('Reading', brickname, 'band', band, 'scale', scale, ('invvar' if invvar else ''), '-> fn', fn)
                 if fn is None:
                     continue
-
+                if not os.path.exists(fn):
+                    print("Does not actually exist:", fn)
+                    continue
                 openfile = self.open_file(brick, band, scale, fn=fn)
                 try:
                     bwcs = self.read_wcs(brick, band, scale, fn=fn, openfile=openfile)
@@ -1571,7 +1580,6 @@ class MapLayer(object):
                 yy = yy.astype(np.int32)
 
                 #print('Brick', brickname, 'band', band, 'shape', bwcs.shape, 'pixel coords', xx, yy)
-
                 imW,imH = int(bwcs.get_width()), int(bwcs.get_height())
                 M = 10
                 xlo = np.clip(xx.min() - M, 0, imW)
@@ -1629,7 +1637,6 @@ class MapLayer(object):
                     import sys
                     traceback.print_exc(None, sys.stdout)
                     continue
-
 
                 # DEBUG
                 # sh,sw = subwcs.shape
@@ -2597,9 +2604,9 @@ class RebrickedMixin(object):
 
         inds = match_radec(allbricks.ra, allbricks.dec, bsmall.ra, bsmall.dec, radius,
                            indexlist=True)
-
-        haves = np.all(['has_%s' % band in bsmall.get_columns() for band in self.bands])
-        #print('Does bsmall have has_<band> columns:', haves)
+        print('bsmall cols:', bsmall.get_columns(), 'band', self.bands)
+        haves = np.all(['has_%s' % band.lower() in bsmall.get_columns() for band in self.bands])
+        print('Does bsmall have has_<band> columns:', haves)
         if haves:
             for b in self.bands:
                 allbricks.set('has_%s' % b, np.zeros(len(allbricks), bool))
@@ -3349,10 +3356,12 @@ class MerianLayer(HscLayer):
 
 
     '''
-    def __init__(self, name, hsc_layer):
+    def __init__(self, name, hsc_layer, nb='N540'):
         super().__init__(name)
         self.hsc = hsc_layer
-        self.bands = ['g', 'N540', 'z'] #, 'N708']
+        self.bands = ['g', nb, 'z']
+        self.tilename = 'merian-%s' % nb.lower()
+        self.tiledir = os.path.join(settings.DATA_DIR, 'tiles', self.tilename)
         self.basedir = os.path.join(settings.DATA_DIR, self.name)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
@@ -3399,12 +3408,17 @@ class MerianLayer(HscLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         from tractor.brightness import NanoMaggies
         zpscale = NanoMaggies.zeropointToScale(27.0)
+        scales = dict(N540=(1, 5.0 *5.),
+                      N708=(1, 3.0 *5.),
+                      g   =(2, 6.0 *5.),
+                      z   =(0, 2.2 *5.))
         rgb = sdss_rgb([im/zpscale for im in imgs], bands,
-                       scales=dict(#N540=(1,3.4*5.),
-                           N540=(1, 5.0 *5.),
-                           N708=(1, 3.0 *5.),
-                           g   =(2, 6.0 *5.),
-                           z   =(0, 2.2 *5.)), m=0.03)
+                       scales=scales, m=0.03)
+        if len(bands) == 1:
+            import numpy as np
+            i,_ = scales.get(bands[0])
+            rgb = rgb[:,:,np.array([i])].repeat(3, axis=2)
+            
         return rgb
 
     def get_base_filename(self, brick, band, **kwargs):
@@ -3416,6 +3430,8 @@ class MerianLayer(HscLayer):
             return self.bricks
         from astrometry.util.fits import fits_table
         self.bricks = fits_table(os.path.join(self.basedir, 'merian-bricks.fits.gz'))
+        print('Merian bricks:')
+        self.bricks.about()
         return self.bricks
 
     def get_brick_size_for_scale(self, scale):
@@ -7618,6 +7634,10 @@ def get_layer(name, default=None):
 
     elif name == 'hsc-dr3':
         layer = HscLayer('hsc-dr3')
+        
+    elif name == 'merian':
+        hsclayer = HscLayer('hsc-dr3')
+        layer = MerianLayer('merian', hsclayer)
 
     elif name == 'wiro-C':
         survey = get_survey('wiro-C')
@@ -7664,9 +7684,19 @@ def get_layer(name, default=None):
         layer = MerianLayer('merian', hsc)
     elif name == 'merian-n708':
         hsc = get_layer('hsc-dr3')
-        layer = MerianLayer('merian', hsc)
-        layer.bands = ['g', 'N708', 'z']
-        
+        layer = MerianLayer('merian', hsc, nb='N708')
+
+    elif name == 'merian-n540-bw':
+        layer = MerianLayer('merian', None)
+        layer.bands = ['N540']
+        layer.tilename = 'merian-n540-bw'
+        layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', layer.tilename)
+    elif name == 'merian-n708-bw':
+        layer = MerianLayer('merian', None, nb='N708')
+        layer.bands = ['N708']
+        layer.tilename = 'merian-n708-bw'
+        layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', layer.tilename)
+
     elif name == 'outliers-ast':
         basename = 'asteroids-i'
         survey = get_survey(basename)
@@ -7887,6 +7917,8 @@ if __name__ == '__main__':
     import logging
     lvl = logging.DEBUG
     logging.basicConfig(level=lvl, format='%(message)s', stream=sys.stdout)
+
+    logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 
     # dr5 = get_layer('decals-dr5')
     # dr6 = get_layer('mzls+bass-dr6')
@@ -8287,7 +8319,12 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
     #r = c.get('/')
-    r = c.get('/merian-n540/1/14/14885/8321.jpg')
+    #r = c.get('/merian-n540/1/14/14885/8321.jpg')
+    #r = c.get('/merian-n708/1/14/14885/8321.jpg')
+    #r = c.get('/merian-n540/1/13/7442/4160.jpg')
+    #r = c.get('/merian-n708/1/13/7442/4160.jpg')
+    #r = c.get('/merian-n540/1/12/3721/2080.jpg')
+    r = c.get('/merian-n540-bw/1/14/9846/8141.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

@@ -472,11 +472,12 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
 
-    # All-sky
+    # All-sky / bricks-exist
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                        'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
                        'unwise-w3w4',
-                       'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf']
+                       'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf',
+                       'merian']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
               or 'dr9f' in opt.kind
@@ -510,6 +511,8 @@ def main():
             opt.bands = 'gri'
         if 'vlass' in opt.kind:
             opt.bands = [1]
+        if 'merian' in opt.kind:
+            opt.bands = ['N540', 'N708']
 
     elif opt.kind == 'm33':
         if opt.mindec is None:
@@ -659,6 +662,11 @@ def main():
     if opt.bricks:
         from map.views import get_layer
         layer = get_layer(opt.kind)
+
+        # for Merian...
+        if len(opt.bands):
+            layer.bands = opt.bands
+        
         for scale in range(1,8):
             B = layer.get_bricks_for_scale(scale)
         sys.exit(0)
@@ -732,6 +740,7 @@ def main():
                          'suprime-ia-v1', 'suprime-ia-v1-model',
                          'decaps2', 'decaps2-model',
                          'dr10-deep', 'dr10-deep-model',
+                         'merian',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
@@ -793,10 +802,15 @@ def main():
 
                 has = {}
                 for band in bands:
-                    if 'has_%s' % band in B.get_columns():
-                        has[band] = B.get('has_%s' % band)
+                    bl = band.lower()
+                    colname = 'has_%s' % bl
+                    if colname in B.get_columns():
+                        has[band] = B.get(colname)
+                        print('Band', band, ': %s exists; %i of %i bricks exist.' % (colname, np.sum(has[band]), len(has[band])))
                     else:
                         # assume yes
+                        print('No %s in bricks file' % colname)
+                        print('Brick file columns:', B.get_columns())
                         has[band] = np.ones(len(B), bool)
 
                 # Run one scale at a time

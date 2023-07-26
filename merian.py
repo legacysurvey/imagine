@@ -2,6 +2,19 @@ from glob import glob
 from astrometry.util.fits import fits_table
 from astrometry.util.util import Tan
 import fitsio
+import sys
+from collections import Counter
+import numpy as np
+
+# T = fits_table('merian-bricks.fits')
+# print(len(T), 'bricks')
+# dates = [fn.strip().split('_')[-1].replace('Z.fits', '')
+#          for fn in T.filename]
+# print('Dates:')
+# print(Counter(dates).most_common())
+# 
+# sys.exit(0)
+
 
 class duck(object):
     pass
@@ -50,7 +63,9 @@ for band in bands:
 
 for (tract,patch),bandfiles in tract_patches.items():
 
-    fn = bandfiles[0][-1]
+    #fn = bandfiles[0][-1]
+    # Take the last entry -- the filenames were sorted, so this should be the latest date!
+    fn = bandfiles[-1][-1]
 
     have_bands = [b for b,f in bandfiles]
     for band in bands:
@@ -59,8 +74,17 @@ for (tract,patch),bandfiles in tract_patches.items():
     print('Tract,patch', tract,patch, 'has bands', have_bands, 'reading', fn)
 
     if len(set(have_bands)) < len(have_bands):
-        print('Mismatch:', bandfiles)
-
+        #print('Mismatch:', bandfiles)
+        print('Multiple dates:')
+        fndate = fn.split('_')[-1]
+        dates = []
+        for b,f in bandfiles:
+            dates.append(f.split('_')[-1])
+        dates.sort()
+        assert(dates[-1] == fndate)
+        for d in dates:
+            print('  ', d)
+        
     hdr = fitsio.read_header(fn, ext=1)
     fn = fn.replace('data/merian/','')
     T.filename.append(fn)
@@ -95,8 +119,8 @@ for (tract,patch),bandfiles in tract_patches.items():
     T.dec2.append(max(dd))
     T.brickname.append('%s_%s' % (tract,patch))
 
-    T.tract.append(tract)
-    T.patch.append(patch)
+    T.tract.append(int(tract))
+    T.patch.append(int(patch))
 
     #tract_patches.add((tract,patch))
 T.rename('naxis1', 'width')
