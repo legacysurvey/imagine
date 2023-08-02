@@ -1350,8 +1350,10 @@ class MapLayer(object):
         #print('bricknames for band', band, ':', len(bricks), 'bricks; no has_%s column' % band)
         return bricks
 
-    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False):
+    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
         if invvar and not self.has_invvar():
+            return None
+        if maskbits and not self.has_maskbits():
             return None
         kwa = {}
         if invvar:
