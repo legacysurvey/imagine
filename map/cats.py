@@ -544,7 +544,7 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
         nm = t
         st = st.strip()
         if st != '':
-            nm += ':' + st
+            nm += ': ' + st
         if t != 'STAR':
             nm += ', z = %.3f' % z
 

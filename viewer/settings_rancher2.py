@@ -33,6 +33,8 @@ READ_ONLY_BASEDIR = True
 
 USER_QUERY_DIR = '/tmp/viewer-user'
 
+DESI_PROSPECT_DIR = '/tmp/desi-prospect'
+
 FORCE_SCRIPT_NAME = ROOT_URL
 
 SUBDOMAINS = ['a','b','c','d']
