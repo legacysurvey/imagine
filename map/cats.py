@@ -333,10 +333,10 @@ def lookup_targetid(targetid, release):
     T.cut(I)
     if len(T) > 1:
         print('Matched targetids:', T.targetid)
-        print('Surveys:', T.survey)
-        print('Programs:', T.program)
+        #print('Surveys:', T.survey)
+        #print('Programs:', T.program)
     else:
-        print('Found targetid', T.targetid[0], 'in survey', T.survey[0], 'program', T.program[0])
+        print('Found targetid', T.targetid[0])#, 'in survey', T.survey[0], 'program', T.program[0])
     i = 0
     return T[i]
 
