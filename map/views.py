@@ -2461,7 +2461,11 @@ class DecalsLayer(MapLayer):
         return True
 
     def get_rgb(self, imgs, bands, **kwargs):
+        # IGNORES KWARGS!!
         return dr2_rgb(imgs, bands, **self.rgbkwargs)
+        #kw = self.rgbkwargs.copy()
+        #kw.update(kwargs)
+        #return dr2_rgb(imgs, bands, **kw)
 
     def populate_fits_cutout_header(self, hdr):
         hdr['SURVEY'] = 'DECaLS'
@@ -2997,8 +3001,19 @@ class ReDecalsLayer(RebrickedMixin, DecalsLayer):
 class LsDr10Layer(ReDecalsLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         #print('LsDr10Layer.get_rgb: self.bands', self.bands)
+
         if self.bands == 'grz':
             return super().get_rgb(imgs, bands, **kwargs)
+        if self.bands == 'gri':
+            print('LS DR10 gri')
+            rgb_stretch_factor = 1.5
+            rgbscales = {
+                 'g': (2, 6.0 * rgb_stretch_factor),
+                 'r': (1, 3.4 * rgb_stretch_factor),
+                 'i': (0, 3.0 * rgb_stretch_factor),}
+            kwargs.update(scales=rgbscales)
+            return sdss_rgb(imgs, bands, **kwargs)
+
         import numpy as np
         m=0.03
         Q=20
@@ -7672,12 +7687,18 @@ def get_layer(name, default=None):
         layer = AsteroidsLayer(basename, 'image', survey)
 
     elif name in ['ls-dr10', 'ls-dr10-model', 'ls-dr10-resid',
-                  'ls-dr10-grz', 'ls-dr10-model-grz', 'ls-dr10-resid-grz']:
+                  'ls-dr10-grz', 'ls-dr10-model-grz', 'ls-dr10-resid-grz',
+                  'ls-dr10-gri',]:
         is_grz = name.endswith('-grz')
+        is_gri = name.endswith('-gri')
         if is_grz:
             name = name.replace('-grz','')
             grzpart = '-grz'
             bands = 'grz'
+        elif is_gri:
+            name = name.replace('-gri','')
+            grzpart = '-gri'
+            bands = 'gri'
         else:
             grzpart = ''
             bands = 'griz'
@@ -7693,10 +7714,14 @@ def get_layer(name, default=None):
         name = name + grzpart
 
     elif name in ['ls-dr10-south', 'ls-dr10-south-model', 'ls-dr10-south-resid',
-                  'ls-dr10-south-grz', 'ls-dr10-south-model-grz', 'ls-dr10-south-resid-grz',]:
+                  'ls-dr10-south-grz', 'ls-dr10-south-model-grz', 'ls-dr10-south-resid-grz',
+                  'ls-dr10-south-gri']:
         if name.endswith('-grz'):
             bands = 'grz'
             grzpart = '-grz'
+        elif name.endswith('-gri'):
+            bands = 'gri'
+            grzpart = '-gri'
         else:
             bands = 'griz'
             grzpart = ''
@@ -8283,7 +8308,17 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
     #r = c.get('/fits-cutout?ra=50.527333&dec=-15.400056&layer=ls-dr10&pixscale=0.262&bands=grz&size=687&invvar')
-    r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
+    #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
+    #r = c.get('/cutout.jpg?ra=90.3138&dec=-67.7344&layer=ls-dr10-south-gri&pixscale=0.262&size=500')
+
+    for i in [3,]:#1,2]:
+        wcs = Sip('wcs%i.fits' % i)
+        layer = get_layer('ls-dr10-south-gri')
+        imgs = layer.render_into_wcs(wcs, 16, None, None, general_wcs=True)
+        rgb = layer.get_rgb(imgs, 'gri')
+        save_jpeg('wcs%i.jpg' % i, rgb)
+    sys.exit(0)
+
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
