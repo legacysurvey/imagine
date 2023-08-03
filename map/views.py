@@ -484,6 +484,7 @@ def _index(req,
 
     kwkeys = dict(
         tile_layers=tile_layers,
+        enable_erosita = settings.ENABLE_EROSITA,
         enable_desi_edr = settings.ENABLE_DESI_EDR,
         #enable_merian = settings.ENABLE_MERIAN,
         science = settings.ENABLE_SCIENCE,
