@@ -1838,10 +1838,6 @@ testLayers.push(namedLayers['{{name}}']);
 
 // initialize layers
 
-{% if enable_erosita %}
-tiles = findlayer('erosita-efeds');
-allLayers.push(tiles);
-
 {% if enable_dr9 or enable_dr10 %}
 findlayer('ls-dr9-north');
 findlayer('ls-dr9-north-model');
@@ -3521,6 +3517,7 @@ var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
                               'radius': 150, });
 {% endif %}
 
+{% if enable_erosita %}
 var efeds_main = new EfedsCatalog('efeds-main', 'eROSITA eFEDS "main" catalog (Brunner+)',
                              {'url_name': 'efeds-main',
                               'minZoom': 9,
@@ -3533,7 +3530,7 @@ var efeds_counterparts = new EfedsCatalog('efeds-counterparts', 'eROSITA eFEDS "
                               'labelsMinZoom': 11,
                               'urlTerm': 'efeds-counterparts',
                               'radius': arcsecToMeters(15), });
-
+{% endif %}
 
 {% if enable_desi_targets %}
 var desi_targets67 = new DesiTargetCatalog('targets-dr67', 'DESI Targets (DR6/DR7)',
@@ -3708,8 +3705,10 @@ var decamfoot = new DecamOverlay('decam-footprint', 'DECam Footprint', {});
 decamfoot._url_term = 'decamfoot';
 
 var overlays = [
+    {% if enable_erosita %}
     efeds_main,
     efeds_counterparts,
+    {% endif %}
     {% if enable_phat %}
     phat_clusters,
     {% endif %}    
@@ -3959,10 +3958,7 @@ var baseTree1 = [
     findlayer('m33'),
 ];
 
-<<<<<<< HEAD
-    findlayer('erosita-efeds'),
-    //findlayer('ls-dr9.1.1'),
-=======
+
 {% if decaps_first %}
 baseTree1 = baseTree1.concat(decaps_tree);
 {% endif %}
@@ -4007,6 +4003,9 @@ moresurveys = moresurveys.concat([
 moresurveys = drop_null(moresurveys);
 
 baseTree1 = baseTree1.concat([
+    {% if enable_erosita %}
+    findlayer('erosita-efeds'),
+    {% endif %}
     {% if enable_dr10 %}
     findlayer('ls-dr10', [
     findlayer('ls-dr10-model'),
@@ -4024,7 +4023,7 @@ baseTree1 = baseTree1.concat([
       ]),
     ]),
     {% endif %}
->>>>>>> main
+
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
         {% if enable_dr9_models %}
@@ -4136,31 +4135,7 @@ baseTree1 = baseTree1.concat([
     {% if science %}
     {
         label: 'More surveys',
-<<<<<<< HEAD
-        children: [
-            {% if enable_hsc_dr2 %}
-            findlayer('hsc-dr2'),
-            {% endif %}
-            {% if enable_des_dr1 %}
-            findlayer('des-dr1'),
-            {% endif %}
-            findlayer('galex'),
-            findlayer('halpha'),
-            {% if enable_ps1 %}
-            findlayer('ps1'),
-            {% endif %}
-            findlayer('sdss'),
-            findlayer('sfd'),
-            {% if enable_vlass %}
-            findlayer('vlass1.2'),
-            {% endif %}
-            {% if enable_ztf %}
-            findlayer('ztf'),
-            {% endif %}
-        ],
-=======
         children: moresurveys,
->>>>>>> main
     },
     {% endif %}
 ]);
@@ -4222,16 +4197,14 @@ var overlayTree = [];
 {% endif %}
 
  overlayTree = overlayTree.concat([
-<<<<<<< HEAD
+     {% if enable_erosita %}
      findoverlay('efeds-main'),
      findoverlay('efeds-counterparts'),
-
+     {% endif %}
      {% if enable_phat %}
      findoverlay('phat-clusters'),
      {% endif %}    
 
-=======
->>>>>>> main
      {% if science %}
      { label: 'Boundaries', children: [
 
@@ -4440,13 +4413,9 @@ var layerTree = L.control.layers.tree(baseTree,
 
      // These are menus to collapse
      txts = [
-<<<<<<< HEAD
-         {% if enable_dr9 %}
-         'Legacy Surveys DR9 images',
+         {% if enable_erosita %}
+         'DESI',
          {% endif %}
-         {% if enable_dr7 %}
-         'Legacy Surveys DR6+DR7 images',
-=======
          {% if enable_dr10 %}
          'Legacy Surveys DR10 images',
          'Legacy Surveys DR10-south images',
@@ -4454,7 +4423,6 @@ var layerTree = L.control.layers.tree(baseTree,
          {% if enable_dr9 %}
          'Legacy Surveys DR9 images',
          'Legacy Surveys DR9.1.1 COSMOS deep images',
->>>>>>> main
          {% endif %}
          {% if enable_dr9_north %}
          'Legacy Surveys DR9-north images',

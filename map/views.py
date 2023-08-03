@@ -383,7 +383,7 @@ def _index(req,
 
     if settings.ENABLE_EROSITA:
         tile_layers.update({
-            'erosita-efeds': ['eROSITA (eFEDS)', [[0, 10, tile_url]], 10, 'erosita'],
+            'erosita-efeds': ['eROSITA (eFEDS)', [[0, 10, tileurl]], 10, 'erosita'],
             })
         
     if settings.ENABLE_DECAPS1:
@@ -482,8 +482,10 @@ def _index(req,
         urls = over
         orig[1] = urls
 
+    import json
+
     kwkeys = dict(
-        tile_layers=tile_layers,
+        tile_layers = json.dumps(tile_layers, indent=2),
         enable_erosita = settings.ENABLE_EROSITA,
         enable_desi_edr = settings.ENABLE_DESI_EDR,
         #enable_merian = settings.ENABLE_MERIAN,
@@ -3131,9 +3133,12 @@ class ErositaLayer(RebrickedMixin, MapLayer):
 
     def get_scaled_wcs(self, brick, band, scale):
         from astrometry.util.util import Tan
-        # Native scale: 4"/pixel, 9000 x 9000
-        #S = 9100
-        S = 5000
+        print('eROSITA get_scaled_wcs: brick', brick, 'band', band, 'scale', scale)
+        if scale == 0:
+            # Native scale: 4"/pixel, 9000 x 9000
+            S = 9000
+        else:
+            S = 5000
         # if scale >= 7:
         #     size = int(S * 1.2)
         # elif scale == 6:
@@ -3226,12 +3231,15 @@ class ErositaLayer(RebrickedMixin, MapLayer):
     
     def read_wcs(self, brick, band, scale, fn=None):
         from map.coadds import read_tan_from_header
+        print('eROSITA read_wcs: brick', brick, 'band', band, 'scale', scale, 'filename', fn)
         if fn is None:
             fn = self.get_filename(brick, band, scale)
+        print('filename', fn)
         if fn is None:
             return None
         ext = self.get_fits_extension(scale, fn)
         wcs = read_tan_from_header(fn, ext)
+        print('read WCS header:', wcs)
         if scale == 0:
             wcs.sin = 1
         if scale == 0:
@@ -8509,8 +8517,12 @@ if __name__ == '__main__':
     #r = c.get('/fits-cutout?ra=147.48496&dec=-0.23134231&size=2000&layer=ls-dr10&pixscale=0.262&bands=r')
     #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
-    r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
-
+    #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
+    #r = c.get('/')
+    print('Tile 645,510')
+    r = c.get('/erosita-efeds/3/10/645/510.jpg')
+    print('Tile 646,510')
+    r = c.get('/erosita-efeds/3/10/646/510.jpg')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)

@@ -60,9 +60,9 @@ urlpatterns = ([
     re_path(r'^ci', views.ci),
 
     # eROSITA eFEDS main catalog
-    url(r'^efeds-main/(\d+)/cat.json', cats.cat_efeds_main),
+    re_path(r'^efeds-main/(\d+)/cat.json', cats.cat_efeds_main),
     # eROSITA eFEDS counterparts catalog
-    url(r'^efeds-counterparts/(\d+)/cat.json', cats.cat_efeds_counterparts),
+    re_path(r'^efeds-counterparts/(\d+)/cat.json', cats.cat_efeds_counterparts),
 
     # Rongpu's DR9 photo-zs
     re_path(r'^photoz-dr9/(\d+)/cat.json', cats.cat_photoz_dr9),
