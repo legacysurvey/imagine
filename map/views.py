@@ -2048,7 +2048,8 @@ class MapLayer(object):
             del ims
     
             hdr['IMAGETYP'] = 'IMAGE'
-            fitsio.write(out_fn, cube, clobber=clobber, header=hdr)
+            kw = self.get_fits_cutout_kwargs(image=True)
+            fitsio.write(out_fn, cube, clobber=clobber, header=hdr, **kw)
             clobber = False
 
         if ivs is not None:
@@ -2059,25 +2060,20 @@ class MapLayer(object):
                 cube = ivs[0]
             del ivs
             hdr['IMAGETYP'] = 'INVVAR'
-            fitsio.write(out_fn, cube, clobber=clobber, header=hdr)
+            kw = self.get_fits_cutout_kwargs(iv=True)
+            fitsio.write(out_fn, cube, clobber=clobber, header=hdr, **kw)
             clobber = False
 
         if maskbits is not None:
             cube = maskbits[0]
             print('Writing maskbits HDU')
             hdr['IMAGETYP'] = 'MASKBITS'
-            fitsio.write(out_fn, cube, clobber=clobber, header=hdr)
+            kw = self.get_fits_cutout_kwargs(maskbits=True)
+            fitsio.write(out_fn, cube, clobber=clobber, header=hdr, **kw)
             clobber = False
 
-        if ivs is not None:
-            if len(bands) > 1:
-                for i,im in enumerate(ivs):
-                    cube[i,:,:] = im
-            else:
-                cube = ivs[0]
-            del ivs
-            hdr['IMAGETYP'] = 'INVVAR'
-            fitsio.write(out_fn, cube, clobber=False, header=hdr)
+    def get_fits_cutout_kwargs(self, image=False, iv=False, maskbits=False):
+        return {}
 
     def get_cutout(self, req, fits=False, jpeg=False, outtag=None, tempfiles=None):
         native_pixscale = self.pixscale
