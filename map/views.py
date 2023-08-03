@@ -3093,6 +3093,311 @@ class ReDecalsResidLayer(UniqueBrickMixin, ResidMixin, ReDecalsLayer):
 class ReDecalsModelLayer(UniqueBrickMixin, ReDecalsLayer):
     pass
 
+def plot_boundary_map(X, rgb=(0,255,0), extent=None, iterations=1):
+    from scipy.ndimage import binary_dilation
+    import numpy as np
+    H,W = X.shape
+    it = iterations
+    padded = np.zeros((H+2*it, W+2*it), bool)
+    padded[it:-it, it:-it] = X.astype(bool)
+    bounds = np.logical_xor(binary_dilation(padded), padded)
+    if extent is None:
+        extent = [-it, W+it, -it, H+it]
+    else:
+        x0,x1,y0,y1 = extent
+        extent = [x0-it, x1+it, y0-it, y1+it]
+    plot_mask(bounds, rgb=rgb, extent=extent)
+
+def plot_mask(X, rgb=(0,255,0), extent=None):
+    import pylab as plt
+    import numpy as np
+    H,W = X.shape
+    rgba = np.zeros((H, W, 4), np.uint8)
+    rgba[:,:,0] = X*rgb[0]
+    rgba[:,:,1] = X*rgb[1]
+    rgba[:,:,2] = X*rgb[2]
+    rgba[:,:,3] = X*255
+    plt.imshow(rgba, interpolation='nearest', origin='lower', extent=extent)
+
+class LsSegmentationLayer(RebrickedMixin, MapLayer):
+    def __init__(self, ls_layer):
+        super().__init__(ls_layer.name + '-segmentation')
+        self.ls_layer = ls_layer
+        self.pixscale = ls_layer.pixscale
+        self.nativescale = ls_layer.nativescale
+
+    # Only works for scale=0
+    def get_bricks_for_scale(self, scale):
+        if scale in [0, None]:
+            return self.ls_layer.get_bricks_for_scale(scale)
+        return None
+    # One mask file per brick
+    def get_bands(self):
+        return 'r'
+    # def write_cutout(self, ra, dec, pixscale, width, height, out_fn,
+    #                  # bands=None,
+    #                  # fits=False, jpeg=False,
+    #                  # subimage=False,
+    #                  # with_image=True,
+    #                  # with_invvar=False,
+    #                  # with_maskbits=False,
+    #                  # tempfiles=None,
+    #                  # get_images=False,
+    #                  # req=None):
+    #                  **kwargs):
+    #     print('LsSegmentationLayer: write_cutout: ra, dec, pixscale, width, height, out_fn =',
+    #           ra, dec, pixscale, width, height, out_fn, 'kwargs =', kwargs)
+    # 
+    #     import tempfile
+    #     f,temp_fn = tempfile.mkstemp(suffix='.fits')
+    #     os.close(f)
+    #     os.unlink(temp_fn)
+    # 
+    #     kwargs.update(fits=True, jpeg=False)
+    #     self.ls_layer.write_cutout(ra, dec, pixscale, width, height, temp_fn,
+    #                                **kwargs)
+    # #bands=self.get_bands(), 
+    def render_rgb(self, wcs, zoom, x, y, bands=None, get_images_only=False,
+                   **kwargs):
+        #tempfiles=None, invvar=False, maskbits=False):
+        import numpy as np
+        print('Segmentation: render_rgb: wcs', wcs, 'bands', bands, 'get_images_only:', get_images_only)
+        imgs,_ = self.ls_layer.render_rgb(wcs, zoom, x, y, bands=bands, get_images_only=True,
+                                          **kwargs)
+
+        kwargs.update(invvar=True)
+        ivs,_ = self.ls_layer.render_rgb(wcs, zoom, x, y, bands=bands, get_images_only=True,
+                                          **kwargs)
+        
+        cat,hdr = self.ls_layer.get_catalog_in_wcs(wcs)
+        print('Got', len(cat), 'catalog objects in WCS')
+        cat.about()
+
+        ok,x,y = wcs.radec2pixelxy(cat.ra, cat.dec)
+        h,w = wcs.shape
+        ix = np.clip(np.round(x-1.).astype(int), 0, w-1)
+        iy = np.clip(np.round(y-1.).astype(int), 0, h-1)
+
+        img = imgs[0]
+        H,W = img.shape
+
+        iv = ivs[0]
+
+        #segmap = (img > 0.1).astype(np.int16)
+        #segmap[iy, ix] = 2
+
+        if False:
+            # Estimate per-pixel noise via Blanton's 5-pixel MAD
+            slice1 = (slice(0,-5,10),slice(0,-5,10))
+            slice2 = (slice(5,None,10),slice(5,None,10))
+            mad = np.median(np.abs(img[slice1] - img[slice2]).ravel())
+            sig1 = 1.4826 * mad / np.sqrt(2.)
+            print('Max image / sig1', np.max(img / sig1))
+
+        print('Max image * sqrt(iv):', np.max(img * np.sqrt(iv)))
+
+        from scipy.ndimage import gaussian_filter
+        
+        ie = np.sqrt(iv)
+        ie = gaussian_filter(ie, 10)
+        
+        # plt.clf()
+        # plt.imshow(np.sqrt(iv), interpolation='nearest', origin='lower')
+        # plt.title('ie')
+        # plt.savefig('seg1.png')
+        # plt.clf()
+        # plt.imshow(ie, interpolation='nearest', origin='lower')
+        # plt.title('smooth ie')
+        # plt.savefig('seg2.png')
+
+        #segmap = np.floor(img / sig1).astype(int)
+        #segmap = np.floor(img * ie).astype(int)
+
+        plots = False
+        
+        from scipy.ndimage import label
+        from collections import Counter
+
+        import matplotlib as mpl
+        cmap = mpl.colormaps['tab20']
+
+        segmap = np.empty((H,W), np.int32)
+        segmap[:,:] = -1
+
+        nlevels = np.max(np.floor(img * ie).astype(int))
+        print('N levels:', nlevels)
+
+        Itodo = np.arange(len(iy))
+
+        k = 0
+        for level in range(1, nlevels+1):
+            hot = (img * ie >= level)
+            blobmap,nblobs = label(hot)
+            print('N sigma:', level, 'segmented into', nblobs, 'blobs, range', np.min(blobmap), np.max(blobmap))
+            print(len(Itodo), 'sources still to segment')
+            blobnums = blobmap[iy[Itodo], ix[Itodo]]
+            blobcount = Counter(blobnums)
+            n_in_blob = np.array([blobcount[b] for b in blobnums])
+            print('(blob -> number of sources in blob) for most common blobs:', blobcount.most_common(5))
+
+            isolated = (blobnums > 0) * (n_in_blob == 1)
+            print(np.sum(isolated), 'sources are isolated')
+            for j in np.flatnonzero(isolated):
+                # Set segmentation map to this source's id
+                segmap[(blobmap == blobmap[iy[Itodo[j]], ix[Itodo[j]]]) *
+                       (segmap == -1)] = Itodo[j]
+
+            no_blob = (blobnums == 0)
+            print(np.sum(no_blob), 'sources are not in blobs!')
+            for j in np.flatnonzero(no_blob):
+                segmap[iy[Itodo[j]], ix[Itodo[j]]] = Itodo[j]
+
+            if plots and np.any(np.logical_or(isolated, no_blob)):
+
+                plt.clf()
+                plt.imshow(img, interpolation='nearest', origin='lower', cmap='gray')
+                plot_boundary_map(segmap > -1)
+                fn = 'seg-%06i.png' % k
+                plt.savefig(fn)
+                print('Wrote', fn)
+                k += 1
+
+                plt.clf()
+                plt.imshow(cmap((blobmap+1) % 20), interpolation='nearest', origin='lower')
+                ax = plt.axis()
+                plt.plot(ix[Itodo], iy[Itodo], 'k+', ms=10, mew=2)
+                if np.any(isolated):
+                    J = Itodo[np.flatnonzero(isolated)]
+                    plt.plot(ix[J], iy[J], 'r+', ms=10, mew=2)
+                if np.any(no_blob):
+                    J = Itodo[np.flatnonzero(no_blob)]
+                    plt.plot(ix[J], iy[J], 'g+', ms=10, mew=2)
+                plt.axis(ax)
+                fn = 'seg-%06i.png' % k
+                plt.savefig(fn)
+                print('Wrote', fn)
+                k += 1
+
+                plt.clf()
+                rgb = cmap((segmap + 1) % 20)
+                plt.imshow(rgb, origin='lower', interpolation='nearest')
+                fn = 'seg-%06i.png' % k
+                plt.savefig(fn)
+                print('Wrote', fn)
+                k += 1
+
+            Itodo = Itodo[~ np.logical_or(isolated, no_blob)]
+            if len(Itodo) == 0:
+                break
+
+        hot = (img * ie >= 5.)
+        blobmap,nblobs = label(hot)
+
+        if plots:
+            plt.clf()
+            plt.imshow(hot, interpolation='nearest', origin='lower', cmap='gray')
+            plot_boundary_map(segmap > -1)
+            fn = 'seg-%06i.png' % k
+            plt.savefig(fn)
+            print('Wrote', fn)
+            k += 1
+
+        print('blobmap range', blobmap.min(), blobmap.max())
+        blobnums = blobmap[iy, ix]
+        for i in range(1, nblobs):
+            I = np.flatnonzero(blobnums == i)
+            print('blob', i, 'contains', len(I), 'sources')
+            # brightest source in blob
+            m = I[np.argmax(img[iy[I], ix[I]])]
+            # brightest source gets the whole un-claimed blob??
+            print('segmap at brightest source:', segmap[iy[m], ix[m]])
+            print('m:', m)
+            segmap[(blobmap == i) * (segmap == -1)] = segmap[iy[m], ix[m]]
+
+        if plots:
+            plt.clf()
+            plt.imshow(hot, interpolation='nearest', origin='lower', cmap='gray')
+            plot_boundary_map(segmap > -1)
+            fn = 'seg-%06i.png' % k
+            plt.savefig(fn)
+            print('Wrote', fn)
+            k += 1
+
+        if False:
+            # Sort by brightest first
+            #K = np.argsort(-img[iy,ix])
+            # (by catalog-object flux)
+            K = np.argsort(-cat.flux_r)
+            iy = iy[K]
+            ix = ix[K]
+    
+            #seg = (img > 0.1).astype(np.int16)
+            #seg[iy, ix] = 2
+    
+            import matplotlib as mpl
+    
+            import heapq
+    
+            segmap = np.empty((H,W), np.int32)
+            segmap[:,:] = -1
+    
+            # Watershed by priority-fill.
+            # Seed the segmentation map
+            segmap[iy, ix] = np.arange(len(iy))
+    
+            # values are (-sn, key, x, y, center_x, center_y, maxr2)
+            q = [(-img[y,x], segmap[y,x], x,y) #,x,y,r2)
+                 #for x,y,r2 in zip(sx,sy,maxr2)]
+                 for x,y in zip(ix, iy)]
+            heapq.heapify(q)
+    
+            j = 0
+            jnext = 2
+            while len(q):
+                j += 1
+                if j >= jnext:
+                    jnext *= 2
+                    cmap = mpl.colormaps['tab20']
+                    plt.clf()
+                    rgb = cmap((segmap + 2) % 20)
+                    plt.imshow(rgb, origin='lower', interpolation='nearest')
+                    fn = 'seg-%07i.png' % j
+                    plt.savefig(fn)
+                    print('Wrote', fn)
+    
+                #_,key,x,y,cx,cy,r2 = heapq.heappop(q)
+                _,key,x,y = heapq.heappop(q)
+                segmap[y,x] = key
+                # 4-connected neighbours
+                for x,y in [(x, y-1), (x, y+1), (x-1, y), (x+1, y),]:
+                    # out of bounds?
+                    if x<0 or y<0 or x==W or y==H:
+                        continue
+                    # not in blobmask?
+                    #if not mask[y,x]:
+                    #    continue
+                    # already queued or segmented?
+                    if segmap[y,x] != -1:
+                        continue
+                    # outside the ref source radius?
+                    #if r2 > 0 and (x-cx)**2 + (y-cy)**2 > r2:
+                    #    continue
+                    # mark as queued
+                    segmap[y,x] = -2
+                    # enqueue!
+                    heapq.heappush(q, (-img[y,x], key, x, y))#, cx, cy, r2))
+    
+            assert(np.all(segmap > -2))
+            segmap += 1
+            assert(np.all(segmap >= 0))
+    
+        print('Segmap:', segmap.shape)
+        if get_images_only:
+            return [segmap],None
+        import matplotlib as mpl
+        cmap = mpl.colormaps['tab20']
+        rgb = cmap(segmap % 20)
+        return [segmap],rgb
 
 class Decaps2Layer(ReDecalsLayer):
 
@@ -7459,7 +7764,7 @@ def get_layer(name, default=None):
 
     if name == 'pandas':
         layer = PandasLayer('pandas')
-        
+
     elif name == 'ztf':
         layer = ZtfLayer('ztf')
 
@@ -7687,7 +7992,11 @@ def get_layer(name, default=None):
         hsc = get_layer('hsc-dr2')
         layer = MerianLayer('merian', hsc)
         layer.bands = ['g', 'N708', 'z']
-        
+
+    elif name == 'ls-dr10-segmentation':
+        dr10 = get_layer('ls-dr10-model')
+        layer = LsSegmentationLayer(dr10)
+
     elif name == 'outliers-ast':
         basename = 'asteroids-i'
         survey = get_survey(basename)
@@ -8324,7 +8633,10 @@ if __name__ == '__main__':
     #r = c.get('/fits-cutout?ra=147.48496&dec=-0.23134231&size=2000&layer=ls-dr10&pixscale=0.262&bands=r')
     #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
-    r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
+    #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
+    #r = c.get('/ls-dr9/1/14/8230/6841.jpg')
+    #r = c.get('/cutout.jpg?ra=218.1068&dec=8.0789&layer=ls-dr10-segmentation&pixscale=0.262&size=500')
+    r = c.get('/cutout.fits?ra=218.1068&dec=8.0789&layer=ls-dr10-segmentation&pixscale=0.262&size=500')    
 
     # Euclid colorization
     # for i in [3,]:#1,2]:
