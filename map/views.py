@@ -3127,47 +3127,30 @@ class LsSegmentationLayer(RebrickedMixin, MapLayer):
         if scale in [0, None]:
             return self.ls_layer.get_bricks_for_scale(scale)
         return None
+
     # One mask file per brick
     def get_bands(self):
         return 'r'
-    # def write_cutout(self, ra, dec, pixscale, width, height, out_fn,
-    #                  # bands=None,
-    #                  # fits=False, jpeg=False,
-    #                  # subimage=False,
-    #                  # with_image=True,
-    #                  # with_invvar=False,
-    #                  # with_maskbits=False,
-    #                  # tempfiles=None,
-    #                  # get_images=False,
-    #                  # req=None):
-    #                  **kwargs):
-    #     print('LsSegmentationLayer: write_cutout: ra, dec, pixscale, width, height, out_fn =',
-    #           ra, dec, pixscale, width, height, out_fn, 'kwargs =', kwargs)
-    # 
-    #     import tempfile
-    #     f,temp_fn = tempfile.mkstemp(suffix='.fits')
-    #     os.close(f)
-    #     os.unlink(temp_fn)
-    # 
-    #     kwargs.update(fits=True, jpeg=False)
-    #     self.ls_layer.write_cutout(ra, dec, pixscale, width, height, temp_fn,
-    #                                **kwargs)
-    # #bands=self.get_bands(), 
+
+    def get_fits_cutout_kwargs(self, image=False, iv=False, maskbits=False):
+        return dict(compress='GZIP')
+
     def render_rgb(self, wcs, zoom, x, y, bands=None, get_images_only=False,
                    **kwargs):
-        #tempfiles=None, invvar=False, maskbits=False):
         import numpy as np
-        print('Segmentation: render_rgb: wcs', wcs, 'bands', bands, 'get_images_only:', get_images_only)
+        from scipy.ndimage import gaussian_filter
+        from scipy.ndimage import label
+        from collections import Counter
+
         imgs,_ = self.ls_layer.render_rgb(wcs, zoom, x, y, bands=bands, get_images_only=True,
                                           **kwargs)
-
         kwargs.update(invvar=True)
         ivs,_ = self.ls_layer.render_rgb(wcs, zoom, x, y, bands=bands, get_images_only=True,
                                           **kwargs)
-        
         cat,hdr = self.ls_layer.get_catalog_in_wcs(wcs)
-        print('Got', len(cat), 'catalog objects in WCS')
-        cat.about()
+        #print('Got', len(cat), 'catalog objects in WCS')
+        #cat.about()
+        print('Cat types:', Counter(cat.type))
 
         ok,x,y = wcs.radec2pixelxy(cat.ra, cat.dec)
         h,w = wcs.shape
@@ -3175,53 +3158,22 @@ class LsSegmentationLayer(RebrickedMixin, MapLayer):
         iy = np.clip(np.round(y-1.).astype(int), 0, h-1)
 
         img = imgs[0]
+        iv = ivs[0]
         H,W = img.shape
 
-        iv = ivs[0]
-
-        #segmap = (img > 0.1).astype(np.int16)
-        #segmap[iy, ix] = 2
-
-        if False:
-            # Estimate per-pixel noise via Blanton's 5-pixel MAD
-            slice1 = (slice(0,-5,10),slice(0,-5,10))
-            slice2 = (slice(5,None,10),slice(5,None,10))
-            mad = np.median(np.abs(img[slice1] - img[slice2]).ravel())
-            sig1 = 1.4826 * mad / np.sqrt(2.)
-            print('Max image / sig1', np.max(img / sig1))
-
-        print('Max image * sqrt(iv):', np.max(img * np.sqrt(iv)))
-
-        from scipy.ndimage import gaussian_filter
-        
         ie = np.sqrt(iv)
         ie = gaussian_filter(ie, 10)
         
-        # plt.clf()
-        # plt.imshow(np.sqrt(iv), interpolation='nearest', origin='lower')
-        # plt.title('ie')
-        # plt.savefig('seg1.png')
-        # plt.clf()
-        # plt.imshow(ie, interpolation='nearest', origin='lower')
-        # plt.title('smooth ie')
-        # plt.savefig('seg2.png')
-
-        #segmap = np.floor(img / sig1).astype(int)
-        #segmap = np.floor(img * ie).astype(int)
-
         plots = False
-        
-        from scipy.ndimage import label
-        from collections import Counter
-
-        import matplotlib as mpl
-        cmap = mpl.colormaps['tab20']
+        if plots:
+            import matplotlib as mpl
+            cmap = mpl.colormaps['tab20']
 
         segmap = np.empty((H,W), np.int32)
         segmap[:,:] = -1
 
         nlevels = np.max(np.floor(img * ie).astype(int))
-        print('N levels:', nlevels)
+        #print('N levels:', nlevels)
 
         Itodo = np.arange(len(iy))
 
@@ -3318,74 +3270,6 @@ class LsSegmentationLayer(RebrickedMixin, MapLayer):
             plt.savefig(fn)
             print('Wrote', fn)
             k += 1
-
-        if False:
-            # Sort by brightest first
-            #K = np.argsort(-img[iy,ix])
-            # (by catalog-object flux)
-            K = np.argsort(-cat.flux_r)
-            iy = iy[K]
-            ix = ix[K]
-    
-            #seg = (img > 0.1).astype(np.int16)
-            #seg[iy, ix] = 2
-    
-            import matplotlib as mpl
-    
-            import heapq
-    
-            segmap = np.empty((H,W), np.int32)
-            segmap[:,:] = -1
-    
-            # Watershed by priority-fill.
-            # Seed the segmentation map
-            segmap[iy, ix] = np.arange(len(iy))
-    
-            # values are (-sn, key, x, y, center_x, center_y, maxr2)
-            q = [(-img[y,x], segmap[y,x], x,y) #,x,y,r2)
-                 #for x,y,r2 in zip(sx,sy,maxr2)]
-                 for x,y in zip(ix, iy)]
-            heapq.heapify(q)
-    
-            j = 0
-            jnext = 2
-            while len(q):
-                j += 1
-                if j >= jnext:
-                    jnext *= 2
-                    cmap = mpl.colormaps['tab20']
-                    plt.clf()
-                    rgb = cmap((segmap + 2) % 20)
-                    plt.imshow(rgb, origin='lower', interpolation='nearest')
-                    fn = 'seg-%07i.png' % j
-                    plt.savefig(fn)
-                    print('Wrote', fn)
-    
-                #_,key,x,y,cx,cy,r2 = heapq.heappop(q)
-                _,key,x,y = heapq.heappop(q)
-                segmap[y,x] = key
-                # 4-connected neighbours
-                for x,y in [(x, y-1), (x, y+1), (x-1, y), (x+1, y),]:
-                    # out of bounds?
-                    if x<0 or y<0 or x==W or y==H:
-                        continue
-                    # not in blobmask?
-                    #if not mask[y,x]:
-                    #    continue
-                    # already queued or segmented?
-                    if segmap[y,x] != -1:
-                        continue
-                    # outside the ref source radius?
-                    #if r2 > 0 and (x-cx)**2 + (y-cy)**2 > r2:
-                    #    continue
-                    # mark as queued
-                    segmap[y,x] = -2
-                    # enqueue!
-                    heapq.heappush(q, (-img[y,x], key, x, y))#, cx, cy, r2))
-    
-            assert(np.all(segmap > -2))
-            segmap += 1
-            assert(np.all(segmap >= 0))
     
         print('Segmap:', segmap.shape)
         if get_images_only:
