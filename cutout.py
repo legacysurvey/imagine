@@ -1,5 +1,9 @@
 from map.views import get_layer
 
+# if it looks like a duck and quacks like a duck...
+class duck(object):
+    pass
+
 def main():
     import argparse
     import os
@@ -13,7 +17,10 @@ def main():
     parser.add_argument('--height', type=int, default=None, help='Pixel height of output')
     parser.add_argument('--bands', default='grz', help='Bands to select for output')
     parser.add_argument('--layer', default='ls-dr8', help='Map layer to render')
-    parser.add_argument('--force', default=False, help='Overwrite existing output file?  Default is to quit.')
+    parser.add_argument('--invvar', default=False, action='store_true', help='Include Invvar extension for FITS outputs?')
+    parser.add_argument('--maskbits', default=False, action='store_true', help='Include Maskbits extension for FITS outputs?')
+    parser.add_argument('--no-image', default=False, action='store_true', help='Omit image pixels when doing --invvar or --maskbits')
+    parser.add_argument('--force', default=False, action='store_true', help='Overwrite existing output file?  Default is to quit.')
 
     opt = parser.parse_args()
     if os.path.exists(opt.output) and not opt.force:
@@ -26,16 +33,27 @@ def main():
     if opt.width is not None:
         W = opt.width
 
+    req = duck()
+    req.GET = {}
+
     fits = opt.output.endswith('.fits')
     jpeg = (opt.output.endswith('.jpg') or opt.output.endswith('.jpeg'))
     if not (fits or jpeg):
         print('Output filename MUST end with .fits or .jpg or .jpeg')
         return -1
 
+    kwa = {}
+    if fits:
+        kwa.update(with_invvar=opt.invvar,
+                   with_maskbits=opt.maskbits)
+        if opt.no_image:
+            kwa.update(with_image=False)
+
     layer = get_layer(opt.layer)
     tempfiles = []
     layer.write_cutout(opt.ra, opt.dec, opt.pixscale, W, H, opt.output,
-                       bands=opt.bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles)
+                       bands=opt.bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles, req=req,
+                       **kwa)
     for fn in tempfiles:
         os.unlink(fn)
     return 0

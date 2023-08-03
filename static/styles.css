@@ -53,6 +53,13 @@
     margin-bottom: 15px;
 }
 
+//.leaflet-control-zoomslider {
+//    z-index: 1200;
+//}
+.leaflet-top {
+    z-index: 1200;
+}
+
 /* hmm, can't get this to work
 .leaflet-control-attribution {
     font-size: 200%;
@@ -61,6 +68,12 @@
 
 .gotobutton {
     font-size: 100%;
+}
+
+.spectrumTooltip {
+}
+.spectrumTooltipSmall {
+    font-size: 80%;
 }
 
 /* https://gis.stackexchange.com/questions/212820/overriding-leaflet-tooltip-style */
@@ -72,9 +85,12 @@
 }
 
 .leaflet-tooltip {
-    background: transparent;
+    background-color: rgba(0,0,0, 0.5);
     color: white;
+/*
+    background: transparent;
     box-shadow: 0 0px 0px rgba(0,0,0,0);
+*/
 }
 
 .leaflet-tooltip a {
