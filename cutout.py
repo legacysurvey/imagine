@@ -34,7 +34,7 @@ def cutout_main():
     return cutout(opt.ra, opt.dec, opt.output,
                   pixscale=opt.pixscale,
                   width=opt.width, height=opt.height, size=opt.size,
-                  band=bands,
+                  bands=bands,
                   invvar=opt.invvar, maskbits=opt.invvar, no_image=opt.no_image,
                   force=opt.force)
 
