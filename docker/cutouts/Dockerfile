@@ -62,4 +62,7 @@ RUN cd imagine && mv data data-orig && ln -s /dvs_ro/cfs/cdirs/cosmo/webapp/view
 COPY cutout /usr/local/bin/
 RUN chmod 755 /usr/local/bin/cutout
 
-RUN cd imagine && git pull
+ENV PYTHONPATH ${PYTHONPATH}:/usr/local/lib/python:/app/imagine
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+RUN cd imagine && git pull && echo 1
