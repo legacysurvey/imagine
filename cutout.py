@@ -11,7 +11,6 @@ CUTOUT_LAYER_DEFAULT = 'ls-dr9'
 
 def cutout_main():
     import argparse
-    import os
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', required=True, help='Output filename (*.jpg or *.fits)')
     parser.add_argument('--ra', type=float, required=True, help='RA (deg)')
@@ -50,6 +49,7 @@ def cutout(ra, dec, output,
            maskbits=False,
            no_image=False,
            force=False):
+    import os
 
     if os.path.exists(output) and not force:
         print('Exists:', output)
