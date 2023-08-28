@@ -15,21 +15,19 @@ def cutout_main():
     parser.add_argument('--output', required=True, help='Output filename (*.jpg or *.fits)')
     parser.add_argument('--ra', type=float, required=True, help='RA (deg)')
     parser.add_argument('--dec', type=float, required=True, help='Dec (deg)')
-    parser.add_argument('--pixscale', type=float, default=CUTOUT_PIXSCALE_DEFAULT, help='Pixel scale (arcsec/pix)')
-    parser.add_argument('--size', type=int, default=CUTOUT_SIZE_DEFAULT, help='Pixel size of output')
+    parser.add_argument('--pixscale', type=float, default=CUTOUT_PIXSCALE_DEFAULT, help='Pixel scale (arcsec/pix), default %default')
+    parser.add_argument('--size', type=int, default=CUTOUT_SIZE_DEFAULT, help='Pixel size of output, default %default')
     parser.add_argument('--width', type=int, default=None, help='Pixel width of output')
     parser.add_argument('--height', type=int, default=None, help='Pixel height of output')
-    parser.add_argument('--bands', default=','.join(CUTOUT_BANDS_DEFAULT), help='Bands to select for output')
-    parser.add_argument('--layer', default=CUTOUT_LAYER_DEFAULT, help='Map layer to render')
+    parser.add_argument('--bands', default=','.join(CUTOUT_BANDS_DEFAULT), help='Bands to select for output, default %default')
+    parser.add_argument('--layer', default=CUTOUT_LAYER_DEFAULT, help='Map layer to render, default %default')
     parser.add_argument('--invvar', default=False, action='store_true', help='Include Invvar extension for FITS outputs?')
     parser.add_argument('--maskbits', default=False, action='store_true', help='Include Maskbits extension for FITS outputs?')
     parser.add_argument('--no-image', default=False, action='store_true', help='Omit image pixels when doing --invvar or --maskbits')
     parser.add_argument('--force', default=False, action='store_true', help='Overwrite existing output file?  Default is to quit.')
 
     opt = parser.parse_args()
-    bands = []
-    for b in opt.bands:
-        bands.extend(b.split(','))
+    bands = opt.bands.split(',')
 
     return cutout(opt.ra, opt.dec, opt.output,
                   pixscale=opt.pixscale,
