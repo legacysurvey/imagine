@@ -17,23 +17,27 @@ RUN apt -y update && \
   && \
   apt clean
 
-RUN wget -nv https://www.mpich.org/static/downloads/3.3/mpich-3.3.tar.gz \
-    && tar xzf mpich-3.3.tar.gz \
-    && cd mpich-3.3 \
+RUN wget -nv https://www.mpich.org/static/downloads/4.0.2/mpich-4.0.2.tar.gz \
+    && tar xzf mpich-4.0.2.tar.gz \
+    && cd mpich-4.0.2 \
     && ./configure \
-    && make -j4 \
+    && make -j \
     && make install \
     && make clean \
-    && cd .. && rm -Rf mpich-3.3
+    && cd .. && rm -Rf mpich-4.0.2
 # defaults to installing in /usr/local
 
-# mpi4py / mpicc can't handle -ax=knl or -x=haswell (it compiles using gcc?)
-ENV CFLAGS $BASE_CFLAGS
-RUN git clone https://github.com/mpi4py/mpi4py.git \
-         && (cd mpi4py \
-         && python3 setup.py build \
-         && python3 setup.py install) \
-         && rm -Rf mpi4py
+RUN /sbin/ldconfig
+
+RUN python3 -m pip install --no-cache-dir mpi4py
+
+# # mpi4py / mpicc can't handle -ax=knl or -x=haswell (it compiles using gcc?)
+# ENV CFLAGS $BASE_CFLAGS
+# RUN git clone https://github.com/mpi4py/mpi4py.git \
+#          && (cd mpi4py \
+#          && python3 setup.py build \
+#          && python3 setup.py install) \
+#          && rm -Rf mpi4py
 
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -65,4 +69,4 @@ RUN chmod 755 /usr/local/bin/cutout
 ENV PYTHONPATH ${PYTHONPATH}:/usr/local/lib/python:/app/imagine
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-RUN cd imagine && git pull && echo 7
+RUN cd imagine && git pull && echo 9
