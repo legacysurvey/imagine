@@ -3366,6 +3366,9 @@ class LegacySurveySplitLayer(MapLayer):
         from map.cats import radecbox_to_wcs
         wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
         cat,hdr = self.get_catalog_in_wcs(wcs)
+        if cat is None:
+            return HttpResponse('No catalog sources in layer and RA,Dec box')
+        print('Catalog in WCS:', cat)
         fn = 'cat-%s.fits' % (self.name)
         import tempfile
         f,outfn = tempfile.mkstemp(suffix='.fits')
@@ -3414,6 +3417,7 @@ class LegacySurveySplitLayer(MapLayer):
         hdr = None
         for layer,above in [(self.top,True), (self.bottom,False)]:
             cat,h = layer.get_catalog_in_wcs(wcs)
+            print('split cat:', cat)
             if cat is not None and len(cat)>0:
                 if above:
                     cat.cut(cat.dec >= self.decsplit)
@@ -8170,7 +8174,9 @@ if __name__ == '__main__':
     #r = c.get('/fits-cutout?ra=147.48496&dec=-0.23134231&size=2000&layer=ls-dr10&pixscale=0.262&bands=r')
     #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
-    r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
+    #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
+    #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
+    r = c.get('/ls-dr9/cat.fits?ralo=165.4754&rahi=165.4758&declo=-6.0426&dechi=-6.0422')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

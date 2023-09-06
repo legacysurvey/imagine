@@ -658,20 +658,26 @@ var SGACatalog = CatalogOverlay.extend({
         layergroup = CatalogOverlay.prototype.getLayer.call(this, result);
         // Add crosshairs
         var rdlist = result['rd'];
+        if (rdlist.length == 0) {
+            return layergroup;
+        }
         var clong = map.getCenter().lng;
         var radii = result['radiusArcsec'];
         var abratio = result['abRatio'];
         var posAngle = result['posAngle'];
         var plines = [];
+        console.log('this._style:', this._style);
         for (var i=0, len=rdlist.length; i<len; i++) {
             var r = rdlist[i][0];
             var d = rdlist[i][1];
             var lat = dec2lat(d);
             var lng = ra2long_C(r, clong);
             var style = Object.create(this._style);
+            console.log('style:', style);
             var color = this.getColor(result, i);
             if (color !== undefined) {
                 style = Object.assign(style, {'color':color});
+                console.log('style after setting color:', style);
             }
             var radius = this._radius;
             if (radii) {
@@ -698,6 +704,8 @@ var SGACatalog = CatalogOverlay.extend({
             lat2 = lat - ab * radius * Math.cos(pa);
             plines.push([[lat1, lng1], [lat2, lng2]]);
         }
+        console.log('rdlist:', rdlist.length);
+        console.log('style:', style)
         style = Object.assign(style, {'weight': 1});
         layergroup.addLayer(L.polyline(plines, style));
         return layergroup;
@@ -5013,7 +5021,7 @@ var overlayTree = [];
            findoverlay('targets-dr9-sv1-sec-dark'),
            findoverlay('targets-dr9-sv1-sec-bright'),
            //findoverlay('targets-dr9-sv1-supp'),
-           findoverlay('targets-dr8'),
+           //findoverlay('targets-dr8'),
            //findoverlay('targets-sv-dr8'),
            //findoverlay('targets-cmx-dr7'),
            //findoverlay('targets-dr67'),
