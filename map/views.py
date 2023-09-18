@@ -8176,7 +8176,8 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
     #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
-    r = c.get('/ls-dr9/cat.fits?ralo=165.4754&rahi=165.4758&declo=-6.0426&dechi=-6.0422')
+    #r = c.get('/ls-dr9/cat.fits?ralo=165.4754&rahi=165.4758&declo=-6.0426&dechi=-6.0422')
+    r = c.get('/usercatalog/1/cat.json?ralo=359.7593&rahi=0.2544&declo=47.1825&dechi=47.3670&cat=tmp6wqhztpk')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
