@@ -1584,7 +1584,7 @@ class MapLayer(object):
         return ver,zoom,x,y
 
     def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
-                   invvar=False):
+                   invvar=False, blank_ok=False):
         rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, tempfiles=tempfiles,
                                      invvar=invvar)
         if get_images_only:
@@ -1592,9 +1592,13 @@ class MapLayer(object):
         if bands is None:
             bands = self.get_bands()
         if rimgs is None:
-            rgb = None
-        else:
-            rgb = self.get_rgb(rimgs, bands)
+            if not blank_ok:
+                return None, None
+            h,w = wcs.shape
+            nb = len(bands)
+            import numpy as np
+            rimgs = [np.zeros((h,w), np.float32) for i in range(nb)]
+        rgb = self.get_rgb(rimgs, bands)
         return rimgs, rgb
 
     def get_tile(self, req, ver, zoom, x, y,
@@ -1797,7 +1801,8 @@ class MapLayer(object):
 
         #print('Cutout: bands', bands)
         if jpeg:
-            ims,rgb = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
+            ims,rgb = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
+                                      blank_ok=True)
             self.write_jpeg(out_fn, rgb)
             if req is not None:
                 if 'sga' in req.GET or 'sga-parent' in req.GET:
@@ -3482,9 +3487,10 @@ class LegacySurveySplitLayer(MapLayer):
         return 0
 
     def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
-                   invvar=False):
+                   invvar=False, blank_ok=False):
         #print('Split Layer render_rgb: bands=', bands)
-        kwa = dict(tempfiles=tempfiles, get_images_only=get_images_only, invvar=invvar)
+        kwa = dict(tempfiles=tempfiles, get_images_only=get_images_only, invvar=invvar,
+                   blank_ok=blank_ok)
         if y != -1:
             # FIXME -- this is not the correct cut -- only listen to split for NGC --
             # but this doesn't get called anyway because the JavaScript layer has the smarts.
@@ -8177,7 +8183,9 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
     #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
     #r = c.get('/ls-dr9/cat.fits?ralo=165.4754&rahi=165.4758&declo=-6.0426&dechi=-6.0422')
-    r = c.get('/usercatalog/1/cat.json?ralo=359.7593&rahi=0.2544&declo=47.1825&dechi=47.3670&cat=tmp6wqhztpk')
+    #r = c.get('/usercatalog/1/cat.json?ralo=359.7593&rahi=0.2544&declo=47.1825&dechi=47.3670&cat=tmp6wqhztpk')
+    r = c.get('/jpeg-cutout?ra=37.1990005&dec=61.495783&size=5120&layer=ls-dr10&pixscale=0.512')
+    #r = c.get('/cutout.fits?ra=37.1990005&dec=61.495783&size=5120&layer=ls-dr10&pixscale=0.512')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
