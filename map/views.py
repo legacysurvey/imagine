@@ -3155,7 +3155,7 @@ class LsSegmentationLayer(RebrickedMixin, MapLayer):
         if len(cat) > 0:
             pixscale = wcs.pixel_scale()
             fwhmpix = cat.psfsize_r[0] / pixscale
-            print('PSF size:', cat.psfsize_r)
+            print('PSF size:', cat.psfsize_r[0])
             print('WCS pixscale:', pixscale)
             sigpix = fwhmpix / 2.35
             print('Sigma in pixels:', sigpix)
@@ -3185,113 +3185,9 @@ class LsSegmentationLayer(RebrickedMixin, MapLayer):
         segmap = np.empty((H,W), np.int32)
         segmap[:,:] = -1
 
-        #import fitsio
-        #fitsio.write('sn.fits', img*ie, clobber=True)
-        
         k = 0
-        # nlevels = np.max(np.floor(img * ie).astype(int))
-        # #print('N levels:', nlevels)
-        # 
-        # Itodo = np.arange(len(iy))
-        # 
-        # levels = np.arange(nlevels+1)
-        # levels[0] = 5. * psfnorm
-        # 
-        # for level in levels:
-        #     hot = (img * ie >= level)
-        #     blobmap,nblobs = label(hot)
-        #     print('N sigma:', level, 'segmented into', nblobs, 'blobs, range', np.min(blobmap), np.max(blobmap))
-        #     print(len(Itodo), 'sources still to segment')
-        #     blobnums = blobmap[iy[Itodo], ix[Itodo]]
-        #     blobcount = Counter(blobnums)
-        #     n_in_blob = np.array([blobcount[b] for b in blobnums])
-        #     print('(blob -> number of sources in blob) for most common blobs:', blobcount.most_common(5))
-        # 
-        #     isolated = (blobnums > 0) * (n_in_blob == 1)
-        #     print(np.sum(isolated), 'sources are isolated')
-        #     for j in np.flatnonzero(isolated):
-        #         # Set segmentation map to this source's id
-        #         segmap[(blobmap == blobmap[iy[Itodo[j]], ix[Itodo[j]]]) *
-        #                (segmap == -1)] = Itodo[j]
-        # 
-        #     no_blob = (blobnums == 0)
-        #     print(np.sum(no_blob), 'sources are not in blobs!')
-        #     for j in np.flatnonzero(no_blob):
-        #         segmap[iy[Itodo[j]], ix[Itodo[j]]] = Itodo[j]
-        # 
-        #     if plots and np.any(np.logical_or(isolated, no_blob)):
-        # 
-        #         plt.clf()
-        #         plt.imshow(img, interpolation='nearest', origin='lower', cmap='gray')
-        #         plot_boundary_map(segmap > -1)
-        #         fn = 'seg-%06i.png' % k
-        #         plt.savefig(fn)
-        #         print('Wrote', fn)
-        #         k += 1
-        # 
-        #         plt.clf()
-        #         plt.imshow(cmap((blobmap+1) % 20), interpolation='nearest', origin='lower')
-        #         ax = plt.axis()
-        #         plt.plot(ix[Itodo], iy[Itodo], 'k+', ms=10, mew=2)
-        #         if np.any(isolated):
-        #             J = Itodo[np.flatnonzero(isolated)]
-        #             plt.plot(ix[J], iy[J], 'r+', ms=10, mew=2)
-        #         if np.any(no_blob):
-        #             J = Itodo[np.flatnonzero(no_blob)]
-        #             plt.plot(ix[J], iy[J], 'g+', ms=10, mew=2)
-        #         plt.axis(ax)
-        #         fn = 'seg-%06i.png' % k
-        #         plt.savefig(fn)
-        #         print('Wrote', fn)
-        #         k += 1
-        # 
-        #         plt.clf()
-        #         rgb = cmap((segmap + 1) % 20)
-        #         plt.imshow(rgb, origin='lower', interpolation='nearest')
-        #         fn = 'seg-%06i.png' % k
-        #         plt.savefig(fn)
-        #         print('Wrote', fn)
-        #         k += 1
-        # 
-        #     Itodo = Itodo[~ np.logical_or(isolated, no_blob)]
-        #     if len(Itodo) == 0:
-        #         break
-        # 
-        # hot = (img * ie >= levels[0])
-        # blobmap,nblobs = label(hot)
-        # 
-        # if plots:
-        #     plt.clf()
-        #     plt.imshow(hot, interpolation='nearest', origin='lower', cmap='gray')
-        #     plot_boundary_map(segmap > -1)
-        #     fn = 'seg-%06i.png' % k
-        #     plt.savefig(fn)
-        #     print('Wrote', fn)
-        #     k += 1
-        # 
-        # print('blobmap range', blobmap.min(), blobmap.max())
-        # blobnums = blobmap[iy, ix]
-        # for i in range(1, nblobs):
-        #     I = np.flatnonzero(blobnums == i)
-        #     print('blob', i, 'contains', len(I), 'sources')
-        #     if len(I) == 0:
-        #         continue
-        #     # brightest source in blob
-        #     m = I[np.argmax(img[iy[I], ix[I]])]
-        #     # brightest source gets the whole un-claimed blob??
-        #     print('segmap at brightest source:', segmap[iy[m], ix[m]])
-        #     print('m:', m)
-        #     segmap[(blobmap == i) * (segmap == -1)] = segmap[iy[m], ix[m]]
-        # 
-        # if plots:
-        #     plt.clf()
-        #     plt.imshow(hot, interpolation='nearest', origin='lower', cmap='gray')
-        #     plot_boundary_map(segmap > -1)
-        #     fn = 'seg-%06i.png' % k
-        #     plt.savefig(fn)
-        #     print('Wrote', fn)
-        #     k += 1
         import heapq
+        from scipy.ndimage import binary_dilation
 
         K = np.argsort(-cat.flux_r)
         iy = iy[K]
@@ -3306,26 +3202,33 @@ class LsSegmentationLayer(RebrickedMixin, MapLayer):
              for x,y in zip(ix, iy)]
         heapq.heapify(q)
 
-        # Pixels to include in the blobs
-        blobmask = (img * ie >= 5.*psfnorm)
+        sn = img * ie
 
         # add in any edge pixels that are peaks
         edgepeaks = np.zeros(segmap.shape, bool)
-        edgepeaks[ 0,:] = blobmask[ 0,:]
-        edgepeaks[-1,:] = blobmask[-1,:]
-        edgepeaks[:, 0] = blobmask[:, 0]
-        edgepeaks[:,-1] = blobmask[:,-1]
+        edgepeaks[ 0,:] = (sn[ 0,:] >= 5.)
+        edgepeaks[-1,:] = (sn[-1,:] >= 5.)
+        edgepeaks[:, 0] = (sn[:, 0] >= 5.)
+        edgepeaks[:,-1] = (sn[:,-1] >= 5.)
 
-        sn = img * ie
         edgepeaks[:, 1:  ] &= (sn[:, 1:  ] >= sn[:,  :-1])
         edgepeaks[:,  :-1] &= (sn[:,  :-1] >= sn[:, 1:  ])
         edgepeaks[1:  , :] &= (sn[1:  , :] >= sn[ :-1, :])
         edgepeaks[ :-1, :] &= (sn[ :-1, :] >= sn[1:  , :])
 
         hy,hx = np.nonzero(edgepeaks)
+        del edgepeaks
         print('Adding', len(hy), 'edge pixels that are peaks')
         for x,y,key in zip(hx, hy, len(iy) + np.arange(len(hy))):
             heapq.heappush(q, (-img[y,x], key, x, y, x, y))
+
+        # Pixels to include in the blobs
+        blobmask = (sn >= 5.*psfnorm)
+        # Grow the blob mask a bit..
+        blob_dilate = 2
+        blobmask = binary_dilation(blobmask, iterations=blob_dilate)
+        # No blobs where the model == 0
+        blobmask[(img == 0.0) * (ie > 0)] = False
 
         # Watershed based on image val * a Gaussian of this stdev in pixels
         R = 5.
