@@ -1,9 +1,9 @@
 numpy
 scipy
 matplotlib
-#mkl-fft
 astropy
 fitsio
 Django
 pillow
 requests
+cython

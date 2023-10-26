@@ -1,8 +1,7 @@
 #! /bin/bash
 
 unset LD_LIBRARY_PATH
-export PYTHONPATH=/usr/lib/python3.8:/usr/lib/python3.8/lib-dynload:/usr/local/lib/python3.8/dist-packages:/usr/local/lib/python
-
+#export PYTHONPATH=/usr/lib/python3.8:/usr/lib/python3.8/lib-dynload:/usr/local/lib/python3.8/dist-packages:/usr/local/lib/python
 #/app/src/astrometry:/app/src/tractor:/app/src/legacypipe/build/lib
 
 # Don't add ~/.local/ to Python's sys.path
