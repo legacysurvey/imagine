@@ -40,17 +40,17 @@ if settings.ENABLE_DESI_DATA:
         re_path(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),
         re_path(r'^desi-spec-daily/(\d+)/cat.json', cats.cat_desi_daily_spectra),
         #re_path(r'^desi-spectrum/daily/tile(\d+)/fiber(\d+)', cats.cat_desi_daily_spectra_detail),
-        re_path(r'^desi-spectrum/daily/targetid(\d+)', cats.cat_desi_daily_spectra_detail),
+        re_path(r'^desi-spectrum/daily/targetid(-?\d+)', cats.cat_desi_daily_spectra_detail),
 
         # DESI spectroscopy -- Guadalupe
         re_path(r'^desi-tiles/guadalupe/(\d+)/cat.json', cats.cat_desi_guadalupe_tiles),
         re_path(r'^desi-spec-guadalupe/(\d+)/cat.json', cats.cat_desi_guadalupe_spectra),
-        re_path(r'^desi-spectrum/guadalupe/targetid(\d+)', cats.cat_desi_guadalupe_spectra_detail),
+        re_path(r'^desi-spectrum/guadalupe/targetid(-?\d+)', cats.cat_desi_guadalupe_spectra_detail),
 
         # DESI spectroscopy -- Fuji
         re_path(r'^desi-tiles/fuji/(\d+)/cat.json', cats.cat_desi_fuji_tiles),
         re_path(r'^desi-spec-fuji/(\d+)/cat.json', cats.cat_desi_fuji_spectra),
-        re_path(r'^desi-spectrum/fuji/targetid(\d+)', cats.cat_desi_fuji_spectra_detail),
+        re_path(r'^desi-spectrum/fuji/targetid(-?\d+)', cats.cat_desi_fuji_spectra_detail),
     ])
 
 urlpatterns = ([
