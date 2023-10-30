@@ -34,7 +34,7 @@ if settings.ENABLE_DESI_DATA:
         # DESI spectroscopy -- DR1
         re_path(r'^desi-tiles/dr1/(\d+)/cat.json', cats.cat_desi_dr1_tiles),
         re_path(r'^desi-spec-dr1/(\d+)/cat.json', cats.cat_desi_dr1_spectra),
-        re_path(r'^desi-spectrum/dr1/targetid(\d+)', cats.cat_desi_dr1_spectra_detail),
+        re_path(r'^desi-spectrum/dr1/targetid(-?\d+)', cats.cat_desi_dr1_spectra_detail),
 
         # DESI spectroscopy -- daily
         re_path(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),

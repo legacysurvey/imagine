@@ -8334,8 +8334,9 @@ if __name__ == '__main__':
     #r = c.get('/fits-cutout?ra=147.48496&dec=-0.23134231&size=2000&layer=ls-dr10&pixscale=0.262&bands=r')
     #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
-    r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
-
+    #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
+    #r = c.get('/desi-spectrum/dr1/targetid39633497530305185')
+    r = c.get('/desi-spectrum/dr1/targetid-228610099')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)

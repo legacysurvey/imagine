@@ -594,6 +594,7 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
         names.append(nm)
         colors.append(c)
 
+    print('Targetids:', T.targetid.dtype, T.targetid)
     J.update(dict(rd=rd, name=names, color=colors,
                   targetid=[str(i) for i in T.targetid]))
     if 'fiber' in cols:
@@ -3214,7 +3215,8 @@ if __name__ == '__main__':
     #r = c.get('/desi-spectrum/daily/targetid43977408013222855')
     #r = c.get('/ls-dr9/1/15/29479/18709.cat.json')
     #r = c.get('/usercatalog/1/cat.json?ralo=61.2789&rahi=61.3408&declo=-74.8711&dechi=-74.8622&cat=tmpbclfdga8')
-    r = c.get('/desi-spectrum/edr/targetid39627883857055540')
+    #r = c.get('/desi-spectrum/edr/targetid39627883857055540')
+    r = c.get('/desi-spec-dr1/1/cat.json?ralo=149.1504&rahi=149.3979&declo=68.5631&dechi=68.6128')
 
     f = open('out', 'wb')
     for x in r:
