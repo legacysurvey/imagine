@@ -1174,7 +1174,7 @@ class MapLayer(object):
         tilescale = min(arcsec_between(r1,d1, r2,d2), arcsec_between(r3,d3, r4,d4))
         native_pixscale = self.pixscale
         scale = int(np.floor(np.log2(tilescale / native_pixscale)))
-        debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', tilescale, 'Scale:',scale)
+        #debug('Zoom:', zoom, 'x,y', x,y, 'Tile pixel scale:', tilescale, 'Scale:',scale)
         scale = np.clip(scale, 0, self.maxscale)
         #print('Old scale', oldscale, 'scale', scale)
         return scale
@@ -2003,7 +2003,9 @@ class MapLayer(object):
                 if 'sga' in req.GET or 'sga-parent' in req.GET:
                     render_sga_ellipse(out_fn, out_fn, wcs, req.GET)
             return
-        
+
+        #print('write_cutouts: with_image', with_image, 'with_invvar', with_invvar,
+        #      'has_invvar', self.has_invvar(), 'get_images:', get_images)
         ims = None
         if with_image:
             #ims = self.render_into_wcs(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
@@ -2015,7 +2017,6 @@ class MapLayer(object):
         if with_invvar and self.has_invvar():
             ivs,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
                                     get_images_only=True, invvar=True)
-
         maskbits = None
         if with_maskbits and self.has_maskbits():
             maskbits,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
@@ -5324,7 +5325,10 @@ class ZeaLayer(MapLayer):
         self.vmin = vmin
         self.vmax = vmax
 
-    def render_into_wcs(self, wcs, zoom, x, y, bands=None, tempfiles=None):
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, tempfiles=None,
+                        invvar=False, maskbits=False):
+        assert(not invvar)
+        assert(not maskbits)
         import numpy as np
         xx,yy = np.meshgrid(np.arange(wcs.get_width()), np.arange(wcs.get_height()))
         rr,dd = wcs.pixelxy2radec(1. + xx.ravel(), 1. + yy.ravel())[-2:]
@@ -8532,7 +8536,6 @@ if __name__ == '__main__':
     #r = c.get('/fits-cutout?ra=147.48496&dec=-0.23134231&size=2000&layer=ls-dr10&pixscale=0.262&bands=r')
     #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
-    #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
     #r = c.get('/ls-dr9/1/14/8230/6841.jpg')
     #r = c.get('/cutout.jpg?ra=218.1068&dec=8.0789&layer=ls-dr10-segmentation&pixscale=0.262&size=500')
     #r = c.get('/cutout.fits?ra=218.1068&dec=8.0789&layer=ls-dr10-segmentation&pixscale=0.262&size=500')
@@ -8545,9 +8548,11 @@ if __name__ == '__main__':
     # Example 3
     #r = c.get('/cutout.fits?ra=93.6233&dec=-33.5389&layer=ls-dr10-segmentation&pixscale=0.262&size=32')
     # Example 4
-    r = c.get('/cutout.fits?ra=9.173043&dec=14.645444&layer=ls-dr10-segmentation&pixscale=0.262&size=32')
-    
-    
+    #r = c.get('/cutout.fits?ra=9.173043&dec=14.645444&layer=ls-dr10-segmentation&pixscale=0.262&size=32')
+    #
+    #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.262&invvar')
+
+    r = c.get('/sfd/2/7/41/55.jpg')
     
     # Euclid colorization
     # for i in [3,]:#1,2]:
