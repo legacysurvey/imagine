@@ -3103,6 +3103,19 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
     },
 });
 
+var DesiObsCatalog = DesiSpectraCatalog.extend({
+    getLabel: function(json, i) {
+        var s = '';
+        for (var j=0, len=json['targetid'][i].length; j<len; j++) {
+            if (j > 0)
+                s += ', ';
+            s += '<a href="' + root_url + 'desi-obs/' + this.release + '/targetid' +
+                json['targetid'][i][j] + '">' + json['name'][i][j] + '</a>';
+        }
+        return s;
+    },
+});
+
 {% endif %}
 
 {% if enable_desi_edr %}
@@ -3127,6 +3140,24 @@ var desi_spec_edr = new DesiSpectraCatalog(
 
 var desi_spec_daily = new DesiSpectraCatalog(
     'desi-spec-daily', 'DESI daily spectra', 'daily',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+     //'urlTerm': 'desi-spec/denali',
+    });
+
+var desi_spec_daily_sky = new DesiSpectraCatalog(
+    'desi-spec-daily-sky', 'DESI daily sky spectra', 'daily',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+     //'urlTerm': 'desi-spec/denali',
+    });
+
+var desi_obs_daily = new DesiObsCatalog(
+    'desi-obs-daily', 'DESI daily observations', 'daily',
     {'url': smallcat_url,
      'radius': 300,
      'labelsMinZoom': 10,
@@ -3791,6 +3822,8 @@ var overlays = [
     //desi_spec_denali,
     desi_tiles_daily,
     desi_spec_daily,
+    desi_spec_daily_sky,
+    desi_obs_daily,
     {% endif %}
     constellations,
     decamfoot,
@@ -4299,6 +4332,8 @@ var overlayTree = [];
            findoverlay('desi-spec-fuji'),
            findoverlay('desi-tiles-daily'),
            findoverlay('desi-spec-daily'),
+           findoverlay('desi-spec-daily-sky'),
+           findoverlay('desi-obs-daily'),
          {% endif %}
            {% if enable_desi_targets %}
            { label: 'DESI Targets',

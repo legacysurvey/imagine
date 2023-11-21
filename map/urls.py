@@ -23,6 +23,11 @@ urlpatterns_desi.extend([
     re_path(r'^desi-spec-edr/(\d+)/cat.json', cats.cat_desi_edr_spectra),
     # DESI EDR spectrum viewer
     re_path(r'^desi-spectrum/edr/targetid(\d+)', cats.cat_desi_edr_spectra_detail),
+
+    # DESI daily observations
+    re_path(r'^desi-obs-daily/(\d+)/cat.json', cats.cat_desi_daily_obs),
+    # DESI daily observations -- details per object
+    re_path(r'^desi-obs/daily/targetid(\d+)', cats.cat_desi_daily_obs_detail),
 ])
 
 if settings.ENABLE_DESI_DATA:
@@ -39,6 +44,7 @@ if settings.ENABLE_DESI_DATA:
         # DESI spectroscopy -- daily
         re_path(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),
         re_path(r'^desi-spec-daily/(\d+)/cat.json', cats.cat_desi_daily_spectra),
+        re_path(r'^desi-spec-daily-sky/(\d+)/cat.json', cats.cat_desi_daily_sky_spectra),
         #re_path(r'^desi-spectrum/daily/tile(\d+)/fiber(\d+)', cats.cat_desi_daily_spectra_detail),
         re_path(r'^desi-spectrum/daily/targetid(-?\d+)', cats.cat_desi_daily_spectra_detail),
 
