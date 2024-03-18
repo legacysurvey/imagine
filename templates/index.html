@@ -1400,7 +1400,9 @@ function onSourceClick(e) {
         fluxstr += ', r=' + fluxToMag(src.fluxes.r).toFixed(2);
     }
     if ('i' in src.fluxes) {
-        fluxstr += ', i=' + fluxToMag(src.fluxes.i).toFixed(2);
+        if (src.fluxes.i != 0 && src.nobs.i > 0) {
+            fluxstr += ', i=' + fluxToMag(src.fluxes.i).toFixed(2);
+        }
     }
     if ('z' in src.fluxes) {
         fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
