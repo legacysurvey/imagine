@@ -6354,8 +6354,9 @@ def exposures_common(req, tgz, copsf):
     # half-size in DECam pixels
     if copsf:
         size = 32
-        bands = req.GET.get('bands', 'grz')
-        bands = ''.join([b for b in bands if b in 'grz'])
+        avail_bands = layer.get_bands()
+        bands = req.GET.get('bands', avail_bands)
+        bands = ''.join([b for b in bands if b in avail_bands])
     else:
         size = int(req.GET.get('size', '100'), 10)
         size = min(500, size)
@@ -6387,10 +6388,8 @@ def exposures_common(req, tgz, copsf):
         if 'ccd_cuts' in CCDs.get_columns():
             CCDs.cut(CCDs.ccd_cuts == 0)
     print('Layer\'s bands:', layer.get_bands())
-    # Drop Y band images
-    #CCDs.cut(np.isin(CCDs.filter, ['g','r','i','z']))
     CCDs.cut(np.isin(CCDs.filter, list(layer.get_bands())))
-    print('After cutting on bands:', len(CCDs), 'CCDs')
+    print('After cutting down to the available bands in this layer:', len(CCDs), 'CCDs')
 
     filterorder = dict(g=0, r=1, i=2, z=3)
 
@@ -6416,6 +6415,7 @@ def exposures_common(req, tgz, copsf):
             sumpsf = dict([(b,0.) for b in bands])
             sumiv  = dict([(b,0.) for b in bands])
             CCDs = CCDs[np.array([f in bands for f in CCDs.filter])]
+            print('After cutting on requested bands', bands, ':', len(CCDs))
 
         for iccd,ccd in enumerate(CCDs):
             im = survey.get_image_object(ccd)
@@ -6433,7 +6433,7 @@ def exposures_common(req, tgz, copsf):
 
             slc = (slice(y0, y1+1), slice(x0, x1+1))
             tim = im.get_tractor_image(slc, pixPsf=True,
-                                       subsky=True, nanomaggies=False,
+                                       subsky=tgz, nanomaggies=False,
                                        pixels=tgz, dq=tgz, normalizePsf=copsf,
                                        old_calibs_ok=True)
             if tim is None:
@@ -8184,8 +8184,11 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
     #r = c.get('/ls-dr9/cat.fits?ralo=165.4754&rahi=165.4758&declo=-6.0426&dechi=-6.0422')
     #r = c.get('/usercatalog/1/cat.json?ralo=359.7593&rahi=0.2544&declo=47.1825&dechi=47.3670&cat=tmp6wqhztpk')
-    r = c.get('/jpeg-cutout?ra=37.1990005&dec=61.495783&size=5120&layer=ls-dr10&pixscale=0.512')
+    #r = c.get('/jpeg-cutout?ra=37.1990005&dec=61.495783&size=5120&layer=ls-dr10&pixscale=0.512')
     #r = c.get('/cutout.fits?ra=37.1990005&dec=61.495783&size=5120&layer=ls-dr10&pixscale=0.512')
+    #r = c.get('/sfd/2/7/40/71.jpg')
+    #r = c.get('/desi-spectrum/edr/targetid39633411349941774')
+    r = c.get('/coadd-psf/?ra=198.3924&dec=-20.2979&layer=ls-dr10-south&bands=i')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
