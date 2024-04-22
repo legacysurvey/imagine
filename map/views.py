@@ -3460,6 +3460,25 @@ class SuprimeAllIALayer(SuprimeIALayer):
 class SuprimeAllIAResidLayer(UniqueBrickMixin, ResidMixin, SuprimeAllIALayer):
     pass
 
+class CfhtLayer(ReDecalsLayer):
+    def get_rgb(self, imgs, bands, **kwargs):
+        import numpy as np
+        #from legacypipe.survey import get_rgb as rgb
+        rgb,kwa = self.survey.get_rgb(imgs, bands, coadd_bw=True)
+        rgb = rgb[:,:,np.newaxis].repeat(3, axis=2)
+        return rgb
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        if scale in [0,None]:
+            pixscale = 0.186
+            cd = pixscale / 3600.
+            size = 5070
+            crpix = size/2. + 0.5
+            wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                      float(size), float(size))
+            return wcs
+        return super().get_scaled_wcs(brick, band, scale)
+
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
         super(HscLayer, self).__init__(name)
@@ -7857,6 +7876,14 @@ def get_layer(name, default=None):
         layer = WiroDLayer('wiro-D', 'image', survey)
 
     elif name in [
+            'cfht-cosmos-cahk']:
+        basename = name
+        bands = ['CaHK']
+        survey = get_survey(basename)
+        image = SuprimeIALayer(basename, 'image', survey, bands=bands)
+        layers[basename] = image
+        layer = image
+    elif name in [
             'suprime-L427', 'suprime-L427-model', 'suprime-L427-resid',
             'suprime-L464', 'suprime-L464-model', 'suprime-L464-resid',
             'suprime-L484', 'suprime-L484-model', 'suprime-L484-resid',
@@ -8552,7 +8579,8 @@ if __name__ == '__main__':
     #
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.262&invvar')
 
-    r = c.get('/sfd/2/7/41/55.jpg')
+    #r = c.get('/sfd/2/7/41/55.jpg')
+    r = c.get('/cfht-cosmos-cahk/1/14/9556/8091.jpg')
     
     # Euclid colorization
     # for i in [3,]:#1,2]:

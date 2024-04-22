@@ -2,6 +2,8 @@ test_layers = []
 test_cats = []
 test_ccds = []
 
+test_layers.append(('cfht-cosmos-cahk', "CFHT CaH+K images"))
+
 # test_layers.append(("wiro-C", "WIRO C filter images"))
 # test_layers.append(("wiro-D", "WIRO D filter images"))
 # 
