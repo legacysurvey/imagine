@@ -629,7 +629,7 @@ var sga_popup = function(json, i) {
         var name = json['name'][i];
         var pgc = json['pgc'][i];
     var groupname = json['groupname'][i];
-	s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
+    s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=' + name + '">' + name + '</a>';
     s += '<br/>Group: ' + groupname;
         // matching map/cats.py : cat_sga
         r = json['radiusArcsec'][i] * 2 / 60.;
