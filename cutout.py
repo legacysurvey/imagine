@@ -19,7 +19,8 @@ def cutout_main():
     parser.add_argument('--size', type=int, default=CUTOUT_SIZE_DEFAULT, help='Pixel size of output, default %default')
     parser.add_argument('--width', type=int, default=None, help='Pixel width of output')
     parser.add_argument('--height', type=int, default=None, help='Pixel height of output')
-    parser.add_argument('--bands', default=','.join(CUTOUT_BANDS_DEFAULT), help='Bands to select for output, default %default')
+    #parser.add_argument('--bands', default=','.join(CUTOUT_BANDS_DEFAULT), help='Bands to select for output, default %default')
+    parser.add_argument('--bands', default=None, help='Bands to select for output, default %s for LS-DR9' % ','.join(CUTOUT_LAYER_DEFAULT))
     parser.add_argument('--layer', default=CUTOUT_LAYER_DEFAULT, help='Map layer to render, default %default')
     parser.add_argument('--invvar', default=False, action='store_true', help='Include Invvar extension for FITS outputs?')
     parser.add_argument('--maskbits', default=False, action='store_true', help='Include Maskbits extension for FITS outputs?')
@@ -27,7 +28,9 @@ def cutout_main():
     parser.add_argument('--force', default=False, action='store_true', help='Overwrite existing output file?  Default is to quit.')
 
     opt = parser.parse_args()
-    bands = opt.bands.split(',')
+    bands = None
+    if opt.bands is not None:
+        bands = opt.bands.split(',')
 
     return cutout(opt.ra, opt.dec, opt.output,
                   pixscale=opt.pixscale,
@@ -41,7 +44,7 @@ def cutout(ra, dec, output,
            width=None,
            height=None,
            size=CUTOUT_SIZE_DEFAULT,
-           bands=CUTOUT_BANDS_DEFAULT,
+           bands=None,
            layer=CUTOUT_LAYER_DEFAULT,
            invvar=False,
            maskbits=False,
