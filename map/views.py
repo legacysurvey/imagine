@@ -230,6 +230,10 @@ def layer_to_survey_name(layer):
     layer = layer.replace('-model', '')
     layer = layer.replace('-resid', '')
     layer = layer.replace('-grz', '')
+
+    if layer.startswith('odin'):
+        return 'odin'
+
     return layer
 
 # @needs_layer decorator.  Sets:
@@ -272,7 +276,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'odin-color-n501n673',
+           default_layer = 'odin-color',#-n501n673',
            default_radec = (None,None),
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
@@ -4869,14 +4873,14 @@ class OdinLayer(ReDecalsLayer):
         return get_rgb(imgs, bands, allbands=self.get_bands())
     def get_bands(self):
         return self.bands
-    def get_scaled_pattern(self):
-        # Scaled images come from
-        # data/scaled/odin-N501/.....
-        return os.path.join(
-            settings.DATA_DIR, 'scaled',
-            'odin-%(band)s',
-            '%(scale)i%(band)s', '%(brickname).3s',
-            self.imagetype + '-%(brickname)s-%(band)s.fits.fz')
+    # def get_scaled_pattern(self):
+    #     # Scaled images come from
+    #     # data/scaled/odin-N501/.....
+    #     return os.path.join(
+    #         settings.DATA_DIR, 'scaled',
+    #         'odin-%(band)s',
+    #         '%(scale)i%(band)s', '%(brickname).3s',
+    #         self.imagetype + '-%(brickname)s-%(band)s.fits.fz')
 
 class OdinSingleBandLayer(OdinLayer):
     def __init__(self, name, layer, survey, band, **kwargs):
@@ -4884,7 +4888,13 @@ class OdinSingleBandLayer(OdinLayer):
         self.band = band
     def get_bands(self):
         return [self.band]
-    
+    def get_ccds_for_brick(self, survey, brick):
+        ccds = super().get_ccds_for_brick(survey, brick)
+        print('ODIN single-band: got', len(ccds), 'CCDs')
+        from collections import Counter
+        print('Bands:', Counter(ccds.filter))
+        ccds.cut(ccds.filter == self.band)
+        return ccds
 # "PR"
 #rgbkwargs=dict(mnmx=(-0.3,100.), arcsinh=1.))
 
@@ -5560,12 +5570,19 @@ def get_survey(name):
         south.layer = 'dr9sv-south'
         survey = SplitSurveyData(north, south)
 
-    elif name in ['odin-N673', 'odin-N501', 'odin-N419', 'odin-all']:
-        survey = MultiCoaddLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
-
     elif name == 'dr10-deep':
         survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
         survey.bricksize = 0.025
+
+    elif name == 'odin':
+        survey = MultiCoaddLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+    # elif name in ['odin-N673', 'odin-N501', 'odin-N419', 'odin-all']:
+    #     survey = MultiCoaddLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
+    # elif name in ['odin-n419', 'odin-n501', 'odin-n673',]:
+    #               #'odin-N419', 'odin-N501', 'odin-N673']:
+    #     band = name[-4:].upper()
+    #     name2 = 'odin-' + band
+    #     return get_survey(name2)
 
     #print('dirnm', dirnm, 'exists?', os.path.exists(dirnm))
 
@@ -6344,6 +6361,7 @@ def exposures_common(req, tgz, copsf):
     print('Getting ccds_touching_wcs from layername =', layername, 'obj =', layer)
     CCDs = layer.ccds_touching_box(north, south, east, west)
     debug(len(CCDs), 'CCDs')
+    print('Survey:', survey)
     CCDs = touchup_ccds(CCDs, survey)
 
     print('CCDs:', CCDs.columns())
@@ -7450,29 +7468,33 @@ def get_layer(name, default=None):
     elif name in ['odin-n419', 'odin-n501', 'odin-n673',
                   'odin-N419', 'odin-N501', 'odin-N673']:
         band = name[-4:].upper()
-        name2 = 'odin-' + band
-        survey = get_survey(name2)
-        layer = OdinSingleBandLayer(name2, 'image', survey, band)
+        survey = get_survey('odin')
+        tilename = name
+        layer = OdinSingleBandLayer('odin', 'image', survey, band,
+                                    nocreate=True,
+                                    tiledir = os.path.join(settings.DATA_DIR, 'tiles', tilename))
 
-    elif name in ['odin-2band', 'odin-color-n501n673']:
-        name = 'odin-color-n501n673'
-        survey = get_survey('odin-all')
-        layer = OdinLayer('odin-all', 'image', survey, bands=['N501','N673'],
+    elif name in ['odin-color-n501n673']:
+        survey = get_survey('odin')
+        tilename = 'odin-color-n501n673'
+        layer = OdinLayer('odin', 'image', survey, bands=['N501','N673'],
                           nocreate=True,
-                          tiledir = os.path.join(settings.DATA_DIR, 'tiles', name))
+                          tiledir = os.path.join(settings.DATA_DIR, 'tiles', tilename))
 
     elif name in ['odin-color-n419n673']:
-        survey = get_survey('odin-all')
-        layer = OdinLayer('odin-all', 'image', survey, bands=['N419','N673'],
+        survey = get_survey('odin')
+        tilename = 'odin-color-n501n673'
+        layer = OdinLayer('odin', 'image', survey, bands=['N419','N673'],
                           nocreate=True,
-                          tiledir = os.path.join(settings.DATA_DIR, 'tiles', name))
+                          tiledir = os.path.join(settings.DATA_DIR, 'tiles', tilename))
 
-    elif name in ['odin-cosmos']:
-        survey = get_survey('odin-cosmos')
-        layer = OdinLayer('odin-cosmos', 'image', survey, bands=['N419','N501', 'N673'],
+    elif name in ['odin', 'odin-color']:
+        survey = get_survey('odin')
+        tilename = 'odin-color'
+        layer = OdinLayer('odin', 'image', survey, bands=['N419','N501', 'N673'],
                           nocreate=True,
-                          tiledir = os.path.join(settings.DATA_DIR, 'tiles', name))
-        
+                          tiledir = os.path.join(settings.DATA_DIR, 'tiles', tilename))
+
     elif name == 'hsc-dr3':
         layer = HscLayer('hsc-dr3')
 
@@ -7637,6 +7659,8 @@ def get_tile_view(name):
 def any_tile_view(request, name, ver, zoom, x, y, **kwargs):
     name = clean_layer_name(name)
     layer = get_layer(name)
+    print('Cleaned layer name:', name, '-> Layer', layer)
+    print('Layer tiledir:', layer.tiledir)
     if layer is None:
         return HttpResponse('no such layer')
     return layer.get_tile(request, ver, zoom, x, y, **kwargs)
@@ -8188,8 +8212,17 @@ if __name__ == '__main__':
 
     #r = c.get('/odin-color-n419n673/1/13/7383/4203.jpg')
 
-    r = c.get('/odin-color-n419n673/1/14/9643/8147.jpg')
-
+    #r = c.get('/odin-color-n419n673/1/14/9643/8147.jpg')
+    #r = c.get('/exposures/?ra=151.7909&dec=2.8738&layer=odin-n501')
+    #r = c.get('/data-for-radec/?ra=151.7909&dec=2.8738&layer=odin-n501&ralo=151.7756&rahi=151.8065&declo=2.8653&dechi=2.8823')
+    #r = c.get('/?ra=150.1674&dec=1.9974&layer=odin-n419&zoom=14')
+    #r = c.get('/odin-n419/1/13/4774/4050.jpg')
+    #r = c.get('/odin-n419/1/14/9549/8100.jpg')
+    #r = c.get('/odin-n501/1/14/14008/9597.jpg')
+    #r = c.get('/odin-n501/1/13/7004/4798.jpg')
+    #r = c.get('/odin-color/1/5/18/15.jpg')
+    #r = c.get('/odin-color-n501n673/1/5/18/15.jpg')
+    r = c.get('/odin-n673/1/5/18/15.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

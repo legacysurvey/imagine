@@ -198,16 +198,15 @@ def top_levels(mp, opt):
     import pylab as plt
     from viewer import settings
     import fitsio
-    from scipy.ndimage.filters import gaussian_filter
+    from scipy.ndimage import gaussian_filter
     from map.views import _unwise_to_rgb
     tag = opt.kind
 
     from map.views import get_layer
     layer = get_layer(opt.kind)
-
+    print('Layer name', opt.kind, '-> layer', layer)
     bands = layer.get_bands()
-
-    print('Layer:', layer)
+    print('Bands:', bands)
     #print('Survey:', layer.survey)
     #print('  cache_dir:', layer.survey.cache_dir)
 
@@ -227,22 +226,6 @@ def top_levels(mp, opt):
         bands = ['x']
     elif 'vlass' in opt.kind:
         bands = [1]
-    elif opt.kind in ['odin-deep23-n419']:
-        bands = ['N419']
-    elif opt.kind in ['odin-n419']:
-        bands = ['N419']
-    elif opt.kind in ['odin-n501']:
-        bands = ['N501']
-    elif opt.kind in ['odin-n673']:
-        bands = ['N673']
-    elif opt.kind == 'odin-color-n501n673':
-        opt.bands = ['N501', 'N673']
-    elif opt.kind == 'odin-color-n419n673':
-        opt.bands = ['N419', 'N673']
-    elif opt.kind == 'odin-cosmos':
-        opt.bands = ['N419', 'N501', 'N673']
-    #else:
-    #    bands = 'grz'
 
     if opt.bands is not None:
         bands = opt.bands
@@ -486,67 +469,79 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
 
-    elif opt.kind in ['odin-2band']:
-        if opt.maxdec is None:
-            opt.maxdec = 4.76
-        if opt.mindec is None:
-            opt.mindec = -0.39
-        if opt.minra is None:
-            opt.minra = 147.4
-        if opt.maxra is None:
-            opt.maxra = 152.8
-        if opt.bands is None:
-            opt.bands = ['N501','N673']
+    # elif opt.kind in ['odin-2band']:
+    #     if opt.maxdec is None:
+    #         opt.maxdec = 4.76
+    #     if opt.mindec is None:
+    #         opt.mindec = -0.39
+    #     if opt.minra is None:
+    #         opt.minra = 147.4
+    #     if opt.maxra is None:
+    #         opt.maxra = 152.8
+    #     if opt.bands is None:
+    #         opt.bands = ['N501','N673']
+    # 
+    # elif opt.kind == 'odin-cosmos':
+    #     if opt.bands is None:
+    #         opt.bands = ['N419', 'N501', 'N673']
+    #     if opt.maxdec is None:
+    #         opt.maxdec = 90
+    #     if opt.mindec is None:
+    #         opt.mindec = -90
+    #     if opt.minra is None:
+    #         opt.minra = 0
+    #     if opt.maxra is None:
+    #         opt.maxra = 360
+    #             
+    # elif opt.kind == 'odin-deep23-n419':
+    #     if opt.maxdec is None:
+    #         opt.maxdec = 2.
+    #     if opt.mindec is None:
+    #         opt.mindec = -3.
+    #     if opt.minra is None:
+    #         opt.minra = 349.
+    #     if opt.maxra is None:
+    #         opt.maxra = 355.
+    #     if opt.bands is None:
+    #         opt.bands = ['N419']
+    # 
+    # elif opt.kind in ['odin-n419', 'odin-n501', 'odin-n673', 'odin-all',
+    #                   'odin-color-n501n673', 'odin-color-n419n673']:
+    #     if opt.maxdec is None:
+    #         opt.maxdec = 40.
+    #     if opt.mindec is None:
+    #         opt.mindec = -90.
+    #     if opt.minra is None:
+    #         opt.minra = 0.
+    #     if opt.maxra is None:
+    #         opt.maxra = 360.
+    # 
+    #     if opt.bands is None:
+    #         if opt.kind == 'odin-n419':
+    #             opt.bands = ['N419']
+    #         elif opt.kind == 'odin-n501':
+    #             opt.bands = ['N501']
+    #         elif opt.kind == 'odin-n673':
+    #             opt.bands = ['N673']
+    #         elif opt.kind == 'odin-all':
+    #             opt.bands = ['N419', 'N501', 'N673']
+    #         elif opt.kind == 'odin-color-n501n673':
+    #             opt.bands = ['N501', 'N673']
+    #         elif opt.kind == 'odin-color-n419n673':
+    #             opt.bands = ['N419', 'N673']
 
-    elif opt.kind == 'odin-cosmos':
-        if opt.bands is None:
-            opt.bands = ['N419', 'N501', 'N673']
+    elif opt.kind == 'odin':
         if opt.maxdec is None:
-            opt.maxdec = 90
-        if opt.mindec is None:
-            opt.mindec = -90
-        if opt.minra is None:
-            opt.minra = 0
-        if opt.maxra is None:
-            opt.maxra = 360
-                
-    elif opt.kind == 'odin-deep23-n419':
-        if opt.maxdec is None:
-            opt.maxdec = 2.
-        if opt.mindec is None:
-            opt.mindec = -3.
-        if opt.minra is None:
-            opt.minra = 349.
-        if opt.maxra is None:
-            opt.maxra = 355.
-        if opt.bands is None:
-            opt.bands = ['N419']
-
-    elif opt.kind in ['odin-n419', 'odin-n501', 'odin-n673', 'odin-all',
-                      'odin-color-n501n673', 'odin-color-n419n673']:
-        if opt.maxdec is None:
-            opt.maxdec = 40.
+            opt.maxdec = 90.
         if opt.mindec is None:
             opt.mindec = -90.
-        if opt.minra is None:
-            opt.minra = 0.
         if opt.maxra is None:
             opt.maxra = 360.
-
+        if opt.minra is None:
+            opt.minra = 0.
         if opt.bands is None:
-            if opt.kind == 'odin-n419':
-                opt.bands = ['N419']
-            elif opt.kind == 'odin-n501':
-                opt.bands = ['N501']
-            elif opt.kind == 'odin-n673':
-                opt.bands = ['N673']
-            elif opt.kind == 'odin-all':
-                opt.bands = ['N419', 'N501', 'N673']
-            elif opt.kind == 'odin-color-n501n673':
-                opt.bands = ['N501', 'N673']
-            elif opt.kind == 'odin-color-n419n673':
-                opt.bands = ['N419', 'N673']
-            
+            opt.bands = ['N419', 'N501', 'N673']
+
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                        'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
@@ -726,12 +721,12 @@ def main():
         if opt.minra is None:
             opt.minra = 0
 
-    if opt.bands is None:
-        opt.bands = 'grz'
-
     if opt.top:
         top_levels(mp, opt)
         sys.exit(0)
+
+    #if opt.bands is None:
+    #    opt.bands = 'grz'
 
     if opt.bricks:
         from map.views import get_layer
@@ -794,9 +789,10 @@ def main():
                          'ls-dr9-south', 'ls-dr9-south-model',
                          'ls-dr9-north', 'ls-dr9-north-model',
 
-                         'odin-2band', 'odin-deep23-n419', 'odin-n673', 'odin-n501', 'odin-n419',
-                         'odin-all', 'odin-color-n501n673', 'odin-color-n419n673',
-                         'odin-cosmos',
+                         'odin',
+                         #'odin-2band', 'odin-deep23-n419', 'odin-n673', 'odin-n501', 'odin-n419',
+                         #'odin-all', 'odin-color-n501n673', 'odin-color-n419n673',
+                         #'odin-cosmos',
 
                          'ls-dr9.1.1', 'ls-dr9.1.1-model',
 
