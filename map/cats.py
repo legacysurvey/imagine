@@ -138,6 +138,48 @@ def gaia_stars_for_wcs(req):
     return HttpResponse(json.dumps(reply),
                         content_type='application/json')
 
+def call_prospect(spectra, zbests, redrock_template_dir=None, outdir=None):
+    import tempfile
+    import os
+    import prospect.viewer
+    import redrock.templates
+
+    if redrock_template_dir is None:
+        redrock_template_dir = os.path.join(settings.DATA_DIR, 'redrock-templates')
+    os.environ['RR_TEMPLATE_DIR'] = redrock_template_dir
+
+    if outdir is None:
+        tempdir = tempfile.TemporaryDirectory()
+        outdir = tempdir.name
+    elif not os.path.exists(outdir):
+        try:
+            os.makedirs(outdir)
+        except:
+            pass
+        if not os.path.exists(outdir):
+            print('Failed to create requested output directory', outdir)
+            outdir = None
+
+    outfn = os.path.join(outdir, 'prospect.html')
+    if os.path.exists(outfn):
+        print('Cache hit for', outfn)
+        return HttpResponse(open(outfn))
+
+    try:
+        tt = 'DESI Spectr%s: TARGETID %s' % (('a' if (len(zbests) > 1) else 'um'),
+                                             ', '.join(['%i'%i for i in zbests['TARGETID']]))
+        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir, outfile=outfn,
+                                    with_vi_widgets=False,
+                                    with_thumb_tab=False,
+                                    title=tt)
+        # colors=['color_for_spectrum', 'color_for_model', 'color_for_noise']
+        # color names html syntax; current default values '#D62728', 'black', 'green')
+    except KeyError:
+        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir,
+                                    with_vi_widgets=False, model_from_zcat=False)
+    f = open(outfn)
+    return HttpResponse(f)
+
 def cat_desi_release_spectra_detail(req, tile, fiber, release):
     from glob import glob
     from desispec.io import read_spectra
@@ -146,9 +188,6 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     from astropy.table import Table
     import astropy
     from desispec.spectra import stack
-    import tempfile
-    import os
-    import prospect.viewer
 
     tile = int(tile)
     fiber = int(fiber)
@@ -210,26 +249,7 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     # print('zcatalog:')
     # print(zbests)
 
-    import redrock.templates
-    os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
-    with tempfile.TemporaryDirectory() as d:
-        outfn = os.path.join(d, 'prospect.html')
-        try:
-            tt = 'DESI Spectr%s: TARGETID %s' % (('a' if (len(zbests) > 1) else 'um'),
-                                                 ', '.join(['%i'%i for i in zbests['TARGETID']]))
-            prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d, outfile=outfn,
-                                        with_vi_widgets=False,
-                                        with_thumb_tab=False,
-                                        title=tt)
-            # colors=['color_for_spectrum', 'color_for_model', 'color_for_noise']
-            # color names html syntax; current default values '#D62728', 'black', 'green')
-        except KeyError:
-            prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d,
-                                        with_vi_widgets=False, model_from_zcat=False)
-        f = open(outfn)
-        return HttpResponse(f)
-        
-    return HttpResponse('tile %i fiber %i' % (tile, fiber))
+    return call_prospect(spectra, zbests)
 
 def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     from glob import glob
@@ -239,12 +259,7 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     from astropy.table import Table
     import astropy
     from desispec.spectra import stack
-    import tempfile
     import os
-    import prospect.viewer
-
-    if redrock_template_dir is None:
-        redrock_template_dir = os.path.join(settings.DATA_DIR, 'redrock-templates')
 
     # Check the cache!
     outdir = None
@@ -297,18 +312,8 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
-    os.environ['RR_TEMPLATE_DIR'] = redrock_template_dir
-
-    if outdir is None:
-        # temp dir contents get deleted after this function returns (when td gets deleted)
-        td = tempfile.TemporaryDirectory()
-        outdir = td.name
-
-    prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir,
-                                with_vi_widgets=False)
-    fn = os.path.join(outdir, 'prospect.html')
-    print('Wrote prospect output', fn)
-    return HttpResponse(open(fn))
+    return call_prospect(spectra, zbests, redrock_template_dir=redrock_template_dir,
+                         outdir=outdir)
 
 def get_desi_spectro_kdfile(release):
     if release == 'edr':
