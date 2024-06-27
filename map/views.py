@@ -8357,7 +8357,8 @@ if __name__ == '__main__':
     #
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.262&invvar')
 
-    r = c.get('/sfd/2/7/41/55.jpg')
+    #r = c.get('/sfd/2/7/41/55.jpg')
+    r = c.get('/desi-spectrum/edr/targetid39628256290279019')
     
     # Euclid colorization
     # for i in [3,]:#1,2]:

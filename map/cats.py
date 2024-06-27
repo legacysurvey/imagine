@@ -205,16 +205,28 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
-    print('Passing to prospect: spectra:')
-    print(spectra)
-    print('zcatalog:')
-    print(zbests)
-    
+    # print('Passing to prospect: spectra:')
+    # print(spectra)
+    # print('zcatalog:')
+    # print(zbests)
+
+    import redrock.templates
     os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
     with tempfile.TemporaryDirectory() as d:
-        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d,
-                                    with_vi_widgets=False)
-        f = open(os.path.join(d, 'prospect.html')) #'specviewer_specviewer.html'))
+        outfn = os.path.join(d, 'prospect.html')
+        try:
+            tt = 'DESI Spectr%s: TARGETID %s' % (('a' if (len(zbests) > 1) else 'um'),
+                                                 ', '.join(['%i'%i for i in zbests['TARGETID']]))
+            prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d, outfile=outfn,
+                                        with_vi_widgets=False,
+                                        with_thumb_tab=False,
+                                        title=tt)
+            # colors=['color_for_spectrum', 'color_for_model', 'color_for_noise']
+            # color names html syntax; current default values '#D62728', 'black', 'green')
+        except KeyError:
+            prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d,
+                                        with_vi_widgets=False, model_from_zcat=False)
+        f = open(outfn)
         return HttpResponse(f)
         
     return HttpResponse('tile %i fiber %i' % (tile, fiber))
@@ -3319,7 +3331,9 @@ if __name__ == '__main__':
     #r = c.get('/desi-obs-daily/1/cat.json?ralo=146.9298&rahi=147.0535&declo=13.2322&dechi=13.2983')
     #r = c.get('/desi-obs/daily/targetid39628104741683680')
     #r = c.get('/desi-obs/daily/targetid2411699042779148')
-    r = c.get('/desi-obs-daily/1/cat.json?ralo=218.6108&rahi=218.6418&declo=30.9829&dechi=30.9974')
+    #r = c.get('/desi-obs-daily/1/cat.json?ralo=218.6108&rahi=218.6418&declo=30.9829&dechi=30.9974')
+    #r = c.get('/desi-spectrum/daily/targetid2305843037000968814')
+    r = c.get('/desi-spectrum/daily/targetid39627920582379819')
     f = open('out', 'wb')
     for x in r:
         f.write(x)
