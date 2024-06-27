@@ -4917,7 +4917,8 @@ class ZeaLayer(MapLayer):
         self.vmin = vmin
         self.vmax = vmax
 
-    def render_into_wcs(self, wcs, zoom, x, y, bands=None, tempfiles=None):
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, tempfiles=None, invvar=False):
+        assert(not invvar)
         import numpy as np
         xx,yy = np.meshgrid(np.arange(wcs.get_width()), np.arange(wcs.get_height()))
         rr,dd = wcs.pixelxy2radec(1. + xx.ravel(), 1. + yy.ravel())[-2:]
