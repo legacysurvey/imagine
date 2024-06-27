@@ -1123,25 +1123,36 @@ class MapLayer(object):
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
 
     def get_exposure_url(self, req, ccdlayername, expnum, ccdname,
-                         ccd, mydomain, ra, dec, size):
+                         ccd, mydomain, ra, dec, size, imgtype):
         url = my_reverse(req, 'exposure_panels', args=('LAYER', '12345', 'EXTNAME'))
         url = (url.replace('LAYER', '%(layer)s')
                .replace('12345', '%(expnum)i')
                .replace('EXTNAME', '%(ccdname)s'))
         url = req.build_absolute_uri(url)
-        # Deployment: https://{s}.DOMAIN/...
-        url = url.replace('://www.', '://')
-        # Yuck!
-        #url = url.replace('://decaps.', '://')
-
         if mydomain is not None:
             url = url.replace('://www.', '://%(domain)s.')
 
-        url +=  '?ra=%(ra).4f&dec=%(dec).4f&size=%(size)i'
+        url +=  '?ra=%(ra).4f&dec=%(dec).4f&size=%(size)i&kind=%(imgtype)s'
 
         theurl = url % dict(layer=ccdlayername, expnum=expnum, ccdname=ccdname, domain=mydomain,
-                            ra=ra, dec=dec, size=size)
+                            ra=ra, dec=dec, size=size, imgtype=imgtype)
         return theurl
+
+    def get_exposure_contents(self, req, ccdlayername, expnum, ccdname,
+                              ccd, mydomain, ra, dec, size):
+        contents = ['<img src="%s" width="%i" height="%i" />' % (
+            self.get_exposure_url(req, ccdlayername, int(ccd.expnum), ccd.ccdname.strip(),
+                                   ccd, mydomain, ra, dec, size, typ), size, size)
+                    for typ in ['image', 'weight', 'weightedimage', 'dq']]
+        return contents
+
+    def get_ccd_detail_url(self, req, layername, camera, expnum, ccdname, ccd, x, y, size):
+        url = my_reverse(req, 'ccd_detail_xhtml', args=(layername, '%s-%i-%s' % (camera, expnum, ccdname)))
+        url += '?rect=%i,%i,%i,%i' % (x-size, y-size, 2*size, 2*size)
+        return url
+
+    def has_exposure_tarball(self):
+        return True
 
     def has_cutouts(self):
         return False
@@ -3334,8 +3345,33 @@ class Decaps2Layer(ReDecalsLayer):
         self.have_ccd_data = False
 
     def get_exposure_url(self, req, ccdlayername, expnum, ccdname,
-                         ccd, mydomain, ra, dec, size):
-        return 'http://decaps.skymaps.info/release/data/files/EXPOSURES/DR2/' + ccd.image_filename.split('/')[-1]
+                         ccd, mydomain, ra, dec, size, typ):
+        fn = ccd.image_filename.split('/')[-1]
+        if typ == 'image':
+            pass
+        elif typ == 'weight':
+            fn = fn.replace('_ooi_', '_oow_')
+        elif typ == 'dq':
+            fn = fn.replace('_ooi_', '_ood_')
+        #return 'http://decaps.skymaps.info/release/data/files/EXPOSURES/DR2/' + fn
+        return 'https://decaps.rc.fas.harvard.edu/release/data/files/EXPOSURES/DR2/' + fn
+
+    def get_exposure_contents(self, req, ccdlayername, expnum, ccdname,
+                              ccd, mydomain, ra, dec, size):
+        cc = []
+        for typ in ['image', 'weight', 'dq']:
+            url = self.get_exposure_url(req, ccdlayername, expnum, ccdname,
+                                        ccd, mydomain, ra, dec, size, typ)
+            cc.append('<a href="' + url + '">' + url.split('/')[-1] + '</a>')
+
+        contents = [cc[0], cc[1], '', cc[2]]
+        return contents
+
+    def get_ccd_detail_url(self, req, layername, camera, expnum, ccdname, ccd, x, y, size):
+        return None
+
+    def has_exposure_tarball(self):
+        return False
 
     def get_base_filename(self, brick, band, invvar=False, **kwargs):
         # image-*.fits, invvar-*.fits, not .fz
@@ -7133,7 +7169,7 @@ def exposures_common(req, tgz, copsf):
 
     from django.shortcuts import render
 
-    ccdsx = []
+    ccds_list = []
     for i,(ccd,_,x,y) in enumerate(ccds):
         fn = ccd.image_filename.replace(settings.DATA_DIR + '/', '')
         ccdlayer = getattr(ccd, 'layer', layername)
@@ -7143,20 +7179,23 @@ def exposures_common(req, tgz, copsf):
         if len(domains):
             mydomain = domains[i % len(domains)]
 
-        theurl = layer.get_exposure_url(req, ccdlayer, int(ccd.expnum), ccd.ccdname.strip(),
-                                        ccd, mydomain, ra, dec, size*2)
-        print('URL:', theurl)
+        contents = layer.get_exposure_contents(req, ccdlayer, int(ccd.expnum), ccd.ccdname.strip(),
+                                               ccd, mydomain, ra, dec, int(size*2))
 
-        expurl = my_reverse(req, 'ccd_detail_xhtml', args=(layername, '%s-%i-%s' % (ccd.camera.strip(), int(ccd.expnum), ccd.ccdname.strip())))
-        expurl += '?rect=%i,%i,%i,%i' % (x-size, y-size, W, H)
+        expurl = layer.get_ccd_detail_url(req, ccdlayer, ccd.camera.strip(), int(ccd.expnum),
+                                          ccd.ccdname.strip(), ccd, x, y, size)
         cutstr = ''
         if 'ccd_cuts' in ccd.get_columns():
             if ccd.ccd_cuts != 0:
                 cutstr = ' <span style="color:red">(cut)</span>'
 
+        expstr = '%s %s %i %s' % (ccd.camera.strip(), ccd.filter.strip(), int(ccd.expnum),
+                                  ccd.ccdname.strip())
+        if expurl is not None:
+            expstr = '<a href="%s">%s</a>' % (expurl, expstr)
+
         ccdstr = '<br/>'.join([
-            'CCD <a href="%s">%s %s %i %s</a>, %.1f sec (x,y ~ %i,%i) %s' % (
-                expurl, ccd.camera, ccd.filter, ccd.expnum, ccd.ccdname, ccd.exptime, x, y, cutstr),
+            'CCD %s, %.1f sec (x,y ~ %i,%i) %s' % (expstr, ccd.exptime, x, y, cutstr),
             '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
             '<small>(observed %s @ %s = MJD %.6f)</small>' % (ccd.date_obs, ccd.ut, ccd.mjd_obs),
             '<small>(proposal id %s)</small>' % (ccd.propid),
@@ -7165,13 +7204,13 @@ def exposures_common(req, tgz, copsf):
             '<small><a href="%s">Direct link to JPL query</a></small>' % (
                 jpl_direct_url(ra, dec, ccd)),
         ])
-        ccdsx.append((ccdstr, theurl))
+        ccds_list.append((ccdstr,) + tuple(contents))
                       
     return render(req, 'exposures.html',
-                  dict(ra=ra, dec=dec, ccds=ccdsx, name=layername, layer=layername,
+                  dict(ra=ra, dec=dec, ccds=ccds_list, name=layername, layer=layername,
                        drname=getattr(survey, 'drname', layername),
                        brick=brick, brickx=brickx, bricky=bricky, size=W,
-                       showcut=showcut))
+                       showcut=showcut, has_tarball=layer.has_exposure_tarball()))
 
 def jpl_direct_url(ra, dec, ccd):
     from astrometry.util.starutil_numpy import ra2hmsstring, dec2dmsstring
