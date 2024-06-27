@@ -68,9 +68,9 @@
 <script>
 //'use strict';
 
- // this is just to reset the indent level for emacs javascript-mode;
- // the "{#" is a django template comment.
- {# }}}}} #}
+// this is just to reset the indent level for emacs javascript-mode;
+// the "{#" is a django template comment.
+ {# }}}} #}
 
 // Variables from django.
 
@@ -87,6 +87,8 @@ var usercat2_url = '{{ usercatalogurl2|safe }}';
 var usercat_url = '{{ usercatalogurl|safe }}';
 var tile_url = '{{ tileurl|safe }}';
 var maxNativeZoom = {{ maxNativeZoom }};
+
+var tile_layers = {{ tile_layers|safe }};
 
 var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
 var root_url = '{{ root_url }}';  // eg /viewer-dev
@@ -186,47 +188,47 @@ var MyTileLayer = L.TileLayer.extend({
 
 });
 
-// A subclass that switches URL patterns depending on zoom range.
+// A subclass that switches URL patterns depending on zoom range (incl subdomains)
 var ZoomRangeTileLayer = MyTileLayer.extend({
     options: {
         urlPatterns: [],
     },
+    initialize: function(options) {
+        L.TileLayer.prototype.initialize.call(this, '', options);
+        //this.urlPatterns = patterns;
+    },
 	getTileUrl: function (tilePoint) {
-        var urlpat = this._getUrlPattern(tilePoint.z);
-		return L.Util.template(urlpat, L.extend({
-			s: this._getSubdomain(tilePoint),
-			z: tilePoint.z,
-			x: tilePoint.x,
-			y: tilePoint.y
-		}, this.options));
-	},
-    _getUrlPattern: function (zoom) {
-        var url = this._url;
+        var zoom = tilePoint.z;
         for (var i=0; i<this.options.urlPatterns.length; i++) {
             var zlo  = this.options.urlPatterns[i][0];
             var zhi  = this.options.urlPatterns[i][1];
+            if ((zoom < zlo) || (zoom > zhi))
+                continue;
             var zurl = this.options.urlPatterns[i][2];
-            if ((zoom >= zlo) && (zoom <= zhi)) {
-                url = zurl;
-            }
+            var zsubs = this.options.urlPatterns[i][3];
+		    var index = Math.abs(tilePoint.x + tilePoint.y) % zsubs.length;
+		    var sub = zsubs[index];
+		    return L.Util.template(zurl, L.extend({
+			    s: sub,
+			    z: tilePoint.z,
+			    x: tilePoint.x,
+			    y: tilePoint.y
+		    }, this.options));
         }
-        return url;
-    },
+	},
 });
 
 var SplitTileLayer = MyTileLayer.extend({
-
-    // new SplitTileLayer(static_tile_url_B, ysplits,
-    //                    north_args, mid_args, south_args);
-    initialize: function(url, args, ysplits, north_args, mid_args, south_args) {
-        L.TileLayer.prototype.initialize.call(this, url, args);
-        this._url = url;
+    initialize: function(ysplits, north_layer, mid_layer, south_layer, options) {
+        L.TileLayer.prototype.initialize.call(this, '', options);
         this._ysplits = ysplits;
-        this._north_args = north_args;
-        this._mid_args = mid_args;
-        this._south_args = south_args;
+        this._north_layer = north_layer;
+        this._mid_layer = mid_layer;
+        this._south_layer = south_layer;
+        console.log('SplitTileLayer: north ' + this._north_layer);
+        console.log('SplitTileLayer: mid ' + this._mid_layer);
+        console.log('SplitTileLayer: south ' + this._south_layer);
     },
-
 	getTileUrl: function (tile) {
         tilesize = this.getTileSize();
         tw = tilesize.x;
@@ -237,46 +239,59 @@ var SplitTileLayer = MyTileLayer.extend({
         var ysplit = this._ysplits[tile.z];
         // check NGC/SGC
         if (!latlong_is_ngc(tilelatlng)) {
+            //console.log('SplitTileLayer.getTileUrl: SGC');
             // SGC -- south, except for way zoomed-out layers
-            if ((tile.z < 5) && (tile.y == ysplit))
-                opts = this._mid_args;
-            else
-                opts = this._south_args;
+            if ((tile.z < 5) && (tile.y == ysplit)) {
+                //console.log('SGC / mid');
+                layer = this._mid_layer;
+            } else {
+                //console.log('SGC / south');
+                layer = this._south_layer;
+            }
         } else {
             // y=0 is the top!
             var urlpat;
             var opts;
-            if (tile.y < ysplit)
-                opts = this._north_args;
-            else if (tile.y > ysplit)
-                opts = this._south_args;
-            else
-                opts = this._mid_args;
-        }
-        urlpat = this._getUrlPattern(tile.z, opts['urlPatterns']);
-		var url = L.Util.template(urlpat, L.extend({
-			s: this._getSubdomain(tile),
-			z: tile.z,
-			x: tile.x,
-			y: tile.y
-		}, opts));
-        //console.log('-> ', url);
-        return url;
-	},
-
-    _getUrlPattern: function (zoom, patterns) {
-        for (var i=0; i<patterns.length; i++) {
-            var zlo  = patterns[i][0];
-            var zhi  = patterns[i][1];
-            if ((zoom >= zlo) && (zoom <= zhi)) {
-                return patterns[i][2];
+            //console.log('NGC: tile.y ' + tile.y + ', ysplit ' + ysplit);
+            if (tile.y < ysplit) {
+                //console.log('NGC/north');
+                layer = this._north_layer;
+            } else if (tile.y > ysplit) {
+                //console.log('NGC/south');
+                layer = this._south_layer;
+            } else {
+                //console.log('NGC/mid');
+                layer = this._mid_layer;
             }
         }
-        return this._url;
-    },
+        var url = layer.getTileUrl(tile);
+        return url;
+	},
 });
 
- 
+function split_layer(name, pretty, decsplit,
+                     north_layer, mid_layer, south_layer, kwargs) {
+    var args = {
+        maxZoom: maxZoom,
+        minZoom: minZoom,
+        maxNativeZoom: maxNativeZoom,
+    };
+    for (var key in kwargs) {
+        args[key] = kwargs[key];
+    }
+    var ysplits = {};
+    for (var zoom=0; zoom<20; zoom++) {
+        // Thanks, https://en.wikipedia.org/wiki/Web_Mercator
+        y = Math.pow(2, zoom) / (2. * Math.PI) *
+            (Math.PI - Math.log(Math.tan(Math.PI/4. + (Math.PI / 180. * decsplit) / 2.)));
+        ysplits[zoom] = Math.floor(y);
+    }
+    var tiles = new SplitTileLayer(ysplits, north_layer, mid_layer, south_layer, args);
+    tiles.name = name;
+    tiles.pretty = pretty;
+    return tiles;
+};
+
 // for attaching leaflet.Labels to circles
 L.Circle.include(L.BaseMarkerMethods);
 
@@ -626,7 +641,7 @@ var sga_popup = function(json, i) {
         var name = json['name'][i];
         var pgc = json['pgc'][i];
     var groupname = json['groupname'][i];
-	s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=PGC' + pgc + '">' + name + '</a>';
+    s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=' + name + '">' + name + '</a>';
     s += '<br/>Group: ' + groupname;
         // matching map/cats.py : cat_sga
         r = json['radiusArcsec'][i] * 2 / 60.;
@@ -1654,7 +1669,7 @@ var map = L.map('map', {
 var popup = L.popup();
 
 map.attributionControl.options.prefix = '<a href="https://www.legacysurvey.org/svtips/">Tips &amp; Tricks | ' +
-     map.attributionControl.options.prefix + ' | <a href="http://github.com/legacysurvey/decals-web">Source</a>';
+     map.attributionControl.options.prefix + ' | <a href="https://github.com/legacysurvey/imagine">Source</a>';
 
 // default to 1.
 var tileversions = {
@@ -1691,827 +1706,239 @@ function getcatversion(layer) {
 
 var allLayers = [];
 
-var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>';
-var unwise_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; unWISE / NASA/JPL-Caltech / D.Lang (Perimeter Institute)</a>';
-var sdss_attrib = '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>';
-var des_attrib = '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">The Dark Energy Survey Data Release 1</a>';
-var hsc_attrib = '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>';
-var vlass_attrib = '<a href="https://public.nrao.edu/media-use/">&copy;</a> <a href="https://public.nrao.edu/vlass/">NRAO / VLA Sky Survey</a>';
-var galex_attrib = '<a href="https://www.jpl.nasa.gov/imagepolicy/">&copy;</a> <a href="http://www.galex.caltech.edu/">GALEX, Courtesy NASA/JPL-Caltech</a>';
-var halpha_attrib = '<a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">&copy;</a> <a href="https://amundsen.swarthmore.edu/SHASSA/">SHASSA</a>/<a href="https://www1.phys.vt.edu/~halpha/">VTSS</a>/<a href="http://www.astro.wisc.edu/wham-site/">WHAM</a> <a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">composite by Doug Finkbeiner (skymaps.info)</a>';
-var sfd_attrib = '<a href="https://dustmaps.readthedocs.io/en/latest/maps.html#sfd">&copy; SFD</a>';
-var ps1_attrib = 'Pan-STARRS1';
-
-var mylayer = function (name, pretty, kwargs) {
-    var args = {
-        maxZoom: maxZoom,
-        minZoom: minZoom,
-        maxNativeZoom: maxNativeZoom,
-        attribution: decals_attrib,
-        id: name,
-        ver: getversion(name),
-        unloadInvisibleTiles: true,
-        subdomains: subdomains,
-    };
-    for (var key in kwargs) {
-        args[key] = kwargs[key];
-    }
-    var tiles = new ZoomRangeTileLayer(static_tile_url, args);
-    tiles.name = name;
-    tiles.pretty = pretty;
-    return tiles;
+var attribs = {
+    'ls': '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>',
+    'hsc': '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>',
+    'sdss': '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>',
+    'galex': '<a href="https://www.jpl.nasa.gov/imagepolicy/">&copy;</a> <a href="http://www.galex.caltech.edu/">GALEX, Courtesy NASA/JPL-Caltech</a>',
+    'sfd': '<a href="https://dustmaps.readthedocs.io/en/latest/maps.html#sfd">&copy; SFD</a>',
+    'wssa': '<a href="https://faun.rc.fas.harvard.edu/ameisner/wssa/processing.html">WISE 12-micron map processed by Aaron Meisner</a>',
+    'halpha': '<a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">&copy;</a> <a href="https://amundsen.swarthmore.edu/SHASSA/">SHASSA</a>/<a href="https://www1.phys.vt.edu/~halpha/">VTSS</a>/<a href="http://www.astro.wisc.edu/wham-site/">WHAM</a> <a href="https://faun.rc.fas.harvard.edu/dfink/skymaps/halpha/">composite by Doug Finkbeiner (skymaps.info)</a>',
+    'vlass': '<a href="https://public.nrao.edu/media-use/">&copy;</a> <a href="https://public.nrao.edu/vlass/">NRAO / VLA Sky Survey</a>',
+    'des': '<a href="https://des.ncsa.illinois.edu/terms">&copy;</a> <a href="https://www.darkenergysurvey.org/">The Dark Energy Survey Data Release 1</a>',
+    'ps1': 'Pan-STARRS1',
+    'unwise': '<a href="https://www.legacysurvey.org/acknowledgment">&copy; unWISE / NASA/JPL-Caltech / D.Lang (Perimeter Institute)</a>',
 };
+
+var decals_attrib = '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>';
 
 var tiles;
 
 var defaultTile = null;
 
-var mylayer_B = function (name, pretty, kwargs) {
+var get_tile_layer = function(name) {
+    var layer = tile_layers[name];
+    //console.log('Layer', name, ':', layer);
+
+    var pretty = layer[0];
+    var urls = layer[1];
+    var maxnativezoom = layer[2];
+    var attrib = layer[3];
+    if (attrib in attribs)
+        attrib = attribs[attrib];
+    var kwargs = {};
+    if (layer.length == 5)
+        kwargs = layer[4];
+
     var args = {
         maxZoom: maxZoom,
         minZoom: minZoom,
-        maxNativeZoom: maxNativeZoom,
-        attribution: decals_attrib,
+        maxNativeZoom: maxnativezoom,
+        attribution: attrib,
         id: name,
         ver: getversion(name),
         unloadInvisibleTiles: true,
-        subdomains: subdomains_B,
+        urlPatterns: urls,
     };
     for (var key in kwargs) {
         args[key] = kwargs[key];
     }
-    var tiles = new ZoomRangeTileLayer(static_tile_url_B, args);
+    var tiles = new ZoomRangeTileLayer(args);
     tiles.name = name;
     tiles.pretty = pretty;
     return tiles;
-};
-
-function split_layer(name, pretty, decsplit,
-                     north_name, north_urls, north_kwargs,
-                     mid_name,   mid_urls,   mid_kwargs,
-                     south_name, south_urls, south_kwargs,
-                     kwargs) {
-    var args = {
-        maxZoom: maxZoom,
-        minZoom: minZoom,
-        maxNativeZoom: maxNativeZoom,
-        attribution: decals_attrib,
-        unloadInvisibleTiles: true,
-        subdomains: subdomains_B,
-    };
-    for (var key in kwargs) {
-        args[key] = kwargs[key];
-    }
-    var north_args = Object.assign(
-        {},
-        args,
-        { id: north_name, ver: getversion(north_name),
-          urlPatterns: north_urls},
-        north_kwargs);
-    var mid_args = Object.assign(
-        {},
-        args,
-        { id: mid_name, ver: getversion(mid_name),
-          urlPatterns: mid_urls},
-        mid_kwargs);
-    var south_args = Object.assign(
-        {},
-        args,
-        { id: south_name, ver: getversion(south_name),
-          urlPatterns: south_urls},
-        south_kwargs);
-
-    //console.log('split_layer: north', north_args, 'mid', mid_args, 'south', south_args);
-    
-    var ysplits = {};
-    for (var zoom=0; zoom<20; zoom++) {
-        // Thanks, https://en.wikipedia.org/wiki/Web_Mercator
-        y = Math.pow(2, zoom) / (2. * Math.PI) *
-            (Math.PI - Math.log(Math.tan(Math.PI/4. + (Math.PI / 180. * decsplit) / 2.)));
-        ysplits[zoom] = Math.floor(y);
-        //console.log('Dec split', decsplit, 'zoom', zoom, '-> y', ysplits[zoom]);
-    }
-    var tiles = new SplitTileLayer(tile_url, args, ysplits,
-                                   north_args, mid_args, south_args);
-    tiles.name = name;
-    tiles.pretty = pretty;
-    return tiles;
-};
-                                            
-tiles = mylayer_B('des-dr1', 'DES DR1',
-                  {'attribution': des_attrib,
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-{% if enable_pandas %}
-tiles = mylayer_B('pandas', 'PANDAS',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-tiles = mylayer_B('ls-dr9.1.1-model', 'Legacy Surveys DR9.1.1 COSMOS deep models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('ls-dr9.1.1-resid', 'Legacy Surveys DR9.1.1 COSMOS deep residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
-{% if enable_dr10 %}
-
-tiles = split_layer('ls-dr10', 'Legacy Surveys DR10 images', 32.375,
-                    // North
-                    'ls-dr9-north', [
-                      [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
-                      [15, maxZoom, tile_url], ],
-                    {'id':'ls-dr9-north'},
-                    // Mid
-		            'ls-dr10', [ [0, maxZoom, tile_url], ],
-                    {'id':'ls-dr10'},
-                    // South
-                    'ls-dr10-south', [
-                      [0, maxZoom, tile_url], ],
-                    {'id':'ls-dr10-south'},
-                    {}
-                   );
-allLayers.push(tiles);
-
-tiles = split_layer('ls-dr10-model', 'Legacy Surveys DR10 models', 32.375,
-                    // North
-                    'ls-dr9-north-model', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr10-model', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'ls-dr10-south-model', [ [0, maxZoom, tile_url], ], {},
-                    {}
-                   );
-allLayers.push(tiles);
-
-tiles = split_layer('ls-dr10-resid', 'Legacy Surveys DR10 residuals', 32.375,
-                    // North
-                    'ls-dr9-north-resid', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr10-resid', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'ls-dr10-south-resid', [ [0, maxZoom, tile_url], ], {},
-                    {}
-                   );
-allLayers.push(tiles);
-
-
-tiles = mylayer_B('ls-dr10-south', 'Legacy Surveys DR10-south images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('ls-dr10-south-model', 'Legacy Surveys DR10-south models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('ls-dr10-south-resid', 'Legacy Surveys DR10-south residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
-tiles = split_layer('ls-dr10-grz', 'Legacy Surveys DR10 images (grz)', 32.375,
-                    // North
-                    'ls-dr9-north', [
-                      [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
-                      [15, maxZoom, tile_url], ],
-                    {'id':'ls-dr9-north'},
-                    // Mid
-		            'ls-dr10-grz', [ [0, maxZoom, tile_url], ],
-                    {'id':'ls-dr10-grz'},
-                    // South
-                    'ls-dr10-south-grz', [
-                      [0, maxZoom, tile_url], ],
-                    {'id':'ls-dr10-south-grz'},
-                    {}
-                   );
-allLayers.push(tiles);
-
-tiles = split_layer('ls-dr10-model-grz', 'Legacy Surveys DR10 models (grz)', 32.375,
-                    // North
-                    'ls-dr9-north-model', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr10-model-grz', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'ls-dr10-south-model-grz', [ [0, maxZoom, tile_url], ], {},
-                    {}
-                   );
-allLayers.push(tiles);
-
-tiles = split_layer('ls-dr10-resid-grz', 'Legacy Surveys DR10 residuals (grz)', 32.375,
-                    // North
-                    'ls-dr9-north-resid', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr10-resid-grz', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'ls-dr10-south-resid-grz', [ [0, maxZoom, tile_url], ], {},
-                    {}
-                   );
-allLayers.push(tiles);
-
-
-tiles = mylayer_B('ls-dr10-south-grz', 'Legacy Surveys DR10-south images (grz)',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('ls-dr10-south-model-grz', 'Legacy Surveys DR10-south models (grz)',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('ls-dr10-south-resid-grz', 'Legacy Surveys DR10-south residuals (grz)',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
-
-{% endif %}
-{% if enable_dr10_early %}
-
-tiles = mylayer_B('ls-dr10-early', 'Legacy Surveys DR10-early',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('ls-dr10-early-grz', 'Legacy Surveys DR10-early (grz)',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-{% endif %}
-{% if enable_dr10a %}
-
-tiles = mylayer_B('ls-dr10a', 'Legacy Surveys DR10a images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('ls-dr10a-model', 'Legacy Surveys DR10a models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('ls-dr10a-resid', 'Legacy Surveys DR10a residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-tiles = mylayer_B('ls-dr9.1.1', 'Legacy Surveys DR9.1.1 COSMOS deep images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('ls-dr9.1.1-model', 'Legacy Surveys DR9.1.1 COSMOS deep models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('ls-dr9.1.1-resid', 'Legacy Surveys DR9.1.1 COSMOS deep residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
-
-{% if enable_dr9 %}
-tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images',
-                    32.375,
-                    // North
-                    'ls-dr9-north', [
-                      [0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-north.legacysurvey.org/{z}/{x}/{y}.jpg'],
-                      [15, maxZoom, tile_url], ],
-                    //'ls-dr9-north', [ [0, max_aws_zoom, aws_tile_url], ],
-                    {'id':'ls-dr9-north'},
-                    // Mid
-		            'ls-dr9', [ [0, maxZoom, tile_url], ],
-		            //'ls-dr9', [ [0, max_aws_zoom, aws_tile_url], ],
-                    {'id':'ls-dr9'},
-                    // South
-                    'ls-dr9-south', [
-                      //[0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg'],
-                      //[15, maxZoom, tile_url], ],
-                      [0, maxZoom, tile_url], ],
-                    //'ls-dr9-south', [ [0, max_aws_zoom, aws_tile_url], ],
-                    {'id':'ls-dr9-south'},
-                    //{ 'maxNativeZoom': max_aws_zoom }
-                    {}
-                   );
-allLayers.push(tiles);
-{% if enable_dr9_models %}
-tiles = split_layer('ls-dr9-model', 'Legacy Surveys DR9 models',
-                    32.375,
-                    // North
-                    'ls-dr9-north-model', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr9-model', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'ls-dr9-south-model', [ [0, maxZoom, tile_url], ], {},
-                    //{ 'maxNativeZoom': max_aws_zoom }
-                    {}
-                   );
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr9_resids %}
-tiles = split_layer('ls-dr9-resid', 'Legacy Surveys DR9 residuals',
-                    32.375,
-                    // North
-                    'ls-dr9-north-resid', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr9-resid', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'ls-dr9-south-resid', [ [0, maxZoom, tile_url], ], {},
-                    //{ 'maxNativeZoom': max_aws_zoom, },
-                    {}
-                   );
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-{% if enable_dr9_north %}
-tiles = mylayer_B('ls-dr9-north', 'Legacy Surveys DR9-north images',
-                  {
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],
-                   //'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
-                   //'maxNativeZoom':max_aws_zoom,
-                   //'id': 'dr9-north'
-                  });
-allLayers.push(tiles);
-{% if enable_dr9_north_models %}
-tiles = mylayer_B('ls-dr9-north-model', 'Legacy Surveys DR9-north models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr9_north_resids %}
-tiles = mylayer_B('ls-dr9-north-resid', 'Legacy Surveys DR9-north residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-{% if enable_dr9_south %}
-tiles = mylayer_B('ls-dr9-south', 'Legacy Surveys DR9-south images',
-                  {//'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
-                   //'maxNativeZoom':max_aws_zoom,
-                   //'id': 'dr9-south'}
-                  'urlPatterns': [ [0, maxZoom, tile_url], ],
-                  }
-);
-allLayers.push(tiles);
-{% if enable_dr9_south_models %}
-tiles = mylayer_B('ls-dr9-south-model', 'Legacy Surveys DR9-south models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr9_south_resids %}
-tiles = mylayer_B('ls-dr9-south-resid', 'Legacy Surveys DR9-south residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-
-
-
-
-
-{% if enable_dr9sv %}
-tiles = split_layer('dr9sv', 'Legacy Surveys DR9-SV images',
-                    32.375,
-                    // North
-                    'dr9sv-north', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'dr9sv', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'dr9sv-south', [ [0, maxZoom, tile_url], ], {},
-                    {}
-                   );
-allLayers.push(tiles);
-{% if enable_dr9sv_models %}
-tiles = split_layer('dr9sv-model', 'Legacy Surveys DR9-SV models',
-                    32.375,
-                    // North
-                    'dr9sv-north-model', [ [0, maxZoom, tile_url], ],
-                    // Mid
-                    'dr9sv-model', [ [0, maxZoom, tile_url], ],
-                    // South
-                    'dr9sv-south-model', [ [0, maxZoom, tile_url], ],
-                   );
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr9sv_resids %}
-tiles = split_layer('dr9sv-resid', 'Legacy Surveys DR9-SV residuals',
-                    32.375,
-                    // North
-                    'dr9sv-north-resid', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'dr9sv-resid', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'dr9sv-south-resid', [ [0, maxZoom, tile_url], ], {},
-                    {});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-{% if enable_dr9sv_north %}
-tiles = mylayer_B('dr9sv-north', 'Legacy Surveys DR9-SV-north images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% if enable_dr9sv_north_models %}
-tiles = mylayer_B('dr9sv-north-model', 'Legacy Surveys DR9-SV-north models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr9sv_north_resids %}
-tiles = mylayer_B('dr9sv-north-resid', 'Legacy Surveys DR9-SV-north residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-{% if enable_dr9sv_south %}
-tiles = mylayer_B('dr9sv-south', 'Legacy Surveys DR9-SV-south images',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ], });
-allLayers.push(tiles);
-{% if enable_dr9sv_south_models %}
-tiles = mylayer_B('dr9sv-south-model', 'Legacy Surveys DR9-SV-south models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr9sv_south_resids %}
-tiles = mylayer_B('dr9sv-south-resid', 'Legacy Surveys DR9-SV-south residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-
-{% if enable_dr8 %}
-tiles = split_layer('ls-dr8', 'Legacy Surveys DR8 images',
-                    32.375,
-                    // North
-                    //'dr8-north', [ [0, maxZoom, tile_url], ],
-                    'ls-dr8-north', [ [0, max_aws_zoom, aws_tile_url], ], {'id':'dr8-north'},
-                    // Mid
-		            //'dr8', [ [0, maxZoom, tile_url], ],
-		            'ls-dr8', [ [0, max_aws_zoom, aws_tile_url], ], {'id':'dr8'},
-                    // South
-                    //'dr8-south', [ [0, maxZoom, tile_url], ]
-                    'ls-dr8-south', [ [0, max_aws_zoom, aws_tile_url], ], {'id':'dr8-south'},
-                    { 'maxNativeZoom': max_aws_zoom }
-                   );
-allLayers.push(tiles);
-{% if enable_dr8_models %}
-tiles = split_layer('ls-dr8-model', 'Legacy Surveys DR8 models',
-                    32.375,
-                    // North
-                    'ls-dr8-north-model', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr8-model', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'ls-dr8-south-model', [ [0, maxZoom, tile_url], ], {},
-                    { 'maxNativeZoom': max_aws_zoom }
-                   );
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr8_resids %}
-tiles = split_layer('ls-dr8-resid', 'Legacy Surveys DR8 residuals',
-                    32.375,
-                    // North
-                    'ls-dr8-north-resid', [ [0, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr8-resid', [ [0, maxZoom, tile_url], ], {},
-                    // South
-                    'ls-dr8-south-resid', [ [0, maxZoom, tile_url], ], {},
-                    { 'maxNativeZoom': max_aws_zoom, },
-                   );
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-{% if enable_dr8_north %}
-tiles = mylayer_B('ls-dr8-north', 'Legacy Surveys DR8-north images',
-                  {'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
-                   'maxNativeZoom':max_aws_zoom,
-                   'id': 'dr8-north'});
-allLayers.push(tiles);
-{% if enable_dr8_north_models %}
-tiles = mylayer_B('ls-dr8-north-model', 'Legacy Surveys DR8-north models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr8_north_resids %}
-tiles = mylayer_B('ls-dr8-north-resid', 'Legacy Surveys DR8-north residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-{% if enable_dr8_south %}
-tiles = mylayer_B('ls-dr8-south', 'Legacy Surveys DR8-south images',
-                  {'urlPatterns': [ [0, max_aws_zoom, aws_tile_url], ],
-                   'maxNativeZoom':max_aws_zoom,
-                   'id': 'dr8-south'});
-allLayers.push(tiles);
-{% if enable_dr8_south_models %}
-tiles = mylayer_B('ls-dr8-south-model', 'Legacy Surveys DR8-south models',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr8_south_resids %}
-tiles = mylayer_B('ls-dr8-south-resid', 'Legacy Surveys DR8-south residuals',
-                  {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-{% if enable_dr67 %}
-tiles = split_layer('ls-dr67', 'Legacy Surveys DR6+DR7 images',
-                    32.,
-                    // North
-                    'mzls+bass-dr6', [ [13, maxZoom, tile_url], ], {},
-                    // Mid
-                    'ls-dr67', [ [14, maxZoom, tile_url], ], {},
-                    // South
-                    'decals-dr7', [ [11, maxZoom, tile_url], ], {},
-                    {});
-allLayers.push(tiles);
-{% endif %}
-
-testLayers = [];
-{% if enable_dev %}
-{% for name,pretty in test_layers %}
-  tiles = mylayer_B('{{name}}', '{{pretty}}',
-                    {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-  allLayers.push(tiles);
-  testLayers.push(tiles);
-{% endfor %}
-{% endif %}
-
-
-
-{% if enable_dr7 %}
-tiles = mylayer_B('decals-dr7', 'DECaLS DR7 images',
-                  {'urlPatterns': [ [11, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% if enable_dr7_models %}
-tiles = mylayer_B('decals-dr7-model', 'DECaLS DR7 models',
-                  {'urlPatterns': [ [10, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% if enable_dr7_resids %}
-tiles = mylayer_B('decals-dr7-resid', 'DECaLS DR7 residuals',
-                {'urlPatterns': [ [10, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-
-
-{% endif %}
-
-{% if enable_dr6 %}
-tiles = mylayer_B('mzls+bass-dr6', 'MzLS+BASS DR6 images',
-                {'urlPatterns': [ [13, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-if (defaultTile == null) {
-    defaultTile = tiles;
 }
-
-{% if enable_dr6_models %}
-tiles = mylayer_B('mzls+bass-dr6-model', 'MzLS+BASS DR6 models',
-                  {'urlPatterns': [ [13, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-                                            
-{% if enable_dr6_resids %}
-tiles = mylayer_B('mzls+bass-dr6-resid', 'MzLS+BASS DR6 residuals',
-                  {'urlPatterns': [ [13, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-{% if enable_dr5 %}
-tiles = mylayer_B('decals-dr5', 'DECaLS DR5 images',
-                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-if (defaultTile == null) {
-    defaultTile = tiles;
-}
-
-{% if enable_dr5_models %}
-tiles = mylayer_B('decals-dr5-model', 'DECaLS DR5 models',
-                  {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-{% if enable_dr5_resids %}
-tiles = mylayer_B('decals-dr5-resid', 'DECaLS DR5 residuals',
-                {'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-{% endif %}
-
-{% if enable_decaps %}
-tiles = mylayer_B('decaps', 'DECaPS1 images',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('decaps-model', 'DECaPS models',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('decaps-resid', 'DECaPS residuals',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
-tiles = mylayer_B('decaps2', 'DECaPS 2 images',
-                  {//'maxNativeZoom': 13,
-                   //'urlPatterns': [ [14, maxZoom, tile_url], ],});
-                   'urlPatterns': [ [1 , maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('decaps2-model', 'DECaPS 2 models',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('decaps2-resid', 'DECaPS 2 residuals',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
-
-tiles = mylayer_B('decaps2-riy', 'DECaPS 2 images (riY)',
-                  {//'maxNativeZoom': 13,
-                   //'urlPatterns': [ [14, maxZoom, tile_url], ],});
-                   'urlPatterns': [ [1 , maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('decaps2-model-riy', 'DECaPS 2 models (riY)',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-tiles = mylayer_B('decaps2-resid-riy', 'DECaPS 2 residuals (riY)',
-                  {//'maxNativeZoom': 13,
-                   'urlPatterns': [ [1, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-
-{% endif %}
-
-{% if enable_eboss %}
-tiles = mylayer('eboss', 'special eBOSS region',
-                {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-{% if enable_phat %}
-tiles = mylayer('phat', 'PHAT image',
-                  {'attribution': 'PHAT collaboration',
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],
-                   'maxNativeZoom': maxZoom,});
-allLayers.push(tiles);
-{% endif %}
-
-{% if enable_m33 %}
-tiles = mylayer_B('m33', 'M33 image',
-                  {'attribution': 'M33 collaboration',
-                   'urlPatterns': [ [17, maxZoom, tile_url], ],
-                   'maxNativeZoom': maxZoom,});
-allLayers.push(tiles);
-{% endif %}
-
-tiles = mylayer_B('sdss', 'SDSS',
-                  {'attribution': sdss_attrib,
-                   'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('ztf', 'ZTF',
-                  {'attribution': 'ZTF',
-                   'urlPatterns': [ [1, maxZoom, tile_url], ],
-                   'maxNativeZoom': 12,});
-allLayers.push(tiles);
-
-{% if enable_ps1 %}
-tiles = mylayer_B('ps1', 'Pan-STARRS1',
-                  {'attribution': ps1_attrib,
-                   'urlPatterns': [ [8, maxZoom, tile_url], ],});
-                  //'urlPatterns': [ [14, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-{% if enable_hsc_dr2 %}
-tiles = mylayer_B('hsc-dr2', 'HSC DR2',
-                  {'attribution': hsc_attrib,
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('hsc-dr3', 'HSC DR3',
-                  {'attribution': hsc_attrib,
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-{% endif %}
-
-  {% if enable_merian %}
-tiles = mylayer_B('merian-n540', 'Merian N540',
-                  {'attribution': '',
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('merian-n708', 'Merian N708',
-                  {'attribution': '',
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-  {% endif %}
-  
-
-// tiles = mylayer_B('outliers-ast', 'Asteroids test: outliers',
-//                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-// allLayers.push(tiles);
-// 
-// tiles = mylayer_B('asteroids-i', 'Asteroids test: images',
-//                   {'urlPatterns': [ [0, maxZoom, tile_url], ],});
-// allLayers.push(tiles);
-
-{% if enable_vlass %}
-tiles = mylayer_B('vlass1.2', 'VLASS 1.2',
-                  {'attribution': vlass_attrib,
-                   'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-{% endif %}
-
-{% if enable_unwise %}
-tiles = mylayer_B('unwise-neo4', 'unWISE W1/W2 NEO4',
-                {'maxNativeZoom': 12,
-                 'attribution': unwise_attrib,
-                 'urlPatterns': [ [6, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('unwise-neo6', 'unWISE W1/W2 NEO6',
-                {'maxNativeZoom': 11,
-                 'attribution': unwise_attrib,
-                 'urlPatterns': [
-                     [1, 11, aws_unwise_url],]});
- //[12, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('unwise-neo7', 'unWISE W1/W2 NEO7',
-                {'maxNativeZoom': 11,
-                 'attribution': unwise_attrib,
-                 'urlPatterns': [
-                     [1, maxZoom, tile_url], ],});
- //[1, 11, aws_unwise_url],]});
-allLayers.push(tiles);
-
-
-tiles = mylayer_B('unwise-cat-model', 'unWISE Catalog Model',
-                {'maxNativeZoom': 12,
-                 'attribution': unwise_attrib,
-                 'urlPatterns': [ [6, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-{% if enable_unwise_w3w4 %}
-tiles = mylayer_B('unwise-w3w4', 'unWISE W3/W4',
-                {'maxNativeZoom': 11,
-                 'attribution': unwise_attrib,
-                 'urlPatterns': [
-                     [1, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endif %}
-
-{% endif %}
-
-{% comment %}
-tiles = mylayer('2mass', '2MASS',
-                {'maxNativeZoom': 12,
-                 'urlPatterns': [ [0, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-{% endcomment %}
-
-tiles = mylayer_B('galex', 'GALEX',
-                {'maxNativeZoom': 12,
-                 'attribution': galex_attrib,
-                 'urlPatterns': [ [10, maxZoom, tile_url], ],});
-allLayers.push(tiles);
-
-tiles = mylayer_B('sfd', 'SFD dust map',
-                {'maxNativeZoom':10,
-                 'attribution': sfd_attrib,
-                 'urlPatterns': [ [7, 10, tile_url],], });
-allLayers.push(tiles);
-
-tiles = mylayer_B('wssa', 'WISE 12-micron dust map',
-                {'maxNativeZoom':10,
-                 'urlPatterns': [ [9, 10, tile_url],], });
-allLayers.push(tiles);
-
-tiles = mylayer_B('halpha', 'Halpha map',
-                {'maxNativeZoom':10,
-                 'attribution': halpha_attrib,
-                 'urlPatterns': [ [7, 10, tile_url],],});
-allLayers.push(tiles);
-
 
 var added = false;
 var layer_name = layer_initial;
 var baseMaps = {};
+var namedLayers = {};
+
+
+var testLayers = [];
+var testTree = [];
+{% if enable_dev %}
+
+{% for name,pretty in test_layers %}
+testTree.push(findlayer('{{name}}'));
+testLayers.push(namedLayers['{{name}}']);
+{% endfor %}
+
+{% endif %}
+
+// initialize layers
+
+{% if enable_dr9 or enable_dr10 %}
+findlayer('ls-dr9-north');
+findlayer('ls-dr9-north-model');
+findlayer('ls-dr9-north-resid');
+{% endif %}
+  
+{% if enable_dr10 %}
+
+findlayer('ls-dr10');
+findlayer('ls-dr10-south');
+
+findlayer('ls-dr10-model');
+findlayer('ls-dr10-south-model');
+
+findlayer('ls-dr10-resid');
+findlayer('ls-dr10-south-resid');
+
+// grz
+findlayer('ls-dr10-grz');
+findlayer('ls-dr10-south-grz');
+findlayer('ls-dr10-model-grz');
+findlayer('ls-dr10-south-model-grz');
+findlayer('ls-dr10-resid-grz');
+findlayer('ls-dr10-south-resid-grz');
+
+tiles = split_layer('ls-dr10', 'Legacy Surveys DR10 images', 32.375,
+                    namedLayers['ls-dr9-north'],
+                    namedLayers['ls-dr10'],
+                    namedLayers['ls-dr10-south'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+
+tiles = split_layer('ls-dr10-model', 'Legacy Surveys DR10 models', 32.375,
+                    namedLayers['ls-dr9-north-model'],
+                    namedLayers['ls-dr10-model'],
+                    namedLayers['ls-dr10-south-model'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+
+tiles = split_layer('ls-dr10-resid', 'Legacy Surveys DR10 residuals', 32.375,
+                    namedLayers['ls-dr9-north-resid'],
+                    namedLayers['ls-dr10-resid'],
+                    namedLayers['ls-dr10-south-resid'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+
+tiles = split_layer('ls-dr10-grz', 'Legacy Surveys DR10 images (grz)', 32.375,
+                    namedLayers['ls-dr9-north'],
+                    namedLayers['ls-dr10-grz'],
+                    namedLayers['ls-dr10-south-grz'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+
+tiles = split_layer('ls-dr10-model-grz', 'Legacy Surveys DR10 models (grz)', 32.375,
+                    namedLayers['ls-dr9-north-model'],
+                    namedLayers['ls-dr10-model-grz'],
+                    namedLayers['ls-dr10-south-model-grz'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+
+tiles = split_layer('ls-dr10-resid-grz', 'Legacy Surveys DR10 residuals (grz)', 32.375,
+                    namedLayers['ls-dr9-north'],
+                    namedLayers['ls-dr10-resid-grz'],
+                    namedLayers['ls-dr10-south-resid-grz'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+{% endif %}
+
+
+{% if enable_dr9 %}
+findlayer('ls-dr9-south');
+findlayer('ls-dr9');
+
+tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images', 32.375,
+                    namedLayers['ls-dr9-north'],
+                    namedLayers['ls-dr9'],
+                    namedLayers['ls-dr9-south'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+
+{% if enable_dr9_models %}
+findlayer('ls-dr9-model');
+findlayer('ls-dr9-south-model');
+tiles = split_layer('ls-dr9-model', 'Legacy Surveys DR9 models', 32.375,
+                    namedLayers['ls-dr9-north-model'],
+                    namedLayers['ls-dr9-model'],
+                    namedLayers['ls-dr9-south-model'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+{% endif %}
+
+{% if enable_dr9_resids %}
+findlayer('ls-dr9-resid');
+findlayer('ls-dr9-south-resid');
+tiles = split_layer('ls-dr9-resid', 'Legacy Surveys DR9 residuals', 32.375,
+                    namedLayers['ls-dr9-north-resid'],
+                    namedLayers['ls-dr9-resid'],
+                    namedLayers['ls-dr9-south-resid'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+{% endif %}
+
+{% endif %} // enable_dr9
+
+
+{% if enable_dr8 %}
+findlayer('ls-dr8');
+findlayer('ls-dr8-south');
+findlayer('ls-dr8-north');
+{% if enable_dr8_models %}
+findlayer('ls-dr8-model');
+findlayer('ls-dr8-south-model');
+findlayer('ls-dr8-north-model');
+{% endif %}
+{% if enable_dr8_resids %}
+findlayer('ls-dr8-resid');
+findlayer('ls-dr8-south-resid');
+findlayer('ls-dr8-north-resid');
+{% endif %}
+
+tiles = split_layer('ls-dr8', 'Legacy Surveys DR8 images', 32.375,
+                    namedLayers['ls-dr8-north'],
+                    namedLayers['ls-dr8'],
+                    namedLayers['ls-dr8-south'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+
+{% if enable_dr8_models %}
+tiles = split_layer('ls-dr8-model', 'Legacy Surveys DR8 models', 32.375,
+                    namedLayers['ls-dr8-north-model'],
+                    namedLayers['ls-dr8-model'],
+                    namedLayers['ls-dr8-south-model'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+{% endif %}
+
+{% if enable_dr8_resids %}
+tiles = split_layer('ls-dr8-resid', 'Legacy Surveys DR8 residuals', 32.375,
+                    namedLayers['ls-dr8-north-resid'],
+                    namedLayers['ls-dr8-resid'],
+                    namedLayers['ls-dr8-south-resid'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+{% endif %}
+
+{% endif %} // enable_dr8
+
+
+{% if enable_dr67 %}
+findlayer('decals-dr7')
+findlayer('mzls+bass-dr6')
+findlayer('ls-dr67')
+
+tiles = split_layer('ls-dr67', 'Legacy Surveys DR6+DR7', 32.375,
+                    namedLayers['mzls+bass-dr6'],
+                    namedLayers['ls-dr67'],
+                    namedLayers['decals-dr7'],
+                    {attribution: attribs['ls']});
+allLayers.push(tiles);
+{% endif %}
+
 //console.log('Requested layer: "' + layer_name + '"');
 for (var i in allLayers) {
     var layer = allLayers[i];
@@ -2521,9 +1948,6 @@ for (var i in allLayers) {
         layer.addTo(map);
         added = true;
     }
-}
-if (!added) {
-    defaultTile.addTo(map);
 }
 // may be overridden by 'qstr' below.
 var last_layer_name = layer_name;
@@ -3293,7 +2717,7 @@ var ccdOverlay10 = new PolygonOverlay('dr10-ccds',
                                      'urlTerm': 'ccds10',
                                      'detail': ccd_detail,
                                      'detail_list': ccd_detail_list,
-                                     'url_name': 'ls-dr10-early',
+                                     'url_name': 'ls-dr10',
                                      'dr_name': 'DR10',
                                     });
 var expOverlay10 = new CircleOverlay('dr10-exps',
@@ -3303,13 +2727,12 @@ var expOverlay10 = new CircleOverlay('dr10-exps',
                                      'urlTerm': 'exps10',
                                      'detail': exp_detail,
                                      'detail_list': exp_detail_list,
-                                     'url_name': 'ls-dr10-early',
+                                     'url_name': 'ls-dr10-south',
                                      'dr_name': 'DR10',
                                     });
 {% endif %}
 
 {% if enable_dr9_overlays %}
-
 var ccdOverlay9 = new PolygonOverlay('dr9-ccds',
                                      'Legacy Surveys DR9 CCDs',
                                     {'url':ccds_url,
@@ -3361,61 +2784,6 @@ var expOverlay9s = new CircleOverlay('dr9-south-exps',
                                     });
 {% endif %}
 
-
-
-
-{% if enable_dr9sv_overlays %}
-var ccdOverlay9sv = new PolygonOverlay('dr9sv-ccds',
-                                     'Legacy Surveys DR9-SV CCDs',
-                                    {'url':ccds_url,
-                                     'minZoom': 8,
-                                     'labelsMinZoom': 100,
-                                     'urlTerm': 'ccds9sv',
-                                     'detail': ccd_detail,
-                                     'detail_list': ccd_detail_list,
-                                     'url_name': 'dr9sv',
-                                     'dr_name': 'DR9-SV',
-                                    });
-{% endif %}
-
-{% if enable_dr9sv_north_overlays %}
-var ccdOverlay9svn = new PolygonOverlay('dr9sv-north-ccds',
-                                     'Legacy Surveys DR9-SV-north CCDs',
-                                    {'url':ccds_url,
-                                     'minZoom': 8,
-                                     'labelsMinZoom': 100,
-                                     'urlTerm': 'ccds9svn',
-                                     'detail': ccd_detail,
-                                     'detail_list': ccd_detail_list,
-                                     'url_name': 'dr9sv-north',
-                                     'dr_name': 'DR9-SV',
-                                    });
-{% endif %}
-
-{% if enable_dr9sv_south_overlays %}
-var ccdOverlay9svs = new PolygonOverlay('dr9sv-south-ccds',
-                                     'Legacy Surveys DR9-SV-south CCDs',
-                                    {'url':ccds_url,
-                                     'minZoom': 8,
-                                     'labelsMinZoom': 100,
-                                     'urlTerm': 'ccds9svs',
-                                     'detail': ccd_detail,
-                                     'detail_list': ccd_detail_list,
-                                     'url_name': 'dr9sv-south',
-                                     'dr_name': 'DR9-SV',
-                                    });
-var expOverlay9svs = new CircleOverlay('dr9sv-south-exps',
-                                    'Legacy Surveys DR9-SV-south Exposures',
-                                    {'url':exposures_url,
-                                     'labelsMinZoom': 100,
-                                     'urlTerm': 'exps9sv',
-                                     'detail': exp_detail,
-                                     'detail_list': exp_detail_list,
-                                     'url_name': 'dr9sv-south',
-                                     'dr_name': 'DR9-SV',
-                                    });
-{% endif %}
-                                                     
 var brickOverlay = new PolygonOverlay('decals-bricks', 'Legacy Surveys Bricks',
                                       {'url': bricks_url,
                                        'minZoom': 1,
@@ -3562,7 +2930,34 @@ var desi_tiles_edr = new DesiTileOverlay('desi-tiles-edr',
 {% endif %}
 
 {% if enable_desi_data %}
-var guadalupe_detail_list = function(ov, objs) {
+
+var desi_dr1_detail_list = function(ov, objs) {
+    if (objs.length == 0) { return ''; }
+    txt = 'In DESI DR1 tiles: <ul>';
+    for (var j=0; j<objs.length; j++) {
+        var aparams = '';
+        if (objs[j] == ov._highlighted) {
+            aparams = ' class="highexp"';
+        }
+        txt += '<li>' + dr1_detail(ov._url_name, objs[j], aparams) + '</li>';
+    }
+    txt += '</ul>';
+    return txt;
+};
+var dr1_detail = function(ov, objs, aparams) {
+     return objs;
+};
+var desi_tiles_dr1 = new DesiTileOverlay('desi-tiles-dr1',
+                                         'DESI DR1 tiles',
+                                         {'url': smallcat_url,
+                                          'url_args': { 'id': 'desi-tiles/dr1',
+                                                        'ver': getcatversion('desi-tiles/dr1') },
+                                          'labelsMinZoom': 100,
+                                          'detail_list': desi_dr1_detail_list,
+                                          'detail': dr1_detail,
+                                         });
+
+  var guadalupe_detail_list = function(ov, objs) {
     if (objs.length == 0) { return ''; }
     txt = 'In DESI Guadalupe tiles: <ul>';
     for (var j=0; j<objs.length; j++) {
@@ -3704,6 +3099,7 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
         return { permanent: (z >= 12),
                  interactive: true,
                  className: (z == 12 ? 'spectrumTooltipSmall' : 'spectrumTooltip'),
+                 bubblingMouseEvents: false,
                };
         //className: 'tooltipbg',
     },
@@ -3714,6 +3110,19 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
         return this.getLabel(json, i)
             + '<br/>RA,Dec: ' + ra.toFixed(4) + ', ' + dec.toFixed(4)
             + '<br/>Targetid: ' + json['targetid'][i];
+    },
+});
+
+var DesiObsCatalog = DesiSpectraCatalog.extend({
+    getLabel: function(json, i) {
+        var s = '';
+        for (var j=0, len=json['targetid'][i].length; j<len; j++) {
+            if (j > 0)
+                s += ', ';
+            s += '<a href="' + root_url + 'desi-obs/' + this.release + '/targetid' +
+                json['targetid'][i][j] + '">' + json['name'][i][j] + '</a>';
+        }
+        return s;
     },
 });
 
@@ -3731,8 +3140,34 @@ var desi_spec_edr = new DesiSpectraCatalog(
   
 {% if enable_desi_data %}
 
+  var desi_spec_dr1 = new DesiSpectraCatalog(
+    'desi-spec-dr1', 'DESI DR1 spectra', 'dr1',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 6,
+    });
+
 var desi_spec_daily = new DesiSpectraCatalog(
     'desi-spec-daily', 'DESI daily spectra', 'daily',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+     //'urlTerm': 'desi-spec/denali',
+    });
+
+var desi_spec_daily_sky = new DesiSpectraCatalog(
+    'desi-spec-daily-sky', 'DESI daily sky spectra', 'daily',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+     //'urlTerm': 'desi-spec/denali',
+    });
+
+var desi_obs_daily = new DesiObsCatalog(
+    'desi-obs-daily', 'DESI daily observations', 'daily',
     {'url': smallcat_url,
      'radius': 300,
      'labelsMinZoom': 10,
@@ -3790,15 +3225,6 @@ var polygonOverlays = [
     {% if enable_dr9_south_overlays %}
     ccdOverlay9s, expOverlay9s,
     {% endif %}
-    {% if enable_dr9sv_overlays %}
-    ccdOverlay9sv,
-    {% endif %}
-    {% if enable_dr9sv_north_overlays %}
-    ccdOverlay9svn,
-    {% endif %}
-    {% if enable_dr9sv_south_overlays %}
-    ccdOverlay9svs, expOverlay9svs,
-    {% endif %}
     brickOverlay,
     {% if enable_unwise %}
     unwiseTileOverlay,
@@ -3811,6 +3237,7 @@ var polygonOverlays = [
     desi_tiles_edr,
     {% endif %}
     {% if enable_desi_data %}
+    desi_tiles_dr1,
     desi_tiles_guadalupe,
     desi_tiles_fuji,
     desi_tiles_daily,
@@ -3903,33 +3330,6 @@ var dr9southcat = new DecalsCatalogLayer(tileWatcher,
 {% endif %}
 
 
-{% if enable_dr9sv_overlays %}
-var dr9svcat = new DecalsCatalogLayer(tileWatcher,
-                                    'dr9sv',
-                                    'Legacy Surveys DR9-SV Catalog',
-                                    {'url': cat_url,
-                                     'minZoom': 12,
-                                     'urlTerm': 'sources-dr9sv'});
-{% endif %}
-
-{% if enable_dr9sv_north_overlays %}
-var dr9svnorthcat = new DecalsCatalogLayer(tileWatcher,
-                                        'dr9sv-north',
-                                          'Legacy Surveys DR9-SV-north Catalog',
-                                          {'url': cat_url,
-                                           'minZoom': 12,
-                                           'urlTerm': 'sources-dr9svn'});
-{% endif %}
-{% if enable_dr9sv_south_overlays %}
-var dr9svsouthcat = new DecalsCatalogLayer(tileWatcher,
-                                        'dr9sv-south',
-                                          'Legacy Surveys DR9-SV-south Catalog',
-                                          {'url': cat_url,
-                                           'minZoom': 12,
-                                           'urlTerm': 'sources-dr9svs'});
-{% endif %}
-
-
 {% if enable_dr10_overlays %}
 
 var dr10cat = new DecalsCatalogLayer(tileWatcher,
@@ -3945,13 +3345,6 @@ var dr10southcat = new DecalsCatalogLayer(tileWatcher,
                                           {'url': cat_url,
                                            'minZoom': 12,
                                            'urlTerm': 'sources-dr10-south'});
-
-var dr10acat = new DecalsCatalogLayer(tileWatcher,
-                                        'ls-dr10a',
-                                          'Legacy Surveys DR10a Catalog',
-                                          {'url': cat_url,
-                                           'minZoom': 12,
-                                           'urlTerm': 'sources-dr10a'});
 {% endif %}
 
 
@@ -4342,18 +3735,6 @@ var overlays = [
     dr10cat,
     dr10southcat,
     {% endif %}
-    {% if enable_dr10a %}
-    dr10acat,
-    {% endif %}
-    {% endif %}
-    {% if enable_dr9sv_overlays %}
-    dr9svcat,
-    {% endif %}
-    {% if enable_dr9sv_north_overlays %}
-    dr9svnorthcat,
-    {% endif %}
-    {% if enable_dr9sv_south_overlays %}
-    dr9svsouthcat,
     {% endif %}
     {% if enable_dr5_overlays %}
     ccdOverlay5,
@@ -4387,16 +3768,6 @@ var overlays = [
     {% if enable_dr9_south_overlays %}
     ccdOverlay9s,
     expOverlay9s,
-    {% endif %}
-    {% if enable_dr9sv_overlays %}
-    ccdOverlay9sv,
-    {% endif %}
-    {% if enable_dr9sv_north_overlays %}
-    ccdOverlay9svn,
-    {% endif %}
-    {% if enable_dr9sv_south_overlays %}
-    ccdOverlay9svs,
-    expOverlay9svs,
     {% endif %}
     {% if enable_dr5_overlays %}
     expOverlay5,
@@ -4451,6 +3822,8 @@ var overlays = [
     desi_spec_edr,
     {% endif %}
     {% if enable_desi_data %}
+    desi_tiles_dr1,
+    desi_spec_dr1,
     desi_tiles_guadalupe,
     desi_spec_guadalupe,
     desi_tiles_fuji,
@@ -4459,6 +3832,8 @@ var overlays = [
     //desi_spec_denali,
     desi_tiles_daily,
     desi_spec_daily,
+    desi_spec_daily_sky,
+    desi_obs_daily,
     {% endif %}
     constellations,
     decamfoot,
@@ -4513,30 +3888,49 @@ console.log(polygonOverlays[i]);
 
 
 
-var namedLayers = {};
 for (var i in allLayers) {
     var layer = allLayers[i];
     //console.log('layer.name ' + layer.name + ' pretty ' + layer.pretty);
     namedLayers[layer.name] = layer;
 }
 
- // var findlayer = function(name, children=undefined) {
+function drop_null(lst) {
+    var rtn = [];
+    for (var i in lst) {
+        var x = lst[i];
+        if (x != null)
+            rtn.push(x);
+    }
+    return rtn;
+}
+
 function findlayer(name, children=[]) {
+    //console.log('findlayer', name);
+    if (!(name in namedLayers)) {
+        //console.log('name not in namedLayers');
+        if (name in tile_layers) {
+            console.log('Creating layer', name);
+            var layer = get_tile_layer(name);
+            baseMaps[layer.pretty] = layer;
+            allLayers.push(layer);
+            namedLayers[layer.name] = layer;
+            // ???
+            if (layer_name == layer.name) {
+                layer.addTo(map);
+                added = true;
+            }
+        } else {
+            return null;
+        }
+    }
+
     rtn = { label: namedLayers[name].pretty, layer: namedLayers[name] };
     if (children.length) {
-        rtn['children'] = children;
+        rtn['children'] = drop_null(children);
     }
     return rtn;
 }
  
-var testTree = [];
-{% if enable_dev %}
-{% for name,pretty in test_layers %}
-  testTree.push(findlayer('{{name}}'));
-{% endfor %}
-{% endif %}
-
-console.log('testTree:', testTree);
 
 {% if enable_decaps %}
 var decaps_tree = [
@@ -4556,27 +3950,27 @@ var decaps_tree = [
 {% endif %}
 
 var baseTree1 = [
-    {% if enable_m33 %}
     findlayer('m33'),
-    {% endif %}
 ];
 
 {% if decaps_first %}
 baseTree1 = baseTree1.concat(decaps_tree);
 {% endif %}
 
+{% if merian_first %}
+baseTree1 = baseTree1.concat([
+    findlayer('merian-n540'),
+    findlayer('merian-n708'),
+    findlayer('hsc-dr3'),
+]);
+{% endif %}
+
 var moresurveys = [
-    {% if enable_pandas %}
     findlayer('pandas'),
-    {% endif %}
-    {% if enable_phat %}
     findlayer('phat'),
-    {% endif %}
     //findlayer('outliers-ast'),
     //findlayer('asteroids-i'),
-    {% if enable_des_dr1 %}
     findlayer('des-dr1'),
-    {% endif %}
 ];
 
 {% if decaps_first %}
@@ -4587,26 +3981,20 @@ moresurveys = moresurveys.concat(decaps_tree);
 moresurveys = moresurveys.concat([
     findlayer('galex'),
     findlayer('halpha'),
-    {% if enable_hsc_dr2 %}
     findlayer('hsc-dr2'),
+    {% if not merian_first %}
     findlayer('hsc-dr3'),
-    {% endif %}
-    {% if enable_merian %}
     findlayer('merian-n540'),
     findlayer('merian-n708'),
     {% endif %}
-    {% if enable_ps1 %}
     findlayer('ps1'),
-    {% endif %}
     findlayer('sdss'),
     findlayer('sfd'),
-    {% if enable_vlass %}
     findlayer('vlass1.2'),
-    {% endif %}
-    {% if enable_ztf %}
     findlayer('ztf'),
-    {% endif %}
 ]);
+
+moresurveys = drop_null(moresurveys);
 
 baseTree1 = baseTree1.concat([
     {% if enable_dr10 %}
@@ -4625,15 +4013,6 @@ baseTree1 = baseTree1.concat([
       findlayer('ls-dr10-south-resid-grz'),
       ]),
     ]),
-    {% endif %}
-    {% if enable_dr10a %}
-    findlayer('ls-dr10a'),
-    findlayer('ls-dr10a-model'),
-    findlayer('ls-dr10a-resid'),
-    {% endif %}
-    {% if enable_dr10_early %}
-    findlayer('ls-dr10-early'),
-    findlayer('ls-dr10-early-grz'),
     {% endif %}
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
@@ -4675,25 +4054,6 @@ baseTree1 = baseTree1.concat([
     {% if enable_older %}
      { label: 'Older Legacy Surveys',
        children: [
-
-    {% if enable_dr9sv %}
-    findlayer('dr9sv', [
-        findlayer('dr9sv-model'),
-        findlayer('dr9sv-resid'),
-    ]),
-    {% endif %}
-    {% if enable_dr9sv_north %}
-    findlayer('dr9sv-north', [
-        findlayer('dr9sv-north-model'),
-        findlayer('dr9sv-north-resid'),
-    ]),
-    {% endif %}
-    {% if enable_dr9sv_south %}
-    findlayer('dr9sv-south', [
-        findlayer('dr9sv-south-model'),
-        findlayer('dr9sv-south-resid'),
-    ]),
-    {% endif %}
     {% if enable_dr8 %}
     findlayer('ls-dr8', [
         {% if enable_dr8_models %}
@@ -4740,19 +4100,11 @@ baseTree1 = baseTree1.concat([
         findlayer('mzls+bass-dr6-resid'),
     ]),
     {% endif %}
-    {% if enable_dr5 %}
     findlayer('decals-dr5', [
-        {% if enable_dr5_model %}
         findlayer('decals-dr5-model'),
-        {% endif %}
-        {% if enable_dr5_resid %}
         findlayer('decals-dr5-resid'),
-        {% endif %}
     ]),
-    {% endif %}
-    {% if enable_eboss %}
     findlayer('eboss'),
-    {% endif %}
 
      ]},
     {% endif %}
@@ -4790,6 +4142,10 @@ console.log('baseTree:', baseTree);
 
 bt = { label: 'Images', children: baseTree };
 baseTree = bt;
+
+if (!added) {
+    defaultTile.addTo(map);
+}
 
 var namedOverlays = {};
 for (var i=0,len=overlays.length; i<len; i++) {
@@ -4852,16 +4208,6 @@ var overlayTree = [];
        findoverlay('masks-dr9'),
      ]),
      {% endif %}
-     {% if enable_dr9sv_overlays %}
-     findoverlay('dr9sv-ccds', [
-       {% if enable_dr9sv_north_overlays %}
-       findoverlay('dr9sv-north-ccds'),
-       {% endif %}
-       {% if enable_dr9sv_south_overlays %}
-       findoverlay('dr9sv-south-ccds'),
-       {% endif %}
-     ]),
-     {% endif %}
      {% if enable_dr8_overlays %}
      findoverlay('dr8-ccds', [
        {% if enable_dr8_north_overlays %}
@@ -4912,9 +4258,6 @@ var overlayTree = [];
      findoverlay('ls-dr10'),
      findoverlay('ls-dr10-south'),
      {% endif %}
-     {% if enable_dr10a %}
-     findoverlay('ls-dr10a'),
-     {% endif %}
 
      {% if enable_dr9_overlays %}
      findoverlay('ls-dr9', [
@@ -4964,17 +4307,6 @@ var overlayTree = [];
      // end of Imaging catalogs
      {% endif %}
 
-     {% if enable_dr9sv_overlays %}
-     findoverlay('dr9sv', [
-       {% if enable_dr9sv_north_overlays %}
-       findoverlay('dr9sv-north'),
-       {% endif %}
-       {% if enable_dr9sv_south_overlays %}
-       findoverlay('dr9sv-south'),
-       {% endif %}
-       ]),
-     {% endif %}
-
      {% if enable_spectra %}
      { label: 'Spectroscopy',
        children: [
@@ -5002,14 +4334,20 @@ var overlayTree = [];
            findoverlay('desi-spec-edr'),
            {% endif %}
            {% if enable_desi_data %}
+           findoverlay('desi-tiles-dr1'),
+           findoverlay('desi-spec-dr1'),
            findoverlay('desi-tiles-guadalupe'),
            findoverlay('desi-spec-guadalupe'),
            findoverlay('desi-tiles-fuji'),
            findoverlay('desi-spec-fuji'),
            findoverlay('desi-tiles-daily'),
            findoverlay('desi-spec-daily'),
+           findoverlay('desi-spec-daily-sky'),
+           findoverlay('desi-obs-daily'),
          {% endif %}
          {% if enable_desi_targets %}
+           { label: 'DESI Targets',
+             children: [
            findoverlay('targets-dr9-main-dark'),
            findoverlay('targets-dr9-main-bright'),
            findoverlay('targets-dr9-main-sec-dark'),
@@ -5031,6 +4369,7 @@ var overlayTree = [];
            //findoverlay('targets-sky-dr67'),
            //findoverlay('targets-bright-dr67'),
            //findoverlay('targets-dark-dr67'),
+             ]},
          {% endif %}
        ]},
        {% endif %}
@@ -5103,11 +4442,6 @@ var layerTree = L.control.layers.tree(baseTree,
          'Other catalogs',
          'Spectroscopy',
          'Bright Objects',
-         //'DESI Targets (DR8)',
-         {% if enable_dr9sv_overlays %}
-         'Legacy Surveys DR9-SV Catalog',
-         'Legacy Surveys DR9-SV CCDs',
-         {% endif %}
          {% if enable_dr8_overlays %}
          'Legacy Surveys DR8 Catalog',
          'Legacy Surveys DR8 CCDs',
@@ -5118,7 +4452,10 @@ var layerTree = L.control.layers.tree(baseTree,
          {% else %}
          'DESI',
          {% endif %}
-            ];
+         {% if enable_desi_targets %}
+         'DESI Targets',
+         {% endif %}
+     ];
 
      for (var i=0,len=txts.length; i<len; i++) {
          var txt = txts[i];

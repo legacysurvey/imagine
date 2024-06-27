@@ -11,9 +11,11 @@
   {% endif %}
 </p>
 
+{% if has_tarball %}
 <p>
 <a href="{% url 'exposures_tgz' %}?ra={{ ra }}&dec={{ dec }}&size={{ size }}&layer={{ layer }}">Download a tarball of data</a>
 </p>
+{% endif %}
 
 {% if brick %}
 <p>
@@ -45,26 +47,26 @@ bad pixels, etc.
 <th>DQ</th>
 </tr>
 
-{% for ccdstr,ccdurl in ccds %}
+{% for ccdstr,c1,c2,c3,c4 in ccds %}
 <tr>
 <td>
 {{ ccdstr|safe }}
 </td>
 
 <td>
-<img src="{{ ccdurl }}" width="{{ size }}" height="{{ size }}" />
+{{ c1|safe }}
 </td>
 
 <td>
-<img src="{{ ccdurl }}&kind=weight" width="{{ size }}" height="{{ size }}" />
+{{ c2|safe }}
 </td>
 
 <td>
-<img src="{{ ccdurl }}&kind=weightedimage" width="{{ size }}" height="{{ size }}" />
+{{ c3|safe }}
 </td>
 
 <td>
-<img src="{{ ccdurl }}&kind=dq" width="{{ size }}" height="{{ size }}" />
+{{ c4|safe }}
 </td>
 
 </tr>

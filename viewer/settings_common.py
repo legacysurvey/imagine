@@ -8,6 +8,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
+LAYER_OVERRIDES = {}
+
 USER_QUERY_DIR = '/tmp/viewer-user'
 
 DESI_PROSPECT_DIR = None
@@ -52,7 +54,6 @@ ENABLE_DR7 = True
 ENABLE_DR8 = True
 ENABLE_DR8_MODELS = ENABLE_DR8
 ENABLE_DR8_RESIDS = ENABLE_DR8
-ENABLE_DR9SV = True
 
 ENABLE_DR9 = False
 ENABLE_DR9_MODELS = False
@@ -65,14 +66,13 @@ ENABLE_DR9_SOUTH_MODELS = False
 ENABLE_DR9_SOUTH_RESIDS = False
 
 ENABLE_DR10 = False
-ENABLE_DR10_EARLY = False
-ENABLE_DR10A = False
 
 ENABLE_UNWISE_W3W4 = False
 
-ENABLE_DR56 = False
 ENABLE_DR67 = True
 
+ENABLE_DECAPS1 = False
+# Decaps2
 ENABLE_DECAPS = True
 ENABLE_PS1 = False
 ENABLE_DES_DR1 = True
@@ -85,6 +85,7 @@ ENABLE_HSC_DR2 = True
 ENABLE_VLASS = True
 
 ENABLE_PHAT = False
+ENABLE_M33 = False
 
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False
@@ -182,7 +183,10 @@ ALLOWED_HOSTS = [
     'spin.legacysurvey.org',
     'viewer.legacysurvey.org', 'a.viewer.legacysurvey.org', 'b.viewer.legacysurvey.org', 'c.viewer.legacysurvey.org', 'd.viewer.legacysurvey.org',
     'dev.viewer.legacysurvey.org', 'dev-a.viewer.legacysurvey.org', 'dev-b.viewer.legacysurvey.org', 'dev-c.viewer.legacysurvey.org', 'dev-d.viewer.legacysurvey.org',
-    'lb.cosmo-viewer.production.svc.spin.nersc.org'
+    'lb.cosmo-viewer.production.svc.spin.nersc.org',
+    'lb2.cosmo-viewer.production.svc.spin.nersc.org',
+    'www2.legacysurvey.org',
+
 ]
 
 # Application definition

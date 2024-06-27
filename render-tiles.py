@@ -730,8 +730,9 @@ def main():
                          'suprime-L505', 'suprime-L505-model',
                          'suprime-L527', 'suprime-L527-model',
                          'suprime-ia-v1', 'suprime-ia-v1-model',
+                         'cfht-cosmos-cahk',
                          'decaps2', 'decaps2-model',
-                         'dr10-deep', 'dr10-deep-model',
+                         'dr10-deep', 'dr10-deep-model', 'ibis-color',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
