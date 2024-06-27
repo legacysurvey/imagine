@@ -215,6 +215,12 @@ def layer_to_survey_name(layer):
     layer = layer.replace('-model', '')
     layer = layer.replace('-resid', '')
     layer = layer.replace('-grz', '')
+
+    layer = {
+        'ibis-color': 'ibis',
+        'ibis-color-ls': 'ibis',
+    }.get(layer, layer)
+    
     return layer
 
 # @needs_layer decorator.  Sets:
@@ -3676,7 +3682,75 @@ class MerianLayer(HscLayer):
         if scale == 0:
             return 4100 * self.pixscale / 3600.
         return 0.25 * 2**scale
-    
+
+class IbisColorLayer(ReDecalsLayer):
+    def __init__(self, name, hsc_layer):
+        survey = get_survey(name)
+        print('Survey for', name, ':', survey)
+        super().__init__(name, 'image', survey)
+        self.rgb_plane = None
+        self.hsc = hsc_layer
+        # HSC
+        self.other_zpt = 27.0
+        self.r_scale = 15.0
+        
+        self.bands = ['M411', 'M464', 'r']
+        self.basedir = os.path.join(settings.DATA_DIR, self.name)
+        self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
+        self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+        self.bricks = None
+
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, **kwargs):
+        import numpy as np
+        if bands is None:
+            bands = self.get_bands()
+        # Call HSC for r
+        hscbands = []
+        mybands = []
+        for b in bands:
+            if b in ['r']:
+                hscbands.append(b)
+            else:
+                mybands.append(b)
+        bmap = {}
+        if len(hscbands):
+            rimgs = self.hsc.render_into_wcs(wcs, zoom, x, y, bands=hscbands, **kwargs)
+            if rimgs is not None:
+                for b,img in zip(hscbands, rimgs):
+                    bmap[b] = img
+        if len(mybands):
+            rimgs = super().render_into_wcs(wcs, zoom, x, y, bands=mybands, **kwargs)
+            if rimgs is not None:
+                for b,img in zip(mybands, rimgs):
+                    bmap[b] = img
+        if len(bmap) == 0:
+            return None
+        res = []
+        for b in bands:
+            res.append(bmap.get(b))
+        return res
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        from tractor.brightness import NanoMaggies
+        # HSC zeropoint
+        #zpscale = NanoMaggies.zeropointToScale(27.0)
+        zpscale = NanoMaggies.zeropointToScale(self.other_zpt)
+        print('scale', zpscale)
+        scales = dict(r=zpscale)
+        rgb = sdss_rgb([im / scales.get(b, 1.) for im,b in zip(imgs, bands)], bands,
+                       scales=dict(
+                           M411=(2, 9.0),
+                           M464=(1, 9.0),
+                           r   =(0, self.r_scale),
+                           ),
+                       m=0.03)
+        if self.rgb_plane is not None:
+            for i in range(3):
+                if i != self.rgb_plane:
+                    rgb[:,:,i] = rgb[:,:,self.rgb_plane]
+
+        return rgb
+
 class LegacySurveySplitLayer(MapLayer):
     def __init__(self, name, top, bottom, decsplit, top_bands='grz', bottom_bands='grz'):
         super(LegacySurveySplitLayer, self).__init__(name)
@@ -6797,7 +6871,12 @@ def exposures_common(req, tgz, copsf):
     if not showcut:
         if 'ccd_cuts' in CCDs.get_columns():
             CCDs.cut(CCDs.ccd_cuts == 0)
-    #print('Layer\'s bands:', layer.get_bands())
+
+    print('CCDs:', len(CCDs))
+    print('filters:', CCDs.filter)
+    print('layer bands:', list(layer.get_bands()))
+
+            #print('Layer\'s bands:', layer.get_bands())
     # Drop Y band images
     #CCDs.cut(np.isin(CCDs.filter, ['g','r','i','z']))
     CCDs.cut(np.isin(CCDs.filter, list(layer.get_bands())))
@@ -7923,6 +8002,26 @@ def get_layer(name, default=None):
         layer = MerianLayer('merian', hsc)
         layer.bands = ['g', 'N708', 'z']
 
+    elif name in ['ibis', 'ibis-color', 'ibis-color-ls', 'ibis-m411', 'ibis-m464']:
+        other = None
+        if name == 'ibis-color':
+            other = get_layer('hsc-dr3')
+        elif name == 'ibis-color-ls':
+            other = get_layer('ls-dr10-south')
+
+        layer = IbisColorLayer('ibis', other)
+
+        if name == 'ibis-color-ls':
+            layer.other_zpt = 22.5
+            layer.r_scale = 5.0
+
+        if name == 'ibis-m411':
+            layer.bands = ['M411']
+            layer.rgb_plane = 2
+        elif name == 'ibis-m464':
+            layer.bands = ['M464']
+            layer.rgb_plane = 1
+
     elif name == 'ls-dr10-segmentation':
         dr10 = get_layer('ls-dr10-model')
         layer = LsSegmentationLayer(dr10)
@@ -8580,8 +8679,19 @@ if __name__ == '__main__':
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.262&invvar')
 
     #r = c.get('/sfd/2/7/41/55.jpg')
-    r = c.get('/cfht-cosmos-cahk/1/14/9556/8091.jpg')
+    #r = c.get('/cfht-cosmos-cahk/1/14/9556/8091.jpg')
+    #r = c.get('/ibis-color/1/14/6300/8102.jpg')
+    #r = c.get('/ibis-color/1/13/3150/4043.jpg')
+    #r = c.get('/ibis-color-ls/1/13/3150/4043.jpg')
+
+    #pixscale = 0.4
+    #H = W = 3000
+    pixscale = 0.25
+    H = W = 1000
+    #r = c.get('/cutout.jpg?ra=289.89030014944893&dec=86.06584587912832&layer=ps1&height=%i&width=%i&pixscale=%f' % (H, W, pixscale))
+    r = c.get('/exposures/?ra=188.9829&dec=-56.4978&layer=decaps2')
     
+    #r = c.get('/exposures/?ra=221.8682&dec=2.3882&layer=ibis-color')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
@@ -8597,3 +8707,34 @@ if __name__ == '__main__':
         #print('Got', type(x), len(x))
         f.write(x)
     f.close()
+
+    sys.exit(0)
+    
+    from PIL import Image, ImageDraw
+    import numpy as np
+    img = Image.open('out.jpg')
+
+    major_axis_arcsec = 0.0093878839515533 * 3600. * 2.
+    minor_axis_arcsec = 0.0005555555555556 * 3600. * 2.
+    PA = -9.47295021253918
+
+    overlay_height = int(np.abs(major_axis_arcsec / pixscale))
+    overlay_width = int(np.abs(minor_axis_arcsec / pixscale))
+    overlay = Image.new('RGBA', (overlay_width, overlay_height))
+    draw = ImageDraw.ImageDraw(overlay)
+    box_corners = (0, 0, overlay_width, overlay_height)
+    ellipse_color = '#4444ff'
+    ellipse_width = 3
+    draw.ellipse(box_corners, fill=None, outline=ellipse_color, width=ellipse_width)
+
+    rotated = overlay.rotate(PA, expand=True)
+    rotated_width, rotated_height = rotated.size
+
+    ellipse_x = W/2
+    ellipse_y = H/2
+    paste_shift_x = int(ellipse_x - rotated_width / 2)
+    paste_shift_y = int(ellipse_y - rotated_height / 2)
+    img.paste(rotated, (paste_shift_x, paste_shift_y), rotated)
+
+    img.save('ell.jpg')
+    
