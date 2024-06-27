@@ -329,6 +329,7 @@ def _index(req,
 
     if settings.ENABLE_DR9:
         tile_layers.update({
+            'ls-dr9': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
             'ls-dr9-south': ['Legacy Surveys DR9-south images',
                              [[0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg', []],
                               def_url], maxnative, 'ls'],
@@ -809,6 +810,15 @@ def desi_edr(req):
                   default_zoom=3,
                   rooturl=settings.ROOT_URL + '/desi-edr',
                   append_args = '&desi-tiles-edr&desi-spec-edr',
+    )
+
+def desi_dr1(req):
+    return _index(req,
+                  default_layer='ls-dr9',
+                  default_radec=(0.0, 0.0),
+                  default_zoom=5,
+                  rooturl=settings.ROOT_URL + '/desi-dr1',
+                  append_args = '&desi-tiles-dr1&desi-spec-dr1',
     )
 
 def decaps(req):
@@ -8721,6 +8731,9 @@ if __name__ == '__main__':
     #r = c.get('/fits-cutout?ra=147.48496&dec=-0.23134231&size=2000&layer=ls-dr10&pixscale=0.262&bands=r')
     #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
+    #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
+    #r = c.get('/desi-spectrum/dr1/targetid39633497530305185')
+    #r = c.get('/desi-spectrum/dr1/targetid-228610099')
     #r = c.get('/ls-dr9/1/14/8230/6841.jpg')
     #r = c.get('/cutout.jpg?ra=218.1068&dec=8.0789&layer=ls-dr10-segmentation&pixscale=0.262&size=500')
     #r = c.get('/cutout.fits?ra=218.1068&dec=8.0789&layer=ls-dr10-segmentation&pixscale=0.262&size=500')
@@ -8751,6 +8764,8 @@ if __name__ == '__main__':
     r = c.get('/exposures/?ra=188.9829&dec=-56.4978&layer=decaps2')
     
     #r = c.get('/exposures/?ra=221.8682&dec=2.3882&layer=ibis-color')
+    #r = c.get('/desi-spectrum/edr/targetid39628256290279019')
+
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)

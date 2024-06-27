@@ -28,3 +28,9 @@ def create_desi_spectro_kdtree(infn, outfn, racol='ra', deccol='dec'):
         print(cmd)
         rtn = os.system(cmd)
         assert(rtn == 0)
+
+
+
+if __name__ == '__main__':
+    create_desi_spectro_kdtree('data/desi-spectro-daily/desi-obs-202310.fits',
+                               'data/desi-spectro-daily/desi-obs.kd.fits')

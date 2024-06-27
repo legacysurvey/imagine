@@ -18,6 +18,8 @@ except:
     from django.urls import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 
+from datetime import datetime
+
 debug = print
 if not settings.DEBUG_LOGGING:
     def debug(*args, **kwargs):
@@ -79,8 +81,11 @@ catversions = {
     'photoz-dr9': [1,],
     'desi-edr-tiles': [1,],
     'desi-edr-spectra': [1,],
+    'desi-dr1-tiles': [1,],
+    'desi-dr1-spectra': [1,],
     'desi-daily-tiles': [1,],
     'desi-daily-spectra': [1,],
+    'desi-daily-obs': [1,],
     'desi-fuji-tiles': [1,],
     'desi-fuji-spectra': [1,],
     'desi-guadalupe-tiles': [1,],
@@ -200,21 +205,33 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
-    print('Passing to prospect: spectra:')
-    print(spectra)
-    print('zcatalog:')
-    print(zbests)
-    
+    # print('Passing to prospect: spectra:')
+    # print(spectra)
+    # print('zcatalog:')
+    # print(zbests)
+
+    import redrock.templates
     os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
     with tempfile.TemporaryDirectory() as d:
-        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d,
-                                    with_vi_widgets=False)
-        f = open(os.path.join(d, 'prospect.html')) #'specviewer_specviewer.html'))
+        outfn = os.path.join(d, 'prospect.html')
+        try:
+            tt = 'DESI Spectr%s: TARGETID %s' % (('a' if (len(zbests) > 1) else 'um'),
+                                                 ', '.join(['%i'%i for i in zbests['TARGETID']]))
+            prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d, outfile=outfn,
+                                        with_vi_widgets=False,
+                                        with_thumb_tab=False,
+                                        title=tt)
+            # colors=['color_for_spectrum', 'color_for_model', 'color_for_noise']
+            # color names html syntax; current default values '#D62728', 'black', 'green')
+        except KeyError:
+            prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=d,
+                                        with_vi_widgets=False, model_from_zcat=False)
+        f = open(outfn)
         return HttpResponse(f)
         
     return HttpResponse('tile %i fiber %i' % (tile, fiber))
 
-def desi_healpix_spectrum(req, obj, release):
+def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     from glob import glob
     from desispec.io import read_spectra
     import numpy as np
@@ -225,6 +242,9 @@ def desi_healpix_spectrum(req, obj, release):
     import tempfile
     import os
     import prospect.viewer
+
+    if redrock_template_dir is None:
+        redrock_template_dir = os.path.join(settings.DATA_DIR, 'redrock-templates')
 
     # Check the cache!
     outdir = None
@@ -249,6 +269,8 @@ def desi_healpix_spectrum(req, obj, release):
 
     if release == 'edr':
         basedir = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji'
+    elif release == 'dr1':
+        basedir = '/global/cfs/cdirs/desi/spectro/redux/iron'
     else:
         basedir = '/global/cfs/cdirs/desi/spectro/redux/%s' % release
 
@@ -275,7 +297,7 @@ def desi_healpix_spectrum(req, obj, release):
     #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
-    os.environ['RR_TEMPLATE_DIR'] = os.path.join(settings.DATA_DIR, 'redrock-templates')
+    os.environ['RR_TEMPLATE_DIR'] = redrock_template_dir
 
     if outdir is None:
         # temp dir contents get deleted after this function returns (when td gets deleted)
@@ -291,8 +313,12 @@ def desi_healpix_spectrum(req, obj, release):
 def get_desi_spectro_kdfile(release):
     if release == 'edr':
         return os.path.join(settings.DATA_DIR, 'desi-spectro-edr', 'zpix-all.kd.fits')
+    elif release == 'dr1':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-dr1', 'zpix-all.kd.fits')
     elif release == 'daily':
         return os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')
+    elif release == 'daily-obs':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'desi-obs.kd.fits')
     elif release == 'guadalupe':
         return os.path.join(settings.DATA_DIR, 'desi-spectro-guadalupe', 'zpix-all.kd.fits')
     elif release == 'fuji':
@@ -324,10 +350,10 @@ def lookup_targetid(targetid, release):
     T.cut(I)
     if len(T) > 1:
         print('Matched targetids:', T.targetid)
-        print('Surveys:', T.survey)
-        print('Programs:', T.program)
+        #print('Surveys:', T.survey)
+        #print('Programs:', T.program)
     else:
-        print('Found targetid', T.targetid[0], 'in survey', T.survey[0], 'program', T.program[0])
+        print('Found targetid', T.targetid[0])#, 'in survey', T.survey[0], 'program', T.program[0])
     i = 0
     return T[i]
 
@@ -369,8 +395,28 @@ def cat_desi_edr_spectra_detail(req, targetid):
         return HttpResponse('No such targetid found in DESI EDR spectra: %s' % targetid)
     return desi_healpix_spectrum(req, t, release)
 
+def cat_desi_dr1_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    release = 'dr1'
+
+    # Quick-check cache (without looking up object)
+    if settings.DESI_PROSPECT_DIR is not None:
+        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+        fn = os.path.join(outdir, 'prospect.html')
+        if os.path.exists(fn):
+            print('Cache hit for', fn)
+            return HttpResponse(open(fn))
+
+    t = lookup_targetid(targetid, release)
+    if t is None:
+        return HttpResponse('No such targetid found in DESI DR1 spectra: %s' % targetid)
+
+    rr_templ = os.path.join(settings.DATA_DIR, 'desi-spectro-dr1', 'redrock-templates')
+
+    return desi_healpix_spectrum(req, t, release, redrock_template_dir=rr_templ)
+
 def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
-                             tile_clusters=None):
+                             tile_clusters=None, sky=False, obs=False):
     import json
     T = cat_kd(req, ver, tag, kdfn, racol=racol, deccol=deccol)
     if T is None:
@@ -385,6 +431,12 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
             pass
     if tileid is not None:
         T.cut(T.tileid == tileid)
+
+    if sky:
+        T.cut(T.targetid < 0)
+    else:
+        T.cut(T.targetid >= 0)
+    # T.cut(T.npixels > 0)
 
     J = {}
     print('Got', len(T), 'spectra')
@@ -528,45 +580,97 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
             return HttpResponse(json.dumps(J), content_type='application/json')
 
     cols = T.get_columns()
-    rd = list((float(r),float(d)) for r,d in zip(T.get(racol), T.get(deccol)))
-        
-    # objtype -- FIXME -- can we unpack TARGETID enough to figure out SKY fibers?
-    if 'objtype' in T.get_columns():
-        objtype = T.objtype
+    targetids = [str(i) for i in T.targetid]
+
+    if obs:
+        from astrometry.util.starutil_numpy import mjdtodate, radectoxyz, xyztoradec
+        from astrometry.libkd.spherematch import match_radec
+        import numpy as np
+        names = []
+        colors = []
+        for zw,t,mjd,tile in zip(T.zwarn, T.coadd_exptime, T.minmjd, T.tileid):
+            d = mjdtodate(mjd)
+            #names.append('Tile %i, %i-%02i-%02i (%i s)' % (tile, d.year, d.month, d.day, int(t)))
+            names.append('%i sec' % (int(t)))
+            if zw != 0:
+                colors.append('#888888')
+            else:
+                colors.append('#3388ff')
+
+        # Make all names lists
+        names = [[n] for n in names]
+        # Make all targetids lists
+        targetids = [[t] for t in targetids]
+
+        # Merge targets within 1"
+
+        ra = T.get(racol)
+        dec = T.get(deccol)
+        I,JJ,d = match_radec(ra, dec, ra, dec, 1./3600., notself=True)
+        if len(I):
+            K = np.flatnonzero(I < JJ)
+            I = I[K]
+            JJ = JJ[K]
+            del K
+            # Merge!
+            xyz1 = radectoxyz(ra[I], dec[I])
+            xyz2 = radectoxyz(ra[JJ], dec[JJ])
+            ra[I],dec[I] = xyztoradec((xyz1 + xyz2)/2.)
+            for i,j in zip(I, JJ):
+                # append lists
+                names[i] = names[i] + names[j]
+                targetids[i] = targetids[i] + targetids[j]
+            keep = np.ones(len(T), bool)
+            keep[JJ] = False
+            T.cut(keep)
+            keep = np.flatnonzero(keep)
+            names = [names[i] for i in keep]
+            targetids = [targetids[i] for i in keep]
+            colors = [colors[i] for i in keep]
+
     else:
-        objtype = ['']*len(T)
+        # objtype -- FIXME -- can we unpack TARGETID enough to figure out SKY fibers?
+        if 'objtype' in T.get_columns():
+            objtype = T.objtype
+        else:
+            objtype = ['']*len(T)
+        if sky:
+            objtype = ['SKY']*len(T)
     
-    names = []
-    colors = []
-    for ot,t,st,z,zerr,zw in zip(objtype, T.spectype, T.subtype, T.z, T.zerr, T.zwarn):
-        c = '#3388ff'
-        t = t.strip()
-        nm = t
-        st = st.strip()
-        if st != '':
-            nm += ': ' + st
-        if t != 'STAR':
-            nm += ', z = %.3f' % z
+        names = []
+        colors = []
+        for ot,t,st,z,zerr,zw in zip(objtype, T.spectype, T.subtype, T.z, T.zerr, T.zwarn):
+            c = '#3388ff'
+            t = t.strip()
+            nm = t
+            st = st.strip()
+            if st != '':
+                nm += ': ' + st
+            if t != 'STAR':
+                nm += ', z = %.3f' % z
+    
+            ot = ot.strip()
+            if ot == 'SKY':
+                c = '#448888'
+                nm = ot
+            else:
+                if t == 'STAR':
+                    c = '#ff4444'
+                elif t == 'GALAXY':
+                    c = '#ffffff'
+                elif t == 'QSO':
+                    c = '#4444ff'
+                    
+                if zw > 0:
+                    nm += ' (ZWARN=0x%x)' %zw
+                    c = '#888888'
+            names.append(nm)
+            colors.append(c)
 
-        ot = ot.strip()
-        if ot == 'SKY':
-            c = '#448888'
-            nm = ot
-        if t == 'STAR':
-            c = '#ff4444'
-        elif t == 'GALAXY':
-            c = '#ffffff'
-        elif t == 'QSO':
-            c = '#4444ff'
-            
-        if zw > 0:
-            nm += ' (ZWARN=0x%x)' %zw
-            c = '#888888'
-        names.append(nm)
-        colors.append(c)
-
+    #print('Targetids:', T.targetid.dtype, T.targetid)
+    rd = list((float(r),float(d)) for r,d in zip(T.get(racol), T.get(deccol)))
     J.update(dict(rd=rd, name=names, color=colors,
-                  targetid=[str(i) for i in T.targetid]))
+                  targetid=targetids))
     if 'fiber' in cols:
         J.update(fiberid=[int(i) for i in T.fiber])
     if 'tileid' in cols:
@@ -577,6 +681,41 @@ def cat_desi_daily_spectra(req, ver):
     kdfn = get_desi_spectro_kdfile('daily')
     tag = 'desi-daily-spectra'
     return cat_desi_release_spectra(req, ver, kdfn, tag)
+
+def cat_desi_daily_sky_spectra(req, ver):
+    kdfn = get_desi_spectro_kdfile('daily')
+    tag = 'desi-daily-spectra'
+    return cat_desi_release_spectra(req, ver, kdfn, tag, sky=True)
+
+def cat_desi_daily_obs(req, ver):
+    kdfn = get_desi_spectro_kdfile('daily-obs')
+    tag = 'desi-daily-obs'
+    return cat_desi_release_spectra(req, ver, kdfn, tag, obs=True)
+
+def cat_desi_daily_obs_detail(req, targetid):
+    targetid = int(targetid)
+    release = 'daily-obs'
+    t = lookup_targetid(targetid, release)
+    if t is None:
+        return HttpResponse('No such targetid found in DESI Daily observations: %s' % targetid)
+    print('Target:', t)
+    t.about()
+    vals = {}
+    for c in t.get_columns():
+        v = t.get(c)
+        vals[c] = v
+    print('Values:', vals)
+    from astrometry.util.starutil_numpy import mjdtodate
+    d = mjdtodate(t.minmjd)
+    d = datetime(d.year, d.month, d.day, d.hour, d.minute, d.second)
+    #d.microsecond = 0
+    vals['mindate'] = d
+    d = mjdtodate(t.maxmjd)
+    d = datetime(d.year, d.month, d.day, d.hour, d.minute, d.second)
+    #d.microsecond = 0
+    vals['maxdate'] = d
+    from django.shortcuts import render
+    return render(req, 'obs.html', dict(obj=vals))
 
 def cat_desi_guadalupe_spectra(req, ver):
     '''
@@ -631,6 +770,13 @@ def cat_desi_edr_spectra(req, ver):
 
     return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec',
                                     tile_clusters=clusters)
+
+def cat_desi_dr1_spectra(req, ver):
+    kdfn = get_desi_spectro_kdfile('dr1')
+    tag = 'desi-dr1-spectra'
+    import json
+    import numpy as np
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
 
 def cat_desi_release_tiles(req, ver, release, color_function=None):
     import json
@@ -741,6 +887,19 @@ def cat_desi_edr_tiles(req, ver):
     #   sv3 dark
 
     return cat_desi_release_tiles(req, ver, 'edr', color_function=tilecolor)
+
+def cat_desi_dr1_tiles(req, ver):
+    def tilecolor(t, surv, prog):
+        other = '#7f7f7f'
+        if surv == 'sv1' and prog == 'other':
+            return other
+        return {
+            'main': '#3b79ab',
+            'sv1': '#77a8d0',
+            'sv2': '#37a436',
+            'sv3': '#ffae73',
+            }.get(surv, other)
+    return cat_desi_release_tiles(req, ver, 'dr1')#, color_function=tilecolor)
 
 def cat_photoz_dr9(req, ver):
     '''
@@ -3165,8 +3324,16 @@ if __name__ == '__main__':
     #r = c.get('/desi-spectrum/daily/targetid43977408013222855')
     #r = c.get('/ls-dr9/1/15/29479/18709.cat.json')
     #r = c.get('/usercatalog/1/cat.json?ralo=61.2789&rahi=61.3408&declo=-74.8711&dechi=-74.8622&cat=tmpbclfdga8')
-    r = c.get('/desi-spectrum/edr/targetid39627883857055540')
-
+    #r = c.get('/desi-spectrum/edr/targetid39627883857055540')
+    #r = c.get('/desi-spec-dr1/1/cat.json?ralo=149.1504&rahi=149.3979&declo=68.5631&dechi=68.6128')
+    #r = c.get('/desi-spec-daily/1/cat.json?ralo=146.9512&rahi=147.0131&declo=13.2602&dechi=13.2932')
+    #r = c.get('/desi-spec-daily-sky/1/cat.json?ralo=146.9512&rahi=147.0131&declo=13.2602&dechi=13.2932')
+    #r = c.get('/desi-obs-daily/1/cat.json?ralo=146.9298&rahi=147.0535&declo=13.2322&dechi=13.2983')
+    #r = c.get('/desi-obs/daily/targetid39628104741683680')
+    #r = c.get('/desi-obs/daily/targetid2411699042779148')
+    #r = c.get('/desi-obs-daily/1/cat.json?ralo=218.6108&rahi=218.6418&declo=30.9829&dechi=30.9974')
+    #r = c.get('/desi-spectrum/daily/targetid2305843037000968814')
+    r = c.get('/desi-spectrum/daily/targetid39627920582379819')
     f = open('out', 'wb')
     for x in r:
         f.write(x)
@@ -3189,5 +3356,5 @@ if __name__ == '__main__':
 
     from django.test import Client
     c = Client()
-    c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
+    #c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
     sys.exit(0)
