@@ -1659,13 +1659,13 @@ var map = L.map('map', {
 });
 var popup = L.popup();
 
-var login_info = L.control({'position':'topright'});
-login_info.onAdd = function (map) {
-    this._div = L.DomUtil.create('div', 'login_info');
-    this._div.innerHTML = 'Signed in as {{user.username}} | <a href="logout">Sign Out</a>';
-    return this._div;
-};
-login_info.addTo(map);
+//var login_info = L.control({'position':'topright'});
+//login_info.onAdd = function (map) {
+//    this._div = L.DomUtil.create('div', 'login_info');
+//    this._div.innerHTML = 'Signed in as {{user.username}} | <a href="logout">Sign Out</a>';
+//    return this._div;
+//};
+//login_info.addTo(map);
 
 map.attributionControl.options.prefix = '<a href="https://www.legacysurvey.org/svtips/">Tips &amp; Tricks | ' +
      map.attributionControl.options.prefix + ' | <a href="https://github.com/legacysurvey/imagine">Source</a>';

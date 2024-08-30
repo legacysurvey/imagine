@@ -161,12 +161,12 @@ TEMPLATES = [
         'DIRS': [os.path.join(WEB_DIR, 'templates')],
         'OPTIONS': {
             'context_processors': [
-                'django.contrib.auth.context_processors.auth',
+                #'django.contrib.auth.context_processors.auth',
                 'django.template.context_processors.request',
                 "django.template.context_processors.debug",
                 "django.template.context_processors.static",
-                'social_django.context_processors.backends',
-                'social_django.context_processors.login_redirect',
+                #'social_django.context_processors.backends',
+                #'social_django.context_processors.login_redirect',
             ],
             'debug': True,
             },
@@ -206,14 +206,14 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'viewer',
     ### For ./manage.py show_urls
-    'django_extensions',
+    #'django_extensions',
 )
 
 MIDDLEWARE = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+#    'django.contrib.auth.middleware.AuthenticationMiddleware',
 #    'django.contrib.messages.middleware.MessageMiddleware',
 #    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )

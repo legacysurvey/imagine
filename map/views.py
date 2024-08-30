@@ -854,7 +854,8 @@ def unions(req):
                   #rooturl=settings.ROOT_URL + '/m33',
                   enable_desi_footprint=False,
                   enable_desi_targets=False,
-                  #enable_spectra=False,
+                  #enable_spectra=False,)
+                  )
 
 def desi_edr(req):
     # q = req.META['QUERY_STRING']
