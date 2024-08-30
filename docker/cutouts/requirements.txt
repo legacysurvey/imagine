@@ -1,0 +1,9 @@
+numpy
+scipy
+matplotlib
+astropy
+fitsio
+Django
+pillow
+requests
+cython

@@ -18,20 +18,27 @@ except:
     from django.urls import reverse
 from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 
+from datetime import datetime
+
 debug = print
 if not settings.DEBUG_LOGGING:
     def debug(*args, **kwargs):
         pass
 
 catversions = {
+    'hsc-dr2-cosmos': [1,],
     'dr9sv': [1,],
     'dr9sv-north': [1,],
     'dr9sv-south': [1,],
+    'ls-dr9': [1,],
+    'ls-dr9-north': [1,],
+    'ls-dr9-south': [1,],
     'ls-dr8': [1,],
     'ls-dr8-north': [1,],
     'ls-dr8-south': [1,],
     'decals-dr7': [1,],
     'mzls+bass-dr6': [1,],
+    'ls-dr67':[1,],
     'decals-dr5': [1,],
     'ngc': [1,],
     'GCs-PNe': [1,],
@@ -50,14 +57,42 @@ catversions = {
     'targets-cmx-dr7': [1,],
     'targets-dr8': [1,],
     'targets-sv-dr8': [1,],
+    'targets-dr9-sv1-sec-bright':[1,],
+    'targets-dr9-sv1-sec-dark':[1,],
+    'targets-dr9-sv1-dark':[1,],
+    'targets-dr9-sv1-bright':[1,],
+    'targets-dr9-sv1-supp':[1,],
+    'targets-dr9-sv3-bright':[1,],
+    'targets-dr9-sv3-dark':[1,],
+    'targets-dr9-sv3-sec-bright':[1,],
+    'targets-dr9-sv3-sec-dark':[1,],
+    'targets-dr9-main-bright':[1,],
+    'targets-dr9-main-dark':[1,],
+    'targets-dr9-main-sec-bright':[1,],
+    'targets-dr9-main-sec-dark':[1,],
     'gaia-dr1': [1,],
     'gaia-dr2': [1,],
+    'gaia-edr3': [1,],
     'sdss-cat': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
     'desi-tiles': [1,],
     'masks-dr8': [1,],
     'cfis-dr2': [1,],
+    'photoz-dr9': [1,],
+    'desi-edr-tiles': [1,],
+    'desi-edr-spectra': [1,],
+    'desi-dr1-tiles': [1,],
+    'desi-dr1-spectra': [1,],
+    'desi-daily-tiles': [1,],
+    'desi-daily-spectra': [1,],
+    'desi-daily-obs': [1,],
+    'desi-fuji-tiles': [1,],
+    'desi-fuji-spectra': [1,],
+    'desi-guadalupe-tiles': [1,],
+    'desi-guadalupe-spectra': [1,],
+    'ls-dr10': [1,],
+    'ls-dr10-south': [1,],
 }
 
 test_cats = []
@@ -170,6 +205,878 @@ def gaia_stars_for_wcs(req):
             for g,x,y in zip(stars, xx, yy)])
     return HttpResponse(json.dumps(reply),
                         content_type='application/json')
+
+def call_prospect(spectra, zbests, redrock_template_dir=None, outdir=None):
+    import tempfile
+    import os
+    import prospect.viewer
+    import redrock.templates
+
+    if redrock_template_dir is None:
+        redrock_template_dir = os.path.join(settings.DATA_DIR, 'redrock-templates')
+    os.environ['RR_TEMPLATE_DIR'] = redrock_template_dir
+
+    if outdir is None:
+        tempdir = tempfile.TemporaryDirectory()
+        outdir = tempdir.name
+    elif not os.path.exists(outdir):
+        try:
+            os.makedirs(outdir)
+        except:
+            pass
+        if not os.path.exists(outdir):
+            print('Failed to create requested output directory', outdir)
+            outdir = None
+
+    outfn = os.path.join(outdir, 'prospect.html')
+    if os.path.exists(outfn):
+        print('Cache hit for', outfn)
+        return HttpResponse(open(outfn))
+
+    try:
+        tt = 'DESI Spectr%s: TARGETID %s' % (('a' if (len(zbests) > 1) else 'um'),
+                                             ', '.join(['%i'%i for i in zbests['TARGETID']]))
+        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir, outfile=outfn,
+                                    with_vi_widgets=False,
+                                    with_thumb_tab=False,
+                                    title=tt)
+        # colors=['color_for_spectrum', 'color_for_model', 'color_for_noise']
+        # color names html syntax; current default values '#D62728', 'black', 'green')
+    except KeyError:
+        prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir,
+                                    with_vi_widgets=False, model_from_zcat=False)
+    f = open(outfn)
+    return HttpResponse(f)
+
+def cat_desi_release_spectra_detail(req, tile, fiber, release):
+    from glob import glob
+    from desispec.io import read_spectra
+    import numpy as np
+    import os
+    from astropy.table import Table
+    import astropy
+    from desispec.spectra import stack
+
+    tile = int(tile)
+    fiber = int(fiber)
+    sp = fiber//500
+    pat = ('/global/cfs/cdirs/desi/spectro/redux/%s/tiles/cumulative/%i/*/coadd-%i-%i-thru*.fits'
+           % (release, tile, sp, tile))
+    #print('Searching', pat)
+    fns = glob(pat)
+    fns.sort()
+    fn = fns[-1]
+    spectra = read_spectra(fn)
+    keep = np.in1d(spectra.fibermap['FIBER'], [fiber])
+    spectra = spectra[keep]
+
+    zbests = []
+
+    # I don't understand why some daily spectra seem to be 'zbest' and some 'redrock'
+    # eg zbest https://www.legacysurvey.org/viewer-desi/desi-spectrum/daily/targetid39628433252155537
+    # /global/cfs/cdirs/desi/spectro/redux/daily/tiles/cumulative/125/20210504/zbest
+
+    # #- Read matching zbest file for this spectra/coadd file
+    # if release in []:#'daily']:
+    #     fntag = 'zbest'
+    #     extname = 'ZBEST'
+    # else:
+    #     fntag = 'redrock'
+    #     extname = 'REDSHIFTS'
+
+    # Just gd try both
+    for fntag,extname in [('redrock', 'REDSHIFTS'), ('zbest', 'ZBEST')]:
+        zbfile = os.path.basename(fn).replace('coadd', fntag, 1)
+        zbfile = os.path.join(os.path.dirname(fn), zbfile)
+        if not os.path.exists(zbfile):
+            continue
+        zb = Table.read(zbfile, extname)
+    #- Trim zb to only have TARGETIDs in filtered spectra sp
+    keep = np.in1d(zb['TARGETID'], spectra.fibermap['TARGETID'])
+    zb = zb[keep]
+    #- spectra files can have multiple entries per TARGETID,
+    #- while zbest files have only 1.  Expand to match spectra.
+    #- Note: astropy.table.join changes the order
+    if len(spectra.fibermap) > len(zb):
+        zbx = Table()
+        zbx['TARGETID'] = spectra.fibermap['TARGETID']
+        zbx = astropy.table.join(zbx, zb, keys='TARGETID')
+    else:
+        zbx = zb
+    #- Sort the zbx Table to match the order of sp['TARGETID']
+    ii = np.argsort(spectra.fibermap['TARGETID'])
+    jj = np.argsort(zbx['TARGETID'])
+    kk = np.argsort(ii[jj])
+    zbx = zbx[kk]
+    zbests = zbx
+    #- Confirm that we got all that expanding and sorting correct
+    assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
+
+    # print('Passing to prospect: spectra:')
+    # print(spectra)
+    # print('zcatalog:')
+    # print(zbests)
+
+    return call_prospect(spectra, zbests)
+
+def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
+    from glob import glob
+    from desispec.io import read_spectra
+    import numpy as np
+    import os
+    from astropy.table import Table
+    import astropy
+    from desispec.spectra import stack
+    import os
+
+    # Check the cache!
+    outdir = None
+    if settings.DESI_PROSPECT_DIR is not None:
+        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % obj.targetid)
+        fn = os.path.join(outdir, 'prospect.html')
+        if os.path.exists(fn):
+            print('Cache hit for', fn)
+            return HttpResponse(open(fn))
+        if not os.path.exists(outdir):
+            try:
+                os.makedirs(outdir)
+            except:
+                pass
+        if not os.path.exists(outdir):
+            outdir = None
+
+    prog = obj.program.strip()
+    surv = obj.survey.strip()
+    hp = '%i' % obj.healpix
+    hp_pre = '%i' % (obj.healpix//100)
+
+    if release == 'edr':
+        basedir = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji'
+    elif release == 'dr1':
+        basedir = '/global/cfs/cdirs/desi/spectro/redux/iron'
+    else:
+        basedir = '/global/cfs/cdirs/desi/spectro/redux/%s' % release
+
+    
+    fn = os.path.join(basedir, 'healpix', surv, prog, hp_pre, hp,
+                      'coadd-%s-%s-%s.fits' % (surv, prog, hp))
+
+    spectra = read_spectra(fn)
+    spectra = spectra.select(targets=[obj.targetid])
+    if spectra.num_targets() != 1:
+        return HttpResponse('Expected to find 1 spectrum, got %i for TARGETID %i in file %s' %
+                            (spectra.num_targets(), obj.targetid, fn))
+    zbests = []
+    #- Read matching zbest file for this spectra/coadd file
+    zbfile = os.path.basename(fn).replace('coadd', 'redrock', 1)
+    zbfile = os.path.join(os.path.dirname(fn), zbfile)
+    zb = Table.read(zbfile, 'REDSHIFTS')
+    #- Trim zb to only have TARGETIDs in filtered spectra sp
+    keep = np.in1d(zb['TARGETID'], spectra.fibermap['TARGETID'])
+    zb = zb[keep]
+    assert(len(spectra.fibermap) == 1)
+    assert(len(zb) == 1)
+    zbests = zb
+    #- Confirm that we got all that expanding and sorting correct
+    assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
+
+    return call_prospect(spectra, zbests, redrock_template_dir=redrock_template_dir,
+                         outdir=outdir)
+
+def get_desi_spectro_kdfile(release):
+    if release == 'edr':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-edr', 'zpix-all.kd.fits')
+    elif release == 'dr1':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-dr1', 'zpix-all.kd.fits')
+    elif release == 'daily':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')
+    elif release == 'daily-obs':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'desi-obs.kd.fits')
+    elif release == 'guadalupe':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-guadalupe', 'zpix-all.kd.fits')
+    elif release == 'fuji':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-fuji', 'zpix-all.kd.fits')
+    elif release == 'denali':
+        return os.path.join(settings.DATA_DIR, 'desi-spectro-denali',
+                            'zcatalog-denali-cumulative.kd.fits')
+    return None
+
+def lookup_targetid(targetid, release):
+    from astrometry.libkd.spherematch import tree_open
+    from astrometry.util.fits import fits_table
+    import numpy as np
+    fn = get_desi_spectro_kdfile(release)
+    kd = tree_open(fn, 'targetid')
+    print('Searching for targetid', targetid)
+    #I = kd.search(np.array([float(targetid)]), 0.5, 0, 0)
+    I = kd.search(np.array([targetid]).astype(np.uint64), 0.5, 0, 0)
+    if len(I) == 0:
+        return None
+    ## The kd-search for uint64 for return matches outside the search range!  uint64 vs float is weird!
+    #print('Found', len(I), 'entries for targetid', targetid)
+    # Read only the allzbest table rows within range.
+    T = fits_table(fn, rows=I)
+    #print('Matched targetids:', T.targetid)
+    I = np.flatnonzero(T.targetid == targetid)
+    if len(I) == 0:
+        return None
+    T.cut(I)
+    if len(T) > 1:
+        print('Matched targetids:', T.targetid)
+        #print('Surveys:', T.survey)
+        #print('Programs:', T.program)
+    else:
+        print('Found targetid', T.targetid[0])#, 'in survey', T.survey[0], 'program', T.program[0])
+    i = 0
+    return T[i]
+
+def cat_desi_daily_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    t = lookup_targetid(targetid, 'daily')
+    if t is None:
+        return HttpResponse('No such targetid found in DESI daily spectra: %s' % targetid)
+    return cat_desi_release_spectra_detail(req, t.tileid, t.fiber, 'daily')
+
+def cat_desi_guadalupe_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    t = lookup_targetid(targetid, 'guadalupe')
+    if t is None:
+        return HttpResponse('No such targetid found in DESI Guadalupe spectra: %s' % targetid)
+    return desi_healpix_spectrum(req, t, 'guadalupe')
+
+def cat_desi_fuji_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    t = lookup_targetid(targetid, 'fuji')
+    if t is None:
+        return HttpResponse('No such targetid found in DESI Fuji spectra: %s' % targetid)
+    return desi_healpix_spectrum(req, t, 'fuji')
+
+def cat_desi_edr_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    release = 'edr'
+
+    # Quick-check cache (without looking up object)
+    if settings.DESI_PROSPECT_DIR is not None:
+        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+        fn = os.path.join(outdir, 'prospect.html')
+        if os.path.exists(fn):
+            print('Cache hit for', fn)
+            return HttpResponse(open(fn))
+
+    t = lookup_targetid(targetid, release)
+    if t is None:
+        return HttpResponse('No such targetid found in DESI EDR spectra: %s' % targetid)
+    return desi_healpix_spectrum(req, t, release)
+
+def cat_desi_dr1_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    release = 'dr1'
+
+    # Quick-check cache (without looking up object)
+    if settings.DESI_PROSPECT_DIR is not None:
+        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+        fn = os.path.join(outdir, 'prospect.html')
+        if os.path.exists(fn):
+            print('Cache hit for', fn)
+            return HttpResponse(open(fn))
+
+    t = lookup_targetid(targetid, release)
+    if t is None:
+        return HttpResponse('No such targetid found in DESI DR1 spectra: %s' % targetid)
+
+    rr_templ = os.path.join(settings.DATA_DIR, 'desi-spectro-dr1', 'redrock-templates')
+
+    return desi_healpix_spectrum(req, t, release, redrock_template_dir=rr_templ)
+
+def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
+                             tile_clusters=None, sky=False, obs=False):
+    import json
+    T = cat_kd(req, ver, tag, kdfn, racol=racol, deccol=deccol)
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])), #, z=[], zerr=[])),
+                            content_type='application/json')
+
+    tileid = None
+    if 'tile' in req.GET:
+        try:
+            tileid = int(req.GET['tile'])
+        except:
+            pass
+    if tileid is not None:
+        T.cut(T.tileid == tileid)
+
+    if sky:
+        T.cut(T.targetid < 0)
+    else:
+        T.cut(T.targetid >= 0)
+    # T.cut(T.npixels > 0)
+
+    J = {}
+    print('Got', len(T), 'spectra')
+    if len(T) > 1000:
+        import numpy as np
+        from scipy.spatial import ConvexHull
+        
+        # Split into a 3x3 grid?  Cluster?
+        # Then find convex hull and send polygon & count?
+        ralo = float(req.GET['ralo'])
+        rahi = float(req.GET['rahi'])
+        declo = float(req.GET['declo'])
+        dechi = float(req.GET['dechi'])
+
+        ra_wrap = ralo > rahi
+        if ra_wrap:
+            # Move RAs to +- 0
+            T.ra_wrap = T.ra + -360 * (T.ra > 180)
+            ralo -= 360
+        else:
+            T.ra_wrap = T.ra
+
+        assert(ralo < rahi)
+        assert(declo < dechi)
+
+        cluster_edges = []
+        cluster_labels = []
+
+        Iloose = []
+
+        from astrometry.util.miscutils import point_in_poly, clip_polygon
+
+        Iclusters = []
+
+        # Use pre-computed cluster membership!
+        if tile_clusters is not None:
+            cl = np.unique(T.tile_cluster)
+            print(len(cl), 'unique clusters')
+            for cl_i in cl:
+                rd = tile_clusters[cl_i]
+                ra,dec = rd[:,0],rd[:,1]
+                if ra_wrap:
+                    ra_w = ra + -360 * (ra > 180)
+                else:
+                    ra_w = ra
+                I = np.flatnonzero(T.tile_cluster == cl_i)
+                print(len(I), 'spectra in cluster', cl_i)
+                Iclusters.append((I, (ra,ra_w,dec)))
+
+        # if tile_clusters is None:
+        #     tile_clusters = []
+        # for cl_i,rd in enumerate(tile_clusters):
+        #     #print('Tile cluster boundary:', rd.shape)
+        #     ra,dec = rd[:,0],rd[:,1]
+        #     if ra_wrap:
+        #         ra_w = ra + -360 * (ra > 180)
+        #     else:
+        #         ra_w = ra
+        #     # completely outside RA,Dec region?
+        #     if min(ra_w) > rahi or max(ra_w) < ralo or min(dec) > dechi or max(dec) < declo:
+        #         #print('Tile not nearby, skipping')
+        #         continue
+        #     poly = np.vstack((ra_w,dec)).T
+        #     #print('Poly', poly.shape)
+        #     isin = point_in_poly(T.ra_wrap, T.dec, np.vstack((ra_w,dec)).T)
+        #     I = np.flatnonzero(isin)
+        #     print(len(I), 'spectra in cluster', cl_i)
+        #     if len(I) == 0:
+        #         continue
+        #     Iclusters.append((I, (ra,ra_w,dec)))
+
+        if len(Iclusters) > 1:
+            for I,(ra,ra_w,dec) in Iclusters:
+                if len(I) < 100:
+                    Iloose.append(I)
+                    continue
+                K = np.flatnonzero((ra_w > ralo) * (ra_w < rahi) * (dec > declo) * (dec < dechi))
+                if len(K) > 0:
+                    cra,cdec = np.mean(np.vstack((ra_w[K], dec[K])), axis=1)
+                else:
+                    cra = (ralo + rahi) / 2.
+                    cdec = (declo + dechi) / 2.
+                if cra < 0:
+                    cra += 360.
+                #cliprd = clip_polygon(np.vstack((ra_w,dec)).T,
+                #                      np.array([[ralo,declo],[ralo,dechi],[rahi,dechi],[rahi,declo]]))
+                #cliprd = np.array(cliprd)
+                #ra,dec = cliprd[:,0], cliprd[:,1]
+                cluster_edges.append([(float(r),float(d)) for r,d in zip(ra,dec)])
+                cluster_labels.append([float(cra), float(cdec), '%i spectra' % len(I)])
+
+
+            # No grid!
+            nra = ndec = 0
+
+        else:
+            # grid
+            nra = ndec = 3
+
+        for i in range(ndec):
+            for j in range(nra):
+                r1 = ralo +  j * (rahi - ralo) / nra
+                r2 = ralo + (j+1) * (rahi - ralo) / nra
+                d1 = declo +  i * (dechi - declo) / ndec
+                d2 = declo + (i+1) * (dechi - declo) / ndec
+                I = np.flatnonzero((T.ra_wrap >= r1) * (T.ra_wrap < r2) *
+                                   (T.dec >= d1)  * (T.dec < d2))
+                print(len(I), 'in grid cell', j, i)
+                if len(I) == 0:
+                    continue
+
+                if len(I) < 100:
+                    Iloose.append(I)
+                    continue
+
+                try:
+                    ch = ConvexHull(np.vstack((T.ra_wrap[I], T.dec[I])).T)
+                except:
+                    import traceback
+                    print_exc()
+                    continue
+                Ivert = I[ch.vertices]
+                ch = np.vstack((T.ra[Ivert], T.dec[Ivert])).T
+                #print('Convex hull:', ch)
+                chw = np.vstack((T.ra_wrap[Ivert], T.dec[Ivert])).T
+                c = np.mean(chw, axis=0)
+                cra,cdec = c
+                if cra < 0:
+                    cra += 360.
+                #print('Center of convex hull:', cra,cdec)
+                cluster_edges.append([(float(r),float(d)) for r,d in ch])
+                cluster_labels.append([float(cra), float(cdec), '%i spectra' % len(I)])
+
+        J.update(cluster_edges=cluster_edges,
+                 cluster_labels=cluster_labels)
+        if len(Iloose):
+            I = np.hstack(Iloose)
+            T.cut(I)
+            # Continue to add the loose ones into J...
+        else:
+            return HttpResponse(json.dumps(J), content_type='application/json')
+
+    cols = T.get_columns()
+    targetids = [str(i) for i in T.targetid]
+
+    if obs:
+        from astrometry.util.starutil_numpy import mjdtodate, radectoxyz, xyztoradec
+        from astrometry.libkd.spherematch import match_radec
+        import numpy as np
+        names = []
+        colors = []
+        for zw,t,mjd,tile in zip(T.zwarn, T.coadd_exptime, T.minmjd, T.tileid):
+            d = mjdtodate(mjd)
+            #names.append('Tile %i, %i-%02i-%02i (%i s)' % (tile, d.year, d.month, d.day, int(t)))
+            names.append('%i sec' % (int(t)))
+            if zw != 0:
+                colors.append('#888888')
+            else:
+                colors.append('#3388ff')
+
+        # Make all names lists
+        names = [[n] for n in names]
+        # Make all targetids lists
+        targetids = [[t] for t in targetids]
+
+        # Merge targets within 1"
+
+        ra = T.get(racol)
+        dec = T.get(deccol)
+        I,JJ,d = match_radec(ra, dec, ra, dec, 1./3600., notself=True)
+        if len(I):
+            K = np.flatnonzero(I < JJ)
+            I = I[K]
+            JJ = JJ[K]
+            del K
+            # Merge!
+            xyz1 = radectoxyz(ra[I], dec[I])
+            xyz2 = radectoxyz(ra[JJ], dec[JJ])
+            ra[I],dec[I] = xyztoradec((xyz1 + xyz2)/2.)
+            for i,j in zip(I, JJ):
+                # append lists
+                names[i] = names[i] + names[j]
+                targetids[i] = targetids[i] + targetids[j]
+            keep = np.ones(len(T), bool)
+            keep[JJ] = False
+            T.cut(keep)
+            keep = np.flatnonzero(keep)
+            names = [names[i] for i in keep]
+            targetids = [targetids[i] for i in keep]
+            colors = [colors[i] for i in keep]
+
+    else:
+        # objtype -- FIXME -- can we unpack TARGETID enough to figure out SKY fibers?
+        if 'objtype' in T.get_columns():
+            objtype = T.objtype
+        else:
+            objtype = ['']*len(T)
+        if sky:
+            objtype = ['SKY']*len(T)
+    
+        names = []
+        colors = []
+        for ot,t,st,z,zerr,zw in zip(objtype, T.spectype, T.subtype, T.z, T.zerr, T.zwarn):
+            c = '#3388ff'
+            t = t.strip()
+            nm = t
+            st = st.strip()
+            if st != '':
+                nm += ': ' + st
+            if t != 'STAR':
+                nm += ', z = %.3f' % z
+    
+            ot = ot.strip()
+            if ot == 'SKY':
+                c = '#448888'
+                nm = ot
+            else:
+                if t == 'STAR':
+                    c = '#ff4444'
+                elif t == 'GALAXY':
+                    c = '#ffffff'
+                elif t == 'QSO':
+                    c = '#4444ff'
+                    
+                if zw > 0:
+                    nm += ' (ZWARN=0x%x)' %zw
+                    c = '#888888'
+            names.append(nm)
+            colors.append(c)
+
+    #print('Targetids:', T.targetid.dtype, T.targetid)
+    rd = list((float(r),float(d)) for r,d in zip(T.get(racol), T.get(deccol)))
+    J.update(dict(rd=rd, name=names, color=colors,
+                  targetid=targetids))
+    if 'fiber' in cols:
+        J.update(fiberid=[int(i) for i in T.fiber])
+    if 'tileid' in cols:
+        J.update(tileid=[int(i) for i in T.tileid])
+    return HttpResponse(json.dumps(J), content_type='application/json')
+
+def cat_desi_daily_spectra(req, ver):
+    kdfn = get_desi_spectro_kdfile('daily')
+    tag = 'desi-daily-spectra'
+    return cat_desi_release_spectra(req, ver, kdfn, tag)
+
+def cat_desi_daily_sky_spectra(req, ver):
+    kdfn = get_desi_spectro_kdfile('daily')
+    tag = 'desi-daily-spectra'
+    return cat_desi_release_spectra(req, ver, kdfn, tag, sky=True)
+
+def cat_desi_daily_obs(req, ver):
+    kdfn = get_desi_spectro_kdfile('daily-obs')
+    tag = 'desi-daily-obs'
+    return cat_desi_release_spectra(req, ver, kdfn, tag, obs=True)
+
+def cat_desi_daily_obs_detail(req, targetid):
+    targetid = int(targetid)
+    release = 'daily-obs'
+    t = lookup_targetid(targetid, release)
+    if t is None:
+        return HttpResponse('No such targetid found in DESI Daily observations: %s' % targetid)
+    print('Target:', t)
+    t.about()
+    vals = {}
+    for c in t.get_columns():
+        v = t.get(c)
+        vals[c] = v
+    print('Values:', vals)
+    from astrometry.util.starutil_numpy import mjdtodate
+    d = mjdtodate(t.minmjd)
+    d = datetime(d.year, d.month, d.day, d.hour, d.minute, d.second)
+    #d.microsecond = 0
+    vals['mindate'] = d
+    d = mjdtodate(t.maxmjd)
+    d = datetime(d.year, d.month, d.day, d.hour, d.minute, d.second)
+    #d.microsecond = 0
+    vals['maxdate'] = d
+    from django.shortcuts import render
+    return render(req, 'obs.html', dict(obj=vals))
+
+def cat_desi_guadalupe_spectra(req, ver):
+    '''
+    TT = []
+    for surv,prog in [('main','dark'), ('main','bright'), ('special','dark'), ('special','bright')]:
+        fn = '/global/cfs/cdirs/desi/spectro/redux/guadalupe/zcatalog/zpix-%s-%s.fits' % (surv, prog)
+        T = fits_table(fn, columns=['target_ra','target_dec','targetid','z','zerr','zwarn','spectype','subtype',
+                                             'healpix', 'objtype'])
+        T.survey = np.array([surv]*len(T))
+        T.program = np.array([prog]*len(T))
+        TT.append(T)
+    T = merge_tables(TT)
+    T.writeto('cosmo/webapp/viewer-desi/data/desi-spectro-guadalupe/zpix-all.fits')
+    '''
+    # python -c "from desi_spectro_kdtree import create_desi_spectro_kdtree as create; create('data/desi-spectro-guadalupe/zpix-all.fits', 'data/desi-spectro-guadalupe/zpix-all.kd.fits', racol='target_ra', deccol='target_dec')"
+    kdfn = get_desi_spectro_kdfile('guadalupe')
+    tag = 'desi-guadalupe-spectra'
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
+
+
+def cat_desi_fuji_spectra(req, ver):
+    '''
+    sys.path.append('cosmo/webapp/viewer-desi/')
+    from desi_spectro_kdtree import create_desi_spectro_kdtree
+    TT = []
+    for surv,prog in [('cmx','other'), ('special','dark'), ('sv1','backup'), ('sv1','bright'),
+                     ('sv1','other'), ('sv2','backup'), ('sv2','bright'), ('sv2','dark'),
+                     ('sv3','backup'), ('sv3','bright'), ('sv3','dark')]:
+        fn = '/global/cfs/cdirs/desi/spectro/redux/fuji/zcatalog/zpix-%s-%s.fits' % (surv, prog)
+        T = fits_table(fn, columns=['target_ra','target_dec','targetid','z','zerr','zwarn','spectype','subtype',
+                                             'healpix', 'objtype'])
+        T.survey = np.array([surv]*len(T))
+        T.program = np.array([prog]*len(T))
+        TT.append(T)
+    T = merge_tables(TT)
+    fn = 'cosmo/webapp/viewer-desi/data/desi-spectro-fuji/zpix-all.fits'
+    T.writeto(fn)
+    create_desi_spectro_kdtree(fn, 'cosmo/webapp/viewer-desi/data/desi-spectro-fuji/zpix-all.kd.fits', racol='target_ra', deccol='target_dec')
+    '''
+    kdfn = get_desi_spectro_kdfile('fuji')
+    tag = 'desi-fuji-spectra'
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
+
+def cat_desi_edr_spectra(req, ver):
+    kdfn = get_desi_spectro_kdfile('edr')
+    tag = 'desi-edr-spectra'
+    clusters = open(os.path.join(settings.DATA_DIR, 'desi-spectro-edr', 'tile-clusters.json')).read()
+    import json
+    import numpy as np
+    clusters = json.loads(clusters)
+    clusters = [np.array(cl).reshape(-1,2) for cl in clusters]
+
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec',
+                                    tile_clusters=clusters)
+
+def cat_desi_dr1_spectra(req, ver):
+    kdfn = get_desi_spectro_kdfile('dr1')
+    tag = 'desi-dr1-spectra'
+    import json
+    import numpy as np
+    return cat_desi_release_spectra(req, ver, kdfn, tag, racol='target_ra', deccol='target_dec')
+
+def cat_desi_release_tiles(req, ver, release, color_function=None):
+    import json
+    from astrometry.util.fits import fits_table
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    import numpy as np
+    ver = int(ver)
+    tag = 'desi-%s-tiles' % release
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    desi_radius = 1.628
+    fn = os.path.join(settings.DATA_DIR, 'desi-spectro-%s/tiles2.kd.fits' % release)
+
+    if color_function is None:
+        def color_function(t, surv, prog):
+            cc = {
+                ('sv1', 'backup'): '#999999', # HSV V=0.6
+                ('sv1', 'bright'): '#996600', # darker orange
+                ('sv1', 'dark'):   '#177699', # darker blue
+                ('sv2', 'backup'): '#999999', # HSV V=0.7
+                ('sv2', 'bright'): '#b37700', #
+                ('sv2', 'dark'):   '#1b8ab3', #
+                ('sv3', 'backup'): '#cccccc', # HSV V=0.8
+                ('sv3', 'bright'): '#cc8800',
+                ('sv3', 'dark'):   '#1f9ecc',
+                ('main', 'dark'):  '#22aadd',
+                ('main', 'bright'): '#cc8800',
+                ('special', 'dark'): '#77ccee',
+                ('special', 'bright'): '#ffbb33',
+                }.get((surv, prog), '#888888')
+            return cc
+
+    def result(T):
+        res = []
+        for t in T:
+            name = 'Tile %i' % t.tileid
+            details = []
+            surv = t.survey.strip()
+            if surv != 'unknown':
+                details.append(surv)
+            if 'program' in t.get_columns():
+                prog = t.program.strip()
+            else:
+                prog = t.faprgrm.strip()
+            if prog != 'unknown':
+                details.append(prog)
+            if len(details):
+                name += ' (%s)' % ', '.join(details)
+
+            cc = color_function(t, surv, prog)
+            res.append(dict(name=name, ra=t.tilera, dec=t.tiledec, radius=desi_radius,
+                            color=cc))
+        return HttpResponse(json.dumps(dict(objs=res)),
+                            content_type='application/json')
+
+    if dechi - declo > 10:
+        T = fits_table(fn)
+        return result(T)
+    
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+    kd = tree_open(fn)
+    I = tree_search_radec(kd, rc, dc, rad + desi_radius)
+    T = fits_table(fn, rows=I)
+    return result(T)
+
+def cat_desi_daily_tiles(req, ver):
+    return cat_desi_release_tiles(req, ver, 'daily')
+
+def cat_desi_guadalupe_tiles(req, ver):
+    #startree -i /global/cfs/cdirs/desi/spectro/redux/guadalupe/tiles-guadalupe.fits -R tilera -D tiledec -PTk -o data/desi-spectro-guadalupe/tiles2.kd.fits
+    return cat_desi_release_tiles(req, ver, 'guadalupe')
+
+def cat_desi_fuji_tiles(req, ver):
+    #startree -i /global/cfs/cdirs/desi/spectro/redux/fuji/tiles-fuji.fits -R tilera -D tiledec -PTk -o data/desi-spectro-fuji/tiles2.kd.fits
+    return cat_desi_release_tiles(req, ver, 'fuji')
+
+def cat_desi_edr_tiles(req, ver):
+    def tilecolor(t, surv, prog):
+        other = '#7f7f7f'
+        if surv == 'sv1' and prog == 'other':
+            return other
+        return {
+            'sv1': '#77a8d0',
+            'sv2': '#37a436',
+            'sv3': '#ffae73',
+            }.get(surv, other)
+    # sv1: dark 2077b4 mid 77a8d0 light aac9e1
+    # sv1/sec: dark 000000 mid 3f3f3f light 7f7f7f
+    # sv2: 2ba02b / 37a436 / 5fb45b
+    # sv3: ff7f0f / ffae73 / ffcca9
+    # All combos:
+    #   cmx other
+    #   special dark
+    #   sv1 backup
+    #   sv1 bright
+    #   sv1 dark
+    #   sv1 other
+    #   sv2 backup
+    #   sv2 bright
+    #   sv2 dark
+    #   sv3 backup
+    #   sv3 bright
+    #   sv3 dark
+
+    return cat_desi_release_tiles(req, ver, 'edr', color_function=tilecolor)
+
+def cat_desi_dr1_tiles(req, ver):
+    def tilecolor(t, surv, prog):
+        other = '#7f7f7f'
+        if surv == 'sv1' and prog == 'other':
+            return other
+        return {
+            'main': '#3b79ab',
+            'sv1': '#77a8d0',
+            'sv2': '#37a436',
+            'sv3': '#ffae73',
+            }.get(surv, other)
+    return cat_desi_release_tiles(req, ver, 'dr1')#, color_function=tilecolor)
+
+def cat_photoz_dr9(req, ver):
+    '''
+    I pre-processed the photo-z sweep files like this to create a kd-tree per sweep:
+
+    pzfns = glob('/global/cscratch1/sd/rongpu/dr9_photoz/south/sweep-*.fits')
+    pzfns.sort()
+    for pzfn in pzfns:
+        outfn = ('/global/cfs/cdirs/cosmo/webapp/viewer-dev/data/photoz/dr9-south/'
+                 + os.path.basename(pzfn).replace('.fits', '.kd.fits'))
+        if os.path.exists(outfn):
+            print('Exists:', outfn)
+            continue
+        sweepfn = pzfn.replace('/global/cscratch1/sd/rongpu/dr9_photoz/south',
+                               '/global/cfs/cdirs/cosmo/data/legacysurvey/dr9/south/sweep/9.0').replace(
+                            '-pz.fits', '.fits')
+        PZ = fits_table(pzfn)
+        if not np.any(PZ.z_phot_mean > -99):
+            print('Skipping', pzfn)
+            continue
+        SW = fits_table(sweepfn, columns=['ra','dec'])
+        assert(len(PZ) == len(SW))
+        PZ.ra  = SW.ra
+        PZ.dec = SW.dec
+        print(pzfn)
+        print('Before cut:', len(PZ))
+        PZ.cut(PZ.z_phot_mean > -99)
+        print('After  cut:', len(PZ))
+        if len(PZ) == 0:
+            continue
+        PZ.writeto('/tmp/pz.fits')
+        cmd = ('startree -i /tmp/pz.fits -o %s -PTk' % outfn)
+        print(cmd)
+        os.system(cmd)
+    '''
+    import numpy as np
+    import json
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.util.starutil_numpy import radectolb
+    tag = 'photoz-dr9'
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    TT = []
+    # find relevant sweep files
+    rastep = 10
+    decstep = 5
+    r1 = rastep * np.floor(ralo / rastep).astype(int)
+    r2 = rastep * np.ceil (rahi / rastep).astype(int)
+    d1 = decstep * np.floor(declo / decstep).astype(int)
+    d2 = decstep * np.ceil (dechi / decstep).astype(int)
+    # Too big an area?
+    empty = json.dumps(dict(rd=[], phot_z_mean=[], phot_z_std=[]))
+    if (d2 - d1) * (r2 - r1) > 200:
+        return HttpResponse(empty, content_type='application/json')
+
+    decsplit = 32.375
+    
+    for hemi in ['north', 'south']:
+        for d in range(d1, d2, decstep):
+            for r in range(r1, r2, rastep):
+                dsign = 'p' if d >= 0 else 'm'
+                d2sign = 'p' if (d+decstep) >= 0 else 'm'
+                fn = os.path.join(settings.DATA_DIR, 'photoz', 'dr9-' + hemi,
+                                  'sweep-%03i%s%03i-%03i%s%03i-pz.kd.fits' %
+                                  (r, dsign, abs(d), r+rastep, d2sign, abs(d+decstep)))
+                if not os.path.exists(fn):
+                    print('No such file:', fn)
+                    continue
+                kd = tree_open(fn)
+                I = tree_search_radec(kd, rc, dc, rad)
+                print('Matched', len(I), 'from', fn)
+                if len(I) == 0:
+                    continue
+                T = fits_table(fn, rows=I)
+                ll,bb = radectolb(T.ra, T.dec)
+                ngc = (bb > 0.)
+                if hemi == 'north':
+                    T.cut((T.dec >= decsplit) * ngc)
+                else:
+                    T.cut(np.logical_or(T.dec <= decsplit, np.logical_not(ngc)))
+                if len(T) == 0:
+                    continue
+                T.cut((T.ra  >= ralo ) * (T.ra  <= rahi) *
+                      (T.dec >= declo) * (T.dec <= dechi))
+                if len(T) == 0:
+                    continue
+                TT.append(T)
+    if len(TT) == 0:
+        return HttpResponse(empty, content_type='application/json')
+    T = merge_tables(TT)
+    return HttpResponse(json.dumps(dict(
+        rd=[(float(r),float(d)) for r,d in zip(T.ra, T.dec)],
+        phot_z_mean=[float(z) for z in T.z_phot_mean],
+        phot_z_std=[float(z) for z in T.z_phot_std],
+    )), content_type='application/json')
     
 def cat_phat_clusters(req, ver):
     import json
@@ -199,7 +1106,13 @@ def cat_phat_clusters(req, ver):
     )),
                         content_type='application/json')
 
-def cat_gaia_dr2(req, ver):
+def cat_gaia_edr3(req, ver):
+    import legacypipe.gaiacat
+    print('legacypipe.gaiacat:', legacypipe.gaiacat.__file__)
+    catdir = os.path.join(settings.DATA_DIR, 'gaia-edr3')
+    return cat_gaia_dr2(req, ver, catdir=catdir, prefix='healpix', indexing='nested')
+
+def cat_gaia_dr2(req, ver, catdir=None, prefix=None, indexing=None):
     import json
     from legacypipe.gaiacat import GaiaCatalog
     import numpy as np
@@ -214,8 +1127,16 @@ def cat_gaia_dr2(req, ver):
     if not ver in catversions[tag]:
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
-    os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-dr2')
-    gaia = GaiaCatalog()
+    if catdir is None:
+        catdir = os.path.join(settings.DATA_DIR, 'gaia-dr2')
+
+    os.environ['GAIA_CAT_DIR'] = catdir
+    kwa = {}
+    if prefix is not None:
+        kwa.update(file_prefix=prefix)
+    if indexing is not None:
+        kwa.update(indexing=indexing)
+    gaia = GaiaCatalog(**kwa)
     cat = gaia.get_catalog_radec_box(ralo, rahi, declo, dechi)
 
     for c in ['ra','dec','phot_g_mean_mag','phot_bp_mean_mag', 'phot_rp_mean_mag',
@@ -342,18 +1263,35 @@ def upload_cat(req):
             destination.write(chunk)
     print('Wrote', tmpfn)
 
+    errtxt = ('<html><body>%s<p>Custom catalogs must be either a: <ul>'
+              + '<li><b>FITS binary table</b> with columns named "RA", "DEC" (not case sensitive) and optionally "NAME".'
+              + '<li><b>CSV text file</b> with columns "RA", "DEC", and optionally "NAME" (also not case sensitive)</ul>'
+              +'See <a href="https://www.legacysurvey.org/svtips/">Tips & Tricks</a> for some hints on how to produce such a catalog.</p></body></html>')
+
+    T = None
+    emsg = ''
     try:
         T = fits_table(tmpfn)
-    except:
-        return HttpResponse('Must upload FITS format catalog including "RA", "Dec", optionally "Name" columns')
-    
+    except Exception as e:
+        emsg = str(e)
+    if T is None:
+        try:
+            # Try CSV...
+            from astropy.table import Table
+            t = Table.read(tmpfn, format='ascii').write(tmpfn, overwrite=True)
+            T = fits_table(tmpfn)
+        except Exception as e:
+            emsg += '; ' + str(e)
+    if T is None:
+        return HttpResponse(errtxt % ('Error: '+emsg))
+
     # Rename and resave columns if necessary
     if rename_cols(T):
         T.write_to(tmpfn)
 
     cols = T.columns()
     if not (('ra' in cols) and ('dec' in cols)):
-        return HttpResponse('Must upload catalog including "RA", "Dec", optionally "Name" columns')
+        return HttpResponse(errtxt % '<p>Did not find column "RA" and "DEC" in table.</p>')
 
     ra,dec = T.ra[0], T.dec[0]
     catname = tmpfn.replace(dirnm, '').replace('.fits', '')
@@ -396,10 +1334,24 @@ def get_random_galaxy(layer=None):
         drnum = 5
     elif layer == 'hsc2':
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
-    else:
+    elif 'ls-dr8' in layer:
         drnum = 8
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr8.fits')
-
+    elif layer == 'ls-dr9-north':
+        drnum = 9
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr9-north.fits')
+    elif layer in ['ls-dr9-south', 'ls-dr9']:
+        drnum = 9
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr9-south.fits')
+    elif 'ls-dr10-south' in layer:
+        drnum = 10
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr10-south.fits')
+    elif 'ls-dr10' in layer:
+        drnum = 10
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr10.fits')
+    else:
+        drnum = 9
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
 
     if (not layer in galaxycats) and not os.path.exists(galfn):
         if settings.CREATE_GALAXY_CATALOG:
@@ -580,6 +1532,598 @@ def cat_targets_dr8c(req, ver):
     return cat_targets_drAB(req, ver, cats=[
         os.path.join(settings.DATA_DIR, 'targets-dr8c-PR490.kd.fits'),
     ], tag='targets-dr8c')
+def cat_targets_dr9_sv1_sec_bright(req, ver):
+    # /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/secondary/dark/sv1targets-dark-secondary.fits
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.49.0-sv1-secondary-bright.kd.fits'),
+                     #'targets-sv1-secondary-dark.kd.fits'),
+    ], tag='targets-dr9-sv1-sec-bright', name_func=desitarget_sv1_names, colprefix='sv1_',
+    color_name_func=None)
+def cat_targets_dr9_sv1_sec_dark(req, ver):
+    # /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/secondary/dark/sv1targets-dark-secondary.fits
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.49.0-sv1-secondary-dark.kd.fits'),
+                     #'targets-sv1-secondary-dark.kd.fits'),
+    ], tag='targets-dr9-sv1-sec-dark', name_func=desitarget_sv1_names, colprefix='sv1_',
+    color_name_func=None)
+
+def cat_targets_healpixed(req, ver, tag, catpat, name_func=None, colprefix='', nside=8,
+                          bgs=False, sky=False, bright=False, dark=False):
+    import json
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    from astrometry.util.util import healpix_rangesearch_radec, healpix_xy_to_nested, healpix_side_length_arcmin, healpix_rangesearch_radec_approx
+    import numpy as np
+    # hackily bump up the healpix search radius...
+    #hpr = healpix_side_length_arcmin(nside) / 60.
+    #print('Healpix side length:', hpr, 'deg')
+    rplus = 0.01 * healpix_side_length_arcmin(nside) / 60.
+    #rplus = 0.
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+    print('RA,Dec', rc,dc, 'radius', rad, 'rplus', rplus)
+    hps = healpix_rangesearch_radec(rc, dc, rad+rplus, nside)
+    #hps = healpix_rangesearch_radec_approx(rc, dc, np.deg2rad(rad + rplus), nside)
+    print('Healpixes', hps)
+    TT = []
+    for hp in hps:
+        from astrometry.util.util import healpix_to_radecdeg
+        from astrometry.util.starutil import degrees_between
+        hr,hd = healpix_to_radecdeg(hp, nside, 0.5, 0.5)
+        dist = degrees_between(hr,hd, rc,dc)
+        print('Healpix center:', hr,hd)
+        print('Dist from HP', hp, ':', dist)
+        
+        hpx = healpix_xy_to_nested(hp, nside)
+        fn = catpat % hpx
+        if not os.path.exists(fn):
+            print('No such file:', fn)
+            continue
+        kd = tree_open(fn)
+        I = tree_search_radec(kd, rc, dc, rad)
+        print('Matched', len(I), 'from', fn)
+        if len(I) == 0:
+            continue
+        T = fits_table(fn, rows=I)
+        TT.append(T)
+    if len(TT) == 0:
+        return HttpResponse(json.dumps(dict(rd=[], name=[])),
+                            content_type='application/json')
+    T = merge_tables(TT, columns='fillzero')
+
+    # cut to RA,Dec rectangle
+    margin = (dechi - declo) * 0.05
+    rmargin = margin / np.cos(np.deg2rad(dc))
+    T.cut((T.dec > (declo-margin)) * (T.dec < (dechi+margin)))
+    if ralo > rahi:
+        T.cut(np.logical_or(T.ra  > (ralo-rmargin), T.ra  < (rahi+rmargin)))
+    else:
+        T.cut((T.ra  > (ralo-rmargin)) * (T.ra  < (rahi+rmargin)))
+    
+    if bgs:
+        bgs_target = T.get(colprefix + 'bgs_target')
+        T.cut(bgs_target > 0)
+    if bright:
+        bgs_target = T.get(colprefix + 'bgs_target')
+        mws_target = T.get(colprefix + 'mws_target')
+        T.cut(np.logical_or(bgs_target > 0, mws_target > 0))
+    if dark:
+        desi_target = T.get(colprefix + 'desi_target')
+        T.cut(T.desi_target > 0)
+
+    names = None
+    if name_func is not None:
+        names = name_func(T, colprefix=colprefix)
+
+    rtn = dict(rd=[(t.ra, t.dec) for t in T],
+               # Convert targetid to string to prevent rounding errors in Javascript
+               targetid=[str(t) for t in T.targetid])
+    if names is not None:
+        rtn.update(name=names)
+    return HttpResponse(json.dumps(rtn), content_type='application/json')
+
+def desitarget_main_names(T, colprefix='main_'):
+    from desitarget.targetmask import desi_mask, bgs_mask, mws_mask, scnd_mask
+
+    allnames = []
+    colors = []
+    cols = T.get_columns()
+    for t in T:
+        desibits = []
+        bgsbits = []
+        mwsbits = []
+        secbits = []
+        desi_target = int(t.get(colprefix + 'desi_target'))
+        bgs_target = get_target_val(t, colprefix + 'bgs_target', cols)
+        mws_target = get_target_val(t, colprefix + 'mws_target', cols)
+        scnd_target = get_target_val(t, colprefix + 'scnd_target', cols)
+        if 'objtype' in cols:
+            obj = t.objtype
+        else:
+            obj = ''
+
+        names = []
+
+        desi_keys = ['LRG', 'ELG', 'QSO', 'QSO_HIZ', 'ELG_LOP', 'ELG_HIP', 'ELG_VLO',
+                     'SKY', 'STD_FAINT', 'STD_WD', 'STD_BRIGHT', 'BAD_SKY', 'SUPP_SKY',
+                     'NO_TARGET', 'BRIGHT_OBJECT', 'IN_BRIGHT_OBJECT', 'NEAR_BRIGHT_OBJECT',]
+        for k in desi_keys:
+            bitmask = desi_mask[k].mask
+            if bitmask & desi_target:
+                names.append(k)
+
+        bgs_keys = ['BGS_FAINT', 'BGS_BRIGHT', 'BGS_WISE', 'BGS_FAINT_HIP']
+        for k in bgs_keys:
+            bitmask = bgs_mask[k].mask
+            if bitmask & bgs_target:
+                names.append(k)
+
+        mws_keys = ['MWS_BROAD', 'MWS_WD', 'MWS_NEARBY', 'MWS_BHB', 'MWS_MAIN_BLUE',
+                    'MWS_MAIN_RED', 'MWS_FAINT_BLUE', 'MWS_FAINT_RED', 'GAIA_STD_FAINT',
+                    'GAIA_STD_WD', 'GAIA_STD_BRIGHT', 'BACKUP_BRIGHT', 'BACKUP_FAINT',
+                    'BACKUP_VERY_FAINT']
+        for k in mws_keys:
+            bitmask = mws_mask[k].mask
+            if bitmask & mws_target:
+                names.append(k)
+
+        scnd_keys = ['UDG', 'FIRST_MALS', 'QSO_RED', 'MWS_CLUS_GAL_DEEP', 'LOW_MASS_AGN',
+                     'FAINT_HPM', 'LOW_Z_TIER1', 'LOW_Z_TIER2', 'LOW_Z_TIER3', 'BHB', 'SPCV',
+                     'DC3R2_GAMA', 'PSF_OUT_BRIGHT', 'PSF_OUT_DARK', 'HPM_SOUM', 'SN_HOSTS',
+                     'GAL_CLUS_BCG', 'GAL_CLUS_2ND', 'GAL_CLUS_SAT', 'STRONG_LENS',
+                     'WISE_VAR_QSO', 'Z5_QSO', 'MWS_MAIN_CLUSTER_SV', 'BRIGHT_HPM',
+                     'WD_BINARIES_BRIGHT', 'WD_BINARIES_DARK', 'PV_BRIGHT_HIGH',
+                     'PV_BRIGHT_MEDIUM', 'PV_BRIGHT_LOW', 'PV_DARK_HIGH', 'PV_DARK_MEDIUM',
+                     'PV_DARK_LOW', 'GC_BRIGHT', 'GC_DARK', 'DWF_BRIGHT_HI', 'DWF_BRIGHT_LO',
+                     'DWF_DARK_HI', 'DWF_DARK_LO', 'BRIGHT_TOO_LOP', 'BRIGHT_TOO_HIP',
+                     'DARK_TOO_LOP', 'DARK_TOO_HIP']
+        for k in scnd_keys:
+            bitmask = scnd_mask[k].mask
+            if bitmask & scnd_target:
+                names.append(k)
+
+        if obj == 'SKY':
+            names.append('SKY')
+        if obj == 'BAD':
+            names.append('BAD')
+        if len(names) == 0:
+            names.append('0x%x' % desi_target)
+        allnames.append(', '.join(names))
+    return allnames
+
+def cat_targets_dr9_main_sec_bright(req, ver):
+    # startree -i /global/cfs/cdirs/desi/target/catalogs/dr9/0.58.0/targets/main/secondary/bright/targets-bright-secondary.fits -o data/targets-dr9-0.58.0-main-sec-bright.kd.fits -TPk
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.58.0-main-sec-bright.kd.fits'),
+    ], tag='targets-dr9-main-sec-bright', name_func=desitarget_main_names, colprefix='',
+    color_name_func=None)
+
+def cat_targets_dr9_main_sec_dark(req, ver):
+    # startree -i /global/cfs/cdirs/desi/target/catalogs/dr9/0.58.0/targets/main/secondary/dark/targets-dark-secondary.fits -o data/targets-dr9-0.58.0-main-sec-dark.kd.fits -TPk
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.58.0-main-sec-dark.kd.fits'),
+    ], tag='targets-dr9-main-sec-dark', name_func=desitarget_main_names, colprefix='',
+    color_name_func=None)
+
+
+def cat_targets_dr9_main_dark(req, ver):
+    # for x in /global/cfs/cdirs/desi/target/catalogs/dr9/0.58.0/targets/main/resolve/dark/targets-dark-hp-*.fits;
+    # do echo $x; startree -i $x -o data/targets-dr9-0.58.0-main-dark/$(basename $x .fits).kd.fits -TPk; done
+    return cat_targets_healpixed(req, ver, 'targets-dr9-main-dark',
+                                 os.path.join(settings.DATA_DIR,
+                                              'targets-dr9-0.58.0-main-dark',
+                                              'targets-dark-hp-%i.kd.fits'),
+                                 name_func=desitarget_main_names, colprefix='')
+def cat_targets_dr9_main_bright(req, ver):
+    # for x in /global/cfs/cdirs/desi/target/catalogs/dr9/0.58.0/targets/main/resolve/bright/targets-bright-hp-*.fits;
+    # do echo $x; startree -i $x -o data/targets-dr9-0.58.0-main-bright/$(basename $x .fits).kd.fits -TPk; done
+    return cat_targets_healpixed(req, ver, 'targets-dr9-main-bright',
+                                 os.path.join(settings.DATA_DIR,
+                                              'targets-dr9-0.58.0-main-bright',
+                                              'targets-bright-hp-%i.kd.fits'),
+                                 name_func=desitarget_main_names, colprefix='')
+
+
+
+
+
+def cat_targets_dr9_sv3_sec_bright(req, ver):
+    # startree -i /global/cfs/cdirs/desi/target/catalogs/dr9/0.57.0/targets/sv3/secondary/bright/sv3targets-bright-secondary.fits -o data/targets-dr9-0.57.0-sv3-sec-bright.kd.fits -TPk
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.57.0-sv3-sec-bright.kd.fits'),
+    ], tag='targets-dr9-sv3-sec-bright', name_func=desitarget_sv3_names, colprefix='sv3_',
+    color_name_func=None)
+
+def cat_targets_dr9_sv3_sec_dark(req, ver):
+    # startree -i /global/cfs/cdirs/desi/target/catalogs/dr9/0.57.0/targets/sv3/secondary/dark/sv3targets-dark-secondary.fits -o data/targets-dr9-0.57.0-sv3-sec-dark.kd.fits -TPk
+    return cat_targets_drAB(req, ver, cats=[
+        os.path.join(settings.DATA_DIR,
+                     'targets-dr9-0.57.0-sv3-sec-dark.kd.fits'),
+    ], tag='targets-dr9-sv3-sec-dark', name_func=desitarget_sv3_names, colprefix='sv3_',
+    color_name_func=None)
+
+
+def cat_targets_dr9_sv3_dark(req, ver):
+    # for x in /global/cfs/cdirs/desi/target/catalogs/dr9/0.57.0/targets/sv3/resolve/dark/sv3targets-dark-hp-*.fits;
+    # do echo $x; startree -i $x -o data/targets-dr9-0.57.0-sv3-dark/$(basename $x .fits).kd.fits -TPk; done
+    return cat_targets_healpixed(req, ver, 'targets-dr9-sv3-dark',
+                                 os.path.join(settings.DATA_DIR,
+                                              #'targets-dr9-0.47.0.dev4352-sv1-dark',
+                                              'targets-dr9-0.57.0-sv3-dark',
+                                              'sv3targets-dark-hp-%i.kd.fits'),
+                                 name_func=desitarget_sv3_names, colprefix='sv3_')
+def cat_targets_dr9_sv3_bright(req, ver):
+    return cat_targets_healpixed(req, ver, 'targets-dr9-sv3-bright',
+                                 os.path.join(settings.DATA_DIR,
+                                              'targets-dr9-0.57.0-sv3-bright',
+                                              'sv3targets-bright-hp-%i.kd.fits'),
+                                 name_func=desitarget_sv3_names, colprefix='sv3_')
+
+def cat_targets_dr9_sv1_dark(req, ver):
+    # for x in /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/resolve/dark/*.fits;
+    #  do echo $x; startree -i $x -o data/targets-dr9-0.47.0.dev4352-sv1-dark/$(basename $x .fits).kd.fits -TPk; done
+    return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-dark',
+                                 os.path.join(settings.DATA_DIR,
+                                              #'targets-dr9-0.47.0.dev4352-sv1-dark',
+                                              'targets-dr9-0.49.0-sv1-dark',
+                                              'sv1targets-dark-hp-%i.kd.fits'),
+                                 name_func=desitarget_sv1_names, colprefix='sv1_')
+def cat_targets_dr9_sv1_bright(req, ver):
+    return cat_targets_healpixed(req, ver, 'targets-dr9-sv1-bright',
+                                 os.path.join(settings.DATA_DIR,
+                                              #'targets-dr9-0.47.0.dev4352-sv1-bright',
+                                              'targets-dr9-0.49.0-sv1-bright',
+                                              'sv1targets-bright-hp-%i.kd.fits'),
+                                 name_func=desitarget_sv1_names, colprefix='sv1_')
+def cat_targets_dr9_sv1_supp(req, ver):
+    pass
+# /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/resolve/dark/
+# /global/cscratch1/sd/adamyers/dr9/0.47.0.dev4352/targets/sv1/resolve/bright/
+# /global/cscratch1/sd/adamyers/gaiadr2/0.47.0.dev4352/targets/sv1/resolve/supp/
+
+def desitarget_cmx_names(T):
+    names = []
+    colors = []
+    for t in T:
+        cmxbits = []
+        cmx_target = int(t.cmx_target)
+        obj = t.objtype
+        for bit in range(64):
+            if (1 << bit) & cmx_target:
+                cmxbits.append(bit)
+            # https://github.com/desihub/desitarget/blob/master/py/desitarget/cmx/data/cmx_targetmask.yaml
+            cmxnames = [{
+                0:  'STD_GAIA',
+                1:  'SV0_STD_FAINT',
+                2:  'SV0_STD_BRIGHT',
+                3:  'STD_TEST',
+                4:  'STD_CALSPEC',
+                5:  'STD_DITHER',
+                6:  'SV0_MWS_CLUSTER',
+                7:  'SV0_MWS_CLUSTER_VERYBRIGHT',
+                8:  'SV0_BGS',
+                9:  'SV0_MWS',
+                10: 'SV0_LRG',
+                11: 'SV0_ELG',
+                12: 'SV0_QSO',
+                13: 'SV0_WD',
+                14: 'SV0_QSO_Z5',
+                15: 'BACKUP_BRIGHT',
+                16: 'BACKUP_FAINT',
+                18: 'M31_STD_BRIGHT',
+                19: 'M31_H2PN',      
+                20: 'M31_GC',        
+                21: 'M31_QSO',       
+                22: 'M31_VAR',       
+                23: 'M31_BSPL',      
+                24: 'M31_M31cen',    
+                25: 'M31_M31out',    
+                26: 'ORI_STD_BRIGHT',
+                27: 'ORI_QSO',       
+                28: 'ORI_ORI',       
+                29: 'ORI_HA',        
+                30: 'ROS_STD_BRIGHT',
+                31: 'ROS_QSO',       
+                38: 'ROS_ROSM17',    
+                39: 'ROS_ROS1',      
+                40: 'ROS_HA',        
+                41: 'ROS_ROS2',      
+                42: 'M33_STD_BRIGHT',
+                43: 'M33_H2PN',      
+                44: 'M33_GC',        
+                45: 'M33_QSO',       
+                46: 'M33_M33cen',    
+                47: 'M33_M33out',    
+                53: 'MINI_SV_LRG',       
+                54: 'MINI_SV_ELG',       
+                55: 'MINI_SV_QSO',       
+                56: 'MINI_SV_BGS_BRIGHT',
+                57: 'SV0_MWS_FAINT',     
+                58: 'STD_DITHER_GAIA',   
+                32: 'SKY',
+                33: 'STD_FAINT',
+                35: 'STD_BRIGHT',
+                36: 'BAD_SKY',
+                37: 'SUPP_SKY',
+            }.get(b) for b in cmxbits]
+        bitnames = [n for n in cmxnames if n is not None]
+        if obj == 'SKY':
+            bitnames.append('SKY')
+        if obj == 'BAD':
+            bitnames.append('BAD')
+        names.append(', '.join(bitnames))
+    return names
+
+def get_target_val(t, nm, cols):
+    if nm in cols:
+        return int(t.get(nm))
+    return 0
+
+
+def desitarget_sv3_names(T, colprefix='sv3_'):
+    names = []
+    colors = []
+    cols = T.get_columns()
+    for t in T:
+        desibits = []
+        bgsbits = []
+        mwsbits = []
+        secbits = []
+        desi_target = int(t.get(colprefix + 'desi_target'))
+        bgs_target = get_target_val(t, colprefix + 'bgs_target', cols)
+        mws_target = get_target_val(t, colprefix + 'mws_target', cols)
+        sec_target = get_target_val(t, colprefix + 'scnd_target', cols)
+        if 'objtype' in cols:
+            obj = t.objtype
+        else:
+            obj = ''
+        for bit in range(64):
+            if (1 << bit) & desi_target:
+                desibits.append(bit)
+            if (1 << bit) & bgs_target:
+                bgsbits.append(bit)
+            if (1 << bit) & mws_target:
+                mwsbits.append(bit)
+            if (1 << bit) & sec_target:
+                secbits.append(bit)
+        # https://github.com/desihub/desitarget/blob/master/py/desitarget/sv1/data/sv1_targetmask.yaml
+        desinames = [{
+            0:  'LRG',
+            1:  'ELG',
+            2:  'QSO',
+            3:  'LRG_LOWDENS',
+            4:  'QSO_HIZ',
+            5:  'ELG_LOP',
+            6:  'ELG_HIP',
+            #- Calibration targets
+            32: 'SKY',
+            33: 'STD_FAINT',
+            34: 'STD_WD',
+            35: 'STD_BRIGHT',
+            36: 'BAD_SKY',
+            37: 'SUPP_SKY',
+
+            60: 'BGS_ANY',
+            61: 'MWS_ANY',
+            62: 'SCND_ANY',
+            }.get(b) for b in desibits]
+        bgsnames = [{
+            0:  'BGS_FAINT',
+            1:  'BGS_BRIGHT',
+            2:  'BGS_WISE',
+            3:  'BGS_FAINT_HIP',
+            }.get(b) for b in bgsbits]
+        mwsnames = [{
+            0:  'MWS_BROAD',
+            1:  'MWS_WD',
+            2:  'MWS_NEARBY',
+            #- (skip) 4: MWS_MAIN north/south splits
+            6:  'MWS_BHB',
+            33: 'GAIA_STD_FAINT',
+            34: 'GAIA_STD_WD',
+            35: 'GAIA_STD_BRIGHT',
+            60: 'BACKUP_BRIGHT',
+            61: 'BACKUP_FAINT',
+            62: 'BACKUP_VERY_FAINT',
+            }.get(b) for b in mwsbits]
+        secondarynames = [{
+            0:  'SCND_VETO',
+            1:  'SCND_UDG',
+            2:  'SCND_FIRST_MALS',
+            5:  'SCND_QSO_RED',
+            10: 'SCND_MWS_CLUS_GAL_DEEP',
+            11: 'SCND_LOW_MASS_AGN',
+            12: 'SCND_FAINT_HPM',
+            15: 'SCND_LOW_Z_TIER1',
+            16: 'SCND_LOW_Z_TIER2',
+            17: 'SCND_LOW_Z_TIER3',
+            18: 'SCND_BHB',
+            19: 'SCND_SPCV',
+            20: 'SCND_DC3R2_GAMA',
+            25: 'SCND_PSF_OUT_BRIGHT',
+            26: 'SCND_PSF_OUT_DARK',
+            27: 'SCND_HPM_SOUM',
+            28: 'SCND_SN_HOSTS',
+            29: 'SCND_GAL_CLUS_BCG',
+            30: 'SCND_GAL_CLUS_2ND',
+            31: 'SCND_GAL_CLUS_SAT',
+            34: 'SCND_STRONG_LENS',
+            35: 'SCND_WISE_VAR_QSO',
+            36: 'SCND_Z5_QSO',
+            38: 'SCND_MWS_MAIN_CLUSTER_SV',
+            40: 'SCND_BRIGHT_HPM',
+            41: 'SCND_WD_BINARIES_BRIGHT',
+            42: 'SCND_WD_BINARIES_DARK',
+            43: 'SCND_PV_BRIGHT_HIGH',
+            44: 'SCND_PV_BRIGHT_MEDIUM',
+            45: 'SCND_PV_BRIGHT_LOW',
+            46: 'SCND_PV_DARK_HIGH',
+            47: 'SCND_PV_DARK_MEDIUM',
+            48: 'SCND_PV_DARK_LOW',
+            59: 'SCND_BRIGHT_TOO_LOP',
+            60: 'SCND_BRIGHT_TOO_HIP',
+            61: 'SCND_DARK_TOO_LOP',
+            62: 'SCND_DARK_TOO_HIP',
+            }.get(b) for b in secbits]
+        bitnames = [n for n in desinames + bgsnames + mwsnames + secondarynames if n is not None]
+        if obj == 'SKY':
+            bitnames.append('SKY')
+        if obj == 'BAD':
+            bitnames.append('BAD')
+
+        if len(bitnames) == 0:
+            bitnames.append('0x%x' % desi_target)
+        names.append(', '.join(bitnames))
+    return names #, colors
+
+
+def desitarget_sv1_names(T, colprefix='sv1_'):
+    names = []
+    colors = []
+    cols = T.get_columns()
+    for t in T:
+        desibits = []
+        bgsbits = []
+        mwsbits = []
+        secbits = []
+        desi_target = int(t.get(colprefix + 'desi_target'))
+        bgs_target = get_target_val(t, colprefix + 'bgs_target', cols)
+        mws_target = get_target_val(t, colprefix + 'mws_target', cols)
+        sec_target = get_target_val(t, colprefix + 'scnd_target', cols)
+        if 'objtype' in cols:
+            obj = t.objtype
+        else:
+            obj = ''
+        for bit in range(64):
+            if (1 << bit) & desi_target:
+                desibits.append(bit)
+            if (1 << bit) & bgs_target:
+                bgsbits.append(bit)
+            if (1 << bit) & mws_target:
+                mwsbits.append(bit)
+            if (1 << bit) & sec_target:
+                secbits.append(bit)
+        # https://github.com/desihub/desitarget/blob/master/py/desitarget/sv1/data/sv1_targetmask.yaml
+        desinames = [{
+            0:  'LRG',
+            1:  'ELG',
+            2:  'QSO',
+            3:  'LRG_OPT',
+            4:  'LRG_IR',
+            5:  'LRG_SV_OPT',
+            6:  'LRG_SV_IR',
+            7:  'LOWZ_FILLER',
+            8:  'ELG_SV_GTOT',
+            9:  'ELG_SV_GFIB',
+            10: 'ELG_FDR_GTOT',
+            11: 'ELG_FDR_GFIB',
+            12: 'QSO_COLOR_4PASS',
+            13: 'QSO_RF_4PASS',
+            14: 'QSO_COLOR_8PASS',
+            15: 'QSO_RF_8PASS',
+            16: 'QSO_HZ_F',
+            17: 'QSO_Z5',
+            # (skip)
+            #- North vs. South selections for different sub-classes
+            #- Calibration targets
+            32: 'SKY',
+            33: 'STD_FAINT',
+            34: 'STD_WD',
+            35: 'STD_BRIGHT',
+            36: 'BAD_SKY',
+            37: 'SUPP_SKY',
+
+            60: 'BGS_ANY',
+            61: 'MWS_ANY',
+            #62: 'SCND_ANY',
+            }.get(b) for b in desibits]
+        bgsnames = [{
+            0:  'BGS_FAINT',
+            1:  'BGS_BRIGHT',
+            2:  'BGS_FAINT_EXT',
+            3:  'BGS_LOWQ',
+            4:  'BGS_FIBMAG',
+            #- (skip) BGS North vs. South selections
+            40: 'BGS_KNOWN_ANY',
+            }.get(b) for b in bgsbits]
+        mwsnames = [{
+            0:  'MWS_MAIN_BROAD',
+            1:  'MWS_WD',
+            2:  'MWS_NEARBY',
+            #- (skip) 4: MWS_MAIN north/south splits
+            6:  'MWS_BHB',
+            14: 'MWS_MAIN_FAINT',
+            }.get(b) for b in mwsbits]
+        secondarynames = [{
+            0:  'SCND_VETO',
+            1:  'SCND_UDG',
+            2:  'SCND_FIRST_MALS',
+            3:  'SCND_WD_BINARIES',
+            4:  'SCND_LBG_TOMOG',
+            5:  'SCND_QSO_RED',
+            6:  'SCND_M31_KNOWN',
+            7:  'SCND_M31_QSO',
+            8:  'SCND_M31_STAR',
+            10: 'SCND_MWS_CLUS_GAL_DEEP',
+            11: 'SCND_LOW_MASS_AGN',
+            12: 'SCND_FAINT_HPM',
+            13: 'SCND_GW190412',
+            14: 'SCND_IC134191',
+            15: 'SCND_PV_BRIGHT',
+            16: 'SCND_PV_DARK',
+            17: 'SCND_LOW_Z',
+            18: 'SCND_BHB',
+            19: 'SCND_SPCV',
+            20: 'SCND_DC3R2_GAMA',
+            21: 'SCND_UNWISE_BLUE',
+            22: 'SCND_UNWISE_GREEN',
+            23: 'SCND_HETDEX_MAIN',
+            24: 'SCND_HEXDEX_HP',
+            27: 'SCND_HPM_SOUM',
+            28: 'SCND_SN_HOSTS',
+            29: 'SCND_GAL_CLUS_BCG',
+            30: 'SCND_GAL_CLUS_2ND',
+            31: 'SCND_GAL_CLUS_SAT',
+            32: 'SCND_HSC_HIZ_SNE',
+            33: 'SCND_ISM_CGM_QGP',
+            34: 'SCND_STRONG_LENS',
+            35: 'SCND_WISE_VAR_QSO',
+            36: 'SCND_MWS_CALIB',
+            37: 'SCND_BACKUP_CALIB',
+            38: 'SCND_MWS_MAIN_CLUSTER_SV',
+            39: 'SCND_MWS_RRLYR',
+            }.get(b) for b in secbits]
+        bitnames = [n for n in desinames + bgsnames + mwsnames + secondarynames if n is not None]
+        if obj == 'SKY':
+            bitnames.append('SKY')
+        if obj == 'BAD':
+            bitnames.append('BAD')
+
+        if len(bitnames) == 0:
+            bitnames.append('0x%x' % desi_target)
+        names.append(', '.join(bitnames))
+        # cc = 'white'
+        # if 'QSO' in nn:
+        #     cc = 'cyan'
+        # elif 'LRG' in nn:
+        #     cc = 'red'
+        # elif 'ELG' in nn:
+        #     cc = 'gray'
+        # elif 'BGS' in nn:
+        #     cc = 'orange'
+        # colors.append(cc)
+    return names #, colors
 
 
 def desitarget_color_names(T, colprefix=''):
@@ -666,7 +2210,6 @@ def desitarget_color_names(T, colprefix=''):
             # exist in bitnames, remove the current name
             if any([better_name in bitnames for better_name in bitnames_veto.get(name, [])]):
                 bitnames.remove(name)
-
         names.append(', '.join(bitnames))
 
         nn = ' '.join(bitnames)
@@ -712,7 +2255,7 @@ def desi_cmx_color_names(T, colprefix=None):
 
     return names, colors
 
-def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=False, dark=False, color_name_func=desitarget_color_names, colprefix=''):
+def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=False, dark=False, color_name_func=desitarget_color_names, colprefix='', name_func=None):
     '''
     color_name_func: function that selects names and colors for targets
     (eg based on targeting bit values)
@@ -770,30 +2313,40 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
     colors = None
     if color_name_func is not None:
         names,colors = color_name_func(T, colprefix=colprefix)
+    if name_func is not None:
+        names = name_func(T, colprefix=colprefix)
 
+    rtn = dict(rd=[(t.ra, t.dec) for t in T],
+               targetid=[str(t) for t in T.targetid])
+
+    fluxes = None
+    nobs = None
     if sky:
         fluxes = [dict(g=float(g), r=float(r), z=float(z))
                   for (g,r,z) in zip(T.apflux_g[:,0], T.apflux_r[:,0], T.apflux_z[:,0])]
-        nobs = None
     else:
-        fluxes = [dict(g=float(g), r=float(r), z=float(z),
-                       W1=float(W1), W2=float(W2))
-                  for (g,r,z,W1,W2)
-                  in zip(T.flux_g, T.flux_r, T.flux_z, T.flux_w1, T.flux_w2)]
-        nobs=[dict(g=int(g), r=int(r), z=int(z)) for g,r,z
-              in zip(T.nobs_g, T.nobs_r, T.nobs_z)],
+        if 'flux_g' in T.get_columns():
+            if 'flux_w1' in T.get_columns():
+                fluxes = [dict(g=float(g), r=float(r), z=float(z),
+                               W1=float(W1), W2=float(W2))
+                          for (g,r,z,W1,W2)
+                          in zip(T.flux_g, T.flux_r, T.flux_z, T.flux_w1, T.flux_w2)]
+            else:
+                fluxes = [dict(g=float(g), r=float(r), z=float(z))
+                          for (g,r,z)
+                          in zip(T.flux_g, T.flux_r, T.flux_z)]
+        if 'nobs_g' in T.get_columns():
+            nobs=[dict(g=int(g), r=int(r), z=int(z)) for g,r,z
+                  in zip(T.nobs_g, T.nobs_r, T.nobs_z)],
 
-    rtn = dict(rd=[(t.ra, t.dec) for t in T],
-               targetid=[int(t) for t in T.targetid],
-               fluxes=fluxes,
-           )
     if names is not None:
         rtn.update(name=names)
     if colors is not None:
         rtn.update(color=colors)
     if nobs is not None:
         rtn.update(nobs=nobs)
-    
+    if fluxes is not None:
+        rtn.update(fluxes=fluxes)
     # Convert targetid to string to prevent rounding errors
     rtn['targetid'] = [str(s) for s in rtn['targetid']]
     
@@ -801,16 +2354,21 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
 
 def cat_sga_parent(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-parent-v3.0.kd.fits')
-    return _cat_sga(req, ver, fn=fn, tag='sga', sga=True)
+    return _cat_sga(req, ver, fn=fn, tag='sga')
 
 def cat_sga_ellipse(req, ver):
-    fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
-    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga', sga=True)
+    # T = fits_table('cosmo/webapp/viewer-dev/data/sga/SGA-ellipse-v3.2.kd.fits')
+    # T.cut((T.sga_id >= 0) * (T.preburned))
+    # cols = ['ra','dec','diam', 'galaxy', 'pgc', 'morphtype', 'ba', 'pa', 'z_leda', 'group_name']
+    # T.writeto('sga-cut.fits', columns=cols)
+    # startree -i ~/sga-cut.fits -o data/sga/SGA-ellipse-v3.2-cut.kd.fits -PTk
+    #fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2.kd.fits')
+    #fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.2-cut.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-2020.kd.fits')
+    print('Reading', fn)
+    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga')
 
-def cat_sga(req, ver):
-    return _cat_sga(req, ver)
-
-def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', sga=False):
+def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     import json
     import numpy as np
     # The SGA catalog includes radii for the galaxies, and we want galaxies
@@ -830,13 +2388,6 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', sga=False):
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[], abRatio=[],
                                             posAngle=[], pgc=[], type=[], redshift=[])),
                             content_type='application/json')
-
-    if ellipse:
-        if sga:
-            T.cut((T.sga_id >= 0) * (T.preburned))
-        else:
-            T.cut((T.id >= 0) * (T.preburned))
-
     T.cut(np.argsort(-T.radius_arcsec))
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
@@ -879,7 +2430,11 @@ def query_sga_radecbox(fn, ralo, rahi, declo, dechi):
     wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
     H,W = wcs.shape
     # cut to sga entries possibly touching wcs box
-    T.radius_arcsec = T.diam / 2. * 60.
+    cols = T.get_columns()
+    if 'diam' in cols:
+        T.radius_arcsec = T.diam / 2. * 60.
+    else:
+        T.radius_arcsec = T.d26 / 2. * 60.
     radius_pix = T.radius_arcsec / wcs.pixel_scale()
     ok,xx,yy = wcs.radec2pixelxy(T.ra, T.dec)
     T.cut((xx > -radius_pix) * (xx < W+radius_pix) *
@@ -897,6 +2452,10 @@ def cat_manga(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'manga', 'drpall-v2_4_3.kd.fits')
     tag = 'manga'
     T = cat_kd(req, ver, tag, fn, racol='ifura', deccol='ifudec')
+    if T is not None and len(T)>0:
+        T.cut(T.ifudesignsize > 0)
+        if len(T) == 0:
+            T = None
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],plate=[])),
                             content_type='application/json')
@@ -956,7 +2515,7 @@ def manga_ifu_offsets():
 
 def cat_spec(req, ver):
     import json
-    fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr14-trimmed.kd.fits')
+    fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr16-trimmed.kd.fits')
     tag = 'spec'
     T = cat_kd(req, ver, tag, fn)
     if T is None:
@@ -996,6 +2555,9 @@ def cat_masks_dr9(req, ver):
     os.environ['LARGEGALAXIES_CAT'] = os.path.join(settings.DATA_DIR, 'sga', 'SGA-ellipse-v3.0.kd.fits')
     os.environ['GAIA_CAT_DIR'] = os.path.join(settings.DATA_DIR, 'gaia-dr2')
     os.environ['GAIA_CAT_VER'] = '2'
+    os.environ['GAIA_CAT_SCHEME'] = 'ring'
+    os.environ['GAIA_CAT_PREFIX'] = 'chunk'
+
     survey = LegacySurveyData(survey_dir=os.getcwd())
     pixscale = wcs.pixel_scale()
     T,_ = get_reference_sources(survey, wcs, pixscale, None)
@@ -1120,6 +2682,40 @@ def cat_gaia_mask(req, ver):
     return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius, color=color)),
                         content_type='application/json')
 
+def cat_hsc_dr2_cosmos(req, ver):
+    import json
+    import numpy as np
+    fn = os.path.join(settings.DATA_DIR, 'hsc-dr2', 'cosmos-cat.kd.fits')
+    T = cat_kd(req, ver, 'hsc-dr2-cosmos', fn)
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])),
+                            content_type='application/json')
+
+    if len(T) > 5000:
+        T = T[:5000]
+
+    rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    names = []
+    psf_g = 30. -2.5*np.log10(T.g_psfflux_flux)
+    psf_r = 30. -2.5*np.log10(T.r_psfflux_flux)
+    psf_i = 30. -2.5*np.log10(T.i_psfflux_flux)
+    psf_z = 30. -2.5*np.log10(T.z_psfflux_flux)
+    cm_g = 30. -2.5*np.log10(T.g_cmodel_flux)
+    cm_r = 30. -2.5*np.log10(T.r_cmodel_flux)
+    cm_i = 30. -2.5*np.log10(T.i_cmodel_flux)
+    cm_z = 30. -2.5*np.log10(T.z_cmodel_flux)
+    # in the cosmos region it only takes values 0.0 and 1.0
+    e = (T.i_extendedness_value > 0.5)
+    color = ['orange' if ext else '#3388ff' for ext in e]
+    g = np.where(e, cm_g, psf_g)
+    r = np.where(e, cm_r, psf_r)
+    i = np.where(e, cm_i, psf_i)
+    z = np.where(e, cm_z, psf_z)
+    for ext,gg,rr,ii,zz in zip(e,g,r,i,z):
+        names.append('%s g=%.2f, r=%.2f, i=%.2f, z=%.2f' % ('Galaxy' if ext else 'Star', gg, rr, ii, zz))
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, color=color)),
+                        content_type='application/json')
+
 def cat_kd(req, ver, tag, fn, racol=None, deccol=None):
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
@@ -1176,7 +2772,8 @@ def radecbox_to_circle(ralo, rahi, declo, dechi):
     rc,dc = xyztoradec(xyz)
     rc = rc[0]
     dc = dc[0]
-    rad = degrees_between(rc, dc, ralo, declo)
+    rad = max(degrees_between(rc, dc, ralo, declo),
+              degrees_between(rc, dc, rahi, dechi))
     return rc, dc, rad
     
 def cat_query_radec(kdfn, ra, dec, radius):
@@ -1302,10 +2899,25 @@ def cat_user(req, ver):
                          for g,r,z in zip(10.**((cat.g - 22.5)/-2.5),
                                           10.**((cat.r - 22.5)/-2.5),
                                           10.**((cat.z - 22.5)/-2.5))])
+    else:
+        fluxbands = []
+        fluxes = []
+        for band in 'griz':
+            if 'flux_'+band in cols:
+                fluxbands.append(band)
+                fluxes.append(cat.get('flux_'+band))
+        if len(fluxbands) > 0:
+            allfluxes = []
+            for srcfluxes in zip(*fluxes):
+                #print('srcfluxes:', srcfluxes)
+                #print('zip:', dict(zip(fluxbands, srcfluxes)))
+                allfluxes.append(dict(zip(fluxbands, [float(f) for f in srcfluxes])))
+            D.update(fluxes = allfluxes)
+
     if 'gnobs' in cols and 'rnobs' in cols and 'znobs' in cols:
         D.update(nobs=[dict(g=int(g), r=int(r), z=int(z))
                        for g,r,z in zip(cat.gnobs, cat.rnobs, cat.znobs)])
-    if 'objids' in cols:
+    if 'objid' in cols:
         D.update(objids=[int(x) for x in cat.objid])
     if 'brickname' in cols:
         D.update(bricknames=cat.brickname.tolist())
@@ -1320,6 +2932,141 @@ def cat_user(req, ver):
 
     #for k,v in D.items():
     #    print('Cat', k, v)
+
+    return HttpResponse(json.dumps(D).replace('NaN','null'),
+                        content_type='application/json')
+
+def desi_fiberassign_filename(tileid):
+    tilestr = '%06i' % tileid
+    fn = os.path.join(settings.DATA_DIR, 'desi-tiles',
+                      tilestr[:3], 'fiberassign-%s.fits.gz'%tilestr)
+    return fn
+
+def cat_desi_all_tiles(req, subset, ver):
+    import numpy as np
+    import json
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+
+    tag = 'desi-all-tiles'
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+
+    from astropy.table import Table
+    t = Table.read('data/tiles-main.ecsv')
+    from astrometry.util.fits import fits_table
+    T = fits_table()
+    T.tileid = t['TILEID'].data
+    T.ra = t['RA'].data
+    T.dec = t['DEC'].data
+    T.in_desi = t['IN_DESI'].data
+    T.program = t['PROGRAM'].data
+
+    T.cut(T.in_desi)
+    margin = 0.8
+    # not exactly right...
+    cosdec = np.cos(np.deg2rad((declo+dechi)/2.))
+    r0 = ralo - margin/cosdec
+    r1 = rahi + margin/cosdec
+    d0 = declo - margin
+    d1 = dechi + margin
+
+    T.cut((T.dec > d0) * (T.dec < d1))
+    if ralo > rahi:
+        # RA wrap
+        T.cut(np.logical_or(T.ra > r0, T.ra < r1))
+    else:
+        T.cut((T.ra > r0) * (T.ra < r1))
+
+    if subset == 'dark':
+        T.cut(T.program == 'DARK')
+    elif subset == 'bright':
+        T.cut(T.program == 'BRIGHT')
+
+    # rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
+    # tid = list(int(t) for t in T.tileid)
+    # rtn = dict(rd=rd, tileid=list(tid), program=list(T.program))
+    # return HttpResponse(json.dumps(rtn), content_type='application/json')
+    objs = []
+    for r,d,prog,tid in zip(T.ra, T.dec, T.program, T.tileid):
+        objs.append(dict(name='Tile %i (%s)' % (tid, prog),
+                         ra=r,
+                         dec=d,
+                         radius=1.6))
+    return HttpResponse(json.dumps({'objs':objs}), content_type='application/json')
+
+def cat_desi_tile(req, ver):
+    from astrometry.util.fits import fits_table
+    import json
+    import re
+
+    tile = int(req.GET.get('tile','0'), 10)
+    if tile == 0:
+        return 'bad tile'
+    haverd = False
+    if ('ralo'  in req.GET and 'rahi'  in req.GET and
+        'declo' in req.GET and 'dechi' in req.GET):
+        ralo = float(req.GET['ralo'])
+        rahi = float(req.GET['rahi'])
+        declo = float(req.GET['declo'])
+        dechi = float(req.GET['dechi'])
+        haverd = True
+
+    fn = desi_fiberassign_filename(tile)
+    if not os.path.exists(fn):
+        print('Does not exist:', fn)
+        return
+    print('Reading', fn)
+    cat = fits_table(fn)
+    cat.ra  = cat.target_ra
+    cat.dec = cat.target_dec
+    
+    if haverd:
+        if ralo > rahi:
+            import numpy as np
+            # RA wrap
+            cat.cut(np.logical_or(cat.ra > ralo, cat.ra < rahi) *
+                    (cat.dec > declo) * (cat.dec < dechi))
+        else:
+            cat.cut((cat.ra > ralo) * (cat.ra < rahi) *
+            (cat.dec > declo) * (cat.dec < dechi))
+        print(len(cat), 'DESI tile sources after RA,Dec cut')
+
+    rd = list(zip(cat.ra.astype(float), cat.dec.astype(float)))
+    D = dict(rd=rd)
+
+    cols = cat.columns()
+    print('Columns:', cols)
+    if 'sv3_desi_target' in cols:
+        bitnames = desitarget_sv3_names(cat)
+        D.update(bits=bitnames)
+    elif 'sv1_desi_target' in cols:
+        bitnames = desitarget_sv1_names(cat)
+        D.update(bits=bitnames)
+    elif 'cmx_target' in cols:
+        bitnames = desitarget_cmx_names(cat)
+        D.update(bits=bitnames)
+    # Main targets
+    elif 'desi_target' in cols:
+        from desitarget.targets import desi_mask, bgs_mask, mws_mask, scnd_mask
+        bitnames = []
+        for desi,bgs,mws,scnd in zip(cat.desi_target, cat.bgs_target, cat.mws_target, cat.scnd_target):
+            sec = scnd_mask.names(scnd)
+            sec = ['sec:'+k for k in sec]
+            names = desi_mask.names(desi) + bgs_mask.names(bgs) + mws_mask.names(mws) + sec
+            for kill in ['LRG_SOUTH', 'ELG_SOUTH', 'QSO_SOUTH', 'ELG_VLO_SOUTH', 'SCND_ANY',
+                         'MWS_MAIN_BLUE_SOUTH', ]:
+                if kill in names:
+                    names.remove(kill)
+            bitnames.append(', '.join(names))
+        D.update(bits=bitnames)
+    if 'targetid' in cols:
+        D.update(targetid=['%i'%i for i in cat.targetid])
+    if 'fiber' in cols:
+        D.update(fiberid=[int(i) for i in cat.fiber])
 
     return HttpResponse(json.dumps(D).replace('NaN','null'),
                         content_type='application/json')
@@ -1341,6 +3088,19 @@ def cat_tycho2(req, ver):
         if 'name' in T.columns():
             names = [t.strip() for t in T.name]
             rtn['name'] = names
+            for i,name in enumerate(names):
+                try:
+                    # Parse name as "Tycho-2 ###-###-###", then form Simbad link from the parsed
+                    # numbers.
+                    words = name.split()
+                    nums = words[1].split('-')
+                    tyc1 = int(nums[0])
+                    tyc2 = int(nums[1])
+                    tyc3 = int(nums[2])
+                    url = 'https://simbad.cds.unistra.fr/simbad/sim-id?Ident=TYC++%i+%i+%i&NbIdent=1' % (tyc1, tyc2, tyc3)
+                    names[i] = '<a href="%s">%s</a>' % (url, name)
+                except:
+                    pass
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
 def cat_ngc(req, ver):
@@ -1475,10 +3235,26 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     else:
         rd = list(zip(cat.ra, cat.dec))
         types = list([t[0] for t in cat.get('type')])
-        fluxes = [dict(g=float(g), r=float(r), z=float(z))
-                  for g,r,z in zip(cat.flux_g, cat.flux_r, cat.flux_z)]
-        nobs = [dict(g=int(g), r=int(r), z=int(z))
-                for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
+
+        havebands = []
+        havefluxes = []
+        havenobs = []
+        cols = cat.get_columns()
+        for band in 'griz':
+            if 'flux_'+band in cols:
+                havebands.append(band)
+                havefluxes.append(cat.get('flux_' + band))
+                havenobs.append(cat.get('nobs_' + band))
+        fluxes = []
+        for F in zip(*havefluxes):
+            fluxes.append(dict([(b,float(f)) for b,f in zip(havebands, F)]))
+        nobs = []
+        for N in zip(*havenobs):
+            nobs.append(dict([(b,int(f)) for b,f in zip(havebands, N)]))
+        #fluxes = [dict(g=float(g), r=float(r), z=float(z))
+        #          for g,r,z in zip(cat.flux_g, cat.flux_r, cat.flux_z)]
+        #nobs = [dict(g=int(g), r=int(r), z=int(z))
+        #        for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
         bricknames = list(cat.brickname)
         objids = [int(x) for x in cat.objid]
 
@@ -1498,36 +3274,100 @@ def get_desi_tiles():
     """
     from astrometry.util.fits import fits_table
 
-    path = os.path.join(settings.DATA_DIR, 'desi-tiles.fits')
+    #path = os.path.join(settings.DATA_DIR, 'desi-tiles.fits')
+    path = os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'tiles2.kd.fits')
     t = fits_table(path)
     tileradec = dict()
     for tileid, ra, dec in zip(t.tileid, t.ra, t.dec):
         tileradec[tileid] = (ra,dec)
     return tileradec
 
-def get_desi_tile_radec(tile_id):
+def get_desi_tile_radec(tileid, fiberid=None):
+    tilerd = get_desi_tiles()
+    return tilerd.get(tileid, None)
+
+    #### OLD - read from fiberassign file.
     """Accepts a tile_id, returns a tuple of ra, dec
     Raises a RuntimeError if tile_id is not found
     """
-    # Load tile radec
-    tileradec = get_desi_tiles()
-
-    if tile_id in tileradec:
-        ra = tileradec[tile_id][0]
-        dec = tileradec[tile_id][1]
-        return ra, dec
-    else:
+    import fitsio
+    fn = desi_fiberassign_filename(tileid)
+    if not os.path.exists(fn):
         raise RuntimeError("DESI tile not found")
+    hdr = fitsio.read_header(fn)
+    ra = hdr['TILERA']
+    dec = hdr['TILEDEC']
+
+    if fiberid is not None:
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        T = fits_table(fn, columns=['target_ra', 'target_dec', 'fiber'])
+        I = np.flatnonzero(T.fiber == fiberid)
+        if len(I) == 1:
+            i = I[0]
+            return T.target_ra[i], T.target_dec[i]
+    
+    return ra,dec
+    # # Load tile radec
+    # tileradec = get_desi_tiles()
+    # if tile_id in tileradec:
+    #     ra = tileradec[tile_id][0]
+    #     dec = tileradec[tile_id][1]
+    #     return ra, dec
+    # else:
+    #     raise RuntimeError("DESI tile not found")
 
 if __name__ == '__main__':
     import sys
 
-    galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
-    from map.views import get_layer
-    layer = get_layer('hsc2')
-    create_galaxy_catalog(galfn, None, layer=layer)
+    if False:
+        from map.views import get_layer
+        #galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
+        #layer = get_layer('hsc2')
+        #create_galaxy_catalog(galfn, None, layer=layer)
+    
+        galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr10.fits')
+        layer = get_layer('ls-dr10')
+        create_galaxy_catalog(galfn, None, layer=layer)
+        sys.exit(0)
+    
+    # galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
+    # layer = get_layer('ls-dr9-north')
+    # create_galaxy_catalog(galfn, None, layer=layer)
+    # sys.exit(0)
 
+    if False:
+        # Create SDSS DR16 Spectra file (specObj-dr16-trimmed.kd.fits):
+        from astrometry.util.fits import fits_table
+        import numpy as np
+        T=fits_table('/global/cfs/cdirs/cosmo/data/sdss/dr16/sdss/spectro/redux/specObj-dr16.fits',
+                     columns=['plate','mjd','fiberid','plug_ra','plug_dec','class','subclass','z','zwarning'])
+        print('Read', len(T))
+        T.rename('plug_ra', 'ra')
+        T.rename('plug_dec','dec')
+        labels = []
+        for t in T:
+            sub = t.subclass
+            sub = sub.split()
+            sub = ' '.join([s for s in sub if s[0] != '('])
+            cla = t.get('class').strip()
+            txt = cla
+            if len(sub):
+                txt += ' (' + sub + ')'
+            if cla in ['GALAXY', 'QSO']:
+                txt += ' z=%.3f' % t.z
+            labels.append(txt)
+        T.label = np.array(labels)
+        print('Writing trimmed...')
+        T.writeto('data/sdss/specObj-dr16-trimmed.fits', columns=['ra','dec','plate','mjd','fiberid','z','zwarning','label'])
+        print('Creating kdtree...')
+        os.system('startree -i data/sdss/specObj-dr16-trimmed.fits -o data/sdss/specObj-dr16-trimmed.kd.fits -T -k -P')
+        sys.exit(0)
 
+    #t = lookup_targetid(39627788403084375)
+    #print('Targetid:', t)
+    #t.about()
+    
     from django.test import Client
     c = Client()
     #r = c.get('/sga/1/cat.json?ralo=259.2787&rahi=259.7738&declo=35.9422&dechi=36.1656')
@@ -1539,8 +3379,34 @@ if __name__ == '__main__':
     #r = c.get('/dr8-north/1/14/8194/5895.cat.json')
     #r = c.get('/dr8/1/14/8194/5895.cat.json')
     #r = c.get('/decals-dr7/1/14/8639/7624.cat.json')
-    r = c.get('/mzls+bass-dr6/1/14/7517/6364.cat.json')
+    #r = c.get('/mzls+bass-dr6/1/14/7517/6364.cat.json')
+    #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
+    #r = c.get('/desi-spec-daily/1/cat.json?ralo=154.1814&rahi=154.3175&declo=-2.6274&dechi=-2.5515')
+    #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
+    #r = c.get('/desi-tile/1/cat.json?ralo=238.1458&rahi=238.4181&declo=-0.0750&dechi=0.0748&tile=1000')
+    #r = c.get('/desi-tile/1/cat.json?ralo=190.9733&rahi=191.6270&declo=10.1426&dechi=10.5060&tile=8786')
+    #r = c.get('/targets-dr9-main-dark/1/cat.json?ralo=189.1391&rahi=189.2628&declo=27.5179&dechi=27.5791')
+    #r = c.get('/desi-spectrum/daily/targetid39628158961452744')
+    #r = c.get('/desi-spectrum/daily/targetid39633049259870731')
+
+    # tile = 6834
+    # print('Tile', tile, 'rd', get_desi_tile_radec(tile))
+    # sys.exit(0)
     
+    #r = c.get('/desi-spectrum/guadalupe/targetid39633049259870731')
+    #r = c.get('/desi-spectrum/daily/targetid43977408013222855')
+    #r = c.get('/ls-dr9/1/15/29479/18709.cat.json')
+    #r = c.get('/usercatalog/1/cat.json?ralo=61.2789&rahi=61.3408&declo=-74.8711&dechi=-74.8622&cat=tmpbclfdga8')
+    #r = c.get('/desi-spectrum/edr/targetid39627883857055540')
+    #r = c.get('/desi-spec-dr1/1/cat.json?ralo=149.1504&rahi=149.3979&declo=68.5631&dechi=68.6128')
+    #r = c.get('/desi-spec-daily/1/cat.json?ralo=146.9512&rahi=147.0131&declo=13.2602&dechi=13.2932')
+    #r = c.get('/desi-spec-daily-sky/1/cat.json?ralo=146.9512&rahi=147.0131&declo=13.2602&dechi=13.2932')
+    #r = c.get('/desi-obs-daily/1/cat.json?ralo=146.9298&rahi=147.0535&declo=13.2322&dechi=13.2983')
+    #r = c.get('/desi-obs/daily/targetid39628104741683680')
+    #r = c.get('/desi-obs/daily/targetid2411699042779148')
+    #r = c.get('/desi-obs-daily/1/cat.json?ralo=218.6108&rahi=218.6418&declo=30.9829&dechi=30.9974')
+    #r = c.get('/desi-spectrum/daily/targetid2305843037000968814')
+    r = c.get('/desi-spectrum/daily/targetid39627920582379819')
     f = open('out', 'wb')
     for x in r:
         f.write(x)
@@ -1563,27 +3429,5 @@ if __name__ == '__main__':
 
     from django.test import Client
     c = Client()
-    c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
-
+    #c.get('/usercatalog/1/cat.json?ralo=200.2569&rahi=200.4013&declo=47.4930&dechi=47.5823&cat=tmpajwai3dx')
     sys.exit(0)
-
-    T=fits_table('/project/projectdirs/cosmo/data/sdss/dr14/sdss/spectro/redux/specObj-dr14.fits',
-                 columns=['plate','mjd','fiberid','plug_ra','plug_dec','class','subclass','z','zwarning'])
-    T.rename('plug_ra', 'ra')
-    T.rename('plug_dec','dec')
-    labels = []
-    for t in T:
-        sub = t.subclass
-        sub = sub.split()
-        sub = ' '.join([s for s in sub if s[0] != '('])
-        cla = t.get('class').strip()
-        txt = cla
-        if len(sub):
-            txt += ' (' + sub + ')'
-        if cla in ['GALAXY', 'QSO']:
-            txt += ' z=%.3f' % t.z
-        labels.append(txt)
-    T.label = np.array(labels)
-    T.writeto('specObj-dr14-trimmed.fits', columns=['ra','dec','plate','mjd','fiberid','z','zwarning','label'])
-
-    # startree -i data/specObj-dr14-trimmed.fits -o data/specObj-dr14-trimmed.kd.fits -T -k -P

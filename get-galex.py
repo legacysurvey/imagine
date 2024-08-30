@@ -9,9 +9,13 @@ from astrometry.util.multiproc import multiproc
 def _get_one(X):
     (tile, sv, path, band) = X
     if sv == -999:
-        fnpart = '%s-%sd-intbgsub.fits.gz' % (tile, band)
+        #fnpart = '%s-%sd-intbgsub.fits.gz' % (tile, band)
+        #fnpart = '%s-%sd-skybg.fits.gz' % (tile, band)
+        fnpart = '%s-%sd-rrhr.fits.gz' % (tile, band)
     else:
-        fnpart = '%s_sg%02i-%sd-intbgsub.fits.gz' % (tile, sv, band)
+        #fnpart = '%s_sg%02i-%sd-intbgsub.fits.gz' % (tile, sv, band)
+        #fnpart = '%s_sg%02i-%sd-skybg.fits.gz' % (tile, sv, band)
+        fnpart = '%s_sg%02i-%sd-rrhr.fits.gz' % (tile, sv, band)
     fn = os.path.join('data','galex', tile, fnpart)
     if os.path.exists(fn):
         print('Exists:', fn)
@@ -26,7 +30,7 @@ def _get_one(X):
     path += '/' + fnpart
     
     url = 'http://galex.stsci.edu/data/' + path
-    cmd = 'wget -nv -O %s.tmp %s && mv %s.tmp %s' % (fn, url, fn, fn)
+    cmd = 'wget -o /dev/null -nv -O %s.tmp %s && mv %s.tmp %s' % (fn, url, fn, fn)
     print(cmd)
     rtn = os.system(cmd)
     #if rtn:
@@ -46,7 +50,10 @@ if __name__ == '__main__':
 
     mp = multiproc(8)
     mp.map(_get_one, args)
-
+    #list(map(_get_one, args))
+    
+    sys.exit(0)
+    
     T.have_n = np.zeros(len(T), bool)
     T.have_f = np.zeros(len(T), bool)
 

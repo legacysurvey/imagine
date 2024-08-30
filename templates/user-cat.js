@@ -143,7 +143,12 @@ var UserCatalogLayer = CatalogOverlay.extend({
     },
 
     getLayer: function(result) {
-        return decals_getLayer(result, 10, this.color);
+        return decals_getLayer(result, 10, this.color, this.getTooltipStyle());
+    },
+
+    getTooltipStyle() {
+        return { permanent: true, interactive: true,
+                 className: 'tooltipbg', };
     },
 });
 

@@ -176,6 +176,7 @@ var DesiFootprint = DesiOverlay.extend({
         this._gfa_rds = [];
         this._gfa_label_rds = [];
         this._gfa_labels = [];
+        this._petal_rds = [];
         var polys = [];
         var labels = [];
         for (var i=0; i<gfa_radius.length; i++) {
@@ -236,6 +237,67 @@ var DesiFootprint = DesiOverlay.extend({
         this._ci = L.polyline(polys, {color: 'green'});
         group.push(this._ci);
 
+        var rd = [];
+        // central
+        var dra = -0.0834; var ddec = 0.0000;
+        rd.push([dra, ddec]);
+        // outer arc
+        dra = -1.6164; ddec = 0.0000;
+        var angle1 = Math.atan2(ddec, dra);
+        var radius = Math.hypot(dra, ddec);
+        dra = -1.2861; ddec = 0.9313;
+        var angle2 = Math.atan2(ddec, dra);
+        var steps = 10;
+        var da = (angle2 - angle1) / (steps - 1);
+        for (var j=0; j<steps; j++) {
+            angle = angle1 + da * j;
+            dra  = radius * Math.cos(angle);
+            ddec = radius * Math.sin(angle);
+            rd.push([dra, ddec]);
+        }
+        // central point again -- central arc
+        dra = -0.0834; ddec = 0.0576;
+        angle1 = Math.atan2(ddec, dra);
+        // first point
+        dra = -0.0834; ddec = 0.0000;
+        radius = Math.hypot(dra, ddec);
+        angle2 = Math.PI;
+        steps = 10;
+        da = (angle2 - angle1) / (steps - 1);
+        for (var j=0; j<steps; j++) {
+            angle = angle1 + da * j;
+            dra  = radius * Math.cos(angle);
+            ddec = radius * Math.sin(angle);
+            rd.push([dra, ddec]);
+        }
+        var rds0 = rd;
+
+        var polys = [];
+        // Make 10 petal rotated copies
+        for (var i=0; i<10; i++) {
+            var ll = [];
+            var rd = [];
+            var angle0 = i * Math.PI / 5.;
+
+            for (var j=0; j<rds0.length; j++) {
+                dra  = rds0[j][0];
+                ddec = rds0[j][1];
+                angle = Math.atan2(ddec, dra);
+                angle += angle0;
+                radius = Math.hypot(dra, ddec);
+                dra  = radius * Math.cos(angle);
+                ddec = radius * Math.sin(angle);
+                rd.push([dra, ddec]);
+                ll.push([dec2lat(ddec), ra2long_C(dra, clong)]);
+            }
+
+            this._petal_rds.push(rd);
+            polys.push(ll);
+        }
+
+        this._petals = L.polyline(polys, {color: 'gray'});
+        group.push(this._petals);
+
         this._layer = L.layerGroup(group);
         //map.on('mapMoved', this.mapMoved.bind(this));
     },
@@ -284,5 +346,20 @@ var DesiFootprint = DesiOverlay.extend({
         }
         this._ci.setLatLngs(polys);
         this._ci.redraw();
+
+        var polys = [];
+        for (var i=0; i<this._petal_rds.length; i++) {
+            var ll = [];
+            var rd = this._petal_rds[i];
+            var N = rd.length;
+            for (var j=0; j<N; j++) {
+                ll.push([dec2lat(d0 + rd[j][1]),
+                         ra2long_C(r0 + rd[j][0] / cosdec, clong)]);
+            }
+            polys.push(ll);
+        }
+        this._petals.setLatLngs(polys);
+        this._petals.redraw();
+        
     },
 });

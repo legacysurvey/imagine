@@ -15,13 +15,15 @@ import os
 os.environ.setdefault('PHOTO_REDUX', '')
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "viewer.settings")
 
-#import sys
-#print 'sys.path:', sys.path
+import sys
+#print('sys.path:', sys.path)
 
 import django
 from django.core.wsgi import get_wsgi_application
 
-if True:
+import numpy as np
+
+if False:
     application = get_wsgi_application()
 
 else:
@@ -33,12 +35,17 @@ else:
             self.app = app
         def __call__(self, *args, **kwargs):
             req = args[0]
-            print('Req:', req['REMOTE_ADDR'], req['REQUEST_URI'], file=sys.stderr)
+            #print('Req:', req['REMOTE_ADDR'], req['REQUEST_URI'], file=sys.stderr)
             #print('URL', req.get_full_path(), 'from', req.META['REMOTE_ADDR'],
             #      file=sys.stderr)
             #print('URL', req['REQUEST_URI'], file=sys.stderr)
             #mem0 = get_memusage(mmaps=False)
-            result = self.app(*args, **kwargs)
+            result = None
+            try:
+                result = self.app(*args, **kwargs)
+            except Exception as e:
+                print('Exception', e, 'from request:', req['REMOTE_ADDR'], req['REQUEST_URI'],
+                      file=sys.stderr)
             #mem1 = get_memusage(mmaps=False)
             #print('App', app, 'args', args, 'kwargs', kwargs, file=sys.stderr)
             # print('URL', req['REQUEST_URI'], file=sys.stderr)

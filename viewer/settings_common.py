@@ -8,33 +8,17 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.6/ref/settings/
 """
 
-maxZoom = 16
-abcd = ['a','b','c','d']
-nersc = 'https://{s}.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
-nersc_sub = abcd
-ima = 'http://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
-ima_sub = abcd
-#me = 'TILE_URL'
-#me_sub = 'SUBDOMAINS'
-
-TILE_URLS = {
-        'sdss': [ [1, 13, ima, ima_sub],
-                  [14, maxZoom, nersc, nersc_sub], ],
-        'cfis_dr3_r': [ ],# [1, maxZoom, tileurl, []], ],
-        'cfis_dr3_u': [ ],# [1, maxZoom, tileurl, []], ],
-        'cfis_r': [ ],# [1, maxZoom, tileurl, []], ],
-        'cfis_u': [ ],# [1, maxZoom, tileurl, []], ],
-    }
+LAYER_OVERRIDES = {}
 
 USER_QUERY_DIR = '/tmp/viewer-user'
 
-REDIRECT_CUTOUTS_DECAPS = False
+DESI_PROSPECT_DIR = None
 
-ENABLE_CUTOUTS = True
+REDIRECT_CUTOUTS_DECAPS = False
 
 SDSS_PHOTOOBJS = None
 SDSS_RESOLVE = None
-SDSS_BASEDIR = '/global/cfs/cdirs/cosmo/data/sdss/dr14/'
+SDSS_BASEDIR = '/global/cfs/cdirs/sdss/data/sdss/dr14/'
 
 CREATE_GALAXY_CATALOG = False
 
@@ -55,12 +39,31 @@ ENABLE_DR9_MASKS = True
 ENABLE_UNWISE = True
 ENABLE_UNWISE_CATALOG = True
 
+ENABLE_OLDER = True
+
+# scientist view (vs public)
+ENABLE_SCIENCE = True
+
+# Collab-private data!
+ENABLE_DESI_DATA = False
+
+# DESI Early Data Release
+ENABLE_DESI_EDR = True
+
+ENABLE_MERIAN = False
+
+ENABLE_PANDAS = False
+
+ENABLE_DESI_TARGETS = False
+ENABLE_SPECTRA = False
+
 ENABLE_DR5 = False
 ENABLE_DR6 = True
 ENABLE_DR7 = True
 ENABLE_DR8 = True
 ENABLE_DR8_MODELS = ENABLE_DR8
 ENABLE_DR8_RESIDS = ENABLE_DR8
+<<<<<<< HEAD
 
 ENABLE_DR8_OVERLAYS = ENABLE_DR8
 
@@ -72,24 +75,46 @@ ENABLE_DR8_SOUTH_MODELS = ENABLE_DR8_SOUTH
 ENABLE_DR8_SOUTH_RESIDS = ENABLE_DR8_SOUTH
 
 ENABLE_DR9SV = True
+=======
+>>>>>>> main
 
-ENABLE_DR56 = False
+ENABLE_DR9 = False
+ENABLE_DR9_MODELS = False
+ENABLE_DR9_RESIDS = False
+ENABLE_DR9_NORTH = False
+ENABLE_DR9_NORTH_MODELS = False
+ENABLE_DR9_NORTH_RESIDS = False
+ENABLE_DR9_SOUTH = False
+ENABLE_DR9_SOUTH_MODELS = False
+ENABLE_DR9_SOUTH_RESIDS = False
+
+ENABLE_DR10 = False
+
+ENABLE_UNWISE_W3W4 = False
+
 ENABLE_DR67 = True
 
+ENABLE_DECAPS1 = False
+# Decaps2
 ENABLE_DECAPS = True
 ENABLE_PS1 = False
 ENABLE_DES_DR1 = True
 
+ENABLE_ZTF = False
 ENABLE_EBOSS = False
 
 ENABLE_HSC_DR2 = True
 
 ENABLE_VLASS = True
 
+ENABLE_PHAT = False
+ENABLE_M33 = False
+
 # Can the web service not create files under BASE_DIR?
 READ_ONLY_BASEDIR = False
 
-DEBUG_LOGGING = False
+DEBUG_LOGGING = True
+INFO_LOGGING = True
 
 MAX_NATIVE_ZOOM = 15
 
@@ -106,11 +131,13 @@ DOMAIN = HOSTNAME
 STATIC_URL_PATH = '/static/'
 STATIC_URL = ROOT_URL + STATIC_URL_PATH
 
-TILE_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
+TILE_URL = 'https://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
-STATIC_TILE_URL = 'http://{s}.%s%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL, STATIC_URL_PATH)
+STATIC_TILE_URL = 'https://{s}.%s%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL, STATIC_URL_PATH)
 
-CAT_URL = 'http://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
+CAT_URL = 'https://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (HOSTNAME, ROOT_URL)
+
+DISCUSS_CUTOUT_URL = 'https://www.legacysurvey.org/viewer/cutout.jpg'
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
@@ -124,8 +151,8 @@ DUST_DIR   = os.path.join(DATA_DIR, 'dust')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 try:
-    import secrets.django
-    SECRET_KEY = secrets.django.SECRET_KEY
+    import appsecrets.django as s
+    SECRET_KEY = s.SECRET_KEY
 except:
     import random
     SECRET_KEY = ''.join([random.choice("abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)")
@@ -172,6 +199,14 @@ ALLOWED_HOSTS = [
     'd.imagine.legacysurvey.org',
     'testserver',
     'localhost',
+    # NERSC Spin Rancher2
+    'spin.legacysurvey.org',
+    'viewer.legacysurvey.org', 'a.viewer.legacysurvey.org', 'b.viewer.legacysurvey.org', 'c.viewer.legacysurvey.org', 'd.viewer.legacysurvey.org',
+    'dev.viewer.legacysurvey.org', 'dev-a.viewer.legacysurvey.org', 'dev-b.viewer.legacysurvey.org', 'dev-c.viewer.legacysurvey.org', 'dev-d.viewer.legacysurvey.org',
+    'lb.cosmo-viewer.production.svc.spin.nersc.org',
+    'lb2.cosmo-viewer.production.svc.spin.nersc.org',
+    'www2.legacysurvey.org',
+
 ]
 
 # Application definition
@@ -207,12 +242,21 @@ WSGI_APPLICATION = 'wsgi.application'
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
 
 DATABASES = {
+<<<<<<< HEAD
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     },
 #     'cosmo': secrets.database.COSMO_DB,
 #     'dr2': secrets.database.DR2_DB,
+=======
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     },
+#     'cosmo': appsecrets.database.COSMO_DB,
+#     'dr2': appsecrets.database.DR2_DB,
+>>>>>>> main
 }
 #DATABASE_ROUTERS = ['cat.models.Router']
 

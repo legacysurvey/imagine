@@ -20,6 +20,15 @@
     border-radius: 5px;
 }
 
+.faqbox {
+    padding: 6px 8px;
+    font: 24px/20px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
 .inbrickccd ul {
     margin-top: 0pt;
 }
@@ -53,17 +62,27 @@
     margin-bottom: 15px;
 }
 
+//.leaflet-control-zoomslider {
+//    z-index: 1200;
+//}
+.leaflet-top {
+    z-index: 1200;
+}
+
 /* hmm, can't get this to work
 .leaflet-control-attribution {
     font-size: 200%;
 }
 */
 
-#gotosubmit {
+.gotobutton {
     font-size: 100%;
 }
-#gotocancel {
-    font-size: 100%;
+
+.spectrumTooltip {
+}
+.spectrumTooltipSmall {
+    font-size: 80%;
 }
 
 /* https://gis.stackexchange.com/questions/212820/overriding-leaflet-tooltip-style */
@@ -75,9 +94,12 @@
 }
 
 .leaflet-tooltip {
-    background: transparent;
+    background-color: rgba(0,0,0, 0.5);
     color: white;
+/*
+    background: transparent;
     box-shadow: 0 0px 0px rgba(0,0,0,0);
+*/
 }
 
 .leaflet-tooltip a {
