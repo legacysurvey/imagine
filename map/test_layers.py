@@ -45,3 +45,4 @@ test_ccds = []
 # test_layers.append(('dr10-deep', 'DR10 deep image'))
 # test_layers.append(('dr10-deep-model', 'DR10 deep model'))
 # test_layers.append(('dr10-deep-resid', 'DR10 deep resid'))
+

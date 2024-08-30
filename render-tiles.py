@@ -393,6 +393,7 @@ def _layer_get_filename(args):
     fn = layer.get_filename(brick, band, scale)
     print(fn)
 
+
 def main():
     import optparse
 
@@ -466,6 +467,21 @@ def main():
 
     mp = multiproc(opt.threads)
 
+    if opt.kind in ['cfis-r', 'cfis-u', 'cfis-dr3-r', 'cfis-dr3-u']:
+        if opt.bands is None:
+            if opt.kind in ['cfis-r', 'cfis-dr3-r']:
+                opt.bands = 'R'
+            if opt.kind in ['cfis-u', 'cfis-dr3-u']:
+                opt.bands = 'U'
+        if opt.mindec is None:
+            if opt.kind in ['cfis-r', 'cfis-dr3-r']:
+                opt.mindec = 22
+            if opt.kind in ['cfis-u', 'cfis-dr3-u']:
+                opt.mindec = -11
+        if opt.maxdec is None:
+            opt.maxdec = 90
+
+    
     if opt.kind in ['sdss', 'sdss2']:
         if opt.maxdec is None:
             opt.maxdec = 90
@@ -476,7 +492,8 @@ def main():
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                        'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
                        'unwise-w3w4',
-                       'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf']
+                       'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf',
+                       'cfis-r', 'cfis-u', 'cfis-dr3-r', 'cfis-dr3-u']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
               or 'dr9f' in opt.kind
@@ -696,10 +713,11 @@ def main():
         if (opt.kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr7', 'decals-dr7-model',
                         'eboss',
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
-                         'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
-                         'unwise-w3w4',
-                         'unwise-cat-model',
-                         'galex', 'wssa', 'des-dr1', 'hsc2', 'hsc-dr3',
+                        'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
+                        'unwise-w3w4',
+                        'unwise-cat-model',
+                        'galex', 'wssa', 'des-dr1', 'hsc2', 'hsc-dr3',
+                        'cfis-dr3-r', 'cfis-dr3-u',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
                         'dr8-south', 'dr8-south-model', 'dr8-south-resid',
                         'dr9c', 'dr9c-model', 'dr9c-resid',
@@ -809,8 +827,11 @@ def main():
                 print(len(args), 'bricks for scale', scale)
                 mp.map(_layer_get_filename, args)
 
+            if mp.pool is not None:
+                mp.pool.close()
+                mp.pool.join()
+            #mp.close()
             sys.exit(0)
-                
         
         if (opt.kind in ['eboss', 'ps1']
             or 'dr8b' in opt.kind

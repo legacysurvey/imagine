@@ -78,6 +78,7 @@ catversions = {
     'ps1': [1,],
     'desi-tiles': [1,],
     'masks-dr8': [1,],
+    'cfis-dr2': [1,],
     'photoz-dr9': [1,],
     'desi-edr-tiles': [1,],
     'desi-edr-spectra': [1,],
@@ -102,6 +103,73 @@ try:
 except:
     pass
 
+def cat_cfis(req, ver, tag='cfis-dr2'):
+    import json
+    ralo = float(req.GET['ralo'])
+    rahi = float(req.GET['rahi'])
+    declo = float(req.GET['declo'])
+    dechi = float(req.GET['dechi'])
+    ver = int(ver)
+    if not ver in catversions[tag]:
+        raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
+    from astrometry.util.fits import fits_table, merge_tables
+    from astrometry.libkd.spherematch import tree_open, tree_search_radec
+    from map.views import get_layer
+    import numpy as np
+
+    rc,dc,rad = radecbox_to_circle(ralo, rahi, declo, dechi)
+    layer = get_layer('cfis-dr2')
+    B = layer.bricks_within_range(rc, dc, rad, scale=0)
+    print(len(B), 'bricks:', B.brickname)
+    TT = []
+    ntot = 0
+    for b in B:
+        fn = os.path.join(layer.basedir, 'catalogs-dr2',
+                          'CFIS.%s.%s.fits' % (b.grid1, b.grid2))
+        print(fn)
+        T = fits_table(fn)
+        print(len(T), 'from', fn)
+        if len(T) == 0:
+            continue
+        T.cut((T.dec >= declo) * (T.dec <= dechi))
+        print(len(T), 'in Dec range')
+        if ralo < rahi:
+            T.cut((T.ra >= ralo) * (T.ra <= rahi))
+            print(len(T), 'in RA range')
+        else:
+            T.cut(np.logical_or(T.ra >= ralo, T.ra <= rahi))
+            print(len(T), 'in RA range (wrapped)')
+        if len(T) == 0:
+            continue
+        T.brickname = np.array(['CFIS.' + b.grid1 + '.' + b.grid2] * len(T))
+        TT.append(T)
+        ntot += len(T)
+        if ntot > 1000:
+            break
+    T = merge_tables(TT)
+    print('Total of', len(T))
+    T = T[:1000]
+
+    color = []
+    for rflag,uflag in zip(T.r_flags, T.u_flags):
+        # -99, 0, or >0
+        ok = not((rflag > 0) or (uflag > 0))
+        if ok:
+            color.append('skyblue')
+        else:
+            color.append('gray')
+
+    return HttpResponse(json.dumps(dict(
+        rd=[(float(r), float(d)) for r,d in zip(T.ra, T.dec)],
+        color=color,
+        r_flags=[int(i) for i in T.r_flags],
+        u_flags=[int(i) for i in T.u_flags],
+        cfis_id=[int(i) for i in T.cfis_id],
+        r_mag_auto=[float(m) for m in T.r_mag_auto],
+        u_mag_auto=[float(m) for m in T.u_mag_auto],
+        tile=[str(b) for b in T.brickname],
+        )),
+                        content_type='application/json')
 
 def gaia_stars_for_wcs(req):
     import json
