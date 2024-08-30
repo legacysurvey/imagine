@@ -2799,7 +2799,6 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'Legacy Surveys Bricks',
     return txt;
 },
 });
-{% endif %}
 
 var unwise_tile_detail = function(layer_name, name, aparams) {
     return 'Tile: ' + name;
@@ -3368,7 +3367,6 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
                               'urlTerm': 'ngc',
-			                  'url': '{{ my_small_cat_url }}',
 			     });
 
 var GCsPNe = new GCsPNeCatalog('GCs-PNe', 'Star clusters & Planetary Nebulae',
@@ -3382,7 +3380,6 @@ var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (LS-DR9)',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
                              'urlTerm': 'masks-dr9',});
-{% endif %}
                              
 // var starmasks8 = new StarMaskCatalog('masks-dr8', 'Gaia masks (DR8)',
 //                              {'url_name': 'masks-dr8',
@@ -3399,7 +3396,6 @@ var sga_ell = new SGACatalog('sga', 'Siena Galaxy Atlas',
                              {'minZoom': 7,
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga',});
-{% endif %}
 
 var photoz = new PhotozCatalog('photoz-dr9', 'DR9 Photo-z',
                                  {'minZoom': 12,
@@ -4005,6 +4001,7 @@ var baseTree1 = [
     // findlayer('cfis-u'),
     {% if enable_m33 %}
     findlayer('m33'),
+    {% endif %}
 ];
 
 {% if decaps_first %}

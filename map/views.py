@@ -809,7 +809,6 @@ def _index(req,
                 root_url=settings.ROOT_URL+'/'.replace('//','/'),
                 uploadurl=uploadurl,
                 caturl=caturl, bricksurl=bricksurl,
-                my_small_cat_url=mysmallcaturl,
                 smallcaturl=smallcaturl,
                 cfis_cat_url=cfis_cat_url,
                 namequeryurl=namequeryurl,
@@ -8976,8 +8975,10 @@ if __name__ == '__main__':
     pixscale = 0.25
     H = W = 1000
     #r = c.get('/cutout.jpg?ra=289.89030014944893&dec=86.06584587912832&layer=ps1&height=%i&width=%i&pixscale=%f' % (H, W, pixscale))
-    r = c.get('/exposures/?ra=188.9829&dec=-56.4978&layer=decaps2')
-    
+    #r = c.get('/exposures/?ra=188.9829&dec=-56.4978&layer=decaps2')
+
+    r = c.get('/')
+
     #r = c.get('/exposures/?ra=221.8682&dec=2.3882&layer=ibis-color')
     #r = c.get('/desi-spectrum/edr/targetid39628256290279019')
 
