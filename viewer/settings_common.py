@@ -63,20 +63,6 @@ ENABLE_DR7 = True
 ENABLE_DR8 = True
 ENABLE_DR8_MODELS = ENABLE_DR8
 ENABLE_DR8_RESIDS = ENABLE_DR8
-<<<<<<< HEAD
-
-ENABLE_DR8_OVERLAYS = ENABLE_DR8
-
-ENABLE_DR8_NORTH = True
-ENABLE_DR8_NORTH_MODELS = ENABLE_DR8_NORTH
-ENABLE_DR8_NORTH_RESIDS = ENABLE_DR8_NORTH
-ENABLE_DR8_SOUTH = True
-ENABLE_DR8_SOUTH_MODELS = ENABLE_DR8_SOUTH
-ENABLE_DR8_SOUTH_RESIDS = ENABLE_DR8_SOUTH
-
-ENABLE_DR9SV = True
-=======
->>>>>>> main
 
 ENABLE_DR9 = False
 ENABLE_DR9_MODELS = False
@@ -212,14 +198,12 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = (
-    'django.contrib.auth',
-    'social_django',
-    # 'django.contrib.admin',
+    # # CFIS
+    # 'django.contrib.auth',
+    # 'social_django',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    # 'django.contrib.messages',
     'django.contrib.staticfiles',
-    # 'cat',
     'viewer',
     ### For ./manage.py show_urls
     'django_extensions',
@@ -242,21 +226,15 @@ WSGI_APPLICATION = 'wsgi.application'
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
 
 DATABASES = {
-<<<<<<< HEAD
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    },
+    # CFIS
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    # },
 #     'cosmo': secrets.database.COSMO_DB,
 #     'dr2': secrets.database.DR2_DB,
-=======
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-#     },
 #     'cosmo': appsecrets.database.COSMO_DB,
 #     'dr2': appsecrets.database.DR2_DB,
->>>>>>> main
 }
 #DATABASE_ROUTERS = ['cat.models.Router']
 

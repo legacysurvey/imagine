@@ -284,7 +284,7 @@ urlpatterns = ([
     # PHAT version of the viewer.
     re_path(r'^phat/?$', views.phat),
 
-    url(r'test', views.test),
+    re_path(r'test', views.test),
 
     # fall-through
     re_path(r'/?', views.index, name='index'),

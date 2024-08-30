@@ -701,8 +701,6 @@ def _index(req,
     #static_tile_url = fix_hostname(req, settings.STATIC_TILE_URL)
     static_tile_url = settings.STATIC_TILE_URL
 
-    nersc_tile_url = settings.NERSC_TILE_URL
-    
     # includes subdomain pattern
     static_tile_url_B = settings.STATIC_TILE_URL_B
     subdomains_B = settings.SUBDOMAINS_B
@@ -807,7 +805,6 @@ def _index(req,
                 merian_first=merian_first,
                 galname=galname,
                 layer=layer, tileurl=tileurl,
-                tileurls=tileurls,
                 hostname_url=hostname_url,
                 root_url=settings.ROOT_URL+'/'.replace('//','/'),
                 uploadurl=uploadurl,
@@ -822,12 +819,8 @@ def _index(req,
                 static_tile_url=static_tile_url,
                 subdomains=subdomains,
 
-                enabled=enabled,
-
                 static_tile_url_B=static_tile_url_B,
                 subdomains_B=subdomains_B,
-
-                nersc_tile_url=nersc_tile_url,
 
                 usercatalogs = usercats,
                 usercatalogurl = usercatalogurl,
@@ -8994,8 +8987,6 @@ if __name__ == '__main__':
     #     rgb = layer.get_rgb(imgs, 'gri')
     #     save_jpeg('wcs%i.jpg' % i, rgb)
     # sys.exit(0)
-
->>>>>>> main
 
     f = open('out.jpg', 'wb')
     for x in r:

@@ -217,52 +217,6 @@ var ZoomRangeTileLayer = MyTileLayer.extend({
         }
 	},
 });
-
-// Second try -- no default; accepts list of layers incl. subdomains.
-var ZoomRangeTileLayer2 = MyTileLayer.extend({
-    getTileUrl: function(tile) {
-        var urlpat = '';
-	var subs = [];
-        for (var i=0; i<this.options.urlPatterns.length; i++) {
-            var zlo  = this.options.urlPatterns[i][0];
-            var zhi  = this.options.urlPatterns[i][1];
-            if ((tile.z >= zlo) && (tile.z <= zhi)) {
-                urlpat = this.options.urlPatterns[i][2];
-		subs   = this.options.urlPatterns[i][3];
-		break;
-            }
-        }
-	if (urlpat.length == 0) {
-	    return 'none';
-	}
-	args = L.extend({z: tile.z,
-			 x: tile.x,
-			 y: tile.y}, this.options);
-	if (subs.length > 0) {
-	    var s = this._getSubdomain(tile);
-	    args = L.extend(args, {s: s});
-	}
-	return L.Util.template(urlpat, args);
-    },
-});
-var mylayer_2 = function (name, pretty, kwargs) {
-    var args = {
-        maxZoom: maxZoom,
-        minZoom: minZoom,
-        maxNativeZoom: maxNativeZoom,
-        attribution: decals_attrib,
-        id: name,
-        ver: getversion(name),
-        unloadInvisibleTiles: true,
-    };
-    for (var key in kwargs) {
-        args[key] = kwargs[key];
-    }
-    var tiles = new ZoomRangeTileLayer2('', args);
-    tiles.name = name;
-    tiles.pretty = pretty;
-    return tiles;
-};
   
 var SplitTileLayer = MyTileLayer.extend({
     initialize: function(ysplits, north_layer, mid_layer, south_layer, options) {
@@ -3414,7 +3368,7 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
                               'urlTerm': 'ngc',
-			      'url': '{{ my_small_cat_url }}',
+			                  'url': '{{ my_small_cat_url }}',
 			     });
 
 var GCsPNe = new GCsPNeCatalog('GCs-PNe', 'Star clusters & Planetary Nebulae',
@@ -3601,7 +3555,7 @@ var sdsscat = new SdssCatalog('sdss-cat', 'SDSS catalog',
                               'labelsMinZoom': 11,
                               'urlTerm': 'cfis-dr2',
                               'radius': 100,
-			      'url': '{{cfis_cat_url|safe}}',
+			                  'url': '{{cfis_cat_url|safe}}',
                               });
 
   
@@ -3875,6 +3829,7 @@ var overlays = [
     {% endif %}
     {% if enable_sdss_ccds %}
     ccdOverlaySdss,
+    {% endif %}
     gals, sga_parent, sga_ell, //lslga_model, starmasks8,
     starmasks9, GCsPNe, bright, tycho2,
     photoz,
@@ -4344,6 +4299,7 @@ var overlayTree = [];
      {% if enable_unwise_tiles %}
      findoverlay('unwise-tiles'),
      {% endif %}
+     {% endif %}    
      ]},
      // end of Boundaries
 
