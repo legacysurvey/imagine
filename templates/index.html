@@ -217,7 +217,7 @@ var ZoomRangeTileLayer = MyTileLayer.extend({
         }
 	},
 });
-
+  
 var SplitTileLayer = MyTileLayer.extend({
     initialize: function(ysplits, north_layer, mid_layer, south_layer, options) {
         L.TileLayer.prototype.initialize.call(this, '', options);
@@ -666,7 +666,8 @@ var SGACatalog = CatalogOverlay.extend({
     },
 
     getTooltipStyle() {
-        return { permanent: false, interactive: true, };
+        return { permanent: false, interactive: true,
+	         className: 'tooltipbg', };
     },
 
     getLayer: function(result) {
@@ -1657,6 +1658,14 @@ var map = L.map('map', {
     tap: false,
 });
 var popup = L.popup();
+
+var login_info = L.control({'position':'topright'});
+login_info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'login_info');
+    this._div.innerHTML = 'Signed in as {{user.username}} | <a href="logout">Sign Out</a>';
+    return this._div;
+};
+login_info.addTo(map);
 
 map.attributionControl.options.prefix = '<a href="https://www.legacysurvey.org/svtips/">Tips &amp; Tricks | ' +
      map.attributionControl.options.prefix + ' | <a href="https://github.com/legacysurvey/imagine">Source</a>';
@@ -2790,7 +2799,7 @@ var brickOverlay = new PolygonOverlay('decals-bricks', 'Legacy Surveys Bricks',
     return txt;
 },
 });
-
+{% endif %}
 
 var unwise_tile_detail = function(layer_name, name, aparams) {
     return 'Tile: ' + name;
@@ -2811,6 +2820,7 @@ var unwise_tile_detail_list = function(ov, objs) {
     return txt;
 }
     
+{% if enable_unwise_tiles %}
 var unwiseTileOverlay = new PolygonOverlay('unwise-tiles',
                                  'unWISE tiles',
                                  {'url':ccds_url,
@@ -2823,8 +2833,9 @@ var unwiseTileOverlay = new PolygonOverlay('unwise-tiles',
                                  'dr_name': 'unWISE',
                                  });
 unwiseTileOverlay._color = '#9040f0';
+{% endif %}
 
-
+{% if enable_sdss_ccds %}
 var ccdOverlaySdss = new PolygonOverlay('sdss-ccds',
                                  'SDSS CCDs',
                                     {'url':ccds_url,
@@ -2836,8 +2847,7 @@ var ccdOverlaySdss = new PolygonOverlay('sdss-ccds',
                                      'url_name': 'sdss',
                                      'dr_name': 'SDSS',
                                     });
-
-
+{% endif %}
 
 {% if enable_spectra %}
 url = sdss_plates_url;
@@ -3215,11 +3225,17 @@ var polygonOverlays = [
     {% if enable_dr9_south_overlays %}
     ccdOverlay9s, expOverlay9s,
     {% endif %}
+    {% if enable_ls_bricks %}
     brickOverlay,
+    {% endif %}
     {% if enable_unwise %}
+    {% if enable_unwise_tiles %}
     unwiseTileOverlay,
     {% endif %}
+    {% endif %}
+    {% if enable_sdss_ccds %}
     ccdOverlaySdss,
+    {% endif %}
     {% if enable_spectra %}
     plateOverlay,
     {% endif %}
@@ -3351,7 +3367,9 @@ var gals = new GalaxyCatalog('gals', 'NGC/IC galaxies',
                              {'url_name': 'ngc',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
-                             'urlTerm': 'ngc',});
+                              'urlTerm': 'ngc',
+			                  'url': '{{ my_small_cat_url }}',
+			     });
 
 var GCsPNe = new GCsPNeCatalog('GCs-PNe', 'Star clusters & Planetary Nebulae',
                              {'url_name': 'GCs-PNe',
@@ -3364,6 +3382,7 @@ var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (LS-DR9)',
                               'minZoom': 5,
                               'labelsMinZoom': 7,
                              'urlTerm': 'masks-dr9',});
+{% endif %}
                              
 // var starmasks8 = new StarMaskCatalog('masks-dr8', 'Gaia masks (DR8)',
 //                              {'url_name': 'masks-dr8',
@@ -3380,6 +3399,7 @@ var sga_ell = new SGACatalog('sga', 'Siena Galaxy Atlas',
                              {'minZoom': 7,
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga',});
+{% endif %}
 
 var photoz = new PhotozCatalog('photoz-dr9', 'DR9 Photo-z',
                                  {'minZoom': 12,
@@ -3444,6 +3464,27 @@ var gaia3 = new GaiaDr3Catalog('gaia-edr3', 'Gaia EDR3 catalog',
                               });
 
 
+  var CFISCatalog = CatalogOverlay.extend({
+      getLabel: function(json, i) {
+          var ra = json['rd'][i][0];
+          var dec = json['rd'][i][1];
+	  var txt = 'CFIS ' + json['cfis_id'][i] + '<br>' +
+	      'RA,Dec ' + ra.toFixed(4) + ', ' + dec.toFixed(4) + '<br>' +
+	      'Tile ' + json['tile'][i] + '<br>' +
+	      'Flags: r=' + json['r_flags'][i] + ', u=' + json['u_flags'][i] + '<br>' +
+	      'Mag_auto: r=' + json['r_mag_auto'][i].toFixed(3) + ', u=' + json['u_mag_auto'][i].toFixed(3);
+	  return txt;
+      },
+      getTooltipStyle() {
+	  return { permanent: false, interactive: true, };
+      },
+      getPopupText(json, i) {
+	  return this.getLabel(json, i);
+      },
+
+  });
+  
+  
 var SdssCatalog = CatalogOverlay.extend({
 
     getColor: function(json, i) {
@@ -3508,6 +3549,16 @@ var sdsscat = new SdssCatalog('sdss-cat', 'SDSS catalog',
                               'radius': 100,
                               });
 
+  var cfiscat = new CFISCatalog('cfis-dr2', 'CFIS DR2 catalog',
+                             {'url_name': 'cfis-dr2',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'cfis-dr2',
+                              'radius': 100,
+			                  'url': '{{cfis_cat_url|safe}}',
+                              });
+
+  
 {% if enable_phat %}
 var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
                              {'url_name': 'phat-clusters',
@@ -3690,6 +3741,8 @@ var decamfoot = new DecamOverlay('decam-footprint', 'DECam Footprint', {});
 decamfoot._url_term = 'decamfoot';
 
 var overlays = [
+    cfiscat,
+
     {% if enable_phat %}
     phat_clusters,
     {% endif %}    
@@ -3766,11 +3819,17 @@ var overlays = [
     expOverlay7,
     {% endif %}
 
+    {% if enable_ls_bricks %}
     brickOverlay,
+    {% endif %}
     {% if enable_unwise %}
+    {% if enable_unwise_tiles %}
     unwiseTileOverlay,
     {% endif %}
+    {% endif %}
+    {% if enable_sdss_ccds %}
     ccdOverlaySdss,
+    {% endif %}
     gals, sga_parent, sga_ell, //lslga_model, starmasks8,
     starmasks9, GCsPNe, bright, tycho2,
     photoz,
@@ -3940,6 +3999,11 @@ var decaps_tree = [
 {% endif %}
 
 var baseTree1 = [
+    // findlayer('cfis-dr3-r'),
+    // findlayer('cfis-dr3-u'),
+    // findlayer('cfis-r'),
+    // findlayer('cfis-u'),
+    {% if enable_m33 %}
     findlayer('m33'),
 ];
 
@@ -4228,18 +4292,23 @@ var overlayTree = [];
          {% endif %}
      ]),
      {% endif %}
+     {% if enable_sdss_ccds %}
      findoverlay('sdss-ccds'),
+     {% endif %}    
      {% if enable_unwise %}
+     {% if enable_unwise_tiles %}
      findoverlay('unwise-tiles'),
      {% endif %}
-
+     {% endif %}    
      ]},
      // end of Boundaries
+
      {% endif %}
                                         
      {% if science %}
      { label: 'Imaging catalogs', children: [
 
+     // findoverlay('cfis-dr2'),
      {% if enable_phat %}
      findoverlay('phat-clusters'),
      {% endif %}    
@@ -4375,6 +4444,9 @@ var overlayTree = [];
      findoverlay('photoz-dr9'),
      {% endif %}
      //findoverlay('masks-dr8'),
+     //{% if enable_dr9_masks %}
+     //findoverlay('masks-dr9'),
+     //{% endif %}
      findoverlay('const'),
      ]},
  ]);

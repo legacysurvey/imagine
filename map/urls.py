@@ -16,7 +16,6 @@ urlpatterns_desi = [
 urlpatterns_desi.extend([
     # All DESI tiles (tiles-main.ecsv)
     re_path(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
-
     # DESI EDR tiles
     re_path(r'^desi-tiles/edr/(\d+)/cat.json', cats.cat_desi_edr_tiles),
     # DESI EDR spectra overlay
@@ -35,7 +34,6 @@ if settings.ENABLE_DESI_DATA:
     urlpatterns_desi.extend([
         # All DESI tiles (tiles-main.ecsv)
         #re_path(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
-
         # DESI spectroscopy -- DR1
         re_path(r'^desi-tiles/dr1/(\d+)/cat.json', cats.cat_desi_dr1_tiles),
         re_path(r'^desi-spec-dr1/(\d+)/cat.json', cats.cat_desi_dr1_spectra),
@@ -69,6 +67,9 @@ urlpatterns = ([
 
     re_path(r'^gfas', views.gfas),
     re_path(r'^ci', views.ci),
+
+    re_path(r'^cfis-dr2/(\d+)/cat.json', cats.cat_cfis),
+    re_path(r'^masks-dr8/(\d+)/cat.json', cats.cat_gaia_mask),
 
     # Rongpu's DR9 photo-zs
     re_path(r'^photoz-dr9/(\d+)/cat.json', cats.cat_photoz_dr9),
@@ -283,7 +284,8 @@ urlpatterns = ([
     # PHAT version of the viewer.
     re_path(r'^phat/?$', views.phat),
 
+    re_path(r'test', views.test),
+
     # fall-through
     re_path(r'/?', views.index, name='index'),
-
 ])
