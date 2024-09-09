@@ -225,10 +225,10 @@ urlpatterns = ([
 
     re_path(r'^coadd-psf/', views.coadd_psf, name='coadd_psf'),
 
-    # Look up this position, date, observatory in JPL Small Bodies database
-    re_path(r'^jpl_lookup/?$', views.jpl_lookup),
-    # Redirect to other URLs on the JPL site.
-    re_path(r'^jpl_lookup/(?P<jpl_url>.*)', views.jpl_redirect),
+    # # Look up this position, date, observatory in JPL Small Bodies database
+    # re_path(r'^jpl_lookup/?$', views.jpl_lookup),
+    # # Redirect to other URLs on the JPL site.
+    # re_path(r'^jpl_lookup/(?P<jpl_url>.*)', views.jpl_redirect),
 
     # bricks: list of polygons
     re_path(r'^bricks/', views.brick_list, name='brick-list'),

@@ -7213,8 +7213,8 @@ def exposures_common(req, tgz, copsf):
             '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
             '<small>(observed %s @ %s = MJD %.6f)</small>' % (ccd.date_obs, ccd.ut, ccd.mjd_obs),
             '<small>(proposal id %s)</small>' % (ccd.propid),
-            '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % (
-                format_jpl_url(req, ra, dec, ccd)),
+            #'<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % (
+            #    format_jpl_url(req, ra, dec, ccd)),
             '<small><a href="%s">Direct link to JPL query</a></small>' % (
                 jpl_direct_url(ra, dec, ccd)),
         ])
