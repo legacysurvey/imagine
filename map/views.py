@@ -6874,8 +6874,8 @@ def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None, ccd_link=True,
         if '_oki_' in ccd.image_filename:
             ooitext = '<a href="%s">ooi</a>' % imgooiurl
         jplstr = ''
-        if ra is not None:
-            jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(req, ra, dec, ccd)
+        #if ra is not None:
+        #    jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(req, ra, dec, ccd)
         if ccd_link:
             ccd_html = '<a href="%s">%s</a>' % (my_reverse(req, ccd_detail, args=(layer, ccdtag)), ccdname)
         else:
