@@ -2,10 +2,10 @@ test_layers = []
 test_cats = []
 test_ccds = []
 
-# test_layers.append(('ibis-color', "IBIS color (HSC)"))
-# test_layers.append(('ibis-color-ls', "IBIS color (LS)"))
-# test_layers.append(('ibis-m411', "IBIS M411"))
-# test_layers.append(('ibis-m464', "IBIS M464"))
+test_layers.append(('ibis-color', "IBIS color (HSC)"))
+test_layers.append(('ibis-color-ls', "IBIS color (LS)"))
+test_layers.append(('ibis-m411', "IBIS M411"))
+test_layers.append(('ibis-m464', "IBIS M464"))
 
 #test_layers.append(('cfht-cosmos-cahk', "CFHT CaH+K images"))
 
