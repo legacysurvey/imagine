@@ -6743,7 +6743,8 @@ Mouse: <span id="dq_coords"></span>  Click: <span id="dq_click"></span></div><br
            outlierstamp=outlierstamp, skystamp=skystamp, skysubstamp=skysubstamp,
            static=settings.STATIC_URL, scale=image_stamp_scale)
 
-    return HttpResponse(about, content_type='application/xhtml+xml')
+    #return HttpResponse(about, content_type='application/xhtml+xml')
+    return HttpResponse(about)
 
 def exposure_detail(req, name, exp):
     import numpy as np
