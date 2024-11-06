@@ -418,8 +418,8 @@ def _index(req,
 
     if settings.ENABLE_HSC_DR2:
         tile_layers.update({
-            'hsc-dr2': ['HSC DR2', [def_url], maxnative, 'hsc'],
-            'hsc-dr3': ['HSC DR3', [def_url], maxnative, 'hsc'],
+            'hsc-dr2': ['HSC DR2', [def_url], maxnative, 'hsc2'],
+            'hsc-dr3': ['HSC DR3', [def_url], maxnative, 'hsc3'],
         })
 
     if settings.ENABLE_VLASS:
