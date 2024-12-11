@@ -751,6 +751,7 @@ def main():
                          'cfht-cosmos-cahk',
                          'decaps2', 'decaps2-model',
                          'dr10-deep', 'dr10-deep-model', 'ibis-color', 'ibis',
+                         'ibis-3',
         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')

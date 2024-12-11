@@ -2,6 +2,8 @@ test_layers = []
 test_cats = []
 test_ccds = []
 
+test_layers.append(('ibis-3', "IBIS (v3) XMM"))
+
 test_layers.append(('ibis-color', "IBIS color (HSC)"))
 test_layers.append(('ibis-color-ls', "IBIS color (LS)"))
 test_layers.append(('ibis-m411', "IBIS M411"))

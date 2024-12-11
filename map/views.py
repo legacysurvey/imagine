@@ -3876,6 +3876,13 @@ class IbisColorLayer(ReDecalsLayer):
 
         return rgb
 
+class Ibis3Layer(ReDecalsLayer):
+    def __init__(self, name, imagetype, survey):
+        super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'])
+    def get_rgb(self, imgs, bands, **kwargs):
+        from legacypipe.survey import sdss_rgb as ls_rgb
+        return ls_rgb(imgs, bands)
+
 class LegacySurveySplitLayer(MapLayer):
     def __init__(self, name, top, bottom, decsplit, top_bands='grz', bottom_bands='grz'):
         super(LegacySurveySplitLayer, self).__init__(name)
@@ -8276,6 +8283,10 @@ def get_layer(name, default=None):
         elif name == 'ibis-m464':
             layer.bands = ['M464']
             layer.rgb_plane = 1
+
+    elif name in ['ibis-3']:
+        survey = get_survey(name)
+        layer = Ibis3Layer(name, 'image', survey)
 
     elif name == 'ls-dr10-segmentation':
         dr10 = get_layer('ls-dr10-model')
