@@ -2,7 +2,19 @@ test_layers = []
 test_cats = []
 test_ccds = []
 
-test_layers.append(('ibis-3', "IBIS (v3) XMM"))
+test_layers.append(('ibis-3', "IBIS (v3) XMM Color"))
+test_layers.append(('ibis-3-m411', "IBIS (v3) XMM M411"))
+test_layers.append(('ibis-3-m438', "IBIS (v3) XMM M438"))
+test_layers.append(('ibis-3-m464', "IBIS (v3) XMM M464"))
+test_layers.append(('ibis-3-m490', "IBIS (v3) XMM M490"))
+test_layers.append(('ibis-3-m517', "IBIS (v3) XMM M517"))
+
+test_layers.append(('ibis-3', "IBIS (v3) Wide Color"))
+test_layers.append(('ibis-3-m411', "IBIS (v3) Wide M411"))
+test_layers.append(('ibis-3-m438', "IBIS (v3) Wide M438"))
+test_layers.append(('ibis-3-m464', "IBIS (v3) Wide M464"))
+test_layers.append(('ibis-3-m490', "IBIS (v3) Wide M490"))
+test_layers.append(('ibis-3-m517', "IBIS (v3) Wide M517"))
 
 test_layers.append(('ibis-color', "IBIS color (HSC)"))
 test_layers.append(('ibis-color-ls', "IBIS color (LS)"))

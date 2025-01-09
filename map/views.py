@@ -3879,9 +3879,18 @@ class IbisColorLayer(ReDecalsLayer):
 class Ibis3Layer(ReDecalsLayer):
     def __init__(self, name, imagetype, survey):
         super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'])
+        self.rgb_plane = None
     def get_rgb(self, imgs, bands, **kwargs):
         from legacypipe.survey import sdss_rgb as ls_rgb
-        return ls_rgb(imgs, bands)
+        rgb = ls_rgb(imgs, bands)
+
+        # single-band layers
+        if self.rgb_plane is not None:
+            for i in range(3):
+                if i != self.rgb_plane:
+                    rgb[:,:,i] = rgb[:,:,self.rgb_plane]
+        
+        return rgb
 
 class LegacySurveySplitLayer(MapLayer):
     def __init__(self, name, top, bottom, decsplit, top_bands='grz', bottom_bands='grz'):
@@ -8284,9 +8293,24 @@ def get_layer(name, default=None):
             layer.bands = ['M464']
             layer.rgb_plane = 1
 
-    elif name in ['ibis-3']:
+    elif name in ['ibis-3', 'ibis-3-wide']:
         survey = get_survey(name)
         layer = Ibis3Layer(name, 'image', survey)
+
+    elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',]:
+        survey = get_survey('ibis-3')
+        layer = Ibis3Layer('ibis-3', 'image', survey)
+        band = name[-4:].upper()
+        layer.bands = [band]
+        layer.rgb_plane = 2
+
+    elif name in ['ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
+                  'ibis-3-wide-m490', 'ibis-3-wide-m517',]:
+        survey = get_survey('ibis-3-wide')
+        layer = Ibis3Layer('ibis-3-wide', 'image', survey)
+        band = name[-4:].upper()
+        layer.bands = [band]
+        layer.rgb_plane = 2
 
     elif name == 'ls-dr10-segmentation':
         dr10 = get_layer('ls-dr10-model')
