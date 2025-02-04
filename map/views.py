@@ -1589,8 +1589,6 @@ class MapLayer(object):
         #         brickname = brick.brickname
         #         print('Will read', brickname, 'for band', band, 'scale', scale)
 
-        coordtype = self.get_pixel_coord_type(scale)
-
         rimgs = []
         for band in bands:
             acc = self.initialize_accumulator_for_render(W, H, band, invvar=invvar, maskbits=maskbits)
@@ -1699,9 +1697,13 @@ class MapLayer(object):
 
                 #print('BWCS shape', bwcs.shape, 'desired subimage shape', yhi-ylo, xhi-xlo,
                 #'subwcs shape', subwcs.shape, 'img shape', img.shape)
+                coordtype = self.get_pixel_coord_type(scale)
+
                 ih,iw = subwcs.shape
-                assert(np.iinfo(coordtype).max > max(ih,iw))
                 oh,ow = wcs.shape
+                if np.iinfo(coordtype).max < max([ih, iw, oh, ow]):
+                    coordtype = int
+                assert(np.iinfo(coordtype).max > max(ih,iw))
                 assert(np.iinfo(coordtype).max > max(oh,ow))
 
                 #print('Resampling', img.shape)
@@ -8774,11 +8776,13 @@ if __name__ == '__main__':
     pixscale = 0.25
     H = W = 1000
     #r = c.get('/cutout.jpg?ra=289.89030014944893&dec=86.06584587912832&layer=ps1&height=%i&width=%i&pixscale=%f' % (H, W, pixscale))
-    r = c.get('/exposures/?ra=188.9829&dec=-56.4978&layer=decaps2')
+    #r = c.get('/exposures/?ra=188.9829&dec=-56.4978&layer=decaps2')
     
     #r = c.get('/exposures/?ra=221.8682&dec=2.3882&layer=ibis-color')
     #r = c.get('/desi-spectrum/edr/targetid39628256290279019')
 
+    r = c.get('/data-for-radec/?ra=341.4403&dec=11.1308&layer=ls-dr10&ralo=341.1811&rahi=341.7009&declo=10.9850&dechi=11.2754')
+    
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
