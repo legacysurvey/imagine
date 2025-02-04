@@ -6350,6 +6350,13 @@ def get_survey(name):
 
     #print('dirnm', dirnm, 'exists?', os.path.exists(dirnm))
 
+    elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',
+                  'ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
+                  'ibis-3-wide-m490', 'ibis-3-wide-m517',]:
+        name = name[:-5]
+        dirnm = os.path.join(basedir, name)
+
+
     if survey is None and not os.path.exists(dirnm):
         return None
 
@@ -7091,8 +7098,9 @@ def exposures_common(req, tgz, copsf):
 
     layername = request_layer_name(req)
     layername = layer_to_survey_name(layername)
-    survey = get_survey(layername)
+    #survey = get_survey(layername)
     layer = get_layer(layername)
+    survey = layer.survey
 
     if not layer.has_cutouts():
         return HttpResponse('No cutouts for layer ' + layername)
@@ -8315,6 +8323,7 @@ def get_layer(name, default=None):
         band = name[-4:].upper()
         layer.bands = [band]
         layer.rgb_plane = 2
+        layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', name)
 
     elif name == 'ls-dr10-segmentation':
         dr10 = get_layer('ls-dr10-model')
@@ -9018,8 +9027,11 @@ if __name__ == '__main__':
     #r = c.get('/exposures/?ra=221.8682&dec=2.3882&layer=ibis-color')
     #r = c.get('/desi-spectrum/edr/targetid39628256290279019')
 
-    r = c.get('/jpl_lookup?ra=169.4535&dec=12.7557&date=2017-03-05%2004:55:39.295493&camera=decam')
+    #r = c.get('/jpl_lookup?ra=169.4535&dec=12.7557&date=2017-03-05%2004:55:39.295493&camera=decam')
 
+    #r = c.get('/ibis-3-wide/1/14/7281/8419.jpg')
+    r = c.get('/ibis-3-wide-m464/1/5/12/16.jpg')
+    
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
