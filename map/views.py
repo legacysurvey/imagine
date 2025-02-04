@@ -2126,6 +2126,10 @@ class MapLayer(object):
                 hdr['BAND%i' % i] = b
             wcs.add_to_header(hdr)
 
+            # convert IMAGEW, IMAGEH from floats to ints.  Recent astrometry.net does this already
+            hdr['IMAGEW'] = int(hdr['IMAGEW'])
+            hdr['IMAGEH'] = int(hdr['IMAGEH'])
+
         if get_images:
             if with_invvar:
                 return ims,ivs,hdr
