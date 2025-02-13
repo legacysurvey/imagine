@@ -7624,17 +7624,10 @@ def sanitize_header(hdr):
     # https://github.com/esheldon/fitsio/issues/357
     outhdr = fitsio.FITSHDR()
     for r in hdr.records():
-        #print('Header rec', r)
-        # fitsio 1.1.2 (viewer)
-        #if r.get('name','').startswith('DECALS_DR9_'):
-        #    continue
-        # fitsio 1.1.8 (viewer-dev)
-        #if r.get('card_string','').startswith('DECALS_DR9_'):
-        #    continue
-
         key = r.get('name','')
-        if '[' in key or ']' in key:
-            continue
+        if key is not None:
+            if '[' in key or ']' in key:
+                continue
 
         outhdr.add_record(r)
     return outhdr
@@ -8791,8 +8784,8 @@ if __name__ == '__main__':
 
     #r = c.get('/ibis-3-wide/1/14/7281/8419.jpg')
     #r = c.get('/ibis-3-wide-m464/1/5/12/16.jpg')
-    r = c.get('/iv-data/ls-dr9/decam-705256-N1')
-
+    #r = c.get('/iv-data/ls-dr9/decam-705256-N1')
+    r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
