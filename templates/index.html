@@ -1440,9 +1440,9 @@ function onSourceClick(e) {
         '<br/>Source type: ' + src.type +
         '<br/>Mags: ' + fluxstr +
         '<br/>Brick: ' + src.brickname + ', Objid: ' +
-        '<a href="' + layer_name + '/cat' + // url cat-table
-        '?ralo=' + (src.ra - 0.001) + '&rahi=' + (src.ra + 0.001) +
-        '&declo=' + (src.dec - 0.001) + '&dechi=' + (src.dec + 0.001) +
+        '<a href="' + "{% url 'cat-table' "XXX" %}".replace("XXX", layer_name) +
+        '?ralo=' + (src.ra - 0.001).toFixed(4) + '&rahi=' + (src.ra + 0.001).toFixed(4) +
+        '&declo=' + (src.dec - 0.001).toFixed(4) + '&dechi=' + (src.dec + 0.001).toFixed(4) +
         '&objid=' + src.objid + '">' +
         src.objid +
         '</a>' +
