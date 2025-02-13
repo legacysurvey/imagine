@@ -207,7 +207,7 @@ urlpatterns = ([
     re_path(r'^(%s)/cat.fits' % layer_regex, views.any_fits_cat, name='cat-fits'),
 
     # HTML catalog output
-    re_path(r'^(%s)/cat' % layer_regex, views.any_cat_table, name='cat-table'),
+    re_path(r'^(<layer>%s)/cat' % layer_regex, views.any_cat_table, name='cat-table'),
 
     ## hackish -- the pattern (using leaflet's template format) for cat-json-tiled
     re_path(r'^\{id\}/\{ver\}/\{z\}/\{x\}/\{y\}.cat.json', cats.any_cat, name='cat-json-tiled-pattern'),
