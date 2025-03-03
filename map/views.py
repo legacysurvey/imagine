@@ -7100,13 +7100,19 @@ def exposures_common(req, tgz, copsf):
     layername = layer_to_survey_name(layername)
     #survey = get_survey(layername)
     layer = get_layer(layername)
-    survey = layer.survey
-
-    if not layer.has_cutouts():
-        return HttpResponse('No cutouts for layer ' + layername)
 
     ra = float(req.GET['ra'])
     dec = float(req.GET['dec'])
+
+    try:
+        survey = layer.survey
+    except:
+        # try treating as a split layer (ls-dr9, eg)
+        layer = layer.get_layer_for_radec(ra, dec)
+        survey = layer.survey
+
+    if not layer.has_cutouts():
+        return HttpResponse('No cutouts for layer ' + layername)
 
     # half-size in DECam pixels
     if copsf:
@@ -7168,6 +7174,12 @@ def exposures_common(req, tgz, copsf):
             subdir = os.path.join(tempdir.name, datadir)
             os.mkdir(subdir)
             print('Writing to', subdir)
+            imgdir = os.path.join(subdir, 'images')
+            os.mkdir(imgdir)
+            psfdir = os.path.join(subdir, 'calib', 'psfex')
+            os.makedirs(psfdir)
+            skydir = os.path.join(subdir, 'calib', 'sky')
+            os.makedirs(skydir)
             CCDs.ccd_x0 = np.zeros(len(CCDs), np.int16)
             CCDs.ccd_x1 = np.zeros(len(CCDs), np.int16)
             CCDs.ccd_y0 = np.zeros(len(CCDs), np.int16)
@@ -7228,6 +7240,15 @@ def exposures_common(req, tgz, copsf):
             tim.hdr['CRPIX1'] = crpix1 - x0
             tim.hdr['CRPIX2'] = crpix2 - y0
 
+            CCDs.width[iccd]  = tw
+            CCDs.height[iccd] = th
+            CCDs.crpix1[iccd] = crpix1 - x0
+            CCDs.crpix2[iccd] = crpix2 - y0
+
+            rc,dc = tim.subwcs.pixelxy2radec(1+tw/2, 1+th/2)
+            CCDs.ra [iccd] = rc
+            CCDs.dec[iccd] = dc
+
             # Work-around for fitsio error:
             # FITSIO status = 402: bad float to string conversion
             # Warning: the following keyword does not conform to the HIERARCH convention
@@ -7257,28 +7278,70 @@ def exposures_common(req, tgz, copsf):
             phdr = filter_header(tim.primhdr)
             hdr = filter_header(tim.hdr)
             
-            outfn = '%s-%08i-%s-image.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
+            outfn = '%s-%08i-%s-sub_ooi_.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
             imgfns.append(outfn)
-            ofn = os.path.join(subdir, outfn)
+            ofn = os.path.join(imgdir, outfn)
             fitsio.write(ofn, None, header=phdr, clobber=True)
             fitsio.write(ofn, imgdata, header=hdr, extname=ccd.ccdname)
 
-            outfn = '%s-%08i-%s-weight.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
-            ofn = os.path.join(subdir, outfn)
+            outfn = '%s-%08i-%s-sub_oow_.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
+            ofn = os.path.join(imgdir, outfn)
             fitsio.write(ofn, None, header=phdr, clobber=True)
             fitsio.write(ofn, ivdata, header=hdr, extname=ccd.ccdname)
 
-            outfn = '%s-%08i-%s-dq.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
-            ofn = os.path.join(subdir, outfn)
+            outfn = '%s-%08i-%s-sub_ood_.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
+            ofn = os.path.join(imgdir, outfn)
             fitsio.write(ofn, None, header=phdr, clobber=True)
             fitsio.write(ofn, dqdata, header=hdr, extname=ccd.ccdname)
 
-            outfn = '%s-%08i-%s-psfex.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
-            ofn = os.path.join(subdir, outfn)
+            # YUCK - create legacypipe-flavored PSFEx calib file
+            # temp file
+            outfn = os.path.join(subdir, 'psfex.fits')
             psfex.fwhm = tim.psf_fwhm
-            psfex.writeto(ofn)
+            # drop the PsfEx variation
+            psfex.psfbases = [psfimg]
+            psfex.writeto(outfn)
+            ph,pw = psfimg.shape
+            for key,val in [('POLNAXIS', 0),
+                            ('LOADED', 0),
+                            ('ACCEPTED', 0),
+                            ('CHI2', 0),
+                            ('PSFNAXIS', 2),
+                            ('PSFAXIS1', ph),
+                            ('PSFAXIS2', pw),
+                            ('PSFAXIS3', 1),
+                            ('POLNGRP', 0),
+                            ]:
+                cmd = 'modhead %s+1 %s %s' % (outfn, key, val)
+                rtn = os.system(cmd)
+                assert(rtn == 0)
+            from legacypipe.image import psfex_single_to_merged
+            psf2 = psfex_single_to_merged(outfn, ccd.expnum, ccd.ccdname)
+            os.remove(outfn)
+            psf2.expnum = np.array([ccd.expnum] * len(psf2))
+            psf2.ccdname = np.array([ccd.ccdname] * len(psf2))
+            psf2.legpipev = np.array(['x'] * len(psf2))
+            outfn = '%s-%08i-%s-sub_ooi_-psfex.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
+            ofn = os.path.join(psfdir, outfn)
+            psf2.writeto(ofn)
 
-            outfn = '%s-%08i-%s-psfimg.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
+            # yuck - Write a zero splinesky file
+            from tractor.splinesky import SplineSky
+            sky = tim.sky
+            sh,sw = 5,5
+            fakesky = SplineSky(np.arange(sw), np.arange(sh), np.zeros((sh,sw)))
+            sky = fakesky
+            Tsky = sky.to_fits_table()
+            Tsky.expnum = np.array([ccd.expnum] * len(Tsky))
+            Tsky.ccdname = np.array([ccd.ccdname] * len(Tsky))
+            Tsky.legpipev = np.array(['x'] * len(Tsky))
+            #Tsky.plver = np.array([ccd.plver] * len(Tsky))
+            Tsky.sig1 = np.array([ccd.sig1] * len(Tsky))
+            outfn = '%s-%08i-%s-sub_ooi_-splinesky.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
+            ofn = os.path.join(skydir, outfn)
+            Tsky.writeto(ofn)
+
+            outfn = '%s-%08i-%s-sub-psfimg.fits' % (ccd.camera, ccd.expnum, ccd.ccdname)
             ofn = os.path.join(subdir, outfn)
             fitsio.write(ofn, psfimg, header=phdr, clobber=True)
 
@@ -7324,12 +7387,19 @@ def exposures_common(req, tgz, copsf):
             
         CCDs.cut(keepccds)
         CCDs.image_filename = np.array(imgfns)
-        ccdfn = os.path.join(subdir, 'ccds.fits')
+        CCDs.image_hdu[:] = 1
+        ccdfn = os.path.join(subdir, 'survey-ccds-cutout.fits')
         CCDs.writeto(ccdfn)
+
+        cmd = 'gzip %s' % ccdfn
+        print(cmd)
+        rtn = os.system(cmd)
+        assert(rtn == 0)
 
         cmd = ('cd %s && tar czf %s.tgz %s' % (tempdir.name, datadir, datadir))
         print(cmd)
         os.system(cmd)
+        assert(rtn == 0)
         fn = os.path.join(tempdir.name, '%s.tgz' % datadir)
 
         return send_file(fn, 'application/gzip', filename='%s.tgz' % datadir)
@@ -9030,7 +9100,10 @@ if __name__ == '__main__':
     #r = c.get('/ibis-3-wide/1/14/7281/8419.jpg')
     #r = c.get('/ibis-3-wide-m464/1/5/12/16.jpg')
     #r = c.get('/iv-data/ls-dr9/decam-705256-N1')
-    r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
+    #r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
+    #r = c.get('/?targetid=2305843030529157975')
+    r = c.get('/exposures-tgz/?ra=186.4967&dec=15.6692&size=100&layer=ls-dr9')
+
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
