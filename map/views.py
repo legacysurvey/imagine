@@ -5022,6 +5022,9 @@ class GalexLayer(RebrickedUnwise):
             img = f[slc]
         return img
 
+    def populate_fits_cutout_header(self, hdr):
+        hdr['SURVEY'] = 'GALEX'
+
 def galex_rgb(imgs, bands, **kwargs):
     import numpy as np
     from scipy.ndimage.filters import uniform_filter, gaussian_filter
