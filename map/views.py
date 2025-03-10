@@ -4607,11 +4607,15 @@ class UnwiseLayer(MapLayer):
             return None
         return bricks[I]
 
-    def get_base_filename(self, brick, band, **kwargs):
+    def get_base_filename(self, brick, band, invvar=False, **kwargs):
         brickname = brick.brickname
         brickpre = brickname[:3]
-        fn = os.path.join(self.dir, brickpre, brickname,
-                          'unwise-%s-w%s-img-u.fits' % (brickname, band))
+        if invvar:
+            fn = os.path.join(self.dir, brickpre, brickname,
+                              'unwise-%s-w%s-invvar-u.fits.gz' % (brickname, band))
+        else:
+            fn = os.path.join(self.dir, brickpre, brickname,
+                              'unwise-%s-w%s-img-u.fits' % (brickname, band))
         return fn
     
     def get_scaled_pattern(self):
@@ -4626,6 +4630,9 @@ class UnwiseLayer(MapLayer):
         #print('unWISE populate FITS cutout header')
         hdr['SURVEY'] = 'unWISE'
         hdr['VERSION'] = self.name
+
+    def has_invvar(self):
+        return True
 
 '''
 unWISE atlas: 18,240 tiles
