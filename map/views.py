@@ -1589,8 +1589,6 @@ class MapLayer(object):
         #         brickname = brick.brickname
         #         print('Will read', brickname, 'for band', band, 'scale', scale)
 
-        coordtype = self.get_pixel_coord_type(scale)
-
         rimgs = []
         for band in bands:
             acc = self.initialize_accumulator_for_render(W, H, band, invvar=invvar, maskbits=maskbits)
@@ -1699,9 +1697,13 @@ class MapLayer(object):
 
                 #print('BWCS shape', bwcs.shape, 'desired subimage shape', yhi-ylo, xhi-xlo,
                 #'subwcs shape', subwcs.shape, 'img shape', img.shape)
+                coordtype = self.get_pixel_coord_type(scale)
+
                 ih,iw = subwcs.shape
-                assert(np.iinfo(coordtype).max > max(ih,iw))
                 oh,ow = wcs.shape
+                if np.iinfo(coordtype).max < max([ih, iw, oh, iw]):
+                    coordtype = int
+                assert(np.iinfo(coordtype).max > max(ih,iw))
                 assert(np.iinfo(coordtype).max > max(oh,ow))
 
                 #print('Resampling', img.shape)
