@@ -9127,8 +9127,14 @@ if __name__ == '__main__':
     #r = c.get('/exposures-tgz/?ra=186.4967&dec=15.6692&size=100&layer=ls-dr9')
     #r = c.get('/exposures/?ra=221.8682&dec=2.3882&layer=ibis-color')
     #r = c.get('/desi-spectrum/edr/targetid39628256290279019')
-    r = c.get('/data-for-radec/?ra=341.4403&dec=11.1308&layer=ls-dr10&ralo=341.1811&rahi=341.7009&declo=10.9850&dechi=11.2754')
-    
+    #r = c.get('/data-for-radec/?ra=341.4403&dec=11.1308&layer=ls-dr10&ralo=341.1811&rahi=341.7009&declo=10.9850&dechi=11.2754')
+    #r = c.get('/data-for-radec/?ra=341.4403&dec=11.1308&layer=ls-dr10&ralo=341.1811&rahi=341.7009&declo=10.9850&dechi=11.2754')
+    #r = c.get('/jpl_lookup?ra=169.4535&dec=12.7557&date=2017-03-05%2004:55:39.295493&camera=decam')
+    #r = c.get('/ibis-3-wide/1/14/7281/8419.jpg')
+    #r = c.get('/ibis-3-wide-m464/1/5/12/16.jpg')
+    #r = c.get('/iv-data/ls-dr9/decam-705256-N1')
+    r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
+
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
