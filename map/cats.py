@@ -314,6 +314,13 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
 
     return call_prospect(spectra, zbests)
 
+def desi_prospect_dir(release, targetid):
+    if settings.DESI_PROSPECT_DIR is None:
+        return None
+    outdir = os.path.join(settings.DESI_PROSPECT_DIR, release,
+                          '%i' % (targetid % 1000), 'targetid%i' % targetid)
+    return outdir
+
 def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     from glob import glob
     from desispec.io import read_spectra
@@ -325,9 +332,8 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     import os
 
     # Check the cache!
-    outdir = None
-    if settings.DESI_PROSPECT_DIR is not None:
-        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % obj.targetid)
+    outdir = desi_prospect_dir(release, obj.targetid)
+    if outdir is not None:
         fn = os.path.join(outdir, 'prospect.html')
         if os.path.exists(fn):
             print('Cache hit for', fn)
@@ -451,8 +457,8 @@ def cat_desi_edr_spectra_detail(req, targetid):
     release = 'edr'
 
     # Quick-check cache (without looking up object)
-    if settings.DESI_PROSPECT_DIR is not None:
-        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+    outdir = desi_prospect_dir(release, targetid)
+    if outdir is not None:
         fn = os.path.join(outdir, 'prospect.html')
         if os.path.exists(fn):
             print('Cache hit for', fn)
@@ -468,8 +474,8 @@ def cat_desi_dr1_spectra_detail(req, targetid):
     release = 'dr1'
 
     # Quick-check cache (without looking up object)
-    if settings.DESI_PROSPECT_DIR is not None:
-        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+    outdir = desi_prospect_dir(release, targetid)
+    if outdir is not None:
         fn = os.path.join(outdir, 'prospect.html')
         if os.path.exists(fn):
             print('Cache hit for', fn)
