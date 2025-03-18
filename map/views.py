@@ -256,10 +256,13 @@ def _index(req,
            merian_first = False,
            **kwargs):
 
-
     tileurl = settings.TILE_URL
     subs = settings.SUBDOMAINS
     def_url = [0, maxZoom, tileurl, subs]
+
+    static_url = settings.STATIC_TILE_URL
+    static_subs = subs
+    static_url = [0, 5, static_url, static_subs]
 
     prod_url = settings.STATIC_TILE_URL_B
     #'https://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
