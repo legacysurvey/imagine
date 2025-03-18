@@ -36,47 +36,29 @@
 {% endcomment %}
 
 <style type="text/css">
-  .gfa-label {
+.gfa-label {
   border: 0px solid #666;
-  }
-
-  
+}
 .tooltipbg {
   background: black;
   opacity: 0.5;
   border: 2px solid white;
-  }
-//  .leaflet-tooltip-left.tooltipbg::after {
-//  }
-  
-//.leaflet-tooltip-left.tooltipbg::before {
- // border-left-color: cyan;
-//}
-//.leaflet-tooltip-right.tooltipbg::before {
-//  border-right-color: cyan;
-//  }
-
+}
 </style>
-
-
 {% endblock %}
 
 {% block body %}
 <body id="thebody">
-<div id="map" />
+<div id="map"></div>
 
 <script>
 //'use strict';
-
+{% comment %}
 // this is just to reset the indent level for emacs javascript-mode;
-// the "{#" is a django template comment.
+  // the "{#" is a django template comment.
+{% endcomment %}
  {# }}}} #}
-
 // Variables from django.
-
-// enable_desi_menu = {{ enable_desi_menu }}
-// enable_desi_footprint = {{ enable_desi_footprint }}
-
 var layer_initial = '{{ layer }}';
 var ra_initial = {{ ra }};
 var dec_initial = {{ dec }};
@@ -87,12 +69,9 @@ var usercat2_url = '{{ usercatalogurl2|safe }}';
 var usercat_url = '{{ usercatalogurl|safe }}';
 var tile_url = '{{ tileurl|safe }}';
 var maxNativeZoom = {{ maxNativeZoom }};
-
 var tile_layers = {{ tile_layers|safe }};
-
 var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
 var root_url = '{{ root_url }}';  // eg /viewer-dev
- 
 var ccds_url = '{{ ccdsurl|safe }}';
 var exposures_url = '{{ expsurl|safe }}';
 var bricks_url = '{{ bricksurl|safe }}';
@@ -101,22 +80,16 @@ var cat_url = '{{ caturl|safe }}';
 var desitile_url = '{{ desitile_url|safe}}';
 var usercat_upload_url = '{{ uploadurl|safe }}';
 var name_query_url = '{{ namequeryurl|safe }}';
-
 var static_tile_url = '{{ static_tile_url|safe }}';
 var subdomains = {{ subdomains|safe }};
-
 var static_tile_url_B = '{{ static_tile_url_B|safe }}';
 var subdomains_B = {{ subdomains_B|safe }};
-
 var aws_tile_url = 'https://s3.us-west-1.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg';
 var max_aws_zoom = 14;
-
 var aws_unwise_url = 'https://s3.us-west-2.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg'
-
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
-
-console.log('window.location is', window.location);
+//console.log('window.location is', window.location);
 
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
@@ -225,9 +198,9 @@ var SplitTileLayer = MyTileLayer.extend({
         this._north_layer = north_layer;
         this._mid_layer = mid_layer;
         this._south_layer = south_layer;
-        console.log('SplitTileLayer: north ' + this._north_layer);
-        console.log('SplitTileLayer: mid ' + this._mid_layer);
-        console.log('SplitTileLayer: south ' + this._south_layer);
+        //console.log('SplitTileLayer: north ' + this._north_layer);
+        //console.log('SplitTileLayer: mid ' + this._mid_layer);
+        //console.log('SplitTileLayer: south ' + this._south_layer);
     },
 	getTileUrl: function (tile) {
         tilesize = this.getTileSize();
@@ -333,10 +306,10 @@ var CatalogOverlay = L.Evented.extend({
     },
 
     ready: function() {
-        //console.log(this._name + ' ready function called');
+        console.log(this._name + ' ready function called');
         this._checkbox = getOverlayCheckbox(this._pretty);
         // _checkbox is a jQuery node
-        //console.log('checkbox:', this._checkbox);
+        console.log('checkbox:', this._checkbox);
         if (!this._checkbox) {
             console.log('BUG line 278');
             return;
@@ -444,7 +417,7 @@ var CatalogOverlay = L.Evented.extend({
             return;
         }
         var circles = this.getLayer(result);
-        console.log('Got marker layer ' + circles);
+        //console.log('Got marker layer ' + circles);
         // remove old layers
         for (var k in this._layers) {
 	        if (k < counter) {
