@@ -10,13 +10,9 @@ if __name__ == '__main__':
 import os
 import sys
 import re
-from django.http import HttpResponse, StreamingHttpResponse
-try:
-    from django.core.urlresolvers import reverse, get_script_prefix
-except:
-    # django 2.0
-    from django.urls import reverse, get_script_prefix
 
+from django.http import HttpResponse, StreamingHttpResponse
+from django.urls import reverse, get_script_prefix
 from django import forms
 from django.shortcuts import redirect
 
@@ -28,8 +24,6 @@ from map.cats import get_random_galaxy, get_desi_tile_radec
 
 import matplotlib
 matplotlib.use('Agg')
-
-py3 = (sys.version_info[0] >= 3)
 
 debug_ps = None
 import pylab as plt
@@ -964,7 +958,6 @@ def phat(req):
               )
 
 def query_simbad(q):
-    # py3
     from urllib.request import urlopen
     from urllib.parse import urlencode
 
@@ -989,14 +982,8 @@ def query_simbad(q):
     return True, (t.ra_d, t.dec_d)
 
 def query_ned(q):
-    try:
-        # py2
-        from urllib2 import urlopen
-        from urllib import urlencode
-    except:
-        # py3
-        from urllib.request import urlopen
-        from urllib.parse import urlencode
+    from urllib.request import urlopen
+    from urllib.parse import urlencode
 
     url = 'https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/NSV?'
     url += urlencode(dict(q=q)).replace('q=','')
@@ -1022,8 +1009,7 @@ def query_ned(q):
     code = f.getcode()
     print('Code', code)
     for line in f.readlines():
-        if py3:
-            line = line.decode()
+        line = line.decode()
         words = line.split()
         if len(words) == 0:
             continue
