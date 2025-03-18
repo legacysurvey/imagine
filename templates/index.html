@@ -4245,17 +4245,14 @@ var overlayTree = [];
      {% endif %}
 
      {% if enable_dr7_overlays %}
-     { label: 'DECaLS DR7 catalog',
-       layer: namedOverlays['decals-dr7'].getGroup(),
-       children: [
-           {% if enable_dr6_overlays %}
-           findoverlay('mzls+bass-dr6'),
-           {% endif %}
-           {% if enable_dr5_overlays %}
-           findoverlay('decals-dr5'),
-           {% endif %}
-       ],
-     },
+     findoverlay('decals-dr7', [
+       {% if enable_dr6_overlays %}
+       findoverlay('mzls+bass-dr6'),
+       {% endif %}
+       {% if enable_dr5_overlays %}
+       findoverlay('decals-dr5'),
+       {% endif %}
+     ]),
      {% endif %}
 
      findoverlay('gaia-dr2'),
