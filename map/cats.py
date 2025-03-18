@@ -1,6 +1,7 @@
 from __future__ import print_function
-from functools import lru_cache
 import os
+from functools import lru_cache
+from datetime import datetime
 
 if __name__ == '__main__':
     import sys
@@ -10,15 +11,9 @@ if __name__ == '__main__':
     django.setup()
 
 from django.http import HttpResponse
-from viewer import settings
-try:
-    from django.core.urlresolvers import reverse
-except:
-    # django 2.0
-    from django.urls import reverse
-from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 
-from datetime import datetime
+from viewer import settings
+from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 
 debug = print
 if not settings.DEBUG_LOGGING:
@@ -3406,7 +3401,10 @@ if __name__ == '__main__':
     #r = c.get('/desi-obs/daily/targetid2411699042779148')
     #r = c.get('/desi-obs-daily/1/cat.json?ralo=218.6108&rahi=218.6418&declo=30.9829&dechi=30.9974')
     #r = c.get('/desi-spectrum/daily/targetid2305843037000968814')
-    r = c.get('/desi-spectrum/daily/targetid39627920582379819')
+    #r = c.get('/desi-spectrum/daily/targetid39627920582379819')
+
+    r = c.get('/desi-spectrum/edr/targetid39627914966205909')
+
     f = open('out', 'wb')
     for x in r:
         f.write(x)

@@ -14,7 +14,7 @@ DESI_PROSPECT_DIR = '/tmp/desi-prospect'
 READ_ONLY_BASEDIR = True
 
 ROOT_URL = '/viewer-dev'
-STATIC_URL_PATH = '/viewer-dev/static/'
+STATIC_URL_PATH = ROOT_URL + '/static'
 
 FORCE_SCRIPT_NAME = ROOT_URL
 #FORCE_SCRIPT_NAME = ''

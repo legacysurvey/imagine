@@ -31,11 +31,6 @@ if False:
     from astrometry.util.plotutils import PlotSequence
     debug_ps = PlotSequence('debug')
 
-
-# We add a version number to each layer, to allow long cache times
-# for the tile JPEGs.  Increment this version to invalidate
-# client-side caches.
-
 debug = print
 if not settings.DEBUG_LOGGING:
     def debug(*args, **kwargs):
@@ -45,7 +40,9 @@ if not settings.INFO_LOGGING:
     def info(*args, **kwargs):
         pass
 
-
+# We add a version number to each layer, to allow long cache times
+# for the tile JPEGs.  Increment this version to invalidate
+# client-side caches.
 tileversions = {
     'sfd': [1, 2],
     'halpha': [1,],
@@ -60,67 +57,43 @@ tileversions = {
     'ztf': [1],
     'cfis-r': [1],
     'cfis-u': [1],
-
     'eboss': [1,],
-
     'phat': [1,],
     'm33': [1,],
-
-    'ls-dr8-north': [1],
-    'ls-dr8-north-model': [1],
-    'ls-dr8-north-resid': [1],
-
-    'ls-dr8-south': [1],
-    'ls-dr8-south-model': [1],
-    'ls-dr8-south-resid': [1],
-
-    'ls-dr8': [1],
-    'ls-dr8-model': [1],
-    'ls-dr8-resid': [1],
-
-    'ls-dr67': [1],
-
-    'decals-dr7': [1],
-    'decals-dr7-model': [1],
-    'decals-dr7-resid': [1],
-
-    'mzls+bass-dr6': [1],
-    'mzls+bass-dr6-model': [1],
-    'mzls+bass-dr6-resid': [1],
-
-    'decals-dr5': [1],
-    'decals-dr5-model': [1],
-    'decals-dr5-resid': [1],
-
     'decaps': [1, 2],
     'decaps-model': [1, 2],
     'decaps-resid': [1, 2],
-
     'decaps2': [2],
     'decaps2-model': [2],
     'decaps2-resid': [2],
-    
     'unwise-w1w2': [1],
     'unwise-neo2': [1],
     'unwise-neo3': [1],
     'unwise-neo4': [1],
     'unwise-neo6': [1],
     'unwise-neo7': [1],
-
     'unwise-neo7-mask': [1],
-    
     'unwise-cat-model': [1],
-
     'cutouts': [1],
-
-    'dr9k-north': [1, 2],
-    'dr9k-north-model': [1, 2],
-    'dr9k-north-resid': [1, 2],
-
-    'dr9k-south': [1, 2],
-    'dr9k-south-model': [1, 2],
-    'dr9k-south-resid': [1, 2],
-
+    'decals-dr5': [1],
+    'decals-dr5-model': [1],
+    'decals-dr5-resid': [1],
+    'mzls+bass-dr6': [1],
+    'mzls+bass-dr6-model': [1],
+    'mzls+bass-dr6-resid': [1],
+    'ls-dr67': [1],
+    'decals-dr7': [1],
+    'decals-dr7-model': [1],
+    'decals-dr7-resid': [1],
+    'ls-dr8-north': [1],
+    'ls-dr8-north-model': [1],
+    'ls-dr8-north-resid': [1],
+    'ls-dr8-south': [1],
+    'ls-dr8-south-model': [1],
+    'ls-dr8-south-resid': [1],
+    'ls-dr8': [1],
+    'ls-dr8-model': [1],
+    'ls-dr8-resid': [1],
     'ls-dr9-north': [1],
     'ls-dr9-north-model': [1],
     'ls-dr9-north-resid': [1],
@@ -146,11 +119,6 @@ def checkflavour(req, flavour):
                             status=500, reason='bad flavour')
 
 def my_reverse(req, *args, **kwargs):
-    ### FIXME -- does this work for decaps.legacysurvey.org ??
-    # Or need something like:
-    # path = settings.ROOT_URL
-    # if is_decaps(req):
-    #     path = '/'
     return reverse(*args, **kwargs)
 
 def fix_hostname(req, url):
@@ -174,7 +142,7 @@ def ci(req):
     from django.shortcuts import render
     return render(req, 'desi-ci.html')
 
-def request_layer_name(req, default_layer='ls-dr8'):
+def request_layer_name(req, default_layer='ls-dr9'):
     name = req.GET.get('layer', default_layer)
     return clean_layer_name(name)
 
@@ -193,10 +161,6 @@ def clean_layer_name(name):
         'mzls bass-dr6': 'mzls+bass-dr6',
         'mzls bass-dr6-model': 'mzls+bass-dr6-model',
         'mzls bass-dr6-resid': 'mzls+bass-dr6-resid',
-
-        #'decaps2': 'decaps',
-        #'decaps2-model': 'decaps-model',
-        #'decaps2-resid': 'decaps-resid',
 
         'dr8': 'ls-dr8',
         'dr8-model': 'ls-dr8-model',
@@ -225,7 +189,7 @@ def layer_to_survey_name(layer):
 #  req.layer_name
 #  req.survey_name
 #  req.layer (MapLayer subclass)
-def needs_layer(default_layer='ls-dr8', doctype='html', badjson=None):
+def needs_layer(default_layer='ls-dr9', doctype='html', badjson=None):
     def decorate(func):
         def wrapped_req(req, *args, **kwargs):
             layername = request_layer_name(req, default_layer=default_layer)
@@ -241,11 +205,8 @@ def needs_layer(default_layer='ls-dr8', doctype='html', badjson=None):
         return wrapped_req
     return decorate
 
-
-
 def is_decaps(req):
     host = req.META.get('HTTP_HOST', None)
-    #print('Host:', host)
     return (host == 'decaps.legacysurvey.org')
 
 def is_m33(req):
@@ -266,35 +227,6 @@ def index(req, **kwargs):
         return unions(req)
     return _index(req, **kwargs)
 
-def test(req):
-    maxZoom = 16
-    abcd = ['a','b','c','d']
-    #nersc = settings.NERSC_TILE_URL
-    nersc = 'https://{s}.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
-    nersc_sub = abcd
-    ima = settings.STATIC_TILE_URL_B
-    ima_sub = abcd
-    tileurl = settings.TILE_URL
-    
-    tileurls = {
-        'sdss': [ [1, 13, ima, ima_sub],
-                  [14, maxZoom, nersc, nersc_sub], ],
-        'cfis_r': [ [1, maxZoom, tileurl, []], ],
-        'cfis_u': [ [1, maxZoom, tileurl, []], ],
-    }
-
-    args = dict(
-        tileurls=tileurls,
-        zoom = 13,
-        layer = 'sdss',
-        ra = 227.017,
-        dec = 42.819,
-        maxZoom = 16,
-        maxNativeZoom = 16,
-    )
-    from django.shortcuts import render
-    return render(req, 'test.html', args)
-    
 def _index(req,
            default_layer = 'ls-dr9',
            default_radec = (None,None),
