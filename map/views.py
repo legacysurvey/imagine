@@ -217,8 +217,27 @@ def is_unions(req):
     host = req.META.get('HTTP_HOST', None)
     return (host == 'unions.legacysurvey.org') or (host == 'cloud.legacysurvey.org')
 
+def lookup_any_targetid(tid):
+    from map.cats import lookup_targetid
+    if settings.ENABLE_DESI_DATA:
+        print('Looking in daily')
+        t = lookup_targetid(tid, 'daily')
+        if t is not None:
+            print('Found it!')
+            return t
+    if settings.ENABLE_DESI_DR1:
+        print('Looking in DR1')
+        t = lookup_targetid(tid, 'dr1')
+        if t is not None:
+            print('Found it!')
+            return t
+    print('Looking in EDR')
+    t = lookup_targetid(tid, 'edr')
+    if t is not None:
+        print('Found it!')
+    return t
+
 def index(req, **kwargs):
-    #print('Host is', req.META.get('HTTP_HOST', None))
     if is_decaps(req):
         return decaps(req)
     if is_m33(req):
@@ -594,18 +613,15 @@ def _index(req,
 
     # Process DESI targetid parameter
     try:
-        from map.cats import lookup_targetid
         tid = req.GET.get('targetid')
         tid = int(tid)
         print('Looking up TARGETID', tid)
-        if settings.ENABLE_DESI_DATA:
-            t = lookup_targetid(tid, 'daily')
-        else:
-            t = lookup_targetid(tid, 'edr')
-
+        t = lookup_any_targetid(tid)
+        print('t:', t)
+        print(t.get_columns())
         if t is not None:
-            ra = t.ra
-            dec = t.dec
+            ra = t.target_ra
+            dec = t.target_dec
             print('Targetid found: RA,Dec', ra, dec)
             print('(targetid', t.targetid, ')')
         else:
@@ -981,12 +997,11 @@ def name_query(req):
     # Check for TARGET or TARGETID <targetid>
     words = obj.strip().split()
     if len(words) == 2 and words[0].lower() in ['target', 'targetid']:
-        from map.cats import lookup_targetid
         tid = int(words[1])
         try:
-            t = lookup_targetid(tid, 'daily')
-            ra = t.ra
-            dec = t.dec
+            t = lookup_any_targetid(tid)
+            ra = t.target_ra
+            dec = t.target_dec
         except RuntimeError as e:
             return HttpResponse(json.dumps(dict(error='DESI targetid %i not found' % tid)))
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Targetid %i' % tid)))
@@ -9052,8 +9067,9 @@ if __name__ == '__main__':
     #r = c.get('/ibis-3-wide/1/14/7281/8419.jpg')
     #r = c.get('/ibis-3-wide-m464/1/5/12/16.jpg')
     #r = c.get('/iv-data/ls-dr9/decam-705256-N1')
-    r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
-
+    #r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
+    r = c.get('/?targetid=39627914966205909')
+    
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
