@@ -3531,7 +3531,8 @@ var sdsscat = new SdssCatalog('sdss-cat', 'SDSS catalog',
                               'radius': 100,
                               });
 
-  var cfiscat = new CFISCatalog('cfis-dr2', 'CFIS DR2 catalog',
+{% if enable_cfis %}
+var cfiscat = new CFISCatalog('cfis-dr2', 'CFIS DR2 catalog',
                              {'url_name': 'cfis-dr2',
                               'minZoom': 11,
                               'labelsMinZoom': 11,
@@ -3539,8 +3540,8 @@ var sdsscat = new SdssCatalog('sdss-cat', 'SDSS catalog',
                               'radius': 100,
 			                  'url': '{{cfis_cat_url|safe}}',
                               });
+{% endif %}
 
-  
 {% if enable_phat %}
 var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
                              {'url_name': 'phat-clusters',
@@ -3723,8 +3724,9 @@ var decamfoot = new DecamOverlay('decam-footprint', 'DECam Footprint', {});
 decamfoot._url_term = 'decamfoot';
 
 var overlays = [
+    {% if enable_cfis %}
     cfiscat,
-
+    {% endif %}
     {% if enable_phat %}
     phat_clusters,
     {% endif %}    
