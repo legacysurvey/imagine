@@ -457,8 +457,8 @@ def _index(req,
 
     if settings.ENABLE_HSC_DR2:
         tile_layers.update({
-            'hsc-dr2': ['HSC DR2', [def_url], maxnative, 'hsc'],
-            'hsc-dr3': ['HSC DR3', [def_url], maxnative, 'hsc'],
+            'hsc-dr2': ['HSC DR2', [def_url], maxnative, 'hsc2'],
+            'hsc-dr3': ['HSC DR3', [def_url], maxnative, 'hsc3'],
         })
 
     if settings.ENABLE_VLASS:
@@ -1639,8 +1639,6 @@ class MapLayer(object):
         #         brickname = brick.brickname
         #         print('Will read', brickname, 'for band', band, 'scale', scale)
 
-        coordtype = self.get_pixel_coord_type(scale)
-
         rimgs = []
         for band in bands:
             acc = self.initialize_accumulator_for_render(W, H, band, invvar=invvar, maskbits=maskbits)
@@ -1749,9 +1747,13 @@ class MapLayer(object):
 
                 #print('BWCS shape', bwcs.shape, 'desired subimage shape', yhi-ylo, xhi-xlo,
                 #'subwcs shape', subwcs.shape, 'img shape', img.shape)
+                coordtype = self.get_pixel_coord_type(scale)
+
                 ih,iw = subwcs.shape
-                assert(np.iinfo(coordtype).max > max(ih,iw))
                 oh,ow = wcs.shape
+                if np.iinfo(coordtype).max < max([ih, iw, oh, ow]):
+                    coordtype = int
+                assert(np.iinfo(coordtype).max > max(ih,iw))
                 assert(np.iinfo(coordtype).max > max(oh,ow))
 
                 #print('Resampling', img.shape)
@@ -1880,7 +1882,7 @@ class MapLayer(object):
         return ver,zoom,x,y
 
     def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
-                   invvar=False, maskbits=False):
+                   invvar=False, maskbits=False, blank_ok=False):
         rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, tempfiles=tempfiles,
                                      invvar=invvar, maskbits=maskbits)
         if get_images_only:
@@ -1888,9 +1890,13 @@ class MapLayer(object):
         if bands is None:
             bands = self.get_bands()
         if rimgs is None:
-            rgb = None
-        else:
-            rgb = self.get_rgb(rimgs, bands)
+            if not blank_ok:
+                return None, None
+            h,w = wcs.shape
+            nb = len(bands)
+            import numpy as np
+            rimgs = [np.zeros((h,w), np.float32) for i in range(nb)]
+        rgb = self.get_rgb(rimgs, bands)
         return rimgs, rgb
 
     def get_tile(self, req, ver, zoom, x, y,
@@ -2095,7 +2101,8 @@ class MapLayer(object):
 
         #print('Cutout: bands', bands)
         if jpeg:
-            ims,rgb = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
+            ims,rgb = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
+                                      blank_ok=True)
             self.write_jpeg(out_fn, rgb)
             if req is not None:
                 if 'sga' in req.GET or 'sga-parent' in req.GET:
@@ -4030,6 +4037,9 @@ class LegacySurveySplitLayer(MapLayer):
         from map.cats import radecbox_to_wcs
         wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
         cat,hdr = self.get_catalog_in_wcs(wcs)
+        if cat is None:
+            return HttpResponse('No catalog sources in layer and RA,Dec box')
+        print('Catalog in WCS:', cat)
         fn = 'cat-%s.fits' % (self.name)
         import tempfile
         f,outfn = tempfile.mkstemp(suffix='.fits')
@@ -4078,6 +4088,7 @@ class LegacySurveySplitLayer(MapLayer):
         hdr = None
         for layer,above in [(self.top,True), (self.bottom,False)]:
             cat,h = layer.get_catalog_in_wcs(wcs)
+            print('split cat:', cat)
             if cat is not None and len(cat)>0:
                 if above:
                     cat.cut(cat.dec >= self.decsplit)
@@ -4145,10 +4156,10 @@ class LegacySurveySplitLayer(MapLayer):
         return 0
 
     def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
-                   invvar=False, maskbits=False):
+                   invvar=False, maskbits=False, blank_ok=False):
         #print('Split Layer render_rgb: bands=', bands)
         kwa = dict(tempfiles=tempfiles, get_images_only=get_images_only, invvar=invvar,
-                   maskbits=maskbits)
+                   maskbits=maskbits, blank_ok=blank_ok)
         if y != -1:
             # FIXME -- this is not the correct cut -- only listen to split for NGC --
             # but this doesn't get called anyway because the JavaScript layer has the smarts.
@@ -7075,8 +7086,8 @@ def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None, ccd_link=True,
         if '_oki_' in ccd.image_filename:
             ooitext = '<a href="%s">ooi</a>' % imgooiurl
         jplstr = ''
-        if ra is not None:
-            jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(req, ra, dec, ccd)
+        #if ra is not None:
+        #    jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(req, ra, dec, ccd)
         if ccd_link:
             ccd_html = '<a href="%s">%s</a>' % (my_reverse(req, ccd_detail, args=(layer, ccdtag)), ccdname)
         else:
@@ -7127,8 +7138,9 @@ def exposures_common(req, tgz, copsf):
     # half-size in DECam pixels
     if copsf:
         size = 32
-        bands = req.GET.get('bands', 'grz')
-        bands = ''.join([b for b in bands if b in 'grz'])
+        avail_bands = layer.get_bands()
+        bands = req.GET.get('bands', avail_bands)
+        bands = ''.join([b for b in bands if b in avail_bands])
     else:
         size = int(req.GET.get('size', '100'), 10)
         size = min(500, size)
@@ -7159,16 +7171,9 @@ def exposures_common(req, tgz, copsf):
     if not showcut:
         if 'ccd_cuts' in CCDs.get_columns():
             CCDs.cut(CCDs.ccd_cuts == 0)
-
-    print('CCDs:', len(CCDs))
-    print('filters:', CCDs.filter)
-    print('layer bands:', list(layer.get_bands()))
-
-            #print('Layer\'s bands:', layer.get_bands())
-    # Drop Y band images
-    #CCDs.cut(np.isin(CCDs.filter, ['g','r','i','z']))
+    #print('Layer\'s bands:', layer.get_bands())
     CCDs.cut(np.isin(CCDs.filter, list(layer.get_bands())))
-    #print('After cutting on bands:', len(CCDs), 'CCDs')
+    #print('After cutting down to the available bands in this layer:', len(CCDs), 'CCDs')
 
     filterorder = dict(g=0, r=1, i=2, z=3)
 
@@ -7200,6 +7205,7 @@ def exposures_common(req, tgz, copsf):
             sumpsf = dict([(b,0.) for b in bands])
             sumiv  = dict([(b,0.) for b in bands])
             CCDs = CCDs[np.array([f in bands for f in CCDs.filter])]
+            print('After cutting on requested bands', bands, ':', len(CCDs))
 
         for iccd,ccd in enumerate(CCDs):
             im = survey.get_image_object(ccd)
@@ -7217,7 +7223,7 @@ def exposures_common(req, tgz, copsf):
 
             slc = (slice(y0, y1+1), slice(x0, x1+1))
             tim = im.get_tractor_image(slc, pixPsf=True,
-                                       subsky=True, nanomaggies=False,
+                                       subsky=tgz, nanomaggies=False,
                                        pixels=tgz, dq=tgz, normalizePsf=copsf,
                                        old_calibs_ok=True)
             if tim is None:
@@ -7490,8 +7496,8 @@ def exposures_common(req, tgz, copsf):
             '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
             '<small>(observed %s @ %s = MJD %.6f)</small>' % (ccd.date_obs, ccd.ut, ccd.mjd_obs),
             '<small>(proposal id %s)</small>' % (ccd.propid),
-            '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % (
-                format_jpl_url(req, ra, dec, ccd)),
+            #'<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % (
+            #    format_jpl_url(req, ra, dec, ccd)),
             '<small><a href="%s">Direct link to JPL query</a></small>' % (
                 jpl_direct_url(ra, dec, ccd)),
         ])
@@ -9072,6 +9078,14 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
+    #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
+    #r = c.get('/ls-dr9/cat.fits?ralo=165.4754&rahi=165.4758&declo=-6.0426&dechi=-6.0422')
+    #r = c.get('/usercatalog/1/cat.json?ralo=359.7593&rahi=0.2544&declo=47.1825&dechi=47.3670&cat=tmp6wqhztpk')
+    #r = c.get('/jpeg-cutout?ra=37.1990005&dec=61.495783&size=5120&layer=ls-dr10&pixscale=0.512')
+    #r = c.get('/cutout.fits?ra=37.1990005&dec=61.495783&size=5120&layer=ls-dr10&pixscale=0.512')
+    #r = c.get('/sfd/2/7/40/71.jpg')
+    #r = c.get('/desi-spectrum/edr/targetid39633411349941774')
+    #r = c.get('/coadd-psf/?ra=198.3924&dec=-20.2979&layer=ls-dr10-south&bands=i')
     #r = c.get('/desi-spectrum/dr1/targetid39633497530305185')
     #r = c.get('/desi-spectrum/dr1/targetid-228610099')
     #r = c.get('/ls-dr9/1/14/8230/6841.jpg')
@@ -9104,16 +9118,17 @@ if __name__ == '__main__':
     #r = c.get('/exposures/?ra=188.9829&dec=-56.4978&layer=decaps2')
     #r = c.get('/exposures/?ra=221.8682&dec=2.3882&layer=ibis-color')
     #r = c.get('/desi-spectrum/edr/targetid39628256290279019')
-
     #r = c.get('/jpl_lookup?ra=169.4535&dec=12.7557&date=2017-03-05%2004:55:39.295493&camera=decam')
-
     #r = c.get('/ibis-3-wide/1/14/7281/8419.jpg')
     #r = c.get('/ibis-3-wide-m464/1/5/12/16.jpg')
     #r = c.get('/iv-data/ls-dr9/decam-705256-N1')
     #r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
     #r = c.get('/?targetid=2305843030529157975')
-    r = c.get('/exposures-tgz/?ra=186.4967&dec=15.6692&size=100&layer=ls-dr9')
-
+    #r = c.get('/exposures-tgz/?ra=186.4967&dec=15.6692&size=100&layer=ls-dr9')
+    #r = c.get('/exposures/?ra=221.8682&dec=2.3882&layer=ibis-color')
+    #r = c.get('/desi-spectrum/edr/targetid39628256290279019')
+    r = c.get('/data-for-radec/?ra=341.4403&dec=11.1308&layer=ls-dr10&ralo=341.1811&rahi=341.7009&declo=10.9850&dechi=11.2754')
+    
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)

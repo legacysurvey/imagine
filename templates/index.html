@@ -674,20 +674,26 @@ var SGACatalog = CatalogOverlay.extend({
         layergroup = CatalogOverlay.prototype.getLayer.call(this, result);
         // Add crosshairs
         var rdlist = result['rd'];
+        if (rdlist.length == 0) {
+            return layergroup;
+        }
         var clong = map.getCenter().lng;
         var radii = result['radiusArcsec'];
         var abratio = result['abRatio'];
         var posAngle = result['posAngle'];
         var plines = [];
+        console.log('this._style:', this._style);
         for (var i=0, len=rdlist.length; i<len; i++) {
             var r = rdlist[i][0];
             var d = rdlist[i][1];
             var lat = dec2lat(d);
             var lng = ra2long_C(r, clong);
             var style = Object.create(this._style);
+            console.log('style:', style);
             var color = this.getColor(result, i);
             if (color !== undefined) {
                 style = Object.assign(style, {'color':color});
+                console.log('style after setting color:', style);
             }
             var radius = this._radius;
             if (radii) {
@@ -714,6 +720,8 @@ var SGACatalog = CatalogOverlay.extend({
             lat2 = lat - ab * radius * Math.cos(pa);
             plines.push([[lat1, lng1], [lat2, lng2]]);
         }
+        console.log('rdlist:', rdlist.length);
+        console.log('style:', style)
         style = Object.assign(style, {'weight': 1});
         layergroup.addLayer(L.polyline(plines, style));
         return layergroup;
@@ -1408,7 +1416,9 @@ function onSourceClick(e) {
         fluxstr += ', r=' + fluxToMag(src.fluxes.r).toFixed(2);
     }
     if ('i' in src.fluxes) {
-        fluxstr += ', i=' + fluxToMag(src.fluxes.i).toFixed(2);
+        if (src.fluxes.i != 0 && src.nobs.i > 0) {
+            fluxstr += ', i=' + fluxToMag(src.fluxes.i).toFixed(2);
+        }
     }
     if ('z' in src.fluxes) {
         fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
@@ -1707,7 +1717,8 @@ var allLayers = [];
 
 var attribs = {
     'ls': '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>',
-    'hsc': '<a href="https://www.nao.ac.jp/en/policy-guide.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>',
+    'hsc2': '<a href="https://www.nao.ac.jp/en/terms/copyright.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>',
+    'hsc3': '<a href="https://www.nao.ac.jp/en/terms/copyright.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/data-access__pdr3/">NAOJ / HSC Collaboration</a>',
     'sdss': '<a href="http://sdss.org/collaboration/#image-use">&copy;</a> <a href="http://sdss.org">Sloan Digital Sky Survey SDSS</a>',
     'galex': '<a href="https://www.jpl.nasa.gov/imagepolicy/">&copy;</a> <a href="http://www.galex.caltech.edu/">GALEX, Courtesy NASA/JPL-Caltech</a>',
     'sfd': '<a href="https://dustmaps.readthedocs.io/en/latest/maps.html#sfd">&copy; SFD</a>',
@@ -4401,30 +4412,30 @@ var overlayTree = [];
            findoverlay('desi-spec-daily-sky'),
            findoverlay('desi-obs-daily'),
          {% endif %}
-           {% if enable_desi_targets %}
+         {% if enable_desi_targets %}
            { label: 'DESI Targets',
              children: [
-                 findoverlay('targets-dr9-main-dark'),
-                 findoverlay('targets-dr9-main-bright'),
-                 findoverlay('targets-dr9-main-sec-dark'),
-                 findoverlay('targets-dr9-main-sec-bright'),
-                 findoverlay('targets-dr9-sv3-dark'),
-                 findoverlay('targets-dr9-sv3-bright'),
-                 findoverlay('targets-dr9-sv3-sec-dark'),
-                 findoverlay('targets-dr9-sv3-sec-bright'),
-                 findoverlay('targets-dr9-sv1-dark'),
-                 findoverlay('targets-dr9-sv1-bright'),
-                 findoverlay('targets-dr9-sv1-sec-dark'),
-                 findoverlay('targets-dr9-sv1-sec-bright'),
-                 //findoverlay('targets-dr9-sv1-supp'),
-                 findoverlay('targets-dr8'),
-                 //findoverlay('targets-sv-dr8'),
-                 //findoverlay('targets-cmx-dr7'),
-                 //findoverlay('targets-dr67'),
-                 //findoverlay('targets-bgs-dr67'),
-                 //findoverlay('targets-sky-dr67'),
-                 //findoverlay('targets-bright-dr67'),
-                 //findoverlay('targets-dark-dr67'),
+           findoverlay('targets-dr9-main-dark'),
+           findoverlay('targets-dr9-main-bright'),
+           findoverlay('targets-dr9-main-sec-dark'),
+           findoverlay('targets-dr9-main-sec-bright'),
+           findoverlay('targets-dr9-sv3-dark'),
+           findoverlay('targets-dr9-sv3-bright'),
+           findoverlay('targets-dr9-sv3-sec-dark'),
+           findoverlay('targets-dr9-sv3-sec-bright'),
+           findoverlay('targets-dr9-sv1-dark'),
+           findoverlay('targets-dr9-sv1-bright'),
+           findoverlay('targets-dr9-sv1-sec-dark'),
+           findoverlay('targets-dr9-sv1-sec-bright'),
+           //findoverlay('targets-dr9-sv1-supp'),
+           //findoverlay('targets-dr8'),
+           //findoverlay('targets-sv-dr8'),
+           //findoverlay('targets-cmx-dr7'),
+           //findoverlay('targets-dr67'),
+           //findoverlay('targets-bgs-dr67'),
+           //findoverlay('targets-sky-dr67'),
+           //findoverlay('targets-bright-dr67'),
+           //findoverlay('targets-dark-dr67'),
              ]},
          {% endif %}
        ]},

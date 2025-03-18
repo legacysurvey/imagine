@@ -2924,7 +2924,7 @@ def cat_user(req, ver):
     if 'radius' in cols:
         D.update(radius=list([float(r) for r in cat.radius]))
     if 'color' in cols:
-        D.update(color=list([c.strip() for c in cat.color]))
+        D.update(color=[str(c).strip() for c in cat.color])
     if 'abratio' in cols:
         D.update(abratio=list([float(r) for r in cat.abratio]))
     if 'posangle' in cols:
