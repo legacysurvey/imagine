@@ -2871,8 +2871,8 @@ var DesiTileOverlay = CircleOverlay.extend({
 */
 });
 {% endif %}
-{% if enable_desi_edr %}
 
+{% if enable_desi_edr %}
 var desi_edr_detail_list = function(ov, objs) {
     if (objs.length == 0) { return ''; }
     txt = 'In DESI EDR tiles: <ul>';
@@ -2901,8 +2901,7 @@ var desi_tiles_edr = new DesiTileOverlay('desi-tiles-edr',
 
 {% endif %}
 
-{% if enable_desi_data %}
-
+{% if enable_desi_dr1 %}
 var desi_dr1_detail_list = function(ov, objs) {
     if (objs.length == 0) { return ''; }
     txt = 'In DESI DR1 tiles: <ul>';
@@ -2928,7 +2927,9 @@ var desi_tiles_dr1 = new DesiTileOverlay('desi-tiles-dr1',
                                           'detail_list': desi_dr1_detail_list,
                                           'detail': dr1_detail,
                                          });
+{% endif %}
 
+{% if enable_desi_data %}
   var guadalupe_detail_list = function(ov, objs) {
     if (objs.length == 0) { return ''; }
     txt = 'In DESI Guadalupe tiles: <ul>';
@@ -3016,7 +3017,7 @@ desi_tiles_daily._style = {'fillOpacity': 0.05 };
 
 {% endif %}
 
-{% if enable_desi_data or enable_desi_edr %}
+{% if enable_desi_data or enable_desi_edr or enable_desi_dr1 %}
 
 var DesiSpectraCatalog = CatalogOverlay.extend({
     initialize: function(name, pretty, release, kwargs) {
@@ -3110,8 +3111,7 @@ var desi_spec_edr = new DesiSpectraCatalog(
     });
 {% endif %}
   
-{% if enable_desi_data %}
-
+{% if enable_desi_dr1 %}
   var desi_spec_dr1 = new DesiSpectraCatalog(
     'desi-spec-dr1', 'DESI DR1 spectra', 'dr1',
     {'url': smallcat_url,
@@ -3119,7 +3119,9 @@ var desi_spec_edr = new DesiSpectraCatalog(
      'labelsMinZoom': 10,
      'minZoom': 6,
     });
+{% endif %}
 
+{% if enable_desi_data %}
 var desi_spec_daily = new DesiSpectraCatalog(
     'desi-spec-daily', 'DESI daily spectra', 'daily',
     {'url': smallcat_url,
@@ -3839,9 +3841,11 @@ var overlays = [
     desi_tiles_edr,
     desi_spec_edr,
     {% endif %}
-    {% if enable_desi_data %}
+    {% if enable_desi_dr1 %}
     desi_tiles_dr1,
     desi_spec_dr1,
+    {% endif %}
+    {% if enable_desi_data %}
     desi_tiles_guadalupe,
     desi_spec_guadalupe,
     desi_tiles_fuji,
@@ -4383,7 +4387,7 @@ var overlayTree = [];
            findoverlay('targets-dr9-sv1-sec-dark'),
            findoverlay('targets-dr9-sv1-sec-bright'),
            //findoverlay('targets-dr9-sv1-supp'),
-           //findoverlay('targets-dr8'),
+           findoverlay('targets-dr8'),
            //findoverlay('targets-sv-dr8'),
            //findoverlay('targets-cmx-dr7'),
            //findoverlay('targets-dr67'),

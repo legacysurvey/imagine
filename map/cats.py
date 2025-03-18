@@ -354,7 +354,8 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     if release == 'edr':
         basedir = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji'
     elif release == 'dr1':
-        basedir = '/global/cfs/cdirs/desi/spectro/redux/iron'
+        #basedir = '/global/cfs/cdirs/desi/spectro/redux/iron'
+        basedir = '/global/cfs/cdirs/desi/public/dr1/spectro/redux/iron'
     else:
         basedir = '/global/cfs/cdirs/desi/spectro/redux/%s' % release
 
