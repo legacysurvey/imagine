@@ -3023,6 +3023,7 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
     initialize: function(name, pretty, release, kwargs) {
         CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
         this.release = release;
+        this.data_base_url = kwargs['data_base_url'];
     },
 
     getLayer: function(result) {
@@ -3080,9 +3081,18 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
         var rd = json['rd'][i];
         var ra = rd[0];
         var dec = rd[1];
-        return this.getLabel(json, i)
+        s = this.getLabel(json, i)
             + '<br/>RA,Dec: ' + ra.toFixed(4) + ', ' + dec.toFixed(4)
             + '<br/>Targetid: ' + json['targetid'][i];
+        if (this.data_base_url !== undefined) {
+            var survey = json['survey'][i];
+            var program = json['program'][i];
+            var healpix = json['healpix'][i];
+            var data_url = this.data_base_url + '/healpix/' + survey + '/' + program + '/' +
+                Math.floor(healpix/100) + '/' + healpix + '/';
+            s = s + '<br/><a href="' + data_url + '">DESI Data Directory</a>';
+        }
+        return s;
     },
 });
 
@@ -3108,6 +3118,7 @@ var desi_spec_edr = new DesiSpectraCatalog(
      'radius': 300,
      'labelsMinZoom': 10,
      'minZoom': 6,
+     'data_base_url': 'https://data.desi.lbl.gov/public/edr/spectro/redux/fuji',
     });
 {% endif %}
   

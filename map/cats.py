@@ -745,6 +745,9 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
     #print('Targetids:', T.targetid.dtype, T.targetid)
     rd = list((float(r),float(d)) for r,d in zip(T.get(racol), T.get(deccol)))
     J.update(dict(rd=rd, name=names, color=colors,
+                  healpix=[int(h) for h in T.healpix],
+                  survey=list(T.survey),
+                  program=list(T.program),
                   targetid=targetids))
     if 'fiber' in cols:
         J.update(fiberid=[int(i) for i in T.fiber])
