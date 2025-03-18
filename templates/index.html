@@ -36,47 +36,29 @@
 {% endcomment %}
 
 <style type="text/css">
-  .gfa-label {
+.gfa-label {
   border: 0px solid #666;
-  }
-
-  
+}
 .tooltipbg {
   background: black;
   opacity: 0.5;
   border: 2px solid white;
-  }
-//  .leaflet-tooltip-left.tooltipbg::after {
-//  }
-  
-//.leaflet-tooltip-left.tooltipbg::before {
- // border-left-color: cyan;
-//}
-//.leaflet-tooltip-right.tooltipbg::before {
-//  border-right-color: cyan;
-//  }
-
+}
 </style>
-
-
 {% endblock %}
 
 {% block body %}
 <body id="thebody">
-<div id="map" />
+<div id="map"></div>
 
 <script>
 //'use strict';
-
+{% comment %}
 // this is just to reset the indent level for emacs javascript-mode;
-// the "{#" is a django template comment.
+  // the "{#" is a django template comment.
+{% endcomment %}
  {# }}}} #}
-
 // Variables from django.
-
-// enable_desi_menu = {{ enable_desi_menu }}
-// enable_desi_footprint = {{ enable_desi_footprint }}
-
 var layer_initial = '{{ layer }}';
 var ra_initial = {{ ra }};
 var dec_initial = {{ dec }};
@@ -87,12 +69,9 @@ var usercat2_url = '{{ usercatalogurl2|safe }}';
 var usercat_url = '{{ usercatalogurl|safe }}';
 var tile_url = '{{ tileurl|safe }}';
 var maxNativeZoom = {{ maxNativeZoom }};
-
 var tile_layers = {{ tile_layers|safe }};
-
 var hostname_url = '{{ hostname_url }}';  // eg "http://legacysurvey.org"
 var root_url = '{{ root_url }}';  // eg /viewer-dev
- 
 var ccds_url = '{{ ccdsurl|safe }}';
 var exposures_url = '{{ expsurl|safe }}';
 var bricks_url = '{{ bricksurl|safe }}';
@@ -101,22 +80,16 @@ var cat_url = '{{ caturl|safe }}';
 var desitile_url = '{{ desitile_url|safe}}';
 var usercat_upload_url = '{{ uploadurl|safe }}';
 var name_query_url = '{{ namequeryurl|safe }}';
-
 var static_tile_url = '{{ static_tile_url|safe }}';
 var subdomains = {{ subdomains|safe }};
-
 var static_tile_url_B = '{{ static_tile_url_B|safe }}';
 var subdomains_B = {{ subdomains_B|safe }};
-
 var aws_tile_url = 'https://s3.us-west-1.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg';
 var max_aws_zoom = 14;
-
 var aws_unwise_url = 'https://s3.us-west-2.amazonaws.com/{id}.legacysurvey.org/{z}/{x}/{y}.jpg'
-
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
-
-console.log('window.location is', window.location);
+//console.log('window.location is', window.location);
 
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
@@ -225,9 +198,9 @@ var SplitTileLayer = MyTileLayer.extend({
         this._north_layer = north_layer;
         this._mid_layer = mid_layer;
         this._south_layer = south_layer;
-        console.log('SplitTileLayer: north ' + this._north_layer);
-        console.log('SplitTileLayer: mid ' + this._mid_layer);
-        console.log('SplitTileLayer: south ' + this._south_layer);
+        //console.log('SplitTileLayer: north ' + this._north_layer);
+        //console.log('SplitTileLayer: mid ' + this._mid_layer);
+        //console.log('SplitTileLayer: south ' + this._south_layer);
     },
 	getTileUrl: function (tile) {
         tilesize = this.getTileSize();
@@ -333,10 +306,10 @@ var CatalogOverlay = L.Evented.extend({
     },
 
     ready: function() {
-        //console.log(this._name + ' ready function called');
+        console.log(this._name + ' ready function called');
         this._checkbox = getOverlayCheckbox(this._pretty);
         // _checkbox is a jQuery node
-        //console.log('checkbox:', this._checkbox);
+        console.log('checkbox:', this._checkbox);
         if (!this._checkbox) {
             console.log('BUG line 278');
             return;
@@ -444,7 +417,7 @@ var CatalogOverlay = L.Evented.extend({
             return;
         }
         var circles = this.getLayer(result);
-        console.log('Got marker layer ' + circles);
+        //console.log('Got marker layer ' + circles);
         // remove old layers
         for (var k in this._layers) {
 	        if (k < counter) {
@@ -3576,45 +3549,45 @@ var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
 {% endif %}
 
 {% if enable_desi_targets %}
-var desi_targets67 = new DesiTargetCatalog('targets-dr67', 'DESI Targets (DR6/DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
-var desi_bgs_targets67 = new DesiTargetCatalog('targets-bgs-dr67', 'DESI BGS Targets (DR6/DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
-var desi_bright_targets67 = new DesiTargetCatalog('targets-bright-dr67', 'DESI Bright-time Targets (DR6/DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
-var desi_dark_targets67 = new DesiTargetCatalog('targets-dark-dr67', 'DESI Dark-time Targets (DR6/DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
-var desi_sky_targets67 = new DesiTargetCatalog('targets-sky-dr67', 'DESI Sky Targets (DR6/DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
-var desi_cmx_targets7 = new DesiTargetCatalog('targets-cmx-dr7', 'DESI Commissioning Targets (DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
+//var desi_targets67 = new DesiTargetCatalog('targets-dr67', 'DESI Targets (DR6/DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
+//
+//var desi_bgs_targets67 = new DesiTargetCatalog('targets-bgs-dr67', 'DESI BGS Targets (DR6/DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
+//
+//var desi_bright_targets67 = new DesiTargetCatalog('targets-bright-dr67', 'DESI Bright-time Targets (DR6/DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
+//
+//var desi_dark_targets67 = new DesiTargetCatalog('targets-dark-dr67', 'DESI Dark-time Targets (DR6/DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
+//
+//var desi_sky_targets67 = new DesiTargetCatalog('targets-sky-dr67', 'DESI Sky Targets (DR6/DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
+//
+//var desi_cmx_targets7 = new DesiTargetCatalog('targets-cmx-dr7', 'DESI Commissioning Targets (DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
 
 var desi_targets8 = new DesiTargetCatalog('targets-dr8', 'DESI Targets (DR8)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
 
-var desi_sv_targets8 = new DesiTargetCatalog('targets-sv-dr8', 'DESI Targets (SV-DR8)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
+//var desi_sv_targets8 = new DesiTargetCatalog('targets-sv-dr8', 'DESI Targets (SV-DR8)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
 
 
 var desi_targets_dr9_sv1_sec_bright = new DesiTileLayer('targets-dr9-sv1-sec-bright',
@@ -3633,9 +3606,9 @@ var desi_targets_dr9_sv1_dark = new DesiTileLayer('targets-dr9-sv1-dark',
 var desi_targets_dr9_sv1_bright = new DesiTileLayer('targets-dr9-sv1-bright',
                                                  'DESI Bright-time Targets (DR9/SV1)',
                                                  {'minZoom': 10, 'rscale':0.5});
-var desi_targets_dr9_sv1_supp = new DesiTileLayer('targets-dr9-sv1-supp',
-                                                 'DESI Supplemental Targets (DR9/SV1)',
-                                                 {'minZoom': 10, 'rscale':0.5});
+//var desi_targets_dr9_sv1_supp = new DesiTileLayer('targets-dr9-sv1-supp',
+//                                                 'DESI Supplemental Targets (DR9/SV1)',
+//                                                 {'minZoom': 10, 'rscale':0.5});
 
 
 var desi_targets_dr9_sv3_dark = new DesiTileLayer('targets-dr9-sv3-dark',
@@ -3851,19 +3824,19 @@ var overlays = [
     manga, spec, plateOverlay, specDeep2,
     {% endif %}
     {% if enable_desi_targets %}
-    desi_sv_targets8,
+    //desi_sv_targets8,
     desi_targets8,
-    desi_targets67,
-    desi_bgs_targets67,
-    desi_sky_targets67,
-    desi_dark_targets67,
-    desi_bright_targets67,
-    desi_cmx_targets7,
+    //desi_targets67,
+    //desi_bgs_targets67,
+    //desi_sky_targets67,
+    //desi_dark_targets67,
+    //desi_bright_targets67,
+    //desi_cmx_targets7,
     desi_targets_dr9_sv1_sec_dark,
     desi_targets_dr9_sv1_sec_bright,
     desi_targets_dr9_sv1_dark,
     desi_targets_dr9_sv1_bright,
-    desi_targets_dr9_sv1_supp,
+    //desi_targets_dr9_sv1_supp,
     desi_targets_dr9_sv3_dark,
     desi_targets_dr9_sv3_bright,
     desi_targets_dr9_sv3_sec_dark,
@@ -4349,17 +4322,14 @@ var overlayTree = [];
      {% endif %}
 
      {% if enable_dr7_overlays %}
-     { label: 'DECaLS DR7 catalog',
-       layer: namedOverlays['decals-dr7'].getGroup(),
-       children: [
-           {% if enable_dr6_overlays %}
-           findoverlay('mzls+bass-dr6'),
-           {% endif %}
-           {% if enable_dr5_overlays %}
-           findoverlay('decals-dr5'),
-           {% endif %}
-       ],
-     },
+     findoverlay('decals-dr7', [
+       {% if enable_dr6_overlays %}
+       findoverlay('mzls+bass-dr6'),
+       {% endif %}
+       {% if enable_dr5_overlays %}
+       findoverlay('decals-dr5'),
+       {% endif %}
+     ]),
      {% endif %}
 
      findoverlay('gaia-dr2'),
