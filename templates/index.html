@@ -3491,45 +3491,45 @@ var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
 {% endif %}
 
 {% if enable_desi_targets %}
-var desi_targets67 = new DesiTargetCatalog('targets-dr67', 'DESI Targets (DR6/DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
-var desi_bgs_targets67 = new DesiTargetCatalog('targets-bgs-dr67', 'DESI BGS Targets (DR6/DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
-var desi_bright_targets67 = new DesiTargetCatalog('targets-bright-dr67', 'DESI Bright-time Targets (DR6/DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
-var desi_dark_targets67 = new DesiTargetCatalog('targets-dark-dr67', 'DESI Dark-time Targets (DR6/DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
-var desi_sky_targets67 = new DesiTargetCatalog('targets-sky-dr67', 'DESI Sky Targets (DR6/DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
-
-var desi_cmx_targets7 = new DesiTargetCatalog('targets-cmx-dr7', 'DESI Commissioning Targets (DR7)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
+//var desi_targets67 = new DesiTargetCatalog('targets-dr67', 'DESI Targets (DR6/DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
+//
+//var desi_bgs_targets67 = new DesiTargetCatalog('targets-bgs-dr67', 'DESI BGS Targets (DR6/DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
+//
+//var desi_bright_targets67 = new DesiTargetCatalog('targets-bright-dr67', 'DESI Bright-time Targets (DR6/DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
+//
+//var desi_dark_targets67 = new DesiTargetCatalog('targets-dark-dr67', 'DESI Dark-time Targets (DR6/DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
+//
+//var desi_sky_targets67 = new DesiTargetCatalog('targets-sky-dr67', 'DESI Sky Targets (DR6/DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
+//
+//var desi_cmx_targets7 = new DesiTargetCatalog('targets-cmx-dr7', 'DESI Commissioning Targets (DR7)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
 
 var desi_targets8 = new DesiTargetCatalog('targets-dr8', 'DESI Targets (DR8)',
                                   {'radius': 200,
                                    'labelsMinZoom': 11,
                                    'minZoom': 11, });
 
-var desi_sv_targets8 = new DesiTargetCatalog('targets-sv-dr8', 'DESI Targets (SV-DR8)',
-                                  {'radius': 200,
-                                   'labelsMinZoom': 11,
-                                   'minZoom': 11, });
+//var desi_sv_targets8 = new DesiTargetCatalog('targets-sv-dr8', 'DESI Targets (SV-DR8)',
+//                                  {'radius': 200,
+//                                   'labelsMinZoom': 11,
+//                                   'minZoom': 11, });
 
 
 var desi_targets_dr9_sv1_sec_bright = new DesiTileLayer('targets-dr9-sv1-sec-bright',
@@ -3548,9 +3548,9 @@ var desi_targets_dr9_sv1_dark = new DesiTileLayer('targets-dr9-sv1-dark',
 var desi_targets_dr9_sv1_bright = new DesiTileLayer('targets-dr9-sv1-bright',
                                                  'DESI Bright-time Targets (DR9/SV1)',
                                                  {'minZoom': 10, 'rscale':0.5});
-var desi_targets_dr9_sv1_supp = new DesiTileLayer('targets-dr9-sv1-supp',
-                                                 'DESI Supplemental Targets (DR9/SV1)',
-                                                 {'minZoom': 10, 'rscale':0.5});
+//var desi_targets_dr9_sv1_supp = new DesiTileLayer('targets-dr9-sv1-supp',
+//                                                 'DESI Supplemental Targets (DR9/SV1)',
+//                                                 {'minZoom': 10, 'rscale':0.5});
 
 
 var desi_targets_dr9_sv3_dark = new DesiTileLayer('targets-dr9-sv3-dark',
@@ -3758,19 +3758,19 @@ var overlays = [
     manga, spec, plateOverlay, specDeep2,
     {% endif %}
     {% if enable_desi_targets %}
-    desi_sv_targets8,
+    //desi_sv_targets8,
     desi_targets8,
-    desi_targets67,
-    desi_bgs_targets67,
-    desi_sky_targets67,
-    desi_dark_targets67,
-    desi_bright_targets67,
-    desi_cmx_targets7,
+    //desi_targets67,
+    //desi_bgs_targets67,
+    //desi_sky_targets67,
+    //desi_dark_targets67,
+    //desi_bright_targets67,
+    //desi_cmx_targets7,
     desi_targets_dr9_sv1_sec_dark,
     desi_targets_dr9_sv1_sec_bright,
     desi_targets_dr9_sv1_dark,
     desi_targets_dr9_sv1_bright,
-    desi_targets_dr9_sv1_supp,
+    //desi_targets_dr9_sv1_supp,
     desi_targets_dr9_sv3_dark,
     desi_targets_dr9_sv3_bright,
     desi_targets_dr9_sv3_sec_dark,
