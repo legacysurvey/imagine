@@ -2829,7 +2829,7 @@ and entries in the "in brick/ccd" panel.
 {% endcomment %}
 
 
-{% if enable_desi_data or enable_desi_edr %}
+{% if enable_desi_data or enable_desi_edr or enable_desi_dr1 %}
 var DesiTileOverlay = CircleOverlay.extend({
      highlight: function(obj) {
      },
@@ -3116,6 +3116,7 @@ var desi_spec_edr = new DesiSpectraCatalog(
      'radius': 300,
      'labelsMinZoom': 10,
      'minZoom': 6,
+     'data_base_url': 'https://data.desi.lbl.gov/public/dr1/spectro/redux/iron',
     });
 {% endif %}
 
@@ -3214,8 +3215,10 @@ var polygonOverlays = [
     {% if enable_desi_edr %}
     desi_tiles_edr,
     {% endif %}
-    {% if enable_desi_data %}
+    {% if enable_desi_dr1 %}
     desi_tiles_dr1,
+    {% endif %}
+    {% if enable_desi_data %}
     desi_tiles_guadalupe,
     desi_tiles_fuji,
     desi_tiles_daily,
@@ -4363,9 +4366,11 @@ var overlayTree = [];
            findoverlay('desi-tiles-edr'),
            findoverlay('desi-spec-edr'),
            {% endif %}
-           {% if enable_desi_data %}
+           {% if enable_desi_dr1 %}
            findoverlay('desi-tiles-dr1'),
            findoverlay('desi-spec-dr1'),
+           {% endif %}
+           {% if enable_desi_data %}
            findoverlay('desi-tiles-guadalupe'),
            findoverlay('desi-spec-guadalupe'),
            findoverlay('desi-tiles-fuji'),

@@ -477,10 +477,12 @@ def _index(req,
         urls = over
         orig[1] = urls
 
+    enable_desi_dr1 = settings.ENABLE_DESI_DR1
+
     kwkeys = dict(
         tile_layers=tile_layers,
         enable_desi_edr = settings.ENABLE_DESI_EDR,
-        enable_desi_dr1 = settings.ENABLE_DESI_DR1,
+        enable_desi_dr1 = enable_desi_dr1,
         #enable_merian = settings.ENABLE_MERIAN,
         science = settings.ENABLE_SCIENCE,
         enable_older = settings.ENABLE_OLDER,
@@ -831,8 +833,8 @@ def desi_edr(req):
 def desi_dr1(req):
     return _index(req,
                   default_layer='ls-dr9',
-                  default_radec=(0.0, 0.0),
-                  default_zoom=5,
+                  default_radec=(185.5191, 12.7406),
+                  default_zoom=13,
                   rooturl=settings.ROOT_URL + '/desi-dr1',
                   append_args = '&desi-tiles-dr1&desi-spec-dr1',
     )

@@ -29,16 +29,17 @@ urlpatterns_desi.extend([
     re_path(r'^desi-obs/daily/targetid(\d+)', cats.cat_desi_daily_obs_detail),
 ])
 
-if settings.ENABLE_DESI_DATA:
-    # Private
+if settings.ENABLE_DESI_DR1:
     urlpatterns_desi.extend([
-        # All DESI tiles (tiles-main.ecsv)
-        #re_path(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
         # DESI spectroscopy -- DR1
         re_path(r'^desi-tiles/dr1/(\d+)/cat.json', cats.cat_desi_dr1_tiles),
         re_path(r'^desi-spec-dr1/(\d+)/cat.json', cats.cat_desi_dr1_spectra),
         re_path(r'^desi-spectrum/dr1/targetid(-?\d+)', cats.cat_desi_dr1_spectra_detail),
+    ])
 
+if settings.ENABLE_DESI_DATA:
+    # Private
+    urlpatterns_desi.extend([
         # DESI spectroscopy -- daily
         re_path(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),
         re_path(r'^desi-spec-daily/(\d+)/cat.json', cats.cat_desi_daily_spectra),
