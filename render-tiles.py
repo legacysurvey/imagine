@@ -68,7 +68,8 @@ def _one_tile(X):
                  return_if_not_found=True)
 
     elif kind in ['decals-dr5', 'decals-dr5-model', 'decals-dr5-resid',
-                  'mzl1s+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid']:
+                  'mzl1s+bass-dr6', 'mzls+bass-dr6-model', 'mzls+bass-dr6-resid',
+                  'ls-dr67-mid']:
         v = 1
         layer = get_layer(kind)
         return layer.get_tile(req, v, zoom, x, y, savecache=True, forcecache=True,

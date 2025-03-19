@@ -289,14 +289,14 @@ def _index(req,
     if settings.ENABLE_DR10:
         dr10layers = {
             'ls-dr10-south': ['Legacy Surveys DR10-south images',
-                              [def_url],  maxnative, 'ls'],
-	    'ls-dr10': ['Legacy Surveys DR10 images', [def_url], maxnative, 'ls'],
+                              [static_url, def_url],  maxnative, 'ls'],
             'ls-dr10-south-model': ['Legacy Surveys DR10-south models',
                               [def_url],  maxnative, 'ls'],
-	    'ls-dr10-model': ['Legacy Surveys DR10 models', [def_url], maxnative, 'ls'],
             'ls-dr10-south-resid': ['Legacy Surveys DR10-south residuals',
                               [def_url],  maxnative, 'ls'],
-	    'ls-dr10-resid': ['Legacy Surveys DR10 residuals', [def_url], maxnative, 'ls'],
+	    'ls-dr10-mid': ['Legacy Surveys DR10 images', [static_url, def_url], maxnative, 'ls'],
+	    'ls-dr10-mid-model': ['Legacy Surveys DR10 models', [def_url], maxnative, 'ls'],
+	    'ls-dr10-mid-resid': ['Legacy Surveys DR10 residuals', [def_url], maxnative, 'ls'],
         }
         # Add regular and "-grz" versions of the above layers.
         for k,v in dr10layers.items():
@@ -316,12 +316,14 @@ def _index(req,
 
     if settings.ENABLE_DR9:
         tile_layers.update({
-            'ls-dr9': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
             'ls-dr9-south': ['Legacy Surveys DR9-south images',
                              [[0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg', []],
                               def_url], maxnative, 'ls'],
             'ls-dr9-south-model': ['Legacy Surveys DR9-south models', [def_url], maxnative, 'ls'],
             'ls-dr9-south-resid': ['Legacy Surveys DR9-south residuals', [def_url], maxnative, 'ls'],
+            'ls-dr9-mid': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
+            'ls-dr9-mid-model': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
+            'ls-dr9-mid-resid': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
             'ls-dr9.1.1': ['Legacy Surveys DR9.1.1 COSMOS deep images', [def_url], maxZoom, 'ls'],
             'ls-dr9.1.1-model': ['Legacy Surveys DR9.1.1 COSMOS deep models', [def_url],
                                  maxZoom, 'ls'],
@@ -331,17 +333,17 @@ def _index(req,
 
     if settings.ENABLE_DR8:
         tile_layers.update({
-            'ls-dr8': ['Legacy Surveys DR8 images', [aws_url, def_url], maxnative, 'ls',
-                       {'id':'dr8'}],
             'ls-dr8-north': ['Legacy Surveys DR8-north images', [aws_url, def_url], maxnative, 'ls',
                              {'id':'dr8-north'}],
+            'ls-dr8-mid': ['Legacy Surveys DR8 images', [aws_url, def_url], maxnative, 'ls',
+                             {'id':'dr8'}],
             'ls-dr8-south': ['Legacy Surveys DR8-south images', [aws_url, def_url], maxnative, 'ls',
                              {'id':'dr8-south'}],
-            'ls-dr8-model': ['Legacy Surveys DR8 models', [def_url], maxnative, 'ls'],
             'ls-dr8-north-model': ['Legacy Surveys DR8-north models', [def_url], maxnative, 'ls'],
+            'ls-dr8-mid-model': ['Legacy Surveys DR8 models', [def_url], maxnative, 'ls'],
             'ls-dr8-south-model': ['Legacy Surveys DR8-south models', [def_url], maxnative, 'ls'],
-            'ls-dr8-resid': ['Legacy Surveys DR8 residuals', [def_url], maxnative, 'ls'],
             'ls-dr8-north-resid': ['Legacy Surveys DR8-north residuals', [def_url], maxnative, 'ls'],
+            'ls-dr8-mid-resid': ['Legacy Surveys DR8 residuals', [def_url], maxnative, 'ls'],
             'ls-dr8-south-resid': ['Legacy Surveys DR8-south residuals', [def_url], maxnative, 'ls'],
         })
 
@@ -365,7 +367,7 @@ def _index(req,
         })
 
     if settings.ENABLE_DR67:
-        tile_layers['ls-dr67'] = ['Legacy Surveys DR6+DR7 images', [[14, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls']
+        tile_layers['ls-dr67-mid'] = ['Legacy Surveys DR6+DR7 images', [static_url, [6, maxZoom, tileurl, subs]], maxnative, 'ls']
 
     if settings.ENABLE_DR5:
         tile_layers.update({
@@ -6264,21 +6266,21 @@ def get_survey(name):
         survey.drname = 'DECaPS 2'
         survey.drurl = 'https://portal.nersc.gov/project/cosmo/temp/dstn/decaps2-coadd'#https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
         
-    elif name == 'ls-dr67':
+    elif name in ['ls-dr67', 'ls-dr67-mid']:
         north = get_survey('mzls+bass-dr6')
         north.layer = 'mzls+bass-dr6'
         south = get_survey('decals-dr7')
         south.layer = 'decals-dr7'
         survey = SplitSurveyData(north, south)
 
-    elif name == 'ls-dr8':
+    elif name in['ls-dr8', 'ls-dr8-mid']:
         north = get_survey('ls-dr8-north')
         north.layer = 'ls-dr8-north'
         south = get_survey('ls-dr8-south')
         south.layer = 'ls-dr8-south'
         survey = SplitSurveyData(north, south)
 
-    elif name == 'ls-dr9':
+    elif name in ['ls-dr9', 'ls-dr9-mid']:
         north = get_survey('ls-dr9-north')
         north.layer = 'ls-dr9-north'
         south = get_survey('ls-dr9-south')
@@ -6336,6 +6338,7 @@ def get_survey(name):
 
         'ls-dr9-north': ('Legacy Surveys DR9-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/north'),
         'ls-dr9-south': ('Legacy Surveys DR9-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/south'),
+        'ls-dr9-mid': ('Legacy Surveys DR9', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/'),
         'ls-dr9': ('Legacy Surveys DR9', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/'),
         'ls-dr10-south': ('Legacy Surveys DR10-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr10/south'),
         'ls-dr10': ('Legacy Surveys DR10', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr10'),
@@ -8084,22 +8087,24 @@ def get_layer(name, default=None):
         '''
         layer = ReSdssLayer('sdss')
 
-    elif name == 'ls-dr67':
+    elif name in ['ls-dr67', 'ls-dr67-mid']:
         dr7 = get_layer('decals-dr7')
         dr6 = get_layer('mzls+bass-dr6')
         layer = LegacySurveySplitLayer(name, dr6, dr7, 32.)
         layer.drname = 'Legacy Surveys DR6+DR7'
 
-    elif name in ['ls-dr8', 'ls-dr8-model', 'ls-dr8-resid']:
-        suff = name.replace('ls-dr8', '')
+    elif name in ['ls-dr8', 'ls-dr8-model', 'ls-dr8-resid',
+                  'ls-dr8-mid', 'ls-dr8-mid-model', 'ls-dr8-mid-resid']:
+        suff = name.replace('ls-dr8', '').replace('-mid', '')
         north = get_layer('ls-dr8-north' + suff)
         south = get_layer('ls-dr8-south' + suff)
         ### NOTE, must also change the javascript in template/index.html !
         layer = LegacySurveySplitLayer(name, north, south, 32.375)
         layer.drname = 'Legacy Surveys DR8'
 
-    elif name in ['ls-dr9', 'ls-dr9-model', 'ls-dr9-resid']:
-        suff = name.replace('ls-dr9', '')
+    elif name in ['ls-dr9-mid', 'ls-dr9-mid-model', 'ls-dr9-mid-resid',
+                  'ls-dr9', 'ls-dr9-model', 'ls-dr9-resid']:
+        suff = name.replace('ls-dr9', '').replace('-mid', '')
         north = get_layer('ls-dr9-north' + suff)
         south = get_layer('ls-dr9-south' + suff)
         ### NOTE, must also change the javascript in template/index.html !
@@ -8362,7 +8367,10 @@ def get_layer(name, default=None):
 
     elif name in ['ls-dr10', 'ls-dr10-model', 'ls-dr10-resid',
                   'ls-dr10-grz', 'ls-dr10-model-grz', 'ls-dr10-resid-grz',
-                  'ls-dr10-gri',]:
+                  'ls-dr10-gri',
+                  'ls-dr10-mid', 'ls-dr10-mid-model', 'ls-dr10-mid-resid',
+                  'ls-dr10-mid-grz', 'ls-dr10-mid-model-grz', 'ls-dr10-mid-resid-grz',
+                  'ls-dr10-mid-gri',]:
         is_grz = name.endswith('-grz')
         is_gri = name.endswith('-gri')
         if is_grz:
@@ -8378,7 +8386,7 @@ def get_layer(name, default=None):
             bands = 'griz'
 
         # suff: -model, -resid
-        suff = name.replace('ls-dr10', '')
+        suff = name.replace('ls-dr10', '').replace('-mid', '')
         north = get_layer('ls-dr9-north' + suff)
         south = get_layer('ls-dr10-south' + suff + grzpart)
         layer = LegacySurveySplitLayer(name + grzpart, north, south, 32.375, bottom_bands=bands)
@@ -9072,8 +9080,13 @@ if __name__ == '__main__':
     #r = c.get('/ibis-3-wide-m464/1/5/12/16.jpg')
     #r = c.get('/iv-data/ls-dr9/decam-705256-N1')
     #r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
-    r = c.get('/?targetid=39627914966205909')
-    
+    #r = c.get('/?targetid=39627914966205909')
+    #r = c.get('/ls-dr9-mid/1/6/39/25.jpg')
+    #r = c.get('/cutout.jpg?ra=141.0978&dec=32.375&layer=ls-dr9&pixscale=0.25&size=500')
+    #r = c.get('/static/tiles/ls-dr67-mid/1/5/17/12.jpg')
+    #r = c.get('/ls-dr67-mid/1/11/1105/829.jpg')
+    #r = c.get('/desi-dr1?supersecret=yes')
+    r = c.get('/desi-spec-dr1/1/cat.json?ralo=185.3891&rahi=185.6490&declo=12.6685&dechi=12.8128&supersecret=yes')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)

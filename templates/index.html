@@ -246,10 +246,13 @@ function split_layer(name, pretty, decsplit,
             (Math.PI - Math.log(Math.tan(Math.PI/4. + (Math.PI / 180. * decsplit) / 2.)));
         ysplits[zoom] = Math.floor(y);
     }
-    var tiles = new SplitTileLayer(ysplits, north_layer, mid_layer, south_layer, args);
-    tiles.name = name;
-    tiles.pretty = pretty;
-    return tiles;
+    var layer = new SplitTileLayer(ysplits, north_layer, mid_layer, south_layer, args);
+    layer.name = name;
+    layer.pretty = pretty;
+    // like in findlayer
+    register_layer(layer);
+
+    return layer;
 };
 
 // for attaching leaflet.Labels to circles
@@ -1755,144 +1758,129 @@ findlayer('ls-dr9-north');
 findlayer('ls-dr9-north-model');
 findlayer('ls-dr9-north-resid');
 {% endif %}
-  
+
 {% if enable_dr10 %}
-
-findlayer('ls-dr10');
 findlayer('ls-dr10-south');
-
-findlayer('ls-dr10-model');
 findlayer('ls-dr10-south-model');
-
-findlayer('ls-dr10-resid');
 findlayer('ls-dr10-south-resid');
 
+findlayer('ls-dr10-mid');
+findlayer('ls-dr10-mid-model');
+findlayer('ls-dr10-mid-resid');
+
 // grz
-findlayer('ls-dr10-grz');
 findlayer('ls-dr10-south-grz');
-findlayer('ls-dr10-model-grz');
 findlayer('ls-dr10-south-model-grz');
-findlayer('ls-dr10-resid-grz');
 findlayer('ls-dr10-south-resid-grz');
 
-tiles = split_layer('ls-dr10', 'Legacy Surveys DR10 images', 32.375,
-                    namedLayers['ls-dr9-north'],
-                    namedLayers['ls-dr10'],
-                    namedLayers['ls-dr10-south'],
-                    {attribution: attribs['ls']});
-allLayers.push(tiles);
+findlayer('ls-dr10-mid-grz');
+findlayer('ls-dr10-mid-model-grz');
+findlayer('ls-dr10-mid-resid-grz');
 
-tiles = split_layer('ls-dr10-model', 'Legacy Surveys DR10 models', 32.375,
-                    namedLayers['ls-dr9-north-model'],
-                    namedLayers['ls-dr10-model'],
-                    namedLayers['ls-dr10-south-model'],
-                    {attribution: attribs['ls']});
-allLayers.push(tiles);
+split_layer('ls-dr10', 'Legacy Surveys DR10 images', 32.375,
+            namedLayers['ls-dr9-north'],
+            namedLayers['ls-dr10-mid'],
+            namedLayers['ls-dr10-south'],
+            {attribution: attribs['ls']});
 
-tiles = split_layer('ls-dr10-resid', 'Legacy Surveys DR10 residuals', 32.375,
-                    namedLayers['ls-dr9-north-resid'],
-                    namedLayers['ls-dr10-resid'],
-                    namedLayers['ls-dr10-south-resid'],
-                    {attribution: attribs['ls']});
-allLayers.push(tiles);
+split_layer('ls-dr10-model', 'Legacy Surveys DR10 models', 32.375,
+            namedLayers['ls-dr9-north-model'],
+            namedLayers['ls-dr10-mid-model'],
+            namedLayers['ls-dr10-south-model'],
+            {attribution: attribs['ls']});
 
-tiles = split_layer('ls-dr10-grz', 'Legacy Surveys DR10 images (grz)', 32.375,
-                    namedLayers['ls-dr9-north'],
-                    namedLayers['ls-dr10-grz'],
-                    namedLayers['ls-dr10-south-grz'],
-                    {attribution: attribs['ls']});
-allLayers.push(tiles);
+split_layer('ls-dr10-resid', 'Legacy Surveys DR10 residuals', 32.375,
+            namedLayers['ls-dr9-north-resid'],
+            namedLayers['ls-dr10-mid-resid'],
+            namedLayers['ls-dr10-south-resid'],
+            {attribution: attribs['ls']});
 
-tiles = split_layer('ls-dr10-model-grz', 'Legacy Surveys DR10 models (grz)', 32.375,
-                    namedLayers['ls-dr9-north-model'],
-                    namedLayers['ls-dr10-model-grz'],
-                    namedLayers['ls-dr10-south-model-grz'],
-                    {attribution: attribs['ls']});
-allLayers.push(tiles);
+split_layer('ls-dr10-grz', 'Legacy Surveys DR10 images (grz)', 32.375,
+            namedLayers['ls-dr9-north'],
+            namedLayers['ls-dr10-mid-grz'],
+            namedLayers['ls-dr10-south-grz'],
+            {attribution: attribs['ls']});
 
-tiles = split_layer('ls-dr10-resid-grz', 'Legacy Surveys DR10 residuals (grz)', 32.375,
-                    namedLayers['ls-dr9-north'],
-                    namedLayers['ls-dr10-resid-grz'],
-                    namedLayers['ls-dr10-south-resid-grz'],
-                    {attribution: attribs['ls']});
-allLayers.push(tiles);
+split_layer('ls-dr10-model-grz', 'Legacy Surveys DR10 models (grz)', 32.375,
+            namedLayers['ls-dr9-north-model'],
+            namedLayers['ls-dr10-mid-model-grz'],
+            namedLayers['ls-dr10-south-model-grz'],
+            {attribution: attribs['ls']});
+
+split_layer('ls-dr10-resid-grz', 'Legacy Surveys DR10 residuals (grz)', 32.375,
+            namedLayers['ls-dr9-north'],
+            namedLayers['ls-dr10-mid-resid-grz'],
+            namedLayers['ls-dr10-south-resid-grz'],
+            {attribution: attribs['ls']});
 {% endif %}
-
 
 {% if enable_dr9 %}
 findlayer('ls-dr9-south');
-findlayer('ls-dr9');
+findlayer('ls-dr9-mid');
 
-tiles = split_layer('ls-dr9', 'Legacy Surveys DR9 images', 32.375,
-                    namedLayers['ls-dr9-north'],
-                    namedLayers['ls-dr9'],
-                    namedLayers['ls-dr9-south'],
-                    {attribution: attribs['ls']});
-allLayers.push(tiles);
+split_layer('ls-dr9', 'Legacy Surveys DR9 images', 32.375,
+            namedLayers['ls-dr9-north'],
+            namedLayers['ls-dr9-mid'],
+            namedLayers['ls-dr9-south'],
+            {attribution: attribs['ls']});
 
 {% if enable_dr9_models %}
-findlayer('ls-dr9-model');
+findlayer('ls-dr9-mid-model');
 findlayer('ls-dr9-south-model');
-tiles = split_layer('ls-dr9-model', 'Legacy Surveys DR9 models', 32.375,
-                    namedLayers['ls-dr9-north-model'],
-                    namedLayers['ls-dr9-model'],
-                    namedLayers['ls-dr9-south-model'],
-                    {attribution: attribs['ls']});
-allLayers.push(tiles);
+split_layer('ls-dr9-model', 'Legacy Surveys DR9 models', 32.375,
+            namedLayers['ls-dr9-north-model'],
+            namedLayers['ls-dr9-mid-model'],
+            namedLayers['ls-dr9-south-model'],
+            {attribution: attribs['ls']});
 {% endif %}
 
 {% if enable_dr9_resids %}
-findlayer('ls-dr9-resid');
+findlayer('ls-dr9-mid-resid');
 findlayer('ls-dr9-south-resid');
-tiles = split_layer('ls-dr9-resid', 'Legacy Surveys DR9 residuals', 32.375,
-                    namedLayers['ls-dr9-north-resid'],
-                    namedLayers['ls-dr9-resid'],
-                    namedLayers['ls-dr9-south-resid'],
-                    {attribution: attribs['ls']});
-allLayers.push(tiles);
+split_layer('ls-dr9-resid', 'Legacy Surveys DR9 residuals', 32.375,
+            namedLayers['ls-dr9-north-resid'],
+            namedLayers['ls-dr9-mid-resid'],
+            namedLayers['ls-dr9-south-resid'],
+            {attribution: attribs['ls']});
 {% endif %}
 
 {% endif %} // enable_dr9
 
-
 {% if enable_dr8 %}
-findlayer('ls-dr8');
-findlayer('ls-dr8-south');
 findlayer('ls-dr8-north');
+findlayer('ls-dr8-mid');
+findlayer('ls-dr8-south');
 {% if enable_dr8_models %}
-findlayer('ls-dr8-model');
-findlayer('ls-dr8-south-model');
 findlayer('ls-dr8-north-model');
+findlayer('ls-dr8-mid-model');
+findlayer('ls-dr8-south-model');
 {% endif %}
 {% if enable_dr8_resids %}
-findlayer('ls-dr8-resid');
-findlayer('ls-dr8-south-resid');
 findlayer('ls-dr8-north-resid');
+findlayer('ls-dr8-mid-resid');
+findlayer('ls-dr8-south-resid');
 {% endif %}
 
-tiles = split_layer('ls-dr8', 'Legacy Surveys DR8 images', 32.375,
-                    namedLayers['ls-dr8-north'],
-                    namedLayers['ls-dr8'],
-                    namedLayers['ls-dr8-south'],
-                    {attribution: attribs['ls']});
-allLayers.push(tiles);
+split_layer('ls-dr8', 'Legacy Surveys DR8 images', 32.375,
+            namedLayers['ls-dr8-north'],
+            namedLayers['ls-dr8-mid'],
+            namedLayers['ls-dr8-south'],
+            {attribution: attribs['ls']});
 
 {% if enable_dr8_models %}
-tiles = split_layer('ls-dr8-model', 'Legacy Surveys DR8 models', 32.375,
+split_layer('ls-dr8-model', 'Legacy Surveys DR8 models', 32.375,
                     namedLayers['ls-dr8-north-model'],
-                    namedLayers['ls-dr8-model'],
+                    namedLayers['ls-dr8-mid-model'],
                     namedLayers['ls-dr8-south-model'],
                     {attribution: attribs['ls']});
-allLayers.push(tiles);
 {% endif %}
 
 {% if enable_dr8_resids %}
-tiles = split_layer('ls-dr8-resid', 'Legacy Surveys DR8 residuals', 32.375,
+split_layer('ls-dr8-resid', 'Legacy Surveys DR8 residuals', 32.375,
                     namedLayers['ls-dr8-north-resid'],
-                    namedLayers['ls-dr8-resid'],
+                    namedLayers['ls-dr8-mid-resid'],
                     namedLayers['ls-dr8-south-resid'],
                     {attribution: attribs['ls']});
-allLayers.push(tiles);
 {% endif %}
 
 {% endif %} // enable_dr8
@@ -1901,14 +1889,13 @@ allLayers.push(tiles);
 {% if enable_dr67 %}
 findlayer('decals-dr7')
 findlayer('mzls+bass-dr6')
-findlayer('ls-dr67')
+findlayer('ls-dr67-mid')
 
-tiles = split_layer('ls-dr67', 'Legacy Surveys DR6+DR7', 32.375,
-                    namedLayers['mzls+bass-dr6'],
-                    namedLayers['ls-dr67'],
-                    namedLayers['decals-dr7'],
-                    {attribution: attribs['ls']});
-allLayers.push(tiles);
+split_layer('ls-dr67', 'Legacy Surveys DR6+DR7', 32.375,
+            namedLayers['mzls+bass-dr6'],
+            namedLayers['ls-dr67-mid'],
+            namedLayers['decals-dr7'],
+            {attribution: attribs['ls']});
 {% endif %}
 
 //console.log('Requested layer: "' + layer_name + '"');
@@ -3919,6 +3906,7 @@ for (var i=0; i<polygonOverlays.length; i++) {
 {% endfor %}
 {% endif %}
 
+ // FIXME -- need this?
 for (var i in allLayers) {
     var layer = allLayers[i];
     //console.log('layer.name ' + layer.name + ' pretty ' + layer.pretty);
@@ -3935,6 +3923,16 @@ function drop_null(lst) {
     return rtn;
 }
 
+function register_layer(layer) {
+    baseMaps[layer.pretty] = layer;
+    allLayers.push(layer);
+    namedLayers[layer.name] = layer;
+    if (layer_name == layer.name) {
+        layer.addTo(map);
+        added = true;
+    }
+}
+  
 function findlayer(name, children=[]) {
     //console.log('findlayer', name);
     if (!(name in namedLayers)) {
@@ -3942,14 +3940,7 @@ function findlayer(name, children=[]) {
         if (name in tile_layers) {
             console.log('Creating layer', name);
             var layer = get_tile_layer(name);
-            baseMaps[layer.pretty] = layer;
-            allLayers.push(layer);
-            namedLayers[layer.name] = layer;
-            // ???
-            if (layer_name == layer.name) {
-                layer.addTo(map);
-                added = true;
-            }
+            register_layer(layer);
         } else {
             return null;
         }
