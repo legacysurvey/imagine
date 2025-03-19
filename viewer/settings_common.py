@@ -44,13 +44,12 @@ ENABLE_OLDER = True
 # scientist view (vs public)
 ENABLE_SCIENCE = True
 
-# Collab-private data!
-ENABLE_DESI_DATA = False
-
 # DESI Early Data Release
 ENABLE_DESI_EDR = True
 # DESI DR1
-ENABLE_DESI_DR1 = False
+ENABLE_DESI_DR1 = True
+# DESI Collab-private data!
+ENABLE_DESI_DATA = False
 
 ENABLE_MERIAN = False
 
