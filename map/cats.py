@@ -382,6 +382,9 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
+    #print('Spectra:', type(spectra), spectra)
+    #print('Zbests:', type(zbests), zbests)
+
     return call_prospect(spectra, zbests, redrock_template_dir=redrock_template_dir,
                          outdir=outdir)
 

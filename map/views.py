@@ -2652,7 +2652,7 @@ class RebrickedMixin(object):
         if os.path.exists(fn):
             print('Target filename (rebricked) exists:', fn)
             return fn
-        print('Creating target filename (rebricked):', fn)
+        #print('Creating target filename (rebricked):', fn)
         fn = self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
         if fn is None:
             return None
@@ -3830,8 +3830,9 @@ class IbisColorLayer(ReDecalsLayer):
         return rgb
 
 class Ibis3Layer(ReDecalsLayer):
-    def __init__(self, name, imagetype, survey):
-        super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'])
+    def __init__(self, name, imagetype, survey, drname=None):
+        super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'],
+                         drname=drname)
         self.rgb_plane = None
     def get_rgb(self, imgs, bands, **kwargs):
         from legacypipe.survey import sdss_rgb as ls_rgb
@@ -3844,6 +3845,10 @@ class Ibis3Layer(ReDecalsLayer):
                     rgb[:,:,i] = rgb[:,:,self.rgb_plane]
         
         return rgb
+class Ibis3ModelLayer(UniqueBrickMixin, Ibis3Layer):
+    pass
+class Ibis3ResidLayer(UniqueBrickMixin, ResidMixin, Ibis3Layer):
+    pass
 
 class LegacySurveySplitLayer(MapLayer):
     def __init__(self, name, top, bottom, decsplit, top_bands='grz', bottom_bands='grz'):
@@ -6315,17 +6320,28 @@ def get_survey(name):
 
     elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',
                   'ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
-                  'ibis-3-wide-m490', 'ibis-3-wide-m517',]:
+                  'ibis-3-wide-m490', 'ibis-3-wide-m517',
+                  'ibis-4-m411', 'ibis-4-m438', 'ibis-4-m464', 'ibis-4-m490', 'ibis-4-m517',
+                  'ibis-4-m411-model', 'ibis-4-m438-model', 'ibis-4-m464-model',
+                  'ibis-4-m490-model', 'ibis-4-m517-model',
+                  'ibis-4-m411-resid', 'ibis-4-m438-resid', 'ibis-4-m464-resid',
+                  'ibis-4-m490-resid', 'ibis-4-m517-resid',
+                  ]:
+        # -> ibis-3 / ibis-3-wide / ibis-4
+        name = name.replace('-model', '')
+        name = name.replace('-resid', '')
         name = name[:-5]
         dirnm = os.path.join(basedir, name)
-
+        
+    elif name == 'ls-dr11-early':
+        survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
     if survey is None and not os.path.exists(dirnm):
         return None
 
     if survey is None:
         survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
-        #print('Creating LegacySurveyData for', name, 'with survey', survey, 'dir', dirnm)
+        print('Creating LegacySurveyData for', name, 'with survey', survey, 'dir', dirnm)
 
     names_urls = {
         'mzls+bass-dr6': ('MzLS+BASS DR6', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr6/'),
@@ -8334,16 +8350,52 @@ def get_layer(name, default=None):
             layer.bands = ['M464']
             layer.rgb_plane = 1
 
-    elif name in ['ibis-3', 'ibis-3-wide']:
-        survey = get_survey(name)
-        layer = Ibis3Layer(name, 'image', survey)
+    elif name in ['ibis-3', 'ibis-3-wide',
+                  'ibis-4',
+                  'ibis-4-model',
+                  'ibis-4-resid',
+                  ]:
+        sname = name.replace('-model', '')
+        sname = sname.replace('-resid', '')
+        survey = get_survey(sname)
 
-    elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',]:
-        survey = get_survey('ibis-3')
-        layer = Ibis3Layer('ibis-3', 'image', survey)
-        band = name[-4:].upper()
-        layer.bands = [band]
-        layer.rgb_plane = 2
+        image = Ibis3Layer(sname, 'image', survey)
+        model = Ibis3ModelLayer(sname+'-model', 'model', survey, drname=sname)
+        resid = Ibis3ResidLayer(image, model, sname+'-resid', 'resid', survey, drname=sname)
+        layers[sname           ] = image
+        layers[sname + '-model'] = model
+        layers[sname + '-resid'] = resid
+        layer = layers[name]
+
+    elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',
+                  'ibis-4-m411', 'ibis-4-m438', 'ibis-4-m464', 'ibis-4-m490', 'ibis-4-m517',
+                  'ibis-4-m411-model', 'ibis-4-m438-model', 'ibis-4-m464-model', 'ibis-4-m490-model', 'ibis-4-m517-model',
+                  'ibis-4-m411-resid', 'ibis-4-m438-resid', 'ibis-4-m464-resid', 'ibis-4-m490-resid', 'ibis-4-m517-resid',
+                  ]:
+        sname = name[:len('ibis-3')]
+        bname = name.replace('-model', '')
+        bname = bname.replace('-resid', '')
+        band = bname[-4:].upper()
+        assert(band in ['M411', 'M438', 'M464', 'M490', 'M517'])
+
+        basename = name.replace('-model', '')
+        basename = basename.replace('-resid', '')
+
+        survey = get_survey(sname)
+
+        image = Ibis3Layer(basename, 'image', survey, drname=sname)
+        image.bands = [band]
+        image.rgb_plane = 2
+        model = Ibis3ModelLayer(basename + '-model', 'model', survey, drname=sname)
+        model.bands = [band]
+        model.rgb_plane = 2
+        resid = Ibis3ResidLayer(image, model, basename + '-resid', 'resid', survey, drname=sname)
+        resid.bands = [band]
+        resid.rgb_plane = 2
+        layers[sname + '-' + band.lower()           ] = image
+        layers[sname + '-' + band.lower() + '-model'] = model
+        layers[sname + '-' + band.lower() + '-resid'] = resid
+        layer = layers[name]
 
     elif name in ['ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
                   'ibis-3-wide-m490', 'ibis-3-wide-m517',]:
@@ -8421,6 +8473,14 @@ def get_layer(name, default=None):
         layers[basename + '-model' + grzpart] = model
         layers[basename + '-resid' + grzpart] = resid
         layer = layers[name]
+
+    elif name == 'ls-dr11-early':  
+        bands = 'griz'
+        survey = get_survey(name)
+        image = LsDr10Layer(name, 'image', survey, bands=bands, drname=name)
+        layers[name] = image
+        layer = layers[name]       
+        layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', name)
 
     if layer is None:
         # Try generic rebricked
@@ -9088,7 +9148,10 @@ if __name__ == '__main__':
     #r = c.get('/static/tiles/ls-dr67-mid/1/5/17/12.jpg')
     #r = c.get('/ls-dr67-mid/1/11/1105/829.jpg')
     #r = c.get('/desi-dr1?supersecret=yes')
-    r = c.get('/desi-spec-dr1/1/cat.json?ralo=185.3891&rahi=185.6490&declo=12.6685&dechi=12.8128&supersecret=yes')
+    #r = c.get('/desi-spec-dr1/1/cat.json?ralo=185.3891&rahi=185.6490&declo=12.6685&dechi=12.8128&supersecret=yes')
+    #r = c.get('/ibis-4-resid/1/5/18/15.jpg')
+    #r = c.get('/ibis-4-m464-model/1/5/18/15.jpg')
+    r = c.get('/ibis-4-m464-resid/1/5/18/15.jpg')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)

@@ -628,6 +628,7 @@ def main():
             opt.maxra = 360
         if opt.minra is None:
             opt.minra = 0
+            
     elif 'ls-dr10' in opt.kind:
         #in ['ls-dr10-early', 'ls-dr10a', 'ls-dr10a-mode`l',
         #              'ls-dr10', 'ls-dr10-model', 'ls-dr10-resid']:
@@ -645,6 +646,21 @@ def main():
         if opt.minra is None:
             opt.minra = 0
 
+    elif 'ls-dr11' in opt.kind:
+        if opt.bands is None:
+            if opt.kind.endswith('-grz'):
+                opt.bands = 'grz'
+            else:
+                opt.bands = 'griz'
+        if opt.maxdec is None:
+            opt.maxdec = 40
+        if opt.mindec is None:
+            opt.mindec = -90
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0            
+     
     elif opt.kind in ['pandas']:
         if opt.bands is None:
             opt.bands = 'gi'
@@ -752,8 +768,9 @@ def main():
                          'cfht-cosmos-cahk',
                          'decaps2', 'decaps2-model',
                          'dr10-deep', 'dr10-deep-model', 'ibis-color', 'ibis',
-                         'ibis-3', 'ibis-3-wide',
-        ]
+                         'ibis-3', 'ibis-3-wide', 'ls-dr11-early',
+                         'ibis-4', 'ibis-4-model', 'ibis-4-resid',
+                         ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
             or opt.kind.startswith('dr9f')
@@ -960,10 +977,11 @@ def main():
             for band in bands:
                 fn = survey.find_file(filetype, brick=brick, band=band)
                 ex = os.path.exists(fn)
-                print('Brick', brick, 'band', band, 'exists?', ex, 'file', fn)
+                #print('Brick', brick, 'band', band, 'exists?', ex, 'file', fn)
                 has_band[band][i] = ex
                 if ex:
                     found = True
+            print(i, len(B.brickname), brick)
             exists[i] = found
 
         B.cut(exists)
