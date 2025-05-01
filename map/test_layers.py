@@ -2,6 +2,27 @@ test_layers = []
 test_cats = []
 test_ccds = []
 
+test_layers.append(('ls-dr11-early', "Legacy Surveys DR11 early images"))
+
+test_layers.append(('ibis-4', "IBIS (v4) COSMOS Color"))
+test_layers.append(('ibis-4-model', "IBIS (v4) COSMOS Color model"))
+test_layers.append(('ibis-4-resid', "IBIS (v4) COSMOS Color resid"))
+test_layers.append(('ibis-4-m411', "IBIS (v4) COSMOS M411"))
+test_layers.append(('ibis-4-m411-model', "IBIS (v4) COSMOS M411 model"))
+test_layers.append(('ibis-4-m411-resid', "IBIS (v4) COSMOS M411 resid"))
+test_layers.append(('ibis-4-m438', "IBIS (v4) COSMOS M438"))
+test_layers.append(('ibis-4-m438-model', "IBIS (v4) COSMOS M438 model"))
+test_layers.append(('ibis-4-m438-resid', "IBIS (v4) COSMOS M438 resid"))
+test_layers.append(('ibis-4-m464', "IBIS (v4) COSMOS M464"))
+test_layers.append(('ibis-4-m464-model', "IBIS (v4) COSMOS M464 model"))
+test_layers.append(('ibis-4-m464-resid', "IBIS (v4) COSMOS M464 resid"))
+test_layers.append(('ibis-4-m490', "IBIS (v4) COSMOS M490"))
+test_layers.append(('ibis-4-m490-model', "IBIS (v4) COSMOS M490 model"))
+test_layers.append(('ibis-4-m490-resid', "IBIS (v4) COSMOS M490 resid"))
+test_layers.append(('ibis-4-m517', "IBIS (v4) COSMOS M517"))
+test_layers.append(('ibis-4-m517-model', "IBIS (v4) COSMOS M517 model"))
+test_layers.append(('ibis-4-m517-resid', "IBIS (v4) COSMOS M517 resid"))
+
 test_layers.append(('ibis-3', "IBIS (v3) XMM Color"))
 test_layers.append(('ibis-3-m411', "IBIS (v3) XMM M411"))
 test_layers.append(('ibis-3-m438', "IBIS (v3) XMM M438"))
@@ -28,6 +49,8 @@ test_layers.append(("suprime-L464", "Suprime IA-L464 filter images"))
 test_layers.append(("suprime-L484", "Suprime IA-L484 filter images"))
 test_layers.append(("suprime-L505", "Suprime IA-L505 filter images"))
 test_layers.append(("suprime-L527", "Suprime IA-L527 filter images"))
+
+#test_layers.append(('ls-dr10-early', "Legacy Surveys DR10 early images"))
 
 # test_layers.append(("wiro-C", "WIRO C filter images"))
 # test_layers.append(("wiro-D", "WIRO D filter images"))

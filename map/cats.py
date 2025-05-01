@@ -1,6 +1,7 @@
 from __future__ import print_function
-from functools import lru_cache
 import os
+from functools import lru_cache
+from datetime import datetime
 
 if __name__ == '__main__':
     import sys
@@ -10,15 +11,9 @@ if __name__ == '__main__':
     django.setup()
 
 from django.http import HttpResponse
-from viewer import settings
-try:
-    from django.core.urlresolvers import reverse
-except:
-    # django 2.0
-    from django.urls import reverse
-from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 
-from datetime import datetime
+from viewer import settings
+from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 
 debug = print
 if not settings.DEBUG_LOGGING:
@@ -319,6 +314,13 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
 
     return call_prospect(spectra, zbests)
 
+def desi_prospect_dir(release, targetid):
+    if settings.DESI_PROSPECT_DIR is None:
+        return None
+    outdir = os.path.join(settings.DESI_PROSPECT_DIR, release,
+                          '%i' % (targetid % 1000), 'targetid%i' % targetid)
+    return outdir
+
 def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     from glob import glob
     from desispec.io import read_spectra
@@ -330,9 +332,8 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     import os
 
     # Check the cache!
-    outdir = None
-    if settings.DESI_PROSPECT_DIR is not None:
-        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % obj.targetid)
+    outdir = desi_prospect_dir(release, obj.targetid)
+    if outdir is not None:
         fn = os.path.join(outdir, 'prospect.html')
         if os.path.exists(fn):
             print('Cache hit for', fn)
@@ -353,7 +354,8 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     if release == 'edr':
         basedir = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji'
     elif release == 'dr1':
-        basedir = '/global/cfs/cdirs/desi/spectro/redux/iron'
+        #basedir = '/global/cfs/cdirs/desi/spectro/redux/iron'
+        basedir = '/global/cfs/cdirs/desi/public/dr1/spectro/redux/iron'
     else:
         basedir = '/global/cfs/cdirs/desi/spectro/redux/%s' % release
 
@@ -379,6 +381,9 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     zbests = zb
     #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
+
+    #print('Spectra:', type(spectra), spectra)
+    #print('Zbests:', type(zbests), zbests)
 
     return call_prospect(spectra, zbests, redrock_template_dir=redrock_template_dir,
                          outdir=outdir)
@@ -456,8 +461,8 @@ def cat_desi_edr_spectra_detail(req, targetid):
     release = 'edr'
 
     # Quick-check cache (without looking up object)
-    if settings.DESI_PROSPECT_DIR is not None:
-        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+    outdir = desi_prospect_dir(release, targetid)
+    if outdir is not None:
         fn = os.path.join(outdir, 'prospect.html')
         if os.path.exists(fn):
             print('Cache hit for', fn)
@@ -473,8 +478,8 @@ def cat_desi_dr1_spectra_detail(req, targetid):
     release = 'dr1'
 
     # Quick-check cache (without looking up object)
-    if settings.DESI_PROSPECT_DIR is not None:
-        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+    outdir = desi_prospect_dir(release, targetid)
+    if outdir is not None:
         fn = os.path.join(outdir, 'prospect.html')
         if os.path.exists(fn):
             print('Cache hit for', fn)
@@ -743,6 +748,9 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
     #print('Targetids:', T.targetid.dtype, T.targetid)
     rd = list((float(r),float(d)) for r,d in zip(T.get(racol), T.get(deccol)))
     J.update(dict(rd=rd, name=names, color=colors,
+                  healpix=[int(h) for h in T.healpix],
+                  survey=list(T.survey),
+                  program=list(T.program),
                   targetid=targetids))
     if 'fiber' in cols:
         J.update(fiberid=[int(i) for i in T.fiber])
@@ -2924,7 +2932,7 @@ def cat_user(req, ver):
     if 'radius' in cols:
         D.update(radius=list([float(r) for r in cat.radius]))
     if 'color' in cols:
-        D.update(color=list([c.strip() for c in cat.color]))
+        D.update(color=[str(c).strip() for c in cat.color])
     if 'abratio' in cols:
         D.update(abratio=list([float(r) for r in cat.abratio]))
     if 'posangle' in cols:
@@ -3406,7 +3414,10 @@ if __name__ == '__main__':
     #r = c.get('/desi-obs/daily/targetid2411699042779148')
     #r = c.get('/desi-obs-daily/1/cat.json?ralo=218.6108&rahi=218.6418&declo=30.9829&dechi=30.9974')
     #r = c.get('/desi-spectrum/daily/targetid2305843037000968814')
-    r = c.get('/desi-spectrum/daily/targetid39627920582379819')
+    #r = c.get('/desi-spectrum/daily/targetid39627920582379819')
+
+    r = c.get('/desi-spectrum/edr/targetid39627914966205909')
+
     f = open('out', 'wb')
     for x in r:
         f.write(x)

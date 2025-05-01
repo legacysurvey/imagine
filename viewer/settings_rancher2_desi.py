@@ -20,11 +20,14 @@ TILE_URL = 'https://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
 STATIC_TILE_URL = 'https://{s}.%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (DOMAIN, STATIC_URL_PATH)
 
+# save the "production" subdomains in settings_common
+SUBDOMAINS_PROD = SUBDOMAINS
+
 # each sub-domain would want to ask for the desi password.
 SUBDOMAINS = []
 
 STATIC_TILE_URL_B = 'https://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
-SUBDOMAINS_B = SUBDOMAINS
+SUBDOMAINS_B = SUBDOMAINS_PROD
 
 # no CORS -- so don't use subdomains, or specify hostname (www.legacysurvey.org vs legacysurvey.org)
 CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)

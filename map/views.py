@@ -10,13 +10,9 @@ if __name__ == '__main__':
 import os
 import sys
 import re
-from django.http import HttpResponse, StreamingHttpResponse
-try:
-    from django.core.urlresolvers import reverse, get_script_prefix
-except:
-    # django 2.0
-    from django.urls import reverse, get_script_prefix
 
+from django.http import HttpResponse, StreamingHttpResponse
+from django.urls import reverse, get_script_prefix
 from django import forms
 from django.shortcuts import redirect
 
@@ -29,18 +25,11 @@ from map.cats import get_random_galaxy, get_desi_tile_radec
 import matplotlib
 matplotlib.use('Agg')
 
-py3 = (sys.version_info[0] >= 3)
-
 debug_ps = None
 import pylab as plt
 if False:
     from astrometry.util.plotutils import PlotSequence
     debug_ps = PlotSequence('debug')
-
-
-# We add a version number to each layer, to allow long cache times
-# for the tile JPEGs.  Increment this version to invalidate
-# client-side caches.
 
 debug = print
 if not settings.DEBUG_LOGGING:
@@ -51,7 +40,9 @@ if not settings.INFO_LOGGING:
     def info(*args, **kwargs):
         pass
 
-
+# We add a version number to each layer, to allow long cache times
+# for the tile JPEGs.  Increment this version to invalidate
+# client-side caches.
 tileversions = {
     'sfd': [1, 2],
     'halpha': [1,],
@@ -66,67 +57,43 @@ tileversions = {
     'ztf': [1],
     'cfis-r': [1],
     'cfis-u': [1],
-
     'eboss': [1,],
-
     'phat': [1,],
     'm33': [1,],
-
-    'ls-dr8-north': [1],
-    'ls-dr8-north-model': [1],
-    'ls-dr8-north-resid': [1],
-
-    'ls-dr8-south': [1],
-    'ls-dr8-south-model': [1],
-    'ls-dr8-south-resid': [1],
-
-    'ls-dr8': [1],
-    'ls-dr8-model': [1],
-    'ls-dr8-resid': [1],
-
-    'ls-dr67': [1],
-
-    'decals-dr7': [1],
-    'decals-dr7-model': [1],
-    'decals-dr7-resid': [1],
-
-    'mzls+bass-dr6': [1],
-    'mzls+bass-dr6-model': [1],
-    'mzls+bass-dr6-resid': [1],
-
-    'decals-dr5': [1],
-    'decals-dr5-model': [1],
-    'decals-dr5-resid': [1],
-
     'decaps': [1, 2],
     'decaps-model': [1, 2],
     'decaps-resid': [1, 2],
-
     'decaps2': [2],
     'decaps2-model': [2],
     'decaps2-resid': [2],
-    
     'unwise-w1w2': [1],
     'unwise-neo2': [1],
     'unwise-neo3': [1],
     'unwise-neo4': [1],
     'unwise-neo6': [1],
     'unwise-neo7': [1],
-
     'unwise-neo7-mask': [1],
-    
     'unwise-cat-model': [1],
-
     'cutouts': [1],
-
-    'dr9k-north': [1, 2],
-    'dr9k-north-model': [1, 2],
-    'dr9k-north-resid': [1, 2],
-
-    'dr9k-south': [1, 2],
-    'dr9k-south-model': [1, 2],
-    'dr9k-south-resid': [1, 2],
-
+    'decals-dr5': [1],
+    'decals-dr5-model': [1],
+    'decals-dr5-resid': [1],
+    'mzls+bass-dr6': [1],
+    'mzls+bass-dr6-model': [1],
+    'mzls+bass-dr6-resid': [1],
+    'ls-dr67': [1],
+    'decals-dr7': [1],
+    'decals-dr7-model': [1],
+    'decals-dr7-resid': [1],
+    'ls-dr8-north': [1],
+    'ls-dr8-north-model': [1],
+    'ls-dr8-north-resid': [1],
+    'ls-dr8-south': [1],
+    'ls-dr8-south-model': [1],
+    'ls-dr8-south-resid': [1],
+    'ls-dr8': [1],
+    'ls-dr8-model': [1],
+    'ls-dr8-resid': [1],
     'ls-dr9-north': [1],
     'ls-dr9-north-model': [1],
     'ls-dr9-north-resid': [1],
@@ -152,11 +119,6 @@ def checkflavour(req, flavour):
                             status=500, reason='bad flavour')
 
 def my_reverse(req, *args, **kwargs):
-    ### FIXME -- does this work for decaps.legacysurvey.org ??
-    # Or need something like:
-    # path = settings.ROOT_URL
-    # if is_decaps(req):
-    #     path = '/'
     return reverse(*args, **kwargs)
 
 def fix_hostname(req, url):
@@ -180,7 +142,7 @@ def ci(req):
     from django.shortcuts import render
     return render(req, 'desi-ci.html')
 
-def request_layer_name(req, default_layer='ls-dr8'):
+def request_layer_name(req, default_layer='ls-dr9'):
     name = req.GET.get('layer', default_layer)
     return clean_layer_name(name)
 
@@ -199,10 +161,6 @@ def clean_layer_name(name):
         'mzls bass-dr6': 'mzls+bass-dr6',
         'mzls bass-dr6-model': 'mzls+bass-dr6-model',
         'mzls bass-dr6-resid': 'mzls+bass-dr6-resid',
-
-        #'decaps2': 'decaps',
-        #'decaps2-model': 'decaps-model',
-        #'decaps2-resid': 'decaps-resid',
 
         'dr8': 'ls-dr8',
         'dr8-model': 'ls-dr8-model',
@@ -231,7 +189,7 @@ def layer_to_survey_name(layer):
 #  req.layer_name
 #  req.survey_name
 #  req.layer (MapLayer subclass)
-def needs_layer(default_layer='ls-dr8', doctype='html', badjson=None):
+def needs_layer(default_layer='ls-dr9', doctype='html', badjson=None):
     def decorate(func):
         def wrapped_req(req, *args, **kwargs):
             layername = request_layer_name(req, default_layer=default_layer)
@@ -247,11 +205,8 @@ def needs_layer(default_layer='ls-dr8', doctype='html', badjson=None):
         return wrapped_req
     return decorate
 
-
-
 def is_decaps(req):
     host = req.META.get('HTTP_HOST', None)
-    #print('Host:', host)
     return (host == 'decaps.legacysurvey.org')
 
 def is_m33(req):
@@ -262,8 +217,27 @@ def is_unions(req):
     host = req.META.get('HTTP_HOST', None)
     return (host == 'unions.legacysurvey.org') or (host == 'cloud.legacysurvey.org')
 
+def lookup_any_targetid(tid):
+    from map.cats import lookup_targetid
+    if settings.ENABLE_DESI_DATA:
+        print('Looking in daily')
+        t = lookup_targetid(tid, 'daily')
+        if t is not None:
+            print('Found it!')
+            return t
+    if settings.ENABLE_DESI_DR1:
+        print('Looking in DR1')
+        t = lookup_targetid(tid, 'dr1')
+        if t is not None:
+            print('Found it!')
+            return t
+    print('Looking in EDR')
+    t = lookup_targetid(tid, 'edr')
+    if t is not None:
+        print('Found it!')
+    return t
+
 def index(req, **kwargs):
-    #print('Host is', req.META.get('HTTP_HOST', None))
     if is_decaps(req):
         return decaps(req)
     if is_m33(req):
@@ -272,35 +246,6 @@ def index(req, **kwargs):
         return unions(req)
     return _index(req, **kwargs)
 
-def test(req):
-    maxZoom = 16
-    abcd = ['a','b','c','d']
-    #nersc = settings.NERSC_TILE_URL
-    nersc = 'https://{s}.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
-    nersc_sub = abcd
-    ima = settings.STATIC_TILE_URL_B
-    ima_sub = abcd
-    tileurl = settings.TILE_URL
-    
-    tileurls = {
-        'sdss': [ [1, 13, ima, ima_sub],
-                  [14, maxZoom, nersc, nersc_sub], ],
-        'cfis_r': [ [1, maxZoom, tileurl, []], ],
-        'cfis_u': [ [1, maxZoom, tileurl, []], ],
-    }
-
-    args = dict(
-        tileurls=tileurls,
-        zoom = 13,
-        layer = 'sdss',
-        ra = 227.017,
-        dec = 42.819,
-        maxZoom = 16,
-        maxNativeZoom = 16,
-    )
-    from django.shortcuts import render
-    return render(req, 'test.html', args)
-    
 def _index(req,
            default_layer = 'ls-dr9',
            default_radec = (None,None),
@@ -311,10 +256,13 @@ def _index(req,
            merian_first = False,
            **kwargs):
 
-
     tileurl = settings.TILE_URL
     subs = settings.SUBDOMAINS
     def_url = [0, maxZoom, tileurl, subs]
+
+    static_url = settings.STATIC_TILE_URL
+    static_subs = subs
+    static_url = [0, 5, static_url, static_subs]
 
     prod_url = settings.STATIC_TILE_URL_B
     #'https://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
@@ -341,14 +289,14 @@ def _index(req,
     if settings.ENABLE_DR10:
         dr10layers = {
             'ls-dr10-south': ['Legacy Surveys DR10-south images',
-                              [def_url],  maxnative, 'ls'],
-	    'ls-dr10': ['Legacy Surveys DR10 images', [def_url], maxnative, 'ls'],
+                              [static_url, def_url],  maxnative, 'ls'],
             'ls-dr10-south-model': ['Legacy Surveys DR10-south models',
                               [def_url],  maxnative, 'ls'],
-	    'ls-dr10-model': ['Legacy Surveys DR10 models', [def_url], maxnative, 'ls'],
             'ls-dr10-south-resid': ['Legacy Surveys DR10-south residuals',
                               [def_url],  maxnative, 'ls'],
-	    'ls-dr10-resid': ['Legacy Surveys DR10 residuals', [def_url], maxnative, 'ls'],
+	    'ls-dr10-mid': ['Legacy Surveys DR10 images', [static_url, def_url], maxnative, 'ls'],
+	    'ls-dr10-mid-model': ['Legacy Surveys DR10 models', [def_url], maxnative, 'ls'],
+	    'ls-dr10-mid-resid': ['Legacy Surveys DR10 residuals', [def_url], maxnative, 'ls'],
         }
         # Add regular and "-grz" versions of the above layers.
         for k,v in dr10layers.items():
@@ -368,12 +316,14 @@ def _index(req,
 
     if settings.ENABLE_DR9:
         tile_layers.update({
-            'ls-dr9': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
             'ls-dr9-south': ['Legacy Surveys DR9-south images',
                              [[0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg', []],
                               def_url], maxnative, 'ls'],
             'ls-dr9-south-model': ['Legacy Surveys DR9-south models', [def_url], maxnative, 'ls'],
             'ls-dr9-south-resid': ['Legacy Surveys DR9-south residuals', [def_url], maxnative, 'ls'],
+            'ls-dr9-mid': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
+            'ls-dr9-mid-model': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
+            'ls-dr9-mid-resid': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
             'ls-dr9.1.1': ['Legacy Surveys DR9.1.1 COSMOS deep images', [def_url], maxZoom, 'ls'],
             'ls-dr9.1.1-model': ['Legacy Surveys DR9.1.1 COSMOS deep models', [def_url],
                                  maxZoom, 'ls'],
@@ -383,17 +333,17 @@ def _index(req,
 
     if settings.ENABLE_DR8:
         tile_layers.update({
-            'ls-dr8': ['Legacy Surveys DR8 images', [aws_url, def_url], maxnative, 'ls',
-                       {'id':'dr8'}],
             'ls-dr8-north': ['Legacy Surveys DR8-north images', [aws_url, def_url], maxnative, 'ls',
                              {'id':'dr8-north'}],
+            'ls-dr8-mid': ['Legacy Surveys DR8 images', [aws_url, def_url], maxnative, 'ls',
+                             {'id':'dr8'}],
             'ls-dr8-south': ['Legacy Surveys DR8-south images', [aws_url, def_url], maxnative, 'ls',
                              {'id':'dr8-south'}],
-            'ls-dr8-model': ['Legacy Surveys DR8 models', [def_url], maxnative, 'ls'],
             'ls-dr8-north-model': ['Legacy Surveys DR8-north models', [def_url], maxnative, 'ls'],
+            'ls-dr8-mid-model': ['Legacy Surveys DR8 models', [def_url], maxnative, 'ls'],
             'ls-dr8-south-model': ['Legacy Surveys DR8-south models', [def_url], maxnative, 'ls'],
-            'ls-dr8-resid': ['Legacy Surveys DR8 residuals', [def_url], maxnative, 'ls'],
             'ls-dr8-north-resid': ['Legacy Surveys DR8-north residuals', [def_url], maxnative, 'ls'],
+            'ls-dr8-mid-resid': ['Legacy Surveys DR8 residuals', [def_url], maxnative, 'ls'],
             'ls-dr8-south-resid': ['Legacy Surveys DR8-south residuals', [def_url], maxnative, 'ls'],
         })
 
@@ -417,7 +367,7 @@ def _index(req,
         })
 
     if settings.ENABLE_DR67:
-        tile_layers['ls-dr67'] = ['Legacy Surveys DR6+DR7 images', [[14, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls']
+        tile_layers['ls-dr67-mid'] = ['Legacy Surveys DR6+DR7 images', [static_url, [6, maxZoom, tileurl, subs]], maxnative, 'ls']
 
     if settings.ENABLE_DR5:
         tile_layers.update({
@@ -457,8 +407,8 @@ def _index(req,
 
     if settings.ENABLE_HSC_DR2:
         tile_layers.update({
-            'hsc-dr2': ['HSC DR2', [def_url], maxnative, 'hsc'],
-            'hsc-dr3': ['HSC DR3', [def_url], maxnative, 'hsc'],
+            'hsc-dr2': ['HSC DR2', [def_url], maxnative, 'hsc2'],
+            'hsc-dr3': ['HSC DR3', [def_url], maxnative, 'hsc3'],
         })
 
     if settings.ENABLE_VLASS:
@@ -527,9 +477,12 @@ def _index(req,
         urls = over
         orig[1] = urls
 
+    enable_desi_dr1 = settings.ENABLE_DESI_DR1
+
     kwkeys = dict(
         tile_layers=tile_layers,
         enable_desi_edr = settings.ENABLE_DESI_EDR,
+        enable_desi_dr1 = enable_desi_dr1,
         #enable_merian = settings.ENABLE_MERIAN,
         science = settings.ENABLE_SCIENCE,
         enable_older = settings.ENABLE_OLDER,
@@ -597,6 +550,7 @@ def _index(req,
         enable_spectra = settings.ENABLE_SPECTRA,
         enable_phat = settings.ENABLE_PHAT,
         #enable_pandas = settings.ENABLE_PANDAS,
+        enable_cfis = settings.ENABLE_CFIS,
         enable_desi_menu = True,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
@@ -667,18 +621,15 @@ def _index(req,
 
     # Process DESI targetid parameter
     try:
-        from map.cats import lookup_targetid
         tid = req.GET.get('targetid')
         tid = int(tid)
         print('Looking up TARGETID', tid)
-        if settings.ENABLE_DESI_DATA:
-            t = lookup_targetid(tid, 'daily')
-        else:
-            t = lookup_targetid(tid, 'edr')
-
+        t = lookup_any_targetid(tid)
+        print('t:', t)
+        print(t.get_columns())
         if t is not None:
-            ra = t.ra
-            dec = t.dec
+            ra = t.target_ra
+            dec = t.target_dec
             print('Targetid found: RA,Dec', ra, dec)
             print('(targetid', t.targetid, ')')
         else:
@@ -882,8 +833,8 @@ def desi_edr(req):
 def desi_dr1(req):
     return _index(req,
                   default_layer='ls-dr9',
-                  default_radec=(0.0, 0.0),
-                  default_zoom=5,
+                  default_radec=(185.5191, 12.7406),
+                  default_zoom=13,
                   rooturl=settings.ROOT_URL + '/desi-dr1',
                   append_args = '&desi-tiles-dr1&desi-spec-dr1',
     )
@@ -964,7 +915,6 @@ def phat(req):
               )
 
 def query_simbad(q):
-    # py3
     from urllib.request import urlopen
     from urllib.parse import urlencode
 
@@ -989,14 +939,8 @@ def query_simbad(q):
     return True, (t.ra_d, t.dec_d)
 
 def query_ned(q):
-    try:
-        # py2
-        from urllib2 import urlopen
-        from urllib import urlencode
-    except:
-        # py3
-        from urllib.request import urlopen
-        from urllib.parse import urlencode
+    from urllib.request import urlopen
+    from urllib.parse import urlencode
 
     url = 'https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/NSV?'
     url += urlencode(dict(q=q)).replace('q=','')
@@ -1022,8 +966,7 @@ def query_ned(q):
     code = f.getcode()
     print('Code', code)
     for line in f.readlines():
-        if py3:
-            line = line.decode()
+        line = line.decode()
         words = line.split()
         if len(words) == 0:
             continue
@@ -1062,12 +1005,11 @@ def name_query(req):
     # Check for TARGET or TARGETID <targetid>
     words = obj.strip().split()
     if len(words) == 2 and words[0].lower() in ['target', 'targetid']:
-        from map.cats import lookup_targetid
         tid = int(words[1])
         try:
-            t = lookup_targetid(tid, 'daily')
-            ra = t.ra
-            dec = t.dec
+            t = lookup_any_targetid(tid)
+            ra = t.target_ra
+            dec = t.target_dec
         except RuntimeError as e:
             return HttpResponse(json.dumps(dict(error='DESI targetid %i not found' % tid)))
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Targetid %i' % tid)))
@@ -1639,8 +1581,6 @@ class MapLayer(object):
         #         brickname = brick.brickname
         #         print('Will read', brickname, 'for band', band, 'scale', scale)
 
-        coordtype = self.get_pixel_coord_type(scale)
-
         rimgs = []
         for band in bands:
             acc = self.initialize_accumulator_for_render(W, H, band, invvar=invvar, maskbits=maskbits)
@@ -1749,9 +1689,13 @@ class MapLayer(object):
 
                 #print('BWCS shape', bwcs.shape, 'desired subimage shape', yhi-ylo, xhi-xlo,
                 #'subwcs shape', subwcs.shape, 'img shape', img.shape)
+                coordtype = self.get_pixel_coord_type(scale)
+
                 ih,iw = subwcs.shape
-                assert(np.iinfo(coordtype).max > max(ih,iw))
                 oh,ow = wcs.shape
+                if np.iinfo(coordtype).max < max([ih, iw, oh, ow]):
+                    coordtype = int
+                assert(np.iinfo(coordtype).max > max(ih,iw))
                 assert(np.iinfo(coordtype).max > max(oh,ow))
 
                 #print('Resampling', img.shape)
@@ -1880,7 +1824,7 @@ class MapLayer(object):
         return ver,zoom,x,y
 
     def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
-                   invvar=False, maskbits=False):
+                   invvar=False, maskbits=False, blank_ok=False):
         rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, tempfiles=tempfiles,
                                      invvar=invvar, maskbits=maskbits)
         if get_images_only:
@@ -1888,9 +1832,13 @@ class MapLayer(object):
         if bands is None:
             bands = self.get_bands()
         if rimgs is None:
-            rgb = None
-        else:
-            rgb = self.get_rgb(rimgs, bands)
+            if not blank_ok:
+                return None, None
+            h,w = wcs.shape
+            nb = len(bands)
+            import numpy as np
+            rimgs = [np.zeros((h,w), np.float32) for i in range(nb)]
+        rgb = self.get_rgb(rimgs, bands)
         return rimgs, rgb
 
     def get_tile(self, req, ver, zoom, x, y,
@@ -2095,7 +2043,8 @@ class MapLayer(object):
 
         #print('Cutout: bands', bands)
         if jpeg:
-            ims,rgb = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
+            ims,rgb = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
+                                      blank_ok=True)
             self.write_jpeg(out_fn, rgb)
             if req is not None:
                 if 'sga' in req.GET or 'sga-parent' in req.GET:
@@ -2703,7 +2652,7 @@ class RebrickedMixin(object):
         if os.path.exists(fn):
             print('Target filename (rebricked) exists:', fn)
             return fn
-        print('Creating target filename (rebricked):', fn)
+        #print('Creating target filename (rebricked):', fn)
         fn = self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
         if fn is None:
             return None
@@ -3881,8 +3830,9 @@ class IbisColorLayer(ReDecalsLayer):
         return rgb
 
 class Ibis3Layer(ReDecalsLayer):
-    def __init__(self, name, imagetype, survey):
-        super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'])
+    def __init__(self, name, imagetype, survey, drname=None):
+        super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'],
+                         drname=drname)
         self.rgb_plane = None
     def get_rgb(self, imgs, bands, **kwargs):
         from legacypipe.survey import sdss_rgb as ls_rgb
@@ -3895,6 +3845,10 @@ class Ibis3Layer(ReDecalsLayer):
                     rgb[:,:,i] = rgb[:,:,self.rgb_plane]
         
         return rgb
+class Ibis3ModelLayer(UniqueBrickMixin, Ibis3Layer):
+    pass
+class Ibis3ResidLayer(UniqueBrickMixin, ResidMixin, Ibis3Layer):
+    pass
 
 class LegacySurveySplitLayer(MapLayer):
     def __init__(self, name, top, bottom, decsplit, top_bands='grz', bottom_bands='grz'):
@@ -4030,6 +3984,9 @@ class LegacySurveySplitLayer(MapLayer):
         from map.cats import radecbox_to_wcs
         wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
         cat,hdr = self.get_catalog_in_wcs(wcs)
+        if cat is None:
+            return HttpResponse('No catalog sources in layer and RA,Dec box')
+        print('Catalog in WCS:', cat)
         fn = 'cat-%s.fits' % (self.name)
         import tempfile
         f,outfn = tempfile.mkstemp(suffix='.fits')
@@ -4078,6 +4035,7 @@ class LegacySurveySplitLayer(MapLayer):
         hdr = None
         for layer,above in [(self.top,True), (self.bottom,False)]:
             cat,h = layer.get_catalog_in_wcs(wcs)
+            print('split cat:', cat)
             if cat is not None and len(cat)>0:
                 if above:
                     cat.cut(cat.dec >= self.decsplit)
@@ -4145,10 +4103,10 @@ class LegacySurveySplitLayer(MapLayer):
         return 0
 
     def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
-                   invvar=False, maskbits=False):
+                   invvar=False, maskbits=False, blank_ok=False):
         #print('Split Layer render_rgb: bands=', bands)
         kwa = dict(tempfiles=tempfiles, get_images_only=get_images_only, invvar=invvar,
-                   maskbits=maskbits)
+                   maskbits=maskbits, blank_ok=blank_ok)
         if y != -1:
             # FIXME -- this is not the correct cut -- only listen to split for NGC --
             # but this doesn't get called anyway because the JavaScript layer has the smarts.
@@ -6315,21 +6273,21 @@ def get_survey(name):
         survey.drname = 'DECaPS 2'
         survey.drurl = 'https://portal.nersc.gov/project/cosmo/temp/dstn/decaps2-coadd'#https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
         
-    elif name == 'ls-dr67':
+    elif name in ['ls-dr67', 'ls-dr67-mid']:
         north = get_survey('mzls+bass-dr6')
         north.layer = 'mzls+bass-dr6'
         south = get_survey('decals-dr7')
         south.layer = 'decals-dr7'
         survey = SplitSurveyData(north, south)
 
-    elif name == 'ls-dr8':
+    elif name in['ls-dr8', 'ls-dr8-mid']:
         north = get_survey('ls-dr8-north')
         north.layer = 'ls-dr8-north'
         south = get_survey('ls-dr8-south')
         south.layer = 'ls-dr8-south'
         survey = SplitSurveyData(north, south)
 
-    elif name == 'ls-dr9':
+    elif name in ['ls-dr9', 'ls-dr9-mid']:
         north = get_survey('ls-dr9-north')
         north.layer = 'ls-dr9-north'
         south = get_survey('ls-dr9-south')
@@ -6362,17 +6320,28 @@ def get_survey(name):
 
     elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',
                   'ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
-                  'ibis-3-wide-m490', 'ibis-3-wide-m517',]:
+                  'ibis-3-wide-m490', 'ibis-3-wide-m517',
+                  'ibis-4-m411', 'ibis-4-m438', 'ibis-4-m464', 'ibis-4-m490', 'ibis-4-m517',
+                  'ibis-4-m411-model', 'ibis-4-m438-model', 'ibis-4-m464-model',
+                  'ibis-4-m490-model', 'ibis-4-m517-model',
+                  'ibis-4-m411-resid', 'ibis-4-m438-resid', 'ibis-4-m464-resid',
+                  'ibis-4-m490-resid', 'ibis-4-m517-resid',
+                  ]:
+        # -> ibis-3 / ibis-3-wide / ibis-4
+        name = name.replace('-model', '')
+        name = name.replace('-resid', '')
         name = name[:-5]
         dirnm = os.path.join(basedir, name)
-
+        
+    elif name == 'ls-dr11-early':
+        survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
     if survey is None and not os.path.exists(dirnm):
         return None
 
     if survey is None:
         survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
-        #print('Creating LegacySurveyData for', name, 'with survey', survey, 'dir', dirnm)
+        print('Creating LegacySurveyData for', name, 'with survey', survey, 'dir', dirnm)
 
     names_urls = {
         'mzls+bass-dr6': ('MzLS+BASS DR6', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr6/'),
@@ -6387,6 +6356,7 @@ def get_survey(name):
 
         'ls-dr9-north': ('Legacy Surveys DR9-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/north'),
         'ls-dr9-south': ('Legacy Surveys DR9-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/south'),
+        'ls-dr9-mid': ('Legacy Surveys DR9', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/'),
         'ls-dr9': ('Legacy Surveys DR9', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/'),
         'ls-dr10-south': ('Legacy Surveys DR10-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr10/south'),
         'ls-dr10': ('Legacy Surveys DR10', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr10'),
@@ -7075,8 +7045,8 @@ def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None, ccd_link=True,
         if '_oki_' in ccd.image_filename:
             ooitext = '<a href="%s">ooi</a>' % imgooiurl
         jplstr = ''
-        if ra is not None:
-            jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(req, ra, dec, ccd)
+        #if ra is not None:
+        #    jplstr = '<td><a href="%s">JPL</a></td>' % format_jpl_url(req, ra, dec, ccd)
         if ccd_link:
             ccd_html = '<a href="%s">%s</a>' % (my_reverse(req, ccd_detail, args=(layer, ccdtag)), ccdname)
         else:
@@ -7127,8 +7097,9 @@ def exposures_common(req, tgz, copsf):
     # half-size in DECam pixels
     if copsf:
         size = 32
-        bands = req.GET.get('bands', 'grz')
-        bands = ''.join([b for b in bands if b in 'grz'])
+        avail_bands = layer.get_bands()
+        bands = req.GET.get('bands', avail_bands)
+        bands = ''.join([b for b in bands if b in avail_bands])
     else:
         size = int(req.GET.get('size', '100'), 10)
         size = min(500, size)
@@ -7159,16 +7130,9 @@ def exposures_common(req, tgz, copsf):
     if not showcut:
         if 'ccd_cuts' in CCDs.get_columns():
             CCDs.cut(CCDs.ccd_cuts == 0)
-
-    print('CCDs:', len(CCDs))
-    print('filters:', CCDs.filter)
-    print('layer bands:', list(layer.get_bands()))
-
-            #print('Layer\'s bands:', layer.get_bands())
-    # Drop Y band images
-    #CCDs.cut(np.isin(CCDs.filter, ['g','r','i','z']))
+    #print('Layer\'s bands:', layer.get_bands())
     CCDs.cut(np.isin(CCDs.filter, list(layer.get_bands())))
-    #print('After cutting on bands:', len(CCDs), 'CCDs')
+    #print('After cutting down to the available bands in this layer:', len(CCDs), 'CCDs')
 
     filterorder = dict(g=0, r=1, i=2, z=3)
 
@@ -7200,6 +7164,7 @@ def exposures_common(req, tgz, copsf):
             sumpsf = dict([(b,0.) for b in bands])
             sumiv  = dict([(b,0.) for b in bands])
             CCDs = CCDs[np.array([f in bands for f in CCDs.filter])]
+            print('After cutting on requested bands', bands, ':', len(CCDs))
 
         for iccd,ccd in enumerate(CCDs):
             im = survey.get_image_object(ccd)
@@ -7217,7 +7182,7 @@ def exposures_common(req, tgz, copsf):
 
             slc = (slice(y0, y1+1), slice(x0, x1+1))
             tim = im.get_tractor_image(slc, pixPsf=True,
-                                       subsky=True, nanomaggies=False,
+                                       subsky=tgz, nanomaggies=False,
                                        pixels=tgz, dq=tgz, normalizePsf=copsf,
                                        old_calibs_ok=True)
             if tim is None:
@@ -7490,8 +7455,8 @@ def exposures_common(req, tgz, copsf):
             '<small>(%s [%i])</small>' % (fn, ccd.image_hdu),
             '<small>(observed %s @ %s = MJD %.6f)</small>' % (ccd.date_obs, ccd.ut, ccd.mjd_obs),
             '<small>(proposal id %s)</small>' % (ccd.propid),
-            '<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % (
-                format_jpl_url(req, ra, dec, ccd)),
+            #'<small><a href="%s">Look up in JPL Small Bodies database</a></small>' % (
+            #    format_jpl_url(req, ra, dec, ccd)),
             '<small><a href="%s">Direct link to JPL query</a></small>' % (
                 jpl_direct_url(ra, dec, ccd)),
         ])
@@ -8140,22 +8105,24 @@ def get_layer(name, default=None):
         '''
         layer = ReSdssLayer('sdss')
 
-    elif name == 'ls-dr67':
+    elif name in ['ls-dr67', 'ls-dr67-mid']:
         dr7 = get_layer('decals-dr7')
         dr6 = get_layer('mzls+bass-dr6')
         layer = LegacySurveySplitLayer(name, dr6, dr7, 32.)
         layer.drname = 'Legacy Surveys DR6+DR7'
 
-    elif name in ['ls-dr8', 'ls-dr8-model', 'ls-dr8-resid']:
-        suff = name.replace('ls-dr8', '')
+    elif name in ['ls-dr8', 'ls-dr8-model', 'ls-dr8-resid',
+                  'ls-dr8-mid', 'ls-dr8-mid-model', 'ls-dr8-mid-resid']:
+        suff = name.replace('ls-dr8', '').replace('-mid', '')
         north = get_layer('ls-dr8-north' + suff)
         south = get_layer('ls-dr8-south' + suff)
         ### NOTE, must also change the javascript in template/index.html !
         layer = LegacySurveySplitLayer(name, north, south, 32.375)
         layer.drname = 'Legacy Surveys DR8'
 
-    elif name in ['ls-dr9', 'ls-dr9-model', 'ls-dr9-resid']:
-        suff = name.replace('ls-dr9', '')
+    elif name in ['ls-dr9-mid', 'ls-dr9-mid-model', 'ls-dr9-mid-resid',
+                  'ls-dr9', 'ls-dr9-model', 'ls-dr9-resid']:
+        suff = name.replace('ls-dr9', '').replace('-mid', '')
         north = get_layer('ls-dr9-north' + suff)
         south = get_layer('ls-dr9-south' + suff)
         ### NOTE, must also change the javascript in template/index.html !
@@ -8383,16 +8350,52 @@ def get_layer(name, default=None):
             layer.bands = ['M464']
             layer.rgb_plane = 1
 
-    elif name in ['ibis-3', 'ibis-3-wide']:
-        survey = get_survey(name)
-        layer = Ibis3Layer(name, 'image', survey)
+    elif name in ['ibis-3', 'ibis-3-wide',
+                  'ibis-4',
+                  'ibis-4-model',
+                  'ibis-4-resid',
+                  ]:
+        sname = name.replace('-model', '')
+        sname = sname.replace('-resid', '')
+        survey = get_survey(sname)
 
-    elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',]:
-        survey = get_survey('ibis-3')
-        layer = Ibis3Layer('ibis-3', 'image', survey)
-        band = name[-4:].upper()
-        layer.bands = [band]
-        layer.rgb_plane = 2
+        image = Ibis3Layer(sname, 'image', survey)
+        model = Ibis3ModelLayer(sname+'-model', 'model', survey, drname=sname)
+        resid = Ibis3ResidLayer(image, model, sname+'-resid', 'resid', survey, drname=sname)
+        layers[sname           ] = image
+        layers[sname + '-model'] = model
+        layers[sname + '-resid'] = resid
+        layer = layers[name]
+
+    elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',
+                  'ibis-4-m411', 'ibis-4-m438', 'ibis-4-m464', 'ibis-4-m490', 'ibis-4-m517',
+                  'ibis-4-m411-model', 'ibis-4-m438-model', 'ibis-4-m464-model', 'ibis-4-m490-model', 'ibis-4-m517-model',
+                  'ibis-4-m411-resid', 'ibis-4-m438-resid', 'ibis-4-m464-resid', 'ibis-4-m490-resid', 'ibis-4-m517-resid',
+                  ]:
+        sname = name[:len('ibis-3')]
+        bname = name.replace('-model', '')
+        bname = bname.replace('-resid', '')
+        band = bname[-4:].upper()
+        assert(band in ['M411', 'M438', 'M464', 'M490', 'M517'])
+
+        basename = name.replace('-model', '')
+        basename = basename.replace('-resid', '')
+
+        survey = get_survey(sname)
+
+        image = Ibis3Layer(basename, 'image', survey, drname=sname)
+        image.bands = [band]
+        image.rgb_plane = 2
+        model = Ibis3ModelLayer(basename + '-model', 'model', survey, drname=sname)
+        model.bands = [band]
+        model.rgb_plane = 2
+        resid = Ibis3ResidLayer(image, model, basename + '-resid', 'resid', survey, drname=sname)
+        resid.bands = [band]
+        resid.rgb_plane = 2
+        layers[sname + '-' + band.lower()           ] = image
+        layers[sname + '-' + band.lower() + '-model'] = model
+        layers[sname + '-' + band.lower() + '-resid'] = resid
+        layer = layers[name]
 
     elif name in ['ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
                   'ibis-3-wide-m490', 'ibis-3-wide-m517',]:
@@ -8418,7 +8421,10 @@ def get_layer(name, default=None):
 
     elif name in ['ls-dr10', 'ls-dr10-model', 'ls-dr10-resid',
                   'ls-dr10-grz', 'ls-dr10-model-grz', 'ls-dr10-resid-grz',
-                  'ls-dr10-gri',]:
+                  'ls-dr10-gri',
+                  'ls-dr10-mid', 'ls-dr10-mid-model', 'ls-dr10-mid-resid',
+                  'ls-dr10-mid-grz', 'ls-dr10-mid-model-grz', 'ls-dr10-mid-resid-grz',
+                  'ls-dr10-mid-gri',]:
         is_grz = name.endswith('-grz')
         is_gri = name.endswith('-gri')
         if is_grz:
@@ -8434,7 +8440,7 @@ def get_layer(name, default=None):
             bands = 'griz'
 
         # suff: -model, -resid
-        suff = name.replace('ls-dr10', '')
+        suff = name.replace('ls-dr10', '').replace('-mid', '')
         north = get_layer('ls-dr9-north' + suff)
         south = get_layer('ls-dr10-south' + suff + grzpart)
         layer = LegacySurveySplitLayer(name + grzpart, north, south, 32.375, bottom_bands=bands)
@@ -8467,6 +8473,14 @@ def get_layer(name, default=None):
         layers[basename + '-model' + grzpart] = model
         layers[basename + '-resid' + grzpart] = resid
         layer = layers[name]
+
+    elif name == 'ls-dr11-early':  
+        bands = 'griz'
+        survey = get_survey(name)
+        image = LsDr10Layer(name, 'image', survey, bands=bands, drname=name)
+        layers[name] = image
+        layer = layers[name]       
+        layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', name)
 
     if layer is None:
         # Try generic rebricked
@@ -9072,6 +9086,14 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr10-mid/1/8/151/103.jpg')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.25&invvar')
     #r = c.get('/cutout.fits?ra=203.5598&dec=23.4015&layer=ls-dr9&pixscale=0.6&invvar')
+    #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo7-mask&pixscale=2.75&size=500')
+    #r = c.get('/ls-dr9/cat.fits?ralo=165.4754&rahi=165.4758&declo=-6.0426&dechi=-6.0422')
+    #r = c.get('/usercatalog/1/cat.json?ralo=359.7593&rahi=0.2544&declo=47.1825&dechi=47.3670&cat=tmp6wqhztpk')
+    #r = c.get('/jpeg-cutout?ra=37.1990005&dec=61.495783&size=5120&layer=ls-dr10&pixscale=0.512')
+    #r = c.get('/cutout.fits?ra=37.1990005&dec=61.495783&size=5120&layer=ls-dr10&pixscale=0.512')
+    #r = c.get('/sfd/2/7/40/71.jpg')
+    #r = c.get('/desi-spectrum/edr/targetid39633411349941774')
+    #r = c.get('/coadd-psf/?ra=198.3924&dec=-20.2979&layer=ls-dr10-south&bands=i')
     #r = c.get('/desi-spectrum/dr1/targetid39633497530305185')
     #r = c.get('/desi-spectrum/dr1/targetid-228610099')
     #r = c.get('/ls-dr9/1/14/8230/6841.jpg')
@@ -9104,16 +9126,32 @@ if __name__ == '__main__':
     #r = c.get('/exposures/?ra=188.9829&dec=-56.4978&layer=decaps2')
     #r = c.get('/exposures/?ra=221.8682&dec=2.3882&layer=ibis-color')
     #r = c.get('/desi-spectrum/edr/targetid39628256290279019')
-
     #r = c.get('/jpl_lookup?ra=169.4535&dec=12.7557&date=2017-03-05%2004:55:39.295493&camera=decam')
-
     #r = c.get('/ibis-3-wide/1/14/7281/8419.jpg')
     #r = c.get('/ibis-3-wide-m464/1/5/12/16.jpg')
     #r = c.get('/iv-data/ls-dr9/decam-705256-N1')
     #r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
     #r = c.get('/?targetid=2305843030529157975')
-    r = c.get('/exposures-tgz/?ra=186.4967&dec=15.6692&size=100&layer=ls-dr9')
-
+    #r = c.get('/exposures-tgz/?ra=186.4967&dec=15.6692&size=100&layer=ls-dr9')
+    #r = c.get('/exposures/?ra=221.8682&dec=2.3882&layer=ibis-color')
+    #r = c.get('/desi-spectrum/edr/targetid39628256290279019')
+    #r = c.get('/data-for-radec/?ra=341.4403&dec=11.1308&layer=ls-dr10&ralo=341.1811&rahi=341.7009&declo=10.9850&dechi=11.2754')
+    #r = c.get('/data-for-radec/?ra=341.4403&dec=11.1308&layer=ls-dr10&ralo=341.1811&rahi=341.7009&declo=10.9850&dechi=11.2754')
+    #r = c.get('/jpl_lookup?ra=169.4535&dec=12.7557&date=2017-03-05%2004:55:39.295493&camera=decam')
+    #r = c.get('/ibis-3-wide/1/14/7281/8419.jpg')
+    #r = c.get('/ibis-3-wide-m464/1/5/12/16.jpg')
+    #r = c.get('/iv-data/ls-dr9/decam-705256-N1')
+    #r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
+    #r = c.get('/?targetid=39627914966205909')
+    #r = c.get('/ls-dr9-mid/1/6/39/25.jpg')
+    #r = c.get('/cutout.jpg?ra=141.0978&dec=32.375&layer=ls-dr9&pixscale=0.25&size=500')
+    #r = c.get('/static/tiles/ls-dr67-mid/1/5/17/12.jpg')
+    #r = c.get('/ls-dr67-mid/1/11/1105/829.jpg')
+    #r = c.get('/desi-dr1?supersecret=yes')
+    #r = c.get('/desi-spec-dr1/1/cat.json?ralo=185.3891&rahi=185.6490&declo=12.6685&dechi=12.8128&supersecret=yes')
+    #r = c.get('/ibis-4-resid/1/5/18/15.jpg')
+    #r = c.get('/ibis-4-m464-model/1/5/18/15.jpg')
+    r = c.get('/ibis-4-m464-resid/1/5/18/15.jpg')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)

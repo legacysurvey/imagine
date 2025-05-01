@@ -7,7 +7,7 @@ USER_QUERY_DIR = '/tmp/viewer-dev-user'
 READ_ONLY_BASEDIR = True
 
 ROOT_URL = '/viewer-dev'
-STATIC_URL_PATH = '/viewer-dev/static/'
+STATIC_URL_PATH = '/viewer-dev/static'
 
 FORCE_SCRIPT_NAME = ROOT_URL
 
