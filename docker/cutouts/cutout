@@ -15,6 +15,14 @@ export OMP_NUM_THREADS=1
 export MPICH_GNI_FORK_MODE=FULLCOPY
 export KMP_AFFINITY=disabled
 
+# To avoid:
+# /homedir/.config/matplotlib is not a writable directory
+# Matplotlib created a temporary cache directory at /tmp/matplotlib-0surrcbg because there was an issue with the default path (/homedir/.config/matplotlib); it is highly recommended to set the MPLCONFIGDIR environment variable to a writable directory, in particular to speed up the import of Matplotlib and to better support multiprocessing.
+export TMPCACHE=$(mktemp -d)
+export MPLCONFIGDIR=$TMPCACHE/matplotlib
+mkdir "$MPLCONFIGDIR"
+cp -r "$HOME/.config/matplotlib" "$MPLCONFIGDIR"
+
 #/usr/bin/python3 -c "import numpy; print('Numpy:', numpy.__file__, numpy.__version__)"
 #/usr/bin/python3 -c "import sys; print('sys.path:'); print('\n  '.join(sys.path))"
 

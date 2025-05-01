@@ -72,4 +72,4 @@ RUN chmod 755 /usr/local/bin/cutout
 ENV PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python:/app/imagine
 #RUN ln -s /usr/bin/python3 /usr/bin/python
 
-RUN cd imagine && git pull && echo 10
+RUN cd imagine && git pull && echo 11
