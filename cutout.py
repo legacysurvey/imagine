@@ -17,8 +17,7 @@ def cutout_main():
     parser.add_argument('--size', type=int, default=CUTOUT_SIZE_DEFAULT, help='Pixel size of output, default %(default)d')
     parser.add_argument('--width', type=int, default=None, help='Pixel width of output')
     parser.add_argument('--height', type=int, default=None, help='Pixel height of output')
-    #parser.add_argument('--bands', default=','.join(CUTOUT_BANDS_DEFAULT), help='Bands to select for output, default %default')
-    parser.add_argument('--bands', default=None, help='Bands to select for output, default %s for LS-DR9' % ','.join(CUTOUT_LAYER_DEFAULT))
+    parser.add_argument('--bands', default=None, help='Comma-separated bands to select for output eg "g,r,z"; default depends on the layer')
     parser.add_argument('--layer', default=CUTOUT_LAYER_DEFAULT, help='Map layer to render, default %(default)s')
     parser.add_argument('--invvar', default=False, action='store_true', help='Include Invvar extension for FITS outputs?')
     parser.add_argument('--maskbits', default=False, action='store_true', help='Include Maskbits extension for FITS outputs?')
@@ -80,6 +79,8 @@ def cutout(ra, dec, output,
 
     layer = get_layer(layer)
     tempfiles = []
+    if bands is None:
+        bands = layer.get_bands()
     layer.write_cutout(ra, dec, pixscale, W, H, output,
                        bands=bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles, req=req,
                        **kwa)

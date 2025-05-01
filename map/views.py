@@ -2916,7 +2916,7 @@ class DecapsResidLayer(ResidMixin, DecapsLayer):
 class MzlsMixin(object):
     def __init__(self, *args, **kwargs):
         super(MzlsMixin, self).__init__(*args, **kwargs)
-        self.bands = 'z'
+        self.bands = ['z']
 
     def get_rgb(self, imgs, bands, **kwargs):
         return mzls_dr3_rgb(imgs, bands, **kwargs)
@@ -2976,7 +2976,7 @@ class SdssLayer(MapLayer):
         return self.bricks
 
     def get_bands(self):
-        return 'gri'
+        return ['g','r','i']
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
@@ -3062,9 +3062,9 @@ class LsDr10Layer(ReDecalsLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         #print('LsDr10Layer.get_rgb: self.bands', self.bands)
 
-        if self.bands == 'grz':
+        if self.bands in ['grz', ['g','r','z']]:
             return super().get_rgb(imgs, bands, **kwargs)
-        if self.bands == 'gri':
+        if self.bands in ['gri', ['g','r','i']]:
             #print('LS DR10 gri')
             rgb_stretch_factor = 1.5
             rgbscales = {
@@ -3184,7 +3184,7 @@ class LsSegmentationLayer(RebrickedMixin, MapLayer):
 
     # One mask file per brick
     def get_bands(self):
-        return 'r'
+        return ['r']
 
     def get_fits_cutout_kwargs(self, image=False, iv=False, maskbits=False):
         return dict(compress='GZIP')
@@ -3459,11 +3459,11 @@ class Decaps2Layer(ReDecalsLayer):
         return wcs_for_brick(brick)
 
     def get_rgb(self, imgs, bands, **kwargs):
-        if self.bands == 'grz':
+        if self.bands in ['grz',['g','r','z']]:
             # equivalent to:
             #return sdss_rgb(rimgs, bands, scales=dict(g=(2,6.0), r=(1,3.4), z=(0,2.2)), m=0.03)
             return super().get_rgb(imgs, bands, **kwargs)
-        elif self.bands == 'riY':
+        elif self.bands in ['riY', ['r','i','Y']]:
             return sdss_rgb(imgs, bands, scales=dict(r=(2,3.4), i=(1,2.8), Y=(0,2.0)), m=0.03)
         return None
 
@@ -3566,7 +3566,7 @@ class CfhtLayer(ReDecalsLayer):
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
         super(HscLayer, self).__init__(name)
-        self.bands = 'grz'
+        self.bands = ['g','r','z']
         self.basedir = os.path.join(settings.DATA_DIR, self.name)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
@@ -4335,8 +4335,7 @@ class PS1Layer(MapLayer):
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
     def get_bands(self):
-        #return 'grz'
-        return 'gri'
+        return ['g','r','i']
 
     def get_bricks(self):
         if self.bricks is not None:
@@ -4551,7 +4550,7 @@ class UnwiseLayer(MapLayer):
 
     def get_bands(self):
         # Note, not 'w1','w2'...
-        return '12'
+        return ['1','2']
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
@@ -4682,7 +4681,7 @@ class UnwiseMask(RebrickedUnwise):
         return None
     # One mask file per brick
     def get_bands(self):
-        return '1'
+        return ['1']
     # data/unwise-neo7/000/0000p757/unwise-0000p757-msk.fits.gz
     def get_base_filename(self, brick, band, **kwargs):
         brickname = brick.brickname
@@ -4704,7 +4703,7 @@ class UnwiseMask(RebrickedUnwise):
 class UnwiseW3W4(RebrickedUnwise):
     def get_bands(self):
         # Note, not 'w1','w2'...
-        return '34'
+        return ['3','4']
     def get_rgb(self, imgs, bands, **kwargs):
         return _unwise_w34_to_rgb(imgs, **kwargs)
 
@@ -5186,7 +5185,7 @@ class VlassLayer(RebrickedMixin, MapLayer):
         return wcs
 
     def get_bands(self):
-        return [1]
+        return ['1']
 
     def get_rgb(self, imgs, bands, **kwargs):
         import numpy as np
@@ -5483,7 +5482,7 @@ class ZtfLayer(RebrickedMixin, MapLayer):
         return wcs
 
     def get_bands(self):
-        return 'gri'
+        return ['g','r','i']
 
     def get_rgb(self, imgs, bands, **kwargs):
         import numpy as np
@@ -6027,14 +6026,14 @@ class AsteroidsLayer(ReDecalsLayer):
         rgb[:,:,1] = rgb[:,:,2] = rgb[:,:,0]
         return rgb
     def get_bands(self):
-        return 'i'
+        return ['i']
 
 class OutliersLayer(DecalsLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.scaledir = None
         #self.bands = 'o'
-        self.bands = 'rgb'
+        self.bands = ['r','g','b']
         self.imagetype = 'outliers-masked-pos'
 
         self.cached_brick = None
@@ -7562,7 +7561,7 @@ def jpl_lookup(req):
     # Add link to objects.
     import re
     # 44505 (1998 XT38) --> 44505
-    r1 = re.compile('(?P<num>\d+) \([\w\s]+\)')
+    r1 = re.compile(r'(?P<num>\d+) \([\w\s]+\)')
     for i,d in enumerate(data):
         name = d[0]
         #https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=44505
