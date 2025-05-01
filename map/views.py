@@ -675,7 +675,7 @@ def _index(req,
         usercats = usercatalog.split(',')
         keepcats = []
         for cat in usercats:
-            m = re.match('(?P<fn>\w+)(-n(?P<name>\w+))?(-c(?P<color>\w+))?', cat)
+            m = re.match(r'(?P<fn>\w+)(-n(?P<name>\w+))?(-c(?P<color>\w+))?', cat)
             if m is None:
                 print('Usercatalog "%s" did not match regex' % cat)
                 continue
