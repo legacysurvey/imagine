@@ -2,8 +2,7 @@ FROM ubuntu:20.04
 WORKDIR /app
 COPY requirements.txt /app/
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt -y update && \
-  apt install -y apt-utils && \
+RUN apt -y update && apt install -y apt-utils && \
   apt install -y --no-install-recommends \
     build-essential \
     make pkg-config \
@@ -69,4 +68,4 @@ RUN chmod 755 /usr/local/bin/cutout
 ENV PYTHONPATH ${PYTHONPATH}:/usr/local/lib/python:/app/imagine
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
-RUN cd imagine && git pull && echo 9
+RUN cd imagine && git pull && echo 10
