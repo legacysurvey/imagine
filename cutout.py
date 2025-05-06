@@ -10,7 +10,7 @@ CUTOUT_LAYER_DEFAULT = 'ls-dr9'
 def cutout_main():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--print-path', default=False, action=store_true, help='Debug PYTHONPATH / sys.path issues')
+    parser.add_argument('--print-path', default=False, action='store_true', help='Debug PYTHONPATH / sys.path issues')
     parser.add_argument('--output', required=True, help='Output filename (*.jpg or *.fits)')
     parser.add_argument('--ra', type=float, required=True, help='RA (deg)')
     parser.add_argument('--dec', type=float, required=True, help='Dec (deg)')
