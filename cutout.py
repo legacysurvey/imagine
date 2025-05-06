@@ -10,6 +10,7 @@ CUTOUT_LAYER_DEFAULT = 'ls-dr9'
 def cutout_main():
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument('--print-path', default=False, action=store_true, help='Debug PYTHONPATH / sys.path issues')
     parser.add_argument('--output', required=True, help='Output filename (*.jpg or *.fits)')
     parser.add_argument('--ra', type=float, required=True, help='RA (deg)')
     parser.add_argument('--dec', type=float, required=True, help='Dec (deg)')
@@ -25,6 +26,18 @@ def cutout_main():
     parser.add_argument('--force', default=False, action='store_true', help='Overwrite existing output file?  Default is not to overwrite.')
 
     opt = parser.parse_args()
+    if opt.print_path:
+        import sys
+        import os
+        print('cutout.py: PYTHONPATH is "%s"' % os.environ['PYTHONPATH'], '\nAnd sys.path is:' + '\n  '.join([''] + sys.path))
+        import astrometry
+        print('astrometry:', astrometry.__file__)
+        import tractor
+        print('tractor:', tractor.__file__)
+        import legacypipe
+        print('legacypipe:', legacypipe.__file__)
+        sys.exit(0)
+
     bands = None
     if opt.bands is not None:
         bands = opt.bands.split(',')
