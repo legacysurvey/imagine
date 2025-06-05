@@ -234,7 +234,8 @@ def call_prospect(spectra, zbests, redrock_template_dir=None, outdir=None):
         prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir, outfile=outfn,
                                     with_vi_widgets=False,
                                     with_thumb_tab=False,
-                                    title=tt)
+                                    title=tt,
+                                    colors=['#d62728', 'black', 'blue'])
         # colors=['color_for_spectrum', 'color_for_model', 'color_for_noise']
         # color names html syntax; current default values '#D62728', 'black', 'green')
     except KeyError:
