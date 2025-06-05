@@ -917,19 +917,23 @@ def phat(req):
 def query_simbad(q):
     from urllib.request import urlopen
     from urllib.parse import urlencode
+    from urllib.parse import quote
 
     url = 'https://simbad.u-strasbg.fr/simbad/sim-id?output.format=votable&output.params=coo(d)&output.max=1&Ident='
-    url += urlencode(dict(q=q)).replace('q=','')
+    url += urlencode(dict(q=q), quote_via=quote).replace('q=','')
     print('URL', url)
     f = urlopen(url)
     code = f.getcode()
     print('Code', code)
-    # txt = f.read()
-    # print('Got:', txt)
-    # txt = txt.decode()
-    # print('Got:', txt)
+
     from astrometry.util.siap import siap_parse_result
+
+    #txt = f.read()
+    #print('Got:', txt)
+    #txt = txt.decode()
+    #print('Got:', txt)
     #T = siap_parse_result(txt=txt)
+
     # file handle works for fn
     T = siap_parse_result(fn=f)
     T.about()
@@ -983,7 +987,7 @@ def name_query(req):
     import json
 
     obj = req.GET.get('obj')
-    #print('Name query: "%s"' % obj)
+    print('Name query: "%s"' % obj)
 
     if len(obj) == 0:
         layer = request_layer_name(req)
@@ -1028,8 +1032,10 @@ def name_query(req):
             pass
 
     try:
+        print('Obj name:', obj)
         #result,val = query_ned(obj)
         result,val = query_simbad(obj)
+        print('Result:', result, 'val', val)
         if result:
             ra,dec = val
             return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=obj)),
@@ -1039,6 +1045,9 @@ def name_query(req):
             return HttpResponse(json.dumps(dict(error=error)),
                                 content_type='application/json')
     except Exception as e:
+        print('Exception querying simbad:')
+        import traceback
+        traceback.print_exc()
         return HttpResponse(json.dumps(dict(error=str(e))),
                             content_type='application/json')
 
@@ -9088,7 +9097,7 @@ if __name__ == '__main__':
     #r = c.get('/static/tiles/ls-dr67-mid/1/5/17/12.jpg')
     #r = c.get('/ls-dr67-mid/1/11/1105/829.jpg')
     #r = c.get('/desi-dr1?supersecret=yes')
-    r = c.get('/desi-spec-dr1/1/cat.json?ralo=185.3891&rahi=185.6490&declo=12.6685&dechi=12.8128&supersecret=yes')
+    #r = c.get('/desi-spec-dr1/1/cat.json?ralo=185.3891&rahi=185.6490&declo=12.6685&dechi=12.8128&supersecret=yes')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
@@ -9096,8 +9105,17 @@ if __name__ == '__main__':
     #     imgs = layer.render_into_wcs(wcs, 16, None, None, general_wcs=True)
     #     rgb = layer.get_rgb(imgs, 'gri')
     #     save_jpeg('wcs%i.jpg' % i, rgb)
-    # sys.exit(0)
+    
+    result,val = query_simbad('SDSS J153822.01+400919.9')
+    print('result', result, 'val', val)
 
+    #r = c.get('/namequery/?obj=SDSS J153822.01+400919.9')
+    #r = c.get('/namequery/?obj=SDSS%20J153822.01+400919.9')
+    r = c.get('/namequery/?obj=SDSS%20J153822.01%2B400919.9')
+    
+    # result,val = query_simbad('M 13')
+    # print('result', result, 'val', val)
+    
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))

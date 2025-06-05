@@ -2206,9 +2206,15 @@ $(document).ready(function() {
                 return;
             }
 
+            console.log('query string:', qstring);
+            qstring = encodeURIComponent(qstring);
+            console.log('encoded query string:', qstring);
+
             var url = L.Util.template(name_query_url, L.extend({
                 obj: qstring,
             }));
+            console.log('URL:', url);
+            
             if (qstring.length == 0) {
                 url += '&layer=' + layer_name;
             }
