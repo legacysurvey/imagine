@@ -4555,7 +4555,11 @@ if ('mark' in qstr) {
         var d = Number.parseFloat(words[1]);
         var lat = dec2lat(d);
         var lng = ra2long_C(r, clong);
-        var rad = arcsecToMeters(5.);
+        var rad_arcsec = 5;
+        if (words.length > 2) {
+            rad_arcsec = Number.parseFloat(words[2]);
+        }
+        var rad = arcsecToMeters(rad_arcsec);
         var color = 'yellow';
         var circ = L.circle([lat, lng], rad,
                             {'color':color, 'fillOpacity':0, 'weight':5});
