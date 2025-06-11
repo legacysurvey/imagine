@@ -245,6 +245,9 @@ def top_levels(mp, opt):
         ## UGH, this is because there is some problem with the tiling so that scale 5, y=26 fails
         ## to find any bricks touching, and rather than figure it out I just backed out the scale.
         basescale = 6
+        
+    if 'ls-dr11' in opt.kind:
+        basescale = 7
     
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                        '%(zoom)i', '%(x)i', '%(y)i.jpg')
@@ -305,7 +308,6 @@ def top_levels(mp, opt):
                 print('Wrote', outfn)
                 
         return
-
     
     basepat = 'base-%s-%i-%%s.fits' % (opt.kind, basescale)
 
@@ -768,7 +770,7 @@ def main():
                          'cfht-cosmos-cahk',
                          'decaps2', 'decaps2-model',
                          'dr10-deep', 'dr10-deep-model', 'ibis-color', 'ibis',
-                         'ibis-3', 'ibis-3-wide', 'ls-dr11-early',
+                         'ibis-3', 'ibis-3-wide', 'ls-dr11-early', 'ls-dr11-early-v2',
                          'ibis-4', 'ibis-4-model', 'ibis-4-resid',
                          ]
             or opt.kind.startswith('dr8-test')
