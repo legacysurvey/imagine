@@ -1,5 +1,3 @@
-from map.views import get_layer
-
 # if it looks like a duck and quacks like a duck...
 class duck(object):
     pass
@@ -12,22 +10,34 @@ CUTOUT_LAYER_DEFAULT = 'ls-dr9'
 def cutout_main():
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument('--print-path', default=False, action='store_true', help='Debug PYTHONPATH / sys.path issues')
     parser.add_argument('--output', required=True, help='Output filename (*.jpg or *.fits)')
     parser.add_argument('--ra', type=float, required=True, help='RA (deg)')
     parser.add_argument('--dec', type=float, required=True, help='Dec (deg)')
-    parser.add_argument('--pixscale', type=float, default=CUTOUT_PIXSCALE_DEFAULT, help='Pixel scale (arcsec/pix), default %default')
-    parser.add_argument('--size', type=int, default=CUTOUT_SIZE_DEFAULT, help='Pixel size of output, default %default')
+    parser.add_argument('--pixscale', type=float, default=CUTOUT_PIXSCALE_DEFAULT, help='Pixel scale (arcsec/pix), default %(default)f')
+    parser.add_argument('--size', type=int, default=CUTOUT_SIZE_DEFAULT, help='Pixel size of output, default %(default)d')
     parser.add_argument('--width', type=int, default=None, help='Pixel width of output')
     parser.add_argument('--height', type=int, default=None, help='Pixel height of output')
-    #parser.add_argument('--bands', default=','.join(CUTOUT_BANDS_DEFAULT), help='Bands to select for output, default %default')
-    parser.add_argument('--bands', default=None, help='Bands to select for output, default %s for LS-DR9' % ','.join(CUTOUT_LAYER_DEFAULT))
-    parser.add_argument('--layer', default=CUTOUT_LAYER_DEFAULT, help='Map layer to render, default %default')
+    parser.add_argument('--bands', default=None, help='Comma-separated bands to select for output eg "g,r,z"; default depends on the layer')
+    parser.add_argument('--layer', default=CUTOUT_LAYER_DEFAULT, help='Map layer to render, default %(default)s')
     parser.add_argument('--invvar', default=False, action='store_true', help='Include Invvar extension for FITS outputs?')
     parser.add_argument('--maskbits', default=False, action='store_true', help='Include Maskbits extension for FITS outputs?')
     parser.add_argument('--no-image', default=False, action='store_true', help='Omit image pixels when doing --invvar or --maskbits')
-    parser.add_argument('--force', default=False, action='store_true', help='Overwrite existing output file?  Default is to quit.')
+    parser.add_argument('--force', default=False, action='store_true', help='Overwrite existing output file?  Default is not to overwrite.')
 
     opt = parser.parse_args()
+    if opt.print_path:
+        import sys
+        import os
+        print('cutout.py: PYTHONPATH is "%s"' % os.environ['PYTHONPATH'], '\nAnd sys.path is:' + '\n  '.join([''] + sys.path))
+        import astrometry
+        print('astrometry:', astrometry.__file__)
+        import tractor
+        print('tractor:', tractor.__file__)
+        import legacypipe
+        print('legacypipe:', legacypipe.__file__)
+        sys.exit(0)
+
     bands = None
     if opt.bands is not None:
         bands = opt.bands.split(',')
@@ -78,8 +88,12 @@ def cutout(ra, dec, output,
     req = duck()
     req.GET = {}
 
+    from map.views import get_layer
+
     layer = get_layer(layer)
     tempfiles = []
+    if bands is None:
+        bands = layer.get_bands()
     layer.write_cutout(ra, dec, pixscale, W, H, output,
                        bands=bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles, req=req,
                        **kwa)

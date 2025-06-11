@@ -2848,7 +2848,7 @@ def cat_user(req, ver):
     import re
 
     cat = str(req.GET.get('cat'))
-    if not re.match('\w?', cat):
+    if not re.match(r'\w?', cat):
         print('Catalog "%s" did not match regex' % cat)
         return
 
