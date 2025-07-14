@@ -38,7 +38,7 @@
 # #          && python3 setup.py install) \
 # #          && rm -Rf mpi4py
 
-FROM legacysurvey/legacypipe:DR10.3.4
+FROM legacysurvey/legacypipe:DR10.3.4b
 
 WORKDIR /app
 COPY requirements.txt /app/
@@ -72,4 +72,4 @@ RUN chmod 755 /usr/local/bin/cutout
 ENV PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python:/app/imagine
 #RUN ln -s /usr/bin/python3 /usr/bin/python
 
-RUN cd imagine && git pull && echo 13
+#RUN cd imagine && git pull && echo 1
