@@ -2155,6 +2155,7 @@ class MapLayer(object):
         subimage = ('subimage' in req.GET)
 
         with_invvar = ('invvar' in req.GET)
+        with_maskbits = ('maskbits' in req.GET)
 
         if fits:
             suff = '.fits'
@@ -2177,7 +2178,8 @@ class MapLayer(object):
 
         self.write_cutout(ra, dec, pixscale, width, height, out_fn, bands=bands,
                           fits=fits, jpeg=jpeg, subimage=subimage, tempfiles=tempfiles,
-                          with_invvar=with_invvar, req=req)
+                          with_invvar=with_invvar, with_maskbits=with_maskbits,
+                          req=req)
 
         return send_file(out_fn, filetype, unlink=True, filename=nice_fn)
 
