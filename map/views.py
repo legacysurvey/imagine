@@ -2066,7 +2066,7 @@ class MapLayer(object):
                                     get_images_only=True, invvar=True)
         maskbits = None
         if with_maskbits and self.has_maskbits():
-            maskbits,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
+            maskbits,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands[0], tempfiles=tempfiles,
                                          get_images_only=True, maskbits=True)
 
         if hdr is not None:
@@ -9152,7 +9152,9 @@ if __name__ == '__main__':
     #r = c.get('/desi-spec-dr1/1/cat.json?ralo=185.3891&rahi=185.6490&declo=12.6685&dechi=12.8128&supersecret=yes')
     #r = c.get('/ibis-4-resid/1/5/18/15.jpg')
     #r = c.get('/ibis-4-m464-model/1/5/18/15.jpg')
-    r = c.get('/ibis-4-m464-resid/1/5/18/15.jpg')
+    #r = c.get('/ibis-4-m464-resid/1/5/18/15.jpg')
+    r = c.get('/cutout.fits?ra=197.59267292667388&dec=32.36562720074835&size=350&layer=ls-dr9&pixscale=0.262&bands=grz&invvar&maskbits')
+
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
