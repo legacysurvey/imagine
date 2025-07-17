@@ -1,7 +1,7 @@
 from __future__ import print_function
 if __name__ == '__main__':
-    import sys
-    sys.path.insert(0, 'django-2.2.4')
+    #import sys
+    #sys.path.insert(0, 'django-2.2.4')
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
@@ -1593,7 +1593,7 @@ class MapLayer(object):
                 # call get_filename to possibly generate scaled version
                 fn = self.get_filename(brick, band, scale, tempfiles=tempfiles, invvar=invvar,
                                        maskbits=maskbits)
-                info('Reading', brickname, 'band', band, 'scale', scale, ('invvar' if invvar else ''), ('maskbits' if maskbits else ''), '-> fn', fn)
+                info('Reading', brickname, 'band', band, 'scale', scale, ('invvar' if invvar else ''), ('maskbits' if maskbits else ''), '-> fn', fn, 'from class', type(self))
                 if fn is None:
                     continue
 
@@ -2557,7 +2557,7 @@ class RebrickedMixin(object):
             return 1
         import fitsio
         F = fitsio.FITS(fn)
-        debug('File', fn, 'has', len(F), 'hdus')
+        #debug('File', fn, 'has', len(F), 'hdus (RebrickedMixin)')
         if len(F) == 1:
             return 0
         return 1
@@ -2645,10 +2645,12 @@ class RebrickedMixin(object):
     def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
         #print('RebrickedMixin.get_filename: brick', brick, 'band', band, 'scale', scale)
         if scale == 0:
-            #return self.get_base_filename(brick, band)
-            return super(RebrickedMixin, self).get_filename(brick, band, scale,
-                                                            tempfiles=tempfiles, invvar=invvar,
-                                                            maskbits=maskbits)
+            #print('RebrickedMixin.get_filename: calling super()')
+            fn = super().get_filename(brick, band, scale,
+                                      tempfiles=tempfiles, invvar=invvar,
+                                      maskbits=maskbits)
+            #print('got', fn)
+            return fn
         if invvar:
             return None
 
