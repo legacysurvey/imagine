@@ -1388,6 +1388,8 @@ class MapLayer(object):
         kwa = {}
         if invvar:
             kwa.update(invvar=True)
+        if maskbits:
+            kwa.update(maskbits=True)
         if scale == 0:
             return self.get_base_filename(brick, band, **kwa)
 
@@ -9153,8 +9155,8 @@ if __name__ == '__main__':
     #r = c.get('/ibis-4-resid/1/5/18/15.jpg')
     #r = c.get('/ibis-4-m464-model/1/5/18/15.jpg')
     #r = c.get('/ibis-4-m464-resid/1/5/18/15.jpg')
-    r = c.get('/cutout.fits?ra=197.59267292667388&dec=32.36562720074835&size=350&layer=ls-dr9&pixscale=0.262&bands=grz&invvar&maskbits')
-
+    #r = c.get('/cutout.fits?ra=197.59267292667388&dec=32.36562720074835&size=350&layer=ls-dr9&pixscale=0.262&bands=grz&invvar&maskbits')
+    r = c.get('/cutout.fits?ra=132.0697&dec=47.3085&layer=ls-dr9&pixscale=0.25&maskbits')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
