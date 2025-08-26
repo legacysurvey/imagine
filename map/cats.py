@@ -3240,7 +3240,12 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         bricknames = []
         objids = []
         nobs = []
+        ba = []
+        pa = []
+        radii = []
     else:
+        import numpy as np
+
         rd = list(zip(cat.ra, cat.dec))
         types = list([t[0] for t in cat.get('type')])
 
@@ -3265,9 +3270,16 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         #        for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
         bricknames = list(cat.brickname)
         objids = [int(x) for x in cat.objid]
+        e = np.hypot(cat.shape_e1, cat.shape_e2)
+        ba = (1. - np.abs(e)) / (1. + np.abs(e))
+        pa = 0.5 * np.rad2deg(np.arctan2(cat.shape_e2, cat.shape_e1))
+        radii = [float(x) for x in cat.shape_r]
+        ba = [float(x) for x in ba]
+        pa = [float(x) for x in pa]
 
     json = json.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes, nobs=nobs,
-                                 bricknames=bricknames, objids=objids))
+                                 bricknames=bricknames, objids=objids,
+                           abratio=ba, posangle=pa, radius=radii))
     if docache:
         trymakedirs(cachefn)
 
