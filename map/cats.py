@@ -2411,8 +2411,9 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     pax[pax < 0] += 180.
     pax[pax >= 180.] -= 180.
 
-    pa = [float(90.-f) for f in pax]
-    pa_disp = [float(f) for f in pax]
+    pa = [float(x) for x in pax]
+    #pa = [float(90.-f) for f in pax]
+    #pa_disp = [float(f) for f in pax]
     if ellipse:
         color = ['#377eb8']*len(T)
         #'#ff3333'
@@ -2425,7 +2426,7 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
                                         groupname=groupnames,
                                         abRatio=ab, posAngle=pa, pgc=pgc, type=typ,
-                                        redshift=z, color=color, posAngleDisplay=pa_disp)),
+                                        redshift=z, color=color)),
                         content_type='application/json')
 
 def query_sga_radecbox(fn, ralo, rahi, declo, dechi):

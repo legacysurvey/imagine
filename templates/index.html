@@ -488,8 +488,10 @@ var CatalogOverlay = L.Evented.extend({
             var radius = this._radius;
             if (radii) {
 	            // arcsec to meters:
-	            var meters = (radii[i] * 30.87) || 30;
-                radius = meters;
+                if (radii[i] == 0) {
+                    radii[i] = 1.;
+                }
+                radius = arcsecToMeters(radii[i]);
             }
             if (abratio && posAngle) {
                 var pa = pa_astro_to_ellipse(posAngle[i]);
@@ -612,17 +614,17 @@ var StarMaskCatalog = CatalogOverlay.extend({
 });
 
 var sga_popup = function(json, i) {
-        var ra = json['rd'][i][0];
-        var dec = json['rd'][i][1];
-        var name = json['name'][i];
-        var pgc = json['pgc'][i];
+    var ra = json['rd'][i][0];
+    var dec = json['rd'][i][1];
+    var name = json['name'][i];
+    var pgc = json['pgc'][i];
     var groupname = json['groupname'][i];
     s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=' + name + '">' + name + '</a>';
     s += '<br/>Group: ' + groupname;
         // matching map/cats.py : cat_sga
         r = json['radiusArcsec'][i] * 2 / 60.;
         s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
-        s += '<br/>D(26)='+r.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
+        s += '<br/>D(26)='+r.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngle'][i].toFixed(1)+' deg<br/>';
         z = json['redshift'][i];
         t = json['type'][i];
         if (t.length > 0)
@@ -658,7 +660,7 @@ var SGACatalog = CatalogOverlay.extend({
         var abratio = result['abRatio'];
         var posAngle = result['posAngle'];
         var plines = [];
-        console.log('this._style:', this._style);
+        //console.log('this._style:', this._style);
         for (var i=0, len=rdlist.length; i<len; i++) {
             var r = rdlist[i][0];
             var d = rdlist[i][1];
@@ -669,7 +671,7 @@ var SGACatalog = CatalogOverlay.extend({
             var color = this.getColor(result, i);
             if (color !== undefined) {
                 style = Object.assign(style, {'color':color});
-                console.log('style after setting color:', style);
+                //console.log('style after setting color:', style);
             }
             var radius = this._radius;
             if (radii) {
@@ -678,7 +680,7 @@ var SGACatalog = CatalogOverlay.extend({
             }
             if (abratio && posAngle) {
                 var ab = abratio[i];
-                var pa = -posAngle[i];
+                var pa = 90.+posAngle[i];
             } else {
                 var ab = 1.0;
                 var pa = 0.;
@@ -696,8 +698,8 @@ var SGACatalog = CatalogOverlay.extend({
             lat2 = lat - ab * radius * Math.cos(pa);
             plines.push([[lat1, lng1], [lat2, lng2]]);
         }
-        console.log('rdlist:', rdlist.length);
-        console.log('style:', style)
+        //console.log('rdlist:', rdlist.length);
+        //console.log('style:', style)
         style = Object.assign(style, {'weight': 1});
         layergroup.addLayer(L.polyline(plines, style));
         return layergroup;
@@ -714,9 +716,6 @@ var PhotozCatalog = CatalogOverlay.extend({
         return 'z = ' + json['phot_z_mean'][i].toFixed(3) + ' &plusmn; ' +
             json['phot_z_std'][i].toFixed(3);
     },
-    //getPopupText: function(json, i) {
-    //    return sga_popup(json, i);
-    //},
     getTooltipStyle() {
         return { permanent: false, interactive: true, };
     },
