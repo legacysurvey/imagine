@@ -255,6 +255,14 @@ function split_layer(name, pretty, decsplit,
     return layer;
 };
 
+function pa_astro_to_ellipse(pa) {
+    // The Ellipse class wants angle 0 = a banana sitting on a table,
+    // and positive rotations are clockwise.
+    // The astronomical convention is PA=0 means pointing towards North,
+    // and positive angles rotate counter-clockwise.
+    return 90. - pa;
+};
+
 // for attaching leaflet.Labels to circles
 L.Circle.include(L.BaseMarkerMethods);
 
@@ -484,7 +492,10 @@ var CatalogOverlay = L.Evented.extend({
                 radius = meters;
             }
             if (abratio && posAngle) {
-                var circ = L.ellipse([lat, lng], [radius,radius*abratio[i]], posAngle[i], style);
+                var pa = pa_astro_to_ellipse(posAngle[i]);
+                console.log('Ellipse at ra,dec ' + r + ',' + d + ', AB ' +
+                            abratio[i] + ', radius ' + radius + ', PA ' + posAngle[i] + ' -> javascript angle ' + pa);
+                var circ = L.ellipse([lat, lng], [radius,radius*abratio[i]], pa, style);
             } else {
                 var circ = L.circle([lat, lng], radius, style);
             }
@@ -1262,6 +1273,9 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
             // radius is in meters
             rad = radii[i];
         }
+        if (rad == 0.) {
+            rad = radius;
+        }
         //console.log('Lat,Long,Radius ' + lat + ', ' + lng + ', ' + rad);
         rad = arcsecToMeters(rad);
 
@@ -1269,7 +1283,8 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
             var circ = L.circle([lat, lng], rad,
                                 {'color':color, 'fillOpacity':0, 'weight':5});
         } else {
-            var circ = L.ellipse([lat, lng], [rad, rad*abratios[i]], posangles[i],
+            var pa = pa_astro_to_ellipse(posangles[i]);
+            var circ = L.ellipse([lat, lng], [rad, rad*abratios[i]], pa,
                                  {'color':color, 'fillOpacity':0, 'weight':5});
         }
         if (labels === undefined) {
