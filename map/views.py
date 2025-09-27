@@ -487,7 +487,12 @@ def _index(req,
         tile_layers['eboss'] = ['special eBOSS region', [def_url], maxnative, 'ls']
 
     if settings.ENABLE_PHAT:
-        tile_layers['phat'] = ['PHAT image', [def_url], maxnative, 'PHAT collaboration']
+        native = 17
+        maxZoom = 17
+        the_url = [0, maxZoom, tileurl, subs]
+
+        tile_layers['phat'] = ['PHAT image', [the_url], native, 'PHAT collaboration']
+        tile_layers['phast'] = ['PHAST image', [the_url], native, 'PHAST collaboration']
 
     if settings.ENABLE_M33:
         tile_layers['m33'] = ['HST M33 image', [[17, maxZoom, tileurl, subs], prod_backstop],
@@ -8112,7 +8117,7 @@ def get_layer(name, default=None):
         return layers[name]
     layer = None
 
-    from map.phat import PhatLayer, M33Layer
+    from map.phat import PhatLayer, M33Layer, PhastLayer
 
     if '/' in name or '..' in name:
         pass
@@ -8170,6 +8175,9 @@ def get_layer(name, default=None):
 
     elif name == 'phat':
         layer = PhatLayer('phat')
+
+    elif name == 'phast':
+        layer = PhastLayer('phast')
 
     elif name == 'm33':
         layer = M33Layer('m33')
@@ -9133,7 +9141,28 @@ if __name__ == '__main__':
     #r = c.get('/ibis-3-wide/1/14/7281/8419.jpg')
     #r = c.get('/ibis-3-wide-m464/1/5/12/16.jpg')
     #r = c.get('/iv-data/ls-dr9/decam-705256-N1')
-    r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
+    #r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
+    #r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
+    #r = c.get('/?targetid=39627914966205909')
+    #r = c.get('/ls-dr9-mid/1/6/39/25.jpg')
+    #r = c.get('/cutout.jpg?ra=141.0978&dec=32.375&layer=ls-dr9&pixscale=0.25&size=500')
+    #r = c.get('/static/tiles/ls-dr67-mid/1/5/17/12.jpg')
+    #r = c.get('/ls-dr67-mid/1/11/1105/829.jpg')
+    #r = c.get('/desi-dr1?supersecret=yes')
+    #r = c.get('/desi-spec-dr1/1/cat.json?ralo=185.3891&rahi=185.6490&declo=12.6685&dechi=12.8128&supersecret=yes')
+    #r = c.get('/ibis-4-resid/1/5/18/15.jpg')
+    #r = c.get('/ibis-4-m464-model/1/5/18/15.jpg')
+    #r = c.get('/ibis-4-m464-resid/1/5/18/15.jpg')
+    #r = c.get('/cutout.fits?ra=197.59267292667388&dec=32.36562720074835&size=350&layer=ls-dr9&pixscale=0.262&bands=grz&invvar&maskbits')
+    #r = c.get('/cutout.fits?ra=132.0697&dec=47.3085&layer=ls-dr9&pixscale=0.25&maskbits')
+    #r = c.get('/phat/1/14/15897/6126.jpg')
+    settings.READ_ONLY_BASEDIR = False
+    #r = c.get('/phast/1/14/15901/6127.jpg')
+    #r = c.get('/phast/1/13/7950/3063.jpg')
+    #r = c.get('/phast/1/12/3975/1531.jpg')
+    #r = c.get('/phast/1/11/1987/765.jpg')
+    #r = c.get('/phast/1/10/993/382.jpg')
+    r = c.get('/phast/1/9/496/191.jpg')
 
     # Euclid colorization
     # for i in [3,]:#1,2]:
