@@ -437,7 +437,12 @@ def _index(req,
         tile_layers['eboss'] = ['special eBOSS region', [def_url], maxnative, 'ls']
 
     if settings.ENABLE_PHAT:
-        tile_layers['phat'] = ['PHAT image', [def_url], maxnative, 'PHAT collaboration']
+        native = 17
+        maxZoom = 17
+        the_url = [0, maxZoom, tileurl, subs]
+
+        tile_layers['phat'] = ['PHAT image', [the_url], native, 'PHAT collaboration']
+        tile_layers['phast'] = ['PHAST image', [the_url], native, 'PHAST collaboration']
 
     if settings.ENABLE_M33:
         tile_layers['m33'] = ['HST M33 image', [[17, maxZoom, tileurl, subs], prod_backstop],
@@ -8076,7 +8081,7 @@ def get_layer(name, default=None):
         return layers[name]
     layer = None
 
-    from map.phat import PhatLayer, M33Layer
+    from map.phat import PhatLayer, M33Layer, PhastLayer
 
     if '/' in name or '..' in name:
         pass
@@ -8136,6 +8141,9 @@ def get_layer(name, default=None):
 
     elif name == 'phat':
         layer = PhatLayer('phat')
+
+    elif name == 'phast':
+        layer = PhastLayer('phast')
 
     elif name == 'm33':
         layer = M33Layer('m33')
@@ -9158,7 +9166,15 @@ if __name__ == '__main__':
     #r = c.get('/ibis-4-m464-model/1/5/18/15.jpg')
     #r = c.get('/ibis-4-m464-resid/1/5/18/15.jpg')
     #r = c.get('/cutout.fits?ra=197.59267292667388&dec=32.36562720074835&size=350&layer=ls-dr9&pixscale=0.262&bands=grz&invvar&maskbits')
-    r = c.get('/cutout.fits?ra=132.0697&dec=47.3085&layer=ls-dr9&pixscale=0.25&maskbits')
+    #r = c.get('/cutout.fits?ra=132.0697&dec=47.3085&layer=ls-dr9&pixscale=0.25&maskbits')
+    #r = c.get('/phat/1/14/15897/6126.jpg')
+    settings.READ_ONLY_BASEDIR = False
+    #r = c.get('/phast/1/14/15901/6127.jpg')
+    #r = c.get('/phast/1/13/7950/3063.jpg')
+    #r = c.get('/phast/1/12/3975/1531.jpg')
+    #r = c.get('/phast/1/11/1987/765.jpg')
+    #r = c.get('/phast/1/10/993/382.jpg')
+    r = c.get('/phast/1/9/496/191.jpg')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)

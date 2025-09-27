@@ -1230,7 +1230,6 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
     var clong = map.getCenter().lng;
     var radii = result['radius'];
     var colors = result['color'];
-
     var abratios = result['abratio'];
     var posangles = result['posangle'];
     
@@ -1238,9 +1237,6 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
         var r = rdlist[i][0];
         var d = rdlist[i][1];
         var lat = dec2lat(d);
-
-        //console.log('RA,Dec ' + r + ', ' + d);
-
         var lng = ra2long_C(r, clong);
         var color = 'blue';
         if (typeof(defaultcolor) != 'undefined') {
@@ -4013,6 +4009,7 @@ baseTree1 = baseTree1.concat([
 var moresurveys = [
     findlayer('pandas'),
     findlayer('phat'),
+    findlayer('phast'),
     //findlayer('outliers-ast'),
     //findlayer('asteroids-i'),
     findlayer('des-dr1'),
