@@ -14,10 +14,9 @@ class PhatLayer(MapLayer):
         super(PhatLayer, self).__init__(name, **kwargs)
         self.nativescale = 17
         self.pixscale = 0.05
-        fn = os.path.join(settings.DATA_DIR, 'm31_full.fits')
-        self.fits = fitsio.FITS(fn)[0]
-        #self.wcs = anwcs_open_wcslib(fn, 0)
-        self.wcs = Tan(fn, 0)
+        #fn = os.path.join(settings.DATA_DIR, 'm31_full.fits')
+        #self.fits = fitsio.FITS(fn)[0]
+        #self.wcs = Tan(fn, 0)
         #print('WCS:', self.wcs)
 
     def read_image(self, brick, band, scale, slc, fn=None):
