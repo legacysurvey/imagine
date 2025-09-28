@@ -10,8 +10,7 @@ class PhatLayer(MapLayer):
     def __init__(self, name, **kwargs):
         import fitsio
         from astrometry.util.util import Tan
-        #from astrometry.util.util import anwcs_open_wcslib
-        super(PhatLayer, self).__init__(name, **kwargs)
+        super().__init__(name, **kwargs)
         self.nativescale = 17
         self.pixscale = 0.05
         #fn = os.path.join(settings.DATA_DIR, 'm31_full.fits')
@@ -22,9 +21,6 @@ class PhatLayer(MapLayer):
     def read_image(self, brick, band, scale, slc, fn=None):
         import numpy as np
         img = super(PhatLayer,self).read_image(brick, band, scale, slc, fn=fn)
-        #from collections import Counter
-        #print('Finite pixels:', Counter(np.isfinite(img).ravel()))
-        #img[~np.isfinite(img)] = np.nanmax(img)
         return img.astype(np.float32)
 
     def get_bands(self):
@@ -32,12 +28,11 @@ class PhatLayer(MapLayer):
         return 'BGR'
 
     def get_base_filename(self, brick, band, **kwargs):
-        #return os.path.join(settings.DATA_DIR, 'm31_full.fits')
-        return os.path.join(settings.DATA_DIR, 'm31_full_%s.fits' % band)
+        return os.path.join(settings.DATA_DIR, 'phat', 'm31_full_%s.fits' % band)
 
     def get_scaled_filename(self, brick, band, scale):
-        #return os.path.join(settings.DATA_DIR, 'm31_full_scale%i.fits' % scale)
-        return os.path.join(settings.DATA_DIR, 'm31_full_%s_scale%i.fits' % (band, scale))
+        return os.path.join(settings.DATA_DIR, 'phat',
+                            'm31_full_%s_scale%i.fits' % (band, scale))
 
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
                         scale=None, tempfiles=None,
