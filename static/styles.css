@@ -1,5 +1,4 @@
 #map { height: 100%; width: 100%; padding: 1;}
-
 #thebody { margin:0; }
 
 .inbrickccd, .objquery, .info, .query, .upload, .brightness, .contrast {
@@ -10,7 +9,6 @@
     box-shadow: 0 0 15px rgba(0,0,0,0.2);
     border-radius: 5px;
 }
-
 .login_info {
     padding: 6px 8px;
     font: 12px/14px Arial, Helvetica, sans-serif;
@@ -19,7 +17,6 @@
     box-shadow: 0 0 15px rgba(0,0,0,0.2);
     border-radius: 5px;
 }
-
 .faqbox {
     padding: 6px 8px;
     font: 24px/20px Arial, Helvetica, sans-serif;
@@ -28,11 +25,9 @@
     box-shadow: 0 0 15px rgba(0,0,0,0.2);
     border-radius: 5px;
 }
-
 .inbrickccd ul {
     margin-top: 0pt;
 }
-
 .highccd {
     color: red;
 }
@@ -42,7 +37,6 @@
 .highccd:visited {
     color: red;
 }
-
 .highexp {
     color: red;
 }
@@ -52,39 +46,24 @@
 .highexp:visited {
     color: red;
 }
-
 .leaflet-container {
     background: #242424;
 }
-
 .leaflet-control-scale-line {
     font-size: 200%;
     margin-bottom: 15px;
 }
-
-//.leaflet-control-zoomslider {
-//    z-index: 1200;
-//}
 .leaflet-top {
     z-index: 1200;
 }
-
-/* hmm, can't get this to work
-.leaflet-control-attribution {
-    font-size: 200%;
-}
-*/
-
 .gotobutton {
     font-size: 100%;
 }
-
 .spectrumTooltip {
 }
 .spectrumTooltipSmall {
     font-size: 80%;
 }
-
 /* https://gis.stackexchange.com/questions/212820/overriding-leaflet-tooltip-style */
 .leaflet-tooltip-left.spectrumTooltip {
   margin-left: -15px;
@@ -92,16 +71,18 @@
 .leaflet-tooltip-right.spectrumTooltip {
   margin-left: 15px;
 }
-
 .leaflet-tooltip {
     background-color: rgba(0,0,0, 0.5);
     color: white;
-/*
-    background: transparent;
-    box-shadow: 0 0px 0px rgba(0,0,0,0);
-*/
 }
-
 .leaflet-tooltip a {
     color: white;
+}
+.gfa-label {
+  border: 0px solid #666;
+}
+.tooltipbg {
+  background: black;
+  opacity: 0.5;
+  border: 2px solid white;
 }

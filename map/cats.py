@@ -1,6 +1,7 @@
 from __future__ import print_function
-from functools import lru_cache
 import os
+from functools import lru_cache
+from datetime import datetime
 
 if __name__ == '__main__':
     import sys
@@ -10,15 +11,9 @@ if __name__ == '__main__':
     django.setup()
 
 from django.http import HttpResponse
-from viewer import settings
-try:
-    from django.core.urlresolvers import reverse
-except:
-    # django 2.0
-    from django.urls import reverse
-from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 
-from datetime import datetime
+from viewer import settings
+from map.utils import send_file, trymakedirs, get_tile_wcs, oneyear
 
 debug = print
 if not settings.DEBUG_LOGGING:
@@ -44,6 +39,7 @@ catversions = {
     'GCs-PNe': [1,],
     'lslga': [1,],
     'sga': [1,],
+    'sga2025-parent': [1,],
     'spec': [1,],
     'spec-deep2': [1,],
     'manga': [1,],
@@ -319,6 +315,13 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
 
     return call_prospect(spectra, zbests)
 
+def desi_prospect_dir(release, targetid):
+    if settings.DESI_PROSPECT_DIR is None:
+        return None
+    outdir = os.path.join(settings.DESI_PROSPECT_DIR, release,
+                          '%i' % (targetid % 1000), 'targetid%i' % targetid)
+    return outdir
+
 def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     from glob import glob
     from desispec.io import read_spectra
@@ -330,9 +333,8 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     import os
 
     # Check the cache!
-    outdir = None
-    if settings.DESI_PROSPECT_DIR is not None:
-        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % obj.targetid)
+    outdir = desi_prospect_dir(release, obj.targetid)
+    if outdir is not None:
         fn = os.path.join(outdir, 'prospect.html')
         if os.path.exists(fn):
             print('Cache hit for', fn)
@@ -353,7 +355,8 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     if release == 'edr':
         basedir = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji'
     elif release == 'dr1':
-        basedir = '/global/cfs/cdirs/desi/spectro/redux/iron'
+        #basedir = '/global/cfs/cdirs/desi/spectro/redux/iron'
+        basedir = '/global/cfs/cdirs/desi/public/dr1/spectro/redux/iron'
     else:
         basedir = '/global/cfs/cdirs/desi/spectro/redux/%s' % release
 
@@ -379,6 +382,9 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     zbests = zb
     #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
+
+    #print('Spectra:', type(spectra), spectra)
+    #print('Zbests:', type(zbests), zbests)
 
     return call_prospect(spectra, zbests, redrock_template_dir=redrock_template_dir,
                          outdir=outdir)
@@ -456,8 +462,8 @@ def cat_desi_edr_spectra_detail(req, targetid):
     release = 'edr'
 
     # Quick-check cache (without looking up object)
-    if settings.DESI_PROSPECT_DIR is not None:
-        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+    outdir = desi_prospect_dir(release, targetid)
+    if outdir is not None:
         fn = os.path.join(outdir, 'prospect.html')
         if os.path.exists(fn):
             print('Cache hit for', fn)
@@ -473,8 +479,8 @@ def cat_desi_dr1_spectra_detail(req, targetid):
     release = 'dr1'
 
     # Quick-check cache (without looking up object)
-    if settings.DESI_PROSPECT_DIR is not None:
-        outdir = os.path.join(settings.DESI_PROSPECT_DIR, release, 'targetid%i' % targetid)
+    outdir = desi_prospect_dir(release, targetid)
+    if outdir is not None:
         fn = os.path.join(outdir, 'prospect.html')
         if os.path.exists(fn):
             print('Cache hit for', fn)
@@ -743,6 +749,9 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
     #print('Targetids:', T.targetid.dtype, T.targetid)
     rd = list((float(r),float(d)) for r,d in zip(T.get(racol), T.get(deccol)))
     J.update(dict(rd=rd, name=names, color=colors,
+                  healpix=[int(h) for h in T.healpix],
+                  survey=list(T.survey),
+                  program=list(T.program),
                   targetid=targetids))
     if 'fiber' in cols:
         J.update(fiberid=[int(i) for i in T.fiber])
@@ -2368,6 +2377,10 @@ def cat_sga_ellipse(req, ver):
     print('Reading', fn)
     return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga')
 
+def cat_sga2025_parent(req, ver):
+    fn = os.path.join(settings.DATA_DIR, 'sga2025', 'SGA2025-parent-latest.kd.fits')
+    return _cat_sga(req, ver, fn=fn, tag='sga2025-parent')
+
 def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     import json
     import numpy as np
@@ -2391,10 +2404,18 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     T.cut(np.argsort(-T.radius_arcsec))
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
-    names = [t.strip() for t in T.galaxy]
-    pgc = [int(p) for p in T.pgc]
-    typ = [t.strip() if t != 'nan' else '' for t in T.get('morphtype')]
 
+    if '2025' in tag:
+        names = [t.strip() for t in T.objname]
+        pgc = [int(p) for p in T.pgc]
+        typ = ['' for i in range(len(T))]
+        z = [-1 for i in range(len(T))]
+
+    else:
+        names = [t.strip() for t in T.galaxy]
+        pgc = [int(p) for p in T.pgc]
+        typ = [t.strip() if t != 'nan' else '' for t in T.get('morphtype')]
+        z = [float(z) if np.isfinite(z) else -1. for z in T.z_leda.astype(np.float32)]
     radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
     ab = [float(f) for f in T.ba.astype(np.float32)]
 
@@ -2403,21 +2424,22 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     pax[pax < 0] += 180.
     pax[pax >= 180.] -= 180.
 
-    pa = [float(90.-f) for f in pax]
-    pa_disp = [float(f) for f in pax]
+    pa = [float(x) for x in pax]
+    #pa = [float(90.-f) for f in pax]
+    #pa_disp = [float(f) for f in pax]
     if ellipse:
         color = ['#377eb8']*len(T)
         #'#ff3333'
     else:
         color = ['#e41a1c']*len(T)
         #'#3388ff'
-    z = [float(z) if np.isfinite(z) else -1. for z in T.z_leda.astype(np.float32)]
+
     groupnames = [t.strip() for t in T.group_name]
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
                                         groupname=groupnames,
                                         abRatio=ab, posAngle=pa, pgc=pgc, type=typ,
-                                        redshift=z, color=color, posAngleDisplay=pa_disp)),
+                                        redshift=z, color=color)),
                         content_type='application/json')
 
 def query_sga_radecbox(fn, ralo, rahi, declo, dechi):
@@ -2840,7 +2862,7 @@ def cat_user(req, ver):
     import re
 
     cat = str(req.GET.get('cat'))
-    if not re.match('\w?', cat):
+    if not re.match(r'\w?', cat):
         print('Catalog "%s" did not match regex' % cat)
         return
 
@@ -3232,7 +3254,12 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         bricknames = []
         objids = []
         nobs = []
+        ba = []
+        pa = []
+        radii = []
     else:
+        import numpy as np
+
         rd = list(zip(cat.ra, cat.dec))
         types = list([t[0] for t in cat.get('type')])
 
@@ -3257,9 +3284,16 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         #        for g,r,z in zip(cat.nobs_g, cat.nobs_r, cat.nobs_z)]
         bricknames = list(cat.brickname)
         objids = [int(x) for x in cat.objid]
+        e = np.hypot(cat.shape_e1, cat.shape_e2)
+        ba = (1. - np.abs(e)) / (1. + np.abs(e))
+        pa = 0.5 * np.rad2deg(np.arctan2(cat.shape_e2, cat.shape_e1))
+        radii = [float(x) for x in cat.shape_r]
+        ba = [float(x) for x in ba]
+        pa = [float(x) for x in pa]
 
     json = json.dumps(dict(rd=rd, sourcetype=types, fluxes=fluxes, nobs=nobs,
-                                 bricknames=bricknames, objids=objids))
+                                 bricknames=bricknames, objids=objids,
+                           abratio=ba, posangle=pa, radius=radii))
     if docache:
         trymakedirs(cachefn)
 
@@ -3406,7 +3440,13 @@ if __name__ == '__main__':
     #r = c.get('/desi-obs/daily/targetid2411699042779148')
     #r = c.get('/desi-obs-daily/1/cat.json?ralo=218.6108&rahi=218.6418&declo=30.9829&dechi=30.9974')
     #r = c.get('/desi-spectrum/daily/targetid2305843037000968814')
-    r = c.get('/desi-spectrum/daily/targetid39627920582379819')
+    #r = c.get('/desi-spectrum/daily/targetid39627920582379819')
+
+    #r = c.get('/desi-spectrum/edr/targetid39627914966205909')
+
+
+    r = c.get('/sga2025-parent/1/cat.json?ralo=67.7918&rahi=68.2598&declo=-48.3768&dechi=-48.1995')
+    
     f = open('out', 'wb')
     for x in r:
         f.write(x)

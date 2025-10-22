@@ -29,16 +29,17 @@ urlpatterns_desi.extend([
     re_path(r'^desi-obs/daily/targetid(\d+)', cats.cat_desi_daily_obs_detail),
 ])
 
-if settings.ENABLE_DESI_DATA:
-    # Private
+if settings.ENABLE_DESI_DR1:
     urlpatterns_desi.extend([
-        # All DESI tiles (tiles-main.ecsv)
-        #re_path(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
         # DESI spectroscopy -- DR1
         re_path(r'^desi-tiles/dr1/(\d+)/cat.json', cats.cat_desi_dr1_tiles),
         re_path(r'^desi-spec-dr1/(\d+)/cat.json', cats.cat_desi_dr1_spectra),
         re_path(r'^desi-spectrum/dr1/targetid(-?\d+)', cats.cat_desi_dr1_spectra_detail),
+    ])
 
+if settings.ENABLE_DESI_DATA:
+    # Private
+    urlpatterns_desi.extend([
         # DESI spectroscopy -- daily
         re_path(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),
         re_path(r'^desi-spec-daily/(\d+)/cat.json', cats.cat_desi_daily_spectra),
@@ -178,6 +179,8 @@ urlpatterns = ([
     re_path(r'^sga-parent/(\d+)/cat.json', cats.cat_sga_parent),
     re_path(r'^sga/(\d+)/cat.json', cats.cat_sga_ellipse),
 
+    re_path(r'^sga2025-parent/(\d+)/cat.json', cats.cat_sga2025_parent),
+
     re_path(r'^GCs-PNe/(\d+)/cat.json', cats.cat_GCs_PNe),
 
     # Virgo cluster catalog (VCC) objects
@@ -264,27 +267,21 @@ urlpatterns = ([
     re_path(r'^sky-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.sky_stamp, name='sky_stamp'),
     re_path(r'^skysub-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.skysub_stamp, name='skysub_stamp'),
 
+    # Special top-level entry points
     # Special DESI-EDR version of viewer.
     re_path(r'desi-edr', views.desi_edr),
-
     # Special DESI-DR1 version of viewer.
     re_path(r'desi-dr1', views.desi_dr1),
-
     # Special DECaPS version of viewer.
     re_path(r'decaps', views.decaps),
-
     # Special M33 version of viewer.
     re_path(r'm33', views.m33),
-
     # DR5 version of the viewer.
     re_path(r'dr5', views.dr5),
     # DR6 version of the viewer.
     re_path(r'dr6', views.dr6),
-
     # PHAT version of the viewer.
     re_path(r'^phat/?$', views.phat),
-
-    re_path(r'test', views.test),
 
     # fall-through
     re_path(r'/?', views.index, name='index'),

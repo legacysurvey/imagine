@@ -1,7 +1,7 @@
 from __future__ import print_function
 if __name__ == '__main__':
-    import sys
-    sys.path.insert(0, 'django-2.2.4')
+    #import sys
+    #sys.path.insert(0, 'django-2.2.4')
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
@@ -10,13 +10,9 @@ if __name__ == '__main__':
 import os
 import sys
 import re
-from django.http import HttpResponse, StreamingHttpResponse
-try:
-    from django.core.urlresolvers import reverse, get_script_prefix
-except:
-    # django 2.0
-    from django.urls import reverse, get_script_prefix
 
+from django.http import HttpResponse, StreamingHttpResponse
+from django.urls import reverse, get_script_prefix
 from django import forms
 from django.shortcuts import redirect
 
@@ -29,18 +25,11 @@ from map.cats import get_random_galaxy, get_desi_tile_radec
 import matplotlib
 matplotlib.use('Agg')
 
-py3 = (sys.version_info[0] >= 3)
-
 debug_ps = None
 import pylab as plt
 if False:
     from astrometry.util.plotutils import PlotSequence
     debug_ps = PlotSequence('debug')
-
-
-# We add a version number to each layer, to allow long cache times
-# for the tile JPEGs.  Increment this version to invalidate
-# client-side caches.
 
 debug = print
 if not settings.DEBUG_LOGGING:
@@ -51,7 +40,9 @@ if not settings.INFO_LOGGING:
     def info(*args, **kwargs):
         pass
 
-
+# We add a version number to each layer, to allow long cache times
+# for the tile JPEGs.  Increment this version to invalidate
+# client-side caches.
 tileversions = {
     'sfd': [1, 2],
     'halpha': [1,],
@@ -66,67 +57,43 @@ tileversions = {
     'ztf': [1],
     'cfis-r': [1],
     'cfis-u': [1],
-
     'eboss': [1,],
-
     'phat': [1,],
     'm33': [1,],
-
-    'ls-dr8-north': [1],
-    'ls-dr8-north-model': [1],
-    'ls-dr8-north-resid': [1],
-
-    'ls-dr8-south': [1],
-    'ls-dr8-south-model': [1],
-    'ls-dr8-south-resid': [1],
-
-    'ls-dr8': [1],
-    'ls-dr8-model': [1],
-    'ls-dr8-resid': [1],
-
-    'ls-dr67': [1],
-
-    'decals-dr7': [1],
-    'decals-dr7-model': [1],
-    'decals-dr7-resid': [1],
-
-    'mzls+bass-dr6': [1],
-    'mzls+bass-dr6-model': [1],
-    'mzls+bass-dr6-resid': [1],
-
-    'decals-dr5': [1],
-    'decals-dr5-model': [1],
-    'decals-dr5-resid': [1],
-
     'decaps': [1, 2],
     'decaps-model': [1, 2],
     'decaps-resid': [1, 2],
-
     'decaps2': [2],
     'decaps2-model': [2],
     'decaps2-resid': [2],
-    
     'unwise-w1w2': [1],
     'unwise-neo2': [1],
     'unwise-neo3': [1],
     'unwise-neo4': [1],
     'unwise-neo6': [1],
     'unwise-neo7': [1],
-
     'unwise-neo7-mask': [1],
-    
     'unwise-cat-model': [1],
-
     'cutouts': [1],
-
-    'dr9k-north': [1, 2],
-    'dr9k-north-model': [1, 2],
-    'dr9k-north-resid': [1, 2],
-
-    'dr9k-south': [1, 2],
-    'dr9k-south-model': [1, 2],
-    'dr9k-south-resid': [1, 2],
-
+    'decals-dr5': [1],
+    'decals-dr5-model': [1],
+    'decals-dr5-resid': [1],
+    'mzls+bass-dr6': [1],
+    'mzls+bass-dr6-model': [1],
+    'mzls+bass-dr6-resid': [1],
+    'ls-dr67': [1],
+    'decals-dr7': [1],
+    'decals-dr7-model': [1],
+    'decals-dr7-resid': [1],
+    'ls-dr8-north': [1],
+    'ls-dr8-north-model': [1],
+    'ls-dr8-north-resid': [1],
+    'ls-dr8-south': [1],
+    'ls-dr8-south-model': [1],
+    'ls-dr8-south-resid': [1],
+    'ls-dr8': [1],
+    'ls-dr8-model': [1],
+    'ls-dr8-resid': [1],
     'ls-dr9-north': [1],
     'ls-dr9-north-model': [1],
     'ls-dr9-north-resid': [1],
@@ -152,11 +119,6 @@ def checkflavour(req, flavour):
                             status=500, reason='bad flavour')
 
 def my_reverse(req, *args, **kwargs):
-    ### FIXME -- does this work for decaps.legacysurvey.org ??
-    # Or need something like:
-    # path = settings.ROOT_URL
-    # if is_decaps(req):
-    #     path = '/'
     return reverse(*args, **kwargs)
 
 def fix_hostname(req, url):
@@ -180,7 +142,7 @@ def ci(req):
     from django.shortcuts import render
     return render(req, 'desi-ci.html')
 
-def request_layer_name(req, default_layer='ls-dr8'):
+def request_layer_name(req, default_layer='ls-dr9'):
     name = req.GET.get('layer', default_layer)
     return clean_layer_name(name)
 
@@ -199,10 +161,6 @@ def clean_layer_name(name):
         'mzls bass-dr6': 'mzls+bass-dr6',
         'mzls bass-dr6-model': 'mzls+bass-dr6-model',
         'mzls bass-dr6-resid': 'mzls+bass-dr6-resid',
-
-        #'decaps2': 'decaps',
-        #'decaps2-model': 'decaps-model',
-        #'decaps2-resid': 'decaps-resid',
 
         'dr8': 'ls-dr8',
         'dr8-model': 'ls-dr8-model',
@@ -231,7 +189,7 @@ def layer_to_survey_name(layer):
 #  req.layer_name
 #  req.survey_name
 #  req.layer (MapLayer subclass)
-def needs_layer(default_layer='ls-dr8', doctype='html', badjson=None):
+def needs_layer(default_layer='ls-dr9', doctype='html', badjson=None):
     def decorate(func):
         def wrapped_req(req, *args, **kwargs):
             layername = request_layer_name(req, default_layer=default_layer)
@@ -247,11 +205,8 @@ def needs_layer(default_layer='ls-dr8', doctype='html', badjson=None):
         return wrapped_req
     return decorate
 
-
-
 def is_decaps(req):
     host = req.META.get('HTTP_HOST', None)
-    #print('Host:', host)
     return (host == 'decaps.legacysurvey.org')
 
 def is_m33(req):
@@ -262,8 +217,27 @@ def is_unions(req):
     host = req.META.get('HTTP_HOST', None)
     return (host == 'unions.legacysurvey.org') or (host == 'cloud.legacysurvey.org')
 
+def lookup_any_targetid(tid):
+    from map.cats import lookup_targetid
+    if settings.ENABLE_DESI_DATA:
+        print('Looking in daily')
+        t = lookup_targetid(tid, 'daily')
+        if t is not None:
+            print('Found it!')
+            return t
+    if settings.ENABLE_DESI_DR1:
+        print('Looking in DR1')
+        t = lookup_targetid(tid, 'dr1')
+        if t is not None:
+            print('Found it!')
+            return t
+    print('Looking in EDR')
+    t = lookup_targetid(tid, 'edr')
+    if t is not None:
+        print('Found it!')
+    return t
+
 def index(req, **kwargs):
-    #print('Host is', req.META.get('HTTP_HOST', None))
     if is_decaps(req):
         return decaps(req)
     if is_m33(req):
@@ -272,35 +246,6 @@ def index(req, **kwargs):
         return unions(req)
     return _index(req, **kwargs)
 
-def test(req):
-    maxZoom = 16
-    abcd = ['a','b','c','d']
-    #nersc = settings.NERSC_TILE_URL
-    nersc = 'https://{s}.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
-    nersc_sub = abcd
-    ima = settings.STATIC_TILE_URL_B
-    ima_sub = abcd
-    tileurl = settings.TILE_URL
-    
-    tileurls = {
-        'sdss': [ [1, 13, ima, ima_sub],
-                  [14, maxZoom, nersc, nersc_sub], ],
-        'cfis_r': [ [1, maxZoom, tileurl, []], ],
-        'cfis_u': [ [1, maxZoom, tileurl, []], ],
-    }
-
-    args = dict(
-        tileurls=tileurls,
-        zoom = 13,
-        layer = 'sdss',
-        ra = 227.017,
-        dec = 42.819,
-        maxZoom = 16,
-        maxNativeZoom = 16,
-    )
-    from django.shortcuts import render
-    return render(req, 'test.html', args)
-    
 def _index(req,
            default_layer = 'ls-dr9',
            default_radec = (None,None),
@@ -311,10 +256,13 @@ def _index(req,
            merian_first = False,
            **kwargs):
 
-
     tileurl = settings.TILE_URL
     subs = settings.SUBDOMAINS
     def_url = [0, maxZoom, tileurl, subs]
+
+    static_url = settings.STATIC_TILE_URL
+    static_subs = subs
+    static_url = [0, 5, static_url, static_subs]
 
     prod_url = settings.STATIC_TILE_URL_B
     #'https://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
@@ -338,17 +286,51 @@ def _index(req,
         'halpha': ['Halpha map', [[7, 10, tileurl, subs], prod_backstop], 10, 'halpha'],
     }
 
+    for tag,label in [
+            ('ibis-4', "IBIS (v4) COSMOS Color"),
+            ('ibis-4-model', "IBIS (v4) COSMOS Color model"),
+            ('ibis-4-resid', "IBIS (v4) COSMOS Color resid"),
+            ('ibis-4-m411', "IBIS (v4) COSMOS M411"),
+            ('ibis-4-m411-model', "IBIS (v4) COSMOS M411 model"),
+            ('ibis-4-m411-resid', "IBIS (v4) COSMOS M411 resid"),
+            ('ibis-4-m438', "IBIS (v4) COSMOS M438"),
+            ('ibis-4-m438-model', "IBIS (v4) COSMOS M438 model"),
+            ('ibis-4-m438-resid', "IBIS (v4) COSMOS M438 resid"),
+            ('ibis-4-m464', "IBIS (v4) COSMOS M464"),
+            ('ibis-4-m464-model', "IBIS (v4) COSMOS M464 model"),
+            ('ibis-4-m464-resid', "IBIS (v4) COSMOS M464 resid"),
+            ('ibis-4-m490', "IBIS (v4) COSMOS M490"),
+            ('ibis-4-m490-model', "IBIS (v4) COSMOS M490 model"),
+            ('ibis-4-m490-resid', "IBIS (v4) COSMOS M490 resid"),
+            ('ibis-4-m517', "IBIS (v4) COSMOS M517"),
+            ('ibis-4-m517-model', "IBIS (v4) COSMOS M517 model"),
+            ('ibis-4-m517-resid', "IBIS (v4) COSMOS M517 resid"),
+            ('ibis-3', "IBIS (v3) XMM Color"),
+            ('ibis-3-m411', "IBIS (v3) XMM M411"),
+            ('ibis-3-m438', "IBIS (v3) XMM M438"),
+            ('ibis-3-m464', "IBIS (v3) XMM M464"),
+            ('ibis-3-m490', "IBIS (v3) XMM M490"),
+            ('ibis-3-m517', "IBIS (v3) XMM M517"),
+            ('ibis-3-wide', "IBIS (v3) Wide Color"),
+            ('ibis-3-wide-m411', "IBIS (v3) Wide M411"),
+            ('ibis-3-wide-m438', "IBIS (v3) Wide M438"),
+            ('ibis-3-wide-m464', "IBIS (v3) Wide M464"),
+            ('ibis-3-wide-m490', "IBIS (v3) Wide M490"),
+            ('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
+            ]:
+        tile_layers[tag] = [label, [def_url], maxnative, 'ls']
+
     if settings.ENABLE_DR10:
         dr10layers = {
             'ls-dr10-south': ['Legacy Surveys DR10-south images',
-                              [def_url],  maxnative, 'ls'],
-	    'ls-dr10': ['Legacy Surveys DR10 images', [def_url], maxnative, 'ls'],
+                              [static_url, def_url],  maxnative, 'ls'],
             'ls-dr10-south-model': ['Legacy Surveys DR10-south models',
                               [def_url],  maxnative, 'ls'],
-	    'ls-dr10-model': ['Legacy Surveys DR10 models', [def_url], maxnative, 'ls'],
             'ls-dr10-south-resid': ['Legacy Surveys DR10-south residuals',
                               [def_url],  maxnative, 'ls'],
-	    'ls-dr10-resid': ['Legacy Surveys DR10 residuals', [def_url], maxnative, 'ls'],
+	    'ls-dr10-mid': ['Legacy Surveys DR10 images', [static_url, def_url], maxnative, 'ls'],
+	    'ls-dr10-mid-model': ['Legacy Surveys DR10 models', [def_url], maxnative, 'ls'],
+	    'ls-dr10-mid-resid': ['Legacy Surveys DR10 residuals', [def_url], maxnative, 'ls'],
         }
         # Add regular and "-grz" versions of the above layers.
         for k,v in dr10layers.items():
@@ -368,12 +350,14 @@ def _index(req,
 
     if settings.ENABLE_DR9:
         tile_layers.update({
-            'ls-dr9': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
             'ls-dr9-south': ['Legacy Surveys DR9-south images',
                              [[0, 14, 'https://s3.us-west-2.amazonaws.com/dr9-south.legacysurvey.org/{z}/{x}/{y}.jpg', []],
                               def_url], maxnative, 'ls'],
             'ls-dr9-south-model': ['Legacy Surveys DR9-south models', [def_url], maxnative, 'ls'],
             'ls-dr9-south-resid': ['Legacy Surveys DR9-south residuals', [def_url], maxnative, 'ls'],
+            'ls-dr9-mid': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
+            'ls-dr9-mid-model': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
+            'ls-dr9-mid-resid': ['Legacy Surveys DR9 images', [def_url], maxnative, 'ls'],
             'ls-dr9.1.1': ['Legacy Surveys DR9.1.1 COSMOS deep images', [def_url], maxZoom, 'ls'],
             'ls-dr9.1.1-model': ['Legacy Surveys DR9.1.1 COSMOS deep models', [def_url],
                                  maxZoom, 'ls'],
@@ -383,17 +367,17 @@ def _index(req,
 
     if settings.ENABLE_DR8:
         tile_layers.update({
-            'ls-dr8': ['Legacy Surveys DR8 images', [aws_url, def_url], maxnative, 'ls',
-                       {'id':'dr8'}],
             'ls-dr8-north': ['Legacy Surveys DR8-north images', [aws_url, def_url], maxnative, 'ls',
                              {'id':'dr8-north'}],
+            'ls-dr8-mid': ['Legacy Surveys DR8 images', [aws_url, def_url], maxnative, 'ls',
+                             {'id':'dr8'}],
             'ls-dr8-south': ['Legacy Surveys DR8-south images', [aws_url, def_url], maxnative, 'ls',
                              {'id':'dr8-south'}],
-            'ls-dr8-model': ['Legacy Surveys DR8 models', [def_url], maxnative, 'ls'],
             'ls-dr8-north-model': ['Legacy Surveys DR8-north models', [def_url], maxnative, 'ls'],
+            'ls-dr8-mid-model': ['Legacy Surveys DR8 models', [def_url], maxnative, 'ls'],
             'ls-dr8-south-model': ['Legacy Surveys DR8-south models', [def_url], maxnative, 'ls'],
-            'ls-dr8-resid': ['Legacy Surveys DR8 residuals', [def_url], maxnative, 'ls'],
             'ls-dr8-north-resid': ['Legacy Surveys DR8-north residuals', [def_url], maxnative, 'ls'],
+            'ls-dr8-mid-resid': ['Legacy Surveys DR8 residuals', [def_url], maxnative, 'ls'],
             'ls-dr8-south-resid': ['Legacy Surveys DR8-south residuals', [def_url], maxnative, 'ls'],
         })
 
@@ -417,7 +401,7 @@ def _index(req,
         })
 
     if settings.ENABLE_DR67:
-        tile_layers['ls-dr67'] = ['Legacy Surveys DR6+DR7 images', [[14, maxZoom, tileurl, subs], prod_backstop], maxnative, 'ls']
+        tile_layers['ls-dr67-mid'] = ['Legacy Surveys DR6+DR7 images', [static_url, [6, maxZoom, tileurl, subs]], maxnative, 'ls']
 
     if settings.ENABLE_DR5:
         tile_layers.update({
@@ -532,9 +516,12 @@ def _index(req,
         urls = over
         orig[1] = urls
 
+    enable_desi_dr1 = settings.ENABLE_DESI_DR1
+
     kwkeys = dict(
         tile_layers=tile_layers,
         enable_desi_edr = settings.ENABLE_DESI_EDR,
+        enable_desi_dr1 = enable_desi_dr1,
         #enable_merian = settings.ENABLE_MERIAN,
         science = settings.ENABLE_SCIENCE,
         enable_older = settings.ENABLE_OLDER,
@@ -604,6 +591,7 @@ def _index(req,
         enable_spectra = settings.ENABLE_SPECTRA,
         enable_phat = settings.ENABLE_PHAT,
         #enable_pandas = settings.ENABLE_PANDAS,
+        enable_cfis = settings.ENABLE_CFIS,
         enable_desi_menu = True,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
@@ -674,18 +662,15 @@ def _index(req,
 
     # Process DESI targetid parameter
     try:
-        from map.cats import lookup_targetid
         tid = req.GET.get('targetid')
         tid = int(tid)
         print('Looking up TARGETID', tid)
-        if settings.ENABLE_DESI_DATA:
-            t = lookup_targetid(tid, 'daily')
-        else:
-            t = lookup_targetid(tid, 'edr')
-
+        t = lookup_any_targetid(tid)
+        print('t:', t)
+        print(t.get_columns())
         if t is not None:
-            ra = t.ra
-            dec = t.dec
+            ra = t.target_ra
+            dec = t.target_dec
             print('Targetid found: RA,Dec', ra, dec)
             print('(targetid', t.targetid, ')')
         else:
@@ -731,7 +716,7 @@ def _index(req,
         usercats = usercatalog.split(',')
         keepcats = []
         for cat in usercats:
-            m = re.match('(?P<fn>\w+)(-n(?P<name>\w+))?(-c(?P<color>\w+))?', cat)
+            m = re.match(r'(?P<fn>\w+)(-n(?P<name>\w+))?(-c(?P<color>\w+))?', cat)
             if m is None:
                 print('Usercatalog "%s" did not match regex' % cat)
                 continue
@@ -889,8 +874,8 @@ def desi_edr(req):
 def desi_dr1(req):
     return _index(req,
                   default_layer='ls-dr9',
-                  default_radec=(0.0, 0.0),
-                  default_zoom=5,
+                  default_radec=(185.5191, 12.7406),
+                  default_zoom=13,
                   rooturl=settings.ROOT_URL + '/desi-dr1',
                   append_args = '&desi-tiles-dr1&desi-spec-dr1',
     )
@@ -971,7 +956,6 @@ def phat(req):
               )
 
 def query_simbad(q):
-    # py3
     from urllib.request import urlopen
     from urllib.parse import urlencode
 
@@ -996,14 +980,8 @@ def query_simbad(q):
     return True, (t.ra_d, t.dec_d)
 
 def query_ned(q):
-    try:
-        # py2
-        from urllib2 import urlopen
-        from urllib import urlencode
-    except:
-        # py3
-        from urllib.request import urlopen
-        from urllib.parse import urlencode
+    from urllib.request import urlopen
+    from urllib.parse import urlencode
 
     url = 'https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/NSV?'
     url += urlencode(dict(q=q)).replace('q=','')
@@ -1029,8 +1007,7 @@ def query_ned(q):
     code = f.getcode()
     print('Code', code)
     for line in f.readlines():
-        if py3:
-            line = line.decode()
+        line = line.decode()
         words = line.split()
         if len(words) == 0:
             continue
@@ -1069,12 +1046,11 @@ def name_query(req):
     # Check for TARGET or TARGETID <targetid>
     words = obj.strip().split()
     if len(words) == 2 and words[0].lower() in ['target', 'targetid']:
-        from map.cats import lookup_targetid
         tid = int(words[1])
         try:
-            t = lookup_targetid(tid, 'daily')
-            ra = t.ra
-            dec = t.dec
+            t = lookup_any_targetid(tid)
+            ra = t.target_ra
+            dec = t.target_dec
         except RuntimeError as e:
             return HttpResponse(json.dumps(dict(error='DESI targetid %i not found' % tid)))
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Targetid %i' % tid)))
@@ -1453,6 +1429,8 @@ class MapLayer(object):
         kwa = {}
         if invvar:
             kwa.update(invvar=True)
+        if maskbits:
+            kwa.update(maskbits=True)
         if scale == 0:
             return self.get_base_filename(brick, band, **kwa)
 
@@ -1656,7 +1634,7 @@ class MapLayer(object):
                 # call get_filename to possibly generate scaled version
                 fn = self.get_filename(brick, band, scale, tempfiles=tempfiles, invvar=invvar,
                                        maskbits=maskbits)
-                info('Reading', brickname, 'band', band, 'scale', scale, ('invvar' if invvar else ''), ('maskbits' if maskbits else ''), '-> fn', fn)
+                info('Reading', brickname, 'band', band, 'scale', scale, ('invvar' if invvar else ''), ('maskbits' if maskbits else ''), '-> fn', fn, 'from class', type(self))
                 if fn is None:
                     continue
 
@@ -2131,7 +2109,7 @@ class MapLayer(object):
                                     get_images_only=True, invvar=True)
         maskbits = None
         if with_maskbits and self.has_maskbits():
-            maskbits,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
+            maskbits,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands[0], tempfiles=tempfiles,
                                          get_images_only=True, maskbits=True)
 
         if hdr is not None:
@@ -2220,6 +2198,7 @@ class MapLayer(object):
         subimage = ('subimage' in req.GET)
 
         with_invvar = ('invvar' in req.GET)
+        with_maskbits = ('maskbits' in req.GET)
 
         if fits:
             suff = '.fits'
@@ -2242,7 +2221,8 @@ class MapLayer(object):
 
         self.write_cutout(ra, dec, pixscale, width, height, out_fn, bands=bands,
                           fits=fits, jpeg=jpeg, subimage=subimage, tempfiles=tempfiles,
-                          with_invvar=with_invvar, req=req)
+                          with_invvar=with_invvar, with_maskbits=with_maskbits,
+                          req=req)
 
         return send_file(out_fn, filetype, unlink=True, filename=nice_fn)
 
@@ -2618,7 +2598,7 @@ class RebrickedMixin(object):
             return 1
         import fitsio
         F = fitsio.FITS(fn)
-        debug('File', fn, 'has', len(F), 'hdus')
+        #debug('File', fn, 'has', len(F), 'hdus (RebrickedMixin)')
         if len(F) == 1:
             return 0
         return 1
@@ -2706,10 +2686,12 @@ class RebrickedMixin(object):
     def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
         #print('RebrickedMixin.get_filename: brick', brick, 'band', band, 'scale', scale)
         if scale == 0:
-            #return self.get_base_filename(brick, band)
-            return super(RebrickedMixin, self).get_filename(brick, band, scale,
-                                                            tempfiles=tempfiles, invvar=invvar,
-                                                            maskbits=maskbits)
+            #print('RebrickedMixin.get_filename: calling super()')
+            fn = super().get_filename(brick, band, scale,
+                                      tempfiles=tempfiles, invvar=invvar,
+                                      maskbits=maskbits)
+            #print('got', fn)
+            return fn
         if invvar:
             return None
 
@@ -2717,7 +2699,7 @@ class RebrickedMixin(object):
         if os.path.exists(fn):
             print('Target filename (rebricked) exists:', fn)
             return fn
-        print('Creating target filename (rebricked):', fn)
+        #print('Creating target filename (rebricked):', fn)
         fn = self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
         if fn is None:
             return None
@@ -2981,7 +2963,7 @@ class DecapsResidLayer(ResidMixin, DecapsLayer):
 class MzlsMixin(object):
     def __init__(self, *args, **kwargs):
         super(MzlsMixin, self).__init__(*args, **kwargs)
-        self.bands = 'z'
+        self.bands = ['z']
 
     def get_rgb(self, imgs, bands, **kwargs):
         return mzls_dr3_rgb(imgs, bands, **kwargs)
@@ -3041,7 +3023,7 @@ class SdssLayer(MapLayer):
         return self.bricks
 
     def get_bands(self):
-        return 'gri'
+        return ['g','r','i']
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
@@ -3127,9 +3109,9 @@ class LsDr10Layer(ReDecalsLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         #print('LsDr10Layer.get_rgb: self.bands', self.bands)
 
-        if self.bands == 'grz':
+        if self.bands in ['grz', ['g','r','z']]:
             return super().get_rgb(imgs, bands, **kwargs)
-        if self.bands == 'gri':
+        if self.bands in ['gri', ['g','r','i']]:
             #print('LS DR10 gri')
             rgb_stretch_factor = 1.5
             rgbscales = {
@@ -3249,7 +3231,7 @@ class LsSegmentationLayer(RebrickedMixin, MapLayer):
 
     # One mask file per brick
     def get_bands(self):
-        return 'r'
+        return ['r']
 
     def get_fits_cutout_kwargs(self, image=False, iv=False, maskbits=False):
         return dict(compress='GZIP')
@@ -3524,11 +3506,11 @@ class Decaps2Layer(ReDecalsLayer):
         return wcs_for_brick(brick)
 
     def get_rgb(self, imgs, bands, **kwargs):
-        if self.bands == 'grz':
+        if self.bands in ['grz',['g','r','z']]:
             # equivalent to:
             #return sdss_rgb(rimgs, bands, scales=dict(g=(2,6.0), r=(1,3.4), z=(0,2.2)), m=0.03)
             return super().get_rgb(imgs, bands, **kwargs)
-        elif self.bands == 'riY':
+        elif self.bands in ['riY', ['r','i','Y']]:
             return sdss_rgb(imgs, bands, scales=dict(r=(2,3.4), i=(1,2.8), Y=(0,2.0)), m=0.03)
         return None
 
@@ -3631,7 +3613,7 @@ class CfhtLayer(ReDecalsLayer):
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
         super(HscLayer, self).__init__(name)
-        self.bands = 'grz'
+        self.bands = ['g','r','z']
         self.basedir = os.path.join(settings.DATA_DIR, self.name)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
@@ -3895,8 +3877,9 @@ class IbisColorLayer(ReDecalsLayer):
         return rgb
 
 class Ibis3Layer(ReDecalsLayer):
-    def __init__(self, name, imagetype, survey):
-        super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'])
+    def __init__(self, name, imagetype, survey, drname=None):
+        super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'],
+                         drname=drname)
         self.rgb_plane = None
     def get_rgb(self, imgs, bands, **kwargs):
         from legacypipe.survey import sdss_rgb as ls_rgb
@@ -3909,6 +3892,10 @@ class Ibis3Layer(ReDecalsLayer):
                     rgb[:,:,i] = rgb[:,:,self.rgb_plane]
         
         return rgb
+class Ibis3ModelLayer(UniqueBrickMixin, Ibis3Layer):
+    pass
+class Ibis3ResidLayer(UniqueBrickMixin, ResidMixin, Ibis3Layer):
+    pass
 
 class LegacySurveySplitLayer(MapLayer):
     def __init__(self, name, top, bottom, decsplit, top_bands='grz', bottom_bands='grz'):
@@ -4395,8 +4382,7 @@ class PS1Layer(MapLayer):
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
     def get_bands(self):
-        #return 'grz'
-        return 'gri'
+        return ['g','r','i']
 
     def get_bricks(self):
         if self.bricks is not None:
@@ -4611,7 +4597,7 @@ class UnwiseLayer(MapLayer):
 
     def get_bands(self):
         # Note, not 'w1','w2'...
-        return '12'
+        return ['1','2']
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
@@ -4742,7 +4728,7 @@ class UnwiseMask(RebrickedUnwise):
         return None
     # One mask file per brick
     def get_bands(self):
-        return '1'
+        return ['1']
     # data/unwise-neo7/000/0000p757/unwise-0000p757-msk.fits.gz
     def get_base_filename(self, brick, band, **kwargs):
         brickname = brick.brickname
@@ -4764,7 +4750,7 @@ class UnwiseMask(RebrickedUnwise):
 class UnwiseW3W4(RebrickedUnwise):
     def get_bands(self):
         # Note, not 'w1','w2'...
-        return '34'
+        return ['3','4']
     def get_rgb(self, imgs, bands, **kwargs):
         return _unwise_w34_to_rgb(imgs, **kwargs)
 
@@ -5246,7 +5232,7 @@ class VlassLayer(RebrickedMixin, MapLayer):
         return wcs
 
     def get_bands(self):
-        return [1]
+        return ['1']
 
     def get_rgb(self, imgs, bands, **kwargs):
         import numpy as np
@@ -5543,7 +5529,7 @@ class ZtfLayer(RebrickedMixin, MapLayer):
         return wcs
 
     def get_bands(self):
-        return 'gri'
+        return ['g','r','i']
 
     def get_rgb(self, imgs, bands, **kwargs):
         import numpy as np
@@ -6087,14 +6073,14 @@ class AsteroidsLayer(ReDecalsLayer):
         rgb[:,:,1] = rgb[:,:,2] = rgb[:,:,0]
         return rgb
     def get_bands(self):
-        return 'i'
+        return ['i']
 
 class OutliersLayer(DecalsLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.scaledir = None
         #self.bands = 'o'
-        self.bands = 'rgb'
+        self.bands = ['r','g','b']
         self.imagetype = 'outliers-masked-pos'
 
         self.cached_brick = None
@@ -6333,21 +6319,21 @@ def get_survey(name):
         survey.drname = 'DECaPS 2'
         survey.drurl = 'https://portal.nersc.gov/project/cosmo/temp/dstn/decaps2-coadd'#https://portal.nersc.gov/cfs/cosmo/data/decaps/dr1'
         
-    elif name == 'ls-dr67':
+    elif name in ['ls-dr67', 'ls-dr67-mid']:
         north = get_survey('mzls+bass-dr6')
         north.layer = 'mzls+bass-dr6'
         south = get_survey('decals-dr7')
         south.layer = 'decals-dr7'
         survey = SplitSurveyData(north, south)
 
-    elif name == 'ls-dr8':
+    elif name in['ls-dr8', 'ls-dr8-mid']:
         north = get_survey('ls-dr8-north')
         north.layer = 'ls-dr8-north'
         south = get_survey('ls-dr8-south')
         south.layer = 'ls-dr8-south'
         survey = SplitSurveyData(north, south)
 
-    elif name == 'ls-dr9':
+    elif name in ['ls-dr9', 'ls-dr9-mid']:
         north = get_survey('ls-dr9-north')
         north.layer = 'ls-dr9-north'
         south = get_survey('ls-dr9-south')
@@ -6380,10 +6366,21 @@ def get_survey(name):
 
     elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',
                   'ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
-                  'ibis-3-wide-m490', 'ibis-3-wide-m517',]:
+                  'ibis-3-wide-m490', 'ibis-3-wide-m517',
+                  'ibis-4-m411', 'ibis-4-m438', 'ibis-4-m464', 'ibis-4-m490', 'ibis-4-m517',
+                  'ibis-4-m411-model', 'ibis-4-m438-model', 'ibis-4-m464-model',
+                  'ibis-4-m490-model', 'ibis-4-m517-model',
+                  'ibis-4-m411-resid', 'ibis-4-m438-resid', 'ibis-4-m464-resid',
+                  'ibis-4-m490-resid', 'ibis-4-m517-resid',
+                  ]:
+        # -> ibis-3 / ibis-3-wide / ibis-4
+        name = name.replace('-model', '')
+        name = name.replace('-resid', '')
         name = name[:-5]
         dirnm = os.path.join(basedir, name)
-
+       
+    elif name in ['ls-dr11-early','ls-dr11-early-v2']:
+        survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
     if survey is None and not os.path.exists(dirnm):
         return None
@@ -6405,6 +6402,7 @@ def get_survey(name):
 
         'ls-dr9-north': ('Legacy Surveys DR9-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/north'),
         'ls-dr9-south': ('Legacy Surveys DR9-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/south'),
+        'ls-dr9-mid': ('Legacy Surveys DR9', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/'),
         'ls-dr9': ('Legacy Surveys DR9', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/'),
         'ls-dr10-south': ('Legacy Surveys DR10-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr10/south'),
         'ls-dr10': ('Legacy Surveys DR10', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr10'),
@@ -7610,7 +7608,7 @@ def jpl_lookup(req):
     # Add link to objects.
     import re
     # 44505 (1998 XT38) --> 44505
-    r1 = re.compile('(?P<num>\d+) \([\w\s]+\)')
+    r1 = re.compile(r'(?P<num>\d+) \([\w\s]+\)')
     for i,d in enumerate(data):
         name = d[0]
         #https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=44505
@@ -8153,22 +8151,24 @@ def get_layer(name, default=None):
         '''
         layer = ReSdssLayer('sdss')
 
-    elif name == 'ls-dr67':
+    elif name in ['ls-dr67', 'ls-dr67-mid']:
         dr7 = get_layer('decals-dr7')
         dr6 = get_layer('mzls+bass-dr6')
         layer = LegacySurveySplitLayer(name, dr6, dr7, 32.)
         layer.drname = 'Legacy Surveys DR6+DR7'
 
-    elif name in ['ls-dr8', 'ls-dr8-model', 'ls-dr8-resid']:
-        suff = name.replace('ls-dr8', '')
+    elif name in ['ls-dr8', 'ls-dr8-model', 'ls-dr8-resid',
+                  'ls-dr8-mid', 'ls-dr8-mid-model', 'ls-dr8-mid-resid']:
+        suff = name.replace('ls-dr8', '').replace('-mid', '')
         north = get_layer('ls-dr8-north' + suff)
         south = get_layer('ls-dr8-south' + suff)
         ### NOTE, must also change the javascript in template/index.html !
         layer = LegacySurveySplitLayer(name, north, south, 32.375)
         layer.drname = 'Legacy Surveys DR8'
 
-    elif name in ['ls-dr9', 'ls-dr9-model', 'ls-dr9-resid']:
-        suff = name.replace('ls-dr9', '')
+    elif name in ['ls-dr9-mid', 'ls-dr9-mid-model', 'ls-dr9-mid-resid',
+                  'ls-dr9', 'ls-dr9-model', 'ls-dr9-resid']:
+        suff = name.replace('ls-dr9', '').replace('-mid', '')
         north = get_layer('ls-dr9-north' + suff)
         south = get_layer('ls-dr9-south' + suff)
         ### NOTE, must also change the javascript in template/index.html !
@@ -8399,16 +8399,52 @@ def get_layer(name, default=None):
             layer.bands = ['M464']
             layer.rgb_plane = 1
 
-    elif name in ['ibis-3', 'ibis-3-wide']:
-        survey = get_survey(name)
-        layer = Ibis3Layer(name, 'image', survey)
+    elif name in ['ibis-3', 'ibis-3-wide',
+                  'ibis-4',
+                  'ibis-4-model',
+                  'ibis-4-resid',
+                  ]:
+        sname = name.replace('-model', '')
+        sname = sname.replace('-resid', '')
+        survey = get_survey(sname)
 
-    elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',]:
-        survey = get_survey('ibis-3')
-        layer = Ibis3Layer('ibis-3', 'image', survey)
-        band = name[-4:].upper()
-        layer.bands = [band]
-        layer.rgb_plane = 2
+        image = Ibis3Layer(sname, 'image', survey)
+        model = Ibis3ModelLayer(sname+'-model', 'model', survey, drname=sname)
+        resid = Ibis3ResidLayer(image, model, sname+'-resid', 'resid', survey, drname=sname)
+        layers[sname           ] = image
+        layers[sname + '-model'] = model
+        layers[sname + '-resid'] = resid
+        layer = layers[name]
+
+    elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',
+                  'ibis-4-m411', 'ibis-4-m438', 'ibis-4-m464', 'ibis-4-m490', 'ibis-4-m517',
+                  'ibis-4-m411-model', 'ibis-4-m438-model', 'ibis-4-m464-model', 'ibis-4-m490-model', 'ibis-4-m517-model',
+                  'ibis-4-m411-resid', 'ibis-4-m438-resid', 'ibis-4-m464-resid', 'ibis-4-m490-resid', 'ibis-4-m517-resid',
+                  ]:
+        sname = name[:len('ibis-3')]
+        bname = name.replace('-model', '')
+        bname = bname.replace('-resid', '')
+        band = bname[-4:].upper()
+        assert(band in ['M411', 'M438', 'M464', 'M490', 'M517'])
+
+        basename = name.replace('-model', '')
+        basename = basename.replace('-resid', '')
+
+        survey = get_survey(sname)
+
+        image = Ibis3Layer(basename, 'image', survey, drname=sname)
+        image.bands = [band]
+        image.rgb_plane = 2
+        model = Ibis3ModelLayer(basename + '-model', 'model', survey, drname=sname)
+        model.bands = [band]
+        model.rgb_plane = 2
+        resid = Ibis3ResidLayer(image, model, basename + '-resid', 'resid', survey, drname=sname)
+        resid.bands = [band]
+        resid.rgb_plane = 2
+        layers[sname + '-' + band.lower()           ] = image
+        layers[sname + '-' + band.lower() + '-model'] = model
+        layers[sname + '-' + band.lower() + '-resid'] = resid
+        layer = layers[name]
 
     elif name in ['ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
                   'ibis-3-wide-m490', 'ibis-3-wide-m517',]:
@@ -8434,7 +8470,10 @@ def get_layer(name, default=None):
 
     elif name in ['ls-dr10', 'ls-dr10-model', 'ls-dr10-resid',
                   'ls-dr10-grz', 'ls-dr10-model-grz', 'ls-dr10-resid-grz',
-                  'ls-dr10-gri',]:
+                  'ls-dr10-gri',
+                  'ls-dr10-mid', 'ls-dr10-mid-model', 'ls-dr10-mid-resid',
+                  'ls-dr10-mid-grz', 'ls-dr10-mid-model-grz', 'ls-dr10-mid-resid-grz',
+                  'ls-dr10-mid-gri',]:
         is_grz = name.endswith('-grz')
         is_gri = name.endswith('-gri')
         if is_grz:
@@ -8450,7 +8489,7 @@ def get_layer(name, default=None):
             bands = 'griz'
 
         # suff: -model, -resid
-        suff = name.replace('ls-dr10', '')
+        suff = name.replace('ls-dr10', '').replace('-mid', '')
         north = get_layer('ls-dr9-north' + suff)
         south = get_layer('ls-dr10-south' + suff + grzpart)
         layer = LegacySurveySplitLayer(name + grzpart, north, south, 32.375, bottom_bands=bands)
@@ -8483,6 +8522,14 @@ def get_layer(name, default=None):
         layers[basename + '-model' + grzpart] = model
         layers[basename + '-resid' + grzpart] = resid
         layer = layers[name]
+
+    elif name in ['ls-dr11-early','ls-dr11-early-v2']:
+        bands = 'griz'
+        survey = get_survey(name)
+        image = LsDr10Layer(name, 'image', survey, bands=bands, drname=name)
+        layers[name] = image
+        layer = layers[name]       
+        layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', name)
 
     if layer is None:
         # Try generic rebricked
@@ -9165,6 +9212,7 @@ if __name__ == '__main__':
     #r = c.get('/phast/1/11/1987/765.jpg')
     #r = c.get('/phast/1/10/993/382.jpg')
     r = c.get('/phast/1/9/496/191.jpg')
+
 
     # Euclid colorization
     # for i in [3,]:#1,2]:
