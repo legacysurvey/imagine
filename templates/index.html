@@ -3373,6 +3373,11 @@ var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (LS-DR9)',
 //                               'labelsMinZoom': 7,
 //                              'urlTerm': 'masks-dr8',});
 
+var sga2025_parent = new SGACatalog('sga2025-parent', 'SGA2025 Parent',
+                             {'minZoom': 5,
+                              'labelsMinZoom': 7,
+                              'urlTerm': 'sga2025-parent',});
+
 var sga_parent = new SGACatalog('sga-parent', 'HyperLEDA/SGA galaxies',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
@@ -3814,7 +3819,7 @@ var overlays = [
     {% if enable_sdss_ccds %}
     ccdOverlaySdss,
     {% endif %}
-    gals, sga_parent, sga_ell, //lslga_model, starmasks8,
+    gals, sga2025_parent, sga_parent, sga_ell, //lslga_model, starmasks8,
     starmasks9, GCsPNe, bright, tycho2,
     photoz,
     {% if enable_ps1 %}
@@ -4425,6 +4430,7 @@ var overlayTree = [];
      findoverlay('tycho2'),
      findoverlay('GCs-PNe'),
      findoverlay('gals'),
+     findoverlay('sga2025-parent'),
      findoverlay('sga'),
      {% if science %}
      findoverlay('sga-parent'),
