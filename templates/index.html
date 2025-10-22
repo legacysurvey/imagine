@@ -2684,6 +2684,21 @@ var expOverlay8s = new CircleOverlay('dr8-south-exps',
                                     });
 {% endif %}
 
+{% if enable_dr11_overlays %}
+
+var ccdOverlay11 = new PolygonOverlay('dr11-ccds',
+                                     'Legacy Surveys DR11-early-v2 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelsMinZoom': 100,
+                                     'urlTerm': 'ccds11-early-v2',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr11-early-v2',
+                                     'dr_name': 'DR11',
+                                    });
+
+{% endif %}
 
 
 {% if enable_dr10_overlays %}
@@ -3190,6 +3205,9 @@ var polygonOverlays = [
     {% endif %}
     {% if enable_dr8_south_overlays %}
     ccdOverlay8s, expOverlay8s,
+    {% endif %}
+    {% if enable_dr11_overlays %}
+    ccdOverlay11,
     {% endif %}
     {% if enable_dr10_overlays %}
     ccdOverlay10,
@@ -3774,6 +3792,9 @@ var overlays = [
     ccdOverlay8s,
     expOverlay8s,
     {% endif %}
+    {% if enable_dr11_overlays %}
+    ccdOverlay11,
+    {% endif %}
     {% if enable_dr10_overlays %}
     ccdOverlay10,
     expOverlay10,
@@ -4224,6 +4245,9 @@ var overlayTree = [];
 
      findoverlay('decam-footprint'),
      findoverlay('decals-bricks'),
+     {% if enable_dr11_overlays %}
+     findoverlay('dr11-ccds'),
+     {% endif %}
      {% if enable_dr10_overlays %}
      findoverlay('dr10-ccds'),
      findoverlay('dr10-exps'),

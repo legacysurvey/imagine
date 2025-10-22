@@ -581,6 +581,8 @@ def _index(req,
         enable_dr10 = settings.ENABLE_DR10,
         enable_dr10_overlays = settings.ENABLE_DR10,
 
+        enable_dr11_overlays = settings.ENABLE_DR11,
+
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         #enable_des_dr1 = settings.ENABLE_DES_DR1,
