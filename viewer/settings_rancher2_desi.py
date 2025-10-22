@@ -40,6 +40,7 @@ ENABLE_DR5 = True
 ENABLE_PS1 = True
 ENABLE_DR8 = True
 ENABLE_DES_DR1 = True
+ENABLE_PHAT = True
 
 # Collab-private data!
 ENABLE_DESI_DATA = True

@@ -571,6 +571,8 @@ def _index(req,
 
         enable_dr11_overlays = settings.ENABLE_DR11,
 
+        enable_ibis = settings.ENABLE_IBIS,
+
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         #enable_des_dr1 = settings.ENABLE_DES_DR1,
