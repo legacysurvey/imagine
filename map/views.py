@@ -286,6 +286,40 @@ def _index(req,
         'halpha': ['Halpha map', [[7, 10, tileurl, subs], prod_backstop], 10, 'halpha'],
     }
 
+    for tag,label in [
+            ('ibis-4', "IBIS (v4) COSMOS Color"),
+            ('ibis-4-model', "IBIS (v4) COSMOS Color model"),
+            ('ibis-4-resid', "IBIS (v4) COSMOS Color resid"),
+            ('ibis-4-m411', "IBIS (v4) COSMOS M411"),
+            ('ibis-4-m411-model', "IBIS (v4) COSMOS M411 model"),
+            ('ibis-4-m411-resid', "IBIS (v4) COSMOS M411 resid"),
+            ('ibis-4-m438', "IBIS (v4) COSMOS M438"),
+            ('ibis-4-m438-model', "IBIS (v4) COSMOS M438 model"),
+            ('ibis-4-m438-resid', "IBIS (v4) COSMOS M438 resid"),
+            ('ibis-4-m464', "IBIS (v4) COSMOS M464"),
+            ('ibis-4-m464-model', "IBIS (v4) COSMOS M464 model"),
+            ('ibis-4-m464-resid', "IBIS (v4) COSMOS M464 resid"),
+            ('ibis-4-m490', "IBIS (v4) COSMOS M490"),
+            ('ibis-4-m490-model', "IBIS (v4) COSMOS M490 model"),
+            ('ibis-4-m490-resid', "IBIS (v4) COSMOS M490 resid"),
+            ('ibis-4-m517', "IBIS (v4) COSMOS M517"),
+            ('ibis-4-m517-model', "IBIS (v4) COSMOS M517 model"),
+            ('ibis-4-m517-resid', "IBIS (v4) COSMOS M517 resid"),
+            ('ibis-3', "IBIS (v3) XMM Color"),
+            ('ibis-3-m411', "IBIS (v3) XMM M411"),
+            ('ibis-3-m438', "IBIS (v3) XMM M438"),
+            ('ibis-3-m464', "IBIS (v3) XMM M464"),
+            ('ibis-3-m490', "IBIS (v3) XMM M490"),
+            ('ibis-3-m517', "IBIS (v3) XMM M517"),
+            ('ibis-3-wide', "IBIS (v3) Wide Color"),
+            ('ibis-3-wide-m411', "IBIS (v3) Wide M411"),
+            ('ibis-3-wide-m438', "IBIS (v3) Wide M438"),
+            ('ibis-3-wide-m464', "IBIS (v3) Wide M464"),
+            ('ibis-3-wide-m490', "IBIS (v3) Wide M490"),
+            ('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
+            ]:
+        tile_layers[tag] = [label, [def_url], maxnative, 'ls']
+
     if settings.ENABLE_DR10:
         dr10layers = {
             'ls-dr10-south': ['Legacy Surveys DR10-south images',
@@ -437,7 +471,12 @@ def _index(req,
         tile_layers['eboss'] = ['special eBOSS region', [def_url], maxnative, 'ls']
 
     if settings.ENABLE_PHAT:
-        tile_layers['phat'] = ['PHAT image', [def_url], maxnative, 'PHAT collaboration']
+        native = 17
+        maxZoom = 17
+        the_url = [0, maxZoom, tileurl, subs]
+
+        tile_layers['phat'] = ['PHAT image', [the_url], native, 'PHAT collaboration']
+        tile_layers['phast'] = ['PHAST image', [the_url], native, 'PHAST collaboration']
 
     if settings.ENABLE_M33:
         tile_layers['m33'] = ['HST M33 image', [[17, maxZoom, tileurl, subs], prod_backstop],
@@ -5691,7 +5730,19 @@ rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 #                      scales=dict(g=(2,1),r=(1,1),z=(0,1)))
 
 def sdss_rgb(imgs, bands, scales=None,
-             m = 0.02):
+             m=0.02, Q=20):
+    '''
+      *imgs*:   list of 2-d numpy arrays of image pixels (float)
+      *bands*:  list of strings with the band names, eg ['g', 'r',' 'z']
+      *scales*: dict from band name to (plane, scale), where *plane* is the RGB plane,
+                and *scale* multiplies the image pixels
+      *m*:      float, an offset added so that pixels containing 0.0 map to a gray value
+                rather than black.
+      *Q*:      arcsinh scaling value (larger = stronger stretch)
+
+      Returns: H x W x 3 RGB array, floating-point, between 0.0 and 1.0.
+    '''
+    
     import numpy as np
     rgbscales = {'u': (2,1.5), #1.0,
                  'g': (2,2.5),
@@ -5708,12 +5759,7 @@ def sdss_rgb(imgs, bands, scales=None,
         img = np.maximum(0, img * scale + m)
         I = I + img
     I /= len(bands)
-        
-    # b,g,r = [rimg * rgbscales[b] for rimg,b in zip(imgs, bands)]
-    # r = np.maximum(0, r + m)
-    # g = np.maximum(0, g + m)
-    # b = np.maximum(0, b + m)
-    # I = (r+g+b)/3.
+
     Q = 20
     fI = np.arcsinh(Q * I) / np.sqrt(Q)
     I += (I == 0.) * 1e-6
@@ -5723,15 +5769,17 @@ def sdss_rgb(imgs, bands, scales=None,
         plane,scale = rgbscales[band]
         rgb[:,:,plane] = (img * scale + m) * fI / I
 
-    # R = fI * r / I
-    # G = fI * g / I
-    # B = fI * b / I
+    # We saturate to white, while the original SDSS (Lupton et al) color mapping
+    # saturates to the color of the object... more scientifically informative, but
+    # some say, not as pretty.
+    # Can do the SDSS version with something along these lines:
     # # maxrgb = reduce(np.maximum, [R,G,B])
     # # J = (maxrgb > 1.)
     # # R[J] = R[J]/maxrgb[J]
     # # G[J] = G[J]/maxrgb[J]
     # # B[J] = B[J]/maxrgb[J]
     # rgb = np.dstack((R,G,B))
+        
     rgb = np.clip(rgb, 0, 1)
     return rgb
 
@@ -8076,7 +8124,7 @@ def get_layer(name, default=None):
         return layers[name]
     layer = None
 
-    from map.phat import PhatLayer, M33Layer
+    from map.phat import PhatLayer, M33Layer, PhastLayer
 
     if '/' in name or '..' in name:
         pass
@@ -8136,6 +8184,9 @@ def get_layer(name, default=None):
 
     elif name == 'phat':
         layer = PhatLayer('phat')
+
+    elif name == 'phast':
+        layer = PhastLayer('phast')
 
     elif name == 'm33':
         layer = M33Layer('m33')
@@ -9158,7 +9209,15 @@ if __name__ == '__main__':
     #r = c.get('/ibis-4-m464-model/1/5/18/15.jpg')
     #r = c.get('/ibis-4-m464-resid/1/5/18/15.jpg')
     #r = c.get('/cutout.fits?ra=197.59267292667388&dec=32.36562720074835&size=350&layer=ls-dr9&pixscale=0.262&bands=grz&invvar&maskbits')
-    r = c.get('/cutout.fits?ra=132.0697&dec=47.3085&layer=ls-dr9&pixscale=0.25&maskbits')
+    #r = c.get('/cutout.fits?ra=132.0697&dec=47.3085&layer=ls-dr9&pixscale=0.25&maskbits')
+    #r = c.get('/phat/1/14/15897/6126.jpg')
+    settings.READ_ONLY_BASEDIR = False
+    #r = c.get('/phast/1/14/15901/6127.jpg')
+    #r = c.get('/phast/1/13/7950/3063.jpg')
+    #r = c.get('/phast/1/12/3975/1531.jpg')
+    #r = c.get('/phast/1/11/1987/765.jpg')
+    #r = c.get('/phast/1/10/993/382.jpg')
+    r = c.get('/phast/1/9/496/191.jpg')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)

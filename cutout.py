@@ -12,8 +12,8 @@ def cutout_main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--print-path', default=False, action='store_true', help='Debug PYTHONPATH / sys.path issues')
     parser.add_argument('--output', required=True, help='Output filename (*.jpg or *.fits)')
-    parser.add_argument('--ra', type=float, required=True, help='RA (deg)')
-    parser.add_argument('--dec', type=float, required=True, help='Dec (deg)')
+    parser.add_argument('--ra', type=str, required=True, help='RA (deg or HH:MM:SS)')
+    parser.add_argument('--dec', type=str, required=True, help='Dec (deg or +-DD:MM:SS -- use "--dec=-10:20:30" for negative Decs)')
     parser.add_argument('--pixscale', type=float, default=CUTOUT_PIXSCALE_DEFAULT, help='Pixel scale (arcsec/pix), default %(default)f')
     parser.add_argument('--size', type=int, default=CUTOUT_SIZE_DEFAULT, help='Pixel size of output, default %(default)d')
     parser.add_argument('--width', type=int, default=None, help='Pixel width of output')
@@ -38,11 +38,29 @@ def cutout_main():
         print('legacypipe:', legacypipe.__file__)
         sys.exit(0)
 
+    #import logging
+    #logging.basicConfig(level=logging.DEBUG)
+
     bands = None
     if opt.bands is not None:
         bands = opt.bands.split(',')
 
-    return cutout(opt.ra, opt.dec, opt.output,
+    try:
+        ra = float(opt.ra)
+    except:
+        from astrometry.util.starutil import hmsstring2ra
+        print('Trying to parse RA string \"%s\" as HH:MM:SS' % opt.ra)
+        ra = hmsstring2ra(opt.ra)
+        print('Got RA %g' % ra)
+    try:
+        dec = float(opt.dec)
+    except:
+        from astrometry.util.starutil import dmsstring2dec
+        print('Trying to parse Dec string \"%s\" as +-DD:MM:SS' % opt.dec)
+        dec = dmsstring2dec(opt.dec)
+        print('Got Dec %g' % dec)
+
+    return cutout(ra, dec, opt.output,
                   pixscale=opt.pixscale,
                   width=opt.width, height=opt.height, size=opt.size,
                   bands=bands, layer=opt.layer,
@@ -94,6 +112,7 @@ def cutout(ra, dec, output,
     tempfiles = []
     if bands is None:
         bands = layer.get_bands()
+    #print('Got layer:', layer)
     layer.write_cutout(ra, dec, pixscale, W, H, output,
                        bands=bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles, req=req,
                        **kwa)

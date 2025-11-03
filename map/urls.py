@@ -179,6 +179,8 @@ urlpatterns = ([
     re_path(r'^sga-parent/(\d+)/cat.json', cats.cat_sga_parent),
     re_path(r'^sga/(\d+)/cat.json', cats.cat_sga_ellipse),
 
+    re_path(r'^sga2025-parent/(\d+)/cat.json', cats.cat_sga2025_parent),
+
     re_path(r'^GCs-PNe/(\d+)/cat.json', cats.cat_GCs_PNe),
 
     # Virgo cluster catalog (VCC) objects

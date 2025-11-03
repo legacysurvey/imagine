@@ -39,6 +39,7 @@ catversions = {
     'GCs-PNe': [1,],
     'lslga': [1,],
     'sga': [1,],
+    'sga2025-parent': [1,],
     'spec': [1,],
     'spec-deep2': [1,],
     'manga': [1,],
@@ -2376,6 +2377,10 @@ def cat_sga_ellipse(req, ver):
     print('Reading', fn)
     return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga')
 
+def cat_sga2025_parent(req, ver):
+    fn = os.path.join(settings.DATA_DIR, 'sga2025', 'SGA2025-parent-latest.kd.fits')
+    return _cat_sga(req, ver, fn=fn, tag='sga2025-parent')
+
 def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     import json
     import numpy as np
@@ -2399,10 +2404,18 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     T.cut(np.argsort(-T.radius_arcsec))
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
-    names = [t.strip() for t in T.galaxy]
-    pgc = [int(p) for p in T.pgc]
-    typ = [t.strip() if t != 'nan' else '' for t in T.get('morphtype')]
 
+    if '2025' in tag:
+        names = [t.strip() for t in T.objname]
+        pgc = [int(p) for p in T.pgc]
+        typ = ['' for i in range(len(T))]
+        z = [-1 for i in range(len(T))]
+
+    else:
+        names = [t.strip() for t in T.galaxy]
+        pgc = [int(p) for p in T.pgc]
+        typ = [t.strip() if t != 'nan' else '' for t in T.get('morphtype')]
+        z = [float(z) if np.isfinite(z) else -1. for z in T.z_leda.astype(np.float32)]
     radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
     ab = [float(f) for f in T.ba.astype(np.float32)]
 
@@ -2420,7 +2433,7 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     else:
         color = ['#e41a1c']*len(T)
         #'#3388ff'
-    z = [float(z) if np.isfinite(z) else -1. for z in T.z_leda.astype(np.float32)]
+
     groupnames = [t.strip() for t in T.group_name]
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
@@ -3429,8 +3442,11 @@ if __name__ == '__main__':
     #r = c.get('/desi-spectrum/daily/targetid2305843037000968814')
     #r = c.get('/desi-spectrum/daily/targetid39627920582379819')
 
-    r = c.get('/desi-spectrum/edr/targetid39627914966205909')
+    #r = c.get('/desi-spectrum/edr/targetid39627914966205909')
 
+
+    r = c.get('/sga2025-parent/1/cat.json?ralo=67.7918&rahi=68.2598&declo=-48.3768&dechi=-48.1995')
+    
     f = open('out', 'wb')
     for x in r:
         f.write(x)
