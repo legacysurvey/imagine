@@ -286,39 +286,40 @@ def _index(req,
         'halpha': ['Halpha map', [[7, 10, tileurl, subs], prod_backstop], 10, 'halpha'],
     }
 
-    for tag,label in [
-            ('ibis-4', "IBIS (v4) COSMOS Color"),
-            ('ibis-4-model', "IBIS (v4) COSMOS Color model"),
-            ('ibis-4-resid', "IBIS (v4) COSMOS Color resid"),
-            ('ibis-4-m411', "IBIS (v4) COSMOS M411"),
-            ('ibis-4-m411-model', "IBIS (v4) COSMOS M411 model"),
-            ('ibis-4-m411-resid', "IBIS (v4) COSMOS M411 resid"),
-            ('ibis-4-m438', "IBIS (v4) COSMOS M438"),
-            ('ibis-4-m438-model', "IBIS (v4) COSMOS M438 model"),
-            ('ibis-4-m438-resid', "IBIS (v4) COSMOS M438 resid"),
-            ('ibis-4-m464', "IBIS (v4) COSMOS M464"),
-            ('ibis-4-m464-model', "IBIS (v4) COSMOS M464 model"),
-            ('ibis-4-m464-resid', "IBIS (v4) COSMOS M464 resid"),
-            ('ibis-4-m490', "IBIS (v4) COSMOS M490"),
-            ('ibis-4-m490-model', "IBIS (v4) COSMOS M490 model"),
-            ('ibis-4-m490-resid', "IBIS (v4) COSMOS M490 resid"),
-            ('ibis-4-m517', "IBIS (v4) COSMOS M517"),
-            ('ibis-4-m517-model', "IBIS (v4) COSMOS M517 model"),
-            ('ibis-4-m517-resid', "IBIS (v4) COSMOS M517 resid"),
-            ('ibis-3', "IBIS (v3) XMM Color"),
-            ('ibis-3-m411', "IBIS (v3) XMM M411"),
-            ('ibis-3-m438', "IBIS (v3) XMM M438"),
-            ('ibis-3-m464', "IBIS (v3) XMM M464"),
-            ('ibis-3-m490', "IBIS (v3) XMM M490"),
-            ('ibis-3-m517', "IBIS (v3) XMM M517"),
-            ('ibis-3-wide', "IBIS (v3) Wide Color"),
-            ('ibis-3-wide-m411', "IBIS (v3) Wide M411"),
-            ('ibis-3-wide-m438', "IBIS (v3) Wide M438"),
-            ('ibis-3-wide-m464', "IBIS (v3) Wide M464"),
-            ('ibis-3-wide-m490', "IBIS (v3) Wide M490"),
-            ('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
-            ]:
-        tile_layers[tag] = [label, [def_url], maxnative, 'ls']
+    if settings.ENABLE_IBIS:
+        for tag,label in [
+                ('ibis-4', "IBIS (v4) COSMOS Color"),
+                ('ibis-4-model', "IBIS (v4) COSMOS Color model"),
+                ('ibis-4-resid', "IBIS (v4) COSMOS Color resid"),
+                ('ibis-4-m411', "IBIS (v4) COSMOS M411"),
+                ('ibis-4-m411-model', "IBIS (v4) COSMOS M411 model"),
+                ('ibis-4-m411-resid', "IBIS (v4) COSMOS M411 resid"),
+                ('ibis-4-m438', "IBIS (v4) COSMOS M438"),
+                ('ibis-4-m438-model', "IBIS (v4) COSMOS M438 model"),
+                ('ibis-4-m438-resid', "IBIS (v4) COSMOS M438 resid"),
+                ('ibis-4-m464', "IBIS (v4) COSMOS M464"),
+                ('ibis-4-m464-model', "IBIS (v4) COSMOS M464 model"),
+                ('ibis-4-m464-resid', "IBIS (v4) COSMOS M464 resid"),
+                ('ibis-4-m490', "IBIS (v4) COSMOS M490"),
+                ('ibis-4-m490-model', "IBIS (v4) COSMOS M490 model"),
+                ('ibis-4-m490-resid', "IBIS (v4) COSMOS M490 resid"),
+                ('ibis-4-m517', "IBIS (v4) COSMOS M517"),
+                ('ibis-4-m517-model', "IBIS (v4) COSMOS M517 model"),
+                ('ibis-4-m517-resid', "IBIS (v4) COSMOS M517 resid"),
+                ('ibis-3', "IBIS (v3) XMM Color"),
+                ('ibis-3-m411', "IBIS (v3) XMM M411"),
+                ('ibis-3-m438', "IBIS (v3) XMM M438"),
+                ('ibis-3-m464', "IBIS (v3) XMM M464"),
+                ('ibis-3-m490', "IBIS (v3) XMM M490"),
+                ('ibis-3-m517', "IBIS (v3) XMM M517"),
+                ('ibis-3-wide', "IBIS (v3) Wide Color"),
+                ('ibis-3-wide-m411', "IBIS (v3) Wide M411"),
+                ('ibis-3-wide-m438', "IBIS (v3) Wide M438"),
+                ('ibis-3-wide-m464', "IBIS (v3) Wide M464"),
+                ('ibis-3-wide-m490', "IBIS (v3) Wide M490"),
+                ('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
+                ]:
+            tile_layers[tag] = [label, [def_url], maxnative, 'ls']
 
     if settings.ENABLE_DR10:
         dr10layers = {
@@ -568,6 +569,8 @@ def _index(req,
         enable_dr10 = settings.ENABLE_DR10,
         enable_dr10_overlays = settings.ENABLE_DR10,
 
+        enable_ibis = settings.ENABLE_IBIS,
+        
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
         #enable_des_dr1 = settings.ENABLE_DES_DR1,
@@ -9217,7 +9220,11 @@ if __name__ == '__main__':
     #r = c.get('/phast/1/12/3975/1531.jpg')
     #r = c.get('/phast/1/11/1987/765.jpg')
     #r = c.get('/phast/1/10/993/382.jpg')
-    r = c.get('/phast/1/9/496/191.jpg')
+    #r = c.get('/phast/1/9/496/191.jpg')
+    #r = c.get('/unwise-neo7/1/6/60/31.jpg')
+    #r = c.get('/unwise-neo7/1/6/60/31.jpg')
+    #r = c.get('/ls-dr9-mid/1/3/7/3.jpg')
+    r = c.get('/ls-dr10-south/1/9/472/256.jpg')
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)

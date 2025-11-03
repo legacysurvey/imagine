@@ -3999,8 +3999,10 @@ var baseTree1 = [
     {% endif %}
 ];
 
+{% if enable_decaps %}
 {% if decaps_first %}
 baseTree1 = baseTree1.concat(decaps_tree);
+{% endif %}
 {% endif %}
 
 {% if merian_first %}
@@ -4022,7 +4024,9 @@ var moresurveys = [
 
 {% if decaps_first %}
 {% else %}
+{% if enable_decaps %}
 moresurveys = moresurveys.concat(decaps_tree);
+{% endif %}
 {% endif %}
 
 moresurveys = moresurveys.concat([
@@ -4045,6 +4049,7 @@ moresurveys = drop_null(moresurveys);
 
 baseTree1 = baseTree1.concat([
 
+    {% if enable_ibis %}
     { label:'IBIS v4 COSMOS',
       children:[
           findlayer('ibis-4'),
@@ -4082,7 +4087,7 @@ baseTree1 = baseTree1.concat([
           findlayer('ibis-3-wide-m490', "IBIS (v3) Wide M490"),
           findlayer('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
       ] },
-    
+    {% endif %}    
     {% if enable_dr10 %}
     findlayer('ls-dr10', [
     findlayer('ls-dr10-model'),

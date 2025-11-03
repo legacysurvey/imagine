@@ -83,6 +83,8 @@ ENABLE_DR10 = False
 
 ENABLE_UNWISE_W3W4 = False
 
+ENABLE_IBIS = False
+
 ENABLE_DR67 = True
 
 ENABLE_DECAPS1 = False
@@ -194,6 +196,7 @@ ALLOWED_HOSTS = [
     'spin.legacysurvey.org',
     'viewer.legacysurvey.org', 'a.viewer.legacysurvey.org', 'b.viewer.legacysurvey.org', 'c.viewer.legacysurvey.org', 'd.viewer.legacysurvey.org',
     'dev.viewer.legacysurvey.org', 'dev-a.viewer.legacysurvey.org', 'dev-b.viewer.legacysurvey.org', 'dev-c.viewer.legacysurvey.org', 'dev-d.viewer.legacysurvey.org',
+    'dfuws.legacysurvey.org',
     'lb.cosmo-viewer.production.svc.spin.nersc.org',
     'lb2.cosmo-viewer.production.svc.spin.nersc.org',
     'www2.legacysurvey.org',
