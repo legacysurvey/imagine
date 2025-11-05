@@ -9,36 +9,21 @@ from astrometry.libkd.spherematch import tree_build
 
 basedir = 'data/desi-spectro-daily'
 
-# Create tile kd-tree
-if True:
+def create_tile_kd():
     from astropy.table import Table
     TT = []
-    # for surv,fn in [('main', '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-main.ecsv'),
-    #                 ('sv1',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv1.ecsv'),
-    #                 ('sv2',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv2.ecsv'),
-    #                 ('sv3',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv3.ecsv'),
-    # 
     for fn in ['/global/cfs/cdirs/desi/spectro/redux/daily/tiles-daily.csv']:
         t1 = Table.read(fn)
         t1.write('/tmp/t.fits', overwrite=True)
         T = fits_table('/tmp/t.fits')
-        #T.about()
-        #T.survey = np.array([surv] * len(T))
         TT.append(T)
     T = merge_tables(TT, columns='fillzero')
-    #T.tilera  = T.ra
-    #T.tiledec = T.dec
     T.ra  = T.tilera
     T.dec = T.tiledec
 
     for i,(prog,faprog) in enumerate(zip(T.program, T.faprgrm)):
         if prog.strip() == '':
             T.program[i] = faprog
-    
-    #     ts = '%06i' % tileid
-    #     fn = 'data/desi-tiles/%s/fiberassign-%s.fits.gz' % (ts[:3], ts)
-    #     T.found_tile[itile] = True
-    # T.cut(T.found_tile)
 
     outfn = os.path.join(basedir, 'tiles2.fits')
     T.writeto(outfn)
@@ -47,6 +32,16 @@ if True:
     cmd = 'startree -i %s -R tilera -D tiledec -PTk -o %s' % (outfn, kdfn)
     os.system(cmd)
     print('Wrote tile kd-tree')
+
+# Create tile kd-tree
+if True:
+    create_tile_kd(basedir)
+    
+    # for surv,fn in [('main', '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-main.ecsv'),
+    #                 ('sv1',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv1.ecsv'),
+    #                 ('sv2',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv2.ecsv'),
+    #                 ('sv3',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv3.ecsv'),
+    # 
 
 # Create redshift catalog kd-tree
 if True:
