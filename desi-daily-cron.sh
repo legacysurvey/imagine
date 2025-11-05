@@ -17,7 +17,7 @@ done
 #rsync -rtv /desi-tiles-staging/{*,.svn} data/desi-tiles/
 
 echo "Rebuild spectro kd-tree..."
-python -u desi-daily.py
+python -u desi_daily.py
 result=$?
 
 echo "desi-daily-cron.sh finished at $(date) with return value $result"
