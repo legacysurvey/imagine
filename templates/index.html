@@ -2674,6 +2674,21 @@ var expOverlay8s = new CircleOverlay('dr8-south-exps',
                                     });
 {% endif %}
 
+{% if enable_dr11_overlays %}
+
+var ccdOverlay11 = new PolygonOverlay('dr11-ccds',
+                                     'Legacy Surveys DR11-early-v2 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelsMinZoom': 100,
+                                     'urlTerm': 'ccds11-early-v2',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr11-early-v2',
+                                     'dr_name': 'DR11',
+                                    });
+
+{% endif %}
 
 
 {% if enable_dr10_overlays %}
@@ -3096,11 +3111,28 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
 var DesiObsCatalog = DesiSpectraCatalog.extend({
     getLabel: function(json, i) {
         var s = '';
-        for (var j=0, len=json['targetid'][i].length; j<len; j++) {
+        var N = json['targetid'][i].length;
+        for (var j=0; j<N; j++) {
             if (j > 0)
                 s += ', ';
-            s += '<a href="' + root_url + 'desi-obs/' + this.release + '/targetid' +
-                json['targetid'][i][j] + '">' + json['name'][i][j] + '</a>';
+            if (N == 1) {
+                // link by targetid
+                s += '<a href="' + root_url + 'desi-obs/' + this.release +
+                    '/targetid' + json['targetid'][i][j] +
+                    '">' + json['name'][i][j] + '</a>';
+                    
+            } else {
+                // link by tile & fiberid
+                s += '<a href="' + root_url + 'desi-obs/' + this.release +
+                    '/tile' + json['tileid'][i][j] +
+                    'fiber' + json['fiberid'][i][j] +
+                    '">' + json['name'][i][j] + '</a>';
+            }
+        }
+        if (N > 1) {
+            s += ', <a href="' + root_url + 'desi-obs/' + this.release +
+                '/targetid' + json['targetid'][i][0] +
+                '">all</a>';
         }
         return s;
     },
@@ -3194,6 +3226,9 @@ var polygonOverlays = [
     {% endif %}
     {% if enable_dr8_south_overlays %}
     ccdOverlay8s, expOverlay8s,
+    {% endif %}
+    {% if enable_dr11_overlays %}
+    ccdOverlay11,
     {% endif %}
     {% if enable_dr10_overlays %}
     ccdOverlay10,
@@ -3787,6 +3822,9 @@ var overlays = [
     ccdOverlay8s,
     expOverlay8s,
     {% endif %}
+    {% if enable_dr11_overlays %}
+    ccdOverlay11,
+    {% endif %}
     {% if enable_dr10_overlays %}
     ccdOverlay10,
     expOverlay10,
@@ -4045,6 +4083,7 @@ moresurveys = drop_null(moresurveys);
 
 baseTree1 = baseTree1.concat([
 
+    {% if enable_ibis %}
     { label:'IBIS v4 COSMOS',
       children:[
           findlayer('ibis-4'),
@@ -4082,7 +4121,8 @@ baseTree1 = baseTree1.concat([
           findlayer('ibis-3-wide-m490', "IBIS (v3) Wide M490"),
           findlayer('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
       ] },
-    
+    {% endif %}
+
     {% if enable_dr10 %}
     findlayer('ls-dr10', [
     findlayer('ls-dr10-model'),
@@ -4278,6 +4318,9 @@ var overlayTree = [];
 
      findoverlay('decam-footprint'),
      findoverlay('decals-bricks'),
+     {% if enable_dr11_overlays %}
+     findoverlay('dr11-ccds'),
+     {% endif %}
      {% if enable_dr10_overlays %}
      findoverlay('dr10-ccds'),
      findoverlay('dr10-exps'),
@@ -4496,8 +4539,10 @@ var layerTree = L.control.layers.tree(baseTree,
 
      // These are menus to collapse
      txts = [
+         {% if enable_ibis %}
          'IBIS v4 COSMOS',
          'IBIS v3 XMM/WIDE',
+         {% endif %}
          {% if enable_dr10 %}
          'Legacy Surveys DR10 images',
          'Legacy Surveys DR10-south images',

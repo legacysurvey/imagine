@@ -27,6 +27,7 @@ urlpatterns_desi.extend([
     re_path(r'^desi-obs-daily/(\d+)/cat.json', cats.cat_desi_daily_obs),
     # DESI daily observations -- details per object
     re_path(r'^desi-obs/daily/targetid(\d+)', cats.cat_desi_daily_obs_detail),
+    re_path(r'^desi-obs/daily/tile(\d+)fiber(\d+)', cats.cat_desi_daily_obs_detail_tile_fiber),
 ])
 
 if settings.ENABLE_DESI_DR1:

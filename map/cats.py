@@ -407,7 +407,7 @@ def get_desi_spectro_kdfile(release):
                             'zcatalog-denali-cumulative.kd.fits')
     return None
 
-def lookup_targetid(targetid, release):
+def lookup_targetid(targetid, release, all=False):
     from astrometry.libkd.spherematch import tree_open
     from astrometry.util.fits import fits_table
     import numpy as np
@@ -427,14 +427,35 @@ def lookup_targetid(targetid, release):
     if len(I) == 0:
         return None
     T.cut(I)
-    if len(T) > 1:
-        print('Matched targetids:', T.targetid)
-        #print('Surveys:', T.survey)
-        #print('Programs:', T.program)
-    else:
-        print('Found targetid', T.targetid[0])#, 'in survey', T.survey[0], 'program', T.program[0])
-    i = 0
-    return T[i]
+    print('Matched targetids:', T.targetid)
+    if all:
+        return T
+    return T[0]
+
+def lookup_tilefiber(tile, fiber, release, all=False):
+    from astrometry.libkd.spherematch import tree_open
+    from astrometry.util.fits import fits_table
+    import numpy as np
+    fn = get_desi_spectro_kdfile(release)
+    kd = tree_open(fn, 'tilefiber')
+    # Value encoded in the kd-tree -- see desi_spectro_kdtree.py
+    # for where this is defined.
+    key = tile * 10000 + fiber
+    print('Searching for tile,fiber', tile, fiber)
+    I = kd.search(np.array([key]).astype(np.uint64), 0.5, 0, 0)
+    if len(I) == 0:
+        return None
+    ## The kd-search for uint64 for return matches outside the search range!  uint64 vs float is weird!
+    # Read only the table rows within range.
+    T = fits_table(fn, rows=I)
+    I = np.flatnonzero((T.tileid == tile) * (T.fiber == fiber))
+    if len(I) == 0:
+        return None
+    T.cut(I)
+    print('Matched tile,fiber:', T.tileid, T.fiber)
+    if all:
+        return T
+    return T[0]
 
 def cat_desi_daily_spectra_detail(req, targetid):
     targetid = int(targetid)
@@ -668,7 +689,7 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
         names = []
         colors = []
         for zw,t,mjd,tile in zip(T.zwarn, T.coadd_exptime, T.minmjd, T.tileid):
-            d = mjdtodate(mjd)
+            #d = mjdtodate(mjd)
             #names.append('Tile %i, %i-%02i-%02i (%i s)' % (tile, d.year, d.month, d.day, int(t)))
             names.append('%i sec' % (int(t)))
             if zw != 0:
@@ -676,10 +697,15 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
             else:
                 colors.append('#3388ff')
 
+        # Create nested lists -- because of targetids that are observed
+        # on multiple tile/fibers
+
         # Make all names lists
         names = [[n] for n in names]
         # Make all targetids lists
         targetids = [[t] for t in targetids]
+        tiles = [[int(t)] for t in T.tileid]
+        fibers = [[int(f)] for f in T.fiber]
 
         # Merge targets within 1"
 
@@ -699,6 +725,8 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
                 # append lists
                 names[i] = names[i] + names[j]
                 targetids[i] = targetids[i] + targetids[j]
+                tiles[i] = tiles[i] + tiles[j]
+                fibers[i] = fibers[i] + fibers[j]
             keep = np.ones(len(T), bool)
             keep[JJ] = False
             T.cut(keep)
@@ -706,6 +734,13 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
             names = [names[i] for i in keep]
             targetids = [targetids[i] for i in keep]
             colors = [colors[i] for i in keep]
+            fibers = [fibers[i] for i in keep]
+            tiles = [tiles[i] for i in keep]
+
+            #print('Merged nearby targets: now returning %i objects' % len(T))
+            #print('names:', names)
+            #print('targetids:', targetids)
+            #print('colors:', colors)
 
     else:
         # objtype -- FIXME -- can we unpack TARGETID enough to figure out SKY fibers?
@@ -749,14 +784,21 @@ def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
     #print('Targetids:', T.targetid.dtype, T.targetid)
     rd = list((float(r),float(d)) for r,d in zip(T.get(racol), T.get(deccol)))
     J.update(dict(rd=rd, name=names, color=colors,
-                  healpix=[int(h) for h in T.healpix],
-                  survey=list(T.survey),
-                  program=list(T.program),
                   targetid=targetids))
-    if 'fiber' in cols:
-        J.update(fiberid=[int(i) for i in T.fiber])
-    if 'tileid' in cols:
-        J.update(tileid=[int(i) for i in T.tileid])
+    if obs:
+        J.update(tileid=tiles, fiberid=fibers)
+    else:
+        if 'fiber' in cols:
+            J.update(fiberid=[int(i) for i in T.fiber])
+        if 'tileid' in cols:
+            J.update(tileid=[int(i) for i in T.tileid])
+
+    if 'healpix' in cols:
+        J.update(healpix=[int(h) for h in T.healpix])
+    if 'survey' in cols:
+        J.update(survey=list(T.survey))
+    if 'program' in cols:
+        J.update(program=list(T.program))
     return HttpResponse(json.dumps(J), content_type='application/json')
 
 def cat_desi_daily_spectra(req, ver):
@@ -774,30 +816,45 @@ def cat_desi_daily_obs(req, ver):
     tag = 'desi-daily-obs'
     return cat_desi_release_spectra(req, ver, kdfn, tag, obs=True)
 
+def obj_list(req, t):
+    from astrometry.util.starutil_numpy import mjdtodate
+    from django.shortcuts import render
+    objs = []
+    colnames = t.get_columns()
+    arrays = [t.get(c) for c in colnames]
+    for i in range(len(t)):
+        vals = {}
+        for c,a in zip(colnames,arrays):
+            vals[c] = a[i]
+
+        d = mjdtodate(t.minmjd[i])
+        d = datetime(d.year, d.month, d.day, d.hour, d.minute, d.second)
+        vals['mindate'] = d
+        d = mjdtodate(t.maxmjd[i])
+        d = datetime(d.year, d.month, d.day, d.hour, d.minute, d.second)
+        vals['maxdate'] = d
+        objs.append(vals)
+    return render(req, 'obs.html', dict(objs=objs))
+
+def cat_desi_daily_obs_detail_tile_fiber(req, tileid, fiberid):
+    tileid = int(tileid)
+    fiberid = int(fiberid)
+    release = 'daily-obs'
+    t = lookup_tilefiber(tileid, fiberid, release, all=True)
+    if t is None:
+        return HttpResponse('No such tile/fiber found in DESI Daily observations: %i/%i' % (tileid, fiberid))
+    print('Target:', t)
+    return obj_list(req, t)
+
 def cat_desi_daily_obs_detail(req, targetid):
     targetid = int(targetid)
     release = 'daily-obs'
-    t = lookup_targetid(targetid, release)
+    t = lookup_targetid(targetid, release, all=True)
     if t is None:
         return HttpResponse('No such targetid found in DESI Daily observations: %s' % targetid)
     print('Target:', t)
     t.about()
-    vals = {}
-    for c in t.get_columns():
-        v = t.get(c)
-        vals[c] = v
-    print('Values:', vals)
-    from astrometry.util.starutil_numpy import mjdtodate
-    d = mjdtodate(t.minmjd)
-    d = datetime(d.year, d.month, d.day, d.hour, d.minute, d.second)
-    #d.microsecond = 0
-    vals['mindate'] = d
-    d = mjdtodate(t.maxmjd)
-    d = datetime(d.year, d.month, d.day, d.hour, d.minute, d.second)
-    #d.microsecond = 0
-    vals['maxdate'] = d
-    from django.shortcuts import render
-    return render(req, 'obs.html', dict(obj=vals))
+    return obj_list(req, t)
 
 def cat_desi_guadalupe_spectra(req, ver):
     '''
@@ -3445,7 +3502,16 @@ if __name__ == '__main__':
     #r = c.get('/desi-spectrum/edr/targetid39627914966205909')
 
 
-    r = c.get('/sga2025-parent/1/cat.json?ralo=67.7918&rahi=68.2598&declo=-48.3768&dechi=-48.1995')
+    #r = c.get('/sga2025-parent/1/cat.json?ralo=67.7918&rahi=68.2598&declo=-48.3768&dechi=-48.1995')
+
+    #r = c.get('/desi-obs/daily/targetid39633165945408199')
+
+    #r = c.get('/desi-obs-daily/1/cat.json?ralo=158.8118&rahi=158.8442&declo=44.9226&dechi=44.9357')
+    #r = c.get('/desi-obs-daily/1/cat.json?ralo=158.8071&rahi=158.8395&declo=44.9279&dechi=44.9410')
+    #r = c.get('/desi-obs/daily/tile20372fiber1199')
+
+    #r = c.get('/desi-obs/daily/targetid39633165945409137')
+    r = c.get('/desi-obs/daily/targetid39633165945409158')
     
     f = open('out', 'wb')
     for x in r:
