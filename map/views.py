@@ -7133,6 +7133,7 @@ def exposures_common(req, tgz, copsf):
                             [filterorder.get(f,f) for f in CCDs.filter]))]
 
     if tgz or copsf:
+
         if tgz:
             import tempfile
             import fitsio
@@ -7174,9 +7175,14 @@ def exposures_common(req, tgz, copsf):
                 continue
 
             slc = (slice(y0, y1+1), slice(x0, x1+1))
-            tim = im.get_tractor_image(slc, pixPsf=True,
-                                       subsky=tgz, nanomaggies=False,
-                                       pixels=tgz, dq=tgz, normalizePsf=copsf,
+            tim = im.get_tractor_image(slc,
+                                       pixPsf=True,
+                                       nanomaggies=False,
+                                       readsky=tgz,
+                                       subsky=tgz,
+                                       pixels=tgz,
+                                       dq=tgz,
+                                       normalizePsf=copsf,
                                        old_calibs_ok=True)
             if tim is None:
                 continue
@@ -9106,13 +9112,13 @@ if __name__ == '__main__':
     #     rgb = layer.get_rgb(imgs, 'gri')
     #     save_jpeg('wcs%i.jpg' % i, rgb)
     
-    result,val = query_simbad('SDSS J153822.01+400919.9')
-    print('result', result, 'val', val)
+    #result,val = query_simbad('SDSS J153822.01+400919.9')
+    #print('result', result, 'val', val)
 
     #r = c.get('/namequery/?obj=SDSS J153822.01+400919.9')
     #r = c.get('/namequery/?obj=SDSS%20J153822.01+400919.9')
-    r = c.get('/namequery/?obj=SDSS%20J153822.01%2B400919.9')
-    
+    #r = c.get('/namequery/?obj=SDSS%20J153822.01%2B400919.9')
+    r = c.get('/coadd-psf/?ra=215.44110478935227&dec=-2.3155507912493363&layer=ls-dr10')
     # result,val = query_simbad('M 13')
     # print('result', result, 'val', val)
     
