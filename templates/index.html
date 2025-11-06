@@ -339,6 +339,14 @@ function split_layer(name, pretty, decsplit,
     return layer;
 };
 
+function pa_astro_to_ellipse(pa) {
+    // The Ellipse class wants angle 0 = a banana sitting on a table,
+    // and positive rotations are clockwise.
+    // The astronomical convention is PA=0 means pointing towards North,
+    // and positive angles rotate counter-clockwise.
+    return 90. - pa;
+};
+
 // for attaching leaflet.Labels to circles
 L.Circle.include(L.BaseMarkerMethods);
 
@@ -564,11 +572,16 @@ var CatalogOverlay = L.Evented.extend({
             var radius = this._radius;
             if (radii) {
 	            // arcsec to meters:
-	            var meters = (radii[i] * 30.87) || 30;
-                radius = meters;
+                if (radii[i] == 0) {
+                    radii[i] = 1.;
+                }
+                radius = arcsecToMeters(radii[i]);
             }
             if (abratio && posAngle) {
-                var circ = L.ellipse([lat, lng], [radius,radius*abratio[i]], posAngle[i], style);
+                var pa = pa_astro_to_ellipse(posAngle[i]);
+                console.log('Ellipse at ra,dec ' + r + ',' + d + ', AB ' +
+                            abratio[i] + ', radius ' + radius + ', PA ' + posAngle[i] + ' -> javascript angle ' + pa);
+                var circ = L.ellipse([lat, lng], [radius,radius*abratio[i]], pa, style);
             } else {
                 var circ = L.circle([lat, lng], radius, style);
             }
@@ -685,17 +698,17 @@ var StarMaskCatalog = CatalogOverlay.extend({
 });
 
 var sga_popup = function(json, i) {
-        var ra = json['rd'][i][0];
-        var dec = json['rd'][i][1];
-        var name = json['name'][i];
-        var pgc = json['pgc'][i];
+    var ra = json['rd'][i][0];
+    var dec = json['rd'][i][1];
+    var name = json['name'][i];
+    var pgc = json['pgc'][i];
     var groupname = json['groupname'][i];
     s = '<a href="http://leda.univ-lyon1.fr/ledacat.cgi?o=' + name + '">' + name + '</a>';
     s += '<br/>Group: ' + groupname;
         // matching map/cats.py : cat_sga
         r = json['radiusArcsec'][i] * 2 / 60.;
         s += '<br/>RA Dec='+ra.toFixed(6)+' '+dec.toFixed(6);
-        s += '<br/>D(26)='+r.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngleDisplay'][i].toFixed(1)+' deg<br/>';
+        s += '<br/>D(26)='+r.toFixed(3)+' arcmin, b/a='+json['abRatio'][i].toFixed(2)+', PA='+json['posAngle'][i].toFixed(1)+' deg<br/>';
         z = json['redshift'][i];
         t = json['type'][i];
         if (t.length > 0)
@@ -731,7 +744,7 @@ var SGACatalog = CatalogOverlay.extend({
         var abratio = result['abRatio'];
         var posAngle = result['posAngle'];
         var plines = [];
-        console.log('this._style:', this._style);
+        //console.log('this._style:', this._style);
         for (var i=0, len=rdlist.length; i<len; i++) {
             var r = rdlist[i][0];
             var d = rdlist[i][1];
@@ -742,7 +755,7 @@ var SGACatalog = CatalogOverlay.extend({
             var color = this.getColor(result, i);
             if (color !== undefined) {
                 style = Object.assign(style, {'color':color});
-                console.log('style after setting color:', style);
+                //console.log('style after setting color:', style);
             }
             var radius = this._radius;
             if (radii) {
@@ -751,7 +764,7 @@ var SGACatalog = CatalogOverlay.extend({
             }
             if (abratio && posAngle) {
                 var ab = abratio[i];
-                var pa = -posAngle[i];
+                var pa = 90.+posAngle[i];
             } else {
                 var ab = 1.0;
                 var pa = 0.;
@@ -769,8 +782,8 @@ var SGACatalog = CatalogOverlay.extend({
             lat2 = lat - ab * radius * Math.cos(pa);
             plines.push([[lat1, lng1], [lat2, lng2]]);
         }
-        console.log('rdlist:', rdlist.length);
-        console.log('style:', style)
+        //console.log('rdlist:', rdlist.length);
+        //console.log('style:', style)
         style = Object.assign(style, {'weight': 1});
         layergroup.addLayer(L.polyline(plines, style));
         return layergroup;
@@ -787,9 +800,6 @@ var PhotozCatalog = CatalogOverlay.extend({
         return 'z = ' + json['phot_z_mean'][i].toFixed(3) + ' &plusmn; ' +
             json['phot_z_std'][i].toFixed(3);
     },
-    //getPopupText: function(json, i) {
-    //    return sga_popup(json, i);
-    //},
     getTooltipStyle() {
         return { permanent: false, interactive: true, };
     },
@@ -1238,7 +1248,6 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
     var clong = map.getCenter().lng;
     var radii = result['radius'];
     var colors = result['color'];
-
     var abratios = result['abratio'];
     var posangles = result['posangle'];
     
@@ -1246,9 +1255,6 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
         var r = rdlist[i][0];
         var d = rdlist[i][1];
         var lat = dec2lat(d);
-
-        //console.log('RA,Dec ' + r + ', ' + d);
-
         var lng = ra2long_C(r, clong);
         var color = 'blue';
         if (typeof(defaultcolor) != 'undefined') {
@@ -1280,6 +1286,9 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
             // radius is in meters
             rad = radii[i];
         }
+        if (rad == 0.) {
+            rad = radius;
+        }
         //console.log('Lat,Long,Radius ' + lat + ', ' + lng + ', ' + rad);
         rad = arcsecToMeters(rad);
 
@@ -1287,7 +1296,8 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
             var circ = L.circle([lat, lng], rad,
                                 {'color':color, 'fillOpacity':0, 'weight':5});
         } else {
-            var circ = L.ellipse([lat, lng], [rad, rad*abratios[i]], posangles[i],
+            var pa = pa_astro_to_ellipse(posangles[i]);
+            var circ = L.ellipse([lat, lng], [rad, rad*abratios[i]], pa,
                                  {'color':color, 'fillOpacity':0, 'weight':5});
         }
         if (labels === undefined) {
@@ -2671,6 +2681,21 @@ var expOverlay8s = new CircleOverlay('dr8-south-exps',
                                     });
 {% endif %}
 
+{% if enable_dr11_overlays %}
+
+var ccdOverlay11 = new PolygonOverlay('dr11-ccds',
+                                     'Legacy Surveys DR11-early-v2 CCDs',
+                                    {'url':ccds_url,
+                                     'minZoom': 8,
+                                     'labelsMinZoom': 100,
+                                     'urlTerm': 'ccds11-early-v2',
+                                     'detail': ccd_detail,
+                                     'detail_list': ccd_detail_list,
+                                     'url_name': 'ls-dr11-early-v2',
+                                     'dr_name': 'DR11',
+                                    });
+
+{% endif %}
 
 
 {% if enable_dr10_overlays %}
@@ -3093,11 +3118,28 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
 var DesiObsCatalog = DesiSpectraCatalog.extend({
     getLabel: function(json, i) {
         var s = '';
-        for (var j=0, len=json['targetid'][i].length; j<len; j++) {
+        var N = json['targetid'][i].length;
+        for (var j=0; j<N; j++) {
             if (j > 0)
                 s += ', ';
-            s += '<a href="' + root_url + 'desi-obs/' + this.release + '/targetid' +
-                json['targetid'][i][j] + '">' + json['name'][i][j] + '</a>';
+            if (N == 1) {
+                // link by targetid
+                s += '<a href="' + root_url + 'desi-obs/' + this.release +
+                    '/targetid' + json['targetid'][i][j] +
+                    '">' + json['name'][i][j] + '</a>';
+                    
+            } else {
+                // link by tile & fiberid
+                s += '<a href="' + root_url + 'desi-obs/' + this.release +
+                    '/tile' + json['tileid'][i][j] +
+                    'fiber' + json['fiberid'][i][j] +
+                    '">' + json['name'][i][j] + '</a>';
+            }
+        }
+        if (N > 1) {
+            s += ', <a href="' + root_url + 'desi-obs/' + this.release +
+                '/targetid' + json['targetid'][i][0] +
+                '">all</a>';
         }
         return s;
     },
@@ -3146,15 +3188,6 @@ var desi_spec_daily_sky = new DesiSpectraCatalog(
      //'urlTerm': 'desi-spec/denali',
     });
 
-var desi_obs_daily = new DesiObsCatalog(
-    'desi-obs-daily', 'DESI daily observations', 'daily',
-    {'url': smallcat_url,
-     'radius': 300,
-     'labelsMinZoom': 10,
-     'minZoom': 8,
-     //'urlTerm': 'desi-spec/denali',
-    });
-
 var desi_spec_guadalupe = new DesiSpectraCatalog(
     'desi-spec-guadalupe', 'DESI Guadalupe spectra', 'guadalupe',
     {'url': smallcat_url,
@@ -3173,6 +3206,17 @@ var desi_spec_fuji = new DesiSpectraCatalog(
 
 {% endif %}
 
+  {% if enable_desi_daily_obs %}
+var desi_obs_daily = new DesiObsCatalog(
+    'desi-obs-daily', 'DESI daily observations', 'daily',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+     //'urlTerm': 'desi-spec/denali',
+    });
+  {% endif %}
+  
 var polygonOverlays = [ 
     {% if enable_dr5_overlays %}
     ccdOverlay5, expOverlay5,
@@ -3191,6 +3235,9 @@ var polygonOverlays = [
     {% endif %}
     {% if enable_dr8_south_overlays %}
     ccdOverlay8s, expOverlay8s,
+    {% endif %}
+    {% if enable_dr11_overlays %}
+    ccdOverlay11,
     {% endif %}
     {% if enable_dr10_overlays %}
     ccdOverlay10,
@@ -3371,6 +3418,11 @@ var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (LS-DR9)',
 //                               'minZoom': 5,
 //                               'labelsMinZoom': 7,
 //                              'urlTerm': 'masks-dr8',});
+
+var sga2025_parent = new SGACatalog('sga2025-parent', 'SGA2025 Parent',
+                             {'minZoom': 5,
+                              'labelsMinZoom': 7,
+                              'urlTerm': 'sga2025-parent',});
 
 var sga_parent = new SGACatalog('sga-parent', 'HyperLEDA/SGA galaxies',
                              {'minZoom': 5,
@@ -3781,6 +3833,9 @@ var overlays = [
     ccdOverlay8s,
     expOverlay8s,
     {% endif %}
+    {% if enable_dr11_overlays %}
+    ccdOverlay11,
+    {% endif %}
     {% if enable_dr10_overlays %}
     ccdOverlay10,
     expOverlay10,
@@ -3813,7 +3868,7 @@ var overlays = [
     {% if enable_sdss_ccds %}
     ccdOverlaySdss,
     {% endif %}
-    gals, sga_parent, sga_ell, //lslga_model, starmasks8,
+    gals, sga2025_parent, sga_parent, sga_ell, //lslga_model, starmasks8,
     starmasks9, GCsPNe, bright, tycho2,
     photoz,
     {% if enable_ps1 %}
@@ -3867,6 +3922,8 @@ var overlays = [
     desi_tiles_daily,
     desi_spec_daily,
     desi_spec_daily_sky,
+    {% endif %}
+    {% if enable_desi_daily_obs %}
     desi_obs_daily,
     {% endif %}
     constellations,
@@ -3991,6 +4048,7 @@ baseTree1 = baseTree1.concat([
 var moresurveys = [
     findlayer('pandas'),
     findlayer('phat'),
+    findlayer('phast'),
     //findlayer('outliers-ast'),
     //findlayer('asteroids-i'),
     findlayer('des-dr1'),
@@ -4020,6 +4078,47 @@ moresurveys = moresurveys.concat([
 moresurveys = drop_null(moresurveys);
 
 baseTree1 = baseTree1.concat([
+
+    {% if enable_ibis %}
+    { label:'IBIS v4 COSMOS',
+      children:[
+          findlayer('ibis-4'),
+          findlayer('ibis-4-model'),
+          findlayer('ibis-4-resid'),
+          findlayer('ibis-4-m411'),
+          findlayer('ibis-4-m411-model'),
+          findlayer('ibis-4-m411-resid'),
+          findlayer('ibis-4-m438'),
+          findlayer('ibis-4-m438-model'),
+          findlayer('ibis-4-m438-resid'),
+          findlayer('ibis-4-m464'),
+          findlayer('ibis-4-m464-model'),
+          findlayer('ibis-4-m464-resid'),
+          findlayer('ibis-4-m490'),
+          findlayer('ibis-4-m490-model'),
+          findlayer('ibis-4-m490-resid'),
+          findlayer('ibis-4-m517'),
+          findlayer('ibis-4-m517-model'),
+          findlayer('ibis-4-m517-resid'),
+      ] },
+
+    { label:'IBIS v3 XMM/WIDE',
+      children:[
+          findlayer('ibis-3', "IBIS (v3) XMM Color"),
+          findlayer('ibis-3-m411', "IBIS (v3) XMM M411"),
+          findlayer('ibis-3-m438', "IBIS (v3) XMM M438"),
+          findlayer('ibis-3-m464', "IBIS (v3) XMM M464"),
+          findlayer('ibis-3-m490', "IBIS (v3) XMM M490"),
+          findlayer('ibis-3-m517', "IBIS (v3) XMM M517"),
+          findlayer('ibis-3-wide', "IBIS (v3) Wide Color"),
+          findlayer('ibis-3-wide-m411', "IBIS (v3) Wide M411"),
+          findlayer('ibis-3-wide-m438', "IBIS (v3) Wide M438"),
+          findlayer('ibis-3-wide-m464', "IBIS (v3) Wide M464"),
+          findlayer('ibis-3-wide-m490', "IBIS (v3) Wide M490"),
+          findlayer('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
+      ] },
+    {% endif %}
+
     {% if enable_dr10 %}
     findlayer('ls-dr10', [
     findlayer('ls-dr10-model'),
@@ -4217,6 +4316,9 @@ var overlayTree = [];
 
      findoverlay('decam-footprint'),
      findoverlay('decals-bricks'),
+     {% if enable_dr11_overlays %}
+     findoverlay('dr11-ccds'),
+     {% endif %}
      {% if enable_dr10_overlays %}
      findoverlay('dr10-ccds'),
      findoverlay('dr10-exps'),
@@ -4372,8 +4474,10 @@ var overlayTree = [];
            findoverlay('desi-tiles-daily'),
            findoverlay('desi-spec-daily'),
            findoverlay('desi-spec-daily-sky'),
+           {% endif %}
+           {% if enable_desi_daily_obs %}
            findoverlay('desi-obs-daily'),
-         {% endif %}
+           {% endif %}
          {% if enable_desi_targets %}
            { label: 'DESI Targets',
              children: [
@@ -4408,6 +4512,7 @@ var overlayTree = [];
      findoverlay('tycho2'),
      findoverlay('GCs-PNe'),
      findoverlay('gals'),
+     findoverlay('sga2025-parent'),
      findoverlay('sga'),
      {% if science %}
      findoverlay('sga-parent'),
@@ -4434,6 +4539,10 @@ var layerTree = L.control.layers.tree(baseTree,
 
      // These are menus to collapse
      txts = [
+         {% if enable_ibis %}
+         'IBIS v4 COSMOS',
+         'IBIS v3 XMM/WIDE',
+         {% endif %}
          {% if enable_dr10 %}
          'Legacy Surveys DR10 images',
          'Legacy Surveys DR10-south images',
