@@ -5730,7 +5730,19 @@ rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 #                      scales=dict(g=(2,1),r=(1,1),z=(0,1)))
 
 def sdss_rgb(imgs, bands, scales=None,
-             m = 0.02):
+             m=0.02, Q=20):
+    '''
+      *imgs*:   list of 2-d numpy arrays of image pixels (float)
+      *bands*:  list of strings with the band names, eg ['g', 'r',' 'z']
+      *scales*: dict from band name to (plane, scale), where *plane* is the RGB plane,
+                and *scale* multiplies the image pixels
+      *m*:      float, an offset added so that pixels containing 0.0 map to a gray value
+                rather than black.
+      *Q*:      arcsinh scaling value (larger = stronger stretch)
+
+      Returns: H x W x 3 RGB array, floating-point, between 0.0 and 1.0.
+    '''
+    
     import numpy as np
     rgbscales = {'u': (2,1.5), #1.0,
                  'g': (2,2.5),
@@ -5747,12 +5759,7 @@ def sdss_rgb(imgs, bands, scales=None,
         img = np.maximum(0, img * scale + m)
         I = I + img
     I /= len(bands)
-        
-    # b,g,r = [rimg * rgbscales[b] for rimg,b in zip(imgs, bands)]
-    # r = np.maximum(0, r + m)
-    # g = np.maximum(0, g + m)
-    # b = np.maximum(0, b + m)
-    # I = (r+g+b)/3.
+
     Q = 20
     fI = np.arcsinh(Q * I) / np.sqrt(Q)
     I += (I == 0.) * 1e-6
@@ -5762,15 +5769,17 @@ def sdss_rgb(imgs, bands, scales=None,
         plane,scale = rgbscales[band]
         rgb[:,:,plane] = (img * scale + m) * fI / I
 
-    # R = fI * r / I
-    # G = fI * g / I
-    # B = fI * b / I
+    # We saturate to white, while the original SDSS (Lupton et al) color mapping
+    # saturates to the color of the object... more scientifically informative, but
+    # some say, not as pretty.
+    # Can do the SDSS version with something along these lines:
     # # maxrgb = reduce(np.maximum, [R,G,B])
     # # J = (maxrgb > 1.)
     # # R[J] = R[J]/maxrgb[J]
     # # G[J] = G[J]/maxrgb[J]
     # # B[J] = B[J]/maxrgb[J]
     # rgb = np.dstack((R,G,B))
+        
     rgb = np.clip(rgb, 0, 1)
     return rgb
 

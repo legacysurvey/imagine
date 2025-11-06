@@ -38,7 +38,7 @@
 # #          && python3 setup.py install) \
 # #          && rm -Rf mpi4py
 
-FROM legacysurvey/legacypipe:DR10.3.4b
+FROM legacysurvey/legacypipe:DR10.3.6b
 
 WORKDIR /app
 COPY requirements.txt /app/

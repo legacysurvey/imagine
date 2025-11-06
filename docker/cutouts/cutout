@@ -24,15 +24,14 @@ mkdir "$MPLCONFIGDIR"
 cp -r "$HOME/.config/matplotlib" "$MPLCONFIGDIR"
 
 #/usr/bin/python3 -c "import numpy; print('Numpy:', numpy.__file__, numpy.__version__)"
-
-echo "cutout bash script: PYTHONPATH is ${PYTHONPATH}"
-/usr/bin/python3 -c "import sys; print('sys.path:'); print('\n  '.join(sys.path))"
+#echo "cutout bash script: PYTHONPATH is ${PYTHONPATH}"
+#/usr/bin/python3 -c "import sys; print('sys.path:'); print('\n  '.join(sys.path))"
 
 # -P aka PYTHONSAFEPATH
-echo "Running cutout.py with -P flag:"
-/usr/bin/python3 -P -u /app/imagine/cutout.py --print-path
+#echo "Running cutout.py with -P flag:"
+#/usr/bin/python3 -P -u /app/imagine/cutout.py --print-path
 
-echo "Running cutout.py without -P flag:"
-/usr/bin/python3 -u /app/imagine/cutout.py --print-path
+#echo "Running cutout.py without -P flag:"
+#/usr/bin/python3 -u /app/imagine/cutout.py --print-path
 
 /usr/bin/python3 -u /app/imagine/cutout.py "$@"
