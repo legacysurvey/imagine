@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+<body id="thebody">
+
+{% for obj in objs %}
+<p>
+  Target ID {{ obj.targetid }} <br/>
+  RA, Dec {{ obj.ra|floatformat:4 }}, {{ obj.dec|floatformat:4 }} <br/>
+  {% if obj.minmjd == obj.maxmjd %}
+  Observed by DESI on MJD {{ obj.minmjd|floatformat:5 }} <br/>
+  Date {{ obj.mindate.isoformat }} <br/>
+  {% else %}
+  Observed by DESI between MJDs {{ obj.minmjd|floatformat:5 }} and {{ obj.maxmjd|floatformat:5 }} <br/>
+  Dates {{ obj.mindate.isoformat }} to {{ obj.maxdate.isoformat }} <br/>
+  {% endif %}
+  With total effective exposure time {{ obj.coadd_exptime|floatformat:1 }} seconds<br/>
+  Tile {{ obj.tileid }}, Fiber {{ obj.fiber }} <br/>
+  {% if obj.zwarn == 0 %}
+  Redshift measured without warning flags (ZWARN = 0)
+  {% else %}
+  Redshift pipeline raised warning flags: ZWARN = 0x{{ obj.zwarn|stringformat:"X" }}
+  {% endif %}
+</p>
+{% endfor %}
+
+</body>
+{% endblock %}
+ 
