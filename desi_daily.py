@@ -9,36 +9,21 @@ from astrometry.libkd.spherematch import tree_build
 
 basedir = 'data/desi-spectro-daily'
 
-# Create tile kd-tree
-if True:
+def create_tile_kd(basedir):
     from astropy.table import Table
     TT = []
-    # for surv,fn in [('main', '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-main.ecsv'),
-    #                 ('sv1',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv1.ecsv'),
-    #                 ('sv2',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv2.ecsv'),
-    #                 ('sv3',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv3.ecsv'),
-    # 
     for fn in ['/global/cfs/cdirs/desi/spectro/redux/daily/tiles-daily.csv']:
         t1 = Table.read(fn)
         t1.write('/tmp/t.fits', overwrite=True)
         T = fits_table('/tmp/t.fits')
-        #T.about()
-        #T.survey = np.array([surv] * len(T))
         TT.append(T)
     T = merge_tables(TT, columns='fillzero')
-    #T.tilera  = T.ra
-    #T.tiledec = T.dec
     T.ra  = T.tilera
     T.dec = T.tiledec
 
     for i,(prog,faprog) in enumerate(zip(T.program, T.faprgrm)):
         if prog.strip() == '':
             T.program[i] = faprog
-    
-    #     ts = '%06i' % tileid
-    #     fn = 'data/desi-tiles/%s/fiberassign-%s.fits.gz' % (ts[:3], ts)
-    #     T.found_tile[itile] = True
-    # T.cut(T.found_tile)
 
     outfn = os.path.join(basedir, 'tiles2.fits')
     T.writeto(outfn)
@@ -48,95 +33,70 @@ if True:
     os.system(cmd)
     print('Wrote tile kd-tree')
 
+
+# Create tile kd-tree
+if True:
+    create_tile_kd(basedir)
+
 # Create redshift catalog kd-tree
 if True:
-
     allzbest = []
 
     # Cached files & dates
-    for date in ['202310']: #'202110', '202110-missing', '202202', '202302']:
+    #for date in ['202510']:
+    for date in ['2021', '2022', '2023', '2024', '2025-10']:
         cachedfn = os.path.join(basedir, 'allzbest-%s.fits' % date)
         print('Reading cached spectra from', cachedfn, '...')
         T = fits_table(cachedfn)
         T.rename('ra',  'target_ra')
         T.rename('dec', 'target_dec')
         allzbest.append(T)
-
-        #T.about()
-    #cache_cutoff = '20211100'
-    #cache_cutoff = '20220300'
-    #cache_cutoff = '20230300'
-    cache_cutoff = '20231100'
+    cache_cutoff = '20251100'
 
     print('Finding zbest(redrock) files...')
     
     tiles = glob('/global/cfs/cdirs/desi/spectro/redux/daily/tiles/cumulative/*')
-    # sort numerically
+    print('Found', len(tiles), 'tiles')
+    # sort tile paths numerically (by tile number)
     nt = np.array([int(f.split('/')[-1]) for f in tiles])
     I = np.argsort(nt)
     tiles = [tiles[i] for i in I]
 
     fns = []
     for tile in tiles:
+        # Find the latest date directory for each tile
         dates = glob(tile + '/20*')
         if len(dates) == 0:
             continue
         dates.sort()
         date = dates[-1]
         justdate = os.path.basename(date)
-        #print('Date:', justdate)
+        # Drop dates that are earlier than the cache cutoff
         if cache_cutoff is not None:
             if justdate <= cache_cutoff:
                 print('Skipping (cached):', date)
                 continue
-        #fns.extend(glob(date + '/zbest-*.fits'))
+        # We're assuming only redrock* files (not earlier-data-model zbest* files)
         thisfns = glob(date + '/redrock-*.fits')
         thisfns.sort()
         fns.extend(thisfns)
         print('Adding', len(thisfns), 'files from', date)
 
-    # tiles = glob('/global/cfs/cdirs/desi/spectro/redux/daily/attic/rerunarchive-20211029/tiles/cumulative/*')
-    # for tile in tiles:
-    #     dates = glob(tile + '/*')
-    #     if len(dates) == 0:
-    #         continue
-    #     dates.sort()
-    #     date = dates[-1]
-    #     justdate = os.path.basename(date)
-    #     #print('Date:', justdate)
-    #     if cache_cutoff is not None:
-    #         if justdate <= cache_cutoff:
-    #             print('Skipping (cached):', date)
-    #             continue
-    #     thisfns = glob(date + '/redrock-*.fits')
-    #     fns.extend(thisfns)
-    #     print('Adding', len(thisfns), 'files from', date)
-
     # Are we producing a cache file?
+    # (see desi-daily-cache.py)
     caching = False
     if caching:
-        #cachedate = '20211100'
-        #cachedate_name = '202110'
-        cachedate = '20220300'
-        cachedate_name = '202202'
-        # print('Dates:')
-        # for fn in fns:
-        #     print('  ', fn)
-        #     print('  date', os.path.basename(os.path.dirname(fn)))
-        #     print('  date before cachedate:', os.path.basename(os.path.dirname(fn)) <= cachedate)
+        cachedate = '20251100'
+        cachedate_name = '202510'
         fns = [fn for fn in fns if os.path.basename(os.path.dirname(fn)) <= cachedate]
         
     if True:
-        for fn in fns:
+        Nfiles = len(fns)
+        for i,fn in enumerate(fns):
             T = fits_table(fn)
             # Don't cut until the end because other tables are row-aligned!!
             #T.cut(T.targetid >= 0)
-            #T.cut(T.npixels > 0)
-            #if len(T) == 0:
-            #if np.all(T.npixels == 0):
-            #    continue
-            print(len(T), 'from', fn)
-            #'NIGHT', 'EXPID',
+            print('File %i/%i:' % (i+1, Nfiles), len(T), 'from', fn)
             RD = fits_table(fn, hdu=2, columns=['TARGETID','TARGET_RA','TARGET_DEC',
                                                 'TILEID', 'FIBER',
                                                 'COADD_EXPTIME',])
@@ -146,8 +106,6 @@ if True:
 
             T.target_ra = RD.target_ra
             T.target_dec = RD.target_dec
-            #T.night = RD.night
-            #T.expid = RD.expid
             T.tileid = RD.tileid
             T.fiber = RD.fiber
             T.coadd_exptime = RD.coadd_exptime
@@ -179,32 +137,39 @@ if True:
             for c in ['ncoeff', 'npixels', 'zwarn']:
                 T.set(c, T.get(c).astype(np.int16))
 
-            #T.cut(T.npixels > 0)
-
             allzbest.append(T)
 
+    print('Merging tables...')
     allzbest = merge_tables(allzbest, columns='fillzero')
     allzbest.cut(allzbest.npixels > 0)
     allzbest.rename('target_ra', 'ra')
     allzbest.rename('target_dec', 'dec')
     if caching:
-        allzbest.writeto(os.path.join(basedir, 'allzbest-%s.fits' % cachedate_name))
+        outfn = os.path.join(basedir, 'allzbest-%s.fits' % cachedate_name)
+        allzbest.writeto(outfn)
+        print('Wrote', outfn)
         sys.exit(0)
 
     fitsfn = os.path.join(basedir, 'allzbest.fits')
+    print('Writing to', fitsfn)
     allzbest.writeto(fitsfn)
+    print('Wrote', fitsfn)
 
 fitsfn = os.path.join(basedir, 'allzbest.fits')
 outfn = os.path.join(basedir, 'allzbest.kd.fits')
 
 from desi_spectro_kdtree import create_desi_spectro_kdtree
-
+print('Writing', outfn)
 create_desi_spectro_kdtree(fitsfn, outfn)
+print('Wrote', outfn)
 
 obsfn = os.path.join(basedir, 'desi-obs.fits')
 subcols = ['targetid', 'zwarn', 'npixels', 'tileid', 'fiber',
            'tsnr2_bgs', 'tsnr2_lrg', 'tsnr2_elg', 'tsnr2_qso', 'tsnr2_lya',
            'minmjd', 'maxmjd', 'ra', 'dec', 'coadd_exptime']
+print('Writing to', obsfn)
 allzbest.writeto(obsfn, columns=subcols)
 obskd = os.path.join(basedir, 'desi-obs.kd.fits')
+print('Writing to', obskd)
 create_desi_spectro_kdtree(obsfn, obskd)
+print('Wrote', obskd)

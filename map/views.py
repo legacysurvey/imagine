@@ -1,7 +1,7 @@
 from __future__ import print_function
 if __name__ == '__main__':
-    import sys
-    sys.path.insert(0, 'django-2.2.4')
+    #import sys
+    #sys.path.insert(0, 'django-2.2.4')
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'viewer.settings'
     import django
@@ -286,6 +286,41 @@ def _index(req,
         'halpha': ['Halpha map', [[7, 10, tileurl, subs], prod_backstop], 10, 'halpha'],
     }
 
+    if settings.ENABLE_IBIS:
+        for tag,label in [
+                ('ibis-4', "IBIS (v4) COSMOS Color"),
+                ('ibis-4-model', "IBIS (v4) COSMOS Color model"),
+                ('ibis-4-resid', "IBIS (v4) COSMOS Color resid"),
+                ('ibis-4-m411', "IBIS (v4) COSMOS M411"),
+                ('ibis-4-m411-model', "IBIS (v4) COSMOS M411 model"),
+                ('ibis-4-m411-resid', "IBIS (v4) COSMOS M411 resid"),
+                ('ibis-4-m438', "IBIS (v4) COSMOS M438"),
+                ('ibis-4-m438-model', "IBIS (v4) COSMOS M438 model"),
+                ('ibis-4-m438-resid', "IBIS (v4) COSMOS M438 resid"),
+                ('ibis-4-m464', "IBIS (v4) COSMOS M464"),
+                ('ibis-4-m464-model', "IBIS (v4) COSMOS M464 model"),
+                ('ibis-4-m464-resid', "IBIS (v4) COSMOS M464 resid"),
+                ('ibis-4-m490', "IBIS (v4) COSMOS M490"),
+                ('ibis-4-m490-model', "IBIS (v4) COSMOS M490 model"),
+                ('ibis-4-m490-resid', "IBIS (v4) COSMOS M490 resid"),
+                ('ibis-4-m517', "IBIS (v4) COSMOS M517"),
+                ('ibis-4-m517-model', "IBIS (v4) COSMOS M517 model"),
+                ('ibis-4-m517-resid', "IBIS (v4) COSMOS M517 resid"),
+                ('ibis-3', "IBIS (v3) XMM Color"),
+                ('ibis-3-m411', "IBIS (v3) XMM M411"),
+                ('ibis-3-m438', "IBIS (v3) XMM M438"),
+                ('ibis-3-m464', "IBIS (v3) XMM M464"),
+                ('ibis-3-m490', "IBIS (v3) XMM M490"),
+                ('ibis-3-m517', "IBIS (v3) XMM M517"),
+                ('ibis-3-wide', "IBIS (v3) Wide Color"),
+                ('ibis-3-wide-m411', "IBIS (v3) Wide M411"),
+                ('ibis-3-wide-m438', "IBIS (v3) Wide M438"),
+                ('ibis-3-wide-m464', "IBIS (v3) Wide M464"),
+                ('ibis-3-wide-m490', "IBIS (v3) Wide M490"),
+                ('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
+                ]:
+            tile_layers[tag] = [label, [def_url], maxnative, 'ls']
+
     if settings.ENABLE_DR10:
         dr10layers = {
             'ls-dr10-south': ['Legacy Surveys DR10-south images',
@@ -437,7 +472,12 @@ def _index(req,
         tile_layers['eboss'] = ['special eBOSS region', [def_url], maxnative, 'ls']
 
     if settings.ENABLE_PHAT:
-        tile_layers['phat'] = ['PHAT image', [def_url], maxnative, 'PHAT collaboration']
+        native = 17
+        maxZoom = 17
+        the_url = [0, maxZoom, tileurl, subs]
+
+        tile_layers['phat'] = ['PHAT image', [the_url], native, 'PHAT collaboration']
+        tile_layers['phast'] = ['PHAST image', [the_url], native, 'PHAST collaboration']
 
     if settings.ENABLE_M33:
         tile_layers['m33'] = ['HST M33 image', [[17, maxZoom, tileurl, subs], prod_backstop],
@@ -481,6 +521,7 @@ def _index(req,
         tile_layers=tile_layers,
         enable_desi_edr = settings.ENABLE_DESI_EDR,
         enable_desi_dr1 = settings.ENABLE_DESI_DR1,
+        enable_desi_daily_obs = settings.ENABLE_DESI_DAILY_OBS,
         #enable_merian = settings.ENABLE_MERIAN,
         science = settings.ENABLE_SCIENCE,
         enable_older = settings.ENABLE_OLDER,
@@ -526,6 +567,10 @@ def _index(req,
 
         enable_dr10 = settings.ENABLE_DR10,
         enable_dr10_overlays = settings.ENABLE_DR10,
+
+        enable_dr11_overlays = settings.ENABLE_DR11,
+
+        enable_ibis = settings.ENABLE_IBIS,
 
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
@@ -673,7 +718,7 @@ def _index(req,
         usercats = usercatalog.split(',')
         keepcats = []
         for cat in usercats:
-            m = re.match('(?P<fn>\w+)(-n(?P<name>\w+))?(-c(?P<color>\w+))?', cat)
+            m = re.match(r'(?P<fn>\w+)(-n(?P<name>\w+))?(-c(?P<color>\w+))?', cat)
             if m is None:
                 print('Usercatalog "%s" did not match regex' % cat)
                 continue
@@ -1397,6 +1442,8 @@ class MapLayer(object):
         kwa = {}
         if invvar:
             kwa.update(invvar=True)
+        if maskbits:
+            kwa.update(maskbits=True)
         if scale == 0:
             return self.get_base_filename(brick, band, **kwa)
 
@@ -1600,7 +1647,7 @@ class MapLayer(object):
                 # call get_filename to possibly generate scaled version
                 fn = self.get_filename(brick, band, scale, tempfiles=tempfiles, invvar=invvar,
                                        maskbits=maskbits)
-                info('Reading', brickname, 'band', band, 'scale', scale, ('invvar' if invvar else ''), ('maskbits' if maskbits else ''), '-> fn', fn)
+                info('Reading', brickname, 'band', band, 'scale', scale, ('invvar' if invvar else ''), ('maskbits' if maskbits else ''), '-> fn', fn, 'from class', type(self))
                 if fn is None:
                     continue
 
@@ -2075,7 +2122,7 @@ class MapLayer(object):
                                     get_images_only=True, invvar=True)
         maskbits = None
         if with_maskbits and self.has_maskbits():
-            maskbits,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
+            maskbits,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands[0], tempfiles=tempfiles,
                                          get_images_only=True, maskbits=True)
 
         if hdr is not None:
@@ -2164,6 +2211,7 @@ class MapLayer(object):
         subimage = ('subimage' in req.GET)
 
         with_invvar = ('invvar' in req.GET)
+        with_maskbits = ('maskbits' in req.GET)
 
         if fits:
             suff = '.fits'
@@ -2186,7 +2234,8 @@ class MapLayer(object):
 
         self.write_cutout(ra, dec, pixscale, width, height, out_fn, bands=bands,
                           fits=fits, jpeg=jpeg, subimage=subimage, tempfiles=tempfiles,
-                          with_invvar=with_invvar, req=req)
+                          with_invvar=with_invvar, with_maskbits=with_maskbits,
+                          req=req)
 
         return send_file(out_fn, filetype, unlink=True, filename=nice_fn)
 
@@ -2562,7 +2611,7 @@ class RebrickedMixin(object):
             return 1
         import fitsio
         F = fitsio.FITS(fn)
-        debug('File', fn, 'has', len(F), 'hdus')
+        #debug('File', fn, 'has', len(F), 'hdus (RebrickedMixin)')
         if len(F) == 1:
             return 0
         return 1
@@ -2650,10 +2699,12 @@ class RebrickedMixin(object):
     def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
         #print('RebrickedMixin.get_filename: brick', brick, 'band', band, 'scale', scale)
         if scale == 0:
-            #return self.get_base_filename(brick, band)
-            return super(RebrickedMixin, self).get_filename(brick, band, scale,
-                                                            tempfiles=tempfiles, invvar=invvar,
-                                                            maskbits=maskbits)
+            #print('RebrickedMixin.get_filename: calling super()')
+            fn = super().get_filename(brick, band, scale,
+                                      tempfiles=tempfiles, invvar=invvar,
+                                      maskbits=maskbits)
+            #print('got', fn)
+            return fn
         if invvar:
             return None
 
@@ -2661,7 +2712,7 @@ class RebrickedMixin(object):
         if os.path.exists(fn):
             print('Target filename (rebricked) exists:', fn)
             return fn
-        print('Creating target filename (rebricked):', fn)
+        #print('Creating target filename (rebricked):', fn)
         fn = self.create_scaled_image(brick, band, scale, fn, tempfiles=tempfiles)
         if fn is None:
             return None
@@ -2925,7 +2976,7 @@ class DecapsResidLayer(ResidMixin, DecapsLayer):
 class MzlsMixin(object):
     def __init__(self, *args, **kwargs):
         super(MzlsMixin, self).__init__(*args, **kwargs)
-        self.bands = 'z'
+        self.bands = ['z']
 
     def get_rgb(self, imgs, bands, **kwargs):
         return mzls_dr3_rgb(imgs, bands, **kwargs)
@@ -2985,7 +3036,7 @@ class SdssLayer(MapLayer):
         return self.bricks
 
     def get_bands(self):
-        return 'gri'
+        return ['g','r','i']
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
@@ -3071,9 +3122,9 @@ class LsDr10Layer(ReDecalsLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         #print('LsDr10Layer.get_rgb: self.bands', self.bands)
 
-        if self.bands == 'grz':
+        if self.bands in ['grz', ['g','r','z']]:
             return super().get_rgb(imgs, bands, **kwargs)
-        if self.bands == 'gri':
+        if self.bands in ['gri', ['g','r','i']]:
             #print('LS DR10 gri')
             rgb_stretch_factor = 1.5
             rgbscales = {
@@ -3193,7 +3244,7 @@ class LsSegmentationLayer(RebrickedMixin, MapLayer):
 
     # One mask file per brick
     def get_bands(self):
-        return 'r'
+        return ['r']
 
     def get_fits_cutout_kwargs(self, image=False, iv=False, maskbits=False):
         return dict(compress='GZIP')
@@ -3468,11 +3519,11 @@ class Decaps2Layer(ReDecalsLayer):
         return wcs_for_brick(brick)
 
     def get_rgb(self, imgs, bands, **kwargs):
-        if self.bands == 'grz':
+        if self.bands in ['grz',['g','r','z']]:
             # equivalent to:
             #return sdss_rgb(rimgs, bands, scales=dict(g=(2,6.0), r=(1,3.4), z=(0,2.2)), m=0.03)
             return super().get_rgb(imgs, bands, **kwargs)
-        elif self.bands == 'riY':
+        elif self.bands in ['riY', ['r','i','Y']]:
             return sdss_rgb(imgs, bands, scales=dict(r=(2,3.4), i=(1,2.8), Y=(0,2.0)), m=0.03)
         return None
 
@@ -3575,7 +3626,7 @@ class CfhtLayer(ReDecalsLayer):
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
         super(HscLayer, self).__init__(name)
-        self.bands = 'grz'
+        self.bands = ['g','r','z']
         self.basedir = os.path.join(settings.DATA_DIR, self.name)
         self.scaleddir = os.path.join(settings.DATA_DIR, 'scaled', self.name)
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
@@ -3839,8 +3890,9 @@ class IbisColorLayer(ReDecalsLayer):
         return rgb
 
 class Ibis3Layer(ReDecalsLayer):
-    def __init__(self, name, imagetype, survey):
-        super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'])
+    def __init__(self, name, imagetype, survey, drname=None):
+        super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'],
+                         drname=drname)
         self.rgb_plane = None
     def get_rgb(self, imgs, bands, **kwargs):
         from legacypipe.survey import sdss_rgb as ls_rgb
@@ -3853,6 +3905,10 @@ class Ibis3Layer(ReDecalsLayer):
                     rgb[:,:,i] = rgb[:,:,self.rgb_plane]
         
         return rgb
+class Ibis3ModelLayer(UniqueBrickMixin, Ibis3Layer):
+    pass
+class Ibis3ResidLayer(UniqueBrickMixin, ResidMixin, Ibis3Layer):
+    pass
 
 class LegacySurveySplitLayer(MapLayer):
     def __init__(self, name, top, bottom, decsplit, top_bands='grz', bottom_bands='grz'):
@@ -4339,8 +4395,7 @@ class PS1Layer(MapLayer):
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 
     def get_bands(self):
-        #return 'grz'
-        return 'gri'
+        return ['g','r','i']
 
     def get_bricks(self):
         if self.bricks is not None:
@@ -4555,7 +4610,7 @@ class UnwiseLayer(MapLayer):
 
     def get_bands(self):
         # Note, not 'w1','w2'...
-        return '12'
+        return ['1','2']
 
     def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
         import numpy as np
@@ -4686,7 +4741,7 @@ class UnwiseMask(RebrickedUnwise):
         return None
     # One mask file per brick
     def get_bands(self):
-        return '1'
+        return ['1']
     # data/unwise-neo7/000/0000p757/unwise-0000p757-msk.fits.gz
     def get_base_filename(self, brick, band, **kwargs):
         brickname = brick.brickname
@@ -4708,7 +4763,7 @@ class UnwiseMask(RebrickedUnwise):
 class UnwiseW3W4(RebrickedUnwise):
     def get_bands(self):
         # Note, not 'w1','w2'...
-        return '34'
+        return ['3','4']
     def get_rgb(self, imgs, bands, **kwargs):
         return _unwise_w34_to_rgb(imgs, **kwargs)
 
@@ -5190,7 +5245,7 @@ class VlassLayer(RebrickedMixin, MapLayer):
         return wcs
 
     def get_bands(self):
-        return [1]
+        return ['1']
 
     def get_rgb(self, imgs, bands, **kwargs):
         import numpy as np
@@ -5487,7 +5542,7 @@ class ZtfLayer(RebrickedMixin, MapLayer):
         return wcs
 
     def get_bands(self):
-        return 'gri'
+        return ['g','r','i']
 
     def get_rgb(self, imgs, bands, **kwargs):
         import numpy as np
@@ -5690,7 +5745,19 @@ rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
 #                      scales=dict(g=(2,1),r=(1,1),z=(0,1)))
 
 def sdss_rgb(imgs, bands, scales=None,
-             m = 0.02):
+             m=0.02, Q=20):
+    '''
+      *imgs*:   list of 2-d numpy arrays of image pixels (float)
+      *bands*:  list of strings with the band names, eg ['g', 'r',' 'z']
+      *scales*: dict from band name to (plane, scale), where *plane* is the RGB plane,
+                and *scale* multiplies the image pixels
+      *m*:      float, an offset added so that pixels containing 0.0 map to a gray value
+                rather than black.
+      *Q*:      arcsinh scaling value (larger = stronger stretch)
+
+      Returns: H x W x 3 RGB array, floating-point, between 0.0 and 1.0.
+    '''
+    
     import numpy as np
     rgbscales = {'u': (2,1.5), #1.0,
                  'g': (2,2.5),
@@ -5707,12 +5774,7 @@ def sdss_rgb(imgs, bands, scales=None,
         img = np.maximum(0, img * scale + m)
         I = I + img
     I /= len(bands)
-        
-    # b,g,r = [rimg * rgbscales[b] for rimg,b in zip(imgs, bands)]
-    # r = np.maximum(0, r + m)
-    # g = np.maximum(0, g + m)
-    # b = np.maximum(0, b + m)
-    # I = (r+g+b)/3.
+
     Q = 20
     fI = np.arcsinh(Q * I) / np.sqrt(Q)
     I += (I == 0.) * 1e-6
@@ -5722,15 +5784,17 @@ def sdss_rgb(imgs, bands, scales=None,
         plane,scale = rgbscales[band]
         rgb[:,:,plane] = (img * scale + m) * fI / I
 
-    # R = fI * r / I
-    # G = fI * g / I
-    # B = fI * b / I
+    # We saturate to white, while the original SDSS (Lupton et al) color mapping
+    # saturates to the color of the object... more scientifically informative, but
+    # some say, not as pretty.
+    # Can do the SDSS version with something along these lines:
     # # maxrgb = reduce(np.maximum, [R,G,B])
     # # J = (maxrgb > 1.)
     # # R[J] = R[J]/maxrgb[J]
     # # G[J] = G[J]/maxrgb[J]
     # # B[J] = B[J]/maxrgb[J]
     # rgb = np.dstack((R,G,B))
+        
     rgb = np.clip(rgb, 0, 1)
     return rgb
 
@@ -6031,14 +6095,14 @@ class AsteroidsLayer(ReDecalsLayer):
         rgb[:,:,1] = rgb[:,:,2] = rgb[:,:,0]
         return rgb
     def get_bands(self):
-        return 'i'
+        return ['i']
 
 class OutliersLayer(DecalsLayer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.scaledir = None
         #self.bands = 'o'
-        self.bands = 'rgb'
+        self.bands = ['r','g','b']
         self.imagetype = 'outliers-masked-pos'
 
         self.cached_brick = None
@@ -6324,10 +6388,21 @@ def get_survey(name):
 
     elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',
                   'ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
-                  'ibis-3-wide-m490', 'ibis-3-wide-m517',]:
+                  'ibis-3-wide-m490', 'ibis-3-wide-m517',
+                  'ibis-4-m411', 'ibis-4-m438', 'ibis-4-m464', 'ibis-4-m490', 'ibis-4-m517',
+                  'ibis-4-m411-model', 'ibis-4-m438-model', 'ibis-4-m464-model',
+                  'ibis-4-m490-model', 'ibis-4-m517-model',
+                  'ibis-4-m411-resid', 'ibis-4-m438-resid', 'ibis-4-m464-resid',
+                  'ibis-4-m490-resid', 'ibis-4-m517-resid',
+                  ]:
+        # -> ibis-3 / ibis-3-wide / ibis-4
+        name = name.replace('-model', '')
+        name = name.replace('-resid', '')
         name = name[:-5]
         dirnm = os.path.join(basedir, name)
-
+       
+    elif name in ['ls-dr11-early','ls-dr11-early-v2']:
+        survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
     if survey is None and not os.path.exists(dirnm):
         return None
@@ -7555,7 +7630,7 @@ def jpl_lookup(req):
     # Add link to objects.
     import re
     # 44505 (1998 XT38) --> 44505
-    r1 = re.compile('(?P<num>\d+) \([\w\s]+\)')
+    r1 = re.compile(r'(?P<num>\d+) \([\w\s]+\)')
     for i,d in enumerate(data):
         name = d[0]
         #https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=44505
@@ -8064,7 +8139,7 @@ def get_layer(name, default=None):
         return layers[name]
     layer = None
 
-    from map.phat import PhatLayer, M33Layer
+    from map.phat import PhatLayer, M33Layer, PhastLayer
 
     if '/' in name or '..' in name:
         pass
@@ -8124,6 +8199,9 @@ def get_layer(name, default=None):
 
     elif name == 'phat':
         layer = PhatLayer('phat')
+
+    elif name == 'phast':
+        layer = PhastLayer('phast')
 
     elif name == 'm33':
         layer = M33Layer('m33')
@@ -8343,16 +8421,52 @@ def get_layer(name, default=None):
             layer.bands = ['M464']
             layer.rgb_plane = 1
 
-    elif name in ['ibis-3', 'ibis-3-wide']:
-        survey = get_survey(name)
-        layer = Ibis3Layer(name, 'image', survey)
+    elif name in ['ibis-3', 'ibis-3-wide',
+                  'ibis-4',
+                  'ibis-4-model',
+                  'ibis-4-resid',
+                  ]:
+        sname = name.replace('-model', '')
+        sname = sname.replace('-resid', '')
+        survey = get_survey(sname)
 
-    elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',]:
-        survey = get_survey('ibis-3')
-        layer = Ibis3Layer('ibis-3', 'image', survey)
-        band = name[-4:].upper()
-        layer.bands = [band]
-        layer.rgb_plane = 2
+        image = Ibis3Layer(sname, 'image', survey)
+        model = Ibis3ModelLayer(sname+'-model', 'model', survey, drname=sname)
+        resid = Ibis3ResidLayer(image, model, sname+'-resid', 'resid', survey, drname=sname)
+        layers[sname           ] = image
+        layers[sname + '-model'] = model
+        layers[sname + '-resid'] = resid
+        layer = layers[name]
+
+    elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',
+                  'ibis-4-m411', 'ibis-4-m438', 'ibis-4-m464', 'ibis-4-m490', 'ibis-4-m517',
+                  'ibis-4-m411-model', 'ibis-4-m438-model', 'ibis-4-m464-model', 'ibis-4-m490-model', 'ibis-4-m517-model',
+                  'ibis-4-m411-resid', 'ibis-4-m438-resid', 'ibis-4-m464-resid', 'ibis-4-m490-resid', 'ibis-4-m517-resid',
+                  ]:
+        sname = name[:len('ibis-3')]
+        bname = name.replace('-model', '')
+        bname = bname.replace('-resid', '')
+        band = bname[-4:].upper()
+        assert(band in ['M411', 'M438', 'M464', 'M490', 'M517'])
+
+        basename = name.replace('-model', '')
+        basename = basename.replace('-resid', '')
+
+        survey = get_survey(sname)
+
+        image = Ibis3Layer(basename, 'image', survey, drname=sname)
+        image.bands = [band]
+        image.rgb_plane = 2
+        model = Ibis3ModelLayer(basename + '-model', 'model', survey, drname=sname)
+        model.bands = [band]
+        model.rgb_plane = 2
+        resid = Ibis3ResidLayer(image, model, basename + '-resid', 'resid', survey, drname=sname)
+        resid.bands = [band]
+        resid.rgb_plane = 2
+        layers[sname + '-' + band.lower()           ] = image
+        layers[sname + '-' + band.lower() + '-model'] = model
+        layers[sname + '-' + band.lower() + '-resid'] = resid
+        layer = layers[name]
 
     elif name in ['ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
                   'ibis-3-wide-m490', 'ibis-3-wide-m517',]:
@@ -8430,6 +8544,14 @@ def get_layer(name, default=None):
         layers[basename + '-model' + grzpart] = model
         layers[basename + '-resid' + grzpart] = resid
         layer = layers[name]
+
+    elif name in ['ls-dr11-early','ls-dr11-early-v2']:
+        bands = 'griz'
+        survey = get_survey(name)
+        image = LsDr10Layer(name, 'image', survey, bands=bands, drname=name)
+        layers[name] = image
+        layer = layers[name]       
+        layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', name)
 
     if layer is None:
         # Try generic rebricked
@@ -9091,6 +9213,7 @@ if __name__ == '__main__':
     #r = c.get('/ibis-3-wide-m464/1/5/12/16.jpg')
     #r = c.get('/iv-data/ls-dr9/decam-705256-N1')
     #r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
+    #r = c.get('/image-data/ls-dr9-north/mosaic-125708-CCD1-z')
     #r = c.get('/?targetid=39627914966205909')
     #r = c.get('/ls-dr9-mid/1/6/39/25.jpg')
     #r = c.get('/cutout.jpg?ra=141.0978&dec=32.375&layer=ls-dr9&pixscale=0.25&size=500')
@@ -9098,6 +9221,34 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr67-mid/1/11/1105/829.jpg')
     #r = c.get('/desi-dr1?supersecret=yes')
     #r = c.get('/desi-spec-dr1/1/cat.json?ralo=185.3891&rahi=185.6490&declo=12.6685&dechi=12.8128&supersecret=yes')
+    #r = c.get('/ibis-4-resid/1/5/18/15.jpg')
+    #r = c.get('/ibis-4-m464-model/1/5/18/15.jpg')
+    #r = c.get('/ibis-4-m464-resid/1/5/18/15.jpg')
+    #r = c.get('/cutout.fits?ra=197.59267292667388&dec=32.36562720074835&size=350&layer=ls-dr9&pixscale=0.262&bands=grz&invvar&maskbits')
+    #r = c.get('/cutout.fits?ra=132.0697&dec=47.3085&layer=ls-dr9&pixscale=0.25&maskbits')
+    #r = c.get('/phat/1/14/15897/6126.jpg')
+    settings.READ_ONLY_BASEDIR = False
+    #r = c.get('/phast/1/14/15901/6127.jpg')
+    #r = c.get('/phast/1/13/7950/3063.jpg')
+    #r = c.get('/phast/1/12/3975/1531.jpg')
+    #r = c.get('/phast/1/11/1987/765.jpg')
+    #r = c.get('/phast/1/10/993/382.jpg')
+    #r = c.get('/phast/1/9/496/191.jpg')
+
+    # riz RGB jpeg for CHIME/FRB
+    # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
+    # import fitsio
+    # im = fitsio.read('cutout.fits')
+    # print(im.shape)
+    # r,i,z = im[0,:,:], im[1,:,:], im[2,:,:]
+    # rgb = sdss_rgb([r,i,z], bands=['r','i','z'],
+    #                scales=dict(r=(2,3.4),
+    #                            i=(1,2.8),
+    #                            z=(0,2.2),
+    #                            ))
+    # plt.imsave('riz.jpg', rgb)
+    #
+
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
