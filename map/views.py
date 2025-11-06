@@ -9208,7 +9208,21 @@ if __name__ == '__main__':
     #r = c.get('/phast/1/12/3975/1531.jpg')
     #r = c.get('/phast/1/11/1987/765.jpg')
     #r = c.get('/phast/1/10/993/382.jpg')
-    r = c.get('/phast/1/9/496/191.jpg')
+    #r = c.get('/phast/1/9/496/191.jpg')
+
+    # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
+    import fitsio
+    im = fitsio.read('cutout.fits')
+    print(im.shape)
+    r,i,z = im[0,:,:], im[1,:,:], im[2,:,:]
+
+    rgb = sdss_rgb([r,i,z], bands=['r','i','z'],
+                   scales=dict(r=(2,3.4),
+                               i=(1,2.8),
+                               z=(0,2.2),
+                               ))
+    plt.imsave('riz.jpg', rgb)
+    
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)

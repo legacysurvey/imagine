@@ -667,9 +667,11 @@ def main():
         if opt.bands is None:
             opt.bands = 'gi'
         if opt.maxdec is None:
-            opt.maxdec = 51
+            #opt.maxdec = 51
+            opt.maxdec = 60
         if opt.mindec is None:
-            opt.mindec = 37
+            #opt.mindec = 37
+            opt.mindec = 15
         if opt.maxra is None:
             opt.maxra = 360
         if opt.minra is None:
