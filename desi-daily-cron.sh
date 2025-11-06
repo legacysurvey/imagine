@@ -20,5 +20,9 @@ echo "Rebuild spectro kd-tree..."
 python -u desi_daily.py
 result=$?
 
+echo "Copying daily observation summary into production and dev viewers..."
+cp data/desi-spectro-daily/desi-obs.kd.fits /global/cfs/cdirs/cosmo/webapp/viewer-dev/data/desi-spectro-daily/
+cp data/desi-spectro-daily/desi-obs.kd.fits /global/cfs/cdirs/cosmo/webapp/viewer/data/desi-spectro-daily/
+
 echo "desi-daily-cron.sh finished at $(date) with return value $result"
 exit $result

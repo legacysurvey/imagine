@@ -3111,11 +3111,28 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
 var DesiObsCatalog = DesiSpectraCatalog.extend({
     getLabel: function(json, i) {
         var s = '';
-        for (var j=0, len=json['targetid'][i].length; j<len; j++) {
+        var N = json['targetid'][i].length;
+        for (var j=0; j<N; j++) {
             if (j > 0)
                 s += ', ';
-            s += '<a href="' + root_url + 'desi-obs/' + this.release + '/targetid' +
-                json['targetid'][i][j] + '">' + json['name'][i][j] + '</a>';
+            if (N == 1) {
+                // link by targetid
+                s += '<a href="' + root_url + 'desi-obs/' + this.release +
+                    '/targetid' + json['targetid'][i][j] +
+                    '">' + json['name'][i][j] + '</a>';
+                    
+            } else {
+                // link by tile & fiberid
+                s += '<a href="' + root_url + 'desi-obs/' + this.release +
+                    '/tile' + json['tileid'][i][j] +
+                    'fiber' + json['fiberid'][i][j] +
+                    '">' + json['name'][i][j] + '</a>';
+            }
+        }
+        if (N > 1) {
+            s += ', <a href="' + root_url + 'desi-obs/' + this.release +
+                '/targetid' + json['targetid'][i][0] +
+                '">all</a>';
         }
         return s;
     },

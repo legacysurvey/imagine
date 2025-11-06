@@ -6,48 +6,15 @@ import fitsio
 from glob import glob
 import tempfile
 from astrometry.libkd.spherematch import tree_build
+from collections import Counter
 
 basedir = 'data/desi-spectro-daily'
 
 # Create tile kd-tree
 #if True:
 if False:
-    from astropy.table import Table
-    TT = []
-    # for surv,fn in [('main', '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-main.ecsv'),
-    #                 ('sv1',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv1.ecsv'),
-    #                 ('sv2',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv2.ecsv'),
-    #                 ('sv3',  '/global/cfs/cdirs/desi/survey/ops/surveyops/trunk/ops/tiles-sv3.ecsv'),
-    # 
-    for fn in ['/global/cfs/cdirs/desi/spectro/redux/daily/tiles-daily.csv']:
-        t1 = Table.read(fn)
-        t1.write('/tmp/t.fits', overwrite=True)
-        T = fits_table('/tmp/t.fits')
-        #T.about()
-        #T.survey = np.array([surv] * len(T))
-        TT.append(T)
-    T = merge_tables(TT, columns='fillzero')
-    #T.tilera  = T.ra
-    #T.tiledec = T.dec
-    T.ra  = T.tilera
-    T.dec = T.tiledec
-
-    for i,(prog,faprog) in enumerate(zip(T.program, T.faprgrm)):
-        if prog.strip() == '':
-            T.program[i] = faprog
-    
-    #     ts = '%06i' % tileid
-    #     fn = 'data/desi-tiles/%s/fiberassign-%s.fits.gz' % (ts[:3], ts)
-    #     T.found_tile[itile] = True
-    # T.cut(T.found_tile)
-
-    outfn = os.path.join(basedir, 'tiles2.fits')
-    T.writeto(outfn)
-
-    kdfn = os.path.join(basedir, 'tiles2.kd.fits')
-    cmd = 'startree -i %s -R tilera -D tiledec -PTk -o %s' % (outfn, kdfn)
-    os.system(cmd)
-    print('Wrote tile kd-tree')
+    from desi_daily import create_tile_kd
+    create_tile_kd(basedir)
 
 # Create redshift catalog kd-tree
 if True:
@@ -55,43 +22,64 @@ if True:
     allzbest = []
 
     # Cached files & dates
-    #for date in []:#'202110', '202110-missing', '202202', '202302']:
-    for date in ['202310']:
+    for date in []:
+    #for date in ['202310']:
         cachedfn = os.path.join(basedir, 'allzbest-%s.fits' % date)
         print('Reading cached spectra from', cachedfn, '...')
         T = fits_table(cachedfn)
         T.rename('ra',  'target_ra')
         T.rename('dec', 'target_dec')
         allzbest.append(T)
-    #cache_cutoff = '20211100'
-    #cache_cutoff = '20220300'
-    #cache_cutoff = '20230300'
-    cache_cutoff = '20231100'
-    #cache_cutoff = '19000000'
+    # Skip any file from before this cache cutoff date (assume they're in the
+    # cache file above).
+    #cache_cutoff = '20231100'
+    cache_cutoff = '19000000'
 
+    # 2021
+    #date_first = '19000000'
+    #date_last  = '20211300'
+    # 2022
+    #date_first = '20211300'
+    #date_last  = '20221300'
+    # 2023
+    # date_first = '20230000'
+    # date_last  = '20231300'
+    # 2024
+    #date_first = '20240000'
+    #date_last  = '20241300'
+    # 2025-10
+    date_first = '20250000'
+    date_last = None
+    
     print('Finding zbest(redrock) files...')
     
     tiles = glob('/global/cfs/cdirs/desi/spectro/redux/daily/tiles/cumulative/*')
-    # sort numerically
+    # sort tiles numerically
     nt = np.array([int(f.split('/')[-1]) for f in tiles])
     I = np.argsort(nt)
     tiles = [tiles[i] for i in I]
 
     fns = []
     for tile in tiles:
-
+        # Keep just the last date per tile
         dates = glob(tile + '/20*')
         if len(dates) == 0:
             continue
         dates.sort()
         date = dates[-1]
         justdate = os.path.basename(date)
+
         #print('Date:', justdate)
         if cache_cutoff is not None:
             if justdate <= cache_cutoff:
                 print('Skipping (cached):', date)
                 continue
-        #fns.extend(glob(date + '/zbest-*.fits'))
+            if date_first is not None and justdate < date_first:
+                print('Skipping (date < %s):' % date_first, date)
+                continue
+            if date_last is not None and justdate > date_last:
+                print('Skipping (date > %s):' % date_last, date)
+                continue
         thisfns = glob(date + '/redrock-*.fits')
 
         # HACK!!!
@@ -125,18 +113,24 @@ if True:
     # Are we producing a cache file?
     caching = True
     if caching:
-        #cachedate = '20211100'
-        #cachedate_name = '202110'
-        #cachedate = '20231100'
-        #cachedate_name = '202310'
-        cachedate = '20251100'
-        cachedate_name = '202510'
-        # print('Dates:')
-        # for fn in fns:
-        #     print('  ', fn)
-        #     print('  date', os.path.basename(os.path.dirname(fn)))
-        #     print('  date before cachedate:', os.path.basename(os.path.dirname(fn)) <= cachedate)
-        fns = [fn for fn in fns if os.path.basename(os.path.dirname(fn)) <= cachedate]
+        # cachedate_first = '19000000'
+        # cachedate_last  = '20211300'
+        # cachedate_name = '2021'
+
+        cachedate_first = date_first
+        cachedate_last  = '20251099'
+        cachedate_name = '2025-10'
+
+        keepfns = []
+        for fn in fns:
+            date = os.path.basename(os.path.dirname(fn))
+            if date < cachedate_first:
+                continue
+            if date > cachedate_last:
+                continue
+            keepfns.append(fn)
+        print('Keeping', len(keepfns), 'of', len(fns), 'files based on dates', cachedate_first, 'to', cachedate_last)
+        fns = keepfns
         
     if True:
         for fn in fns:
@@ -159,6 +153,7 @@ if True:
             if not is_zbest:
                 extra_cols.append('COADD_EXPTIME')
             # The other HDUs (aside from EXP_FIBERMAP) are row-matched.
+            # Fibermap:
             RD = fits_table(fn, hdu=2, columns=['TARGETID','TARGET_RA','TARGET_DEC',
                                                 'TILEID', 'FIBER',] + extra_cols)
             if is_zbest:
@@ -209,6 +204,7 @@ if True:
                 hdu = 3
             exp = fits_table(fn, hdu=hdu,
                              columns=['TARGETID', 'MJD', 'FIBERSTATUS'] + extra_columns)
+            print('  ', len(exp), 'exposure entries from', fn)
             # keep exposures where fibers were not bad
             exp.cut(exp.fiberstatus == 0)
 
@@ -226,6 +222,11 @@ if True:
             T.minmjd = np.array([target_minmjd.get(tid, 0) for tid in T.targetid])
             T.maxmjd = np.array([target_maxmjd.get(tid, 0) for tid in T.targetid])
 
+            c = Counter(list(zip(T.minmjd, T.maxmjd)))
+            print('  ', 'Number of objects with Min/Max MJDs:')
+            for (minmjd,maxmjd),n in c.most_common():
+                print('      %i with MJD range %.1f to %.1f' % (n, minmjd, maxmjd))
+            
             if 'exptime' in exp.get_columns():
                 # Sum to get coadd_exptime
                 target_exptime = {}
