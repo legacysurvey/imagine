@@ -3181,15 +3181,6 @@ var desi_spec_daily_sky = new DesiSpectraCatalog(
      //'urlTerm': 'desi-spec/denali',
     });
 
-var desi_obs_daily = new DesiObsCatalog(
-    'desi-obs-daily', 'DESI daily observations', 'daily',
-    {'url': smallcat_url,
-     'radius': 300,
-     'labelsMinZoom': 10,
-     'minZoom': 8,
-     //'urlTerm': 'desi-spec/denali',
-    });
-
 var desi_spec_guadalupe = new DesiSpectraCatalog(
     'desi-spec-guadalupe', 'DESI Guadalupe spectra', 'guadalupe',
     {'url': smallcat_url,
@@ -3208,6 +3199,17 @@ var desi_spec_fuji = new DesiSpectraCatalog(
 
 {% endif %}
 
+  {% if enable_desi_daily_obs %}
+var desi_obs_daily = new DesiObsCatalog(
+    'desi-obs-daily', 'DESI daily observations', 'daily',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+     //'urlTerm': 'desi-spec/denali',
+    });
+  {% endif %}
+  
 var polygonOverlays = [ 
     {% if enable_dr5_overlays %}
     ccdOverlay5, expOverlay5,
@@ -3911,6 +3913,8 @@ var overlays = [
     desi_tiles_daily,
     desi_spec_daily,
     desi_spec_daily_sky,
+    {% endif %}
+    {% if enable_desi_daily_obs %}
     desi_obs_daily,
     {% endif %}
     constellations,
@@ -4476,8 +4480,10 @@ var overlayTree = [];
            findoverlay('desi-tiles-daily'),
            findoverlay('desi-spec-daily'),
            findoverlay('desi-spec-daily-sky'),
+           {% endif %}
+           {% if enable_desi_daily_obs %}
            findoverlay('desi-obs-daily'),
-         {% endif %}
+           {% endif %}
          {% if enable_desi_targets %}
            { label: 'DESI Targets',
              children: [

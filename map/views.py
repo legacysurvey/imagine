@@ -517,12 +517,11 @@ def _index(req,
         urls = over
         orig[1] = urls
 
-    enable_desi_dr1 = settings.ENABLE_DESI_DR1
-
     kwkeys = dict(
         tile_layers=tile_layers,
         enable_desi_edr = settings.ENABLE_DESI_EDR,
-        enable_desi_dr1 = enable_desi_dr1,
+        enable_desi_dr1 = settings.ENABLE_DESI_DR1,
+        enable_desi_daily_obs = settings.ENABLE_DESI_DAILY_OBS,
         #enable_merian = settings.ENABLE_MERIAN,
         science = settings.ENABLE_SCIENCE,
         enable_older = settings.ENABLE_OLDER,

@@ -50,7 +50,9 @@ ENABLE_DESI_DATA = False
 # DESI Early Data Release
 ENABLE_DESI_EDR = True
 # DESI DR1
-ENABLE_DESI_DR1 = False
+ENABLE_DESI_DR1 = True
+# DESI daily observation metadata only
+ENABLE_DESI_DAILY_OBS = True
 
 ENABLE_MERIAN = False
 
