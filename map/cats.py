@@ -208,6 +208,13 @@ def call_prospect(spectra, zbests, redrock_template_dir=None, outdir=None):
     import prospect.viewer
     import redrock.templates
 
+    # print('calling prosect: spectra', spectra)
+    # print('zbests', zbests)
+    # print('rr templ', redrock_template_dir)
+    # from desispec.io import write_spectra
+    # write_spectra('prospect-spectra.fits', spectra)
+    # zbests.write('prospect-zbest.fits', overwrite=True)
+    
     if redrock_template_dir is None:
         redrock_template_dir = os.path.join(settings.DATA_DIR, 'redrock-templates')
     os.environ['RR_TEMPLATE_DIR'] = redrock_template_dir
@@ -513,7 +520,6 @@ def cat_desi_dr1_spectra_detail(req, targetid):
         return HttpResponse('No such targetid found in DESI DR1 spectra: %s' % targetid)
 
     rr_templ = os.path.join(settings.DATA_DIR, 'desi-spectro-dr1', 'redrock-templates')
-
     return desi_healpix_spectrum(req, t, release, redrock_template_dir=rr_templ)
 
 def cat_desi_release_spectra(req, ver, kdfn, tag, racol='ra', deccol='dec',
@@ -3512,7 +3518,36 @@ if __name__ == '__main__':
     #r = c.get('/desi-obs/daily/tile20372fiber1199')
 
     #r = c.get('/desi-obs/daily/targetid39633165945409137')
-    r = c.get('/desi-obs/daily/targetid39633165945409158')
+    #r = c.get('/desi-obs/daily/targetid39633165945409158')
+
+    #r = c.get('/desi-spectrum/dr1/targetid2305843038603189930')
+
+    r = c.get('/desi-spectrum/dr1/targetid39627784728871188')
+    
+    # import bokeh
+    # print('bokeh', bokeh.__version__)
+    # import prospect
+    # print('prospect', prospect.__version__)
+    # 
+    # import sys
+    # print('python', sys.version)
+    # import numpy
+    # print('numpy', numpy.__version__)
+    
+    # from desispec.io import read_spectra
+    # from astropy.table import Table
+    # spec = read_spectra('prospect-spectra.fits')
+    # zbest = Table.read('prospect-zbest.fits')
+    # rr_templ = '/global/cfs/cdirs/cosmo/webapp/viewer/data/desi-spectro-dr1/redrock-templates'
+    # outdir = 'prospect-out'
+    # #outdir = '/tmp/prospect-out'
+    # call_prospect(spec, zbest, redrock_template_dir=rr_templ,
+    #               outdir=outdir)
+    # sys.exit(0)
+    
+    #import locale
+    #print('Locale:', locale.getencoding())
+    #open('prospect/data/emission_lines.txt').readlines()
     
     f = open('out', 'wb')
     for x in r:
