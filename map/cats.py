@@ -2743,7 +2743,7 @@ def cat_masks_dr9(req, ver):
             pa += 180.
         if pa >= 180.:
             pa -= 180.
-        PA.append(float(90.-pa))
+        PA.append(float(pa))
         PA_disp.append(float(pa))
 
         if bright:
