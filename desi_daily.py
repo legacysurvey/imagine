@@ -44,14 +44,17 @@ if True:
 
     # Cached files & dates
     #for date in ['202510']:
-    for date in ['2021', '2022', '2023', '2024', '2025-10']:
+    #for date in ['2021', '2022', '2023', '2024', '2025-10']:
+    # We're now keeping multiple kd-trees, so don't need to read all previous
+    # cache files that went into allzbest-202511.kd.fits
+    for date in []:
         cachedfn = os.path.join(basedir, 'allzbest-%s.fits' % date)
         print('Reading cached spectra from', cachedfn, '...')
         T = fits_table(cachedfn)
         T.rename('ra',  'target_ra')
         T.rename('dec', 'target_dec')
         allzbest.append(T)
-    cache_cutoff = '20251100'
+    cache_cutoff = '20251200'
 
     print('Finding zbest(redrock) files...')
     
@@ -86,16 +89,16 @@ if True:
     # (see desi-daily-cache.py)
     caching = False
     if caching:
-        cachedate = '20251100'
-        cachedate_name = '202510'
+        #cachedate = '20251100'
+        #cachedate_name = '202510'
+        cachedate = '20251200'
+        cachedate_name = '202511'
         fns = [fn for fn in fns if os.path.basename(os.path.dirname(fn)) <= cachedate]
         
     if True:
         Nfiles = len(fns)
         for i,fn in enumerate(fns):
             T = fits_table(fn)
-            # Don't cut until the end because other tables are row-aligned!!
-            #T.cut(T.targetid >= 0)
             print('File %i/%i:' % (i+1, Nfiles), len(T), 'from', fn)
             RD = fits_table(fn, hdu=2, columns=['TARGETID','TARGET_RA','TARGET_DEC',
                                                 'TILEID', 'FIBER',
@@ -148,6 +151,11 @@ if True:
         outfn = os.path.join(basedir, 'allzbest-%s.fits' % cachedate_name)
         allzbest.writeto(outfn)
         print('Wrote', outfn)
+        kdfn = os.path.join(basedir, 'allzbest-%s.kd.fits' % cachedate_name)
+        from desi_spectro_kdtree import create_desi_spectro_kdtree
+        print('Writing', kdfn)
+        create_desi_spectro_kdtree(outfn, kdfn)
+        print('Wrote', kdfn)
         sys.exit(0)
 
     fitsfn = os.path.join(basedir, 'allzbest.fits')
