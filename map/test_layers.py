@@ -3,6 +3,7 @@ test_cats = []
 test_ccds = []
 
 test_layers.append(('ls-dr11-early-v2', "Legacy Surveys DR11 early images v2"))
+#test_layers.append(('ibis-4', "IBIS (v4) COSMOS Color"))
 
 # test_layers.append(('cfht-cosmos-cahk', "CFHT CaH+K images"))
 # 
