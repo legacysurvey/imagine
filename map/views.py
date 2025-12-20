@@ -434,6 +434,7 @@ def _index(req,
                             12, 'unwise'],
             'unwise-neo6': ['unWISE W1/W2 NEO6', [[1, 11, aws_unwise_url, []]], 11, 'unwise'],
             'unwise-neo7': ['unWISE W1/W2 NEO7', [def_url], 11, 'unwise'],
+            'unwise-neo11': ['unWISE W1/W2 NEO11', [def_url], 11, 'unwise'],
             'unwise-cat-model': ['unWISE Catalog model', [[6, maxZoom, tileurl, subs], prod_backstop],
                                  12, 'unwise'],
         })
@@ -8267,6 +8268,10 @@ def get_layer(name, default=None):
         layer = RebrickedUnwise('unwise-neo7',
                                 os.path.join(settings.DATA_DIR, 'unwise-neo7'))
 
+    elif name == 'unwise-neo11':
+        layer = RebrickedUnwise('unwise-neo11',
+                                os.path.join(settings.DATA_DIR, 'unwise-neo11'))
+
     elif name == 'unwise-neo7-mask':
         layer = UnwiseMask('unwise-neo7-mask',
                            os.path.join(settings.DATA_DIR, 'unwise-neo7'))
@@ -9223,6 +9228,7 @@ if __name__ == '__main__':
     #r = c.get('/phast/1/11/1987/765.jpg')
     #r = c.get('/phast/1/10/993/382.jpg')
     #r = c.get('/phast/1/9/496/191.jpg')
+    r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo11&pixscale=2.75&size=500')
 
     # riz RGB jpeg for CHIME/FRB
     # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
@@ -9248,7 +9254,6 @@ if __name__ == '__main__':
 
     f = open('out.jpg', 'wb')
     for x in r:
-        #print('Got', type(x), len(x))
         f.write(x)
     f.close()
 

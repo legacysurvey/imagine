@@ -4240,10 +4240,11 @@ baseTree1 = baseTree1.concat([
     {% endif %}
 
     {% if enable_unwise %}
-    findlayer('unwise-neo7', [
+    findlayer('unwise-neo11', [
+        findlayer('unwise-neo7'),
         findlayer('unwise-neo6'),
         {% if science %}
-        findlayer('unwise-neo4'),
+        //findlayer('unwise-neo4'),
         findlayer('unwise-cat-model'),
         {% if enable_unwise_w3w4 %}
         findlayer('unwise-w3w4'),
