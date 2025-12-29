@@ -39,6 +39,7 @@ catversions = {
     'GCs-PNe': [1,],
     'lslga': [1,],
     'sga': [1,],
+    'sga2025-ellipse': [1,],
     'sga2025-parent': [1,],
     'spec': [1,],
     'spec-deep2': [1,],
@@ -2444,11 +2445,11 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
     
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
-def cat_sga_parent(req, ver):
+def cat_sga2020_parent(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-parent-v3.0.kd.fits')
     return _cat_sga(req, ver, fn=fn, tag='sga')
 
-def cat_sga_ellipse(req, ver):
+def cat_sga2020_ellipse(req, ver):
     # T = fits_table('cosmo/webapp/viewer-dev/data/sga/SGA-ellipse-v3.2.kd.fits')
     # T.cut((T.sga_id >= 0) * (T.preburned))
     # cols = ['ra','dec','diam', 'galaxy', 'pgc', 'morphtype', 'ba', 'pa', 'z_leda', 'group_name']
@@ -2462,9 +2463,14 @@ def cat_sga_ellipse(req, ver):
 
 def cat_sga2025_parent(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'sga2025', 'SGA2025-parent-latest.kd.fits')
-    return _cat_sga(req, ver, fn=fn, tag='sga2025-parent')
+    return _cat_sga(req, ver, fn=fn, tag='sga2025-parent', cycle_colors=True)
 
-def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
+def cat_sga2025_ellipse(req, ver):
+    fn = os.path.join(settings.DATA_DIR, 'sga2025', 'SGA2025-ellipse-latest.kd.fits')
+    print('Reading', fn)
+    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga2025-ellipse')
+
+def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', cycle_colors=False):
     import json
     import numpy as np
     # The SGA catalog includes radii for the galaxies, and we want galaxies
@@ -2488,9 +2494,16 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
 
-    if '2025' in tag:
+    if tag == 'sga2025-parent':
         names = [t.strip() for t in T.objname]
         pgc = [int(p) for p in T.pgc]
+        typ = ['' for i in range(len(T))]
+        z = [-1 for i in range(len(T))]
+
+    elif tag == 'sga2025-ellipse':
+        names = ['SGA-%i' % refid if refid != -1 else ''
+                 for refid in T.ref_id]
+        pgc = [int(p) for p in T.ref_id]
         typ = ['' for i in range(len(T))]
         z = [-1 for i in range(len(T))]
 
@@ -2510,14 +2523,32 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     pa = [float(x) for x in pax]
     #pa = [float(90.-f) for f in pax]
     #pa_disp = [float(f) for f in pax]
-    if ellipse:
+
+    if cycle_colors:
+        # Colors cycle on ~arcmin scale to distinguish nearby groups.
+        # Larger color palette (20-24 colors)
+        colors = [
+            'red', 'blue', 'green', 'yellow', 'cyan', 'orange', 'magenta', 'lime',
+            'pink', 'purple', 'brown', 'navy', 'teal', 'olive', 'maroon', 'aqua',
+            'coral', 'gold', 'indigo', 'violet', 'khaki', 'salmon', 'plum', 'tan'
+        ]
+        # Bin on arcmin scale (~36 arcsec ~ 0.01 deg)
+        ra_bin  = np.floor(T.group_ra  * 100).astype(int) % len(colors)
+        dec_bin = np.floor(T.group_dec * 100).astype(int) % len(colors)
+        color_idx = (ra_bin + dec_bin) % len(colors)
+        color = [colors[i] for i in color_idx]
+
+    elif ellipse:
         color = ['#377eb8']*len(T)
         #'#ff3333'
     else:
         color = ['#e41a1c']*len(T)
         #'#3388ff'
 
-    groupnames = [t.strip() for t in T.group_name]
+    if 'group_name' in T.get_columns():
+        groupnames = [t.strip() for t in T.group_name]
+    else:
+        groupnames = [''] * len(T)
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
                                         groupname=groupnames,
@@ -3551,7 +3582,10 @@ if __name__ == '__main__':
 
     #r = c.get('/desi-spectrum/dr1/targetid39627784728871188')
     #r = c.get('/masks-dr9/1/cat.json?ralo=190.5906&rahi=190.7205&declo=14.3214&dechi=14.3930')
-    r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
+    #r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
+    r = c.get('/')
+
+    
     # import bokeh
     # print('bokeh', bokeh.__version__)
     # import prospect

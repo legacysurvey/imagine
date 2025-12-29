@@ -3424,15 +3424,20 @@ var sga2025_parent = new SGACatalog('sga2025-parent', 'SGA2025 Parent',
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga2025-parent',});
 
-var sga_parent = new SGACatalog('sga-parent', 'HyperLEDA/SGA galaxies',
+var sga2025_ell = new SGACatalog('sga2025', 'Siena Galaxy Atlas 2025',
+                                 {'minZoom': 7,
+                                  'labelsMinZoom': 7,
+                                  'urlTerm': 'sga2025',});
+
+var sga_parent = new SGACatalog('sga2020-parent', 'HyperLEDA/SGA galaxies (2020)',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
-                              'urlTerm': 'sga-parent',});
+                              'urlTerm': 'sga2020-parent',});
 
-var sga_ell = new SGACatalog('sga', 'Siena Galaxy Atlas',
+var sga_ell = new SGACatalog('sga2020', 'Siena Galaxy Atlas 2020',
                              {'minZoom': 7,
                               'labelsMinZoom': 7,
-                              'urlTerm': 'sga',});
+                              'urlTerm': 'sga2020',});
 
 var photoz = new PhotozCatalog('photoz-dr9', 'DR9 Photo-z',
                                  {'minZoom': 12,
@@ -3868,7 +3873,7 @@ var overlays = [
     {% if enable_sdss_ccds %}
     ccdOverlaySdss,
     {% endif %}
-    gals, sga2025_parent, sga_parent, sga_ell, //lslga_model, starmasks8,
+    gals, sga2025_parent, sga2025_ell, sga_parent, sga_ell,
     starmasks9, GCsPNe, bright, tycho2,
     photoz,
     {% if enable_ps1 %}
@@ -4514,9 +4519,10 @@ var overlayTree = [];
      findoverlay('GCs-PNe'),
      findoverlay('gals'),
      findoverlay('sga2025-parent'),
-     findoverlay('sga'),
+     findoverlay('sga2025'),
+     findoverlay('sga2020'),
      {% if science %}
-     findoverlay('sga-parent'),
+     findoverlay('sga2020-parent'),
      findoverlay('photoz-dr9'),
      {% endif %}
      //findoverlay('masks-dr8'),
