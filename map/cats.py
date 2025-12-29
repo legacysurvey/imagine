@@ -208,6 +208,13 @@ def call_prospect(spectra, zbests, redrock_template_dir=None, outdir=None):
     import prospect.viewer
     import redrock.templates
 
+    # print('calling prosect: spectra', spectra)
+    # print('zbests', zbests)
+    # print('rr templ', redrock_template_dir)
+    # from desispec.io import write_spectra
+    # write_spectra('prospect-spectra.fits', spectra)
+    # zbests.write('prospect-zbest.fits', overwrite=True)
+    
     if redrock_template_dir is None:
         redrock_template_dir = os.path.join(settings.DATA_DIR, 'redrock-templates')
     os.environ['RR_TEMPLATE_DIR'] = redrock_template_dir
@@ -235,7 +242,8 @@ def call_prospect(spectra, zbests, redrock_template_dir=None, outdir=None):
         prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir, outfile=outfn,
                                     with_vi_widgets=False,
                                     with_thumb_tab=False,
-                                    title=tt)
+                                    title=tt,
+                                    colors=['#d62728', 'black', 'blue'])
         # colors=['color_for_spectrum', 'color_for_model', 'color_for_noise']
         # color names html syntax; current default values '#D62728', 'black', 'green')
     except KeyError:
@@ -529,7 +537,6 @@ def cat_desi_dr1_spectra_detail(req, targetid):
         return HttpResponse('No such targetid found in DESI DR1 spectra: %s' % targetid)
 
     rr_templ = os.path.join(settings.DATA_DIR, 'desi-spectro-dr1', 'redrock-templates')
-
     return desi_healpix_spectrum(req, t, release, redrock_template_dir=rr_templ)
 
 def cat_desi_release_spectra(req, ver, kdfns, tag, racol='ra', deccol='dec',
@@ -2549,7 +2556,7 @@ def cat_manga(req, ver):
     #     -P -T -k -R ifura -D ifudec
     fn = os.path.join(settings.DATA_DIR, 'manga', 'drpall-v2_4_3.kd.fits')
     tag = 'manga'
-    T = cat_kd(req, ver, tag, fn, racol='ifura', deccol='ifudec')
+    T = cat_kd(req, ver, tag, [fn], racol='ifura', deccol='ifudec')
     if T is not None and len(T)>0:
         T.cut(T.ifudesignsize > 0)
         if len(T) == 0:
@@ -2615,7 +2622,7 @@ def cat_spec(req, ver):
     import json
     fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr16-trimmed.kd.fits')
     tag = 'spec'
-    T = cat_kd(req, ver, tag, fn)
+    T = cat_kd(req, ver, tag, [fn])
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],
                                             plate=[], zwarning=[])),
@@ -2768,7 +2775,7 @@ def cat_gaia_mask(req, ver):
     '''
     fn = os.path.join(settings.DATA_DIR, 'gaia-mask.kd.fits')
     tag = 'masks-dr8'
-    T = cat_kd(req, ver, tag, fn)
+    T = cat_kd(req, ver, tag, [fn])
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[])),
                             content_type='application/json')
@@ -2784,7 +2791,7 @@ def cat_hsc_dr2_cosmos(req, ver):
     import json
     import numpy as np
     fn = os.path.join(settings.DATA_DIR, 'hsc-dr2', 'cosmos-cat.kd.fits')
-    T = cat_kd(req, ver, 'hsc-dr2-cosmos', fn)
+    T = cat_kd(req, ver, 'hsc-dr2-cosmos', [fn])
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])),
                             content_type='application/json')
@@ -3184,7 +3191,8 @@ def cat_tycho2(req, ver):
     #return cat(req, ver, 'tycho2',
     #           os.path.join(settings.DATA_DIR, 'tycho2.fits'))
     import json
-    T = cat_kd(req, ver, 'tycho2', os.path.join(settings.DATA_DIR, 'tycho2-sub.kd.fits'))
+    fn = os.path.join(settings.DATA_DIR, 'tycho2-sub.kd.fits')
+    T = cat_kd(req, ver, 'tycho2', [fn])
     if T is None:
         rtn = dict(rd=[], name=[])
     else:
@@ -3537,7 +3545,37 @@ if __name__ == '__main__':
     #r = c.get('/desi-obs/daily/tile20372fiber1199')
 
     #r = c.get('/desi-obs/daily/targetid39633165945409137')
-    r = c.get('/desi-obs/daily/targetid39633165945409158')
+    #r = c.get('/desi-obs/daily/targetid39633165945409158')
+
+    #r = c.get('/desi-spectrum/dr1/targetid2305843038603189930')
+
+    #r = c.get('/desi-spectrum/dr1/targetid39627784728871188')
+    #r = c.get('/masks-dr9/1/cat.json?ralo=190.5906&rahi=190.7205&declo=14.3214&dechi=14.3930')
+    r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
+    # import bokeh
+    # print('bokeh', bokeh.__version__)
+    # import prospect
+    # print('prospect', prospect.__version__)
+    # 
+    # import sys
+    # print('python', sys.version)
+    # import numpy
+    # print('numpy', numpy.__version__)
+    
+    # from desispec.io import read_spectra
+    # from astropy.table import Table
+    # spec = read_spectra('prospect-spectra.fits')
+    # zbest = Table.read('prospect-zbest.fits')
+    # rr_templ = '/global/cfs/cdirs/cosmo/webapp/viewer/data/desi-spectro-dr1/redrock-templates'
+    # outdir = 'prospect-out'
+    # #outdir = '/tmp/prospect-out'
+    # call_prospect(spec, zbest, redrock_template_dir=rr_templ,
+    #               outdir=outdir)
+    # sys.exit(0)
+    
+    #import locale
+    #print('Locale:', locale.getencoding())
+    #open('prospect/data/emission_lines.txt').readlines()
     
     f = open('out', 'wb')
     for x in r:

@@ -110,6 +110,90 @@ if ('zoom' in qstr) {
 var sparseMode = ('sparse' in qstr);
 
 
+var TileWatcher = L.Evented.extend({
+
+    initialize: function() {
+        // string keys z:x:y of currently visible tiles
+        this._visibleTiles = {};
+    },
+
+    listenToLayer: function(layer) {
+        layer.on('tileloadstart', this.tileLoadStart.bind(this));
+        layer.on('tileunload',    this.tileUnload.bind(this));
+        layer.on('tileerror',     this.tileError.bind(this));
+        layer.on('tileabort',     this.tileAbort.bind(this));
+    },
+
+    getVisibleTiles: function() {
+        return this._visibleTiles;
+    },
+
+    _eventToKey: function(e) {
+        var coord = e.coords;
+        var x = coord.x;
+        var zoom = coord.z;
+        var maxtile = 1 << zoom;
+        x = x % maxtile;
+        var key = '' + zoom + ':' + x + ':' + coord.y;
+        return key;
+    },
+
+    tileLoadStart: function(e) {
+        var key = this._eventToKey(e);
+        console.log('Tile load start: ' + key);
+        if (key in this._visibleTiles) {
+            //console.log('tile was already in visible tiles');
+        } else {
+            e.key = key;
+
+            var maxtile = 1 << e.coords.z;
+            e.coords.wrapx = e.coords.x % maxtile;
+
+            //console.log('firing tilevisible: ' + key + ', event ', e);
+            this._visibleTiles[key] = true;
+            this.fire('tilevisible', e);
+        }
+    },
+    
+    tileUnload: function(e) {
+        //console.log('Tile unload: ' + this._eventToKey(e));
+        this._tileGone(e);
+    },
+
+    tileAbort: function(e) {
+        //console.log('Tile abort: ' + this._eventToKey(e));
+        this._tileGone(e);
+    },
+
+    tileError: function(e) {
+        //console.log('Tile error: ' + this._eventToKey(e));
+        this._tileGone(e);
+    },
+
+    _tileGone: function(e) {
+        var key = this._eventToKey(e);
+        delete this._visibleTiles[key];
+        e.key = key;
+        this.fire('tileinvisible', e);
+        //console.log('firing tileinvisible: ' + key + ', event ', e);
+    },
+
+});
+
+
+var tileWatcher = new TileWatcher();
+
+function register_layer(layer) {
+    console.log('register_layer: ' + layer.name + ', "' + layer.pretty + '"');
+    baseMaps[layer.pretty] = layer;
+    namedLayers[layer.name] = layer;
+    tileWatcher.listenToLayer(layer);
+    if (layer_name == layer.name) {
+        layer.addTo(map);
+        added = true;
+    }
+}
+
 
 function arcsecToMeters(arcsec) {
     return arcsec * 30.87;
@@ -1043,76 +1127,6 @@ function layerMatchesEvent(layer, event) {
     return (layer._name == event.layer._name);
 }
 
-var TileWatcher = L.Evented.extend({
-
-    initialize: function() {
-        // string keys z:x:y of currently visible tiles
-        this._visibleTiles = {};
-    },
-
-    listenToLayer: function(layer) {
-        layer.on('tileloadstart', this.tileLoadStart.bind(this));
-        layer.on('tileunload',    this.tileUnload.bind(this));
-        layer.on('tileerror',     this.tileError.bind(this));
-        layer.on('tileabort',     this.tileAbort.bind(this));
-    },
-
-    getVisibleTiles: function() {
-        return this._visibleTiles;
-    },
-
-    _eventToKey: function(e) {
-        var coord = e.coords;
-        var x = coord.x;
-        var zoom = coord.z;
-        var maxtile = 1 << zoom;
-        x = x % maxtile;
-        var key = '' + zoom + ':' + x + ':' + coord.y;
-        return key;
-    },
-
-    tileLoadStart: function(e) {
-        var key = this._eventToKey(e);
-        console.log('Tile load start: ' + key);
-        if (key in this._visibleTiles) {
-            //console.log('tile was already in visible tiles');
-        } else {
-            e.key = key;
-
-            var maxtile = 1 << e.coords.z;
-            e.coords.wrapx = e.coords.x % maxtile;
-
-            //console.log('firing tilevisible: ' + key + ', event ', e);
-            this._visibleTiles[key] = true;
-            this.fire('tilevisible', e);
-        }
-    },
-    
-    tileUnload: function(e) {
-        //console.log('Tile unload: ' + this._eventToKey(e));
-        this._tileGone(e);
-    },
-
-    tileAbort: function(e) {
-        //console.log('Tile abort: ' + this._eventToKey(e));
-        this._tileGone(e);
-    },
-
-    tileError: function(e) {
-        //console.log('Tile error: ' + this._eventToKey(e));
-        this._tileGone(e);
-    },
-
-    _tileGone: function(e) {
-        var key = this._eventToKey(e);
-        delete this._visibleTiles[key];
-        e.key = key;
-        this.fire('tileinvisible', e);
-        //console.log('firing tileinvisible: ' + key + ', event ', e);
-    },
-
-});
-
 var TiledOverlay = CatalogOverlay.extend({
 
     initialize: function(tw, name, pretty, kwargs) {
@@ -1180,17 +1194,21 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 
     overlayAdded: function(e) {
+        console.log('overlayAdded (in TiledOverlay): ' + this._name);
         if (!layerMatchesEvent(this, e)) {
+            console.log('!layerMatchesEvent');
             return;
         }
-        console.log('overlayAdded: ' + this._name);
         this._show = true;
 	    if (map.getZoom() < this._minZoom) {
+            console.log('zoom < my minZoom');
             return;
         }
         // load all visible tiles
+        console.log('Loading visible tiles: tileWatcher is ' + this._tw);
+        console.log('Loading', this._tw.getVisibleTiles().length, 'visible tiles');
         for (var key in this._tw.getVisibleTiles()) {
-            //console.log('Adding overlay ' + this._name + ': tile ' + key);
+            console.log('Adding overlay ' + this._name + ': tile ' + key);
             // parse into zoom:x:y
             var words = key.split(':');
             var zoom = parseInt(words[0]);
@@ -1688,8 +1706,6 @@ function getcatversion(layer) {
     return 1;
 }
 
-var allLayers = [];
-
 var attribs = {
     'ls': '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>',
     'hsc2': '<a href="https://www.nao.ac.jp/en/terms/copyright.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>',
@@ -1908,16 +1924,6 @@ split_layer('ls-dr67', 'Legacy Surveys DR6+DR7', 32.375,
             {attribution: attribs['ls']});
 {% endif %}
 
-//console.log('Requested layer: "' + layer_name + '"');
-for (var i in allLayers) {
-    var layer = allLayers[i];
-    baseMaps[layer.pretty] = layer;
-    //console.log('vs layer name "' + layer.name + '"');
-    if (layer_name == layer.name) {
-        layer.addTo(map);
-        added = true;
-    }
-}
 // may be overridden by 'qstr' below.
 var last_layer_name = layer_name;
 
@@ -2187,7 +2193,7 @@ $(document).ready(function() {
         if (event.keyCode == 13) {
             var qstring = $('#objquery').val();
             objqueryString = qstring;
-            
+
             // [this is old...]
             // Check if query is DESI tile
             var splited = qstring.split(" ");
@@ -2216,9 +2222,15 @@ $(document).ready(function() {
                 return;
             }
 
+            console.log('query string:', qstring);
+            qstring = encodeURIComponent(qstring);
+            console.log('encoded query string:', qstring);
+
             var url = L.Util.template(name_query_url, L.extend({
                 obj: qstring,
             }));
+            console.log('URL:', url);
+            
             if (qstring.length == 0) {
                 url += '&layer=' + layer_name;
             }
@@ -2494,11 +2506,6 @@ var CircleOverlay = PolygonOverlay.extend({
     },
 
 });
-
-var tileWatcher = new TileWatcher();
-for (var k in baseMaps) {
-    tileWatcher.listenToLayer(baseMaps[k]);
-}
 
 var exp_detail_list = function(ov, objs) {
     if (objs.length == 0) { return ''; }
@@ -3360,6 +3367,8 @@ var dr9southcat = new DecalsCatalogLayer(tileWatcher,
 
 {% if enable_dr10_overlays %}
 
+  console.log('Creating ls-dr10 catalog layer: tileWatcher =' + tileWatcher);
+  
 var dr10cat = new DecalsCatalogLayer(tileWatcher,
                                         'ls-dr10',
                                           'Legacy Surveys DR10 Catalog',
@@ -3966,13 +3975,6 @@ for (var i=0; i<polygonOverlays.length; i++) {
 {% endfor %}
 {% endif %}
 
- // FIXME -- need this?
-for (var i in allLayers) {
-    var layer = allLayers[i];
-    //console.log('layer.name ' + layer.name + ' pretty ' + layer.pretty);
-    namedLayers[layer.name] = layer;
-}
-
 function drop_null(lst) {
     var rtn = [];
     for (var i in lst) {
@@ -3983,16 +3985,6 @@ function drop_null(lst) {
     return rtn;
 }
 
-function register_layer(layer) {
-    baseMaps[layer.pretty] = layer;
-    allLayers.push(layer);
-    namedLayers[layer.name] = layer;
-    if (layer_name == layer.name) {
-        layer.addTo(map);
-        added = true;
-    }
-}
-  
 function findlayer(name, children=[]) {
     //console.log('findlayer', name);
     if (!(name in namedLayers)) {
@@ -4290,6 +4282,8 @@ for (var i=0,len=overlays.length; i<len; i++) {
 function findoverlay(name, children=[]) {
     rtn =  { label: namedOverlays[name]._pretty,
              layer: namedOverlays[name].getGroup() };
+    console.log('findoverlay: ' + name);
+    console.log('  -> got overlay: label=' + rtn['label'] + ', layer=' + rtn['layer']);
     if (children.length) {
         rtn['children'] = children;
     }
@@ -4751,11 +4745,11 @@ function keyDown(e) {
             console.log('Switching from layer ' + layer_name + ' back to previous layer ' + last_layer_name);
             var toadd = false;
             var torm  = false;
-            for (i in allLayers) {
-                layer = allLayers[i];
-                if (layer_name == layer.name) {
+            for (k in namedLayers) {
+                layer = namedLayers[k];
+                if (layer_name == k) {
                     torm = layer;
-                } else if (last_layer_name == layer.name) {
+                } else if (last_layer_name == k) {
                     toadd = layer;
                 }
             }

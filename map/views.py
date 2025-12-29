@@ -877,8 +877,10 @@ def desi_edr(req):
 def desi_dr1(req):
     return _index(req,
                   default_layer='ls-dr9',
-                  default_radec=(185.5191, 12.7406),
-                  default_zoom=13,
+                  #default_radec=(185.5191, 12.7406),
+                  #default_zoom=13,
+                  default_radec=(65.8489, -15.7480),
+                  default_zoom=14,
                   rooturl=settings.ROOT_URL + '/desi-dr1',
                   append_args = '&desi-tiles-dr1&desi-spec-dr1',
     )
@@ -961,19 +963,23 @@ def phat(req):
 def query_simbad(q):
     from urllib.request import urlopen
     from urllib.parse import urlencode
+    from urllib.parse import quote
 
     url = 'https://simbad.u-strasbg.fr/simbad/sim-id?output.format=votable&output.params=coo(d)&output.max=1&Ident='
-    url += urlencode(dict(q=q)).replace('q=','')
+    url += urlencode(dict(q=q), quote_via=quote).replace('q=','')
     print('URL', url)
     f = urlopen(url)
     code = f.getcode()
     print('Code', code)
-    # txt = f.read()
-    # print('Got:', txt)
-    # txt = txt.decode()
-    # print('Got:', txt)
+
     from astrometry.util.siap import siap_parse_result
+
+    #txt = f.read()
+    #print('Got:', txt)
+    #txt = txt.decode()
+    #print('Got:', txt)
     #T = siap_parse_result(txt=txt)
+
     # file handle works for fn
     T = siap_parse_result(fn=f)
     T.about()
@@ -1027,7 +1033,7 @@ def name_query(req):
     import json
 
     obj = req.GET.get('obj')
-    #print('Name query: "%s"' % obj)
+    print('Name query: "%s"' % obj)
 
     if len(obj) == 0:
         layer = request_layer_name(req)
@@ -1072,8 +1078,10 @@ def name_query(req):
             pass
 
     try:
+        print('Obj name:', obj)
         #result,val = query_ned(obj)
         result,val = query_simbad(obj)
+        print('Result:', result, 'val', val)
         if result:
             ra,dec = val
             return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name=obj)),
@@ -1083,6 +1091,9 @@ def name_query(req):
             return HttpResponse(json.dumps(dict(error=error)),
                                 content_type='application/json')
     except Exception as e:
+        print('Exception querying simbad:')
+        import traceback
+        traceback.print_exc()
         return HttpResponse(json.dumps(dict(error=str(e))),
                             content_type='application/json')
 
@@ -7198,6 +7209,7 @@ def exposures_common(req, tgz, copsf):
                             [filterorder.get(f,f) for f in CCDs.filter]))]
 
     if tgz or copsf:
+
         if tgz:
             import tempfile
             import fitsio
@@ -7239,9 +7251,14 @@ def exposures_common(req, tgz, copsf):
                 continue
 
             slc = (slice(y0, y1+1), slice(x0, x1+1))
-            tim = im.get_tractor_image(slc, pixPsf=True,
-                                       subsky=tgz, nanomaggies=False,
-                                       pixels=tgz, dq=tgz, normalizePsf=copsf,
+            tim = im.get_tractor_image(slc,
+                                       pixPsf=True,
+                                       nanomaggies=False,
+                                       readsky=tgz,
+                                       subsky=tgz,
+                                       pixels=tgz,
+                                       dq=tgz,
+                                       normalizePsf=copsf,
                                        old_calibs_ok=True)
             if tim is None:
                 continue
@@ -9243,6 +9260,7 @@ if __name__ == '__main__':
     #                            ))
     # plt.imsave('riz.jpg', rgb)
     #
+
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
@@ -9250,8 +9268,17 @@ if __name__ == '__main__':
     #     imgs = layer.render_into_wcs(wcs, 16, None, None, general_wcs=True)
     #     rgb = layer.get_rgb(imgs, 'gri')
     #     save_jpeg('wcs%i.jpg' % i, rgb)
-    # sys.exit(0)
+    
+    #result,val = query_simbad('SDSS J153822.01+400919.9')
+    #print('result', result, 'val', val)
 
+    #r = c.get('/namequery/?obj=SDSS J153822.01+400919.9')
+    #r = c.get('/namequery/?obj=SDSS%20J153822.01+400919.9')
+    #r = c.get('/namequery/?obj=SDSS%20J153822.01%2B400919.9')
+    r = c.get('/coadd-psf/?ra=215.44110478935227&dec=-2.3155507912493363&layer=ls-dr10')
+    # result,val = query_simbad('M 13')
+    # print('result', result, 'val', val)
+    
     f = open('out.jpg', 'wb')
     for x in r:
         f.write(x)
