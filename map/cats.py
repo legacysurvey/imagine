@@ -39,8 +39,9 @@ catversions = {
     'GCs-PNe': [1,],
     'lslga': [1,],
     'sga': [1,],
-    'sga2025-ellipse': [1,],
     'sga2025-parent': [1,],
+    'sga2025-north': [1,],
+    'sga2025-south': [1,],
     'spec': [1,],
     'spec-deep2': [1,],
     'manga': [1,],
@@ -2465,10 +2466,15 @@ def cat_sga2025_parent(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'sga2025', 'SGA2025-parent-latest.kd.fits')
     return _cat_sga(req, ver, fn=fn, tag='sga2025-parent', cycle_colors=True)
 
-def cat_sga2025_ellipse(req, ver):
-    fn = os.path.join(settings.DATA_DIR, 'sga2025', 'SGA2025-ellipse-latest.kd.fits')
+def cat_sga2025_north(req, ver):
+    fn = os.path.join(settings.DATA_DIR, 'sga2025', 'SGA2025-ellipse-north-latest.kd.fits')
     print('Reading', fn)
-    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga2025-ellipse')
+    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga2025-north')
+
+def cat_sga2025_south(req, ver):
+    fn = os.path.join(settings.DATA_DIR, 'sga2025', 'SGA2025-ellipse-south-latest.kd.fits')
+    print('Reading', fn)
+    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga2025-south')
 
 def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', cycle_colors=False):
     import json
@@ -2500,7 +2506,7 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', cycle_colors=False):
         typ = ['' for i in range(len(T))]
         z = [-1 for i in range(len(T))]
 
-    elif tag == 'sga2025-ellipse':
+    elif tag in ['sga2025-north', 'sga2025-south']:
         names = ['SGA-%i' % refid if refid != -1 else ''
                  for refid in T.ref_id]
         pgc = [int(p) for p in T.ref_id]
@@ -2513,7 +2519,9 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', cycle_colors=False):
         typ = [t.strip() if t != 'nan' else '' for t in T.get('morphtype')]
         z = [float(z) if np.isfinite(z) else -1. for z in T.z_leda.astype(np.float32)]
     radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
-    ab = [float(f) for f in T.ba.astype(np.float32)]
+    ab = T.ba.astype(np.float32)
+    ab[ab == 0.] = 1.
+    ab = [float(f) for f in ab]
 
     pax = T.pa.copy().astype(np.float32)
     pax[np.logical_not(np.isfinite(pax))] = 0.

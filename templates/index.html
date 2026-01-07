@@ -739,19 +739,27 @@ var SGACatalog = CatalogOverlay.extend({
         if (rdlist.length == 0) {
             return layergroup;
         }
-        var clong = map.getCenter().lng;
-        var radii = result['radiusArcsec'];
         var abratio = result['abRatio'];
         var posAngle = result['posAngle'];
+        if (!(abratio && posAngle)) {
+            return layergroup;
+        }
+        var clong = map.getCenter().lng;
+        var radii = result['radiusArcsec'];
         var plines = [];
         //console.log('this._style:', this._style);
         for (var i=0, len=rdlist.length; i<len; i++) {
+            var ab = abratio[i];
+            var pa = posAngle[i];
+            if ((ab == 1.0) && (pa == 0.0)) {
+                continue;
+            }
             var r = rdlist[i][0];
             var d = rdlist[i][1];
             var lat = dec2lat(d);
             var lng = ra2long_C(r, clong);
             var style = Object.create(this._style);
-            console.log('style:', style);
+            //console.log('style:', style);
             var color = this.getColor(result, i);
             if (color !== undefined) {
                 style = Object.assign(style, {'color':color});
@@ -762,15 +770,9 @@ var SGACatalog = CatalogOverlay.extend({
                 // arcsec -> degrees
                 radius = radii[i] / 3600.;
             }
-            if (abratio && posAngle) {
-                var ab = abratio[i];
-                var pa = 90.+posAngle[i];
-            } else {
-                var ab = 1.0;
-                var pa = 0.;
-            }
             var cosdec = Math.cos(lat * Math.PI / 180.0);
-            pa = pa * Math.PI / 180.0;
+            // Sigh, PA conventions
+            pa = (90. + pa) * Math.PI / 180.0;
             lng1 = lng + radius * Math.cos(pa) / cosdec;
             lng2 = lng - radius * Math.cos(pa) / cosdec;
             lat1 = lat + radius * Math.sin(pa);
@@ -3424,10 +3426,14 @@ var sga2025_parent = new SGACatalog('sga2025-parent', 'SGA2025 Parent',
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga2025-parent',});
 
-var sga2025_ell = new SGACatalog('sga2025', 'Siena Galaxy Atlas 2025',
+var sga2025_north = new SGACatalog('sga2025-north', 'Siena Galaxy Atlas 2025 North',
                                  {'minZoom': 7,
                                   'labelsMinZoom': 7,
-                                  'urlTerm': 'sga2025',});
+                                  'urlTerm': 'sga2025-north',});
+var sga2025_south = new SGACatalog('sga2025-south', 'Siena Galaxy Atlas 2025 South',
+                                 {'minZoom': 7,
+                                  'labelsMinZoom': 7,
+                                  'urlTerm': 'sga2025-south',});
 
 var sga_parent = new SGACatalog('sga2020-parent', 'HyperLEDA/SGA galaxies (2020)',
                              {'minZoom': 5,
@@ -3873,7 +3879,7 @@ var overlays = [
     {% if enable_sdss_ccds %}
     ccdOverlaySdss,
     {% endif %}
-    gals, sga2025_parent, sga2025_ell, sga_parent, sga_ell,
+    gals, sga2025_parent, sga2025_north, sga2025_south, sga_parent, sga_ell,
     starmasks9, GCsPNe, bright, tycho2,
     photoz,
     {% if enable_ps1 %}
@@ -4519,7 +4525,8 @@ var overlayTree = [];
      findoverlay('GCs-PNe'),
      findoverlay('gals'),
      findoverlay('sga2025-parent'),
-     findoverlay('sga2025'),
+     findoverlay('sga2025-north'),
+     findoverlay('sga2025-south'),
      findoverlay('sga2020'),
      {% if science %}
      findoverlay('sga2020-parent'),
