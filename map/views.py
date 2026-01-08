@@ -2137,8 +2137,12 @@ class MapLayer(object):
             hdr['IMAGEH'] = int(hdr['IMAGEH'])
 
         if get_images:
+            if with_invvar and with_maskbits:
+                return ims,ivs,maskbits,hdr
             if with_invvar:
                 return ims,ivs,hdr
+            if with_maskbits:
+                return ims,maskbits,hdr
             return ims,hdr
 
         clobber=True

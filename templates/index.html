@@ -786,8 +786,10 @@ var SGACatalog = CatalogOverlay.extend({
         }
         //console.log('rdlist:', rdlist.length);
         //console.log('style:', style)
-        style = Object.assign(style, {'weight': 1});
-        layergroup.addLayer(L.polyline(plines, style));
+        if (plines.length > 0) {
+            style = Object.assign(style, {'weight': 1});
+            layergroup.addLayer(L.polyline(plines, style));
+        }
         return layergroup;
     },
 
