@@ -214,6 +214,7 @@ def top_levels(mp, opt):
 
     rgbkwargs = {}
     if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
+                    'unwise-neo11',
                     'unwise-cat-model']:
         bands = [1, 2]
     elif opt.kind == 'unwise-w3w4':
@@ -494,7 +495,7 @@ def main():
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                        'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
-                       'unwise-w3w4',
+                       'unwise-w3w4', 'unwise-neo11',
                        'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf',
                        'cfis-r', 'cfis-u', 'cfis-dr3-r', 'cfis-dr3-u']
               or 'dr8i' in opt.kind
@@ -736,7 +737,7 @@ def main():
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                         'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                         'unwise-w3w4',
-                        'unwise-cat-model',
+                        'unwise-cat-model', 'unwise-neo11',
                         'galex', 'wssa', 'des-dr1', 'hsc2', 'hsc-dr3',
                         'cfis-dr3-r', 'cfis-dr3-u',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
