@@ -2664,8 +2664,7 @@ def cat_masks_dr9(req, ver):
     os.environ['GAIA_CAT_PREFIX'] = 'chunk'
 
     survey = LegacySurveyData(survey_dir=os.getcwd())
-    pixscale = wcs.pixel_scale()
-    T,_ = get_reference_sources(survey, wcs, pixscale, None)
+    T,_ = get_reference_sources(survey, wcs, ['r'])
     T.about()
     
     if T is None:
@@ -2685,17 +2684,17 @@ def cat_masks_dr9(req, ver):
     PA = []
     PA_disp = []
     names = []
-
-    for medium, bright,cluster,gal,dup,ptsrc,aen,ra,dec,rad,mag,zguess,freeze,refid,ba,pa in zip(
-            T.ismedium, T.isbright, T.iscluster, T.islargegalaxy, T.donotfit, T.pointsource,
+    #dup,T.donotfit
+    for medium, bright,cluster,gal,ptsrc,aen,ra,dec,rad,mag,zguess,freeze,refid,ba,pa in zip(
+            T.ismedium, T.isbright, T.iscluster, T.islargegalaxy, T.pointsource,
             T.astrometric_excess_noise, T.ra, T.dec, T.radius,
             T.mag, T.zguess, T.freezeparams, T.ref_id, T.ba, T.pa):
         rd.append((float(ra), float(dec)))
         radius.append(3600. * float(rad))
 
-        if dup:
-            color.append('#aaaaaa')
-        elif cluster:
+        #if dup:
+        #    color.append('#aaaaaa')
+        if cluster:
             color.append('yellow')
         #elif bright:
         #    color.append('orange')
@@ -2708,9 +2707,9 @@ def cat_masks_dr9(req, ver):
         else:
             color.append('#888888')
 
-        if dup:
-            names.append('DUP')
-        elif cluster:
+        #if dup:
+        #    names.append('DUP')
+        if cluster:
             names.append('CLUSTER')
         elif gal:
             # freezeparams, ref_id
@@ -3551,7 +3550,8 @@ if __name__ == '__main__':
 
     #r = c.get('/desi-spectrum/dr1/targetid39627784728871188')
     #r = c.get('/masks-dr9/1/cat.json?ralo=190.5906&rahi=190.7205&declo=14.3214&dechi=14.3930')
-    r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
+    #r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
+    r = c.get('/masks-dr9/1/cat.json?ralo=208.8730&rahi=209.0030&declo=25.1696&dechi=25.2365')
     # import bokeh
     # print('bokeh', bokeh.__version__)
     # import prospect
