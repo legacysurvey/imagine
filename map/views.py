@@ -72,6 +72,7 @@ tileversions = {
     'unwise-neo4': [1],
     'unwise-neo6': [1],
     'unwise-neo7': [1],
+    'unwise-neo11': [1],
     'unwise-neo7-mask': [1],
     'unwise-cat-model': [1],
     'cutouts': [1],
