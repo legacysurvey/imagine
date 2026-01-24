@@ -176,10 +176,12 @@ urlpatterns = ([
     re_path(r'^ngc/(\d+)/cat.json', cats.cat_ngc),
 
     # SGA galaxies
-    re_path(r'^sga-parent/(\d+)/cat.json', cats.cat_sga_parent),
-    re_path(r'^sga/(\d+)/cat.json', cats.cat_sga_ellipse),
+    re_path(r'^sga2020-parent/(\d+)/cat.json', cats.cat_sga2020_parent),
+    re_path(r'^sga2020/(\d+)/cat.json', cats.cat_sga2020_ellipse),
 
     re_path(r'^sga2025-parent/(\d+)/cat.json', cats.cat_sga2025_parent),
+    re_path(r'^sga2025-north/(\d+)/cat.json', cats.cat_sga2025_north),
+    re_path(r'^sga2025-south/(\d+)/cat.json', cats.cat_sga2025_south),
 
     re_path(r'^GCs-PNe/(\d+)/cat.json', cats.cat_GCs_PNe),
 
