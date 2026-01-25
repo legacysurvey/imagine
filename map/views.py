@@ -6960,6 +6960,7 @@ Mouse: <span id="dq_coords"></span>  Click: <span id="dq_click"></span></div><br
   </g>
   {axis2}
 </svg>
+<img src="{static}/dq-legend.png"/>
 <script>
   function mouse(e, target) {{
     imx = e.offsetX * {scale};
@@ -8107,6 +8108,30 @@ def image_stamp(req, surveyname, ccd, iv=False, dq=False, sky=False, skysub=Fals
         for i in range(scale):
             for j in range(scale):
                 out = np.maximum(out, pix[i::scale, j::scale][:sh,:sw])
+        # Make the "tab10" colormap assign integer values to fixed colors.
+        kwa.update(vmin=-0.5, vmax=9.5)
+
+        '''
+        The dq-legend.png file was created with:
+
+        import numpy as np
+        import pylab as plt
+        import matplotlib
+        masks = np.zeros((10,10), np.uint8)
+        plt.figure(figsize=(1.2,4))
+        plt.subplots_adjust(left=0, right=1, bottom=0, top=1)
+        p = plt.imshow(masks, cmap='tab10', vmin=-0.5, vmax=9.5)
+        p.set_visible(False)
+        ax = plt.gca()
+        ax.set_frame_on(False)
+        plt.xticks([]); plt.yticks([])
+        cb = plt.colorbar(fraction=1, values=np.arange(9))
+        cb.set_ticks(list(range(9)), labels=['None', 'Bad pixel', 'No value', 'Saturated', 'Bleed trail', 'Cosmic ray', 'Low weight', 'Diff detect', 'Long streak'])
+        plt.savefig('dq-legend.png')
+
+        and then copied into the imagine "static" directory.
+        '''
+
     else:
         out = np.zeros((sh,sw), np.float32)
         for i in range(scale):
