@@ -5042,7 +5042,6 @@ class GalexLayer(RebrickedUnwise):
         return ['n','f']
 
     def filter_pixels(self, scale, img, wcs, sub_brick_wcs, Yo,Xo,Yi,Xi):
-        #if scale > 0:
         if scale > -1:
             return None
         return (img[Yi,Xi] != 0.)
@@ -5150,7 +5149,10 @@ class GalexLayer(RebrickedUnwise):
 def galex_rgb(imgs, bands, **kwargs):
     import numpy as np
     from scipy.ndimage.filters import uniform_filter, gaussian_filter
-    nuv,fuv = imgs
+    # handle imgs and bands passed in as n,f or f,n.
+    imgmap = dict(list(zip(bands, imgs)))
+    nuv = imgmap.get('n', 0.)
+    fuv = imgmap.get('f', 0.)
     h,w = nuv.shape
     red = nuv * 0.206 * 2297
     blue = fuv * 1.4 * 1525
