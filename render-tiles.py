@@ -397,6 +397,12 @@ def _layer_get_filename(args):
     fn = layer.get_filename(brick, band, scale)
     print(fn)
 
+def one_galex_coadd(X):
+    (layer, b, band, fn, invvar) = X
+    print('Creating:', fn)
+    tempfiles = []
+    layer.create_coadd_image(b, band, 0, fn, tempfiles=tempfiles,
+                             invvar=invvar)
 
 def main():
     import optparse
@@ -496,7 +502,7 @@ def main():
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                        'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
                        'unwise-w3w4', 'unwise-neo11',
-                       'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf',
+                       'galex', 'galex-invvar', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf',
                        'cfis-r', 'cfis-u', 'cfis-dr3-r', 'cfis-dr3-u']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
@@ -1039,9 +1045,9 @@ def main():
         opt.y0 = opt.y
         opt.y1 = opt.y + 1
 
-    if opt.coadd and opt.kind == 'galex':
+    if opt.coadd and opt.kind in ['galex', 'galex-invvar']:
         layer = GalexLayer('galex')
-        
+
         # base-level (coadd) bricks
         B = layer.get_bricks()
         print(len(B), 'bricks')
@@ -1050,14 +1056,29 @@ def main():
         B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
         print(len(B), 'in RA range')
 
-        pat = layer.get_scaled_pattern()
+        invvar = (opt.kind == 'galex-invvar')
+        
+        pat = layer.get_scaled_pattern(invvar=invvar)
+
         tempfiles = []
+        args = []
         for b in B:
             for band in ['n','f']:
                 fn = pat % dict(scale=0, band=band, brickname=b.brickname)
-                layer.create_coadd_image(b, band, 0, fn, tempfiles=tempfiles)
+                if os.path.exists(fn):
+                    print('Exists:', fn)
+                    continue
+                if opt.threads > 1:
+                    args.append((layer, b, band, fn, invvar))
+                else:
+                    print('Creating:', fn)
+                    layer.create_coadd_image(b, band, 0, fn, tempfiles=tempfiles,
+                                             invvar=invvar)
             for fn in tempfiles:
                 os.unlink(fn)
+        if len(args):
+            mp.map(one_galex_coadd, args)
+
         sys.exit(0)
 
     if opt.coadd and opt.kind == 'sdss':

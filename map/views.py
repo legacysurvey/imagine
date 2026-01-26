@@ -1157,6 +1157,25 @@ class RenderAccumulatorImage(RenderAccumulator):
         self.rimg[Yo,Xo] += resamp * wt
         self.rw  [Yo,Xo] += wt
 
+class RenderAccumulatorInvvar(RenderAccumulator):
+    def __init__(self, W, H):
+        import numpy as np
+        self.riv = np.zeros((H,W), np.float32)
+
+    def peek(self):
+        import numpy as np
+        return self.riv
+
+    def peek_weight(self):
+        return self.riv
+
+    def finish(self):
+        import numpy as np
+        return self.riv
+
+    def accumulate(self, Yo, Xo, Yi, Xi, resamp, wt, img):
+        self.riv[Yo,Xo] += resamp
+
 class RenderAccumulatorMask(RenderAccumulator):
     def __init__(self, W, H):
         import numpy as np
@@ -1553,13 +1572,30 @@ class MapLayer(object):
     
     def get_fits_extension(self, scale, fn):
         return 0
-    
+
+    def get_invvar_fits_extension(self, scale, fn):
+        return 0
+
     def read_image(self, brick, band, scale, slc, fn=None):
         import fitsio
         if fn is None:
             fn = self.get_filename(brick, band, scale)
         debug('Reading image from', fn)
         ext = self.get_fits_extension(scale, fn)
+        f = fitsio.FITS(fn)[ext]
+        if slc is None:
+            return f.read()
+        img = f[slc]
+        return img
+
+    def read_invvar_image(self, brick, band, scale, slc, fn=None):
+        import fitsio
+        if not self.has_invvar():
+            return None
+        if fn is None:
+            fn = self.get_filename(brick, band, scale, invvar=True)
+        debug('Reading invvar from', fn)
+        ext = self.get_invvar_fits_extension(scale, fn)
         f = fitsio.FITS(fn)[ext]
         if slc is None:
             return f.read()
@@ -1590,6 +1626,8 @@ class MapLayer(object):
                                           invvar=False, maskbits=False):
         if maskbits:
             return RenderAccumulatorMask(W, H)
+        if invvar:
+            return RenderAccumulatorInvvar(W, H)
         return RenderAccumulatorImage(W, H)
 
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
@@ -1721,8 +1759,11 @@ class MapLayer(object):
                 subwcs = bwcs.get_subimage(xlo, ylo, xhi-xlo, yhi-ylo)
                 slc = slice(ylo,yhi), slice(xlo,xhi)
                 try:
-                    img = self.read_image(brick, band, scale, slc, fn=fn)
-                except:
+                    if invvar:
+                        img = self.read_invvar_image(brick, band, scale, slc, fn=fn)
+                    else:
+                        img = self.read_image(brick, band, scale, slc, fn=fn)
+                except Exception:
                     print('Failed to read image:', brickname, band, scale, 'fn', fn)
                     savecache = False
                     import traceback
@@ -1730,6 +1771,9 @@ class MapLayer(object):
                     traceback.print_exc(None, sys.stdout)
                     continue
 
+                if img is None:
+                    print('Failed to read image for brick', brick, band, scale, fn)
+                    continue
 
                 # DEBUG
                 # sh,sw = subwcs.shape
@@ -1805,7 +1849,7 @@ class MapLayer(object):
                     if resamp is not None:
                         resamp = resamp[ok]
 
-                wt = self.get_pixel_weights(band, brick, scale)
+                wt = self.get_pixel_weights(band, brick, scale, invvar=invvar, maskbits=maskbits)
 
                 acc.accumulate(Yo, Xo, Yi, Xi, resamp, wt, img)
                 #print('Coadded', len(Yo), 'pixels;', (nz-np.sum(rw==0)), 'new')
@@ -2597,7 +2641,7 @@ class DecalsLayer(MapLayer):
         if fn.endswith('.fz'):
             return 1
         return 0
-
+    
 class DecalsInvvarLayer(DecalsLayer):
     def get_scale(self, zoom, x, y, wcs):
         return 0
@@ -4870,19 +4914,23 @@ class GalexLayer(RebrickedUnwise):
         self.bricks = None
         self.pixscale = 1.5
 
-    def create_coadd_image(self, brick, band, scale, fn, tempfiles=None):
+    def create_coadd_image(self, brick, band, scale, fn, tempfiles=None, invvar=False):
         import numpy as np
         import fitsio
         import tempfile
         wcs = self.get_scaled_wcs(brick, band, scale)
         imgs = self.render_into_wcs(wcs, None, 0, 0, bands=[band], scale=scale-1,
-                                    tempfiles=tempfiles)
+                                    tempfiles=tempfiles, invvar=invvar)
         if imgs is None:
             return None
         img = imgs[0]
         img = img.astype(np.float32)
         hdr = fitsio.FITSHDR()
         wcs.add_to_header(hdr)
+        if invvar:
+            hdr['IMAGETYP'] = 'INVVAR'
+        else:
+            hdr['IMAGETYP'] = 'IMAGE'
         trymakedirs(fn)
         dirnm = os.path.dirname(fn)
         f,tmpfn = tempfile.mkstemp(suffix='.fits.fz.tmp', dir=dirnm)
@@ -4999,34 +5047,36 @@ class GalexLayer(RebrickedUnwise):
             return None
         return (img[Yi,Xi] != 0.)
 
-    def get_pixel_weights(self, band, brick, scale, **kwargs):
-        #if scale == 0:
+    def get_pixel_weights(self, band, brick, scale, invvar=False, maskbits=False, **kwargs):
         if scale == -1:
-            #print('Image', brick.brickname, 'exptime', brick.nexptime, 'NUV', brick.fexptime, 'FUV')
-            return brick.get(band + 'exptime')
+            # for images only
+            if not (invvar or maskbits):
+                return brick.get(band + 'exptime')
         return 1.
 
     def read_wcs(self, brick, band, scale, fn=None):
-        #if scale != 0:
         if scale != -1:
             return super(GalexLayer,self).read_wcs(brick, band, scale, fn=fn)
-        #print('read_wcs: brick is', brick)
         from astrometry.util.util import Tan
         wcs = Tan(*[float(f) for f in
                     [brick.crval1, brick.crval2, brick.crpix1, brick.crpix2,
                      brick.cdelt1, 0., 0., brick.cdelt2, 3840., 3840.]])
         return wcs
 
-    def get_base_filename(self, brick, band, **kwargs):
+    def get_base_filename(self, brick, band, product='intbgsub', **kwargs):
         basedir = settings.DATA_DIR
         fn = os.path.join(basedir, 'galex', brick.tilename.strip(),
-                          '%s-%sd-intbgsub.fits.gz' % (brick.brickname, band))
+                          '%s-%sd-%s.fits.gz' % (brick.brickname, band, product))
         return fn
     
-    def get_scaled_pattern(self):
+    def get_scaled_pattern(self, invvar=False):
+        if invvar:
+            return os.path.join(self.scaleddir,
+                                '%(scale)i%(band)s',
+                                '%(brickname).3s', 'galex-invvar-%(brickname)s-%(band)s.fits')
         return os.path.join(self.scaleddir,
-            '%(scale)i%(band)s',
-            '%(brickname).3s', 'galex-%(brickname)s-%(band)s.fits')
+                            '%(scale)i%(band)s',
+                            '%(brickname).3s', 'galex-%(brickname)s-%(band)s.fits')
 
     def get_rgb(self, imgs, bands, **kwargs):
         return galex_rgb(imgs, bands, **kwargs)
@@ -5038,18 +5088,61 @@ class GalexLayer(RebrickedUnwise):
         # myrgb[:,:,1] = np.clip((myrgb[:,:,0] + myrgb[:,:,2]*0.2), 0., 1.)
         # return myrgb
 
-    def read_image(self, brick, band, scale, slc, fn=None):
+    # def read_image(self, brick, band, scale, slc, fn=None):
+    #     import fitsio
+    #     if fn is None:
+    #         fn = self.get_filename(brick, band, scale)
+    #     #print('Reading image from', fn)
+    #     ext = self.get_fits_extension(scale, fn)
+    #     f = fitsio.FITS(fn)[ext]
+    #     if slc is None:
+    #         img = f.read()
+    #     else:
+    #         img = f[slc]
+    #     return img
+
+    def read_invvar_image(self, brick, band, scale, slc, fn=None):
+        if scale > -1:
+            # Due to resampling, the base-layer invvars can go negative -- clamp up to zero.
+            return np.maximum(0., super().read_invvar_image(brick, band, scale, slc, fn=fn))
+        ## The GALEX data products don't have an invvar image per se, we have to construct one...
+        # see legacypipe/galex.py
         import fitsio
-        if fn is None:
-            fn = self.get_filename(brick, band, scale)
-        #print('Reading image from', fn)
-        ext = self.get_fits_extension(scale, fn)
-        f = fitsio.FITS(fn)[ext]
-        if slc is None:
-            img = f.read()
-        else:
-            img = f[slc]
-        return img
+        import numpy as np
+        #print('GALEX read_invvar_image:', brick, band, scale, slc, fn)
+        assert(fn is not None)
+        imgfn = fn
+        bgfn = self.get_base_filename(brick, band, 'skybg')
+        rrfn = self.get_base_filename(brick, band, 'rrhr')
+        # print('Files:')
+        # print(imgfn)
+        # print(bgfn)
+        # print(rrfn)
+        img = fitsio.FITS(imgfn)[0][slc]
+        bg  = fitsio.FITS(bgfn )[0][slc]
+        rr  = fitsio.FITS(rrfn )[0][slc]
+        # print('img', img.shape, img.dtype)
+        # print('bg ', bg.shape, bg.dtype)
+        # print('rr ', rr.shape, rr.dtype)
+        # rr can be -1e32... in legacypipe we do:
+        rr[rr <= 0] = 1.0
+        # build the variance map
+        varimg = np.zeros_like(img)
+        I = ((img + bg) * rr) > 0.1
+        J = ((img + bg) * rr) <= 0.1
+        if np.any(I):
+            varimg[I] = (img[I] + bg[I]) * rr[I]
+        if np.any(J):
+            varimg[J] = bg[J] * rr[J]
+        del I,J
+        varimg /= rr**2
+        invvar = np.zeros_like(img)
+        K = (varimg > 0)
+        if not np.any(K):
+            debug('All GALEX pixels lack variance estimates')
+            return None
+        invvar[K] = 1.0 / varimg[K]
+        return invvar
 
     def populate_fits_cutout_header(self, hdr):
         hdr['SURVEY'] = 'GALEX'
