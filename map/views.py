@@ -5119,9 +5119,23 @@ class GalexLayer(RebrickedUnwise):
     #     else:
     #         img = f[slc]
     #     return img
+    def get_invvar_fits_extension(self, scale, fn):
+        if scale > -1:
+            return 1
+        return 0
 
     def read_invvar_image(self, brick, band, scale, slc, fn=None):
+        #print('galex read_invvar_image, brick', brick, 'band', band, 'scale', scale, 'fn', fn)
+        #brick.about()
         if scale > -1:
+        #if scale > 0:
+            # 
+            # update fn
+            pat = self.get_scaled_pattern(invvar=True)
+            brickname = brick.brickname
+            fnargs = dict(band=band, brickname=brickname, scale=scale)
+            fn = pat % fnargs
+
             import numpy as np
             # Due to resampling, the base-layer invvars can go negative -- clamp up to zero.
             return np.maximum(0., super().read_invvar_image(brick, band, scale, slc, fn=fn))
