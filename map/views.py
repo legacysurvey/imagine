@@ -2644,6 +2644,11 @@ class DecalsLayer(MapLayer):
         if fn.endswith('.fz'):
             return 1
         return 0
+
+    def get_invvar_fits_extension(self, scale, fn):
+        if fn.endswith('.fz'):
+            return 1
+        return 0
     
 class DecalsInvvarLayer(DecalsLayer):
     def get_scale(self, zoom, x, y, wcs):
@@ -5117,6 +5122,7 @@ class GalexLayer(RebrickedUnwise):
 
     def read_invvar_image(self, brick, band, scale, slc, fn=None):
         if scale > -1:
+            import numpy as np
             # Due to resampling, the base-layer invvars can go negative -- clamp up to zero.
             return np.maximum(0., super().read_invvar_image(brick, band, scale, slc, fn=fn))
         ## The GALEX data products don't have an invvar image per se, we have to construct one...
