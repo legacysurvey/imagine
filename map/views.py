@@ -284,6 +284,7 @@ def _index(req,
         'sfd': ['SFD Dust', [[7, 10, tileurl, subs], prod_backstop], 10, 'sfd'],
         'wssa': ['WISE 12-micron dust map', [[9, 10, tileurl, subs], prod_backstop], 10, 'wssa'],
         'halpha': ['Halpha map', [[7, 10, tileurl, subs], prod_backstop], 10, 'halpha'],
+        'act-dr6-f150': ['ACT DR6 F150 map', [[1, 10, tileurl, subs]], 10, 'act-dr6-f150'],
     }
 
     if settings.ENABLE_IBIS:
@@ -2033,7 +2034,7 @@ class MapLayer(object):
             return self.get_tile(request, ver, zoom, x, y, **kwargs)
         return view
 
-    def populate_fits_cutout_header(self, hdr):
+    def populate_fits_cutout_header(self, hdr, bands):
         pass
 
     def parse_bands(self, bands):
@@ -2069,7 +2070,7 @@ class MapLayer(object):
         if fits:
             import fitsio
             hdr = fitsio.FITSHDR()
-            self.populate_fits_cutout_header(hdr)
+            self.populate_fits_cutout_header(hdr, bands)
 
         if subimage:
             from astrometry.libkd.spherematch import match_radec
@@ -2110,7 +2111,7 @@ class MapLayer(object):
                         print('Failed to read image:', e)
                         continue
                     hdr = fitsio.FITSHDR()
-                    self.populate_fits_cutout_header(hdr)
+                    self.populate_fits_cutout_header(hdr, bands)
                     hdr['BRICK'] = brick.brickname
                     hdr['BRICK_X0'] = x0
                     hdr['BRICK_Y0'] = y0
@@ -2252,8 +2253,10 @@ class MapLayer(object):
             pixscale = pixscale * 2**(native_zoom - zoom)
             #print('Request has zoom=', zoom, ': setting pixscale=', pixscale)
 
+        print('bands:', bands)
         if bands is not None:
             bands = self.parse_bands(bands)
+        print('parsed bands:', bands)
         if bands is None:
             bands = self.get_bands()
 
@@ -2630,7 +2633,7 @@ class DecalsLayer(MapLayer):
         #kw.update(kwargs)
         #return dr2_rgb(imgs, bands, **kw)
 
-    def populate_fits_cutout_header(self, hdr):
+    def populate_fits_cutout_header(self, hdr, bands):
         hdr['SURVEY'] = 'DECaLS'
         hdr['VERSION'] = self.survey.drname.split(' ')[-1]
         hdr['IMAGETYP'] = self.imagetype
@@ -3030,7 +3033,7 @@ class MzlsMixin(object):
     def get_rgb(self, imgs, bands, **kwargs):
         return mzls_dr3_rgb(imgs, bands, **kwargs)
 
-    def populate_fits_cutout_header(self, hdr):
+    def populate_fits_cutout_header(self, hdr, bands):
         hdr['SURVEY'] = 'MzLS'
         hdr['VERSION'] = self.survey.drname.split(' ')[-1]
 
@@ -3121,7 +3124,7 @@ class SdssLayer(MapLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         return sdss_rgb(imgs, bands)
 
-    def populate_fits_cutout_header(self, hdr):
+    def populate_fits_cutout_header(self, hdr, bands):
         hdr['SURVEY'] = 'SDSS'
 
     # Need to override this function to read WCS from ext 1 of fits.fz files,
@@ -3943,6 +3946,18 @@ class Ibis3Layer(ReDecalsLayer):
         super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'],
                          drname=drname)
         self.rgb_plane = None
+    def parse_bands(self, bands):
+        thebands = []
+        mybands = self.get_bands()
+        for word in bands.split(','):
+            word = word.upper()
+            if word in mybands:
+                thebands.append(word)
+        return thebands
+    def populate_fits_cutout_header(self, hdr, bands):
+        super().populate_fits_cutout_header(hdr, bands)
+        hdr['SURVEY'] = 'IBIS'
+        hdr['BANDS'] = ','.join(bands)
     def get_rgb(self, imgs, bands, **kwargs):
         from legacypipe.survey import sdss_rgb as ls_rgb
         rgb = ls_rgb(imgs, bands)
@@ -3985,7 +4000,7 @@ class LegacySurveySplitLayer(MapLayer):
             #print('Decs', dd)
             self.tilesplits[zoom] = y
 
-    def populate_fits_cutout_header(self, hdr):
+    def populate_fits_cutout_header(self, hdr, bands):
         hdr['SURVEY'] = 'LegacySurvey'
         hdr['VERSION'] = self.drname.split(' ')[-1]
         hdr['IMAGETYP'] = self.top.imagetype
@@ -4395,7 +4410,7 @@ class DesLayer(ReDecalsLayer):
             return 10000
         return super(DesLayer,self).get_pixel_size_for_scale(scale)
 
-    def populate_fits_cutout_header(self, hdr):
+    def populate_fits_cutout_header(self, hdr, bands):
         hdr['SURVEY'] = 'DES'
         hdr['VERSION'] = 'DR1'
         hdr['IMAGETYP'] = 'image'
@@ -4637,7 +4652,7 @@ class PS1Layer(MapLayer):
     #def get_rgb(self, imgs, bands, **kwargs):
     #    return sdss_rgb(imgs, bands)
 
-    def populate_fits_cutout_header(self, hdr):
+    def populate_fits_cutout_header(self, hdr, bands):
         hdr['SURVEY'] = 'PS1'
 
 
@@ -4692,7 +4707,7 @@ class UnwiseLayer(MapLayer):
     def get_rgb(self, imgs, bands, **kwargs):
         return _unwise_to_rgb(imgs, **kwargs)
 
-    def populate_fits_cutout_header(self, hdr):
+    def populate_fits_cutout_header(self, hdr, bands):
         #print('unWISE populate FITS cutout header')
         hdr['SURVEY'] = 'unWISE'
         hdr['VERSION'] = self.name
@@ -5143,7 +5158,7 @@ class GalexLayer(RebrickedUnwise):
         invvar[K] = 1.0 / varimg[K]
         return invvar
 
-    def populate_fits_cutout_header(self, hdr):
+    def populate_fits_cutout_header(self, hdr, bands):
         hdr['SURVEY'] = 'GALEX'
 
 def galex_rgb(imgs, bands, **kwargs):
@@ -5177,7 +5192,6 @@ def galex_rgb(imgs, bands, **kwargs):
     blue  /= mx
     rgb = np.clip(np.dstack((red, green, blue)), 0., 1.)
     return rgb
-
 
 class TwoMassLayer(MapLayer):
     def __init__(self, name):
@@ -5296,8 +5310,6 @@ class TwoMassLayer(MapLayer):
                      brick.cd11, brick.cd12, brick.cd21, brick.cd22, brick.width, brick.height]])
         wcs.sin = True
         return wcs
-
-
 
 class VlassLayer(RebrickedMixin, MapLayer):
     # Native bricks ~ 1 deg ^ 2
@@ -5448,6 +5460,25 @@ class anwcs_wrapper(object):
         else:
             self._anwcs.__setattr__(k, v)
 
+class anwcs_subimage(object):
+    def __init__(self, wcs, x0, y0, W, H):
+        self.wcs = wcs
+        self.x0 = x0
+        self.y0 = y0
+        self.W = W
+        self.H = H
+    @property
+    def imageh(self):
+        return self.H
+    @property
+    def imagew(self):
+        return self.W
+    def pixelxy2radec(self, x, y):
+        return self.wcs.pixelxy2radec(x + self.x0, y + self.y0)
+    def radec2pixelxy(self, ra, dec):
+        ok,xx,yy = self.wcs.radec2pixelxy(ra, dec)
+        return ok, xx - self.x0, yy - self.y0
+            
 class PandasLayer(RebrickedMixin, MapLayer):
 
     def __init__(self, name):
@@ -5569,8 +5600,6 @@ class PandasLayer(RebrickedMixin, MapLayer):
         return os.path.join(self.scaleddir,
                             '%(scale)i%(band)s', '%(brickname).3s',
                             '%(brickname)s.fits')
-
-
     
 class ZtfLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
@@ -5793,7 +5822,7 @@ class CFISLayer(RebrickedMixin, MapLayer):
         zpscale = 10.**((30 - 22.5) / 2.5)
         img = img / zpscale
         return img
-    
+
 class ZeaLayer(MapLayer):
     def __init__(self, name, zeamap, stretch=None, vmin=0., vmax=1.,
                  cmap=None):
@@ -5834,6 +5863,103 @@ class ZeaLayer(MapLayer):
             # cut out alpha layer
             rgb = rgb[:,:,:3]
         #print('red range', rgb[:,:,0].min(), rgb[:,:,0].max())
+        return rgb
+
+class ActDr6Layer(MapLayer):
+    def __init__(self, name, basedir, band):#path):
+        super().__init__(name)
+        self.basedir = basedir
+        self.band = band
+        self.fn = os.path.join(self.basedir, 'act_dr6.02_coadd_AA_daynight_%s_map.fits' % self.band)
+        self.actwcs = None
+
+    def get_bands(self):
+        return [self.band]
+
+    def _get_wcs(self):
+        if self.actwcs is None:
+            from astrometry.util.util import anwcs
+            self.actwcs = anwcs(self.fn, 0)
+            print('Act Dr6 Layer: WCS', self.actwcs)
+        return self.actwcs
+    
+    def render_into_wcs(self, wcs, zoom, x, y, bands=None, tempfiles=None,
+                        invvar=False, maskbits=False):
+        assert(not invvar)
+        assert(not maskbits)
+        import numpy as np
+
+        print('render_into_wcs: wcs pixscale', wcs.pixel_scale())
+        self._get_wcs()
+
+        W = int(wcs.get_width())
+        H = int(wcs.get_height())
+        target_ra,target_dec = wcs.pixelxy2radec([1,  1,1,W/2,W,W,  W,W/2],
+                                                 [1,H/2,H,H,  H,H/2,1,1  ])[-2:]
+        # Check for pixel overlap area (projecting target WCS edges into this brick)
+        ok,xx,yy = self.actwcs.radec2pixelxy(target_ra, target_dec)
+        xx = xx.astype(np.int32)
+        yy = yy.astype(np.int32)
+        x0 = xx.min()
+        x1 = xx.max()+1
+        y0 = yy.min()
+        y1 = yy.max()+1
+
+        print('ACT image x range', x0, x1, 'y range', y0, y1)
+        if x1 - x0 > 2000:
+            return None
+        if y1 - y0 > 2000:
+            return None
+        #print('Image size:', W, H)
+        '''
+        NAXIS1  =                43200
+        NAXIS2  =                10320
+        '''
+        actH, actW = 10320, 43200
+        if y1 < 0 or y0 > actH or x1 < 0 or x0 > actW:
+            return None
+
+        # clip
+        x0 = np.clip(x0, 0, actW)
+        x1 = np.clip(x1, 0, actW)
+        y0 = np.clip(y0, 0, actH)
+        y1 = np.clip(y1, 0, actH)
+        
+        import fitsio
+
+        subactwcs = anwcs_subimage(self.actwcs, x0, y0, x1-x0, y1-y0)
+        # Stokes I
+        I = 0
+        subimg = fitsio.FITS(self.fn)[0][I, y0:y1, x0:x1]
+        print('subimg shape:', subimg.shape)
+        subimg = subimg[0, :, :]
+
+        try:
+            from astrometry.util.resample import resample_with_wcs
+            Yo,Xo,Yi,Xi,rim = resample_with_wcs(wcs, subactwcs, [subimg], intType=np.int32)
+        except:
+            print('resample_with_wcs failure:')
+            import traceback
+            traceback.print_exc()
+            return None
+        outimg = np.zeros((H, W), np.float32)
+        outimg[Yo,Xo] = rim[0]
+        return [outimg]
+        
+    def get_rgb(self, imgs, bands, **kwargs):
+        import matplotlib.cm
+        import numpy as np
+        img = imgs[0]
+        cmap = matplotlib.cm.RdBu
+        #vmin,vmax = -500, +500
+        #rgb = cmap(np.clip((img - vmin) / (vmax - vmin), 0., 1.))
+        # HACK -- we want "cold to hot" blue-to-red, whereas the colormap is red-to-blue, so
+        # reverse the vmin-vmax!
+        vmin,vmax = +500, -500
+        rgb = cmap(np.clip((img - vmin) / (vmax - vmin), 0., 1.))
+        if len(rgb.shape) == 3 and rgb.shape[2] == 4:
+            # trim off alpha
+            rgb = rgb[:, :, :3]
         return rgb
 
 # "PR"
@@ -8420,6 +8546,12 @@ def get_layer(name, default=None):
     elif name == 'unwise-w3w4':
         layer = UnwiseW3W4('unwise-w3w4', os.path.join(settings.DATA_DIR, 'unwise-w3w4'))
 
+    elif name == 'act-dr6-f150':
+        layer = ActDr6Layer(name, os.path.join(settings.DATA_DIR, 'act-dr6'),
+                            'f090')
+        #'act-dr6',
+        #'act_dr6.02_coadd_AA_daynight_f090_map.fits'))
+        
     elif name == '2mass':
         layer = TwoMassLayer('2mass')
 
@@ -9369,8 +9501,11 @@ if __name__ == '__main__':
     #r = c.get('/phast/1/11/1987/765.jpg')
     #r = c.get('/phast/1/10/993/382.jpg')
     #r = c.get('/phast/1/9/496/191.jpg')
-    r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo11&pixscale=2.75&size=500')
+    #r = c.get('/cutout.fits?ra=146.9895&dec=13.2777&layer=unwise-neo11&pixscale=2.75&size=500')
 
+    #r = c.get('/act-dr6-f150/1/10/995/503.jpg')
+    #r = c.get('/act-dr6-f150/1/7/123/62.jpg')
+    r = c.get('/act-dr6-f150/1/6/61/31.jpg')
     # riz RGB jpeg for CHIME/FRB
     # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
     # import fitsio
@@ -9399,9 +9534,11 @@ if __name__ == '__main__':
     #r = c.get('/namequery/?obj=SDSS J153822.01+400919.9')
     #r = c.get('/namequery/?obj=SDSS%20J153822.01+400919.9')
     #r = c.get('/namequery/?obj=SDSS%20J153822.01%2B400919.9')
-    r = c.get('/coadd-psf/?ra=215.44110478935227&dec=-2.3155507912493363&layer=ls-dr10')
+    #r = c.get('/coadd-psf/?ra=215.44110478935227&dec=-2.3155507912493363&layer=ls-dr10')
     # result,val = query_simbad('M 13')
     # print('result', result, 'val', val)
+
+
     
     f = open('out.jpg', 'wb')
     for x in r:

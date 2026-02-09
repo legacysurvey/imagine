@@ -249,7 +249,10 @@ def top_levels(mp, opt):
         
     if 'ls-dr11' in opt.kind:
         basescale = 7
-    
+
+    if 'act-dr6' in opt.kind:
+        basescale = 6
+
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                        '%(zoom)i', '%(x)i', '%(y)i.jpg')
     patdata = dict(ver=ver)
@@ -502,6 +505,7 @@ def main():
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                        'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
                        'unwise-w3w4', 'unwise-neo11',
+                       'act-dr6-f150',
                        'galex', 'galex-invvar', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf',
                        'cfis-r', 'cfis-u', 'cfis-dr3-r', 'cfis-dr3-u']
               or 'dr8i' in opt.kind
@@ -537,6 +541,8 @@ def main():
             opt.bands = 'gri'
         if 'vlass' in opt.kind:
             opt.bands = [1]
+        if 'act-dr6-f150' in opt.kind:
+            opt.bands = ['f150']
 
     elif opt.kind == 'm33':
         if opt.mindec is None:

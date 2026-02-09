@@ -3947,8 +3947,12 @@ var overlays = [
 
 
 
+var blink_layers = false;
+var blink_next = 0;
 if ('blink' in qstr) {
     last_layer_name = qstr['blink'];
+    blink_layers = qstr['blink'].split(',');
+    blink_layers.push(layer_name);
 }
 
 for (k in qstr) {
@@ -4075,6 +4079,7 @@ moresurveys = moresurveys.concat(decaps_tree);
 moresurveys = moresurveys.concat([
     findlayer('galex'),
     findlayer('halpha'),
+    findlayer('act-dr6-f150'),
     findlayer('hsc-dr2'),
     {% if not merian_first %}
     findlayer('hsc-dr3'),
@@ -4756,21 +4761,44 @@ function keyDown(e) {
     if (e.keyCode == 32) {
         //console.log('space bar!');
         //console.log('layer_name ' + layer_name + ', last_layer_name ' + last_layer_name);
-        if (last_layer_name != layer_name) {
-            console.log('Switching from layer ' + layer_name + ' back to previous layer ' + last_layer_name);
+
+        if (blink_layers) {
+            next_layer = blink_layers[blink_next];
+            blink_next = (blink_next + 1) % blink_layers.length;
+
+            console.log('Blinking from', layer_name, ' to ', next_layer);
             var toadd = false;
             var torm  = false;
             for (k in namedLayers) {
                 layer = namedLayers[k];
                 if (layer_name == k) {
                     torm = layer;
-                } else if (last_layer_name == k) {
+                } else if (next_layer == k) {
                     toadd = layer;
                 }
             }
             if (toadd && torm) {
                 torm.removeFrom(map);
                 toadd.addTo(map);
+            }
+
+        } else {
+            if (last_layer_name != layer_name) {
+                console.log('Switching from layer ' + layer_name + ' back to previous layer ' + last_layer_name);
+                var toadd = false;
+                var torm  = false;
+                for (k in namedLayers) {
+                    layer = namedLayers[k];
+                    if (layer_name == k) {
+                        torm = layer;
+                    } else if (last_layer_name == k) {
+                        toadd = layer;
+                    }
+                }
+                if (toadd && torm) {
+                    torm.removeFrom(map);
+                    toadd.addTo(map);
+                }
             }
         }
         e.preventDefault();
