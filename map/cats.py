@@ -2549,7 +2549,7 @@ def cat_manga(req, ver):
     #     -P -T -k -R ifura -D ifudec
     fn = os.path.join(settings.DATA_DIR, 'manga', 'drpall-v2_4_3.kd.fits')
     tag = 'manga'
-    T = cat_kd(req, ver, tag, fn, racol='ifura', deccol='ifudec')
+    T = cat_kd(req, ver, tag, [fn], racol='ifura', deccol='ifudec')
     if T is not None and len(T)>0:
         T.cut(T.ifudesignsize > 0)
         if len(T) == 0:
@@ -2615,7 +2615,7 @@ def cat_spec(req, ver):
     import json
     fn = os.path.join(settings.DATA_DIR, 'sdss', 'specObj-dr16-trimmed.kd.fits')
     tag = 'spec'
-    T = cat_kd(req, ver, tag, fn)
+    T = cat_kd(req, ver, tag, [fn])
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], mjd=[], fiber=[],
                                             plate=[], zwarning=[])),
@@ -2768,7 +2768,7 @@ def cat_gaia_mask(req, ver):
     '''
     fn = os.path.join(settings.DATA_DIR, 'gaia-mask.kd.fits')
     tag = 'masks-dr8'
-    T = cat_kd(req, ver, tag, fn)
+    T = cat_kd(req, ver, tag, [fn])
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], radiusArcsec=[])),
                             content_type='application/json')
@@ -2784,7 +2784,7 @@ def cat_hsc_dr2_cosmos(req, ver):
     import json
     import numpy as np
     fn = os.path.join(settings.DATA_DIR, 'hsc-dr2', 'cosmos-cat.kd.fits')
-    T = cat_kd(req, ver, 'hsc-dr2-cosmos', fn)
+    T = cat_kd(req, ver, 'hsc-dr2-cosmos', [fn])
     if T is None:
         return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])),
                             content_type='application/json')
@@ -3184,7 +3184,8 @@ def cat_tycho2(req, ver):
     #return cat(req, ver, 'tycho2',
     #           os.path.join(settings.DATA_DIR, 'tycho2.fits'))
     import json
-    T = cat_kd(req, ver, 'tycho2', os.path.join(settings.DATA_DIR, 'tycho2-sub.kd.fits'))
+    T = cat_kd(req, ver, 'tycho2',
+               [os.path.join(settings.DATA_DIR, 'tycho2-sub.kd.fits')])
     if T is None:
         rtn = dict(rd=[], name=[])
     else:
