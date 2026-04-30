@@ -6647,7 +6647,7 @@ def get_survey(name):
         name = name[:-5]
         dirnm = os.path.join(basedir, name)
        
-    elif name in ['ls-dr11-early','ls-dr11-early-v2']:
+    elif name in ['ls-dr11-early','ls-dr11-early-v2','ls-dr11-early-north']:
         survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
     if survey is None and not os.path.exists(dirnm):
@@ -8834,6 +8834,14 @@ def get_layer(name, default=None):
 
     elif name in ['ls-dr11-early','ls-dr11-early-v2']:
         bands = 'griz'
+        survey = get_survey(name)
+        image = LsDr10Layer(name, 'image', survey, bands=bands, drname=name)
+        layers[name] = image
+        layer = layers[name]       
+        layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', name)
+
+    elif name in ['ls-dr11-early-north']:
+        bands = 'grz'
         survey = get_survey(name)
         image = LsDr10Layer(name, 'image', survey, bands=bands, drname=name)
         layers[name] = image

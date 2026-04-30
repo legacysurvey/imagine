@@ -786,7 +786,7 @@ def main():
                          'decaps2', 'decaps2-model',
                          'dr10-deep', 'dr10-deep-model', 'ibis-color', 'ibis',
                          'ibis-3', 'ibis-3-wide', 'ls-dr11-early', 'ls-dr11-early-v2',
-                         'ibis-4', 'ibis-4-model', 'ibis-4-resid',
+                         'ibis-4', 'ibis-4-model', 'ibis-4-resid','ls-dr11','ls-dr11-early-north',
                          ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
