@@ -64,7 +64,7 @@ def cutout_main():
                   pixscale=opt.pixscale,
                   width=opt.width, height=opt.height, size=opt.size,
                   bands=bands, layer=opt.layer,
-                  invvar=opt.invvar, maskbits=opt.invvar, no_image=opt.no_image,
+                  invvar=opt.invvar, maskbits=opt.maskbits, no_image=opt.no_image,
                   force=opt.force)
 
 def cutout(ra, dec, output,
