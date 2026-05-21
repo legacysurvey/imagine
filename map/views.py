@@ -1926,9 +1926,9 @@ class MapLayer(object):
         return ver,zoom,x,y
 
     def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
-                   invvar=False, maskbits=False, blank_ok=False):
+                   invvar=False, maskbits=False, blank_ok=False, general_wcs=False):
         rimgs = self.render_into_wcs(wcs, zoom, x, y, bands=bands, tempfiles=tempfiles,
-                                     invvar=invvar, maskbits=maskbits)
+                                     invvar=invvar, maskbits=maskbits, general_wcs=general_wcs)
         if get_images_only:
             return rimgs,None
         if bands is None:
@@ -2053,6 +2053,7 @@ class MapLayer(object):
         return self.get_bands()
 
     def write_cutout(self, ra, dec, pixscale, width, height, out_fn,
+                     rotate=0.,
                      bands=None,
                      fits=False, jpeg=False,
                      subimage=False,
@@ -2135,9 +2136,20 @@ class MapLayer(object):
         decps = ps
         if jpeg:
             decps *= -1.
-        wcs = Tan(*[float(x) for x in [ra, dec, (width+1)/2., (height+1)/2.,
-                                       raps, 0., 0., decps, width, height]])
-    
+
+        general_wcs = False
+        cdvals = [raps, 0., 0., decps]
+        if rotate != 0.:
+            cd = np.array(cdvals).reshape((2,2))
+            a = np.deg2rad(-rotate)
+            R = np.array([[np.cos(a), np.sin(a)], [-np.sin(a), np.cos(a)]])
+            Rcd = R @ cd
+            cdvals = list(Rcd.ravel())
+            general_wcs = True
+
+        wcs = Tan(*[float(x) for x in ([ra, dec, (width+1)/2., (height+1)/2.] +
+                                       cdvals + [width, height])])
+
         zoom = native_zoom - int(np.round(np.log2(pixscale / native_pixscale)))
         zoom = max(0, min(zoom, 16))
 
@@ -2146,7 +2158,7 @@ class MapLayer(object):
         #print('Cutout: bands', bands)
         if jpeg:
             ims,rgb = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
-                                      blank_ok=True)
+                                      blank_ok=True, general_wcs=general_wcs)
             self.write_jpeg(out_fn, rgb)
             if req is not None:
                 if 'sga' in req.GET or 'sga-parent' in req.GET:
@@ -2159,17 +2171,17 @@ class MapLayer(object):
         if with_image:
             #ims = self.render_into_wcs(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles)
             ims,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
-                                    get_images_only=True)
+                                    get_images_only=True, general_wcs=general_wcs)
             if ims is None:
                 raise NoOverlapError('No overlap')
         ivs = None
         if with_invvar and self.has_invvar():
             ivs,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands, tempfiles=tempfiles,
-                                    get_images_only=True, invvar=True)
+                                    get_images_only=True, invvar=True, general_wcs=general_wcs)
         maskbits = None
         if with_maskbits and self.has_maskbits():
             maskbits,_ = self.render_rgb(wcs, zoom, xtile, ytile, bands=bands[0], tempfiles=tempfiles,
-                                         get_images_only=True, maskbits=True)
+                                         get_images_only=True, maskbits=True, general_wcs=general_wcs)
 
         if hdr is not None:
             hdr['BANDS'] = ''.join([str(b) for b in bands])
@@ -2242,6 +2254,7 @@ class MapLayer(object):
         size   = min(int(req.GET.get('size',    256)), maxsize)
         width  = min(int(req.GET.get('width',  size)), maxsize)
         height = min(int(req.GET.get('height', size)), maxsize)
+        rotate = float(req.GET.get('rotate', 0.))
         bands = req.GET.get('bands', None)
 
         # For retrieving a single-CCD cutout, not coadd
@@ -2284,7 +2297,8 @@ class MapLayer(object):
         os.close(f)
         os.unlink(out_fn)
 
-        self.write_cutout(ra, dec, pixscale, width, height, out_fn, bands=bands,
+        self.write_cutout(ra, dec, pixscale, width, height, out_fn,
+                          rotate=rotate, bands=bands,
                           fits=fits, jpeg=jpeg, subimage=subimage, tempfiles=tempfiles,
                           with_invvar=with_invvar, with_maskbits=with_maskbits,
                           req=req)
@@ -4232,7 +4246,8 @@ class LegacySurveySplitLayer(MapLayer):
         return 0
 
     def render_rgb(self, wcs, zoom, x, y, bands=None, tempfiles=None, get_images_only=False,
-                   invvar=False, maskbits=False, blank_ok=False):
+                   invvar=False, maskbits=False, blank_ok=False, general_wcs=False):
+        assert(not general_wcs)
         #print('Split Layer render_rgb: bands=', bands)
         kwa = dict(tempfiles=tempfiles, get_images_only=get_images_only, invvar=invvar,
                    maskbits=maskbits, blank_ok=blank_ok)
