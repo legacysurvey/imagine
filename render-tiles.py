@@ -530,7 +530,7 @@ def main():
     #         elif opt.kind == 'odin-color-n419n673':
     #             opt.bands = ['N419', 'N673']
 
-    elif opt.kind == 'odin':
+    elif opt.kind in ['odin', 'odin-all']:
         if opt.maxdec is None:
             opt.maxdec = 90.
         if opt.mindec is None:

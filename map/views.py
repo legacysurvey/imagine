@@ -5194,6 +5194,7 @@ class MultiCoaddLegacySurveyData(LegacySurveyData):
             sname = self.file_prefix
             pat = os.path.join(codir, '%s-%s-%s-%s.fits.fz' % (sname, brick, filetype, band))
             fns = glob(pat)
+            print('Odin:', pat, '->', fns)
             for fn in fns:
                 if os.path.exists(fn):
                     return fn
@@ -5574,7 +5575,7 @@ def get_survey(name):
         survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
         survey.bricksize = 0.025
 
-    elif name == 'odin':
+    elif name in ['odin', 'odin-all']:
         survey = MultiCoaddLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
     # elif name in ['odin-N673', 'odin-N501', 'odin-N419', 'odin-all']:
     #     survey = MultiCoaddLegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
@@ -7474,6 +7475,13 @@ def get_layer(name, default=None):
                                     nocreate=True,
                                     tiledir = os.path.join(settings.DATA_DIR, 'tiles', tilename))
 
+    elif name in ['odin-color-n419n501']:
+        survey = get_survey('odin')
+        tilename = 'odin-color-n419n501'
+        layer = OdinLayer('odin', 'image', survey, bands=['N419', 'N501'],
+                          nocreate=True,
+                          tiledir = os.path.join(settings.DATA_DIR, 'tiles', tilename))
+
     elif name in ['odin-color-n501n673']:
         survey = get_survey('odin')
         tilename = 'odin-color-n501n673'
@@ -8222,7 +8230,11 @@ if __name__ == '__main__':
     #r = c.get('/odin-n501/1/13/7004/4798.jpg')
     #r = c.get('/odin-color/1/5/18/15.jpg')
     #r = c.get('/odin-color-n501n673/1/5/18/15.jpg')
-    r = c.get('/odin-n673/1/5/18/15.jpg')
+    #r = c.get('/odin-n673/1/5/18/15.jpg')
+    #r = c.get('/odin-color-n419n501/1/12/3845/2047.jpg')
+    # ECDFS
+    #r = c.get('/odin-color/1/14/13972/9524.jpg')
+    r = c.get('/odin-color/1/7/109/74.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         #print('Got', type(x), len(x))
