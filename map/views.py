@@ -8854,7 +8854,7 @@ def get_layer(name, default=None):
         layers[name] = image
         layer = layers[name]       
         layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', name)
-
+        
     elif name in ['ls-dr11-early-north']:
         bands = 'grz'
         survey = get_survey(name)
@@ -8862,7 +8862,7 @@ def get_layer(name, default=None):
         layers[name] = image
         layer = layers[name]       
         layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', name)
-
+        
     if layer is None:
         # Try generic rebricked
         #print('get_layer:', name, '-- generic')
