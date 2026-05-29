@@ -661,12 +661,12 @@ def main():
         if opt.minra is None:
             opt.minra = 0
 
-    elif 'ls-dr11' in opt.kind:
+    elif opt.kind in ['ls-dr11-south', 'ls-dr11-south-model', 'ls-dr11-south-resid','ls-dr11-early-v2']:
         if opt.bands is None:
-            if opt.kind.endswith('-grz'):
-                opt.bands = 'grz'
-            else:
+            if opt.kind.endswith('-griz'):
                 opt.bands = 'griz'
+            else:
+                opt.bands = 'grz'
         if opt.maxdec is None:
             opt.maxdec = 40
         if opt.mindec is None:
@@ -674,7 +674,19 @@ def main():
         if opt.maxra is None:
             opt.maxra = 360
         if opt.minra is None:
-            opt.minra = 0            
+            opt.minra = 0
+
+    elif opt.kind in ['ls-dr11-north', 'ls-dr11-north-model', 'ls-dr11-north-resid','ls-dr11-early-north']:
+        if opt.bands is None:
+            opt.bands = 'grz'
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = -5
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
      
     elif opt.kind in ['pandas']:
         if opt.bands is None:
@@ -786,7 +798,9 @@ def main():
                          'decaps2', 'decaps2-model',
                          'dr10-deep', 'dr10-deep-model', 'ibis-color', 'ibis',
                          'ibis-3', 'ibis-3-wide', 'ls-dr11-early', 'ls-dr11-early-v2',
-                         'ibis-4', 'ibis-4-model', 'ibis-4-resid','ls-dr11','ls-dr11-early-north',
+                         'ibis-4', 'ibis-4-model', 'ibis-4-resid','ls-dr11-early-north','ls-dr11','ls-dr11-model','ls-dr11-resid',
+                         'ls-dr11-south','ls-dr11-north','ls-dr11-north-model','ls-dr11-north-resid',
+                         'ls-dr11-south-model','ls-dr11-south-resid',
                          ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')

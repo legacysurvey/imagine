@@ -118,6 +118,7 @@ def checkflavour(req, flavour):
         return HttpResponse('bad flavour: web service is ' + settings.FLAVOUR + ', query is ' + flavour,
                             status=500, reason='bad flavour')
 
+
 def my_reverse(req, *args, **kwargs):
     return reverse(*args, **kwargs)
 
@@ -322,6 +323,19 @@ def _index(req,
                 ]:
             tile_layers[tag] = [label, [def_url], maxnative, 'ls']
 
+    if settings.ENABLE_DR11 or settings.ENABLE_DR10:
+        tile_layers.update({
+            'ls-dr11': ['Legacy Surveys DR11 images', [def_url], maxnative, 'ls'],
+            'ls-dr11-model': ['Legacy Surveys DR11 models', [def_url], maxnative, 'ls'],
+            'ls-dr11-resid': ['Legacy Surveys DR11 residuals', [def_url], maxnative, 'ls'],
+            'ls-dr11-south': ['Legacy Surveys DR11-south images', [def_url], maxnative, 'ls'],
+            'ls-dr11-south-model': ['Legacy Surveys DR11-south models', [def_url], maxnative, 'ls'],
+            'ls-dr11-south-resid': ['Legacy Surveys DR11-south residuals', [def_url], maxnative, 'ls'],
+            'ls-dr11-north': ['Legacy Surveys DR11-north images', [def_url], maxnative, 'ls'],
+            'ls-dr11-north-model': ['Legacy Surveys DR11-north models', [def_url], maxnative, 'ls'],
+            'ls-dr11-north-resid': ['Legacy Surveys DR11-north residuals', [def_url], maxnative, 'ls'],
+        })
+        
     if settings.ENABLE_DR10:
         dr10layers = {
             'ls-dr10-south': ['Legacy Surveys DR10-south images',
@@ -6665,6 +6679,13 @@ def get_survey(name):
     elif name in ['ls-dr11-early','ls-dr11-early-v2','ls-dr11-early-north']:
         survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
 
+    elif name in ['ls-dr11']:
+        north = get_survey('ls-dr11-north')
+        north.layer = 'ls-dr11-north'
+        south = get_survey('ls-dr11-south')
+        south.layer = 'ls-dr11-south'
+        survey = SplitSurveyData(north, south)
+
     if survey is None and not os.path.exists(dirnm):
         return None
 
@@ -8855,14 +8876,72 @@ def get_layer(name, default=None):
         layer = layers[name]       
         layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', name)
         
-    elif name in ['ls-dr11-early-north']:
+    elif name in ['ls-dr11', 'ls-dr11-model', 'ls-dr11-resid']:
+        is_griz = name.endswith('-griz')
+        is_gri = name.endswith('-gri')
+        if is_griz:
+            name = name.replace('-griz','')
+            grzpart = '-griz'
+            bands = 'griz'
+        elif is_gri:
+            name = name.replace('-gri','')
+            grzpart = '-gri'
+            bands = 'gri'
+        else:
+            grzpart = ''
+            bands = 'grz'
+        # suff: -model, -resid
+        suff = name.replace('ls-dr11', '').replace('-mid', '')
+        north = get_layer('ls-dr11-north' + suff)
+        south = get_layer('ls-dr11-south' + suff + grzpart)
+        layer = LegacySurveySplitLayer(name + grzpart, north, south, 32.375, bottom_bands=bands)
+        layer.bands = 'grz'
+        layer.drname = 'Legacy Surveys DR11'
+        # "name" is going to be used to set the "layer" cache below!
+        name = name + grzpart
+
+    elif name in ['ls-dr11-north', 'ls-dr11-north-model', 'ls-dr11-north-resid','ls-dr11-early-north']:
         bands = 'grz'
-        survey = get_survey(name)
-        image = LsDr10Layer(name, 'image', survey, bands=bands, drname=name)
-        layers[name] = image
-        layer = layers[name]       
+        grzpart = ''
+        basename = 'ls-dr11-north'
+        survey = get_survey(basename)
+        image = LsDr10Layer(basename + grzpart, 'image', survey, bands=bands,
+                            drname=basename)
+        model = LsDr10ModelLayer(basename + '-model' + grzpart, 'model', survey, bands=bands,
+                                 drname=basename)
+        resid = LsDr10ResidLayer(image, model, basename + '-resid' + grzpart, 'resid', survey, bands=bands,
+                                 drname=basename)
+        layers[basename            + grzpart] = image
+        layers[basename + '-model' + grzpart] = model
+        layers[basename + '-resid' + grzpart] = resid
+        layer = layers[name]
         layer.tiledir = os.path.join(settings.DATA_DIR, 'tiles', name)
         
+    elif name in ['ls-dr11-south', 'ls-dr11-south-model', 'ls-dr11-south-resid',
+                  'ls-dr11-south-griz', 'ls-dr11-south-model-griz', 'ls-dr11-south-resid-griz',
+                  'ls-dr11-south-gri']:
+        if name.endswith('-griz'):
+            bands = 'griz'
+            grzpart = '-griz'
+        elif name.endswith('-gri'):
+            bands = 'gri'
+            grzpart = '-gri'
+        else:
+            bands = 'grz'
+            grzpart = ''
+        basename = 'ls-dr11-south'
+        survey = get_survey(basename)
+        image = LsDr10Layer(basename + grzpart, 'image', survey, bands=bands,
+                            drname=basename)
+        model = LsDr10ModelLayer(basename + '-model' + grzpart, 'model', survey, bands=bands,
+                                 drname=basename)
+        resid = LsDr10ResidLayer(image, model, basename + '-resid' + grzpart, 'resid', survey, bands=bands,
+                                 drname=basename)
+        layers[basename            + grzpart] = image
+        layers[basename + '-model' + grzpart] = model
+        layers[basename + '-resid' + grzpart] = resid
+        layer = layers[name]
+
     if layer is None:
         # Try generic rebricked
         #print('get_layer:', name, '-- generic')
@@ -9548,7 +9627,10 @@ if __name__ == '__main__':
 
     #r = c.get('/act-dr6-f150/1/10/995/503.jpg')
     #r = c.get('/act-dr6-f150/1/7/123/62.jpg')
-    r = c.get('/act-dr6-f150/1/6/61/31.jpg')
+    #r = c.get('/act-dr6-f150/1/6/61/31.jpg')
+
+    r = c.get('/file-test')
+
     # riz RGB jpeg for CHIME/FRB
     # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
     # import fitsio

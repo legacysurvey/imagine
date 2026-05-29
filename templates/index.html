@@ -4095,7 +4095,24 @@ moresurveys = moresurveys.concat([
 
 moresurveys = drop_null(moresurveys);
 
+
+
 baseTree1 = baseTree1.concat([
+
+    {% if enable_dr10 %}
+    findlayer('ls-dr11', [
+    findlayer('ls-dr11-model'),
+    findlayer('ls-dr11-resid'),
+    findlayer('ls-dr11-south', [
+      findlayer('ls-dr11-south-model'),
+      findlayer('ls-dr11-south-resid'),
+    ]),
+    findlayer('ls-dr11-north', [
+      findlayer('ls-dr11-north-model'),
+      findlayer('ls-dr11-north-resid'),
+      ]),
+    ]),
+    {% endif %}
 
     {% if enable_ibis %}
     { label:'IBIS v4 COSMOS',
@@ -4154,6 +4171,7 @@ baseTree1 = baseTree1.concat([
       ]),
     ]),
     {% endif %}
+
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
         {% if enable_dr9_models %}
