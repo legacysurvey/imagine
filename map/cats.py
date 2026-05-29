@@ -2611,7 +2611,7 @@ def cat_sdss_dr20(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'sdss-dr20', 'sdss-dr20-vi.kd.fits')
     T = cat_kd(req, ver, 'sdss-dr20', [fn], racol='fiber_ra', deccol='fiber_dec')
     if T is None:
-        return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])),
+        return HttpResponse(json.dumps(dict(rd=[], name=[], sdss_id=[], zwarning=[])),
                             content_type='application/json')
     if len(T) > 5000:
         T = T[:5000]
@@ -2629,7 +2629,10 @@ def cat_sdss_dr20(req, ver):
         else:
             s = 'z=%.3f %s (conf %i)' % (z, clazz, zconf)
         names.append(s)
-    return HttpResponse(json.dumps(dict(rd=rd, name=names)), #, color=color)),
+    # JSON doesn't deal with int64 very well - convert to string!
+    sdss_id = ['%i'%i for i in T.sdss_id]
+    zw = [int(i) for i in T.zwarning]
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, sdss_id=sdss_id, zwarning=zw)),
                         content_type='application/json')
 
 def cat_kd(req, ver, tag, fns, racol=None, deccol=None):
@@ -2643,10 +2646,16 @@ def cat_kd(req, ver, tag, fns, racol=None, deccol=None):
         raise RuntimeError('Invalid version %i for tag %s' % (ver, tag))
 
     ra,dec,radius = radecbox_to_circle(ralo, rahi, declo, dechi)
-    T = cat_query_radec(fn, ra, dec, radius)
-    if T is None:
+    TT = []
+    for fn in fns:
+        T = cat_query_radec(fn, ra, dec, radius)
+        if T is None:
+            continue
+        TT.append(T)
+    if len(TT) == 0:
         debug('No objects in query')
         return None
+    T = merge_tables(TT, columns='fillzero')
     #debug(len(T), 'spectra')
     if racol is not None:
         T.ra = T.get(racol)

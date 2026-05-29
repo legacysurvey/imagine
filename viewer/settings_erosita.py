@@ -32,6 +32,8 @@ LAYER_OVERRIDES = {
     'erosita-efeds': [my_url],
 }
 
+ENABLE_DR11 = True
+
 ENABLE_DEV = False #True
 
 ENABLE_EROSITA = True

@@ -848,6 +848,20 @@ var SdssSpectraCatalog = CatalogOverlay.extend({
     },
 });
 
+var SdssDR20SpectraCatalog = SdssSpectraCatalog.extend({
+    getLabel: function(json, i) {
+        zw = '';
+        zwval = json['zwarning'][i];
+        //console.log('zwarning: ' + zwval);
+        if (zwval > 0) {
+            zw = ' (Zwarn=0x' + zwval.toString(16) + ')';
+        }
+        var label = '<a href="https://dr20.sdss.org/zora/target/' + json.sdss_id[i] + '">' +
+            json.name[i] + zw + ' SDSS_ID=' + json.sdss_id[i] + '</a>';
+        return label;
+    },
+});
+
 var Deep2SpectraCatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
         var label = json.name[i];
@@ -1837,7 +1851,7 @@ testLayers.push(namedLayers['{{name}}']);
 {% endif %}
 
 // initialize layers
-
+  
 {% if enable_dr9 or enable_dr10 %}
 findlayer('ls-dr9-north');
 findlayer('ls-dr9-north-model');
@@ -3638,7 +3652,7 @@ var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra (DR16)',
                                    'minZoom': 8,
                                    'urlTerm': 'spectra'});
 
-var sdssdr20 = new CatalogOverlay('sdss-dr20', 'SDSS DR20 spectroscopy',
+var sdssdr20 = new SdssDR20SpectraCatalog('sdss-dr20', 'SDSS DR20 spectroscopy (BOSS)',
                              {'url_name': 'sdss-dr20',
                               'minZoom': 11,
                               'labelsMinZoom': 11,
@@ -4012,10 +4026,28 @@ moresurveys = moresurveys.concat([
 
 moresurveys = drop_null(moresurveys);
 
+
+
 baseTree1 = baseTree1.concat([
     {% if enable_erosita %}
     findlayer('erosita-efeds'),
     {% endif %}
+
+    {% if enable_dr11 %}
+    findlayer('ls-dr11', [
+    findlayer('ls-dr11-model'),
+    findlayer('ls-dr11-resid'),
+    findlayer('ls-dr11-south', [
+      findlayer('ls-dr11-south-model'),
+      findlayer('ls-dr11-south-resid'),
+    ]),
+    findlayer('ls-dr11-north', [
+      findlayer('ls-dr11-north-model'),
+      findlayer('ls-dr11-north-resid'),
+      ]),
+    ]),
+    {% endif %}
+
     {% if enable_dr10 %}
     findlayer('ls-dr10', [
     findlayer('ls-dr10-model'),
