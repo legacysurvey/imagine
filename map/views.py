@@ -119,6 +119,22 @@ def checkflavour(req, flavour):
         return HttpResponse('bad flavour: web service is ' + settings.FLAVOUR + ', query is ' + flavour,
                             status=500, reason='bad flavour')
 
+import socket
+hostname = socket.gethostname()
+
+def static_test(req):
+    #return HttpResponse(open('/tmp/viewer-user/1.fits','rb'))
+    #data = open('/tmp/viewer-user/1.fits','rb').read()
+    #return HttpResponse(data, content_type='image/fits')
+    return send_file('/tmp/viewer-user/1.fits', 'image/fits',
+                     headers={'X-Spin-Host': hostname})
+
+def static_test_2(req):
+    #return HttpResponse(open('/tmp/viewer-user/1.fits','rb'))
+    data = open('/tmp/viewer-user/1.fits','rb').read()
+    return HttpResponse(data, content_type='image/fits',
+                        headers={'X-Spin-Host': hostname})
+
 def my_reverse(req, *args, **kwargs):
     return reverse(*args, **kwargs)
 
