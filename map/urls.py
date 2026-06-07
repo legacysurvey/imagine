@@ -27,6 +27,7 @@ urlpatterns_desi.extend([
     re_path(r'^desi-obs-daily/(\d+)/cat.json', cats.cat_desi_daily_obs),
     # DESI daily observations -- details per object
     re_path(r'^desi-obs/daily/targetid(\d+)', cats.cat_desi_daily_obs_detail),
+    re_path(r'^desi-obs/daily/tile(\d+)fiber(\d+)', cats.cat_desi_daily_obs_detail_tile_fiber),
 ])
 
 if settings.ENABLE_DESI_DR1:
@@ -59,10 +60,14 @@ if settings.ENABLE_DESI_DATA:
     ])
 
 urlpatterns = ([
-
     re_path(r'^alive', views.alive),
     re_path(r'^checkflavour/([\w-]+)', views.checkflavour),
     re_path(r'^cutout/checkflavour/([\w-]+)', views.checkflavour),
+
+    #
+    re_path(r'^file-test', views.static_test),
+    re_path(r'^cutout/file-test$', views.static_test),
+    re_path(r'^cutout/file-test-2$', views.static_test_2),
 
     re_path(r'^urls', views.urls, name='urls'),
 
@@ -176,10 +181,12 @@ urlpatterns = ([
     re_path(r'^ngc/(\d+)/cat.json', cats.cat_ngc),
 
     # SGA galaxies
-    re_path(r'^sga-parent/(\d+)/cat.json', cats.cat_sga_parent),
-    re_path(r'^sga/(\d+)/cat.json', cats.cat_sga_ellipse),
+    re_path(r'^sga2020-parent/(\d+)/cat.json', cats.cat_sga2020_parent),
+    re_path(r'^sga2020/(\d+)/cat.json', cats.cat_sga2020_ellipse),
 
     re_path(r'^sga2025-parent/(\d+)/cat.json', cats.cat_sga2025_parent),
+    re_path(r'^sga2025-north/(\d+)/cat.json', cats.cat_sga2025_north),
+    re_path(r'^sga2025-south/(\d+)/cat.json', cats.cat_sga2025_south),
 
     re_path(r'^GCs-PNe/(\d+)/cat.json', cats.cat_GCs_PNe),
 

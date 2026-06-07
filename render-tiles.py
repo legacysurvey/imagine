@@ -214,6 +214,7 @@ def top_levels(mp, opt):
 
     rgbkwargs = {}
     if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
+                    'unwise-neo11',
                     'unwise-cat-model']:
         bands = [1, 2]
     elif opt.kind == 'unwise-w3w4':
@@ -248,7 +249,10 @@ def top_levels(mp, opt):
         
     if 'ls-dr11' in opt.kind:
         basescale = 7
-    
+
+    if 'act-dr6' in opt.kind:
+        basescale = 6
+
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                        '%(zoom)i', '%(x)i', '%(y)i.jpg')
     patdata = dict(ver=ver)
@@ -396,6 +400,12 @@ def _layer_get_filename(args):
     fn = layer.get_filename(brick, band, scale)
     print(fn)
 
+def one_galex_coadd(X):
+    (layer, b, band, fn, invvar) = X
+    print('Creating:', fn)
+    tempfiles = []
+    layer.create_coadd_image(b, band, 0, fn, tempfiles=tempfiles,
+                             invvar=invvar)
 
 def main():
     import optparse
@@ -494,8 +504,9 @@ def main():
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                        'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
-                       'unwise-w3w4',
-                       'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf',
+                       'unwise-w3w4', 'unwise-neo11',
+                       'act-dr6-f150', 'mdw-halpha',
+                       'galex', 'galex-invvar', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf',
                        'cfis-r', 'cfis-u', 'cfis-dr3-r', 'cfis-dr3-u']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
@@ -530,6 +541,10 @@ def main():
             opt.bands = 'gri'
         if 'vlass' in opt.kind:
             opt.bands = [1]
+        if 'act-dr6-f150' in opt.kind:
+            opt.bands = ['f150']
+        if 'mdw-halpha' in opt.kind:
+            opt.bands = ['MDW656']
 
     elif opt.kind == 'm33':
         if opt.mindec is None:
@@ -648,12 +663,12 @@ def main():
         if opt.minra is None:
             opt.minra = 0
 
-    elif 'ls-dr11' in opt.kind:
+    elif opt.kind in ['ls-dr11-south', 'ls-dr11-south-model', 'ls-dr11-south-resid','ls-dr11-early-v2']:
         if opt.bands is None:
-            if opt.kind.endswith('-grz'):
-                opt.bands = 'grz'
-            else:
+            if opt.kind.endswith('-griz'):
                 opt.bands = 'griz'
+            else:
+                opt.bands = 'grz'
         if opt.maxdec is None:
             opt.maxdec = 40
         if opt.mindec is None:
@@ -661,15 +676,29 @@ def main():
         if opt.maxra is None:
             opt.maxra = 360
         if opt.minra is None:
-            opt.minra = 0            
+            opt.minra = 0
+
+    elif opt.kind in ['ls-dr11-north', 'ls-dr11-north-model', 'ls-dr11-north-resid','ls-dr11-early-north']:
+        if opt.bands is None:
+            opt.bands = 'grz'
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = -5
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
      
     elif opt.kind in ['pandas']:
         if opt.bands is None:
             opt.bands = 'gi'
         if opt.maxdec is None:
-            opt.maxdec = 51
+            #opt.maxdec = 51
+            opt.maxdec = 60
         if opt.mindec is None:
-            opt.mindec = 37
+            #opt.mindec = 37
+            opt.mindec = 15
         if opt.maxra is None:
             opt.maxra = 360
         if opt.minra is None:
@@ -734,7 +763,7 @@ def main():
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                         'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                         'unwise-w3w4',
-                        'unwise-cat-model',
+                        'unwise-cat-model', 'unwise-neo11',
                         'galex', 'wssa', 'des-dr1', 'hsc2', 'hsc-dr3',
                         'cfis-dr3-r', 'cfis-dr3-u',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
@@ -771,7 +800,10 @@ def main():
                          'decaps2', 'decaps2-model',
                          'dr10-deep', 'dr10-deep-model', 'ibis-color', 'ibis',
                          'ibis-3', 'ibis-3-wide', 'ls-dr11-early', 'ls-dr11-early-v2',
-                         'ibis-4', 'ibis-4-model', 'ibis-4-resid',
+                         'ibis-4', 'ibis-4-model', 'ibis-4-resid','ls-dr11-early-north','ls-dr11','ls-dr11-model','ls-dr11-resid',
+                         'ls-dr11-south','ls-dr11-north','ls-dr11-north-model','ls-dr11-north-resid',
+                         'ls-dr11-south-model','ls-dr11-south-resid',
+                         'mdw-halpha',
                          ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
@@ -1036,9 +1068,9 @@ def main():
         opt.y0 = opt.y
         opt.y1 = opt.y + 1
 
-    if opt.coadd and opt.kind == 'galex':
+    if opt.coadd and opt.kind in ['galex', 'galex-invvar']:
         layer = GalexLayer('galex')
-        
+
         # base-level (coadd) bricks
         B = layer.get_bricks()
         print(len(B), 'bricks')
@@ -1047,14 +1079,29 @@ def main():
         B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
         print(len(B), 'in RA range')
 
-        pat = layer.get_scaled_pattern()
+        invvar = (opt.kind == 'galex-invvar')
+        
+        pat = layer.get_scaled_pattern(invvar=invvar)
+
         tempfiles = []
+        args = []
         for b in B:
             for band in ['n','f']:
                 fn = pat % dict(scale=0, band=band, brickname=b.brickname)
-                layer.create_coadd_image(b, band, 0, fn, tempfiles=tempfiles)
+                if os.path.exists(fn):
+                    print('Exists:', fn)
+                    continue
+                if opt.threads > 1:
+                    args.append((layer, b, band, fn, invvar))
+                else:
+                    print('Creating:', fn)
+                    layer.create_coadd_image(b, band, 0, fn, tempfiles=tempfiles,
+                                             invvar=invvar)
             for fn in tempfiles:
                 os.unlink(fn)
+        if len(args):
+            mp.map(one_galex_coadd, args)
+
         sys.exit(0)
 
     if opt.coadd and opt.kind == 'sdss':

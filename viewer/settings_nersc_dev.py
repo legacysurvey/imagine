@@ -11,7 +11,7 @@ STATIC_URL_PATH = '/viewer-dev/static'
 
 FORCE_SCRIPT_NAME = ROOT_URL
 
-STATIC_URL = STATIC_URL_PATH
+STATIC_URL = STATIC_URL_PATH + '/'
 TILE_URL = 'https://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
 STATIC_TILE_URL = 'https://{s}.%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (DOMAIN, STATIC_URL_PATH)

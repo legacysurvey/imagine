@@ -33,6 +33,8 @@ CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
 ENABLE_DEV = True
 
+ENABLE_IBIS = True
+
 ENABLE_UNWISE_W3W4 = True
 
 ENABLE_PHAT = True

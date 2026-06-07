@@ -44,13 +44,14 @@ ENABLE_OLDER = True
 # scientist view (vs public)
 ENABLE_SCIENCE = True
 
-# Collab-private data!
-ENABLE_DESI_DATA = False
-
 # DESI Early Data Release
 ENABLE_DESI_EDR = True
 # DESI DR1
-ENABLE_DESI_DR1 = False
+ENABLE_DESI_DR1 = True
+# DESI Collab-private data!
+ENABLE_DESI_DATA = False
+# DESI daily observation metadata only
+ENABLE_DESI_DAILY_OBS = True
 
 ENABLE_MERIAN = False
 
@@ -80,6 +81,9 @@ ENABLE_DR9_SOUTH_MODELS = False
 ENABLE_DR9_SOUTH_RESIDS = False
 
 ENABLE_DR10 = False
+ENABLE_DR11 = False
+
+ENABLE_IBIS = False
 
 ENABLE_UNWISE_W3W4 = False
 
