@@ -505,7 +505,7 @@ def main():
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                        'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
                        'unwise-w3w4', 'unwise-neo11',
-                       'act-dr6-f150',
+                       'act-dr6-f150', 'mdw-halpha',
                        'galex', 'galex-invvar', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf',
                        'cfis-r', 'cfis-u', 'cfis-dr3-r', 'cfis-dr3-u']
               or 'dr8i' in opt.kind
@@ -543,6 +543,8 @@ def main():
             opt.bands = [1]
         if 'act-dr6-f150' in opt.kind:
             opt.bands = ['f150']
+        if 'mdw-halpha' in opt.kind:
+            opt.bands = ['MDW656']
 
     elif opt.kind == 'm33':
         if opt.mindec is None:
@@ -801,6 +803,7 @@ def main():
                          'ibis-4', 'ibis-4-model', 'ibis-4-resid','ls-dr11-early-north','ls-dr11','ls-dr11-model','ls-dr11-resid',
                          'ls-dr11-south','ls-dr11-north','ls-dr11-north-model','ls-dr11-north-resid',
                          'ls-dr11-south-model','ls-dr11-south-resid',
+                         'mdw-halpha',
                          ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')

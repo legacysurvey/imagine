@@ -4705,7 +4705,43 @@ class PS1Layer(MapLayer):
         hdr['SURVEY'] = 'PS1'
 
 
+class MDWHalphaLayer(ReDecalsLayer):
+    def __init__(self, name, imagetype, survey):
+        super().__init__(name, imagetype, survey, bands=['MDW656'])
+        self.bricks = None
+        #self.dir = dirnm
+        self.pixscale = 2.096
 
+    def get_pixel_size_for_scale(self, scale):
+        return 450
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        val = imgs[0]
+        # Doug says: np.log10(halpha + 5) stretched to 0.5 to 2.5
+        def stretch_halpha(x):
+            import numpy as np
+            #return np.log10(x + 5)
+            return np.sqrt(x + 20)
+        #if self.stretch is not None:
+        val = stretch_halpha(val)
+        #rgb = self.cmap((val - self.vmin) / (self.vmax - self.vmin))
+        #vmin,vmax = 0.5, 2.5
+        vmin,vmax = 0., 70.
+        cmap = matplotlib.cm.hot
+        rgb = cmap((val - vmin) / (vmax - vmin))
+        s = rgb.shape
+        if len(s) == 3 and s[2] == 4:
+            # cut out alpha layer
+            rgb = rgb[:,:,:3]
+        return rgb
+
+    # def get_rgb(self, imgs, bands, **kwargs):
+    #     import numpy as np
+    #     scales = dict(MDW656=(1, 10.))
+    #     rgb = sdss_rgb(imgs, bands, scales=scales)
+    #     rgb[:,:,0] = rgb[:,:,2] = rgb[:,:,1]
+    #     return rgb
+    
 class UnwiseLayer(MapLayer):
     def __init__(self, name, unwise_dir):
         super(UnwiseLayer, self).__init__(name, nativescale=13)
@@ -5902,7 +5938,7 @@ class ZeaLayer(MapLayer):
         self.vmax = vmax
 
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, tempfiles=None,
-                        invvar=False, maskbits=False):
+                        invvar=False, maskbits=False, **kwargs):
         assert(not invvar)
         assert(not maskbits)
         import numpy as np
@@ -5948,7 +5984,7 @@ class ActDr6Layer(MapLayer):
         return self.actwcs
     
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, tempfiles=None,
-                        invvar=False, maskbits=False):
+                        invvar=False, maskbits=False, general_wcs=False):
         assert(not invvar)
         assert(not maskbits)
         import numpy as np
@@ -6700,6 +6736,9 @@ def get_survey(name):
         south = get_survey('ls-dr11-south')
         south.layer = 'ls-dr11-south'
         survey = SplitSurveyData(north, south)
+
+    elif name == 'mdw-halpha':
+        survey = LegacySurveyData(survey_dir=os.path.join(dirnm, 'mdw_0145swap_level11_mdw656'))
 
     if survey is None and not os.path.exists(dirnm):
         return None
@@ -8957,6 +8996,12 @@ def get_layer(name, default=None):
         layers[basename + '-resid' + grzpart] = resid
         layer = layers[name]
 
+    elif name == 'mdw-halpha':
+        survey = get_survey(name)
+        image = MDWHalphaLayer(name, 'image', survey)
+        layers[name] = image
+        layer = image
+
     if layer is None:
         # Try generic rebricked
         #print('get_layer:', name, '-- generic')
@@ -9644,8 +9689,12 @@ if __name__ == '__main__':
     #r = c.get('/act-dr6-f150/1/7/123/62.jpg')
     #r = c.get('/act-dr6-f150/1/6/61/31.jpg')
 
-    r = c.get('/file-test')
+    #r = c.get('/file-test')
 
+    debug = print
+    
+    r = c.get('/mdw-halpha/1/14/11823/8023.jpg')
+    
     # riz RGB jpeg for CHIME/FRB
     # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
     # import fitsio
