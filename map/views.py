@@ -9336,7 +9336,6 @@ if __name__ == '__main__':
     #r = c.get('/data-for-radec/?ra=54.8733&dec=-13.1156&layer=des-dr1')
     #r = c.get('/ccd/dr8/decam-767361-N29-z/')
     #r = c.get('/image-data/dr8/decam-767361-N29-z')
-    #r = c.get('/')
     #r = c.get('/jpl_lookup/?ra=346.6075&dec=-3.3056&date=2017-07-18%2007:28:16.522187&camera=decam')
     #r = c.get('/urls')
     #r = c.get('/dr8/1/14/16023/6558.cat.json')
@@ -9692,9 +9691,9 @@ if __name__ == '__main__':
     #r = c.get('/act-dr6-f150/1/7/123/62.jpg')
     #r = c.get('/act-dr6-f150/1/6/61/31.jpg')
     #r = c.get('/file-test')
-
     debug = print
-    r = c.get('/mdw-halpha/1/14/11823/8023.jpg')
+    #r = c.get('/mdw-halpha/1/14/11823/8023.jpg')
+    r = c.get('/')
     
     # riz RGB jpeg for CHIME/FRB
     # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
@@ -9710,7 +9709,6 @@ if __name__ == '__main__':
     # plt.imsave('riz.jpg', rgb)
     #
 
->>>>>>> main
     # Euclid colorization
     # for i in [3,]:#1,2]:
     #     wcs = Sip('wcs%i.fits' % i)
