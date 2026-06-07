@@ -11,9 +11,9 @@ test_ccds = []
 #test_layers.append(('ls-dr11-south', "Legacy Surveys DR11 south images"))
 #test_layers.append(('ls-dr11-south-model', "Legacy Surveys DR11 south model images"))
 #test_layers.append(('ls-dr11-south-resid', "Legacy Surveys DR11 south residual images"))
-test_layers.append(('ls-dr11-early-north', "Legacy Surveys DR11 early images north"))
-test_layers.append(('ls-dr11-early-v2', "Legacy Surveys DR11 early images v2"))
-#test_layers.append(('ls-dr11-early', "Legacy Surveys DR11 early images"))
+#test_layers.append(('ls-dr11-early-north', "Legacy Surveys DR11 early images north"))
+#test_layers.append(('ls-dr11-early-v2', "Legacy Surveys DR11 early images v2"))
+test_layers.append(('dfuws', 'DragonFly Ultra-Wide Survey'))
 test_layers.append(('mdw-halpha', 'MDW H-alpha Survey'))
 
 # test_layers.append(('cfht-cosmos-cahk', "CFHT CaH+K images"))

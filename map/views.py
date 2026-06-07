@@ -338,7 +338,7 @@ def _index(req,
                 ]:
             tile_layers[tag] = [label, [def_url], maxnative, 'ls']
 
-    if settings.ENABLE_DR11 or settings.ENABLE_DR10:
+    if settings.ENABLE_DR11:
         tile_layers.update({
             'ls-dr11': ['Legacy Surveys DR11 images', [def_url], maxnative, 'ls'],
             'ls-dr11-model': ['Legacy Surveys DR11 models', [def_url], maxnative, 'ls'],
@@ -599,6 +599,7 @@ def _index(req,
         enable_dr10 = settings.ENABLE_DR10,
         enable_dr10_overlays = settings.ENABLE_DR10,
 
+        enable_dr11 = settings.ENABLE_DR11,
         enable_dr11_overlays = settings.ENABLE_DR11,
 
         enable_ibis = settings.ENABLE_IBIS,
