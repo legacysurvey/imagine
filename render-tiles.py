@@ -726,6 +726,7 @@ def main():
         layer = get_layer(opt.kind)
         for scale in range(1,8):
             B = layer.get_bricks_for_scale(scale)
+            print('Bricks for scale', scale, ':', B)
         sys.exit(0)
 
     if opt.scale:
@@ -803,7 +804,7 @@ def main():
                          'ibis-4', 'ibis-4-model', 'ibis-4-resid','ls-dr11-early-north','ls-dr11','ls-dr11-model','ls-dr11-resid',
                          'ls-dr11-south','ls-dr11-north','ls-dr11-north-model','ls-dr11-north-resid',
                          'ls-dr11-south-model','ls-dr11-south-resid',
-                         'mdw-halpha',
+                         'mdw-halpha', 'dfuws',
                          ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
@@ -983,10 +984,69 @@ def main():
 
     if opt.bricks_exist:
         from map.views import get_survey
-
+        from collections import Counter
+        from astrometry.util.util import Tan
+        
         surveyname = opt.kind
         filetype = 'image'
 
+        if surveyname == 'dfuws':
+            # create bricks file from files...
+            # read g band
+            fns = glob('data/dfuws/dfuws_v1_legacy-100sqdeg-sample/output_g/output_tiles/UWtile_*_*.fits')
+            fns.sort()
+            print(len(fns), 'files')
+            hdrvals = []
+            cols = ['NAXIS1', 'NAXIS2', 'CRPIX1', 'CRPIX2', 'CDELT1', 'CDELT2',
+                    'CRVAL1', 'CRVAL2', 'FIELDS', 'FILTER']
+            T = fits_table()
+            T.brickname = []
+            T.ra = []
+            T.dec = []
+            T.ra1 = []
+            T.ra2 = []
+            T.dec1 = []
+            T.dec2 = []
+            for fn in fns:
+                hdr = fitsio.read_header(fn)
+                # vals = []
+                # for col in cols:
+                #     vals.append(hdr[col])
+                # hdrvals.append(vals)
+
+                wcs = Tan(*[float(f) for f in
+                            [hdr['CRVAL1'], hdr['CRVAL2'], hdr['CRPIX1'], hdr['CRPIX2'],
+                             hdr['CDELT1'], 0., 0., hdr['CDELT2'], hdr['NAXIS1'], hdr['NAXIS2']]])
+                rc,dc = wcs.radec_center()
+                base = os.path.basename(fn)
+                assert(base.startswith('UWtile_'))
+                assert(base.endswith('.fits'))
+                words = base.replace('.fits', '').split('_')
+                tilename = words[1]
+
+                T.brickname.append(tilename)
+                T.ra.append(rc)
+                T.dec.append(dc)
+                w, h = hdr['NAXIS1'], hdr['NAXIS2']
+                r1,_ = wcs.pixelxy2radec(w, (h+1)/2.)
+                r2,_ = wcs.pixelxy2radec(1, (h+1)/2.)
+                _,d1 = wcs.pixelxy2radec((w+1)/2., 1.)
+                _,d2 = wcs.pixelxy2radec((w+1)/2., h)
+                T.ra1.append(r1)
+                T.ra2.append(r2)
+                T.dec1.append(d1)
+                T.dec2.append(d2)
+            T.to_np_arrays()
+            T.writeto('data/dfuws/survey-bricks.fits.gz')
+            sys.exit(0)
+            # T = fits_table()
+            # for i,col in enumerate(cols):
+            #     x = np.array([hdr[i] for hdr in hdrvals])
+            #     T.set(col.lower(), x)
+            #     print(col, Counter(x).most_common(5))
+            # T.writeto('dfuws.fits')
+            
+        
         survey = get_survey(surveyname)
         print('Survey:', type(survey), survey)
         

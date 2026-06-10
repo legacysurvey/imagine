@@ -1683,7 +1683,7 @@ class MapLayer(object):
         #print('Render into WCS: bricks', bricks)
             
         if bricks is None or len(bricks) == 0:
-            info('No bricks touching WCS')
+            info('No bricks touching WCS.  bricks:', bricks)
             return None
 
         if bands is None:
@@ -2704,6 +2704,10 @@ class DecalsInvvarLayer(DecalsLayer):
 
 class RebrickedMixin(object):
 
+    def __init__(self, *args, **kwargs):
+        self.brick_scale_offset = 0
+        super().__init__(*args, **kwargs)
+
     def get_fits_extension(self, scale, fn):
         # Original and scaled images are in ext 1.
         #return 1
@@ -2821,27 +2825,29 @@ class RebrickedMixin(object):
             return fn
         return None
 
+    def get_generic_bricks_for_scale(self, scale):
+        from astrometry.util.fits import fits_table
+        # Find generic bricks for scale...
+        afn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % (scale + self.brick_scale_offset))
+        #print('Generic brick file:', afn)
+        assert(os.path.exists(afn))
+        allbricks = fits_table(afn)
+        return allbricks
+
     def get_bricks_for_scale(self, scale):
         if scale in [0, None]:
             return self.get_bricks()
         scale = min(scale, 7)
-
         from astrometry.util.fits import fits_table
         import numpy as np
         from astrometry.libkd.spherematch import match_radec
-
         fn = os.path.join(self.basedir, 'survey-bricks-%i.fits.gz' % scale)
         #print(self, 'Brick file:', fn, 'exists?', os.path.exists(fn))
         if os.path.exists(fn):
             return fits_table(fn)
         bsmall = self.get_bricks_for_scale(scale - 1)
-        # Find generic bricks for scale...
-        afn = os.path.join(settings.DATA_DIR, 'bricks-%i.fits' % scale)
-        #print('Generic brick file:', afn)
-        assert(os.path.exists(afn))
-        allbricks = fits_table(afn)
+        allbricks = self.get_generic_bricks_for_scale(scale)
         #print('Generic bricks:', len(allbricks))
-        
         # Brick side lengths
         brickside = self.get_brick_size_for_scale(scale)
         brickside_small = self.get_brick_size_for_scale(scale-1)
@@ -2947,7 +2953,7 @@ class RebrickedMixin(object):
     def bricks_within_range(self, ra, dec, radius, scale=None):
         from astrometry.libkd.spherematch import match_radec
         import numpy as np
-        #print('bricks_within_range for scale', scale)
+        print('bricks_within_range for scale', scale)
         B = self.get_bricks_for_scale(scale)
         #brad = self.pixelsize * self.pixscale/3600. * 2**scale * np.sqrt(2.)/2. * 1.01
         brad = self.get_brick_size_for_scale(scale) * np.sqrt(2.) / 2. * 1.1
@@ -5966,6 +5972,51 @@ class ZeaLayer(MapLayer):
         #print('red range', rgb[:,:,0].min(), rgb[:,:,0].max())
         return rgb
 
+class DfuwsLayer(ReDecalsLayer):
+    def __init__(self, name, imagetype, survey):
+        super().__init__(name, imagetype, survey, bands=['g','r'])
+        #self.bricks = None
+        self.pixscale = 2.5
+        self.brick_scale_offset = 2
+
+    # For multiprocessing: re-load the brick cache (to bypass an assert on the brick sizes)
+    def __setstate__(self, state):
+        #super().__setstate__(state)
+        self.__dict__.update(state)
+        self.survey.bricks = self.survey.get_bricks()
+
+    def get_pixel_size_for_scale(self, scale):
+        #return 1440
+        return 1500
+
+    def get_brick_size_for_scale(self, scale):
+        return 1.0 * 2**scale
+
+    def get_base_filename(self, brick, band, **kwargs):
+        #print('get_base_filename:', brick, band)
+        #brick.about()
+        # data/dfuws/dfuws_v1_legacy-100sqdeg-sample/output_g/output_tiles/UWtile_03920_g.fits
+        fn = os.path.join(self.basedir, 'dfuws_v1_legacy-100sqdeg-sample', 'output_'+band,
+                          'output_tiles',
+                          'UWtile_%s_%s.fits' % (brick.brickname, band))
+        #print('-->', fn)
+        return fn
+
+    def get_fits_extension(self, scale, fn):
+        if scale == 0:
+            return 0
+        return 1
+
+    def get_rgb(self, imgs, bands, **kwargs):
+        #return dr2_rgb(imgs, bands, **self.rgbkwargs)
+        #import numpy as np
+        #print('get_rgb: bands', bands)
+        #for band,img in zip(bands,imgs):
+        #    print('  ', band, ': pcts', np.percentile(img.ravel(), [0,1,25,50,75,99,100]))
+        rgb = sdss_rgb(imgs, bands, scales=dict(r=(0,3.4/10000.), g=(2,6.0/10000.)), m=0.03)
+        rgb[:,:,1] = (rgb[:,:,0] + rgb[:,:,2])/2.
+        return rgb
+
 class ActDr6Layer(MapLayer):
     def __init__(self, name, basedir, band):#path):
         super().__init__(name)
@@ -6740,6 +6791,12 @@ def get_survey(name):
 
     elif name == 'mdw-halpha':
         survey = LegacySurveyData(survey_dir=os.path.join(dirnm, 'mdw_0145swap_level11_mdw656'))
+
+    elif name == 'dfuws':
+        survey = LegacySurveyData(survey_dir=os.path.join(dirnm, 'dfuws_v1_legacy-100sqdeg-sample'))
+        survey.bricksize = 1.0
+        # cache to avoid asserting on brick size
+        survey.bricks = survey.get_bricks()
 
     if survey is None and not os.path.exists(dirnm):
         return None
@@ -9003,6 +9060,12 @@ def get_layer(name, default=None):
         layers[name] = image
         layer = image
 
+    elif name == 'dfuws':
+        survey = get_survey(name)
+        image = DfuwsLayer(name, 'image', survey)
+        layers[name] = image
+        layer = image
+
     if layer is None:
         # Try generic rebricked
         #print('get_layer:', name, '-- generic')
@@ -9694,8 +9757,11 @@ if __name__ == '__main__':
     #r = c.get('/file-test')
     debug = print
     #r = c.get('/mdw-halpha/1/14/11823/8023.jpg')
-    r = c.get('/')
-    
+    #r = c.get('/')
+    #r = c.get('/dfuws/1/14/15769/7599.jpg')
+    #r = c.get('/dfuws/1/10/976/471.jpg')
+    #r = c.get('/dfuws/1/9/488/235.jpg')
+    r = c.get('/dfuws/1/6/60/29.jpg')
     # riz RGB jpeg for CHIME/FRB
     # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
     # import fitsio

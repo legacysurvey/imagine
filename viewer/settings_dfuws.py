@@ -46,9 +46,10 @@ ENABLE_DR5  = False
 
 ENABLE_DFUWS = True
 
-# public version
 ENABLE_SCIENCE = True
 
 ENABLE_CUTOUTS = True
 ENABLE_SPECTRA = False
 ENABLE_DESI_TARGETS = False
+
+ENABLE_DEV = True
