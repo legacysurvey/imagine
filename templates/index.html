@@ -77,6 +77,18 @@ var aws_unwise_url = 'https://s3.us-west-2.amazonaws.com/{id}.legacysurvey.org/{
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
 //console.log('window.location is', window.location);
+  {% if science %}
+  var brightness_val = 1.0;
+  var db = '{{ default_brightness }}';
+  if (db.length) {
+      brightness_val = parseFloat(db);
+  }
+  var contrast_val = 1.0;
+  var dc = '{{ default_contrast }}';
+  if (dc.length) {
+      contrast_val = parseFloat(dc);
+  }
+{% endif %}
 
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
@@ -108,6 +120,15 @@ if ('zoom' in qstr) {
 }
 
 var sparseMode = ('sparse' in qstr);
+
+{% if science %}
+  if ('brightness' in qstr) {
+      brightness_val = parseFloat(qstr['brightness']);
+  }
+  if ('contrast' in qstr) {
+      contrast_val = parseFloat(qstr['contrast']);
+  }
+{% endif %}
 
 
 var TileWatcher = L.Evented.extend({
@@ -2065,14 +2086,14 @@ disableMouseEventPropagation(objquery);
 
 {% if science %}
 // Brightness & contrast sliders
-function addCSSFilterSlider(filterType) {
+function addCSSFilterSlider(filterType, initVal) {
     let sliderControl = L.control({'position': 'bottomleft'})
     sliderControl.onAdd = function (map) {
         this._div = L.DomUtil.create('div', filterType);
         // Add input
-        this._div.innerHTML = '<input type="range" min="0" max="10" value="1" step="0.1" class="slider" id="' + filterType + '">';
+        this._div.innerHTML = '<input type="range" min="0" max="10" value="' + initVal + '" step="0.1" class="slider" id="' + filterType + '">';
         // Add status text
-        this._div.innerHTML += '<span id="' + filterType + '-status">' + filterType.charAt(0).toUpperCase() + filterType.slice(1) + ': 1</span>';
+        this._div.innerHTML += '<span id="' + filterType + '-status">' + filterType.charAt(0).toUpperCase() + filterType.slice(1) + ': ' + initVal + '</span>';
         return this._div;
     }
     sliderControl.addTo(map);
@@ -2093,10 +2114,11 @@ function addCSSFilterSlider(filterType) {
         statusElement.innerHTML = this.id.charAt(0).toUpperCase() + this.id.slice(1) + ': ' + this.value;
     }
     disableMouseEventPropagation(sliderControl);
+    slider.oninput();
 }
 if (!sparseMode) {
-  addCSSFilterSlider('brightness');
-  addCSSFilterSlider('contrast');
+  addCSSFilterSlider('brightness', brightness_val);
+  addCSSFilterSlider('contrast', contrast_val);
 }
 {% endif %}
 

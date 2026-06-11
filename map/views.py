@@ -630,6 +630,8 @@ def _index(req,
         maxNativeZoom = settings.MAX_NATIVE_ZOOM,
         discuss_cutout_url=settings.DISCUSS_CUTOUT_URL,
         append_args = '',
+        default_contrast = 1.,
+        default_brightness = 1.,
     )
 
     for k in kwargs.keys():
