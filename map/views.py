@@ -233,6 +233,10 @@ def is_unions(req):
     host = req.META.get('HTTP_HOST', None)
     return (host == 'unions.legacysurvey.org') or (host == 'cloud.legacysurvey.org')
 
+def is_dfuws(req):
+    host = req.META.get('HTTP_HOST', None)
+    return (host == 'dfuws.legacysurvey.org')
+
 def lookup_any_targetid(tid):
     from map.cats import lookup_targetid
     if settings.ENABLE_DESI_DATA:
@@ -260,6 +264,12 @@ def index(req, **kwargs):
         return m33(req)
     if is_unions(req):
         return unions(req)
+    if is_dfuws(req):
+        kwargs.update(default_contrast=1.1,
+                      default_brightness=4.0,
+                      default_radec=(20.7415, 16.9267,),
+                      default_zoom=10,
+                      default_layer='dfuws')
     return _index(req, **kwargs)
 
 def _index(req,
