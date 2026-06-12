@@ -2740,7 +2740,18 @@ class RebrickedMixin(object):
         return fn
 
     def get_scaled_wcs(self, brick, band, scale):
-        pass
+        from astrometry.util.util import Tan
+        if scale is None:
+            scale = 0
+        size = self.get_pixel_size_for_scale(scale)
+        pixscale = self.pixscale * 2**scale
+        cd = pixscale / 3600.
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+    #def get_scaled_wcs(self, brick, band, scale):
+    #    pass
 
     def get_dependencies(self, brick, band, scale):
         if scale == 0:
@@ -2967,10 +2978,12 @@ class RebrickedMixin(object):
         import numpy as np
         print('bricks_within_range for scale', scale)
         B = self.get_bricks_for_scale(scale)
-        #brad = self.pixelsize * self.pixscale/3600. * 2**scale * np.sqrt(2.)/2. * 1.01
         brad = self.get_brick_size_for_scale(scale) * np.sqrt(2.) / 2. * 1.1
+        print('brick radius:', brad, 'search radius', radius)
+        print('search center:', ra, dec)
         I,J,d = match_radec(ra, dec, B.ra, B.dec, radius + brad)
         J = np.sort(J)
+        print('Found', len(J), 'bricks in range')
         return B[J]
         
 class DecapsLayer(DecalsLayer):
@@ -3215,18 +3228,6 @@ class ReSdssLayer(RebrickedMixin, SdssLayer):
         return wcs
 
 class ReDecalsLayer(RebrickedMixin, DecalsLayer):
-
-    def get_scaled_wcs(self, brick, band, scale):
-        from astrometry.util.util import Tan
-        if scale is None:
-            scale = 0
-        size = self.get_pixel_size_for_scale(scale)
-        pixscale = self.pixscale * 2**scale
-        cd = pixscale / 3600.
-        crpix = size/2. + 0.5
-        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
-                  float(size), float(size))
-        return wcs
 
     def get_pixel_size_for_scale(self, scale):
         # Work around issue where the largest-scale bricks don't quite
@@ -4519,76 +4520,121 @@ class DesLayer(ReDecalsLayer):
         return HttpResponse('\n'.join(html))
 
     
-class PS1Layer(MapLayer):
+class PS1Layer(ReDecalsLayer):
     def __init__(self, name):
-        super(PS1Layer, self).__init__(name, nativescale=14, maxscale=6)
+        survey = LegacySurveyData('data/ps1')
+        super().__init__(name, 'image', survey, bands='gri')
         self.pixscale = 0.25
         self.bricks = None
         self.rgbkwargs = dict(mnmx=(-1,100.), arcsinh=1.)
+        self.bricktree = None
+
+    def has_cutouts(self):
+        return False
+
+    def has_invvar(self):
+        return False
 
     def get_bands(self):
         return ['g','r','i']
+
+    # use kdtree:
+    # startree -i data/ps1skycells-sub2.fits -o data/ps1/ps1skycells.kd.fits -t d -d d -P -k
+    def bricks_within_range(self, ra, dec, radius, scale=None):
+        if scale is not None and scale >= 1:
+            return super().bricks_within_range(ra, dec, radius, scale=scale)
+        if self.bricktree is None:
+            from astrometry.libkd.spherematch import tree_open
+            fn = os.path.join(self.basedir, 'ps1skycells.kd.fits')
+            self.bricktree = tree_open(fn, 'stars')
+        from astrometry.libkd.spherematch import tree_search_radec
+        I = tree_search_radec(self.bricktree, ra, dec, radius)
+        B = self.get_bricks()
+        return B[I]
 
     def get_bricks(self):
         if self.bricks is not None:
             return self.bricks
         from astrometry.util.fits import fits_table
         basedir = settings.DATA_DIR
-        self.bricks = fits_table(os.path.join(basedir, 'ps1skycells-sub.fits'))
-        print('Read', len(self.bricks), 'bricks (ps1 skycells)')
-        self.bricks.cut(self.bricks.filter == 'r')
-        print('Cut to', len(self.bricks), 'r-band bricks')
+        self.bricks = fits_table(os.path.join(basedir, 'ps1skycells-sub2.fits'))
+        print('Read', len(self.bricks), '"bricks" (ps1 skycells)')
+        #self.bricks.cut(self.bricks.filter == 'r')
+        #print('Cut to', len(self.bricks), 'r-band bricks')
         self.bricks.ra += (360. * (self.bricks.ra < 0.))
         self.bricks.ra += (-360. * (self.bricks.ra > 360.))
         # ROUGHLY...
-        self.bricks.dec1 = self.bricks.dec - 0.2
-        self.bricks.dec2 = self.bricks.dec + 0.2
+        halfsize = 6270 * 0.25 / 3600. / 2
+        self.bricks.dec1 = self.bricks.dec - halfsize
+        self.bricks.dec2 = self.bricks.dec + halfsize
         import numpy as np
         cosdec = np.cos(np.deg2rad(self.bricks.dec))
-        self.bricks.ra1 = self.bricks.ra - 0.2 / cosdec
-        self.bricks.ra2 = self.bricks.ra + 0.2 / cosdec
+        self.bricks.ra1 = self.bricks.ra - halfsize / cosdec
+        self.bricks.ra2 = self.bricks.ra + halfsize / cosdec
         self.bricks.brickname = np.array(['%04i.%03i' % (c,s) for c,s in zip(self.bricks.projcell, self.bricks.subcell)])
         #self.bricks.writeto('/tmp/ps1.fits')
         return self.bricks
 
-    def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
-        import numpy as np
-        bricks = self.get_bricks()
-        if rahi < ralo:
-            I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
-                                          bricks.ra1 <= rahi) *
-                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-        else:
-            I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
-                            (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-        if len(I) == 0:
-            return None
-        return bricks[I]
+    def get_brick_size_for_scale(self, scale):
+        if scale is None:
+            scale = 0
+        if scale == 0:
+            # approximately....
+            return 6270 * 0.25 / 3600.
+        return 0.25 * 2**scale
 
-    def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
+    # The base scale is 0.25"/pix
+    def get_pixel_size_for_scale(self, scale):
+        if scale == 0:
+            # varies by tile, but approximately...
+            return 6270
+        return 3800
+
+    # def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
+    #     import numpy as np
+    #     bricks = self.get_bricks()
+    #     if rahi < ralo:
+    #         I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
+    #                                       bricks.ra1 <= rahi) *
+    #                         (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+    #     else:
+    #         I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
+    #                         (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
+    #     if len(I) == 0:
+    #         return None
+    #     return bricks[I]
+
+    # def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
+    #     brickname = brick.brickname
+    #     cell = brickname[:4]
+    #     fn = os.path.join(self.basedir, 'skycells', cell,
+    #                       'ps1-%s-%s.fits' % (brickname.replace('.','-'), band))
+    #     if scale == 0:
+    #         return fn
+    #     fnargs = dict(band=band, brickname=brickname)
+    #     def read_base_wcs(sourcefn, hdu, hdr=None, W=None, H=None, fitsfile=None):
+    #         #print('read_base_wcs() for', sourcefn)
+    #         return self.read_wcs(brick, band, 0)
+    #     def read_base_image(sourcefn):
+    #         #print('read_base_image() for', sourcefn)
+    #         return self.read_image(brick, band, 0, None, header=True)
+    #     #print('calling get_scaled: scale', scale)
+    #     fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn,
+    #                     read_base_wcs=read_base_wcs, read_base_image=read_base_image)
+    #     #print('get_scaled: fn', fn)
+    #     return fn
+
+    def get_base_filename(self, brick, band, tempfiles=None, invvar=False, maskbits=False):
         brickname = brick.brickname
         cell = brickname[:4]
         fn = os.path.join(self.basedir, 'skycells', cell,
                           'ps1-%s-%s.fits' % (brickname.replace('.','-'), band))
-        if scale == 0:
-            return fn
-        fnargs = dict(band=band, brickname=brickname)
-        def read_base_wcs(sourcefn, hdu, hdr=None, W=None, H=None, fitsfile=None):
-            #print('read_base_wcs() for', sourcefn)
-            return self.read_wcs(brick, band, 0)
-        def read_base_image(sourcefn):
-            #print('read_base_image() for', sourcefn)
-            return self.read_image(brick, band, 0, None, header=True)
-        #print('calling get_scaled: scale', scale)
-        fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn,
-                        read_base_wcs=read_base_wcs, read_base_image=read_base_image)
-        #print('get_scaled: fn', fn)
         return fn
 
     def read_image(self, brick, band, scale, slc, header=False, fn=None):
         #print('read_image for', brickname, 'band', band, 'scale', scale)
-        #if scale > 0:
-        #    return super(PS1Layer, self).read_image(brickname, band, scale, slc)
+        if scale > 0:
+            return super().read_image(brick, band, scale, slc, fn=fn)
 
         # HDU = 1
         import fitsio
@@ -4673,8 +4719,8 @@ class PS1Layer(MapLayer):
     PC002002=                   1.
     '''
     def read_wcs(self, brick, band, scale, fn=None):
-        #if scale > 0:
-        #    return super(PS1Layer, self).read_wcs(brickname, band, scale)
+        if scale > 0:
+            return super().read_wcs(brick, band, scale, fn=fn)
         #print('read_wcs for', brickname, 'band', band, 'scale', scale)
 
         from map.coadds import read_tan_wcs
@@ -4710,15 +4756,11 @@ class PS1Layer(MapLayer):
     
     def get_scaled_pattern(self):
         return os.path.join(self.scaleddir,
-            '%(scale)i%(band)s', '%(brickname).4s',
+            '%(scale)i%(band)s', '%(brickname).3s',
             'ps1' + '-%(brickname)s-%(band)s.fits')
 
     def get_rgb(self, imgs, bands, **kwargs):
-        #return dr2_rgb(imgs, bands, **self.rgbkwargs)
         return sdss_rgb(imgs, bands)
-
-    #def get_rgb(self, imgs, bands, **kwargs):
-    #    return sdss_rgb(imgs, bands)
 
     def populate_fits_cutout_header(self, hdr, bands):
         hdr['SURVEY'] = 'PS1'
@@ -9773,8 +9815,12 @@ if __name__ == '__main__':
     #r = c.get('/dfuws/1/14/15769/7599.jpg')
     #r = c.get('/dfuws/1/10/976/471.jpg')
     #r = c.get('/dfuws/1/9/488/235.jpg')
-    r = c.get('/dfuws/1/6/60/29.jpg')
-    # riz RGB jpeg for CHIME/FRB
+    #r = c.get('/dfuws/1/6/60/29.jpg')
+    #r = c.get('/ps1/1/14/16382/8191.jpg')
+    #r = c.get('/ps1/1/13/8191/4095.jpg')
+    r = c.get('/ps1/1/12/4095/2047.jpg')
+
+    #a riz RGB jpeg for CHIME/FRB
     # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
     # import fitsio
     # im = fitsio.read('cutout.fits')

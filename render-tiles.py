@@ -731,31 +731,31 @@ def main():
 
     if opt.scale:
 
-        if opt.kind == 'ps1':
-            from map.views import get_layer
-
-            fns = glob('data/ps1/skycells/*/ps1-*.fits')
-            fns.sort()
-            #ps1-1561-021-r.fits
-            if len(opt.zoom) == 0:
-                opt.zoom = [1,2,3,4,5,6,7]
-            print(len(fns), 'PS1 image files')
-            layer = get_layer(opt.kind)
-            B = layer.get_bricks()
-            print(len(B), 'skycells total')
-            B.cut((B.ra  >= opt.minra ) * (B.ra  <= opt.maxra ) *
-                  (B.dec >= opt.mindec) * (B.dec <= opt.maxdec))
-            print(len(B), 'skycells in RA,Dec box')
-            for i,brick in enumerate(B):
-                for band in opt.bands:
-                    fn0 = layer.get_filename(brick, band, 0)
-                    print('PS1 image:', fn0)
-                    if not os.path.exists(fn0):
-                        continue
-                    for scale in opt.zoom:
-                        fn = layer.get_filename(brick, band, scale)
-                        layer.create_scaled_image(brick, band, scale, fn)
-            sys.exit(0)
+        # if opt.kind == 'ps1':
+        #     from map.views import get_layer
+        # 
+        #     fns = glob('data/ps1/skycells/*/ps1-*.fits')
+        #     fns.sort()
+        #     #ps1-1561-021-r.fits
+        #     if len(opt.zoom) == 0:
+        #         opt.zoom = [1,2,3,4,5,6,7]
+        #     print(len(fns), 'PS1 image files')
+        #     layer = get_layer(opt.kind)
+        #     B = layer.get_bricks()
+        #     print(len(B), 'skycells total')
+        #     B.cut((B.ra  >= opt.minra ) * (B.ra  <= opt.maxra ) *
+        #           (B.dec >= opt.mindec) * (B.dec <= opt.maxdec))
+        #     print(len(B), 'skycells in RA,Dec box')
+        #     for i,brick in enumerate(B):
+        #         for band in opt.bands:
+        #             fn0 = layer.get_filename(brick, band, 0)
+        #             print('PS1 image:', fn0)
+        #             if not os.path.exists(fn0):
+        #                 continue
+        #             for scale in opt.zoom:
+        #                 fn = layer.get_filename(brick, band, scale)
+        #                 layer.create_scaled_image(brick, band, scale, fn)
+        #     sys.exit(0)
 
 
         # Rebricked
@@ -804,7 +804,7 @@ def main():
                          'ibis-4', 'ibis-4-model', 'ibis-4-resid','ls-dr11-early-north','ls-dr11','ls-dr11-model','ls-dr11-resid',
                          'ls-dr11-south','ls-dr11-north','ls-dr11-north-model','ls-dr11-north-resid',
                          'ls-dr11-south-model','ls-dr11-south-resid',
-                         'mdw-halpha', 'dfuws',
+                         'mdw-halpha', 'dfuws', 'ps1',
                          ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
