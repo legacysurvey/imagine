@@ -397,6 +397,7 @@ def _layer_get_filename(args):
             print('Need to re-create', fn, 'due to modified dependencies')
             os.remove(fn)
 
+    print('Getting scale', scale, 'brick', brick.brickname, 'band', band)
     fn = layer.get_filename(brick, band, scale)
     print(fn)
 
@@ -500,6 +501,16 @@ def main():
             opt.maxdec = 90
         if opt.mindec is None:
             opt.mindec = -25
+
+    if opt.kind in ['ps1']:
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = -45
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
 
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',

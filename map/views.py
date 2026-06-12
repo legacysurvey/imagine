@@ -1377,7 +1377,7 @@ class MapLayer(object):
             r,d2 = wcs.pixelxy2radec(W/2, H)[-2:]
             dlo = min(d1, d2)
             dhi = max(d1, d2)
-            print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
+            #print('RA,Dec bounds of WCS:', rlo,rhi,dlo,dhi)
             return self.bricks_touching_radec_box(rlo, rhi, dlo, dhi, scale=scale)
 
         from astrometry.util.miscutils import polygons_intersect
@@ -1393,9 +1393,11 @@ class MapLayer(object):
             plt.clf()
             plt.plot(xy[:,0], xy[:,1], 'k-')
 
+        #print('Finding brick overlap with WCS', wcs)
         #print('Checking', len(B), 'possible bricks')
         for i,brick in enumerate(B):
             bwcs = self.get_scaled_wcs(brick, None, scale)
+            #print('Brick WCS:', bwcs)
             bh,bw = bwcs.shape
             # walk the boundary
             xl,xm,xh = 0.5, (bw+1)/2., bw+0.5
@@ -1695,7 +1697,7 @@ class MapLayer(object):
         #print('Render into WCS: bricks', bricks)
             
         if bricks is None or len(bricks) == 0:
-            info('No bricks touching WCS.  bricks:', bricks)
+            info('No bricks touching WCS.  bricks:', bricks, 'general_wcs:', general_wcs)
             return None
 
         if bands is None:
@@ -4541,24 +4543,32 @@ class PS1Layer(ReDecalsLayer):
     # use kdtree:
     # startree -i data/ps1skycells-sub2.fits -o data/ps1/ps1skycells.kd.fits -t d -d d -P -k
     def bricks_within_range(self, ra, dec, radius, scale=None):
+        #print('PS1 bricks_within_range: scale', scale)
         if scale is not None and scale >= 1:
             return super().bricks_within_range(ra, dec, radius, scale=scale)
         if self.bricktree is None:
             from astrometry.libkd.spherematch import tree_open
             fn = os.path.join(self.basedir, 'ps1skycells.kd.fits')
             self.bricktree = tree_open(fn, 'stars')
+            #print('Opened bricktree:', self.bricktree)
         from astrometry.libkd.spherematch import tree_search_radec
         I = tree_search_radec(self.bricktree, ra, dec, radius)
         B = self.get_bricks()
+        #print('PS1 bricktree:', len(I), 'within range')
         return B[I]
+        #rtn = B[I]
+        #print('PS1 bricktree:', len(I), 'within range; returning', rtn)
+        #return rtn
 
     def get_bricks(self):
         if self.bricks is not None:
             return self.bricks
         from astrometry.util.fits import fits_table
         basedir = settings.DATA_DIR
-        self.bricks = fits_table(os.path.join(basedir, 'ps1skycells-sub2.fits'))
-        print('Read', len(self.bricks), '"bricks" (ps1 skycells)')
+        #self.bricks = fits_table(os.path.join(basedir, 'ps1skycells-sub2.fits'))
+        # We permuted the kdtree, so much read the bricks from here!!
+        self.bricks = fits_table(os.path.join(self.basedir, 'ps1skycells.kd.fits'), hdu=6)
+        #print('Read', len(self.bricks), '"bricks" (ps1 skycells)')
         #self.bricks.cut(self.bricks.filter == 'r')
         #print('Cut to', len(self.bricks), 'r-band bricks')
         self.bricks.ra += (360. * (self.bricks.ra < 0.))
@@ -4572,7 +4582,6 @@ class PS1Layer(ReDecalsLayer):
         self.bricks.ra1 = self.bricks.ra - halfsize / cosdec
         self.bricks.ra2 = self.bricks.ra + halfsize / cosdec
         self.bricks.brickname = np.array(['%04i.%03i' % (c,s) for c,s in zip(self.bricks.projcell, self.bricks.subcell)])
-        #self.bricks.writeto('/tmp/ps1.fits')
         return self.bricks
 
     def get_brick_size_for_scale(self, scale):
@@ -4589,40 +4598,6 @@ class PS1Layer(ReDecalsLayer):
             # varies by tile, but approximately...
             return 6270
         return 3800
-
-    # def bricks_touching_radec_box(self, ralo, rahi, declo, dechi, scale=None):
-    #     import numpy as np
-    #     bricks = self.get_bricks()
-    #     if rahi < ralo:
-    #         I, = np.nonzero(np.logical_or(bricks.ra2 >= ralo,
-    #                                       bricks.ra1 <= rahi) *
-    #                         (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-    #     else:
-    #         I, = np.nonzero((bricks.ra1  <= rahi ) * (bricks.ra2  >= ralo) *
-    #                         (bricks.dec1 <= dechi) * (bricks.dec2 >= declo))
-    #     if len(I) == 0:
-    #         return None
-    #     return bricks[I]
-
-    # def get_filename(self, brick, band, scale, tempfiles=None, invvar=False, maskbits=False):
-    #     brickname = brick.brickname
-    #     cell = brickname[:4]
-    #     fn = os.path.join(self.basedir, 'skycells', cell,
-    #                       'ps1-%s-%s.fits' % (brickname.replace('.','-'), band))
-    #     if scale == 0:
-    #         return fn
-    #     fnargs = dict(band=band, brickname=brickname)
-    #     def read_base_wcs(sourcefn, hdu, hdr=None, W=None, H=None, fitsfile=None):
-    #         #print('read_base_wcs() for', sourcefn)
-    #         return self.read_wcs(brick, band, 0)
-    #     def read_base_image(sourcefn):
-    #         #print('read_base_image() for', sourcefn)
-    #         return self.read_image(brick, band, 0, None, header=True)
-    #     #print('calling get_scaled: scale', scale)
-    #     fn = get_scaled(self.get_scaled_pattern(), fnargs, scale, fn,
-    #                     read_base_wcs=read_base_wcs, read_base_image=read_base_image)
-    #     #print('get_scaled: fn', fn)
-    #     return fn
 
     def get_base_filename(self, brick, band, tempfiles=None, invvar=False, maskbits=False):
         brickname = brick.brickname
