@@ -501,7 +501,9 @@ def _index(req,
         tile_layers['pandas'] = ['PANDAS', [def_url], maxnative, 'The Pan-Andromeda Archaeological Survey']
 
     if settings.ENABLE_PS1:
-        tile_layers['ps1'] = ['Pan-STARRS1', [[8, maxZoom, tileurl, subs], prod_backstop],
+        #tile_layers['ps1'] = ['Pan-STARRS1', [[7, maxZoom, tileurl, subs], prod_backstop],
+        #                      maxnative, 'ps1']
+        tile_layers['ps1'] = ['Pan-STARRS1', [[1, maxZoom, tileurl, subs]],
                               maxnative, 'ps1']
 
     # 2MASS...
@@ -4543,6 +4545,7 @@ class PS1Layer(ReDecalsLayer):
     # use kdtree:
     # startree -i data/ps1skycells-sub2.fits -o data/ps1/ps1skycells.kd.fits -t d -d d -P -k
     def bricks_within_range(self, ra, dec, radius, scale=None):
+        import numpy as np
         #print('PS1 bricks_within_range: scale', scale)
         if scale is not None and scale >= 1:
             return super().bricks_within_range(ra, dec, radius, scale=scale)
@@ -4552,37 +4555,46 @@ class PS1Layer(ReDecalsLayer):
             self.bricktree = tree_open(fn, 'stars')
             #print('Opened bricktree:', self.bricktree)
         from astrometry.libkd.spherematch import tree_search_radec
-        I = tree_search_radec(self.bricktree, ra, dec, radius)
-        B = self.get_bricks()
+        brickrad = self.get_brick_size_for_scale(0) * np.sqrt(2.) / 2.
+        #print('Searching bricktree: ra,dec (%.4f, %.4f), radius %.3f' % (ra, dec, radius))
+        I = tree_search_radec(self.bricktree, ra, dec, radius + brickrad)
+        #print(len(I), 'bricks in spherematch')
+        if self.bricks is not None:
+            B = self.get_bricks()
+            return B[I]
+        else:
+            return self.get_bricks(rows=I)
         #print('PS1 bricktree:', len(I), 'within range')
-        return B[I]
         #rtn = B[I]
         #print('PS1 bricktree:', len(I), 'within range; returning', rtn)
         #return rtn
 
-    def get_bricks(self):
+    def get_bricks(self, rows=None):
         if self.bricks is not None:
             return self.bricks
         from astrometry.util.fits import fits_table
         basedir = settings.DATA_DIR
         #self.bricks = fits_table(os.path.join(basedir, 'ps1skycells-sub2.fits'))
         # We permuted the kdtree, so much read the bricks from here!!
-        self.bricks = fits_table(os.path.join(self.basedir, 'ps1skycells.kd.fits'), hdu=6)
-        #print('Read', len(self.bricks), '"bricks" (ps1 skycells)')
-        #self.bricks.cut(self.bricks.filter == 'r')
-        #print('Cut to', len(self.bricks), 'r-band bricks')
-        self.bricks.ra += (360. * (self.bricks.ra < 0.))
-        self.bricks.ra += (-360. * (self.bricks.ra > 360.))
+        bricks = fits_table(os.path.join(self.basedir, 'ps1skycells.kd.fits'), hdu=6,
+                                 rows=rows)
+        #print('Read', len(bricks), '"bricks" (ps1 skycells)')
+        #bricks.cut(bricks.filter == 'r')
+        #print('Cut to', len(bricks), 'r-band bricks')
+        bricks.ra += (360. * (bricks.ra < 0.))
+        bricks.ra += (-360. * (bricks.ra > 360.))
         # ROUGHLY...
         halfsize = 6270 * 0.25 / 3600. / 2
-        self.bricks.dec1 = self.bricks.dec - halfsize
-        self.bricks.dec2 = self.bricks.dec + halfsize
+        bricks.dec1 = bricks.dec - halfsize
+        bricks.dec2 = bricks.dec + halfsize
         import numpy as np
-        cosdec = np.cos(np.deg2rad(self.bricks.dec))
-        self.bricks.ra1 = self.bricks.ra - halfsize / cosdec
-        self.bricks.ra2 = self.bricks.ra + halfsize / cosdec
-        self.bricks.brickname = np.array(['%04i.%03i' % (c,s) for c,s in zip(self.bricks.projcell, self.bricks.subcell)])
-        return self.bricks
+        cosdec = np.cos(np.deg2rad(bricks.dec))
+        bricks.ra1 = bricks.ra - halfsize / cosdec
+        bricks.ra2 = bricks.ra + halfsize / cosdec
+        bricks.brickname = np.array(['%04i.%03i' % (c,s) for c,s in zip(bricks.projcell, bricks.subcell)])
+        if rows is None:
+            self.bricks = bricks
+        return bricks
 
     def get_brick_size_for_scale(self, scale):
         if scale is None:
@@ -4740,7 +4752,25 @@ class PS1Layer(ReDecalsLayer):
     def populate_fits_cutout_header(self, hdr, bands):
         hdr['SURVEY'] = 'PS1'
 
+class BuggyPS1Layer(PS1Layer):
+    def bricks_within_range(self, ra, dec, radius, scale=None):
+        import numpy as np
+        if scale is not None and scale >= 1:
+            return super().bricks_within_range(ra, dec, radius, scale=scale)
+        if self.bricktree is None:
+            from astrometry.libkd.spherematch import tree_open
+            fn = os.path.join(self.basedir, 'ps1skycells.kd.fits')
+            self.bricktree = tree_open(fn, 'stars')
+            #print('Opened bricktree:', self.bricktree)
+        from astrometry.libkd.spherematch import tree_search_radec
+        I = tree_search_radec(self.bricktree, ra, dec, radius)
+        if self.bricks is not None:
+            B = self.get_bricks()
+            return B[I]
+        else:
+            return self.get_bricks(rows=I)
 
+        
 class MDWHalphaLayer(ReDecalsLayer):
     def __init__(self, name, imagetype, survey):
         super().__init__(name, imagetype, survey, bands=['MDW656'])
@@ -9793,8 +9823,19 @@ if __name__ == '__main__':
     #r = c.get('/dfuws/1/6/60/29.jpg')
     #r = c.get('/ps1/1/14/16382/8191.jpg')
     #r = c.get('/ps1/1/13/8191/4095.jpg')
-    r = c.get('/ps1/1/12/4095/2047.jpg')
-
+    #r = c.get('/ps1/1/12/4095/2047.jpg')
+    # dec=-29
+    #r = c.get('/ps1/1/13/1568/4850.jpg')
+    #r = c.get('/ps1/1/13/8184/2777.jpg')
+    #r = c.get('/ps1/1/12/4094/1388.jpg')
+    #r = c.get('/ps1/1/12/4087/1389.jpg')
+    #r = c.get('/ps1/1/11/2047/650.jpg')
+    #r = c.get('/ps1/1/11/2046/1170.jpg')
+    #r = c.get('/ps1/1/10/1023/600.jpg')
+    #r = c.get('/ps1/1/9/511/300.jpg')
+    #r = c.get('/ps1/1/8/255/150.jpg')
+    #r = c.get('/ps1/1/7/127/75.jpg')
+    r = c.get('/ps1/1/6/63/30.jpg')
     #a riz RGB jpeg for CHIME/FRB
     # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
     # import fitsio

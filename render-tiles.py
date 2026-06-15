@@ -253,6 +253,9 @@ def top_levels(mp, opt):
     if 'act-dr6' in opt.kind:
         basescale = 6
 
+    if 'ps1' in opt.kind:
+        basescale = 6
+        
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                        '%(zoom)i', '%(x)i', '%(y)i.jpg')
     patdata = dict(ver=ver)
@@ -884,11 +887,25 @@ def main():
                         has[band] = np.ones(len(B), bool)
 
                 # Run one scale at a time
+                # args = []
+                # for ibrick,brick in enumerate(B):
+                #     for band in bands:
+                #         if has[band][ibrick]:
+                #             args.append((layer, brick, band, scale, opt.ignore, opt.deps))
+                # print(len(args), 'bricks for scale', scale)
+                # mp.map(_layer_get_filename, args)
                 args = []
+                pat = layer.get_scaled_pattern()
+                
                 for ibrick,brick in enumerate(B):
                     for band in bands:
                         if has[band][ibrick]:
-                            args.append((layer, brick, band, scale, opt.ignore, opt.deps))
+                            fnargs = dict(band=band, brickname=brick.brickname, scale=scale)
+                            fn = pat % fnargs
+                            if os.path.exists(fn):
+                                print('Exists:', fn)
+                            else:
+                                args.append((layer, brick, band, scale, opt.ignore, opt.deps))
                 print(len(args), 'bricks for scale', scale)
                 mp.map(_layer_get_filename, args)
 
