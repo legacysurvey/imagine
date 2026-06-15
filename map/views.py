@@ -2207,8 +2207,11 @@ class MapLayer(object):
         native_pixscale = self.pixscale
         native_zoom = self.nativescale
 
-        ra  = float(req.GET['ra'])
-        dec = float(req.GET['dec'])
+        try:
+            ra  = float(req.GET['ra'])
+            dec = float(req.GET['dec'])
+        except:
+            return HttpResponse('Need ra,dec keywords', status=400)
         pixscale = float(req.GET.get('pixscale', self.pixscale))
         maxsize = 3000
         size   = min(int(req.GET.get('size',    256)), maxsize)
@@ -7238,7 +7241,7 @@ def exposures_common(req, tgz, copsf):
             datadir = 'data_%.4f_%.4f' % (ra, dec)
             subdir = os.path.join(tempdir.name, datadir)
             os.mkdir(subdir)
-            print('Writing to', subdir)
+            #print('Writing to', subdir)
             imgdir = os.path.join(subdir, 'images')
             os.mkdir(imgdir)
             psfdir = os.path.join(subdir, 'calib', 'psfex')
@@ -7255,11 +7258,11 @@ def exposures_common(req, tgz, copsf):
             sumpsf = dict([(b,0.) for b in bands])
             sumiv  = dict([(b,0.) for b in bands])
             CCDs = CCDs[np.array([f in bands for f in CCDs.filter])]
-            print('After cutting on requested bands', bands, ':', len(CCDs))
+            #print('After cutting on requested bands', bands, ':', len(CCDs))
 
         for iccd,ccd in enumerate(CCDs):
             im = survey.get_image_object(ccd)
-            print('Got', im)
+            #print('Got', im)
             imwcs = im.get_wcs()
             ok,cx,cy = imwcs.radec2pixelxy([east,  west,  west,  east ],
                                            [north, north, south, south])
