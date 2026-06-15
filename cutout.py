@@ -18,6 +18,7 @@ def cutout_main():
     parser.add_argument('--size', type=int, default=CUTOUT_SIZE_DEFAULT, help='Pixel size of output, default %(default)d')
     parser.add_argument('--width', type=int, default=None, help='Pixel width of output')
     parser.add_argument('--height', type=int, default=None, help='Pixel height of output')
+    parser.add_argument('--rotate', type=float, default=0., help='Rotation angle in degrees')
     parser.add_argument('--bands', default=None, help='Comma-separated bands to select for output eg "g,r,z"; default depends on the layer')
     parser.add_argument('--layer', default=CUTOUT_LAYER_DEFAULT, help='Map layer to render, default %(default)s')
     parser.add_argument('--invvar', default=False, action='store_true', help='Include Invvar extension for FITS outputs?')
@@ -61,10 +62,11 @@ def cutout_main():
         print('Got Dec %g' % dec)
 
     return cutout(ra, dec, opt.output,
+                  rotate=opt.rotate,
                   pixscale=opt.pixscale,
                   width=opt.width, height=opt.height, size=opt.size,
                   bands=bands, layer=opt.layer,
-                  invvar=opt.invvar, maskbits=opt.invvar, no_image=opt.no_image,
+                  invvar=opt.invvar, maskbits=opt.maskbits, no_image=opt.no_image,
                   force=opt.force)
 
 def cutout(ra, dec, output,
@@ -72,6 +74,7 @@ def cutout(ra, dec, output,
            width=None,
            height=None,
            size=CUTOUT_SIZE_DEFAULT,
+           rotate=0.,
            bands=None,
            layer=CUTOUT_LAYER_DEFAULT,
            invvar=False,
@@ -114,6 +117,7 @@ def cutout(ra, dec, output,
         bands = layer.get_bands()
     #print('Got layer:', layer)
     layer.write_cutout(ra, dec, pixscale, W, H, output,
+                       rotate=rotate,
                        bands=bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles, req=req,
                        **kwa)
     for fn in tempfiles:

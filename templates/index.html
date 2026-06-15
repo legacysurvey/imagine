@@ -77,6 +77,18 @@ var aws_unwise_url = 'https://s3.us-west-2.amazonaws.com/{id}.legacysurvey.org/{
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
 //console.log('window.location is', window.location);
+  {% if science %}
+  var brightness_val = 1.0;
+  var db = '{{ default_brightness }}';
+  if (db.length) {
+      brightness_val = parseFloat(db);
+  }
+  var contrast_val = 1.0;
+  var dc = '{{ default_contrast }}';
+  if (dc.length) {
+      contrast_val = parseFloat(dc);
+  }
+{% endif %}
 
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
@@ -108,6 +120,15 @@ if ('zoom' in qstr) {
 }
 
 var sparseMode = ('sparse' in qstr);
+
+{% if science %}
+  if ('brightness' in qstr) {
+      brightness_val = parseFloat(qstr['brightness']);
+  }
+  if ('contrast' in qstr) {
+      contrast_val = parseFloat(qstr['contrast']);
+  }
+{% endif %}
 
 
 var TileWatcher = L.Evented.extend({
@@ -2065,14 +2086,14 @@ disableMouseEventPropagation(objquery);
 
 {% if science %}
 // Brightness & contrast sliders
-function addCSSFilterSlider(filterType) {
+function addCSSFilterSlider(filterType, initVal) {
     let sliderControl = L.control({'position': 'bottomleft'})
     sliderControl.onAdd = function (map) {
         this._div = L.DomUtil.create('div', filterType);
         // Add input
-        this._div.innerHTML = '<input type="range" min="0" max="10" value="1" step="0.1" class="slider" id="' + filterType + '">';
+        this._div.innerHTML = '<input type="range" min="0" max="10" value="' + initVal + '" step="0.1" class="slider" id="' + filterType + '">';
         // Add status text
-        this._div.innerHTML += '<span id="' + filterType + '-status">' + filterType.charAt(0).toUpperCase() + filterType.slice(1) + ': 1</span>';
+        this._div.innerHTML += '<span id="' + filterType + '-status">' + filterType.charAt(0).toUpperCase() + filterType.slice(1) + ': ' + initVal + '</span>';
         return this._div;
     }
     sliderControl.addTo(map);
@@ -2093,10 +2114,11 @@ function addCSSFilterSlider(filterType) {
         statusElement.innerHTML = this.id.charAt(0).toUpperCase() + this.id.slice(1) + ': ' + this.value;
     }
     disableMouseEventPropagation(sliderControl);
+    slider.oninput();
 }
 if (!sparseMode) {
-  addCSSFilterSlider('brightness');
-  addCSSFilterSlider('contrast');
+  addCSSFilterSlider('brightness', brightness_val);
+  addCSSFilterSlider('contrast', contrast_val);
 }
 {% endif %}
 
@@ -3947,8 +3969,12 @@ var overlays = [
 
 
 
+var blink_layers = false;
+var blink_next = 0;
 if ('blink' in qstr) {
     last_layer_name = qstr['blink'];
+    blink_layers = qstr['blink'].split(',');
+    blink_layers.push(layer_name);
 }
 
 for (k in qstr) {
@@ -4046,8 +4072,10 @@ var baseTree1 = [
     {% endif %}
 ];
 
+{% if enable_decaps %}
 {% if decaps_first %}
 baseTree1 = baseTree1.concat(decaps_tree);
+{% endif %}
 {% endif %}
 
 {% if merian_first %}
@@ -4069,12 +4097,15 @@ var moresurveys = [
 
 {% if decaps_first %}
 {% else %}
+{% if enable_decaps %}
 moresurveys = moresurveys.concat(decaps_tree);
+{% endif %}
 {% endif %}
 
 moresurveys = moresurveys.concat([
     findlayer('galex'),
     findlayer('halpha'),
+    findlayer('act-dr6-f150'),
     findlayer('hsc-dr2'),
     {% if not merian_first %}
     findlayer('hsc-dr3'),
@@ -4090,7 +4121,24 @@ moresurveys = moresurveys.concat([
 
 moresurveys = drop_null(moresurveys);
 
+
+
 baseTree1 = baseTree1.concat([
+
+    {% if enable_dr11 %}
+    findlayer('ls-dr11', [
+    findlayer('ls-dr11-model'),
+    findlayer('ls-dr11-resid'),
+    findlayer('ls-dr11-south', [
+      findlayer('ls-dr11-south-model'),
+      findlayer('ls-dr11-south-resid'),
+    ]),
+    findlayer('ls-dr11-north', [
+      findlayer('ls-dr11-north-model'),
+      findlayer('ls-dr11-north-resid'),
+      ]),
+    ]),
+    {% endif %}
 
     {% if enable_ibis %}
     { label:'IBIS v4 COSMOS',
@@ -4130,7 +4178,7 @@ baseTree1 = baseTree1.concat([
           findlayer('ibis-3-wide-m490', "IBIS (v3) Wide M490"),
           findlayer('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
       ] },
-    {% endif %}
+    {% endif %}    
 
     {% if enable_dr10 %}
     findlayer('ls-dr10', [
@@ -4149,6 +4197,7 @@ baseTree1 = baseTree1.concat([
       ]),
     ]),
     {% endif %}
+
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
         {% if enable_dr9_models %}
@@ -4756,21 +4805,44 @@ function keyDown(e) {
     if (e.keyCode == 32) {
         //console.log('space bar!');
         //console.log('layer_name ' + layer_name + ', last_layer_name ' + last_layer_name);
-        if (last_layer_name != layer_name) {
-            console.log('Switching from layer ' + layer_name + ' back to previous layer ' + last_layer_name);
+
+        if (blink_layers) {
+            next_layer = blink_layers[blink_next];
+            blink_next = (blink_next + 1) % blink_layers.length;
+
+            console.log('Blinking from', layer_name, ' to ', next_layer);
             var toadd = false;
             var torm  = false;
             for (k in namedLayers) {
                 layer = namedLayers[k];
                 if (layer_name == k) {
                     torm = layer;
-                } else if (last_layer_name == k) {
+                } else if (next_layer == k) {
                     toadd = layer;
                 }
             }
             if (toadd && torm) {
                 torm.removeFrom(map);
                 toadd.addTo(map);
+            }
+
+        } else {
+            if (last_layer_name != layer_name) {
+                console.log('Switching from layer ' + layer_name + ' back to previous layer ' + last_layer_name);
+                var toadd = false;
+                var torm  = false;
+                for (k in namedLayers) {
+                    layer = namedLayers[k];
+                    if (layer_name == k) {
+                        torm = layer;
+                    } else if (last_layer_name == k) {
+                        toadd = layer;
+                    }
+                }
+                if (toadd && torm) {
+                    torm.removeFrom(map);
+                    toadd.addTo(map);
+                }
             }
         }
         e.preventDefault();
