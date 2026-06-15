@@ -9837,7 +9837,8 @@ if __name__ == '__main__':
     #r = c.get('/ps1/1/9/511/300.jpg')
     #r = c.get('/ps1/1/8/255/150.jpg')
     #r = c.get('/ps1/1/7/127/75.jpg')
-    r = c.get('/ps1/1/6/63/30.jpg')
+    #r = c.get('/ps1/1/6/63/30.jpg')
+    r = c.get('/ps1/1/12/3855/1643.jpg')
     #a riz RGB jpeg for CHIME/FRB
     # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
     # import fitsio
