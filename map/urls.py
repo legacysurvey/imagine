@@ -65,9 +65,9 @@ urlpatterns = ([
     re_path(r'^cutout/checkflavour/([\w-]+)', views.checkflavour),
 
     #
-    re_path(r'^file-test', views.static_test),
-    re_path(r'^cutout/file-test$', views.static_test),
-    re_path(r'^cutout/file-test-2$', views.static_test_2),
+    # re_path(r'^file-test', views.static_test),
+    # re_path(r'^cutout/file-test$', views.static_test),
+    # re_path(r'^cutout/file-test-2$', views.static_test_2),
 
     re_path(r'^urls', views.urls, name='urls'),
 

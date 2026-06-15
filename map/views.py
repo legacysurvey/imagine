@@ -502,8 +502,6 @@ def _index(req,
         tile_layers['pandas'] = ['PANDAS', [def_url], maxnative, 'The Pan-Andromeda Archaeological Survey']
 
     if settings.ENABLE_PS1:
-        #tile_layers['ps1'] = ['Pan-STARRS1', [[7, maxZoom, tileurl, subs], prod_backstop],
-        #                      maxnative, 'ps1']
         tile_layers['ps1'] = ['Pan-STARRS1', [[1, maxZoom, tileurl, subs]],
                               maxnative, 'ps1']
 
