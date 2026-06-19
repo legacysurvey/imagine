@@ -718,6 +718,18 @@ def main():
         if opt.minra is None:
             opt.minra = 0
 
+    elif opt.kind in ['niji']:
+        if opt.bands is None:
+            opt.bands = ['413', '439', '465', '490']
+        if opt.maxdec is None:
+            opt.maxdec = 10
+        if opt.mindec is None:
+            opt.mindec = -10
+        if opt.maxra is None:
+            opt.maxra = 160
+        if opt.minra is None:
+            opt.minra = 140
+            
     else:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -779,7 +791,7 @@ def main():
                         'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                         'unwise-w3w4',
                         'unwise-cat-model', 'unwise-neo11',
-                        'galex', 'wssa', 'des-dr1', 'hsc2', 'hsc-dr3',
+                         'galex', 'wssa', 'des-dr1', 'hsc2', 'hsc-dr3', 'niji',
                         'cfis-dr3-r', 'cfis-dr3-u',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
                         'dr8-south', 'dr8-south-model', 'dr8-south-resid',

@@ -10,6 +10,7 @@ if __name__ == '__main__':
 import os
 import sys
 import re
+from glob import glob
 
 from django.http import HttpResponse, StreamingHttpResponse
 from django.urls import reverse, get_script_prefix
@@ -3804,7 +3805,7 @@ class HscLayer(RebrickedMixin, MapLayer):
 
     def get_bands(self):
         return self.bands
-    
+
     def read_wcs(self, brick, band, scale, fn=None):
         from map.coadds import read_tan_from_header
         if fn is None:
@@ -3852,6 +3853,101 @@ class HscLayer(RebrickedMixin, MapLayer):
 
         return img
 
+class NijiLayer(HscLayer):
+    def __init__(self, name):
+        super().__init__(name)
+        self.bands = ['413', '439', '465', '490']
+    
+    def get_rgb(self, imgs, bands, **kwargs):
+        from tractor.brightness import NanoMaggies
+        zpscale = NanoMaggies.zeropointToScale(27.0)
+        imgs = [img/zpscale for img in imgs]
+
+        # rgb_stretch_factor = 1.0
+        # rgbscales = dict(
+        #     # Niji
+        #     413 = (2, 6.0 * rgb_stretch_factor),
+        #            M438 = (2, 6.0 * rgb_stretch_factor),
+        #            M464 = (2, 6.0 * rgb_stretch_factor),
+        #            M490 = (2, 6.0 * rgb_stretch_factor),
+        #            M517 = (2, 6.0 * rgb_stretch_factor),
+
+        import numpy as np
+        mnmx=None
+        m=0.03
+        Q=20
+        clip = True
+        
+        scale = 24.
+        
+        I = 0
+        for img,band in zip(imgs, bands):
+            #plane,scale = rgbscales[band]
+            img = np.maximum(0, img * scale + m)
+            I = I + img
+        I /= len(bands)
+        if Q is not None:
+            fI = np.arcsinh(Q * I) / np.sqrt(Q)
+            I += (I == 0.) * 1e-6
+            I = fI / I
+        H,W = I.shape
+        rgb = np.zeros((H,W,3), np.float32)
+
+        rgbvec = {
+            '413': (0.0 , 0.0, 0.75),
+            '439': (0.0 , 0.5, 0.25),
+            '465': (0.25, 0.5, 0.0),
+            '490': (0.75, 0.0, 0.0),
+        }
+        for img,band in zip(imgs, bands):
+            #_,scale = rgbscales[band]
+            rf,gf,bf = rgbvec[band]
+            if mnmx is None:
+                v = (img * scale + m) * I
+            else:
+                mn,mx = mnmx
+                v = ((img * scale + m) - mn) / (mx - mn)
+            if clip:
+                v = np.clip(v, 0, 1)
+            if rf != 0.:
+                rgb[:,:,0] += rf*v
+            if gf != 0.:
+                rgb[:,:,1] += gf*v
+            if bf != 0.:
+                rgb[:,:,2] += bf*v
+        return rgb
+
+    def get_base_filename(self, brick, band, **kwargs):
+        # the brick filenames are one of the band filenames...
+        # replace with the target band.
+        # AND they have a timestamp - ignore that
+        fn = brick.filename.strip()
+        for b in self.bands:
+            fn = fn.replace('_mbq1_'+b, '_mbq1_'+band)
+        # Timestamp -- data/niji/9813/6,3/MBQ1/deepCoadd_calexp_9813_6,3_MBQ1_hsc_rings_v1_u_miyatake_mbq1_490_mask_nocenter_cv2_step3_20260414T021458Z.fits
+        words = fn.split('_')
+        pat = '_'.join(words[:-1]) + '*Z.fits'
+        path = os.path.join(self.basedir, pat)
+        fns = glob(path)
+        #print('Looking for', path, '->', fns)
+        if len(fns):
+            return fns[0]
+        return None
+        #return path
+
+    def get_bricks(self):
+        if self.bricks is not None:
+            return self.bricks
+        from astrometry.util.fits import fits_table
+        self.bricks = fits_table(os.path.join(self.basedir, 'niji-bricks.fits'))
+        return self.bricks
+
+    def get_scaled_pattern(self):
+        return os.path.join(self.scaleddir,
+            'scale%(scale)i-%(band)s', '%(brickname).4s',
+            'niji' + '-%(brickname)s-%(band)s.fits')
+
+    
 class MerianLayer(HscLayer):
     '''
     table+5:
@@ -6902,13 +6998,18 @@ def brick_list(req):
         east += 360.
         west += 360.
 
-    layername = request_layer_name(req)
+    layername = request_layer_name(req, default_layer=None)
+    print('layername:', layername)
     survey = get_survey(layername)
+    print('survey:', survey)
     B = None
     if survey is not None:
         try:
             B = survey.get_bricks_readonly()
+            print('Bricks:', B)
         except:
+            import traceback
+            traceback.print_exc()
             pass
     if B is None:
         # Generic all-sky legacy surveys bricks
@@ -6916,8 +7017,11 @@ def brick_list(req):
         B = survey.get_bricks_readonly()
         #B = fits_table(os.path.join(settings.DATA_DIR, 'bricks-0.fits'),
         #columns=['brickname', 'ra1', 'ra2', 'dec1', 'dec2', 'ra', 'dec'])
+        print('Bricks:', B)
 
     I = survey.bricks_touching_radec_box(B, east, west, south, north)
+    print('Bricks touching radec box:', east, west, south, north)
+    print(len(I), 'bricks')
     # Limit result size...
     #if len(I) > 10000:
     #    return HttpResponse(json.dumps(dict(bricks=[])),
@@ -8839,6 +8943,9 @@ def get_layer(name, default=None):
     elif name == 'hsc-dr3':
         layer = HscLayer('hsc-dr3')
 
+    elif name == 'niji':
+        layer = NijiLayer('niji')
+
     elif name == 'wiro-C':
         survey = get_survey('wiro-C')
         layer = WiroCLayer('wiro-C', 'image', survey)
@@ -9835,7 +9942,7 @@ if __name__ == '__main__':
     #r = c.get('/ps1/1/9/511/300.jpg')
     #r = c.get('/ps1/1/8/255/150.jpg')
     #r = c.get('/ps1/1/7/127/75.jpg')
-    r = c.get('/ps1/1/6/63/30.jpg')
+    #r = c.get('/ps1/1/6/63/30.jpg')
     #a riz RGB jpeg for CHIME/FRB
     # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
     # import fitsio
@@ -9868,8 +9975,8 @@ if __name__ == '__main__':
     # result,val = query_simbad('M 13')
     # print('result', result, 'val', val)
 
-
-    
+    #r = c.get('/bricks/?ralo=106.0922&rahi=106.6120&declo=-10.6532&dechi=-10.3622')
+    r = c .get('/niji/1/14/9560/8093.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         f.write(x)
