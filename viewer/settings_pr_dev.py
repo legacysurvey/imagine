@@ -24,6 +24,9 @@ CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
 ENABLE_DR5  = False
 ENABLE_DR9 = True
+# DR11: image layers served from S3 (dr11-{south,north}.legacysurvey.org, us-west-2),
+# with dynamic-server fallback. Models/residuals remain dynamic (def_url).
+ENABLE_DR11 = True
 ENABLE_DR9SV = False
 ENABLE_OLDER = False
 # public version
