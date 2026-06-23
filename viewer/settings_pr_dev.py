@@ -1,5 +1,10 @@
 from viewer.settings_common import *
 
+# Allow direct access via the Elastic Beanstalk environment URL (test env, EB
+# health checks). Production is reached via viewer.legacysurvey.org (already in
+# ALLOWED_HOSTS); this just permits the *.elasticbeanstalk.com CNAMEs too.
+ALLOWED_HOSTS = ALLOWED_HOSTS + ['.elasticbeanstalk.com']
+
 ROOT_URL = '/'
 STATIC_URL_PATH = 'static/'
 STATIC_URL = ROOT_URL + STATIC_URL_PATH
