@@ -3748,6 +3748,26 @@ class CfhtLayer(ReDecalsLayer):
             return wcs
         return super().get_scaled_wcs(brick, band, scale)
 
+class LsstLayer(LsDr10Layer):
+    #class LsstLayer(ReDecalsLayer):
+    # def get_rgb(self, imgs, bands, **kwargs):
+    #     import numpy as np
+    #     #from legacypipe.survey import get_rgb as rgb
+    #     rgb,kwa = self.survey.get_rgb(imgs, bands, coadd_bw=True)
+    #     rgb = rgb[:,:,np.newaxis].repeat(3, axis=2)
+    #     return rgb
+    def get_scaled_wcs(self, brick, band, scale):
+        from astrometry.util.util import Tan
+        pixscale = 0.2 * 2.**scale
+        cd = pixscale / 3600.
+        size = 4720
+        crpix = size/2. + 0.5
+        wcs = Tan(brick.ra, brick.dec, crpix, crpix, -cd, 0., 0., cd,
+                  float(size), float(size))
+        return wcs
+    def get_brick_size_for_scale(self, scale):
+        return 0.25 * 2**scale
+
 class HscLayer(RebrickedMixin, MapLayer):
     def __init__(self, name):
         super(HscLayer, self).__init__(name)
@@ -8115,7 +8135,11 @@ def jpl_direct_url(ra, dec, ccd):
         '90prime': 'V00',
         'mosaic': '695',
         'suprimecam': 'T09',
-    }[camera]
+        # LSST / Simonyi
+        'comcam': 'X05',
+        'lsst': 'X05',
+    }.get(camera, '500')
+    # fall back to 500 = Geocenter!!
 
     rastr = ra2hmsstring(ra, separator='-')
     decstr = dec2dmsstring(dec, separator='-')
@@ -8945,6 +8969,10 @@ def get_layer(name, default=None):
 
     elif name == 'niji':
         layer = NijiLayer('niji')
+
+    elif name == 'lsst':
+        survey = get_survey(name)
+        layer = LsstLayer('lsst', 'image', survey, bands=['g','r','i','z'])
 
     elif name == 'wiro-C':
         survey = get_survey('wiro-C')
