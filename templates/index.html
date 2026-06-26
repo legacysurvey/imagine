@@ -77,6 +77,18 @@ var aws_unwise_url = 'https://s3.us-west-2.amazonaws.com/{id}.legacysurvey.org/{
 var minZoom = 1;
 var maxZoom = {{ maxZoom }};
 //console.log('window.location is', window.location);
+  {% if science %}
+  var brightness_val = 1.0;
+  var db = '{{ default_brightness }}';
+  if (db.length) {
+      brightness_val = parseFloat(db);
+  }
+  var contrast_val = 1.0;
+  var dc = '{{ default_contrast }}';
+  if (dc.length) {
+      contrast_val = parseFloat(dc);
+  }
+{% endif %}
 
 // Function to search the current page URL's GET query portion URL?x=y
 var QueryItems = function() {
@@ -109,6 +121,99 @@ if ('zoom' in qstr) {
 
 var sparseMode = ('sparse' in qstr);
 
+{% if science %}
+  if ('brightness' in qstr) {
+      brightness_val = parseFloat(qstr['brightness']);
+  }
+  if ('contrast' in qstr) {
+      contrast_val = parseFloat(qstr['contrast']);
+  }
+{% endif %}
+
+
+var TileWatcher = L.Evented.extend({
+
+    initialize: function() {
+        // string keys z:x:y of currently visible tiles
+        this._visibleTiles = {};
+    },
+
+    listenToLayer: function(layer) {
+        layer.on('tileloadstart', this.tileLoadStart.bind(this));
+        layer.on('tileunload',    this.tileUnload.bind(this));
+        layer.on('tileerror',     this.tileError.bind(this));
+        layer.on('tileabort',     this.tileAbort.bind(this));
+    },
+
+    getVisibleTiles: function() {
+        return this._visibleTiles;
+    },
+
+    _eventToKey: function(e) {
+        var coord = e.coords;
+        var x = coord.x;
+        var zoom = coord.z;
+        var maxtile = 1 << zoom;
+        x = x % maxtile;
+        var key = '' + zoom + ':' + x + ':' + coord.y;
+        return key;
+    },
+
+    tileLoadStart: function(e) {
+        var key = this._eventToKey(e);
+        console.log('Tile load start: ' + key);
+        if (key in this._visibleTiles) {
+            //console.log('tile was already in visible tiles');
+        } else {
+            e.key = key;
+
+            var maxtile = 1 << e.coords.z;
+            e.coords.wrapx = e.coords.x % maxtile;
+
+            //console.log('firing tilevisible: ' + key + ', event ', e);
+            this._visibleTiles[key] = true;
+            this.fire('tilevisible', e);
+        }
+    },
+    
+    tileUnload: function(e) {
+        //console.log('Tile unload: ' + this._eventToKey(e));
+        this._tileGone(e);
+    },
+
+    tileAbort: function(e) {
+        //console.log('Tile abort: ' + this._eventToKey(e));
+        this._tileGone(e);
+    },
+
+    tileError: function(e) {
+        //console.log('Tile error: ' + this._eventToKey(e));
+        this._tileGone(e);
+    },
+
+    _tileGone: function(e) {
+        var key = this._eventToKey(e);
+        delete this._visibleTiles[key];
+        e.key = key;
+        this.fire('tileinvisible', e);
+        //console.log('firing tileinvisible: ' + key + ', event ', e);
+    },
+
+});
+
+
+var tileWatcher = new TileWatcher();
+
+function register_layer(layer) {
+    console.log('register_layer: ' + layer.name + ', "' + layer.pretty + '"');
+    baseMaps[layer.pretty] = layer;
+    namedLayers[layer.name] = layer;
+    tileWatcher.listenToLayer(layer);
+    if (layer_name == layer.name) {
+        layer.addTo(map);
+        added = true;
+    }
+}
 
 
 function arcsecToMeters(arcsec) {
@@ -655,19 +760,27 @@ var SGACatalog = CatalogOverlay.extend({
         if (rdlist.length == 0) {
             return layergroup;
         }
-        var clong = map.getCenter().lng;
-        var radii = result['radiusArcsec'];
         var abratio = result['abRatio'];
         var posAngle = result['posAngle'];
+        if (!(abratio && posAngle)) {
+            return layergroup;
+        }
+        var clong = map.getCenter().lng;
+        var radii = result['radiusArcsec'];
         var plines = [];
         //console.log('this._style:', this._style);
         for (var i=0, len=rdlist.length; i<len; i++) {
+            var ab = abratio[i];
+            var pa = posAngle[i];
+            if ((ab == 1.0) && (pa == 0.0)) {
+                continue;
+            }
             var r = rdlist[i][0];
             var d = rdlist[i][1];
             var lat = dec2lat(d);
             var lng = ra2long_C(r, clong);
             var style = Object.create(this._style);
-            console.log('style:', style);
+            //console.log('style:', style);
             var color = this.getColor(result, i);
             if (color !== undefined) {
                 style = Object.assign(style, {'color':color});
@@ -678,15 +791,9 @@ var SGACatalog = CatalogOverlay.extend({
                 // arcsec -> degrees
                 radius = radii[i] / 3600.;
             }
-            if (abratio && posAngle) {
-                var ab = abratio[i];
-                var pa = 90.+posAngle[i];
-            } else {
-                var ab = 1.0;
-                var pa = 0.;
-            }
             var cosdec = Math.cos(lat * Math.PI / 180.0);
-            pa = pa * Math.PI / 180.0;
+            // Sigh, PA conventions
+            pa = (90. + pa) * Math.PI / 180.0;
             lng1 = lng + radius * Math.cos(pa) / cosdec;
             lng2 = lng - radius * Math.cos(pa) / cosdec;
             lat1 = lat + radius * Math.sin(pa);
@@ -700,8 +807,10 @@ var SGACatalog = CatalogOverlay.extend({
         }
         //console.log('rdlist:', rdlist.length);
         //console.log('style:', style)
-        style = Object.assign(style, {'weight': 1});
-        layergroup.addLayer(L.polyline(plines, style));
+        if (plines.length > 0) {
+            style = Object.assign(style, {'weight': 1});
+            layergroup.addLayer(L.polyline(plines, style));
+        }
         return layergroup;
     },
 
@@ -1043,76 +1152,6 @@ function layerMatchesEvent(layer, event) {
     return (layer._name == event.layer._name);
 }
 
-var TileWatcher = L.Evented.extend({
-
-    initialize: function() {
-        // string keys z:x:y of currently visible tiles
-        this._visibleTiles = {};
-    },
-
-    listenToLayer: function(layer) {
-        layer.on('tileloadstart', this.tileLoadStart.bind(this));
-        layer.on('tileunload',    this.tileUnload.bind(this));
-        layer.on('tileerror',     this.tileError.bind(this));
-        layer.on('tileabort',     this.tileAbort.bind(this));
-    },
-
-    getVisibleTiles: function() {
-        return this._visibleTiles;
-    },
-
-    _eventToKey: function(e) {
-        var coord = e.coords;
-        var x = coord.x;
-        var zoom = coord.z;
-        var maxtile = 1 << zoom;
-        x = x % maxtile;
-        var key = '' + zoom + ':' + x + ':' + coord.y;
-        return key;
-    },
-
-    tileLoadStart: function(e) {
-        var key = this._eventToKey(e);
-        console.log('Tile load start: ' + key);
-        if (key in this._visibleTiles) {
-            //console.log('tile was already in visible tiles');
-        } else {
-            e.key = key;
-
-            var maxtile = 1 << e.coords.z;
-            e.coords.wrapx = e.coords.x % maxtile;
-
-            //console.log('firing tilevisible: ' + key + ', event ', e);
-            this._visibleTiles[key] = true;
-            this.fire('tilevisible', e);
-        }
-    },
-    
-    tileUnload: function(e) {
-        //console.log('Tile unload: ' + this._eventToKey(e));
-        this._tileGone(e);
-    },
-
-    tileAbort: function(e) {
-        //console.log('Tile abort: ' + this._eventToKey(e));
-        this._tileGone(e);
-    },
-
-    tileError: function(e) {
-        //console.log('Tile error: ' + this._eventToKey(e));
-        this._tileGone(e);
-    },
-
-    _tileGone: function(e) {
-        var key = this._eventToKey(e);
-        delete this._visibleTiles[key];
-        e.key = key;
-        this.fire('tileinvisible', e);
-        //console.log('firing tileinvisible: ' + key + ', event ', e);
-    },
-
-});
-
 var TiledOverlay = CatalogOverlay.extend({
 
     initialize: function(tw, name, pretty, kwargs) {
@@ -1180,17 +1219,21 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 
     overlayAdded: function(e) {
+        console.log('overlayAdded (in TiledOverlay): ' + this._name);
         if (!layerMatchesEvent(this, e)) {
+            console.log('!layerMatchesEvent');
             return;
         }
-        console.log('overlayAdded: ' + this._name);
         this._show = true;
 	    if (map.getZoom() < this._minZoom) {
+            console.log('zoom < my minZoom');
             return;
         }
         // load all visible tiles
+        console.log('Loading visible tiles: tileWatcher is ' + this._tw);
+        console.log('Loading', this._tw.getVisibleTiles().length, 'visible tiles');
         for (var key in this._tw.getVisibleTiles()) {
-            //console.log('Adding overlay ' + this._name + ': tile ' + key);
+            console.log('Adding overlay ' + this._name + ': tile ' + key);
             // parse into zoom:x:y
             var words = key.split(':');
             var zoom = parseInt(words[0]);
@@ -1688,8 +1731,6 @@ function getcatversion(layer) {
     return 1;
 }
 
-var allLayers = [];
-
 var attribs = {
     'ls': '<a href="https://www.legacysurvey.org/acknowledgment">&copy; Legacy Surveys / D.Lang (Perimeter Institute)</a>',
     'hsc2': '<a href="https://www.nao.ac.jp/en/terms/copyright.html">&copy;</a> <a href="https://hsc-release.mtk.nao.ac.jp/doc/index.php/tools-2/">NAOJ / HSC Collaboration</a>',
@@ -1908,16 +1949,6 @@ split_layer('ls-dr67', 'Legacy Surveys DR6+DR7', 32.375,
             {attribution: attribs['ls']});
 {% endif %}
 
-//console.log('Requested layer: "' + layer_name + '"');
-for (var i in allLayers) {
-    var layer = allLayers[i];
-    baseMaps[layer.pretty] = layer;
-    //console.log('vs layer name "' + layer.name + '"');
-    if (layer_name == layer.name) {
-        layer.addTo(map);
-        added = true;
-    }
-}
 // may be overridden by 'qstr' below.
 var last_layer_name = layer_name;
 
@@ -2055,14 +2086,14 @@ disableMouseEventPropagation(objquery);
 
 {% if science %}
 // Brightness & contrast sliders
-function addCSSFilterSlider(filterType) {
+function addCSSFilterSlider(filterType, initVal) {
     let sliderControl = L.control({'position': 'bottomleft'})
     sliderControl.onAdd = function (map) {
         this._div = L.DomUtil.create('div', filterType);
         // Add input
-        this._div.innerHTML = '<input type="range" min="0" max="10" value="1" step="0.1" class="slider" id="' + filterType + '">';
+        this._div.innerHTML = '<input type="range" min="0" max="10" value="' + initVal + '" step="0.1" class="slider" id="' + filterType + '">';
         // Add status text
-        this._div.innerHTML += '<span id="' + filterType + '-status">' + filterType.charAt(0).toUpperCase() + filterType.slice(1) + ': 1</span>';
+        this._div.innerHTML += '<span id="' + filterType + '-status">' + filterType.charAt(0).toUpperCase() + filterType.slice(1) + ': ' + initVal + '</span>';
         return this._div;
     }
     sliderControl.addTo(map);
@@ -2083,10 +2114,11 @@ function addCSSFilterSlider(filterType) {
         statusElement.innerHTML = this.id.charAt(0).toUpperCase() + this.id.slice(1) + ': ' + this.value;
     }
     disableMouseEventPropagation(sliderControl);
+    slider.oninput();
 }
 if (!sparseMode) {
-  addCSSFilterSlider('brightness');
-  addCSSFilterSlider('contrast');
+  addCSSFilterSlider('brightness', brightness_val);
+  addCSSFilterSlider('contrast', contrast_val);
 }
 {% endif %}
 
@@ -2187,7 +2219,7 @@ $(document).ready(function() {
         if (event.keyCode == 13) {
             var qstring = $('#objquery').val();
             objqueryString = qstring;
-            
+
             // [this is old...]
             // Check if query is DESI tile
             var splited = qstring.split(" ");
@@ -2216,9 +2248,15 @@ $(document).ready(function() {
                 return;
             }
 
+            console.log('query string:', qstring);
+            qstring = encodeURIComponent(qstring);
+            console.log('encoded query string:', qstring);
+
             var url = L.Util.template(name_query_url, L.extend({
                 obj: qstring,
             }));
+            console.log('URL:', url);
+            
             if (qstring.length == 0) {
                 url += '&layer=' + layer_name;
             }
@@ -2494,11 +2532,6 @@ var CircleOverlay = PolygonOverlay.extend({
     },
 
 });
-
-var tileWatcher = new TileWatcher();
-for (var k in baseMaps) {
-    tileWatcher.listenToLayer(baseMaps[k]);
-}
 
 var exp_detail_list = function(ov, objs) {
     if (objs.length == 0) { return ''; }
@@ -3181,15 +3214,6 @@ var desi_spec_daily_sky = new DesiSpectraCatalog(
      //'urlTerm': 'desi-spec/denali',
     });
 
-var desi_obs_daily = new DesiObsCatalog(
-    'desi-obs-daily', 'DESI daily observations', 'daily',
-    {'url': smallcat_url,
-     'radius': 300,
-     'labelsMinZoom': 10,
-     'minZoom': 8,
-     //'urlTerm': 'desi-spec/denali',
-    });
-
 var desi_spec_guadalupe = new DesiSpectraCatalog(
     'desi-spec-guadalupe', 'DESI Guadalupe spectra', 'guadalupe',
     {'url': smallcat_url,
@@ -3208,6 +3232,17 @@ var desi_spec_fuji = new DesiSpectraCatalog(
 
 {% endif %}
 
+  {% if enable_desi_daily_obs %}
+var desi_obs_daily = new DesiObsCatalog(
+    'desi-obs-daily', 'DESI daily observations', 'daily',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+     //'urlTerm': 'desi-spec/denali',
+    });
+  {% endif %}
+  
 var polygonOverlays = [ 
     {% if enable_dr5_overlays %}
     ccdOverlay5, expOverlay5,
@@ -3358,6 +3393,8 @@ var dr9southcat = new DecalsCatalogLayer(tileWatcher,
 
 {% if enable_dr10_overlays %}
 
+  console.log('Creating ls-dr10 catalog layer: tileWatcher =' + tileWatcher);
+  
 var dr10cat = new DecalsCatalogLayer(tileWatcher,
                                         'ls-dr10',
                                           'Legacy Surveys DR10 Catalog',
@@ -3413,15 +3450,24 @@ var sga2025_parent = new SGACatalog('sga2025-parent', 'SGA2025 Parent',
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga2025-parent',});
 
-var sga_parent = new SGACatalog('sga-parent', 'HyperLEDA/SGA galaxies',
+var sga2025_north = new SGACatalog('sga2025-north', 'Siena Galaxy Atlas 2025 North',
+                                 {'minZoom': 7,
+                                  'labelsMinZoom': 7,
+                                  'urlTerm': 'sga2025-north',});
+var sga2025_south = new SGACatalog('sga2025-south', 'Siena Galaxy Atlas 2025 South',
+                                 {'minZoom': 7,
+                                  'labelsMinZoom': 7,
+                                  'urlTerm': 'sga2025-south',});
+
+var sga_parent = new SGACatalog('sga2020-parent', 'HyperLEDA/SGA galaxies (2020)',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
-                              'urlTerm': 'sga-parent',});
+                              'urlTerm': 'sga2020-parent',});
 
-var sga_ell = new SGACatalog('sga', 'Siena Galaxy Atlas',
+var sga_ell = new SGACatalog('sga2020', 'Siena Galaxy Atlas 2020',
                              {'minZoom': 7,
                               'labelsMinZoom': 7,
-                              'urlTerm': 'sga',});
+                              'urlTerm': 'sga2020',});
 
 var photoz = new PhotozCatalog('photoz-dr9', 'DR9 Photo-z',
                                  {'minZoom': 12,
@@ -3857,7 +3903,7 @@ var overlays = [
     {% if enable_sdss_ccds %}
     ccdOverlaySdss,
     {% endif %}
-    gals, sga2025_parent, sga_parent, sga_ell, //lslga_model, starmasks8,
+    gals, sga2025_parent, sga2025_north, sga2025_south, sga_parent, sga_ell,
     starmasks9, GCsPNe, bright, tycho2,
     photoz,
     {% if enable_ps1 %}
@@ -3911,6 +3957,8 @@ var overlays = [
     desi_tiles_daily,
     desi_spec_daily,
     desi_spec_daily_sky,
+    {% endif %}
+    {% if enable_desi_daily_obs %}
     desi_obs_daily,
     {% endif %}
     constellations,
@@ -3921,8 +3969,12 @@ var overlays = [
 
 
 
+var blink_layers = false;
+var blink_next = 0;
 if ('blink' in qstr) {
     last_layer_name = qstr['blink'];
+    blink_layers = qstr['blink'].split(',');
+    blink_layers.push(layer_name);
 }
 
 for (k in qstr) {
@@ -3962,13 +4014,6 @@ for (var i=0; i<polygonOverlays.length; i++) {
 {% endfor %}
 {% endif %}
 
- // FIXME -- need this?
-for (var i in allLayers) {
-    var layer = allLayers[i];
-    //console.log('layer.name ' + layer.name + ' pretty ' + layer.pretty);
-    namedLayers[layer.name] = layer;
-}
-
 function drop_null(lst) {
     var rtn = [];
     for (var i in lst) {
@@ -3979,16 +4024,6 @@ function drop_null(lst) {
     return rtn;
 }
 
-function register_layer(layer) {
-    baseMaps[layer.pretty] = layer;
-    allLayers.push(layer);
-    namedLayers[layer.name] = layer;
-    if (layer_name == layer.name) {
-        layer.addTo(map);
-        added = true;
-    }
-}
-  
 function findlayer(name, children=[]) {
     //console.log('findlayer', name);
     if (!(name in namedLayers)) {
@@ -4037,8 +4072,10 @@ var baseTree1 = [
     {% endif %}
 ];
 
+{% if enable_decaps %}
 {% if decaps_first %}
 baseTree1 = baseTree1.concat(decaps_tree);
+{% endif %}
 {% endif %}
 
 {% if merian_first %}
@@ -4060,12 +4097,15 @@ var moresurveys = [
 
 {% if decaps_first %}
 {% else %}
+{% if enable_decaps %}
 moresurveys = moresurveys.concat(decaps_tree);
+{% endif %}
 {% endif %}
 
 moresurveys = moresurveys.concat([
     findlayer('galex'),
     findlayer('halpha'),
+    findlayer('act-dr6-f150'),
     findlayer('hsc-dr2'),
     {% if not merian_first %}
     findlayer('hsc-dr3'),
@@ -4081,7 +4121,24 @@ moresurveys = moresurveys.concat([
 
 moresurveys = drop_null(moresurveys);
 
+
+
 baseTree1 = baseTree1.concat([
+
+    {% if enable_dr11 %}
+    findlayer('ls-dr11', [
+    findlayer('ls-dr11-model'),
+    findlayer('ls-dr11-resid'),
+    findlayer('ls-dr11-south', [
+      findlayer('ls-dr11-south-model'),
+      findlayer('ls-dr11-south-resid'),
+    ]),
+    findlayer('ls-dr11-north', [
+      findlayer('ls-dr11-north-model'),
+      findlayer('ls-dr11-north-resid'),
+      ]),
+    ]),
+    {% endif %}
 
     {% if enable_ibis %}
     { label:'IBIS v4 COSMOS',
@@ -4121,7 +4178,7 @@ baseTree1 = baseTree1.concat([
           findlayer('ibis-3-wide-m490', "IBIS (v3) Wide M490"),
           findlayer('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
       ] },
-    {% endif %}
+    {% endif %}    
 
     {% if enable_dr10 %}
     findlayer('ls-dr10', [
@@ -4140,6 +4197,7 @@ baseTree1 = baseTree1.concat([
       ]),
     ]),
     {% endif %}
+
     {% if enable_dr9 %}
     findlayer('ls-dr9', [
         {% if enable_dr9_models %}
@@ -4236,10 +4294,11 @@ baseTree1 = baseTree1.concat([
     {% endif %}
 
     {% if enable_unwise %}
-    findlayer('unwise-neo7', [
+    findlayer('unwise-neo11', [
+        findlayer('unwise-neo7'),
         findlayer('unwise-neo6'),
         {% if science %}
-        findlayer('unwise-neo4'),
+        //findlayer('unwise-neo4'),
         findlayer('unwise-cat-model'),
         {% if enable_unwise_w3w4 %}
         findlayer('unwise-w3w4'),
@@ -4285,6 +4344,8 @@ for (var i=0,len=overlays.length; i<len; i++) {
 function findoverlay(name, children=[]) {
     rtn =  { label: namedOverlays[name]._pretty,
              layer: namedOverlays[name].getGroup() };
+    console.log('findoverlay: ' + name);
+    console.log('  -> got overlay: label=' + rtn['label'] + ', layer=' + rtn['layer']);
     if (children.length) {
         rtn['children'] = children;
     }
@@ -4476,8 +4537,10 @@ var overlayTree = [];
            findoverlay('desi-tiles-daily'),
            findoverlay('desi-spec-daily'),
            findoverlay('desi-spec-daily-sky'),
+           {% endif %}
+           {% if enable_desi_daily_obs %}
            findoverlay('desi-obs-daily'),
-         {% endif %}
+           {% endif %}
          {% if enable_desi_targets %}
            { label: 'DESI Targets',
              children: [
@@ -4513,9 +4576,11 @@ var overlayTree = [];
      findoverlay('GCs-PNe'),
      findoverlay('gals'),
      findoverlay('sga2025-parent'),
-     findoverlay('sga'),
+     findoverlay('sga2025-north'),
+     findoverlay('sga2025-south'),
+     findoverlay('sga2020'),
      {% if science %}
-     findoverlay('sga-parent'),
+     findoverlay('sga2020-parent'),
      findoverlay('photoz-dr9'),
      {% endif %}
      //findoverlay('masks-dr8'),
@@ -4740,21 +4805,44 @@ function keyDown(e) {
     if (e.keyCode == 32) {
         //console.log('space bar!');
         //console.log('layer_name ' + layer_name + ', last_layer_name ' + last_layer_name);
-        if (last_layer_name != layer_name) {
-            console.log('Switching from layer ' + layer_name + ' back to previous layer ' + last_layer_name);
+
+        if (blink_layers) {
+            next_layer = blink_layers[blink_next];
+            blink_next = (blink_next + 1) % blink_layers.length;
+
+            console.log('Blinking from', layer_name, ' to ', next_layer);
             var toadd = false;
             var torm  = false;
-            for (i in allLayers) {
-                layer = allLayers[i];
-                if (layer_name == layer.name) {
+            for (k in namedLayers) {
+                layer = namedLayers[k];
+                if (layer_name == k) {
                     torm = layer;
-                } else if (last_layer_name == layer.name) {
+                } else if (next_layer == k) {
                     toadd = layer;
                 }
             }
             if (toadd && torm) {
                 torm.removeFrom(map);
                 toadd.addTo(map);
+            }
+
+        } else {
+            if (last_layer_name != layer_name) {
+                console.log('Switching from layer ' + layer_name + ' back to previous layer ' + last_layer_name);
+                var toadd = false;
+                var torm  = false;
+                for (k in namedLayers) {
+                    layer = namedLayers[k];
+                    if (layer_name == k) {
+                        torm = layer;
+                    } else if (last_layer_name == k) {
+                        toadd = layer;
+                    }
+                }
+                if (toadd && torm) {
+                    torm.removeFrom(map);
+                    toadd.addTo(map);
+                }
             }
         }
         e.preventDefault();

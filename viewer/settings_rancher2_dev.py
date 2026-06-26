@@ -33,6 +33,8 @@ CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
 ENABLE_DEV = True
 
+ENABLE_IBIS = True
+
 ENABLE_UNWISE_W3W4 = True
 
 ENABLE_PHAT = True
@@ -61,3 +63,5 @@ ENABLE_DR9_SOUTH_MODELS = True
 ENABLE_DR9_SOUTH_RESIDS = True
 
 ENABLE_DR10 = True
+
+ENABLE_DR11 = True
