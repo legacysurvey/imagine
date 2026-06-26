@@ -214,6 +214,7 @@ def top_levels(mp, opt):
 
     rgbkwargs = {}
     if opt.kind in ['unwise-neo2', 'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
+                    'unwise-neo11',
                     'unwise-cat-model']:
         bands = [1, 2]
     elif opt.kind == 'unwise-w3w4':
@@ -248,7 +249,13 @@ def top_levels(mp, opt):
         
     if 'ls-dr11' in opt.kind:
         basescale = 7
-    
+
+    if 'act-dr6' in opt.kind:
+        basescale = 6
+
+    if 'ps1' in opt.kind:
+        basescale = 6
+        
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                        '%(zoom)i', '%(x)i', '%(y)i.jpg')
     patdata = dict(ver=ver)
@@ -393,9 +400,16 @@ def _layer_get_filename(args):
             print('Need to re-create', fn, 'due to modified dependencies')
             os.remove(fn)
 
+    print('Getting scale', scale, 'brick', brick.brickname, 'band', band)
     fn = layer.get_filename(brick, band, scale)
     print(fn)
 
+def one_galex_coadd(X):
+    (layer, b, band, fn, invvar) = X
+    print('Creating:', fn)
+    tempfiles = []
+    layer.create_coadd_image(b, band, 0, fn, tempfiles=tempfiles,
+                             invvar=invvar)
 
 def main():
     import optparse
@@ -491,11 +505,22 @@ def main():
         if opt.mindec is None:
             opt.mindec = -25
 
+    if opt.kind in ['ps1']:
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = -45
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
+
     # All-sky
     elif (opt.kind in ['halpha', 'unwise-neo1', 'unwise-neo2', 'unwise-neo3',
                        'unwise-neo4', 'unwise-neo6', 'unwise-neo7', 'unwise-cat-model',
-                       'unwise-w3w4',
-                       'galex', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf',
+                       'unwise-w3w4', 'unwise-neo11',
+                       'act-dr6-f150', 'mdw-halpha',
+                       'galex', 'galex-invvar', 'wssa', 'vlass', 'vlass1.2', 'hsc2', 'hsc-dr3', 'ztf',
                        'cfis-r', 'cfis-u', 'cfis-dr3-r', 'cfis-dr3-u']
               or 'dr8i' in opt.kind
               or 'dr9-test' in opt.kind
@@ -530,6 +555,10 @@ def main():
             opt.bands = 'gri'
         if 'vlass' in opt.kind:
             opt.bands = [1]
+        if 'act-dr6-f150' in opt.kind:
+            opt.bands = ['f150']
+        if 'mdw-halpha' in opt.kind:
+            opt.bands = ['MDW656']
 
     elif opt.kind == 'm33':
         if opt.mindec is None:
@@ -648,12 +677,12 @@ def main():
         if opt.minra is None:
             opt.minra = 0
 
-    elif 'ls-dr11' in opt.kind:
+    elif opt.kind in ['ls-dr11-south', 'ls-dr11-south-model', 'ls-dr11-south-resid','ls-dr11-early-v2']:
         if opt.bands is None:
-            if opt.kind.endswith('-grz'):
-                opt.bands = 'grz'
-            else:
+            if opt.kind.endswith('-griz'):
                 opt.bands = 'griz'
+            else:
+                opt.bands = 'grz'
         if opt.maxdec is None:
             opt.maxdec = 40
         if opt.mindec is None:
@@ -661,19 +690,57 @@ def main():
         if opt.maxra is None:
             opt.maxra = 360
         if opt.minra is None:
-            opt.minra = 0            
+            opt.minra = 0
+
+    elif opt.kind in ['ls-dr11-north', 'ls-dr11-north-model', 'ls-dr11-north-resid','ls-dr11-early-north']:
+        if opt.bands is None:
+            opt.bands = 'grz'
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = -5
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
      
     elif opt.kind in ['pandas']:
         if opt.bands is None:
             opt.bands = 'gi'
         if opt.maxdec is None:
-            opt.maxdec = 51
+            #opt.maxdec = 51
+            opt.maxdec = 60
         if opt.mindec is None:
-            opt.mindec = 37
+            #opt.mindec = 37
+            opt.mindec = 15
         if opt.maxra is None:
             opt.maxra = 360
         if opt.minra is None:
             opt.minra = 0
+
+    elif opt.kind in ['niji']:
+        if opt.bands is None:
+            opt.bands = ['413', '439', '465', '490']
+        if opt.maxdec is None:
+            opt.maxdec = 10
+        if opt.mindec is None:
+            opt.mindec = -10
+        if opt.maxra is None:
+            opt.maxra = 160
+        if opt.minra is None:
+            opt.minra = 140
+            
+    elif opt.kind in ['lsst']:
+        if opt.bands is None:
+            opt.bands = ['g','r','i','z']
+        if opt.maxdec is None:
+            opt.maxdec = 12
+        if opt.mindec is None:
+            opt.mindec = 4
+        if opt.maxra is None:
+            opt.maxra = 50
+        if opt.minra is None:
+            opt.minra = 30
 
     else:
         if opt.maxdec is None:
@@ -697,35 +764,36 @@ def main():
         layer = get_layer(opt.kind)
         for scale in range(1,8):
             B = layer.get_bricks_for_scale(scale)
+            print('Bricks for scale', scale, ':', B)
         sys.exit(0)
 
     if opt.scale:
 
-        if opt.kind == 'ps1':
-            from map.views import get_layer
-
-            fns = glob('data/ps1/skycells/*/ps1-*.fits')
-            fns.sort()
-            #ps1-1561-021-r.fits
-            if len(opt.zoom) == 0:
-                opt.zoom = [1,2,3,4,5,6,7]
-            print(len(fns), 'PS1 image files')
-            layer = get_layer(opt.kind)
-            B = layer.get_bricks()
-            print(len(B), 'skycells total')
-            B.cut((B.ra  >= opt.minra ) * (B.ra  <= opt.maxra ) *
-                  (B.dec >= opt.mindec) * (B.dec <= opt.maxdec))
-            print(len(B), 'skycells in RA,Dec box')
-            for i,brick in enumerate(B):
-                for band in opt.bands:
-                    fn0 = layer.get_filename(brick, band, 0)
-                    print('PS1 image:', fn0)
-                    if not os.path.exists(fn0):
-                        continue
-                    for scale in opt.zoom:
-                        fn = layer.get_filename(brick, band, scale)
-                        layer.create_scaled_image(brick, band, scale, fn)
-            sys.exit(0)
+        # if opt.kind == 'ps1':
+        #     from map.views import get_layer
+        # 
+        #     fns = glob('data/ps1/skycells/*/ps1-*.fits')
+        #     fns.sort()
+        #     #ps1-1561-021-r.fits
+        #     if len(opt.zoom) == 0:
+        #         opt.zoom = [1,2,3,4,5,6,7]
+        #     print(len(fns), 'PS1 image files')
+        #     layer = get_layer(opt.kind)
+        #     B = layer.get_bricks()
+        #     print(len(B), 'skycells total')
+        #     B.cut((B.ra  >= opt.minra ) * (B.ra  <= opt.maxra ) *
+        #           (B.dec >= opt.mindec) * (B.dec <= opt.maxdec))
+        #     print(len(B), 'skycells in RA,Dec box')
+        #     for i,brick in enumerate(B):
+        #         for band in opt.bands:
+        #             fn0 = layer.get_filename(brick, band, 0)
+        #             print('PS1 image:', fn0)
+        #             if not os.path.exists(fn0):
+        #                 continue
+        #             for scale in opt.zoom:
+        #                 fn = layer.get_filename(brick, band, scale)
+        #                 layer.create_scaled_image(brick, band, scale, fn)
+        #     sys.exit(0)
 
 
         # Rebricked
@@ -734,8 +802,8 @@ def main():
                         'mzls+bass-dr6', 'mzls+bass-dr6-model',
                         'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                         'unwise-w3w4',
-                        'unwise-cat-model',
-                        'galex', 'wssa', 'des-dr1', 'hsc2', 'hsc-dr3',
+                        'unwise-cat-model', 'unwise-neo11',
+                         'galex', 'wssa', 'des-dr1', 'hsc2', 'hsc-dr3', 'niji', 'lsst',
                         'cfis-dr3-r', 'cfis-dr3-u',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
                         'dr8-south', 'dr8-south-model', 'dr8-south-resid',
@@ -771,7 +839,10 @@ def main():
                          'decaps2', 'decaps2-model',
                          'dr10-deep', 'dr10-deep-model', 'ibis-color', 'ibis',
                          'ibis-3', 'ibis-3-wide', 'ls-dr11-early', 'ls-dr11-early-v2',
-                         'ibis-4', 'ibis-4-model', 'ibis-4-resid',
+                         'ibis-4', 'ibis-4-model', 'ibis-4-resid','ls-dr11-early-north','ls-dr11','ls-dr11-model','ls-dr11-resid',
+                         'ls-dr11-south','ls-dr11-north','ls-dr11-north-model','ls-dr11-north-resid',
+                         'ls-dr11-south-model','ls-dr11-south-resid',
+                         'mdw-halpha', 'dfuws', 'ps1',
                          ]
             or opt.kind.startswith('dr8-test')
             or opt.kind.startswith('dr9-test')
@@ -840,11 +911,25 @@ def main():
                         has[band] = np.ones(len(B), bool)
 
                 # Run one scale at a time
+                # args = []
+                # for ibrick,brick in enumerate(B):
+                #     for band in bands:
+                #         if has[band][ibrick]:
+                #             args.append((layer, brick, band, scale, opt.ignore, opt.deps))
+                # print(len(args), 'bricks for scale', scale)
+                # mp.map(_layer_get_filename, args)
                 args = []
+                pat = layer.get_scaled_pattern()
+                
                 for ibrick,brick in enumerate(B):
                     for band in bands:
                         if has[band][ibrick]:
-                            args.append((layer, brick, band, scale, opt.ignore, opt.deps))
+                            fnargs = dict(band=band, brickname=brick.brickname, scale=scale)
+                            fn = pat % fnargs
+                            if os.path.exists(fn):
+                                print('Exists:', fn)
+                            else:
+                                args.append((layer, brick, band, scale, opt.ignore, opt.deps))
                 print(len(args), 'bricks for scale', scale)
                 mp.map(_layer_get_filename, args)
 
@@ -951,10 +1036,69 @@ def main():
 
     if opt.bricks_exist:
         from map.views import get_survey
-
+        from collections import Counter
+        from astrometry.util.util import Tan
+        
         surveyname = opt.kind
         filetype = 'image'
 
+        if surveyname == 'dfuws':
+            # create bricks file from files...
+            # read g band
+            fns = glob('data/dfuws/dfuws_v1_legacy-100sqdeg-sample/output_g/output_tiles/UWtile_*_*.fits')
+            fns.sort()
+            print(len(fns), 'files')
+            hdrvals = []
+            cols = ['NAXIS1', 'NAXIS2', 'CRPIX1', 'CRPIX2', 'CDELT1', 'CDELT2',
+                    'CRVAL1', 'CRVAL2', 'FIELDS', 'FILTER']
+            T = fits_table()
+            T.brickname = []
+            T.ra = []
+            T.dec = []
+            T.ra1 = []
+            T.ra2 = []
+            T.dec1 = []
+            T.dec2 = []
+            for fn in fns:
+                hdr = fitsio.read_header(fn)
+                # vals = []
+                # for col in cols:
+                #     vals.append(hdr[col])
+                # hdrvals.append(vals)
+
+                wcs = Tan(*[float(f) for f in
+                            [hdr['CRVAL1'], hdr['CRVAL2'], hdr['CRPIX1'], hdr['CRPIX2'],
+                             hdr['CDELT1'], 0., 0., hdr['CDELT2'], hdr['NAXIS1'], hdr['NAXIS2']]])
+                rc,dc = wcs.radec_center()
+                base = os.path.basename(fn)
+                assert(base.startswith('UWtile_'))
+                assert(base.endswith('.fits'))
+                words = base.replace('.fits', '').split('_')
+                tilename = words[1]
+
+                T.brickname.append(tilename)
+                T.ra.append(rc)
+                T.dec.append(dc)
+                w, h = hdr['NAXIS1'], hdr['NAXIS2']
+                r1,_ = wcs.pixelxy2radec(w, (h+1)/2.)
+                r2,_ = wcs.pixelxy2radec(1, (h+1)/2.)
+                _,d1 = wcs.pixelxy2radec((w+1)/2., 1.)
+                _,d2 = wcs.pixelxy2radec((w+1)/2., h)
+                T.ra1.append(r1)
+                T.ra2.append(r2)
+                T.dec1.append(d1)
+                T.dec2.append(d2)
+            T.to_np_arrays()
+            T.writeto('data/dfuws/survey-bricks.fits.gz')
+            sys.exit(0)
+            # T = fits_table()
+            # for i,col in enumerate(cols):
+            #     x = np.array([hdr[i] for hdr in hdrvals])
+            #     T.set(col.lower(), x)
+            #     print(col, Counter(x).most_common(5))
+            # T.writeto('dfuws.fits')
+            
+        
         survey = get_survey(surveyname)
         print('Survey:', type(survey), survey)
         
@@ -1036,9 +1180,9 @@ def main():
         opt.y0 = opt.y
         opt.y1 = opt.y + 1
 
-    if opt.coadd and opt.kind == 'galex':
+    if opt.coadd and opt.kind in ['galex', 'galex-invvar']:
         layer = GalexLayer('galex')
-        
+
         # base-level (coadd) bricks
         B = layer.get_bricks()
         print(len(B), 'bricks')
@@ -1047,14 +1191,29 @@ def main():
         B.cut((B.ra  >= opt.minra)  * (B.ra  < opt.maxra))
         print(len(B), 'in RA range')
 
-        pat = layer.get_scaled_pattern()
+        invvar = (opt.kind == 'galex-invvar')
+        
+        pat = layer.get_scaled_pattern(invvar=invvar)
+
         tempfiles = []
+        args = []
         for b in B:
             for band in ['n','f']:
                 fn = pat % dict(scale=0, band=band, brickname=b.brickname)
-                layer.create_coadd_image(b, band, 0, fn, tempfiles=tempfiles)
+                if os.path.exists(fn):
+                    print('Exists:', fn)
+                    continue
+                if opt.threads > 1:
+                    args.append((layer, b, band, fn, invvar))
+                else:
+                    print('Creating:', fn)
+                    layer.create_coadd_image(b, band, 0, fn, tempfiles=tempfiles,
+                                             invvar=invvar)
             for fn in tempfiles:
                 os.unlink(fn)
+        if len(args):
+            mp.map(one_galex_coadd, args)
+
         sys.exit(0)
 
     if opt.coadd and opt.kind == 'sdss':

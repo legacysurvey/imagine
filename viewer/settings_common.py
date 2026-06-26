@@ -44,13 +44,14 @@ ENABLE_OLDER = True
 # scientist view (vs public)
 ENABLE_SCIENCE = True
 
-# Collab-private data!
-ENABLE_DESI_DATA = False
-
 # DESI Early Data Release
 ENABLE_DESI_EDR = True
 # DESI DR1
-ENABLE_DESI_DR1 = False
+ENABLE_DESI_DR1 = True
+# DESI Collab-private data!
+ENABLE_DESI_DATA = False
+# DESI daily observation metadata only
+ENABLE_DESI_DAILY_OBS = True
 
 ENABLE_MERIAN = False
 
@@ -85,6 +86,8 @@ ENABLE_DR11 = False
 ENABLE_IBIS = False
 
 ENABLE_UNWISE_W3W4 = False
+
+ENABLE_IBIS = False
 
 ENABLE_DR67 = True
 
@@ -197,6 +200,7 @@ ALLOWED_HOSTS = [
     'spin.legacysurvey.org',
     'viewer.legacysurvey.org', 'a.viewer.legacysurvey.org', 'b.viewer.legacysurvey.org', 'c.viewer.legacysurvey.org', 'd.viewer.legacysurvey.org',
     'dev.viewer.legacysurvey.org', 'dev-a.viewer.legacysurvey.org', 'dev-b.viewer.legacysurvey.org', 'dev-c.viewer.legacysurvey.org', 'dev-d.viewer.legacysurvey.org',
+    'dfuws.legacysurvey.org',
     'lb.cosmo-viewer.production.svc.spin.nersc.org',
     'lb2.cosmo-viewer.production.svc.spin.nersc.org',
     'www2.legacysurvey.org',

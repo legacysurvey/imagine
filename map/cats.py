@@ -40,6 +40,8 @@ catversions = {
     'lslga': [1,],
     'sga': [1,],
     'sga2025-parent': [1,],
+    'sga2025-north': [1,],
+    'sga2025-south': [1,],
     'spec': [1,],
     'spec-deep2': [1,],
     'manga': [1,],
@@ -208,6 +210,13 @@ def call_prospect(spectra, zbests, redrock_template_dir=None, outdir=None):
     import prospect.viewer
     import redrock.templates
 
+    # print('calling prosect: spectra', spectra)
+    # print('zbests', zbests)
+    # print('rr templ', redrock_template_dir)
+    # from desispec.io import write_spectra
+    # write_spectra('prospect-spectra.fits', spectra)
+    # zbests.write('prospect-zbest.fits', overwrite=True)
+    
     if redrock_template_dir is None:
         redrock_template_dir = os.path.join(settings.DATA_DIR, 'redrock-templates')
     os.environ['RR_TEMPLATE_DIR'] = redrock_template_dir
@@ -235,7 +244,8 @@ def call_prospect(spectra, zbests, redrock_template_dir=None, outdir=None):
         prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir, outfile=outfn,
                                     with_vi_widgets=False,
                                     with_thumb_tab=False,
-                                    title=tt)
+                                    title=tt,
+                                    colors=['#d62728', 'black', 'blue'])
         # colors=['color_for_spectrum', 'color_for_model', 'color_for_noise']
         # color names html syntax; current default values '#D62728', 'black', 'green')
     except KeyError:
@@ -529,7 +539,6 @@ def cat_desi_dr1_spectra_detail(req, targetid):
         return HttpResponse('No such targetid found in DESI DR1 spectra: %s' % targetid)
 
     rr_templ = os.path.join(settings.DATA_DIR, 'desi-spectro-dr1', 'redrock-templates')
-
     return desi_healpix_spectrum(req, t, release, redrock_template_dir=rr_templ)
 
 def cat_desi_release_spectra(req, ver, kdfns, tag, racol='ra', deccol='dec',
@@ -2437,11 +2446,11 @@ def cat_targets_drAB(req, ver, cats=None, tag='', bgs=False, sky=False, bright=F
     
     return HttpResponse(json.dumps(rtn), content_type='application/json')
 
-def cat_sga_parent(req, ver):
+def cat_sga2020_parent(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-parent-v3.0.kd.fits')
     return _cat_sga(req, ver, fn=fn, tag='sga')
 
-def cat_sga_ellipse(req, ver):
+def cat_sga2020_ellipse(req, ver):
     # T = fits_table('cosmo/webapp/viewer-dev/data/sga/SGA-ellipse-v3.2.kd.fits')
     # T.cut((T.sga_id >= 0) * (T.preburned))
     # cols = ['ra','dec','diam', 'galaxy', 'pgc', 'morphtype', 'ba', 'pa', 'z_leda', 'group_name']
@@ -2455,9 +2464,19 @@ def cat_sga_ellipse(req, ver):
 
 def cat_sga2025_parent(req, ver):
     fn = os.path.join(settings.DATA_DIR, 'sga2025', 'SGA2025-parent-latest.kd.fits')
-    return _cat_sga(req, ver, fn=fn, tag='sga2025-parent')
+    return _cat_sga(req, ver, fn=fn, tag='sga2025-parent', cycle_colors=True)
 
-def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
+def cat_sga2025_north(req, ver):
+    fn = os.path.join(settings.DATA_DIR, 'sga2025', 'SGA2025-ellipse-north-latest.kd.fits')
+    print('Reading', fn)
+    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga2025-north')
+
+def cat_sga2025_south(req, ver):
+    fn = os.path.join(settings.DATA_DIR, 'sga2025', 'SGA2025-ellipse-south-latest.kd.fits')
+    print('Reading', fn)
+    return _cat_sga(req, ver, ellipse=True, fn=fn, tag='sga2025-south')
+
+def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga', cycle_colors=False):
     import json
     import numpy as np
     # The SGA catalog includes radii for the galaxies, and we want galaxies
@@ -2481,9 +2500,16 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
 
     rd = list((float(r),float(d)) for r,d in zip(T.ra, T.dec))
 
-    if '2025' in tag:
+    if tag == 'sga2025-parent':
         names = [t.strip() for t in T.objname]
         pgc = [int(p) for p in T.pgc]
+        typ = ['' for i in range(len(T))]
+        z = [-1 for i in range(len(T))]
+
+    elif tag in ['sga2025-north', 'sga2025-south']:
+        names = ['SGA-%i' % refid if refid != -1 else ''
+                 for refid in T.ref_id]
+        pgc = [int(p) for p in T.ref_id]
         typ = ['' for i in range(len(T))]
         z = [-1 for i in range(len(T))]
 
@@ -2493,7 +2519,9 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
         typ = [t.strip() if t != 'nan' else '' for t in T.get('morphtype')]
         z = [float(z) if np.isfinite(z) else -1. for z in T.z_leda.astype(np.float32)]
     radius = [float(r) for r in T.radius_arcsec.astype(np.float32)]
-    ab = [float(f) for f in T.ba.astype(np.float32)]
+    ab = T.ba.astype(np.float32)
+    ab[ab == 0.] = 1.
+    ab = [float(f) for f in ab]
 
     pax = T.pa.copy().astype(np.float32)
     pax[np.logical_not(np.isfinite(pax))] = 0.
@@ -2503,14 +2531,32 @@ def _cat_sga(req, ver, ellipse=False, fn=None, tag='sga'):
     pa = [float(x) for x in pax]
     #pa = [float(90.-f) for f in pax]
     #pa_disp = [float(f) for f in pax]
-    if ellipse:
+
+    if cycle_colors:
+        # Colors cycle on ~arcmin scale to distinguish nearby groups.
+        # Larger color palette (20-24 colors)
+        colors = [
+            'red', 'blue', 'green', 'yellow', 'cyan', 'orange', 'magenta', 'lime',
+            'pink', 'purple', 'brown', 'navy', 'teal', 'olive', 'maroon', 'aqua',
+            'coral', 'gold', 'indigo', 'violet', 'khaki', 'salmon', 'plum', 'tan'
+        ]
+        # Bin on arcmin scale (~36 arcsec ~ 0.01 deg)
+        ra_bin  = np.floor(T.group_ra  * 100).astype(int) % len(colors)
+        dec_bin = np.floor(T.group_dec * 100).astype(int) % len(colors)
+        color_idx = (ra_bin + dec_bin) % len(colors)
+        color = [colors[i] for i in color_idx]
+
+    elif ellipse:
         color = ['#377eb8']*len(T)
         #'#ff3333'
     else:
         color = ['#e41a1c']*len(T)
         #'#3388ff'
 
-    groupnames = [t.strip() for t in T.group_name]
+    if 'group_name' in T.get_columns():
+        groupnames = [t.strip() for t in T.group_name]
+    else:
+        groupnames = [''] * len(T)
 
     return HttpResponse(json.dumps(dict(rd=rd, name=names, radiusArcsec=radius,
                                         groupname=groupnames,
@@ -2743,7 +2789,7 @@ def cat_masks_dr9(req, ver):
             pa += 180.
         if pa >= 180.:
             pa -= 180.
-        PA.append(float(90.-pa))
+        PA.append(float(pa))
         PA_disp.append(float(pa))
 
         if bright:
@@ -3184,8 +3230,8 @@ def cat_tycho2(req, ver):
     #return cat(req, ver, 'tycho2',
     #           os.path.join(settings.DATA_DIR, 'tycho2.fits'))
     import json
-    T = cat_kd(req, ver, 'tycho2',
-               [os.path.join(settings.DATA_DIR, 'tycho2-sub.kd.fits')])
+    fn = os.path.join(settings.DATA_DIR, 'tycho2-sub.kd.fits')
+    T = cat_kd(req, ver, 'tycho2', [fn])
     if T is None:
         rtn = dict(rd=[], name=[])
     else:
@@ -3538,7 +3584,40 @@ if __name__ == '__main__':
     #r = c.get('/desi-obs/daily/tile20372fiber1199')
 
     #r = c.get('/desi-obs/daily/targetid39633165945409137')
-    r = c.get('/desi-obs/daily/targetid39633165945409158')
+    #r = c.get('/desi-obs/daily/targetid39633165945409158')
+
+    #r = c.get('/desi-spectrum/dr1/targetid2305843038603189930')
+
+    #r = c.get('/desi-spectrum/dr1/targetid39627784728871188')
+    #r = c.get('/masks-dr9/1/cat.json?ralo=190.5906&rahi=190.7205&declo=14.3214&dechi=14.3930')
+    #r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
+    r = c.get('/')
+
+    
+    # import bokeh
+    # print('bokeh', bokeh.__version__)
+    # import prospect
+    # print('prospect', prospect.__version__)
+    # 
+    # import sys
+    # print('python', sys.version)
+    # import numpy
+    # print('numpy', numpy.__version__)
+    
+    # from desispec.io import read_spectra
+    # from astropy.table import Table
+    # spec = read_spectra('prospect-spectra.fits')
+    # zbest = Table.read('prospect-zbest.fits')
+    # rr_templ = '/global/cfs/cdirs/cosmo/webapp/viewer/data/desi-spectro-dr1/redrock-templates'
+    # outdir = 'prospect-out'
+    # #outdir = '/tmp/prospect-out'
+    # call_prospect(spec, zbest, redrock_template_dir=rr_templ,
+    #               outdir=outdir)
+    # sys.exit(0)
+    
+    #import locale
+    #print('Locale:', locale.getencoding())
+    #open('prospect/data/emission_lines.txt').readlines()
     
     f = open('out', 'wb')
     for x in r:
