@@ -670,10 +670,15 @@ def _index(req,
         print('Looking up TARGETID', tid)
         t = lookup_any_targetid(tid)
         print('t:', t)
-        print(t.get_columns())
+        #print(t.get_columns())
         if t is not None:
-            ra = t.target_ra
-            dec = t.target_dec
+            cols = t.get_columns()
+            if 'ra' in cols and 'dec' in cols:
+                ra = t.ra
+                dec = t.dec
+            else:
+                ra = t.target_ra
+                dec = t.target_dec
             print('Targetid found: RA,Dec', ra, dec)
             print('(targetid', t.targetid, ')')
         else:
@@ -9214,8 +9219,10 @@ if __name__ == '__main__':
     #r = c.get('/phast/1/12/3975/1531.jpg')
     #r = c.get('/phast/1/11/1987/765.jpg')
     #r = c.get('/phast/1/10/993/382.jpg')
-    r = c.get('/phast/1/9/496/191.jpg')
+    #r = c.get('/phast/1/9/496/191.jpg')
 
+    r = c.get('?targetid=39627965302051121')
+    
 
     # Euclid colorization
     # for i in [3,]:#1,2]:
