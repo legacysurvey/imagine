@@ -3132,8 +3132,12 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
         if (this.data_base_url !== undefined) {
             var survey = json['survey'][i];
             var program = json['program'][i];
-            var healpix = json['healpix'][i];
-            var data_url = this.data_base_url + '/healpix/' + survey + '/' + program + '/' +
+            if ('healpix' in json) {
+                var healpix = json['healpix'][i];
+            } else {
+                var healpix = json['uniqpix'][i];
+            }
+            var data_url = this.data_base_url + '/' + survey + '/' + program + '/' +
                 Math.floor(healpix/100) + '/' + healpix + '/';
             s = s + '<br/><a href="' + data_url + '">DESI Data Directory</a>';
         }
@@ -3180,7 +3184,7 @@ var desi_spec_edr = new DesiSpectraCatalog(
      'radius': 300,
      'labelsMinZoom': 10,
      'minZoom': 6,
-     'data_base_url': 'https://data.desi.lbl.gov/public/edr/spectro/redux/fuji',
+     'data_base_url': 'https://data.desi.lbl.gov/public/edr/spectro/redux/fuji/healpix',
     });
 {% endif %}
   
@@ -3191,7 +3195,7 @@ var desi_spec_edr = new DesiSpectraCatalog(
      'radius': 300,
      'labelsMinZoom': 10,
      'minZoom': 6,
-     'data_base_url': 'https://data.desi.lbl.gov/public/dr1/spectro/redux/iron',
+     'data_base_url': 'https://data.desi.lbl.gov/public/dr1/spectro/redux/iron/healpix',
     });
 {% endif %}
 
@@ -3220,6 +3224,7 @@ var desi_spec_matterhorn = new DesiSpectraCatalog(
      'radius': 300,
      'labelsMinZoom': 10,
      'minZoom': 8,
+     'data_base_url': 'https://www.legacysurvey.org/viewer-desi/data/desi/spectro/redux/matterhorn/spectra',
     });
 
 var desi_spec_guadalupe = new DesiSpectraCatalog(

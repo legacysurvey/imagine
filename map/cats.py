@@ -839,6 +839,8 @@ def cat_desi_release_spectra(req, ver, kdfns, tag, racol='ra', deccol='dec',
 
     if 'healpix' in cols:
         J.update(healpix=[int(h) for h in T.healpix])
+    if 'uniqpix' in cols:
+        J.update(uniqpix=[int(h) for h in T.uniqpix])
     if 'survey' in cols:
         J.update(survey=list(T.survey))
     if 'program' in cols:
