@@ -89,6 +89,7 @@ catversions = {
     'desi-fuji-spectra': [1,],
     'desi-guadalupe-tiles': [1,],
     'desi-guadalupe-spectra': [1,],
+    'desi-matterhorn-spectra': [1,],
     'ls-dr10': [1,],
     'ls-dr10-south': [1,],
 }
@@ -359,8 +360,16 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
 
     prog = obj.program.strip()
     surv = obj.survey.strip()
-    hp = '%i' % obj.healpix
-    hp_pre = '%i' % (obj.healpix//100)
+    # v2 spectro format
+    if hasattr(obj, 'uniqpix'):
+        hp = '%i' % obj.uniqpix
+        hp_pre = '%i' % (obj.uniqpix//100)
+        hpdir = 'spectra'
+    else:
+        # v1
+        hp = '%i' % obj.healpix
+        hp_pre = '%i' % (obj.healpix//100)
+        hpdir = 'healpix'
 
     if release == 'edr':
         basedir = '/global/cfs/cdirs/desi/public/edr/spectro/redux/fuji'
@@ -371,7 +380,7 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
         basedir = '/global/cfs/cdirs/desi/spectro/redux/%s' % release
 
     
-    fn = os.path.join(basedir, 'healpix', surv, prog, hp_pre, hp,
+    fn = os.path.join(basedir, hpdir, surv, prog, hp_pre, hp,
                       'coadd-%s-%s-%s.fits' % (surv, prog, hp))
 
     spectra = read_spectra(fn)
@@ -412,6 +421,8 @@ def get_desi_spectro_kdfiles(release):
                 os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'desi-obs.kd.fits')]
     elif release == 'guadalupe':
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-guadalupe', 'zpix-all.kd.fits')]
+    elif release == 'matterhorn':
+        return [os.path.join(settings.DATA_DIR, 'desi-spectro-matterhorn', 'zpix-all.kd.fits')]
     elif release == 'fuji':
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-fuji', 'zpix-all.kd.fits')]
     elif release == 'denali':
@@ -490,6 +501,13 @@ def cat_desi_daily_spectra_detail(req, targetid):
     if t is None:
         return HttpResponse('No such targetid found in DESI daily spectra: %s' % targetid)
     return cat_desi_release_spectra_detail(req, t.tileid, t.fiber, 'daily')
+
+def cat_desi_matterhorn_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    t = lookup_targetid(targetid, 'matterhorn')
+    if t is None:
+        return HttpResponse('No such targetid found in DESI Matterhorn spectra: %s' % targetid)
+    return desi_healpix_spectrum(req, t, 'matterhorn')
 
 def cat_desi_guadalupe_spectra_detail(req, targetid):
     targetid = int(targetid)
@@ -881,6 +899,14 @@ def cat_desi_daily_obs_detail(req, targetid):
     print('Target:', t)
     t.about()
     return obj_list(req, t)
+
+def cat_desi_matterhorn_spectra(req, ver):
+    kdfns = get_desi_spectro_kdfiles('matterhorn')
+    tag = 'desi-matterhorn-spectra'
+    return cat_desi_release_spectra(req, ver, kdfns, tag,
+                                    racol='target_ra', deccol='target_dec')
+
+# python -c "from desi_spectro_kdtree import create_desi_spectro_kdtree as create; create('data/desi-spectro-matterhorn/zpix-all.fits', 'data/desi-spectro-matterhorn/zpix-all.kd.fits', racol='target_ra', deccol='target_dec')"
 
 def cat_desi_guadalupe_spectra(req, ver):
     '''
@@ -3483,7 +3509,10 @@ def get_desi_tile_radec(tileid, fiberid=None):
 
 if __name__ == '__main__':
     import sys
-
+    arg = None
+    if len(sys.argv) == 2:
+        arg = sys.argv[1]
+    
     if False:
         from map.views import get_layer
         #galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-hsc2.fits')
@@ -3528,6 +3557,48 @@ if __name__ == '__main__':
         os.system('startree -i data/sdss/specObj-dr16-trimmed.fits -o data/sdss/specObj-dr16-trimmed.kd.fits -T -k -P')
         sys.exit(0)
 
+    # DESI Matterhorn
+    if arg == 'matterhorn':
+        # from astrometry.util.fits import fits_table
+        # import numpy as np
+        # best = ['z', 'zerr', 'zwarn', 'spectype', 'subtype']
+        # T = fits_table('/global/cfs/cdirs/desi/spectro/redux/matterhorn/zcatalog/v2/zall/zall-pix-matterhorn.fits',
+        #                columns=(['target_ra','target_dec','targetid', 'uniqpix', 'objtype',
+        #                          'survey', 'program'] +
+        #                         ['%s_best' % c for c in best]))
+        # for c in best:
+        #     T.rename('%s_best'%c, c)
+        # T.writeto('data/desi-spectro-matterhorn/zpix-all.fits')
+
+
+        from desi_spectro_kdtree import create_desi_spectro_kdtree as create
+        create('data/desi-spectro-matterhorn/zpix-all.fits',
+               'data/desi-spectro-matterhorn/zpix-all.kd.fits',
+               racol='target_ra', deccol='target_dec')
+
+        sys.exit(0)
+        
+        #1086  ln -s /global/cfs/cdirs/desi/spectro/redux/matterhorn/zcatalog/v2/zall/zall-pix-matterhorn.fits zpix-all.fits
+        #1094  ln -s  data/desi-spectro-loa/zpix-all.fits
+ 
+    # DESI Loa
+    if arg == 'loa':
+        # from astrometry.util.fits import fits_table
+        # import numpy as np
+        # best = ['z', 'zerr', 'zwarn', 'spectype', 'subtype']
+        # T = fits_table('/global/cfs/cdirs/desi/spectro/redux/loa/zcatalog/v1/zall-pix-loa.fits',
+        #                columns=['target_ra','target_dec','targetid','z','zerr','zwarn',
+        #                         'spectype','subtype', 'survey', 'program', 'healpix', 'objtype'])
+        # T.writeto('data/desi-spectro-loa/zpix-all.fits')
+
+        from desi_spectro_kdtree import create_desi_spectro_kdtree as create
+        create('data/desi-spectro-loa/zpix-all.fits',
+               'data/desi-spectro-loa/zpix-all.kd.fits',
+               racol='target_ra', deccol='target_dec')
+
+        sys.exit(0)
+
+        
     #t = lookup_targetid(39627788403084375)
     #print('Targetid:', t)
     #t.about()
@@ -3591,8 +3662,9 @@ if __name__ == '__main__':
     #r = c.get('/desi-spectrum/dr1/targetid39627784728871188')
     #r = c.get('/masks-dr9/1/cat.json?ralo=190.5906&rahi=190.7205&declo=14.3214&dechi=14.3930')
     #r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
-    r = c.get('/')
+    #r = c.get('/')
 
+    r = c.get('/desi-spec-matterhorn/1/cat.json?ralo=124.8891&rahi=125.4089&declo=19.2998&dechi=19.5789')
     
     # import bokeh
     # print('bokeh', bokeh.__version__)

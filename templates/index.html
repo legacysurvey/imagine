@@ -3214,6 +3214,14 @@ var desi_spec_daily_sky = new DesiSpectraCatalog(
      //'urlTerm': 'desi-spec/denali',
     });
 
+var desi_spec_matterhorn = new DesiSpectraCatalog(
+    'desi-spec-matterhorn', 'DESI Matterhorn spectra', 'matterhorn',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+    });
+
 var desi_spec_guadalupe = new DesiSpectraCatalog(
     'desi-spec-guadalupe', 'DESI Guadalupe spectra', 'guadalupe',
     {'url': smallcat_url,
@@ -3948,6 +3956,7 @@ var overlays = [
     desi_spec_dr1,
     {% endif %}
     {% if enable_desi_data %}
+    desi_spec_matterhorn,
     desi_tiles_guadalupe,
     desi_spec_guadalupe,
     desi_tiles_fuji,
@@ -4530,6 +4539,7 @@ var overlayTree = [];
            findoverlay('desi-spec-dr1'),
            {% endif %}
            {% if enable_desi_data %}
+           findoverlay('desi-spec-matterhorn'),
            findoverlay('desi-tiles-guadalupe'),
            findoverlay('desi-spec-guadalupe'),
            findoverlay('desi-tiles-fuji'),

@@ -48,6 +48,11 @@ if settings.ENABLE_DESI_DATA:
         #re_path(r'^desi-spectrum/daily/tile(\d+)/fiber(\d+)', cats.cat_desi_daily_spectra_detail),
         re_path(r'^desi-spectrum/daily/targetid(-?\d+)', cats.cat_desi_daily_spectra_detail),
 
+        # DESI spectroscopy -- Matterhorn
+        #re_path(r'^desi-tiles/matterhorn/(\d+)/cat.json', cats.cat_desi_matterhorn_tiles),
+        re_path(r'^desi-spec-matterhorn/(\d+)/cat.json', cats.cat_desi_matterhorn_spectra),
+        re_path(r'^desi-spectrum/matterhorn/targetid(-?\d+)', cats.cat_desi_matterhorn_spectra_detail),
+
         # DESI spectroscopy -- Guadalupe
         re_path(r'^desi-tiles/guadalupe/(\d+)/cat.json', cats.cat_desi_guadalupe_tiles),
         re_path(r'^desi-spec-guadalupe/(\d+)/cat.json', cats.cat_desi_guadalupe_spectra),
