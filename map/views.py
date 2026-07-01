@@ -478,7 +478,7 @@ def _index(req,
                             12, 'unwise'],
             'unwise-neo6': ['unWISE W1/W2 NEO6', [[1, 11, aws_unwise_url, []]], 11, 'unwise'],
             'unwise-neo7': ['unWISE W1/W2 NEO7', [def_url], 11, 'unwise'],
-            'unwise-neo11': ['unWISE W1/W2 NEO11', [def_url], 11, 'unwise'],
+            'unwise-neo11': ['unWISE W1/W2 NEO11', [[1, 11, aws_unwise_url, []]], 11, 'unwise'],
             'unwise-cat-model': ['unWISE Catalog model', [[6, maxZoom, tileurl, subs], prod_backstop],
                                  12, 'unwise'],
         })
