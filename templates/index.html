@@ -3227,6 +3227,15 @@ var desi_spec_matterhorn = new DesiSpectraCatalog(
      'data_base_url': 'https://www.legacysurvey.org/viewer-desi/data/desi/spectro/redux/matterhorn/spectra',
     });
 
+var desi_spec_loa = new DesiSpectraCatalog(
+    'desi-spec-loa', 'DESI DR2 (Loa) spectra', 'loa',
+    {'url': smallcat_url,
+     'radius': 300,
+     'labelsMinZoom': 10,
+     'minZoom': 8,
+     'data_base_url': 'https://data.desi.lbl.gov/public/dr2/spectro/redux/loa/healpix',
+});
+
 var desi_spec_guadalupe = new DesiSpectraCatalog(
     'desi-spec-guadalupe', 'DESI Guadalupe spectra', 'guadalupe',
     {'url': smallcat_url,
@@ -3962,6 +3971,7 @@ var overlays = [
     {% endif %}
     {% if enable_desi_data %}
     desi_spec_matterhorn,
+    desi_spec_loa,
     desi_tiles_guadalupe,
     desi_spec_guadalupe,
     desi_tiles_fuji,
@@ -4545,6 +4555,7 @@ var overlayTree = [];
            {% endif %}
            {% if enable_desi_data %}
            findoverlay('desi-spec-matterhorn'),
+           findoverlay('desi-spec-loa'),
            findoverlay('desi-tiles-guadalupe'),
            findoverlay('desi-spec-guadalupe'),
            findoverlay('desi-tiles-fuji'),

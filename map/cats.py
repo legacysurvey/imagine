@@ -89,6 +89,7 @@ catversions = {
     'desi-fuji-spectra': [1,],
     'desi-guadalupe-tiles': [1,],
     'desi-guadalupe-spectra': [1,],
+    'desi-loa-spectra': [1,],
     'desi-matterhorn-spectra': [1,],
     'ls-dr10': [1,],
     'ls-dr10-south': [1,],
@@ -421,6 +422,8 @@ def get_desi_spectro_kdfiles(release):
                 os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'desi-obs.kd.fits')]
     elif release == 'guadalupe':
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-guadalupe', 'zpix-all.kd.fits')]
+    elif release == 'loa':
+        return [os.path.join(settings.DATA_DIR, 'desi-spectro-loa', 'zpix-all.kd.fits')]
     elif release == 'matterhorn':
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-matterhorn', 'zpix-all.kd.fits')]
     elif release == 'fuji':
@@ -508,6 +511,13 @@ def cat_desi_matterhorn_spectra_detail(req, targetid):
     if t is None:
         return HttpResponse('No such targetid found in DESI Matterhorn spectra: %s' % targetid)
     return desi_healpix_spectrum(req, t, 'matterhorn')
+
+def cat_desi_loa_spectra_detail(req, targetid):
+    targetid = int(targetid)
+    t = lookup_targetid(targetid, 'loa')
+    if t is None:
+        return HttpResponse('No such targetid found in DESI Loa spectra: %s' % targetid)
+    return desi_healpix_spectrum(req, t, 'loa')
 
 def cat_desi_guadalupe_spectra_detail(req, targetid):
     targetid = int(targetid)
@@ -802,7 +812,7 @@ def cat_desi_release_spectra(req, ver, kdfns, tag, racol='ra', deccol='dec',
             t = t.strip()
             nm = t
             st = st.strip()
-            if st != '':
+            if st not in ['', 'N/A']:
                 nm += ': ' + st
             if t != 'STAR':
                 nm += ', z = %.3f' % z
@@ -905,6 +915,12 @@ def cat_desi_daily_obs_detail(req, targetid):
 def cat_desi_matterhorn_spectra(req, ver):
     kdfns = get_desi_spectro_kdfiles('matterhorn')
     tag = 'desi-matterhorn-spectra'
+    return cat_desi_release_spectra(req, ver, kdfns, tag,
+                                    racol='target_ra', deccol='target_dec')
+
+def cat_desi_loa_spectra(req, ver):
+    kdfns = get_desi_spectro_kdfiles('loa')
+    tag = 'desi-loa-spectra'
     return cat_desi_release_spectra(req, ver, kdfns, tag,
                                     racol='target_ra', deccol='target_dec')
 
