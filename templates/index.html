@@ -4123,6 +4123,20 @@ moresurveys = drop_null(moresurveys);
 
 
 
+{% if enable_dr11 %}
+// Combined "Legacy Surveys DR11 images": client-side north/south split (like DR9/DR10),
+// routing each tile to the dr11-{north,south}.legacysurvey.org S3 buckets at dec 32.375.
+// Register the regional layers first, then override 'ls-dr11' with the split; the menu
+// findlayer('ls-dr11', ...) below reuses it (findlayer keeps an existing namedLayers entry).
+findlayer('ls-dr11-north');
+findlayer('ls-dr11-south');
+split_layer('ls-dr11', 'Legacy Surveys DR11 images', 32.375,
+            namedLayers['ls-dr11-north'],
+            namedLayers['ls-dr11-south'],
+            namedLayers['ls-dr11-south'],
+            {attribution: attribs['ls']});
+{% endif %}
+
 baseTree1 = baseTree1.concat([
 
     {% if enable_dr11 %}
