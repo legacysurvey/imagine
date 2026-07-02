@@ -44,3 +44,9 @@ ENABLE_DR9_SOUTH = False
 ENABLE_DR9_SOUTH_MODELS = False
 ENABLE_DR9_SOUTH_RESIDS = False
 ENABLE_CUTOUTS = False
+
+# DESI tile/spectra/daily overlays query per-release data on the dynamic server;
+# that data is not on S3/in this container, so hide them from the overlay menu.
+ENABLE_DESI_EDR = False
+ENABLE_DESI_DR1 = False
+ENABLE_DESI_DAILY_OBS = False

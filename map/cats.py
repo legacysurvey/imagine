@@ -1443,6 +1443,10 @@ def get_random_galaxy(layer=None):
     elif 'ls-dr10' in layer:
         drnum = 10
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr10.fits')
+    elif 'ls-dr11' in layer:
+        # DR11: pick from the NGC/IC catalog (has the same ra, dec, name columns).
+        drnum = 11
+        galfn = os.path.join(settings.DATA_DIR, 'ngcic.fits')
     else:
         drnum = 9
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
@@ -1455,7 +1459,12 @@ def get_random_galaxy(layer=None):
                 import traceback
                 traceback.print_exc()
         if not os.path.exists(galfn):
-            if drnum == 4:
+            # The per-DR galaxies-in-* files are not bundled in the AWS lite
+            # container; fall back to the NGC/IC catalog, which is.
+            ngcfn = os.path.join(settings.DATA_DIR, 'ngcic.fits')
+            if os.path.exists(ngcfn):
+                galfn = ngcfn
+            elif drnum == 4:
                 return 147.1744, 44.0812, 'NGC 2998'
             else:
                 return 18.6595, -1.0210, 'NGC 442'

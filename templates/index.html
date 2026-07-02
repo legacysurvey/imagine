@@ -3445,26 +3445,12 @@ var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (LS-DR9)',
 //                               'labelsMinZoom': 7,
 //                              'urlTerm': 'masks-dr8',});
 
-var sga2025_parent = new SGACatalog('sga2025-parent', 'SGA2025 Parent',
-                             {'minZoom': 5,
-                              'labelsMinZoom': 7,
-                              'urlTerm': 'sga2025-parent',});
-
-var sga2025_north = new SGACatalog('sga2025-north', 'Siena Galaxy Atlas 2025 North',
-                                 {'minZoom': 7,
-                                  'labelsMinZoom': 7,
-                                  'urlTerm': 'sga2025-north',});
-var sga2025_south = new SGACatalog('sga2025-south', 'Siena Galaxy Atlas 2025 South',
-                                 {'minZoom': 7,
-                                  'labelsMinZoom': 7,
-                                  'urlTerm': 'sga2025-south',});
-
 var sga_parent = new SGACatalog('sga2020-parent', 'HyperLEDA/SGA galaxies (2020)',
                              {'minZoom': 5,
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga2020-parent',});
 
-var sga_ell = new SGACatalog('sga2020', 'Siena Galaxy Atlas 2020',
+var sga_ell = new SGACatalog('sga2020', 'Siena Galaxy Atlas',
                              {'minZoom': 7,
                               'labelsMinZoom': 7,
                               'urlTerm': 'sga2020',});
@@ -3903,7 +3889,7 @@ var overlays = [
     {% if enable_sdss_ccds %}
     ccdOverlaySdss,
     {% endif %}
-    gals, sga2025_parent, sga2025_north, sga2025_south, sga_parent, sga_ell,
+    gals, sga_parent, sga_ell,
     starmasks9, GCsPNe, bright, tycho2,
     photoz,
     {% if enable_ps1 %}
@@ -4350,6 +4336,27 @@ for (var x in baseTree1) {
 
 console.log('baseTree:', baseTree);
 
+{% if enable_dr11 %}
+// Start the layer menu minimal: show just the "Legacy Surveys DR11 images"
+// entry (its model/resid/south/north children collapsed), and fold every other
+// survey into a collapsed "Other layers" branch. Clicking the toggles expands.
+var _dr11Node = null, _otherNodes = [];
+for (var i = 0; i < baseTree.length; i++) {
+    var node = baseTree[i];
+    if (!node) { continue; }
+    if (node.layer && node.layer === namedLayers['ls-dr11']) {
+        _dr11Node = node;
+    } else {
+        _otherNodes.push(node);
+    }
+}
+if (_dr11Node) {
+    _dr11Node.collapsed = true;
+    baseTree = [_dr11Node,
+                { label: 'Other layers', collapsed: true, children: _otherNodes }];
+}
+{% endif %}
+
 bt = { label: 'Images', children: baseTree };
 baseTree = bt;
 
@@ -4600,9 +4607,6 @@ var overlayTree = [];
      findoverlay('tycho2'),
      findoverlay('GCs-PNe'),
      findoverlay('gals'),
-     findoverlay('sga2025-parent'),
-     findoverlay('sga2025-north'),
-     findoverlay('sga2025-south'),
      findoverlay('sga2020'),
      {% if science %}
      findoverlay('sga2020-parent'),
