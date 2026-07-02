@@ -4135,6 +4135,22 @@ split_layer('ls-dr11', 'Legacy Surveys DR11 images', 32.375,
             namedLayers['ls-dr11-south'],
             namedLayers['ls-dr11-south'],
             {attribution: attribs['ls']});
+// Same split for the combined models & residuals layers
+// (regional layers serve from the dr11-{north,south}-{model,resid} S3 buckets).
+findlayer('ls-dr11-north-model');
+findlayer('ls-dr11-south-model');
+split_layer('ls-dr11-model', 'Legacy Surveys DR11 models', 32.375,
+            namedLayers['ls-dr11-north-model'],
+            namedLayers['ls-dr11-south-model'],
+            namedLayers['ls-dr11-south-model'],
+            {attribution: attribs['ls']});
+findlayer('ls-dr11-north-resid');
+findlayer('ls-dr11-south-resid');
+split_layer('ls-dr11-resid', 'Legacy Surveys DR11 residuals', 32.375,
+            namedLayers['ls-dr11-north-resid'],
+            namedLayers['ls-dr11-south-resid'],
+            namedLayers['ls-dr11-south-resid'],
+            {attribution: attribs['ls']});
 {% endif %}
 
 baseTree1 = baseTree1.concat([
