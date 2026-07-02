@@ -273,7 +273,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'ls-dr9',
+           default_layer = 'ls-dr11',
            default_radec = (None,None),
            default_zoom = 12,
            rooturl=settings.ROOT_URL,

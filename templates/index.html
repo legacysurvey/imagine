@@ -4236,10 +4236,6 @@ baseTree1 = baseTree1.concat([
         {% if enable_dr9_resids %}
         findlayer('ls-dr9-resid'),
         {% endif %}
-        findlayer('ls-dr9.1.1', [,
-         findlayer('ls-dr9.1.1-model'),
-         findlayer('ls-dr9.1.1-resid'),
-        ]),
     {% endif %}
 
     {% if enable_dr9_north %}
@@ -4325,7 +4321,6 @@ baseTree1 = baseTree1.concat([
 
     {% if enable_unwise %}
     findlayer('unwise-neo11', [
-        findlayer('unwise-neo7'),
         findlayer('unwise-neo6'),
         {% if science %}
         //findlayer('unwise-neo4'),
@@ -4644,7 +4639,6 @@ var layerTree = L.control.layers.tree(baseTree,
          {% endif %}
          {% if enable_dr9 %}
          'Legacy Surveys DR9 images',
-         'Legacy Surveys DR9.1.1 COSMOS deep images',
          {% endif %}
          {% if enable_dr9_north %}
          'Legacy Surveys DR9-north images',
