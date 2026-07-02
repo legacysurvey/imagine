@@ -1444,9 +1444,9 @@ def get_random_galaxy(layer=None):
         drnum = 10
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-ls-dr10.fits')
     elif 'ls-dr11' in layer:
-        # DR11: pick from the NGC/IC catalog (has the same ra, dec, name columns).
+        # DR11: pick from the SGA-2020 catalog (383k galaxies; 'galaxy' name column).
         drnum = 11
-        galfn = os.path.join(settings.DATA_DIR, 'ngcic.fits')
+        galfn = os.path.join(settings.DATA_DIR, 'sga', 'SGA-2020.kd.fits')
     else:
         drnum = 9
         galfn = os.path.join(settings.DATA_DIR, 'galaxies-in-dr9.fits')
@@ -1483,7 +1483,11 @@ def get_random_galaxy(layer=None):
     i = np.random.randint(len(galaxycat))
     ra = float(galaxycat.ra[i])
     dec = float(galaxycat.dec[i])
-    name = galaxycat.name[i].strip()
+    # galaxies-in-* / ngcic use a 'name' column; the SGA catalogs use 'galaxy'.
+    if 'name' in galaxycat.get_columns():
+        name = galaxycat.name[i].strip()
+    else:
+        name = galaxycat.galaxy[i].strip()
     return ra,dec,name
 
 def create_galaxy_catalog(galfn, drnum, layer=None):
