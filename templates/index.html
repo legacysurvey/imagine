@@ -3943,10 +3943,14 @@ var overlays = [
     {% endif %}
     {% if enable_desi_edr %}
     desi_tiles_edr,
+    {% endif %}
+    {% if enable_desi_edr or enable_desi_edr_spectra %}
     desi_spec_edr,
     {% endif %}
     {% if enable_desi_dr1 %}
     desi_tiles_dr1,
+    {% endif %}
+    {% if enable_desi_dr1 or enable_desi_dr1_spectra %}
     desi_spec_dr1,
     {% endif %}
     {% if enable_desi_data %}
@@ -4390,12 +4394,19 @@ for (var i=0,len=overlays.length; i<len; i++) {
 }
 
 function findoverlay(name, children=[]) {
+    // Like findlayer: a menu entry for an overlay that was never registered
+    // (eg disabled by a settings flag) becomes null and is dropped, rather
+    // than crashing the whole menu build.
+    if (!(name in namedOverlays)) {
+        console.log('findoverlay: no such overlay: ' + name);
+        return null;
+    }
     rtn =  { label: namedOverlays[name]._pretty,
              layer: namedOverlays[name].getGroup() };
     console.log('findoverlay: ' + name);
     console.log('  -> got overlay: label=' + rtn['label'] + ', layer=' + rtn['layer']);
     if (children.length) {
-        rtn['children'] = children;
+        rtn['children'] = drop_null(children);
     }
     return rtn;
 }
@@ -4641,6 +4652,23 @@ var overlayTree = [];
      ]},
  ]);
 
+
+// findoverlay returns null for overlays disabled by settings flags; scrub
+// nulls (and empty groups) from the tree before handing it to the control.
+function drop_null_tree(nodes) {
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+        var n = nodes[i];
+        if (!n) { continue; }
+        if (n.children) {
+            n.children = drop_null_tree(n.children);
+            if (!n.children.length && !n.layer) { continue; }
+        }
+        out.push(n);
+    }
+    return out;
+}
+overlayTree = drop_null_tree(overlayTree);
 
 var layerTree = L.control.layers.tree(baseTree,
                       { label: 'Overlays', children: overlayTree },
