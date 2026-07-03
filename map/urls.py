@@ -34,6 +34,10 @@ if settings.ENABLE_DESI_DR1:
     urlpatterns_desi.extend([
         # DESI spectroscopy -- DR1
         re_path(r'^desi-tiles/dr1/(\d+)/cat.json', cats.cat_desi_dr1_tiles),
+    ])
+
+if settings.ENABLE_DESI_DR1 or settings.ENABLE_DESI_DR1_SPECTRA:
+    urlpatterns_desi.extend([
         re_path(r'^desi-spec-dr1/(\d+)/cat.json', cats.cat_desi_dr1_spectra),
         re_path(r'^desi-spectrum/dr1/targetid(-?\d+)', cats.cat_desi_dr1_spectra_detail),
     ])

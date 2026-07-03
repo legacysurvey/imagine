@@ -48,6 +48,11 @@ ENABLE_SCIENCE = True
 ENABLE_DESI_EDR = True
 # DESI DR1
 ENABLE_DESI_DR1 = True
+# Spectra overlays only (dots + redshift popups), without the tiles overlays --
+# for deployments that have the zpix-all.kd.fits catalogs but not the
+# fiberassign trees (eg the AWS lite container).
+ENABLE_DESI_EDR_SPECTRA = False
+ENABLE_DESI_DR1_SPECTRA = False
 # DESI Collab-private data!
 ENABLE_DESI_DATA = False
 # DESI daily observation metadata only

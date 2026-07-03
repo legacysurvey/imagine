@@ -3062,13 +3062,17 @@ desi_tiles_daily._style = {'fillOpacity': 0.05 };
 
 {% endif %}
 
-{% if enable_desi_data or enable_desi_edr or enable_desi_dr1 %}
+{% if enable_desi_data or enable_desi_edr or enable_desi_dr1 or enable_desi_edr_spectra or enable_desi_dr1_spectra %}
 
 var DesiSpectraCatalog = CatalogOverlay.extend({
     initialize: function(name, pretty, release, kwargs) {
         CatalogOverlay.prototype.initialize.call(this, name, pretty, kwargs);
         this.release = release;
         this.data_base_url = kwargs['data_base_url'];
+        // Where the desi-spectrum/<release>/targetid page lives. Defaults to this
+        // server; deployments without the DESI spectro redux data (eg AWS) point
+        // it at the NERSC Spin viewer instead.
+        this.spectrum_base_url = kwargs['spectrum_base_url'] || root_url;
     },
 
     getLayer: function(result) {
@@ -3107,7 +3111,7 @@ var DesiSpectraCatalog = CatalogOverlay.extend({
     },
 
     getLabel: function(json, i) {
-        return '<a href="' + root_url + 'desi-spectrum/' + this.release + '/'
+        return '<a href="' + this.spectrum_base_url + 'desi-spectrum/' + this.release + '/'
             + 'targetid' + json['targetid'][i]
             + '">' + json['name'][i] + '</a>';
         //tile' + json['tileid'][i] +
@@ -3173,7 +3177,7 @@ var DesiObsCatalog = DesiSpectraCatalog.extend({
 
 {% endif %}
 
-{% if enable_desi_edr %}
+{% if enable_desi_edr or enable_desi_edr_spectra %}
 var desi_spec_edr = new DesiSpectraCatalog(
     'desi-spec-edr', 'DESI EDR spectra', 'edr',
     {'url': smallcat_url,
@@ -3181,10 +3185,14 @@ var desi_spec_edr = new DesiSpectraCatalog(
      'labelsMinZoom': 10,
      'minZoom': 6,
      'data_base_url': 'https://data.desi.lbl.gov/public/edr/spectro/redux/fuji',
+     {% if not enable_desi_edr %}
+     // no local DESI spectro redux data -- render spectrum pages on the Spin viewer
+     'spectrum_base_url': 'https://www.legacysurvey.org/viewer/',
+     {% endif %}
     });
 {% endif %}
-  
-{% if enable_desi_dr1 %}
+
+{% if enable_desi_dr1 or enable_desi_dr1_spectra %}
   var desi_spec_dr1 = new DesiSpectraCatalog(
     'desi-spec-dr1', 'DESI DR1 spectra', 'dr1',
     {'url': smallcat_url,
@@ -3192,6 +3200,9 @@ var desi_spec_edr = new DesiSpectraCatalog(
      'labelsMinZoom': 10,
      'minZoom': 6,
      'data_base_url': 'https://data.desi.lbl.gov/public/dr1/spectro/redux/iron',
+     {% if not enable_desi_dr1 %}
+     'spectrum_base_url': 'https://www.legacysurvey.org/viewer/',
+     {% endif %}
     });
 {% endif %}
 
@@ -3444,6 +3455,11 @@ var starmasks9 = new StarMaskCatalog('masks-dr9', 'All masks (LS-DR9)',
 //                               'minZoom': 5,
 //                               'labelsMinZoom': 7,
 //                              'urlTerm': 'masks-dr8',});
+
+var sga2025_parent = new SGACatalog('sga2025-parent', 'SGA2025 Parent',
+                             {'minZoom': 5,
+                              'labelsMinZoom': 7,
+                              'urlTerm': 'sga2025-parent',});
 
 var sga_parent = new SGACatalog('sga2020-parent', 'HyperLEDA/SGA galaxies (2020)',
                              {'minZoom': 5,
@@ -3889,7 +3905,7 @@ var overlays = [
     {% if enable_sdss_ccds %}
     ccdOverlaySdss,
     {% endif %}
-    gals, sga_parent, sga_ell,
+    gals, sga2025_parent, sga_parent, sga_ell,
     starmasks9, GCsPNe, bright, tycho2,
     photoz,
     {% if enable_ps1 %}
@@ -4555,10 +4571,14 @@ var overlayTree = [];
            {% endif %}
            {% if enable_desi_edr %}
            findoverlay('desi-tiles-edr'),
+           {% endif %}
+           {% if enable_desi_edr or enable_desi_edr_spectra %}
            findoverlay('desi-spec-edr'),
            {% endif %}
            {% if enable_desi_dr1 %}
            findoverlay('desi-tiles-dr1'),
+           {% endif %}
+           {% if enable_desi_dr1 or enable_desi_dr1_spectra %}
            findoverlay('desi-spec-dr1'),
            {% endif %}
            {% if enable_desi_data %}
@@ -4607,6 +4627,7 @@ var overlayTree = [];
      findoverlay('tycho2'),
      findoverlay('GCs-PNe'),
      findoverlay('gals'),
+     findoverlay('sga2025-parent'),
      findoverlay('sga2020'),
      {% if science %}
      findoverlay('sga2020-parent'),
