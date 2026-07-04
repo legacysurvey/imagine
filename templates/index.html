@@ -336,10 +336,21 @@ var SplitTileLayer = MyTileLayer.extend({
 
 function split_layer(name, pretty, decsplit,
                      north_layer, mid_layer, south_layer, kwargs) {
+    // Inherit the shallowest native zoom of the child layers: beyond it,
+    // Leaflet upsamples their deepest existing tiles instead of requesting
+    // tiles the children's sources don't have (which renders blank).
+    var native = maxNativeZoom;
+    var childlayers = [north_layer, mid_layer, south_layer];
+    for (var i = 0; i < childlayers.length; i++) {
+        var cl = childlayers[i];
+        if (cl && cl.options && cl.options.maxNativeZoom) {
+            native = Math.min(native, cl.options.maxNativeZoom);
+        }
+    }
     var args = {
         maxZoom: maxZoom,
         minZoom: minZoom,
-        maxNativeZoom: maxNativeZoom,
+        maxNativeZoom: native,
     };
     for (var key in kwargs) {
         args[key] = kwargs[key];
