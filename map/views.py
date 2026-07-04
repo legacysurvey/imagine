@@ -349,31 +349,33 @@ def _index(req,
             tile_layers[tag] = [label, [def_url], maxnative, 'ls']
 
     if settings.ENABLE_DR11:
-        # DR11 tiles exist on S3 down to z13 (z14 not rendered); beyond that the
-        # browser upsamples z13 rather than requesting missing tiles.
+        # DR11 tiles exist on S3 down to z13 for images and z12 for models and
+        # residuals; beyond that the browser upsamples the deepest real tiles
+        # rather than requesting missing ones.
         maxnative11 = 13
+        maxnative11mr = 12
         tile_layers.update({
             'ls-dr11': ['Legacy Surveys DR11 images', [def_url], maxnative11, 'ls'],
-            'ls-dr11-model': ['Legacy Surveys DR11 models', [def_url], maxnative11, 'ls'],
-            'ls-dr11-resid': ['Legacy Surveys DR11 residuals', [def_url], maxnative11, 'ls'],
+            'ls-dr11-model': ['Legacy Surveys DR11 models', [def_url], maxnative11mr, 'ls'],
+            'ls-dr11-resid': ['Legacy Surveys DR11 residuals', [def_url], maxnative11mr, 'ls'],
             'ls-dr11-south': ['Legacy Surveys DR11-south images',
                              [[0, 13, 'https://s3.us-west-2.amazonaws.com/dr11-south.legacysurvey.org/{z}/{x}/{y}.jpg', []],
                               def_url], maxnative11, 'ls'],
             'ls-dr11-south-model': ['Legacy Surveys DR11-south models',
-                             [[0, 13, 'https://s3.us-west-2.amazonaws.com/dr11-south-model.legacysurvey.org/{z}/{x}/{y}.jpg', []],
-                              def_url], maxnative11, 'ls'],
+                             [[0, 12, 'https://s3.us-west-2.amazonaws.com/dr11-south-model.legacysurvey.org/{z}/{x}/{y}.jpg', []],
+                              def_url], maxnative11mr, 'ls'],
             'ls-dr11-south-resid': ['Legacy Surveys DR11-south residuals',
-                             [[0, 13, 'https://s3.us-west-2.amazonaws.com/dr11-south-resid.legacysurvey.org/{z}/{x}/{y}.jpg', []],
-                              def_url], maxnative11, 'ls'],
+                             [[0, 12, 'https://s3.us-west-2.amazonaws.com/dr11-south-resid.legacysurvey.org/{z}/{x}/{y}.jpg', []],
+                              def_url], maxnative11mr, 'ls'],
             'ls-dr11-north': ['Legacy Surveys DR11-north images',
                              [[0, 13, 'https://s3.us-west-2.amazonaws.com/dr11-north.legacysurvey.org/{z}/{x}/{y}.jpg', []],
                               def_url], maxnative11, 'ls'],
             'ls-dr11-north-model': ['Legacy Surveys DR11-north models',
-                             [[0, 13, 'https://s3.us-west-2.amazonaws.com/dr11-north-model.legacysurvey.org/{z}/{x}/{y}.jpg', []],
-                              def_url], maxnative11, 'ls'],
+                             [[0, 12, 'https://s3.us-west-2.amazonaws.com/dr11-north-model.legacysurvey.org/{z}/{x}/{y}.jpg', []],
+                              def_url], maxnative11mr, 'ls'],
             'ls-dr11-north-resid': ['Legacy Surveys DR11-north residuals',
-                             [[0, 13, 'https://s3.us-west-2.amazonaws.com/dr11-north-resid.legacysurvey.org/{z}/{x}/{y}.jpg', []],
-                              def_url], maxnative11, 'ls'],
+                             [[0, 12, 'https://s3.us-west-2.amazonaws.com/dr11-north-resid.legacysurvey.org/{z}/{x}/{y}.jpg', []],
+                              def_url], maxnative11mr, 'ls'],
         })
         
     if settings.ENABLE_DR10:
