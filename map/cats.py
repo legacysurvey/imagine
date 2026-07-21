@@ -240,6 +240,17 @@ def call_prospect(spectra, zbests, redrock_template_dir=None, outdir=None):
         print('Cache hit for', outfn)
         return HttpResponse(open(outfn))
 
+    print('Calling prospect: spectra', spectra, 'zcatalog', type(zbests), zbests)
+
+    # SAVE
+    # from desispec.io import write_spectra
+    # spoutfn = 'spectrum.fits'
+    # write_spectra(spoutfn, spectra)
+    # print('Wrote', spoutfn)
+    # zoutfn = 'zbest.fits'
+    # zbests.write(zoutfn, format='fits', overwrite=True)
+    # print('Wrote', zoutfn)
+
     try:
         tt = 'DESI Spectr%s: TARGETID %s' % (('a' if (len(zbests) > 1) else 'um'),
                                              ', '.join(['%i'%i for i in zbests['TARGETID']]))
@@ -253,6 +264,13 @@ def call_prospect(spectra, zbests, redrock_template_dir=None, outdir=None):
     except KeyError:
         prospect.viewer.plotspectra(spectra, zcatalog=zbests, html_dir=outdir,
                                     with_vi_widgets=False, model_from_zcat=False)
+
+    # print('Sent prospect file', outfn)
+    # import shutil
+    # poutfn = 'prospect.html'
+    # shutil.copyfile(outfn, poutfn)
+    # print('Wrote', poutfn)
+
     f = open(outfn)
     return HttpResponse(f)
 
@@ -274,6 +292,7 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     fns = glob(pat)
     fns.sort()
     fn = fns[-1]
+    print('Reading spectra from', fn)
     spectra = read_spectra(fn)
     keep = np.in1d(spectra.fibermap['FIBER'], [fiber])
     spectra = spectra[keep]
@@ -3682,7 +3701,9 @@ if __name__ == '__main__':
     #r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
     #r = c.get('/')
 
-    r = c.get('/desi-spec-matterhorn/1/cat.json?ralo=124.8891&rahi=125.4089&declo=19.2998&dechi=19.5789')
+    #r = c.get('/desi-spec-matterhorn/1/cat.json?ralo=124.8891&rahi=125.4089&declo=19.2998&dechi=19.5789')
+    r = c.get('/desi-spectrum/daily/targetid39627595494462348')
+    #r = c.get('/desi-spectrum/daily/targetid39627595494462307')
     
     # import bokeh
     # print('bokeh', bokeh.__version__)
