@@ -255,7 +255,10 @@ def top_levels(mp, opt):
 
     if 'ps1' in opt.kind:
         basescale = 6
-        
+
+    if 'mdw-halpha' in opt.kind:
+        basescale = 6
+
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                        '%(zoom)i', '%(x)i', '%(y)i.jpg')
     patdata = dict(ver=ver)

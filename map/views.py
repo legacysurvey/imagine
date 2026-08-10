@@ -98,6 +98,7 @@ tileversions = {
     'ls-dr9-north': [1],
     'ls-dr9-north-model': [1],
     'ls-dr9-north-resid': [1],
+    'mdw-halpha': [1],
 }
 
 test_layers = []
@@ -1106,7 +1107,7 @@ def name_query(req):
             t = lookup_any_targetid(tid)
             ra = t.target_ra
             dec = t.target_dec
-        except RuntimeError as e:
+        except AttributeError as e:
             return HttpResponse(json.dumps(dict(error='DESI targetid %i not found' % tid)))
         return HttpResponse(json.dumps(dict(ra=ra, dec=dec, name='DESI Targetid %i' % tid)))
 
@@ -4893,9 +4894,20 @@ class MDWHalphaLayer(ReDecalsLayer):
         self.bricks = None
         #self.dir = dirnm
         self.pixscale = 2.096
+        self.brick_scale_offset = 2
 
     def get_pixel_size_for_scale(self, scale):
-        return 450
+        #return 450
+        return 1800
+
+    def get_brick_size_for_scale(self, scale):
+        return 1.0 * 2**scale
+
+    # For multiprocessing: re-load the brick cache (to bypass an assert on the brick sizes)
+    def __setstate__(self, state):
+        #super().__setstate__(state)
+        self.__dict__.update(state)
+        self.survey.bricks = self.survey.get_bricks()
 
     def get_rgb(self, imgs, bands, **kwargs):
         val = imgs[0]
@@ -6965,7 +6977,8 @@ def get_survey(name):
         survey = SplitSurveyData(north, south)
 
     elif name == 'mdw-halpha':
-        survey = LegacySurveyData(survey_dir=os.path.join(dirnm, 'mdw_0145swap_level11_mdw656'))
+        #survey = LegacySurveyData(survey_dir=os.path.join(dirnm, 'mdw_0145swap_level11_mdw656'))
+        survey = LegacySurveyData(survey_dir=os.path.join(dirnm, 'mdw_north'))
 
     elif name == 'dfuws':
         survey = LegacySurveyData(survey_dir=os.path.join(dirnm, 'dfuws_v1_legacy-100sqdeg-sample'))
@@ -10004,7 +10017,12 @@ if __name__ == '__main__':
     # print('result', result, 'val', val)
 
     #r = c.get('/bricks/?ralo=106.0922&rahi=106.6120&declo=-10.6532&dechi=-10.3622')
-    r = c .get('/niji/1/14/9560/8093.jpg')
+    #r = c .get('/niji/1/14/9560/8093.jpg')
+
+    #r = c.get('/mdw-halpha/1/14/1721/7865.jpg')
+    #r = c.get('/mdw-halpha/1/11/2045/1020.jpg')
+    #r = c.get('/mdw-halpha/1/10/1022/510.jpg')
+    r = c.get('/namequery/?obj=TARGETID%2039627595494462307')
     f = open('out.jpg', 'wb')
     for x in r:
         f.write(x)

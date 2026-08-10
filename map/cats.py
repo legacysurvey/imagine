@@ -318,10 +318,10 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
-    # print('Passing to prospect: spectra:')
-    # print(spectra)
-    # print('zcatalog:')
-    # print(zbests)
+    print('Passing to prospect: spectra:')
+    print(spectra)
+    print('zcatalog:')
+    print(zbests)
 
     return call_prospect(spectra, zbests)
 
@@ -2704,7 +2704,7 @@ def cat_masks_dr9(req, ver):
 
     survey = LegacySurveyData(survey_dir=os.getcwd())
     pixscale = wcs.pixel_scale()
-    T,_ = get_reference_sources(survey, wcs, pixscale, None)
+    T,_ = get_reference_sources(survey, wcs, None)
     T.about()
     
     if T is None:
@@ -2725,8 +2725,14 @@ def cat_masks_dr9(req, ver):
     PA_disp = []
     names = []
 
+    if 'donotfit' in T.get_columns():
+        tdup = T.donotfit
+    else:
+        # DR11-era reference.py
+        tdup = T.dup
+
     for medium, bright,cluster,gal,dup,ptsrc,aen,ra,dec,rad,mag,zguess,freeze,refid,ba,pa in zip(
-            T.ismedium, T.isbright, T.iscluster, T.islargegalaxy, T.donotfit, T.pointsource,
+            T.ismedium, T.isbright, T.iscluster, T.islargegalaxy, tdup, T.pointsource,
             T.astrometric_excess_noise, T.ra, T.dec, T.radius,
             T.mag, T.zguess, T.freezeparams, T.ref_id, T.ba, T.pa):
         rd.append((float(ra), float(dec)))
@@ -3591,8 +3597,8 @@ if __name__ == '__main__':
     #r = c.get('/desi-spectrum/dr1/targetid39627784728871188')
     #r = c.get('/masks-dr9/1/cat.json?ralo=190.5906&rahi=190.7205&declo=14.3214&dechi=14.3930')
     #r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
-    r = c.get('/')
-
+    #r = c.get('/masks-dr9/1/cat.json?ralo=248.4416&rahi=248.5716&declo=1.3947&dechi=1.4687')
+    r = c.get('/desi-spectrum/daily/targetid39627595494462348')
     
     # import bokeh
     # print('bokeh', bokeh.__version__)
