@@ -318,10 +318,10 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     #- Confirm that we got all that expanding and sorting correct
     assert np.all(spectra.fibermap['TARGETID'] == zbests['TARGETID'])
 
-    # print('Passing to prospect: spectra:')
-    # print(spectra)
-    # print('zcatalog:')
-    # print(zbests)
+    print('Passing to prospect: spectra:')
+    print(spectra)
+    print('zcatalog:')
+    print(zbests)
 
     return call_prospect(spectra, zbests)
 
@@ -2703,7 +2703,8 @@ def cat_masks_dr9(req, ver):
     os.environ['GAIA_CAT_PREFIX'] = 'chunk'
 
     survey = LegacySurveyData(survey_dir=os.getcwd())
-    T,_ = get_reference_sources(survey, wcs, ['r'])
+    pixscale = wcs.pixel_scale()
+    T,_ = get_reference_sources(survey, wcs, None)
     T.about()
     
     if T is None:
@@ -2723,9 +2724,15 @@ def cat_masks_dr9(req, ver):
     PA = []
     PA_disp = []
     names = []
-    #dup,T.donotfit
-    for medium, bright,cluster,gal,ptsrc,aen,ra,dec,rad,mag,zguess,freeze,refid,ba,pa in zip(
-            T.ismedium, T.isbright, T.iscluster, T.islargegalaxy, T.pointsource,
+
+    if 'donotfit' in T.get_columns():
+        tdup = T.donotfit
+    else:
+        # DR11-era reference.py
+        tdup = T.dup
+
+    for medium, bright,cluster,gal,dup,ptsrc,aen,ra,dec,rad,mag,zguess,freeze,refid,ba,pa in zip(
+            T.ismedium, T.isbright, T.iscluster, T.islargegalaxy, tdup, T.pointsource,
             T.astrometric_excess_noise, T.ra, T.dec, T.radius,
             T.mag, T.zguess, T.freezeparams, T.ref_id, T.ba, T.pa):
         rd.append((float(ra), float(dec)))

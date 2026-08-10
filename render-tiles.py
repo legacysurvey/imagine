@@ -255,7 +255,10 @@ def top_levels(mp, opt):
 
     if 'ps1' in opt.kind:
         basescale = 6
-        
+
+    if 'mdw-halpha' in opt.kind:
+        basescale = 6
+
     pat = os.path.join(settings.DATA_DIR, 'tiles', tag, '%(ver)s',
                        '%(zoom)i', '%(x)i', '%(y)i.jpg')
     patdata = dict(ver=ver)
@@ -718,6 +721,30 @@ def main():
         if opt.minra is None:
             opt.minra = 0
 
+    elif opt.kind in ['niji']:
+        if opt.bands is None:
+            opt.bands = ['413', '439', '465', '490']
+        if opt.maxdec is None:
+            opt.maxdec = 10
+        if opt.mindec is None:
+            opt.mindec = -10
+        if opt.maxra is None:
+            opt.maxra = 160
+        if opt.minra is None:
+            opt.minra = 140
+            
+    elif opt.kind in ['lsst']:
+        if opt.bands is None:
+            opt.bands = ['g','r','i','z']
+        if opt.maxdec is None:
+            opt.maxdec = 12
+        if opt.mindec is None:
+            opt.mindec = 4
+        if opt.maxra is None:
+            opt.maxra = 50
+        if opt.minra is None:
+            opt.minra = 30
+
     else:
         if opt.maxdec is None:
             opt.maxdec = 40
@@ -779,7 +806,7 @@ def main():
                         'unwise-neo3', 'unwise-neo4', 'unwise-neo6', 'unwise-neo7',
                         'unwise-w3w4',
                         'unwise-cat-model', 'unwise-neo11',
-                        'galex', 'wssa', 'des-dr1', 'hsc2', 'hsc-dr3',
+                         'galex', 'wssa', 'des-dr1', 'hsc2', 'hsc-dr3', 'niji', 'lsst',
                         'cfis-dr3-r', 'cfis-dr3-u',
                         'dr8-north', 'dr8-north-model', 'dr8-north-resid',
                         'dr8-south', 'dr8-south-model', 'dr8-south-resid',
