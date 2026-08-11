@@ -276,7 +276,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'ls-dr9',
+           default_layer = 'ls-dr11',
            default_radec = (None,None),
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
@@ -9986,7 +9986,7 @@ if __name__ == '__main__':
     #r = c.get('/ps1/1/8/255/150.jpg')
     #r = c.get('/ps1/1/7/127/75.jpg')
     #r = c.get('/ps1/1/6/63/30.jpg')
-    r = c.get('/ps1/1/12/3855/1643.jpg')
+    #r = c.get('/ps1/1/12/3855/1643.jpg')
 
     # riz RGB jpeg for CHIME/FRB
     # https://www.legacysurvey.org/viewer-dev/cutout.fits?ra=43.3916&dec=10.3113&layer=ls-dr11-early-v2&pixscale=0.13&size=700&bands=riz
@@ -10026,7 +10026,10 @@ if __name__ == '__main__':
     #r = c.get('/mdw-halpha/1/14/1721/7865.jpg')
     #r = c.get('/mdw-halpha/1/11/2045/1020.jpg')
     #r = c.get('/mdw-halpha/1/10/1022/510.jpg')
-    r = c.get('/namequery/?obj=TARGETID%2039627595494462307')
+    #r = c.get('/namequery/?obj=TARGETID%2039627595494462307')
+
+    #r = c.get('/ls-dr11/1/12/533/2113.jpg')
+    r = c.get('/cutout.jpg?ra=54.4717&dec=-19.0242&layer=ls-dr11&pixscale=0.13')
     f = open('out.jpg', 'wb')
     for x in r:
         f.write(x)

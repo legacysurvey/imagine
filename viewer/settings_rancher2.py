@@ -4,6 +4,8 @@ FLAVOUR = 'viewer'
 
 ENABLE_PS1 = True
 
+ENABLE_DR11 = True
+
 ENABLE_DR10_EARLY = False
 
 ENABLE_DR10 = True

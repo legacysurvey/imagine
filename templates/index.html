@@ -4608,6 +4608,11 @@ var layerTree = L.control.layers.tree(baseTree,
          'IBIS v4 COSMOS',
          'IBIS v3 XMM/WIDE',
          {% endif %}
+         {% if enable_dr11 %}
+         'Legacy Surveys DR11 images',
+         'Legacy Surveys DR11-south images',
+         'Legacy Surveys DR11-north images',
+         {% endif %}
          {% if enable_dr10 %}
          'Legacy Surveys DR10 images',
          'Legacy Surveys DR10-south images',
@@ -4641,13 +4646,14 @@ var layerTree = L.control.layers.tree(baseTree,
          'DECaLS DR5 images',
          'DECaPS images',
          'DECaPS 2 images',
-         'unWISE W1/W2 NEO7',
+         'unWISE W1/W2 NEO11',
          'DECaLS DR7 catalog',
          'DECaLS DR7 CCDs',
          'DECaLS DR7 Exposures',
          'Other catalogs',
          'Spectroscopy',
          'Bright Objects',
+         'DESI',
          {% if enable_dr8_overlays %}
          'Legacy Surveys DR8 Catalog',
          'Legacy Surveys DR8 CCDs',
