@@ -91,6 +91,9 @@ catversions = {
     'desi-guadalupe-spectra': [1,],
     'ls-dr10': [1,],
     'ls-dr10-south': [1,],
+    'ls-dr11': [1,],
+    'ls-dr11-south': [1,],
+    'ls-dr11-north': [1,],
 }
 
 test_cats = []
@@ -3597,8 +3600,8 @@ if __name__ == '__main__':
     #r = c.get('/desi-spectrum/dr1/targetid39627784728871188')
     #r = c.get('/masks-dr9/1/cat.json?ralo=190.5906&rahi=190.7205&declo=14.3214&dechi=14.3930')
     #r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
-    r = c.get('/masks-dr9/1/cat.json?ralo=208.8730&rahi=209.0030&declo=25.1696&dechi=25.2365')
-
+    #r = c.get('/masks-dr9/1/cat.json?ralo=208.8730&rahi=209.0030&declo=25.1696&dechi=25.2365')
+    r = c.get('/ls-dr11/1/14/6419/5642.cat.json')
     # import bokeh
     # print('bokeh', bokeh.__version__)
     # import prospect

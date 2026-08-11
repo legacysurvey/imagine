@@ -3392,9 +3392,6 @@ var dr9southcat = new DecalsCatalogLayer(tileWatcher,
 
 
 {% if enable_dr10_overlays %}
-
-  console.log('Creating ls-dr10 catalog layer: tileWatcher =' + tileWatcher);
-  
 var dr10cat = new DecalsCatalogLayer(tileWatcher,
                                         'ls-dr10',
                                           'Legacy Surveys DR10 Catalog',
@@ -3410,7 +3407,27 @@ var dr10southcat = new DecalsCatalogLayer(tileWatcher,
                                            'urlTerm': 'sources-dr10-south'});
 {% endif %}
 
+{% if enable_dr11_overlays %}
+var dr11cat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr11',
+                                          'Legacy Surveys DR11 Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr11'});
 
+var dr11southcat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr11-south',
+                                          'Legacy Surveys DR11-south Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr11-south'});
+var dr11northcat = new DecalsCatalogLayer(tileWatcher,
+                                        'ls-dr11-north',
+                                          'Legacy Surveys DR11-north Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-dr11-north'});
+{% endif %}
 
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
@@ -3843,11 +3860,14 @@ var overlays = [
     {% if enable_dr9_south_overlays %}
     dr9southcat,
     {% endif %}
+    {% if enable_dr11_overlays %}
+    dr11cat,
+    dr11northcat,
+    dr11southcat,
+    {% endif %}
     {% if enable_dr10_overlays %}
-    {% if enable_dr10 %}
     dr10cat,
     dr10southcat,
-    {% endif %}
     {% endif %}
     {% if enable_dr5_overlays %}
     ccdOverlay5,
@@ -4449,7 +4469,13 @@ var overlayTree = [];
      findoverlay('phat-clusters'),
      {% endif %}    
 
-     {% if enable_dr10 %}
+     {% if enable_dr11_overlays %}
+     findoverlay('ls-dr11'),
+     findoverlay('ls-dr11-north'),
+     findoverlay('ls-dr11-south'),
+     {% endif %}
+
+     {% if enable_dr10_overlays %}
      findoverlay('ls-dr10'),
      findoverlay('ls-dr10-south'),
      {% endif %}
