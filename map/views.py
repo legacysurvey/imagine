@@ -316,6 +316,9 @@ def _index(req,
         'act-dr6-f150': ['ACT DR6 F150 map', [[1, 10, tileurl, subs]], 10, 'act-dr6-f150'],
     }
 
+    if settings.ENABLE_MDW:
+        tile_layers['mdw-halpha'] = ['MDW H-alpha', [def_url], maxnative, 'mdw-halpha']
+    
     if settings.ENABLE_IBIS:
         for tag,label in [
                 ('ibis-4', "IBIS (v4) COSMOS Color"),
@@ -619,6 +622,7 @@ def _index(req,
 
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
+        enable_mdw = settings.ENABLE_MDW,
         #enable_des_dr1 = settings.ENABLE_DES_DR1,
         #enable_ztf = settings.ENABLE_ZTF,
         enable_dr5_models = settings.ENABLE_DR5,

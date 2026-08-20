@@ -4199,7 +4199,9 @@ baseTree1 = baseTree1.concat([
           findlayer('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
       ] },
     {% endif %}    
-
+    {% if enable_mdw %}
+    findlayer('mdw-halpha', 'MDW H-alpha'),
+    {% endif %}
     {% if enable_dr10 %}
     findlayer('ls-dr10', [
     findlayer('ls-dr10-model'),
