@@ -2084,10 +2084,11 @@ class MapLayer(object):
     def populate_fits_cutout_header(self, hdr, bands):
         pass
 
-    def parse_bands(self, bands):
+    def parse_cutout_bands(self, bands):
         # (actually only used when getting cutouts, so far)
         # default: assume single-character band names
-        mybands = self.get_available_bands()
+        mybands = self.get_cutout_available_bands()
+        print('Cutout available bands:', mybands)
         bb = []
         for b in bands:
             if b in mybands:
@@ -2096,7 +2097,10 @@ class MapLayer(object):
                 return None
         return bb
 
-    def get_available_bands(self):
+    def get_cutout_available_bands(self):
+        cb = getattr(self, 'cutout_bands', None)
+        if cb is not None:
+            return cb
         return self.get_bands()
 
     def write_cutout(self, ra, dec, pixscale, width, height, out_fn,
@@ -2318,7 +2322,7 @@ class MapLayer(object):
 
         print('bands:', bands)
         if bands is not None:
-            bands = self.parse_bands(bands)
+            bands = self.parse_cutout_bands(bands)
         print('parsed bands:', bands)
         if bands is None:
             bands = self.get_bands()
@@ -3655,7 +3659,7 @@ class Decaps2Layer(ReDecalsLayer):
             return sdss_rgb(imgs, bands, scales=dict(r=(2,3.4), i=(1,2.8), Y=(0,2.0)), m=0.03)
         return None
 
-    def get_available_bands(self):
+    def get_cutout_available_bands(self):
         return 'grizY'
     
 class Decaps2ModelLayer(Decaps2Layer, ReDecalsModelLayer):
@@ -3668,7 +3672,7 @@ class WiroCLayer(ReDecalsLayer):
     #def __init__(self, name):
     def get_bands(self):
         return ['NB_C']
-    def get_available_bands(self):
+    def get_cutout_available_bands(self):
         return ['NB_C']
     def get_rgb(self, imgs, bands, **kwargs):
         import numpy as np
@@ -3696,7 +3700,7 @@ class WiroCLayer(ReDecalsLayer):
 class WiroDLayer(WiroCLayer):
     def get_bands(self):
         return ['NB_D']
-    def get_available_bands(self):
+    def get_cutout_available_bands(self):
         return ['NB_D']
 
 
@@ -4137,7 +4141,7 @@ class Ibis3Layer(ReDecalsLayer):
         super().__init__(name, imagetype, survey, bands=['M411', 'M438', 'M464', 'M490', 'M517'],
                          drname=drname)
         self.rgb_plane = None
-    def parse_bands(self, bands):
+    def parse_cutout_bands(self, bands):
         thebands = []
         mybands = self.get_bands()
         for word in bands.split(','):
@@ -9214,9 +9218,15 @@ def get_layer(name, default=None):
         # suff: -model, -resid
         suff = name.replace('ls-dr11', '').replace('-mid', '')
         north = get_layer('ls-dr11-north' + suff)
+        # ??
+        north.cutout_bands = 'griz'
         south = get_layer('ls-dr11-south' + suff + grzpart)
+        south.bands = bands
+        south.cutout_bands = 'griz'
         layer = LegacySurveySplitLayer(name + grzpart, north, south, 32.375, bottom_bands=bands)
-        layer.bands = 'grz'
+        # ??
+        layer.bands = bands
+        layer.cutout_bands = 'griz'
         layer.drname = 'Legacy Surveys DR11'
         # "name" is going to be used to set the "layer" cache below!
         name = name + grzpart
@@ -9258,6 +9268,9 @@ def get_layer(name, default=None):
                                  drname=basename)
         resid = LsDr10ResidLayer(image, model, basename + '-resid' + grzpart, 'resid', survey, bands=bands,
                                  drname=basename)
+        image.cutout_bands = 'griz'
+        model.cutout_bands = 'griz'
+        resid.cutout_bands = 'griz'
         layers[basename            + grzpart] = image
         layers[basename + '-model' + grzpart] = model
         layers[basename + '-resid' + grzpart] = resid
@@ -10029,7 +10042,8 @@ if __name__ == '__main__':
     #r = c.get('/namequery/?obj=TARGETID%2039627595494462307')
 
     #r = c.get('/ls-dr11/1/12/533/2113.jpg')
-    r = c.get('/cutout.jpg?ra=54.4717&dec=-19.0242&layer=ls-dr11&pixscale=0.13')
+    #r = c.get('/cutout.jpg?ra=54.4717&dec=-19.0242&layer=ls-dr11&pixscale=0.13')
+    r = c.get('/cutout.fits?ra=202.3730&dec=17.2006&layer=ls-dr11-south&pixscale=1.00&bands=i')
     f = open('out.jpg', 'wb')
     for x in r:
         f.write(x)
