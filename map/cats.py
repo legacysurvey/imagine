@@ -94,6 +94,7 @@ catversions = {
     'ls-dr11': [1,],
     'ls-dr11-south': [1,],
     'ls-dr11-north': [1,],
+    'ibis-dr1': [1,],
 }
 
 test_cats = []
@@ -3406,11 +3407,14 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         havefluxes = []
         havenobs = []
         cols = cat.get_columns()
-        for band in 'griz':
-            if 'flux_'+band in cols:
+        for band in ['g','r','i','z',
+                     # IBIS
+                     'M411', 'M438', 'M464', 'M490', 'M517',
+                     ]:
+            if 'flux_'+band.lower() in cols:
                 havebands.append(band)
-                havefluxes.append(cat.get('flux_' + band))
-                havenobs.append(cat.get('nobs_' + band))
+                havefluxes.append(cat.get('flux_' + band.lower()))
+                havenobs.append(cat.get('nobs_' + band.lower()))
         fluxes = []
         for F in zip(*havefluxes):
             fluxes.append(dict([(b,float(f)) for b,f in zip(havebands, F)]))
@@ -3601,7 +3605,9 @@ if __name__ == '__main__':
     #r = c.get('/masks-dr9/1/cat.json?ralo=190.5906&rahi=190.7205&declo=14.3214&dechi=14.3930')
     #r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
     #r = c.get('/masks-dr9/1/cat.json?ralo=208.8730&rahi=209.0030&declo=25.1696&dechi=25.2365')
-    r = c.get('/ls-dr11/1/14/6419/5642.cat.json')
+    #r = c.get('/ls-dr11/1/14/6419/5642.cat.json')
+    r = c.get('/ibis-dr1/1/14/9574/8114.cat.json')
+    #r = c.get('/ibis-dr1/1/14/9574/8114.cat.json
     # import bokeh
     # print('bokeh', bokeh.__version__)
     # import prospect

@@ -1306,6 +1306,38 @@ class MapLayer(object):
     def get_catalog(self, req, ralo, rahi, declo, dechi):
         return HttpResponse('no catalog for layer ' + self.name)
 
+    def get_catalog_in_wcs(self, wcs):
+        return HttpResponse('no catalog for layer ' + self.name)
+
+    def get_catalog_table(self, req, ralo, rahi, declo, dechi, brick=None, objid=None):
+        from django.shortcuts import render
+        from map.cats import radecbox_to_wcs
+        import numpy as np
+        wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
+        cat,hdr = self.get_catalog_in_wcs(wcs)
+        if brick is not None:
+            cat = cat[cat.brickname == brick]
+        if objid is not None:
+            cat = cat[cat.objid == objid]
+        if len(cat) == 0:
+            return HttpResponse('No sources')
+        cols = cat.get_columns()
+        for col in cols:
+            print('col ' + col)
+            if not (col.startswith('flux_') and not col.startswith('flux_ivar_')):
+                continue
+            f = cat.get(col)
+            mag = -2.5 * (np.log10(f) - 9)
+            band = col.replace('flux_', '')
+            cat.set('mag_' + band, mag)
+
+        cat_dict = {}
+        cols = cat.get_columns()
+        for c in cols:
+            cat_dict[c] = cat.get(c)
+        args = dict(cat_entries=cat_dict)
+        return render(req, 'cat_table.html', args)
+
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
         return None
 
@@ -4313,40 +4345,6 @@ class LegacySurveySplitLayer(MapLayer):
         os.unlink(outfn)
         cat.writeto(outfn, header=hdr)
         return send_file(outfn, 'image/fits', unlink=True, filename=fn)
-
-    def get_catalog_table(self, req, ralo, rahi, declo, dechi, brick=None, objid=None):
-        from django.shortcuts import render
-        from map.cats import radecbox_to_wcs
-        wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
-        cat,hdr = self.get_catalog_in_wcs(wcs)
-        if brick is not None:
-            cat = cat[cat.brickname == brick]
-        if objid is not None:
-            cat = cat[cat.objid == objid]
-        if len(cat) == 0:
-            return HttpResponse('No sources')
-        cols = cat.get_columns()
-        for band in ['g','r','i','z','w1','w2','w3','w4']:
-            c = 'flux_' + band
-            import numpy as np
-            if c in cols:
-                f = cat.get(c)
-                mag = -2.5 * (np.log10(f) - 9)
-                cat.set('mag_' + band, mag)
-        cols = cat.get_columns()
-        cat_dict = {}
-        for c in cols:
-            cat_dict[c] = cat.get(c)
-        args = dict(cat_entries=cat_dict)
-        return render(req, 'cat_table.html', args)
-        #return HttpResponse('got %i sources' % len(cat))
-        # fn = 'cat-%s.fits' % (self.name)
-        # import tempfile
-        # f,outfn = tempfile.mkstemp(suffix='.fits')
-        # os.close(f)
-        # os.unlink(outfn)
-        # cat.writeto(outfn, header=hdr)
-        # return send_file(outfn, 'image/fits', unlink=True, filename=fn)
 
     def get_catalog_in_wcs(self, wcs):
         from astrometry.util.fits import merge_tables

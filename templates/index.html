@@ -1261,7 +1261,7 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 });
 
-var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
+var decals_getLayer = function(name, result, radius, defaultcolor, tooltipStyle) {
     var rdlist = result['rd'];
     var objtype = result['sourcetype'];
     var fluxes = result['fluxes'];
@@ -1342,6 +1342,7 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
         circ.ra = r;
         circ.dec = d;
         circ.type = typ;
+        circ.catalog_name = name;
         circ.fluxes = (fluxes ? fluxes[i] : {});
         circ.nobs   = (nobs   ? nobs  [i] : {});
         circ.brickname = bricknames ? bricknames[i] : '';
@@ -1355,7 +1356,7 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
 // DECaLS catalog
 var DecalsCatalogLayer = TiledOverlay.extend({
     getLayer: function(result) {
-        return decals_getLayer(result, 1);
+        return decals_getLayer(this._name, result, 1);
     },
 
     /* Consider accessing list of available tiles directly via MyTileLayer.getTiles()
@@ -1427,39 +1428,31 @@ function onSourceClick(e) {
     console.log('onSourceClick');
     src = e.target;
     fluxstr = '';
-    if ('g' in src.fluxes) {
-        fluxstr += 'g=' + fluxToMag(src.fluxes.g).toFixed(2);
-    }
-    if ('r' in src.fluxes) {
-        fluxstr += ', r=' + fluxToMag(src.fluxes.r).toFixed(2);
-    }
-    if ('i' in src.fluxes) {
-        if (src.fluxes.i != 0 && src.nobs.i > 0) {
-            fluxstr += ', i=' + fluxToMag(src.fluxes.i).toFixed(2);
+
+    var all_bands = ['g', 'r', 'i', 'z',
+                     'M411', 'M438', 'M464', 'M490', 'M517',
+                    ];
+    var fluxwords = [];
+    for (var band of all_bands) {
+        if (band in src.fluxes) {
+            fluxwords.push(band + '=' + fluxToMag(src.fluxes[band]).toFixed(2));
         }
     }
-    if ('z' in src.fluxes) {
-        fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
+    var fluxstr = fluxwords.join(', ');
+
+    var nobswords = [];
+    for (var band of all_bands) {
+        if (band in src.nobs) {
+            nobswords.push(band + '=' + src.nobs[band]);
+        }
     }
-    nobsstr = '';
-    if ('g' in src.nobs) {
-	    nobsstr += 'g=' + src.nobs.g;
-    }
-    if ('r' in src.nobs) {
-	    nobsstr += ', r=' + src.nobs.r;
-    }
-    if ('i' in src.nobs) {
-	    nobsstr += ', i=' + src.nobs.i;
-    }
-    if ('z' in src.nobs) {
-	    nobsstr += ', z=' + src.nobs.z;
-    }
-    console.log('layer_name ' + layer_name);
+    var nobsstr = nobswords.join(', ');
+
     txt = 'Source RA,Dec = ' + exposures_radec_link(src.ra, src.dec) +
         '<br/>Source type: ' + src.type +
         '<br/>Mags: ' + fluxstr +
         '<br/>Brick: ' + src.brickname + ', Objid: ' +
-        '<a href="' + "{% url 'cat-table' "XXX" %}".replace("XXX", layer_name) +
+        '<a href="' + "{% url 'cat-table' "XXX" %}".replace("XXX", src.catalog_name) +
         '?ralo=' + (src.ra - 0.001).toFixed(4) + '&rahi=' + (src.ra + 0.001).toFixed(4) +
         '&declo=' + (src.dec - 0.001).toFixed(4) + '&dechi=' + (src.dec + 0.001).toFixed(4) +
         '&objid=' + src.objid + '">' +
@@ -3429,6 +3422,15 @@ var dr11northcat = new DecalsCatalogLayer(tileWatcher,
                                            'urlTerm': 'sources-dr11-north'});
 {% endif %}
 
+{% if enable_ibis %}
+var ibis_dr1_cat = new DecalsCatalogLayer(tileWatcher,
+                                          'ibis-dr1',
+                                          'IBIS DR1 Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-ibis-dr1'});
+{% endif %}
+  
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
 var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {'minZoom':10});
@@ -3827,6 +3829,9 @@ var decamfoot = new DecamOverlay('decam-footprint', 'DECam Footprint', {});
 decamfoot._url_term = 'decamfoot';
 
 var overlays = [
+    {% if enable_ibis %}
+    ibis_dr1_cat,
+    {% endif %}
     {% if enable_cfis %}
     cfiscat,
     {% endif %}
@@ -4471,6 +4476,9 @@ var overlayTree = [];
      findoverlay('phat-clusters'),
      {% endif %}    
 
+     {% if enable_ibis %}
+     findoverlay('ibis-dr1'),
+     {% endif %}
      {% if enable_dr11_overlays %}
      findoverlay('ls-dr11'),
      findoverlay('ls-dr11-north'),
