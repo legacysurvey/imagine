@@ -20,8 +20,14 @@ TILE_URL = 'https://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 
 STATIC_TILE_URL = 'https://{s}.%s%s/tiles/{id}/{ver}/{z}/{x}/{y}.jpg' % (DOMAIN, STATIC_URL_PATH)
 
+# save the "production" subdomains in settings_common
+SUBDOMAINS_PROD = SUBDOMAINS
+
+# each sub-domain would want to ask for the desi password.
+SUBDOMAINS = []
+
 STATIC_TILE_URL_B = 'https://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
-SUBDOMAINS_B = SUBDOMAINS
+SUBDOMAINS_B = SUBDOMAINS_PROD
 
 # no CORS -- so don't use subdomains, or specify hostname (www.legacysurvey.org vs legacysurvey.org)
 CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
@@ -33,14 +39,17 @@ ENABLE_EBOSS = True
 ENABLE_DR5 = True
 ENABLE_PS1 = True
 ENABLE_DR8 = True
-ENABLE_DR9SV = False
 ENABLE_DES_DR1 = True
+ENABLE_PHAT = True
 
 # Collab-private data!
 ENABLE_DESI_DATA = True
 
 ENABLE_DESI_TARGETS = True
 ENABLE_SPECTRA = True
+
+ENABLE_DR10 = True
+ENABLE_DR11 = True
 
 ENABLE_DR9 = True
 ENABLE_DR9_MODELS = True

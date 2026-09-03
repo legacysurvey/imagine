@@ -12,37 +12,70 @@ layer_regex = r'\{id\}|' + survey_regex
 urlpatterns_desi = [
 ]
 
+# DESI public
+urlpatterns_desi.extend([
+    # All DESI tiles (tiles-main.ecsv)
+    re_path(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
+    # DESI EDR tiles
+    re_path(r'^desi-tiles/edr/(\d+)/cat.json', cats.cat_desi_edr_tiles),
+    # DESI EDR spectra overlay
+    re_path(r'^desi-spec-edr/(\d+)/cat.json', cats.cat_desi_edr_spectra),
+    # DESI EDR spectrum viewer
+    re_path(r'^desi-spectrum/edr/targetid(\d+)', cats.cat_desi_edr_spectra_detail),
+
+    # DESI daily observations
+    re_path(r'^desi-obs-daily/(\d+)/cat.json', cats.cat_desi_daily_obs),
+    # DESI daily observations -- details per object
+    re_path(r'^desi-obs/daily/targetid(\d+)', cats.cat_desi_daily_obs_detail),
+    re_path(r'^desi-obs/daily/tile(\d+)fiber(\d+)', cats.cat_desi_daily_obs_detail_tile_fiber),
+])
+
+if settings.ENABLE_DESI_DR1:
+    urlpatterns_desi.extend([
+        # DESI spectroscopy -- DR1
+        re_path(r'^desi-tiles/dr1/(\d+)/cat.json', cats.cat_desi_dr1_tiles),
+        re_path(r'^desi-spec-dr1/(\d+)/cat.json', cats.cat_desi_dr1_spectra),
+        re_path(r'^desi-spectrum/dr1/targetid(-?\d+)', cats.cat_desi_dr1_spectra_detail),
+    ])
+
 if settings.ENABLE_DESI_DATA:
     # Private
     urlpatterns_desi.extend([
-        # All DESI tiles (tiles-main.ecsv)
-        re_path(r'^desi-all-tiles/(\w+)/(\d+)/cat.json', cats.cat_desi_all_tiles),
-
         # DESI spectroscopy -- daily
         re_path(r'^desi-tiles/daily/(\d+)/cat.json', cats.cat_desi_daily_tiles),
         re_path(r'^desi-spec-daily/(\d+)/cat.json', cats.cat_desi_daily_spectra),
+        re_path(r'^desi-spec-daily-sky/(\d+)/cat.json', cats.cat_desi_daily_sky_spectra),
         #re_path(r'^desi-spectrum/daily/tile(\d+)/fiber(\d+)', cats.cat_desi_daily_spectra_detail),
-        re_path(r'^desi-spectrum/daily/targetid(\d+)', cats.cat_desi_daily_spectra_detail),
+        re_path(r'^desi-spectrum/daily/targetid(-?\d+)', cats.cat_desi_daily_spectra_detail),
 
-        # DESI spectroscopy -- Denali
-        re_path(r'^desi-spec-detail/denali/tile(\d+)/fiber(\d+)', cats.cat_desi_denali_spectra_detail),
-        re_path(r'^desi-tiles/denali/(\d+)/cat.json', cats.cat_desi_denali_tiles),
-        re_path(r'^desi-spec-denali/(\d+)/cat.json', cats.cat_desi_denali_spectra),
+        # DESI spectroscopy -- Guadalupe
+        re_path(r'^desi-tiles/guadalupe/(\d+)/cat.json', cats.cat_desi_guadalupe_tiles),
+        re_path(r'^desi-spec-guadalupe/(\d+)/cat.json', cats.cat_desi_guadalupe_spectra),
+        re_path(r'^desi-spectrum/guadalupe/targetid(-?\d+)', cats.cat_desi_guadalupe_spectra_detail),
+
+        # DESI spectroscopy -- Fuji
+        re_path(r'^desi-tiles/fuji/(\d+)/cat.json', cats.cat_desi_fuji_tiles),
+        re_path(r'^desi-spec-fuji/(\d+)/cat.json', cats.cat_desi_fuji_spectra),
+        re_path(r'^desi-spectrum/fuji/targetid(-?\d+)', cats.cat_desi_fuji_spectra_detail),
     ])
 
 urlpatterns = ([
-
     re_path(r'^alive', views.alive),
     re_path(r'^checkflavour/([\w-]+)', views.checkflavour),
     re_path(r'^cutout/checkflavour/([\w-]+)', views.checkflavour),
 
-    re_path(r'^tst', views.tst),
-    re_path(r'^cat', views.cat),
+    #
+    # re_path(r'^file-test', views.static_test),
+    # re_path(r'^cutout/file-test$', views.static_test),
+    # re_path(r'^cutout/file-test-2$', views.static_test_2),
 
     re_path(r'^urls', views.urls, name='urls'),
 
     re_path(r'^gfas', views.gfas),
     re_path(r'^ci', views.ci),
+
+    re_path(r'^cfis-dr2/(\d+)/cat.json', cats.cat_cfis),
+    re_path(r'^masks-dr8/(\d+)/cat.json', cats.cat_gaia_mask),
 
     # Rongpu's DR9 photo-zs
     re_path(r'^photoz-dr9/(\d+)/cat.json', cats.cat_photoz_dr9),
@@ -57,7 +90,9 @@ urlpatterns = ([
 
     # PHAT cluster catalog
     re_path(r'^phat-clusters/(\d+)/cat.json', cats.cat_phat_clusters),
+
 ] + urlpatterns_desi + [
+
     # DR9 MAIN targets
     re_path(r'^targets-dr9-main-sec-dark/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_dark),
     re_path(r'^targets-dr9-main-sec-bright/(\d+)/cat.json', cats.cat_targets_dr9_main_sec_bright),
@@ -146,8 +181,12 @@ urlpatterns = ([
     re_path(r'^ngc/(\d+)/cat.json', cats.cat_ngc),
 
     # SGA galaxies
-    re_path(r'^sga-parent/(\d+)/cat.json', cats.cat_sga_parent),
-    re_path(r'^sga/(\d+)/cat.json', cats.cat_sga_ellipse),
+    re_path(r'^sga2020-parent/(\d+)/cat.json', cats.cat_sga2020_parent),
+    re_path(r'^sga2020/(\d+)/cat.json', cats.cat_sga2020_ellipse),
+
+    re_path(r'^sga2025-parent/(\d+)/cat.json', cats.cat_sga2025_parent),
+    re_path(r'^sga2025-north/(\d+)/cat.json', cats.cat_sga2025_north),
+    re_path(r'^sga2025-south/(\d+)/cat.json', cats.cat_sga2025_south),
 
     re_path(r'^GCs-PNe/(\d+)/cat.json', cats.cat_GCs_PNe),
 
@@ -178,7 +217,7 @@ urlpatterns = ([
     re_path(r'^(%s)/cat.fits' % layer_regex, views.any_fits_cat, name='cat-fits'),
 
     # HTML catalog output
-    re_path(r'^(%s)/cat' % layer_regex, views.any_cat_table, name='cat-table'),
+    re_path(r'^(<layer>%s)/cat' % layer_regex, views.any_cat_table, name='cat-table'),
 
     ## hackish -- the pattern (using leaflet's template format) for cat-json-tiled
     re_path(r'^\{id\}/\{ver\}/\{z\}/\{x\}/\{y\}.cat.json', cats.any_cat, name='cat-json-tiled-pattern'),
@@ -197,10 +236,10 @@ urlpatterns = ([
 
     re_path(r'^coadd-psf/', views.coadd_psf, name='coadd_psf'),
 
-    # Look up this position, date, observatory in JPL Small Bodies database
-    re_path(r'^jpl_lookup/?$', views.jpl_lookup),
-    # Redirect to other URLs on the JPL site.
-    re_path(r'^jpl_lookup/(?P<jpl_url>.*)', views.jpl_redirect),
+    # # Look up this position, date, observatory in JPL Small Bodies database
+    # re_path(r'^jpl_lookup/?$', views.jpl_lookup),
+    # # Redirect to other URLs on the JPL site.
+    # re_path(r'^jpl_lookup/(?P<jpl_url>.*)', views.jpl_redirect),
 
     # bricks: list of polygons
     re_path(r'^bricks/', views.brick_list, name='brick-list'),
@@ -235,21 +274,22 @@ urlpatterns = ([
     re_path(r'^sky-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.sky_stamp, name='sky_stamp'),
     re_path(r'^skysub-stamp/(%s)/([\w-]+).jpg' % survey_regex, views.skysub_stamp, name='skysub_stamp'),
 
+    # Special top-level entry points
+    # Special DESI-EDR version of viewer.
+    re_path(r'desi-edr', views.desi_edr),
+    # Special DESI-DR1 version of viewer.
+    re_path(r'desi-dr1', views.desi_dr1),
     # Special DECaPS version of viewer.
     re_path(r'decaps', views.decaps),
-
     # Special M33 version of viewer.
     re_path(r'm33', views.m33),
-
     # DR5 version of the viewer.
     re_path(r'dr5', views.dr5),
     # DR6 version of the viewer.
     re_path(r'dr6', views.dr6),
-
     # PHAT version of the viewer.
     re_path(r'^phat/?$', views.phat),
 
     # fall-through
     re_path(r'/?', views.index, name='index'),
-
 ])

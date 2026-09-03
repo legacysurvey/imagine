@@ -2,6 +2,10 @@ from viewer.settings_common import *
 
 FLAVOUR = 'viewer'
 
+ENABLE_PS1 = True
+
+ENABLE_DR11 = True
+
 ENABLE_DR10_EARLY = False
 
 ENABLE_DR10 = True
@@ -24,12 +28,15 @@ ENABLE_SPECTRA = True
 ENABLE_DR9SV = False
 ENABLE_DR5 = True
 
-DEBUG = True
+DEBUG = False
 DEBUG_LOGGING = False
+INFO_LOGGING = False
 
 READ_ONLY_BASEDIR = True
 
 USER_QUERY_DIR = '/tmp/viewer-user'
+
+DESI_PROSPECT_DIR = '/tmp/desi-prospect'
 
 FORCE_SCRIPT_NAME = ROOT_URL
 

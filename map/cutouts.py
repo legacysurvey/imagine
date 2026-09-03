@@ -38,7 +38,7 @@ def _cutout(req, jpeg=True):
     # Sanjaya : redirect to NERSC
     if (settings.REDIRECT_CUTOUTS_DECAPS and
         req.layer_name in ['decaps', 'decaps-model', 'decaps-resid']):
-        return HttpResponseRedirect('http://legacysurvey.org/viewer' + req.path + '?' + urlencode(req.GET))
+        return HttpResponseRedirect('https://legacysurvey.org/viewer' + req.path + '?' + urlencode(req.GET))
 
     tempfiles = []
     if jpeg:

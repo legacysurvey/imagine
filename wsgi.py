@@ -23,7 +23,7 @@ from django.core.wsgi import get_wsgi_application
 
 import numpy as np
 
-if False:
+if True:
     application = get_wsgi_application()
 
 else:
@@ -35,12 +35,17 @@ else:
             self.app = app
         def __call__(self, *args, **kwargs):
             req = args[0]
-            print('Req:', req['REMOTE_ADDR'], req['REQUEST_URI'], file=sys.stderr)
+            #print('Req:', req['REMOTE_ADDR'], req['REQUEST_URI'], file=sys.stderr)
             #print('URL', req.get_full_path(), 'from', req.META['REMOTE_ADDR'],
             #      file=sys.stderr)
             #print('URL', req['REQUEST_URI'], file=sys.stderr)
             #mem0 = get_memusage(mmaps=False)
-            result = self.app(*args, **kwargs)
+            result = None
+            try:
+                result = self.app(*args, **kwargs)
+            except Exception as e:
+                print('Exception', e, 'from request:', req['REMOTE_ADDR'], req['REQUEST_URI'],
+                      file=sys.stderr)
             #mem1 = get_memusage(mmaps=False)
             #print('App', app, 'args', args, 'kwargs', kwargs, file=sys.stderr)
             # print('URL', req['REQUEST_URI'], file=sys.stderr)

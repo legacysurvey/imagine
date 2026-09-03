@@ -9,10 +9,12 @@ DEBUG_LOGGING = False
 
 USER_QUERY_DIR = '/tmp/viewer-dev-user'
 
+DESI_PROSPECT_DIR = '/tmp/desi-prospect'
+
 READ_ONLY_BASEDIR = True
 
 ROOT_URL = '/viewer-dev'
-STATIC_URL_PATH = '/viewer-dev/static/'
+STATIC_URL_PATH = ROOT_URL + '/static'
 
 FORCE_SCRIPT_NAME = ROOT_URL
 #FORCE_SCRIPT_NAME = ''
@@ -31,16 +33,20 @@ CAT_URL = '%s/{id}/{ver}/{z}/{x}/{y}.cat.json' % (ROOT_URL)
 
 ENABLE_DEV = True
 
+ENABLE_IBIS = True
+
 ENABLE_UNWISE_W3W4 = True
 
+ENABLE_MDW = True
+
 ENABLE_PHAT = True
+ENABLE_PANDAS = True
 
 ENABLE_DECAPS = True
 ENABLE_EBOSS = True
 ENABLE_DR5 = True
 ENABLE_PS1 = True
 ENABLE_DR8 = True
-ENABLE_DR9SV = False
 ENABLE_DES_DR1 = True
 
 ENABLE_DESI_TARGETS = True
@@ -59,5 +65,5 @@ ENABLE_DR9_SOUTH_MODELS = True
 ENABLE_DR9_SOUTH_RESIDS = True
 
 ENABLE_DR10 = True
-#ENABLE_DR10A = True
-#ENABLE_DR10_EARLY = True
+
+ENABLE_DR11 = True

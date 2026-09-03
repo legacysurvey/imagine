@@ -35,7 +35,7 @@ def save_jpeg(fn, rgb, **kwargs):
     os.unlink(tempfn)
 
 def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
-              filename=None):
+              filename=None, headers=None):
     import datetime
     from django.http import HttpResponseNotModified, StreamingHttpResponse
     '''
@@ -57,7 +57,7 @@ def send_file(fn, content_type, unlink=False, modsince=None, expires=3600,
         if dt < 1:
             return HttpResponseNotModified()
 
-    res = StreamingHttpResponse(f, content_type=content_type)
+    res = StreamingHttpResponse(f, content_type=content_type, headers=headers)
     # res['Cache-Control'] = 'public, max-age=31536000'
     res['Content-Length'] = st.st_size
     if filename is not None:
