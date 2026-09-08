@@ -388,7 +388,7 @@ def desi_healpix_spectrum(req, obj, release, redrock_template_dir=None):
     zbfile = os.path.join(os.path.dirname(fn), zbfile)
     zb = Table.read(zbfile, 'REDSHIFTS')
     #- Trim zb to only have TARGETIDs in filtered spectra sp
-    keep = np.in1d(zb['TARGETID'], spectra.fibermap['TARGETID'])
+    keep = np.isin(zb['TARGETID'], spectra.fibermap['TARGETID'])
     zb = zb[keep]
     assert(len(spectra.fibermap) == 1)
     assert(len(zb) == 1)
