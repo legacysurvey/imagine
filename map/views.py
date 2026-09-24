@@ -7016,6 +7016,9 @@ def get_survey(name):
         'ls-dr9': ('Legacy Surveys DR9', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr9/'),
         'ls-dr10-south': ('Legacy Surveys DR10-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr10/south'),
         'ls-dr10': ('Legacy Surveys DR10', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr10'),
+        'ls-dr11': ('Legacy Surveys DR11', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr11'),
+        'ls-dr11-north': ('Legacy Surveys DR11-north', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr11/north'),
+        'ls-dr11-south': ('Legacy Surveys DR11-south', 'https://portal.nersc.gov/cfs/cosmo/data/legacysurvey/dr11/south'),
         }
 
     n,u = names_urls.get(name, ('',''))
