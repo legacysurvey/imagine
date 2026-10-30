@@ -34,6 +34,10 @@ def create_tile_kd(basedir):
     print('Wrote tile kd-tree')
 
 
+obs_subcols = ['targetid', 'zwarn', 'npixels', 'tileid', 'fiber',
+           'tsnr2_bgs', 'tsnr2_lrg', 'tsnr2_elg', 'tsnr2_qso', 'tsnr2_lya',
+           'minmjd', 'maxmjd', 'ra', 'dec', 'coadd_exptime']
+    
 # Create tile kd-tree
 if True:
     create_tile_kd(basedir)
@@ -54,7 +58,8 @@ if True:
         T.rename('ra',  'target_ra')
         T.rename('dec', 'target_dec')
         allzbest.append(T)
-    cache_cutoff = '20251200'
+    #cache_cutoff = '20251200'
+    cache_cutoff = '20261000'
 
     print('Finding zbest(redrock) files...')
     
@@ -91,8 +96,13 @@ if True:
     if caching:
         #cachedate = '20251100'
         #cachedate_name = '202510'
-        cachedate = '20251200'
-        cachedate_name = '202511'
+
+        #cachedate = '20251200'
+        #cachedate_name = '202511'
+
+        cachedate = '20261000'
+        cachedate_name = '202609'
+        
         fns = [fn for fn in fns if os.path.basename(os.path.dirname(fn)) <= cachedate]
         
     if True:
@@ -156,8 +166,16 @@ if True:
         print('Writing', kdfn)
         create_desi_spectro_kdtree(outfn, kdfn)
         print('Wrote', kdfn)
-        sys.exit(0)
 
+        obsfn = os.path.join(basedir, 'desi-obs-%s.fits' % cachedate_name)
+        print('Writing to', obsfn)
+        allzbest.writeto(obsfn, columns=obs_subcols)
+        obskd = os.path.join(basedir, 'desi-obs-%s.kd.fits' % cachedate_name)
+        print('Writing to', obskd)
+        create_desi_spectro_kdtree(obsfn, obskd)
+        print('Wrote', obskd)
+        sys.exit(0)
+        
     fitsfn = os.path.join(basedir, 'allzbest.fits')
     print('Writing to', fitsfn)
     allzbest.writeto(fitsfn)
@@ -172,11 +190,8 @@ create_desi_spectro_kdtree(fitsfn, outfn)
 print('Wrote', outfn)
 
 obsfn = os.path.join(basedir, 'desi-obs.fits')
-subcols = ['targetid', 'zwarn', 'npixels', 'tileid', 'fiber',
-           'tsnr2_bgs', 'tsnr2_lrg', 'tsnr2_elg', 'tsnr2_qso', 'tsnr2_lya',
-           'minmjd', 'maxmjd', 'ra', 'dec', 'coadd_exptime']
 print('Writing to', obsfn)
-allzbest.writeto(obsfn, columns=subcols)
+allzbest.writeto(obsfn, columns=obs_subcols)
 obskd = os.path.join(basedir, 'desi-obs.kd.fits')
 print('Writing to', obskd)
 create_desi_spectro_kdtree(obsfn, obskd)

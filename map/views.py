@@ -159,7 +159,7 @@ def ci(req):
     from django.shortcuts import render
     return render(req, 'desi-ci.html')
 
-def request_layer_name(req, default_layer='ls-dr9'):
+def request_layer_name(req, default_layer='ls-dr11'):
     name = req.GET.get('layer', default_layer)
     return clean_layer_name(name)
 
@@ -274,7 +274,7 @@ def index(req, **kwargs):
     return _index(req, **kwargs)
 
 def _index(req,
-           default_layer = 'ls-dr9',
+           default_layer = 'ls-dr11',
            default_radec = (None,None),
            default_zoom = 12,
            rooturl=settings.ROOT_URL,
