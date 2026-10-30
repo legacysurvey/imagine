@@ -3353,7 +3353,7 @@ def any_cat(req, name, ver, zoom, x, y, **kwargs):
 def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
     import json
     zoom = int(zoom)
-    if zoom < 12:
+    if zoom < 11:
         return HttpResponse(json.dumps(dict(rd=[])),
                             content_type='application/json')
 
@@ -3601,7 +3601,10 @@ if __name__ == '__main__':
     #r = c.get('/masks-dr9/1/cat.json?ralo=190.5906&rahi=190.7205&declo=14.3214&dechi=14.3930')
     #r = c.get('/spec/1/cat.json?ralo=208.6781&rahi=209.1979&declo=25.0691&dechi=25.3369')
     #r = c.get('/masks-dr9/1/cat.json?ralo=208.8730&rahi=209.0030&declo=25.1696&dechi=25.2365')
-    r = c.get('/ls-dr11/1/14/6419/5642.cat.json')
+    #r = c.get('/ls-dr11/1/14/6419/5642.cat.json')
+    #r = c.get('/desi-spectrum/dr1/targetid2847664538386432')
+    r = c.get('/sga2025-south/1/cat.json?ralo=39.7231&rahi=39.9830&declo=2.6545&dechi=2.8031')
+
     # import bokeh
     # print('bokeh', bokeh.__version__)
     # import prospect

@@ -10046,7 +10046,8 @@ if __name__ == '__main__':
 
     #r = c.get('/ls-dr11/1/12/533/2113.jpg')
     #r = c.get('/cutout.jpg?ra=54.4717&dec=-19.0242&layer=ls-dr11&pixscale=0.13')
-    r = c.get('/cutout.fits?ra=202.3730&dec=17.2006&layer=ls-dr11-south&pixscale=1.00&bands=i')
+    #r = c.get('/cutout.fits?ra=202.3730&dec=17.2006&layer=ls-dr11-south&pixscale=1.00&bands=i')
+    r = c.get('/ls-dr11/1/1/1/0.jpg')
     f = open('out.jpg', 'wb')
     for x in r:
         f.write(x)
