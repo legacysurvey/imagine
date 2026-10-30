@@ -1,3 +1,3 @@
 #! /bin/bash
 
-docker build . -t legacysurvey/imagine-spin:2
+docker build . -t legacysurvey/imagine-spin:8
