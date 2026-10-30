@@ -410,9 +410,11 @@ def get_desi_spectro_kdfiles(release):
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-dr1', 'zpix-all.kd.fits')]
     elif release == 'daily':
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest-202511.kd.fits'),
+                os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest-202609.kd.fits'),
                 os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')]
     elif release == 'daily-obs':
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'desi-obs-202511.kd.fits'),
+                os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'desi-obs-202609.kd.fits'),
                 os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'desi-obs.kd.fits')]
     elif release == 'guadalupe':
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-guadalupe', 'zpix-all.kd.fits')]
