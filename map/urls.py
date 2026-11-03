@@ -149,6 +149,9 @@ urlpatterns = ([
     # SDSS Catalog
     re_path(r'^sdss-cat/(\d+)/cat.json', cats.cat_sdss),
 
+    # SDSS DR20 spectra
+    re_path(r'^sdss-dr20/(\d+)/cat.json', cats.cat_sdss_dr20),
+
     # PS1 catalog test
     re_path(r'^ps1/(\d+)/cat.json', cats.cat_ps1),
 
