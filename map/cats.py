@@ -72,6 +72,7 @@ catversions = {
     'gaia-dr2': [1,],
     'gaia-edr3': [1,],
     'sdss-cat': [1,],
+    'sdss-dr20': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
     'desi-tiles': [1,],
@@ -2601,7 +2602,38 @@ def cat_hsc_dr2_cosmos(req, ver):
     return HttpResponse(json.dumps(dict(rd=rd, name=names, color=color)),
                         content_type='application/json')
 
-def cat_kd(req, ver, tag, fn, racol=None, deccol=None):
+def cat_sdss_dr20(req, ver):
+    import json
+    import numpy as np
+    '''
+    This file was generated with notebook Untitled535.ipynb
+    '''
+    fn = os.path.join(settings.DATA_DIR, 'sdss-dr20', 'sdss-dr20-vi.kd.fits')
+    T = cat_kd(req, ver, 'sdss-dr20', [fn], racol='fiber_ra', deccol='fiber_dec')
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])),
+                            content_type='application/json')
+    if len(T) > 5000:
+        T = T[:5000]
+
+    rd = list((float(r),float(d)) for r,d in zip(T.fiber_ra, T.fiber_dec))
+    names = []
+    #color = []
+    for has_vi, z_vi, zconf, clazz, z_pipe in zip(T.vi_has_vi, T.vi_z_best, T.vi_z_conf_best,
+                                                  T.vi_class_best, T.z):
+        z = z_vi
+        if not np.isfinite(z_vi):
+            z = z_pipe
+        if has_vi:
+            s = 'z=%.3f %s (VI, conf %i)' % (z, clazz, zconf)
+        else:
+            s = 'z=%.3f %s (conf %i)' % (z, clazz, zconf)
+        names.append(s)
+    return HttpResponse(json.dumps(dict(rd=rd, name=names)), #, color=color)),
+                        content_type='application/json')
+
+def cat_kd(req, ver, tag, fns, racol=None, deccol=None):
+    from astrometry.util.fits import merge_tables
     ralo = float(req.GET['ralo'])
     rahi = float(req.GET['rahi'])
     declo = float(req.GET['declo'])

@@ -3508,6 +3508,7 @@ var sdsscat = new SdssCatalog('sdss-cat', 'SDSS catalog',
                               'radius': 100,
                               });
 
+
 {% if enable_phat %}
 var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
                              {'url_name': 'phat-clusters',
@@ -3636,6 +3637,14 @@ var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra (DR16)',
                                    'labelsMinZoom': 11,
                                    'minZoom': 8,
                                    'urlTerm': 'spectra'});
+
+var sdssdr20 = new CatalogOverlay('sdss-dr20', 'SDSS DR20 spectroscopy',
+                             {'url_name': 'sdss-dr20',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'sdss-dr20',
+                              'radius': 600,
+                              });
 
 var manga = new MangaCatalog('manga', 'MaNGa IFU Spectra',
                                   {'url': url,
@@ -3802,6 +3811,7 @@ var overlays = [
     sdsscat,
     {% if enable_spectra %}
     manga, spec, plateOverlay, specDeep2,
+    sdssdr20,
     {% endif %}
     {% if enable_desi_targets %}
     desi_sv_targets8,
@@ -4330,6 +4340,7 @@ var overlayTree = [];
        children: [
            findoverlay('manga'),
            findoverlay('spec'),
+           findoverlay('sdss-dr20'),
            findoverlay('sdss-plates'),
            findoverlay('spec-deep2'),
        ],
