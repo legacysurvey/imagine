@@ -294,7 +294,7 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     fn = fns[-1]
     print('Reading spectra from', fn)
     spectra = read_spectra(fn)
-    keep = np.in1d(spectra.fibermap['FIBER'], [fiber])
+    keep = np.isin(spectra.fibermap['FIBER'], [fiber])
     spectra = spectra[keep]
 
     zbests = []
@@ -319,7 +319,8 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
             continue
         zb = Table.read(zbfile, extname)
     #- Trim zb to only have TARGETIDs in filtered spectra sp
-    keep = np.in1d(zb['TARGETID'], spectra.fibermap['TARGETID'])
+    #keep = np.in1d(zb['TARGETID'], spectra.fibermap['TARGETID'])
+    keep = np.isin(zb['TARGETID'], spectra.fibermap['TARGETID'])
     zb = zb[keep]
     #- spectra files can have multiple entries per TARGETID,
     #- while zbest files have only 1.  Expand to match spectra.
