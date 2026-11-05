@@ -1011,7 +1011,8 @@ def query_simbad(q):
     from urllib.parse import urlencode
     from urllib.parse import quote
 
-    url = 'https://simbad.u-strasbg.fr/simbad/sim-id?output.format=votable&output.params=coo(d)&output.max=1&Ident='
+    #url = 'https://simbad.u-strasbg.fr/simbad/sim-id?output.format=votable&output.params=coo(d)&output.max=1&Ident='
+    url = 'https://simbad.cfa.harvard.edu/simbad/sim-id?output.format=votable&output.params=coo(d)&output.max=1&Ident='
     url += urlencode(dict(q=q), quote_via=quote).replace('q=','')
     print('URL', url)
     f = urlopen(url)
