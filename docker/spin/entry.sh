@@ -11,4 +11,9 @@ mkdir /tmp/matplotlib
 export MPLCONFIGDIR=/tmp/matplotlib
 
 cd /app/viewer
+
+echo "pwd: $(pwd)"
+echo "logging to: logs/${HOSTNAME}-uwsgi.log"
+touch logs/${HOSTNAME}-uwsgi.log
+
 uwsgi --touch-reload wsgi.py --ini uwsgi-rancher2.ini --logto logs/${HOSTNAME}-uwsgi.log

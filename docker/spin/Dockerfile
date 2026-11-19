@@ -21,6 +21,7 @@ RUN for x in \
     numba \
     bokeh \
     uwsgitop \
+    healpy \
     ; do \
     python3 -m pip install --no-cache --break-system-packages $x; \
     done;
