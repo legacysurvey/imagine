@@ -72,6 +72,7 @@ catversions = {
     'gaia-dr2': [1,],
     'gaia-edr3': [1,],
     'sdss-cat': [1,],
+    'sdss-dr20': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
     'desi-tiles': [1,],
@@ -277,7 +278,7 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
     fns.sort()
     fn = fns[-1]
     spectra = read_spectra(fn)
-    keep = np.in1d(spectra.fibermap['FIBER'], [fiber])
+    keep = np.isin(spectra.fibermap['FIBER'], [fiber])
     spectra = spectra[keep]
 
     zbests = []
@@ -302,7 +303,8 @@ def cat_desi_release_spectra_detail(req, tile, fiber, release):
             continue
         zb = Table.read(zbfile, extname)
     #- Trim zb to only have TARGETIDs in filtered spectra sp
-    keep = np.in1d(zb['TARGETID'], spectra.fibermap['TARGETID'])
+    #keep = np.in1d(zb['TARGETID'], spectra.fibermap['TARGETID'])
+    keep = np.isin(zb['TARGETID'], spectra.fibermap['TARGETID'])
     zb = zb[keep]
     #- spectra files can have multiple entries per TARGETID,
     #- while zbest files have only 1.  Expand to match spectra.
@@ -410,9 +412,11 @@ def get_desi_spectro_kdfiles(release):
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-dr1', 'zpix-all.kd.fits')]
     elif release == 'daily':
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest-202511.kd.fits'),
+                os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest-202609.kd.fits'),
                 os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'allzbest.kd.fits')]
     elif release == 'daily-obs':
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'desi-obs-202511.kd.fits'),
+                os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'desi-obs-202609.kd.fits'),
                 os.path.join(settings.DATA_DIR, 'desi-spectro-daily', 'desi-obs.kd.fits')]
     elif release == 'guadalupe':
         return [os.path.join(settings.DATA_DIR, 'desi-spectro-guadalupe', 'zpix-all.kd.fits')]
@@ -2868,6 +2872,36 @@ def cat_hsc_dr2_cosmos(req, ver):
     for ext,gg,rr,ii,zz in zip(e,g,r,i,z):
         names.append('%s g=%.2f, r=%.2f, i=%.2f, z=%.2f' % ('Galaxy' if ext else 'Star', gg, rr, ii, zz))
     return HttpResponse(json.dumps(dict(rd=rd, name=names, color=color)),
+                        content_type='application/json')
+
+def cat_sdss_dr20(req, ver):
+    import json
+    import numpy as np
+    '''
+    This file was generated with notebook Untitled535.ipynb
+    '''
+    fn = os.path.join(settings.DATA_DIR, 'sdss-dr20', 'sdss-dr20-vi.kd.fits')
+    T = cat_kd(req, ver, 'sdss-dr20', [fn], racol='fiber_ra', deccol='fiber_dec')
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], color=[])),
+                            content_type='application/json')
+    if len(T) > 5000:
+        T = T[:5000]
+
+    rd = list((float(r),float(d)) for r,d in zip(T.fiber_ra, T.fiber_dec))
+    names = []
+    #color = []
+    for has_vi, z_vi, zconf, clazz, z_pipe in zip(T.vi_has_vi, T.vi_z_best, T.vi_z_conf_best,
+                                                  T.vi_class_best, T.z):
+        z = z_vi
+        if not np.isfinite(z_vi):
+            z = z_pipe
+        if has_vi:
+            s = 'z=%.3f %s (VI, conf %i)' % (z, clazz, zconf)
+        else:
+            s = 'z=%.3f %s (conf %i)' % (z, clazz, zconf)
+        names.append(s)
+    return HttpResponse(json.dumps(dict(rd=rd, name=names)), #, color=color)),
                         content_type='application/json')
 
 def cat_kd(req, ver, tag, fns, racol=None, deccol=None):
