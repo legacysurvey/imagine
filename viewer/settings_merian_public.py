@@ -2,17 +2,20 @@ from viewer.settings_common import *
 
 INDEX_KWARGS = dict(merian_first=True)
 
-FLAVOUR = 'viewer-merian'
-ROOT_URL = '/viewer-merian'
-STATIC_URL_PATH = '/viewer-merian/static/'
+FLAVOUR = 'viewer-merian-public'
+ROOT_URL = '/'
+STATIC_URL_PATH = 'static/'
+STATIC_URL = ROOT_URL + STATIC_URL_PATH
 FORCE_SCRIPT_NAME = ROOT_URL
 
-print('Merian: original TILE URL', TILE_URL)
+HOSTNAME = 'merian.legacysurvey.org'
+
+#print('Merian: original TILE URL', TILE_URL)
 
 # Nope can't do subdomains because of password!
 #MY_TILE_URL = 'https://{s}.%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
 MY_TILE_URL = 'https://%s%s/{id}/{ver}/{z}/{x}/{y}.jpg' % (HOSTNAME, ROOT_URL)
-print('My tile URL:', MY_TILE_URL)
+#print('My tile URL:', MY_TILE_URL)
 MY_SUBDOMAINS = SUBDOMAINS
 
 maxZoom = 16
@@ -33,7 +36,7 @@ DEBUG_LOGGING = True
 
 READ_ONLY_BASEDIR = True
 
-USER_QUERY_DIR = '/tmp/viewer-user'
+USER_QUERY_DIR = '/tmp/viewer-merian-public-user'
 
 FORCE_SCRIPT_NAME = ROOT_URL
 
@@ -62,6 +65,8 @@ ENABLE_DR9_SOUTH_RESIDS = True
 ENABLE_DR9SV = False
 
 ENABLE_DR10 = True
+
+ENABLE_DR11 = True
 
 ENABLE_DESI_TARGETS = False
 ENABLE_SPECTRA = True

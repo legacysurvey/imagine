@@ -240,6 +240,10 @@ def is_dfuws(req):
     host = req.META.get('HTTP_HOST', None)
     return (host == 'dfuws.legacysurvey.org')
 
+def is_merian(req):
+    host = req.META.get('HTTP_HOST', None)
+    return (host == 'merian.legacysurvey.org')
+
 def lookup_any_targetid(tid):
     from map.cats import lookup_targetid
     if settings.ENABLE_DESI_DATA:
@@ -273,6 +277,10 @@ def index(req, **kwargs):
                       default_radec=(20.7415, 16.9267,),
                       default_zoom=10,
                       default_layer='dfuws')
+    if is_merian(req):
+        kwargs.update(default_radec=(36.9069, -2.5786),
+                      default_layer='merian-n540',
+                      default_zoom=13)
     return _index(req, **kwargs)
 
 def _index(req,
@@ -3897,25 +3905,26 @@ class HscLayer(RebrickedMixin, MapLayer):
     def get_fits_extension(self, scale, fn):
         return 1
 
-    # def open_file(self, brick, band, scale, fn=None):
-    #     import fitsio
-    #     if fn is None:
-    #         fn = self.get_filename(brick, band, scale)
-    #     ext = self.get_fits_extension(scale, fn)
-    #     F = fitsio.FITS(fn)
-    #     debug('Opening FITS image', fn, 'ext', ext)
-    #     return F,ext
+    def open_file(self, brick, band, scale, fn=None):
+        import fitsio
+        if fn is None:
+            fn = self.get_filename(brick, band, scale)
+        ext = self.get_fits_extension(scale, fn)
+        F = fitsio.FITS(fn)
+        debug('Opening FITS image', fn, 'ext', ext)
+        return F,ext
 
     def read_wcs(self, brick, band, scale, fn=None, openfile=None):
         from map.coadds import read_tan_from_header
         hdr,W,H = None,None,None
         if openfile is not None:
-            #F,ext = openfile
-            #f = F[ext]
-            f = openfile
+            F,ext = openfile
+            f = F[ext]
+            #f = openfile
             hdr = f.read_header()
             info = f.get_info()
             H,W = info['dims']
+            #ext = None
         else:
             if fn is None:
                 fn = self.get_filename(brick, band, scale)
@@ -3929,6 +3938,7 @@ class HscLayer(RebrickedMixin, MapLayer):
         assert(openfile is not None)
         F,ext = openfile
         f = F[ext]
+        #f = openfile
         # import fitsio
         # if fn is None:
         #     fn = self.get_filename(brick, band, scale)
@@ -10119,8 +10129,11 @@ if __name__ == '__main__':
     #r = c.get('/namequery/?obj=TARGETID%2039627595494462307')
 
     #r = c.get('/ls-dr11/1/12/533/2113.jpg')
-    r = c.get('/cutout.jpg?ra=54.4717&dec=-19.0242&layer=ls-dr11&pixscale=0.13')
+    #r = c.get('/cutout.jpg?ra=54.4717&dec=-19.0242&layer=ls-dr11&pixscale=0.13')
 
+    #r = c.get('/merian-n540/1/6/57/32.jpg')
+    r = c.get('/merian-n540/1/14/14713/8305.jpg')
+    
     f = open('out.jpg', 'wb')
     for x in r:
         f.write(x)
