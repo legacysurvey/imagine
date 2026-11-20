@@ -3,18 +3,19 @@ from viewer import settings
 
 import os
 
+class ducky(object):
+    pass
+
 class PhatLayer(MapLayer):
     def __init__(self, name, **kwargs):
         import fitsio
         from astrometry.util.util import Tan
-        #from astrometry.util.util import anwcs_open_wcslib
-        super(PhatLayer, self).__init__(name, **kwargs)
+        super().__init__(name, **kwargs)
         self.nativescale = 17
         self.pixscale = 0.05
-        fn = os.path.join(settings.DATA_DIR, 'm31_full.fits')
-        self.fits = fitsio.FITS(fn)[0]
-        #self.wcs = anwcs_open_wcslib(fn, 0)
-        self.wcs = Tan(fn, 0)
+        #fn = os.path.join(settings.DATA_DIR, 'm31_full.fits')
+        #self.fits = fitsio.FITS(fn)[0]
+        #self.wcs = Tan(fn, 0)
         #print('WCS:', self.wcs)
 
     def read_image(self, brick, band, scale, slc, fn=None):
@@ -27,17 +28,20 @@ class PhatLayer(MapLayer):
         return 'BGR'
 
     def get_base_filename(self, brick, band, **kwargs):
-        #return os.path.join(settings.DATA_DIR, 'm31_full.fits')
-        return os.path.join(settings.DATA_DIR, 'm31_full_%s.fits' % band)
+        return os.path.join(settings.DATA_DIR, 'phat', 'm31_full_%s.fits' % band)
 
     def get_scaled_filename(self, brick, band, scale):
-        #return os.path.join(settings.DATA_DIR, 'm31_full_scale%i.fits' % scale)
-        return os.path.join(settings.DATA_DIR, 'm31_full_%s_scale%i.fits' % (band, scale))
+        return os.path.join(settings.DATA_DIR, 'phat',
+                            'm31_full_%s_scale%i.fits' % (band, scale))
 
     def render_into_wcs(self, wcs, zoom, x, y, bands=None, general_wcs=False,
-                        scale=None, tempfiles=None):
+                        scale=None, tempfiles=None,
+                        invvar=False, maskbits=False):
         import numpy as np
         from astrometry.util.resample import resample_with_wcs, OverlapError
+
+        assert(invvar == False)
+        assert(maskbits == False)
 
         if scale is None:
             scale = self.get_scale(zoom, x, y, wcs)
@@ -60,10 +64,10 @@ class PhatLayer(MapLayer):
         # scaled down.....
         # call get_filename to possibly generate scaled version
         for band in bands:
-            brick = None
+            brick = ducky()
+            brick.brickname = 'quack'
             fn = self.get_filename(brick, band, scale, tempfiles=tempfiles)
             print('scale', scale, 'band', band, 'fn', fn)
-
             try:
                 bwcs = self.read_wcs(brick, band, scale, fn=fn)
                 if bwcs is None:
@@ -197,3 +201,66 @@ fitsio.write('/tmp/m33-wcs.fits', None, header=outhdr)
         #     rgb[:,:,i] = img
         # return rgb
 
+class PhastLayer(PhatLayer):
+    def __init__(self, name, **kwargs):
+        super().__init__(name, **kwargs)
+        self.fits = None
+        self.wcs = None
+
+    def get_bands(self):
+        return ['f475w', 'f814w']
+
+    def get_base_filename(self, brick, band, **kwargs):
+        return os.path.join(
+            settings.DATA_DIR, 'phast',
+            'hlsp_phast_hst_acs_m31-all_%s_v1.0_drz_f32_nan.fits' % band)
+
+    def get_scaled_filename(self, brick, band, scale):
+        return os.path.join(
+            settings.DATA_DIR, 'phast',
+            'hlsp_phast_hst_acs_m31-all_%s_v1.0_drz_f32_nan_scale%i.fits' %
+            (band, scale))
+
+    def get_rgb(self, imgs, bands, **kwargs):
+
+        scale1 = 300.
+        scale2 = 100.
+        arcsinh=1./20.
+        mn=-20.
+        mx=10000.
+        w1weight=1.
+
+        import numpy as np
+        img = imgs[0]
+        H,W = img.shape
+        ## FIXME
+        assert(bands == ['f475w', 'f814w'])
+        w1,w2 = imgs
+        rgb = np.zeros((H, W, 3), np.uint8)
+        img1 = w1 * scale1
+        img2 = w2 * scale2
+
+        if arcsinh is not None:
+            def nlmap(x):
+                return np.arcsinh(x * arcsinh) / np.sqrt(arcsinh)
+
+            # intensity -- weight W1 more?
+            bright = (w1weight * img1 + img2) / (w1weight + 1.)
+            I = nlmap(bright)
+
+            # color -- abs here prevents weird effects when, eg, W1>0 and W2<0.
+            mean = np.maximum(1e-6, (np.abs(img1)+np.abs(img2))/2.)
+            img1 = np.abs(img1)/mean * I
+            img2 = np.abs(img2)/mean * I
+
+            mn = nlmap(mn)
+            mx = nlmap(mx)
+
+        img1 = (img1 - mn) / (mx - mn)
+        img2 = (img2 - mn) / (mx - mn)
+
+        rgb[:,:,2] = (np.clip(img1, 0., 1.) * 255).astype(np.uint8)
+        rgb[:,:,0] = (np.clip(img2, 0., 1.) * 255).astype(np.uint8)
+        rgb[:,:,1] = rgb[:,:,0]/2 + rgb[:,:,2]/2
+
+        return rgb

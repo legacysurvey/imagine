@@ -30,22 +30,38 @@ ENABLE_DEV = False
 
 ENABLE_CUTOUTS = True
 
+ENABLE_SGA = True
+
+ENABLE_LS_BRICKS = True
+ENABLE_UNWISE_TILES = True
+ENABLE_SDSS_CCDS = True
+
+ENABLE_DR9_MASKS = True
+
 ENABLE_UNWISE = True
+ENABLE_UNWISE_CATALOG = True
 
 ENABLE_OLDER = True
 
 # scientist view (vs public)
 ENABLE_SCIENCE = True
 
-# Collab-private data!
-ENABLE_DESI_DATA = False
-
 # DESI Early Data Release
 ENABLE_DESI_EDR = True
+# DESI DR1
+ENABLE_DESI_DR1 = True
+# DESI Collab-private data!
+ENABLE_DESI_DATA = False
+# DESI daily observation metadata only
+ENABLE_DESI_DAILY_OBS = True
 
 ENABLE_MERIAN = False
 
 ENABLE_PANDAS = False
+
+ENABLE_CFIS = False
+
+ENABLE_MDW = False
 
 ENABLE_DESI_TARGETS = False
 ENABLE_SPECTRA = False
@@ -56,6 +72,7 @@ ENABLE_DR7 = True
 ENABLE_DR8 = True
 ENABLE_DR8_MODELS = ENABLE_DR8
 ENABLE_DR8_RESIDS = ENABLE_DR8
+ENABLE_DR8_OVERLAYS = ENABLE_DR8
 
 ENABLE_DR9 = False
 ENABLE_DR9_MODELS = False
@@ -68,8 +85,13 @@ ENABLE_DR9_SOUTH_MODELS = False
 ENABLE_DR9_SOUTH_RESIDS = False
 
 ENABLE_DR10 = False
+ENABLE_DR11 = False
+
+ENABLE_IBIS = False
 
 ENABLE_UNWISE_W3W4 = False
+
+ENABLE_IBIS = False
 
 ENABLE_DR67 = True
 
@@ -144,29 +166,26 @@ DEBUG = True
 
 TEMPLATE_DEBUG = True
 
-TEMPLATE_DIRS = (os.path.join(WEB_DIR, 'templates'),)
-
-TEMPLATE_CONTEXT_PROCESSORS = [
-    #"django.contrib.auth.context_processors.auth",
-    "django.template.context_processors.debug",
-    #"django.template.context_processors.i18n",
-    #"django.template.context_processors.media",
-    "django.template.context_processors.static",
-    #"django.template.context_processors.tz",
-    #"django.contrib.messages.context_processors.messages",
-    ]
+# TEMPLATE_DIRS = [os.path.join(WEB_DIR, 'templates'),
+#                  os.path.join(WEB_DIR, 'viewer', 'templates'),
+# ]
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'APP_DIRS': False,
+        #'APP_DIRS': False,
+        'APP_DIRS': True,
         'DIRS': [os.path.join(WEB_DIR, 'templates')],
         'OPTIONS': {
             'context_processors': [
+                #'django.contrib.auth.context_processors.auth',
+                'django.template.context_processors.request',
                 "django.template.context_processors.debug",
                 "django.template.context_processors.static",
-                ],
-            #'debug': True,
+                #'social_django.context_processors.backends',
+                #'social_django.context_processors.login_redirect',
+            ],
+            'debug': True,
             },
     },
 ]
@@ -187,6 +206,7 @@ ALLOWED_HOSTS = [
     'spin.legacysurvey.org',
     'viewer.legacysurvey.org', 'a.viewer.legacysurvey.org', 'b.viewer.legacysurvey.org', 'c.viewer.legacysurvey.org', 'd.viewer.legacysurvey.org',
     'dev.viewer.legacysurvey.org', 'dev-a.viewer.legacysurvey.org', 'dev-b.viewer.legacysurvey.org', 'dev-c.viewer.legacysurvey.org', 'dev-d.viewer.legacysurvey.org',
+    'dfuws.legacysurvey.org',
     'lb.cosmo-viewer.production.svc.spin.nersc.org',
     'lb2.cosmo-viewer.production.svc.spin.nersc.org',
     'www2.legacysurvey.org',
@@ -196,19 +216,21 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = (
-    # 'django.contrib.admin',
+    # # CFIS
     # 'django.contrib.auth',
+    # 'social_django',
     'django.contrib.contenttypes',
-    # 'django.contrib.sessions',
-    # 'django.contrib.messages',
+    'django.contrib.sessions',
     'django.contrib.staticfiles',
-    # 'cat',
+    'viewer',
+    ### For ./manage.py show_urls
+    #'django_extensions',
 )
 
-MIDDLEWARE_CLASSES = (
-#    'django.contrib.sessions.middleware.SessionMiddleware',
+MIDDLEWARE = (
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-#    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
 #    'django.contrib.auth.middleware.AuthenticationMiddleware',
 #    'django.contrib.messages.middleware.MessageMiddleware',
 #    'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -222,10 +244,13 @@ WSGI_APPLICATION = 'wsgi.application'
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
 
 DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-#     },
+    # CFIS
+    # 'default': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    # },
+#     'cosmo': secrets.database.COSMO_DB,
+#     'dr2': secrets.database.DR2_DB,
 #     'cosmo': appsecrets.database.COSMO_DB,
 #     'dr2': appsecrets.database.DR2_DB,
 }
@@ -248,7 +273,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATICFILES_DIRS = (
-    os.path.join(WEB_DIR, 'static'),
+    #os.path.join(WEB_DIR, 'static'),
 )
 
 STATIC_ROOT = os.path.join(WEB_DIR, 'static')

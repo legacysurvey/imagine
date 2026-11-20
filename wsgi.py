@@ -23,7 +23,7 @@ from django.core.wsgi import get_wsgi_application
 
 import numpy as np
 
-if False:
+if True:
     application = get_wsgi_application()
 
 else:

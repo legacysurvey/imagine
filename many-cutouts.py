@@ -1,6 +1,23 @@
 from map.views import get_layer, NoOverlapError
 from astrometry.util.fits import fits_table
+from astrometry.util.multiproc import multiproc
 import numpy as np
+import os
+
+def run_one(args):
+    (layername, ra, dec, pixscale, W, H, out, bands, fits, jpeg) = args
+    layer = get_layer(layername)
+    tempfiles = []
+    tmp_out = os.path.join(os.path.dirname(out), 'tmp-'+os.path.basename(out))
+    try:
+        layer.write_cutout(ra, dec, pixscale, W, H, tmp_out,
+                           bands=bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles)
+        os.rename(tmp_out, out)
+        print('Wrote %s' % out)
+    except NoOverlapError:
+        print('No overlap')
+    for fn in tempfiles:
+        os.unlink(fn)
 
 def main():
     import argparse
@@ -15,6 +32,7 @@ def main():
     parser.add_argument('--bands', default=None, help='Bands to select for output')
     parser.add_argument('--layer', default=None, help='Map layer to render')
     parser.add_argument('--force', default=False, help='Overwrite existing output file?  Default is to quit.')
+    parser.add_argument('--threads', type=int, default=1, help='Multiprocessing')
     opt = parser.parse_args()
 
     T = fits_table(opt.table)
@@ -45,9 +63,23 @@ def main():
     if opt.layer is not None:
         T.layer = np.array([opt.layer] * len(T))
     cols = T.get_columns()
-    
-    for t in T:
-        out = t.output.strip()
+
+    args = []
+    #for t in T:
+
+    H,W = None,None
+    if 'size' in cols:
+        H = W = T.size
+    if 'height' in cols:
+        H = T.height
+    if 'width' in cols:
+        W = T.width
+
+    for out,ww,hh,layer,bands,ra,dec,pixscale in zip(T.output, W, H, T.layer, T.bands,
+                                                     T.ra, T.dec, T.pixscale):
+        out = out.strip()
+        layer = layer.strip()
+        bands = bands.strip()
 
         fits = out.endswith('.fits')
         jpeg = (out.endswith('.jpg') or out.endswith('.jpeg'))
@@ -69,26 +101,10 @@ def main():
             except:
                 pass
 
-        H,W = None,None
-        if 'size' in cols:
-            H = W = t.size
-        if 'height' in cols:
-            H = t.height
-        if 'width' in cols:
-            W = t.width
+        args.append((layer, ra, dec, pixscale, ww, hh, out, bands, fits, jpeg))
 
-        layer = t.layer.strip()
-        bands = t.bands.strip()
-
-        layer = get_layer(opt.layer)
-        tempfiles = []
-        try:
-            layer.write_cutout(t.ra, t.dec, t.pixscale, W, H, out,
-                               bands=bands, fits=fits, jpeg=jpeg, tempfiles=tempfiles)
-        except NoOverlapError:
-            print('No overlap')
-        for fn in tempfiles:
-            os.unlink(fn)
+    mp = multiproc(opt.threads)
+    mp.map(run_one, args)
     return 0
 
 if __name__ == '__main__':

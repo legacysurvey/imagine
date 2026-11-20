@@ -2,7 +2,8 @@ from viewer.settings_common import *
 
 DEBUG = True
 
-DEBUG_LOGGING = True
+DEBUG_LOGGING = False
+INFO_LOGGING = True
 
 READ_ONLY_BASEDIR = True
 

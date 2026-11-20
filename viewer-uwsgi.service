@@ -1,0 +1,24 @@
+# /etc/systemd/system/viewer-uwsgi.service
+
+[Unit]
+Description=CFIS Sky Viewer uWSGI service
+# Requirements
+Requires=network.target
+# Dependency ordering
+After=network.target
+
+[Service]
+TimeoutStartSec=0
+RestartSec=10
+Restart=always
+KillSignal=SIGQUIT
+Type=forking
+NotifyAccess=all
+WorkingDirectory=/home/dstn
+User=dstn
+#Environment="PYTHONPATH=/home/nova" "PATH=/usr/local/bin:/usr/bin:/bin:/home/nova/astrometry/util:/home/nova/astrometry/solver:/home/nova/astrometry/plot"
+ExecStart=/home/dstn/imagine/uwsgi-cloud2.sh
+#/usr/local/bin/uwsgi -s :3030 --wsgi-file wsgi.py --touch-reload wsgi.py --processes 8 --reload-on-rss 768 -d /data/nova/uwsgi.log --limit-post 500000000
+
+[Install]
+WantedBy=multi-user.target

@@ -2,6 +2,10 @@ from viewer.settings_common import *
 
 FLAVOUR = 'viewer'
 
+ENABLE_PS1 = True
+
+ENABLE_DR11 = True
+
 ENABLE_DR10_EARLY = False
 
 ENABLE_DR10 = True
@@ -18,8 +22,7 @@ ENABLE_DR9_SOUTH = True
 ENABLE_DR9_SOUTH_MODELS = True
 ENABLE_DR9_SOUTH_RESIDS = True
 
-#ENABLE_DESI_TARGETS = True
-ENABLE_DESI_TARGETS = False
+ENABLE_DESI_TARGETS = True
 ENABLE_SPECTRA = True
 
 ENABLE_DR9SV = False
@@ -32,6 +35,8 @@ INFO_LOGGING = False
 READ_ONLY_BASEDIR = True
 
 USER_QUERY_DIR = '/tmp/viewer-user'
+
+DESI_PROSPECT_DIR = '/tmp/desi-prospect'
 
 FORCE_SCRIPT_NAME = ROOT_URL
 

@@ -1,5 +1,9 @@
 from viewer.settings_common import *
 
+# Quieter, for cutouts.py
+DEBUG_LOGGING = False
+INFO_LOGGING = False
+
 ENABLE_DR5 = True
 ENABLE_DR6 = True
 ENABLE_DR7 = True

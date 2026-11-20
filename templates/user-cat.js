@@ -143,7 +143,8 @@ var UserCatalogLayer = CatalogOverlay.extend({
     },
 
     getLayer: function(result) {
-        return decals_getLayer(result, 10, this.color, this.getTooltipStyle());
+        return decals_getLayer('user-cat-'+this._catname,
+                               result, 10, this.color, this.getTooltipStyle());
     },
 
     getTooltipStyle() {

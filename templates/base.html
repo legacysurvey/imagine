@@ -1,45 +1,36 @@
 {% load static %}
-
 {% comment %}
+<!doctype html>
 -- huh, this makes firefox completely ignore the javascript...
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
              "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 {% endcomment %}
-
 <html xmlns="https://www.w3.org/1999/xhtml" xml:lang="en">
-  
-  {% block baseheader %}
+{% block baseheader %}
 <head>
 {% block favicon %}
 <link rel="icon" type="image/png" href="{% static "favicon.png" %}" />
 <link rel="shortcut icon" href="{% static "favicon.ico" %}" />
 {% endblock %}
-
 {% block header %}
 {% endblock %}
-
 <title>
 {% block title %}
 Legacy Survey Sky Browser
 {% endblock %}
 </title>
-
 <style type="text/css">
 {% block css %}
 {% endblock %}
 </style>
-
 </head>
 {% endblock %}
-
 {% block javascript %}
 {% endblock %}
-
 {% block body %}
 <body>
 {% block content %}
 {% endblock %}
 </body>
 {% endblock %}
-
 </html>

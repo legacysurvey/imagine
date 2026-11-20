@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load static %}
+{% load backend_utils %}
+
+{% block header %}
+<link href="//netdna.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+<link href="//netdna.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" rel="stylesheet">
+<link href="//netdna.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block css %}
+  h1 { padding: 0 30px; }
+    .col-md-2 { width: 18.6667%; float:none; }
+
+    .buttons { display: block; table-layout: fixed; border-radius: 7px; border: 1px solid #ccc;
+	       margin: 20px; background: #eee; padding: 30px;
+	     	text-align: center;
+}
+    .buttons > div .btn { margin: 5px 10px;}
+    .buttons > div .row { align: center; }
+
+  .buttons > div:not(:first-child) { margin-top: 10px; border-top: 1px solid #ccc;
+				     padding-top: 10px; text-align: center;
+				     align: center; float:none; }
+
+  .user-details { text-align: center; font-size: 16px; font-weight: bold; }
+  .disconnect-form { padding: 0; margin: 0px 10px; }
+  .disconnect-form > a { display: block; margin: 5px 0 !important; }
+
+#auth_status { 
+    float: right;
+    text-align: right;
+    font-size: 100%;
+    font-family:sans-serif;
+    padding: 10px;
+}
+#auth_status a { padding-right: 5px; }
+
+{% endblock %}
+
+  {% block content %}
+            <div id="auth_status">
+            {% if user.is_authenticated %}
+                Signed in as <span id="user_info">{{ user.username }}</span> |
+                <a href="{% url 'logout' %}">Sign Out</a>
+            {% else %}
+                Not signed in
+	    {% endif %}
+            </div>
+<p style="clear:both;"></p>
+
+<div class="buttons">
+    <h3>Access to the UNIONS Sky Viewer is limited to members of the collaboration.</h3>
+
+    <h3>Sign in using your CADC account:</h3>
+    {% if user.is_authenticated %}
+    <div class="user-details">
+      You are logged in as <code>{{ user.username }}</code>
+    </div>
+    {% endif %}
+
+{% comment %}
+    <div class="social">
+{% endcomment %}
+      {% for sublist in available_backends|social_backends %}
+
+
+    <div class="row">
+
+	{% for name, backend in sublist %}
+	{% associated backend %}
+	{% if association %}
+	<form id="{{ name }}-disconnect"
+	      class="disconnect-form col-md-2"
+	      action="{% url 'social:disconnect_individual' backend=association.provider association_id=association.id %}"
+	      method="post">
+	  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+	  <a class="btn btn-danger" name="{{ backend|backend_class }}" href="#">
+	    <i class="fa fa-{{ name|icon_name }}"></i>
+	    Disconnect {{ backend|backend_name }}
+	  </a>
+	</form>
+	{% else %}
+	<a id="{{ name }}-button"
+	   class="col-md-2 btn btn-default"
+	   name="{{ backend|backend_class }}"
+	   href="{% url 'social:begin' backend=name %}">
+	  <i class="fa fa-{{ name|icon_name }}"></i>
+	  {{ backend|backend_name }}
+	</a>
+	{% endif %}
+	{% endfor %}
+
+      </div>
+
+      {% endfor %}
+
+{% comment %}
+</div>
+{% endcomment %}
+
+{% comment %}
+    <div>
+      <a class="btn btn-primary" href="/logout/">
+	<i class="fa fa-sign-out"></i>
+	Logout
+      </a>
+    </div>
+{% endcomment %}
+  </div>
+
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+  <script type="text/javascript">
+    $(function () {
+	$('.disconnect-form').on('click', 'a.btn', function (event) {
+	    event.preventDefault();
+	    $(event.target).closest('form').submit();
+	});
+    });
+  </script>
+  {% endblock %}
+  
