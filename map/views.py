@@ -316,6 +316,9 @@ def _index(req,
         'act-dr6-f150': ['ACT DR6 F150 map', [[1, 10, tileurl, subs]], 10, 'act-dr6-f150'],
     }
 
+    if settings.ENABLE_MDW:
+        tile_layers['mdw-halpha'] = ['MDW H-alpha', [def_url], maxnative, 'mdw-halpha']
+    
     if settings.ENABLE_IBIS:
         for tag,label in [
                 ('ibis-4', "IBIS (v4) COSMOS Color"),
@@ -619,6 +622,7 @@ def _index(req,
 
         enable_decaps = settings.ENABLE_DECAPS,
         enable_ps1 = settings.ENABLE_PS1,
+        enable_mdw = settings.ENABLE_MDW,
         #enable_des_dr1 = settings.ENABLE_DES_DR1,
         #enable_ztf = settings.ENABLE_ZTF,
         enable_dr5_models = settings.ENABLE_DR5,
@@ -1302,6 +1306,38 @@ class MapLayer(object):
 
     def get_catalog(self, req, ralo, rahi, declo, dechi):
         return HttpResponse('no catalog for layer ' + self.name)
+
+    def get_catalog_in_wcs(self, wcs):
+        return HttpResponse('no catalog for layer ' + self.name)
+
+    def get_catalog_table(self, req, ralo, rahi, declo, dechi, brick=None, objid=None):
+        from django.shortcuts import render
+        from map.cats import radecbox_to_wcs
+        import numpy as np
+        wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
+        cat,hdr = self.get_catalog_in_wcs(wcs)
+        if brick is not None:
+            cat = cat[cat.brickname == brick]
+        if objid is not None:
+            cat = cat[cat.objid == objid]
+        if len(cat) == 0:
+            return HttpResponse('No sources')
+        cols = cat.get_columns()
+        for col in cols:
+            print('col ' + col)
+            if not (col.startswith('flux_') and not col.startswith('flux_ivar_')):
+                continue
+            f = cat.get(col)
+            mag = -2.5 * (np.log10(f) - 9)
+            band = col.replace('flux_', '')
+            cat.set('mag_' + band, mag)
+
+        cat_dict = {}
+        cols = cat.get_columns()
+        for c in cols:
+            cat_dict[c] = cat.get(c)
+        args = dict(cat_entries=cat_dict)
+        return render(req, 'cat_table.html', args)
 
     def ccds_touching_box(self, north, south, east, west, Nmax=None):
         return None
@@ -4315,40 +4351,6 @@ class LegacySurveySplitLayer(MapLayer):
         cat.writeto(outfn, header=hdr)
         return send_file(outfn, 'image/fits', unlink=True, filename=fn)
 
-    def get_catalog_table(self, req, ralo, rahi, declo, dechi, brick=None, objid=None):
-        from django.shortcuts import render
-        from map.cats import radecbox_to_wcs
-        wcs = radecbox_to_wcs(ralo, rahi, declo, dechi)
-        cat,hdr = self.get_catalog_in_wcs(wcs)
-        if brick is not None:
-            cat = cat[cat.brickname == brick]
-        if objid is not None:
-            cat = cat[cat.objid == objid]
-        if len(cat) == 0:
-            return HttpResponse('No sources')
-        cols = cat.get_columns()
-        for band in ['g','r','i','z','w1','w2','w3','w4']:
-            c = 'flux_' + band
-            import numpy as np
-            if c in cols:
-                f = cat.get(c)
-                mag = -2.5 * (np.log10(f) - 9)
-                cat.set('mag_' + band, mag)
-        cols = cat.get_columns()
-        cat_dict = {}
-        for c in cols:
-            cat_dict[c] = cat.get(c)
-        args = dict(cat_entries=cat_dict)
-        return render(req, 'cat_table.html', args)
-        #return HttpResponse('got %i sources' % len(cat))
-        # fn = 'cat-%s.fits' % (self.name)
-        # import tempfile
-        # f,outfn = tempfile.mkstemp(suffix='.fits')
-        # os.close(f)
-        # os.unlink(outfn)
-        # cat.writeto(outfn, header=hdr)
-        # return send_file(outfn, 'image/fits', unlink=True, filename=fn)
-
     def get_catalog_in_wcs(self, wcs):
         from astrometry.util.fits import merge_tables
         allcats = []
@@ -6956,7 +6958,12 @@ def get_survey(name):
         survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
         survey.bricksize = 0.025
 
-    #print('dirnm', dirnm, 'exists?', os.path.exists(dirnm))
+    elif name in ['ls-dr11']:
+        north = get_survey('ls-dr11-north')
+        north.layer = 'ls-dr11-north'
+        south = get_survey('ls-dr11-south')
+        south.layer = 'ls-dr11-south'
+        survey = SplitSurveyData(north, south)
 
     elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',
                   'ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
@@ -7677,6 +7684,10 @@ def format_jpl_url(req, ra, dec, ccd):
     return ('%s?ra=%.4f&dec=%.4f&date=%s&camera=%s' %
             (jpl_url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip()))
 
+def format_mpc_url(req, ra, dec, ccd):
+    url = my_reverse(req, minor_planet_center_lookup)
+    return ('%s?ra=%.4f&dec=%.4f&date=%s&camera=%s' %
+            (url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip()))
 
 def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None, ccd_link=True,
                           img_url=None, dq_url=None, iv_url=None, img_ooi_url=None):
@@ -8134,6 +8145,8 @@ def exposures_common(req, tgz, copsf):
             #    format_jpl_url(req, ra, dec, ccd)),
             '<small><a href="%s">Direct link to JPL query</a></small>' % (
                 jpl_direct_url(ra, dec, ccd)),
+            '<small><a href="%s">Look up in Minor Planet Center</a></small>' % (
+                format_mpc_url(req, ra, dec, ccd)),
         ])
         ccds_list.append((ccdstr,) + tuple(contents))
                       
@@ -8305,6 +8318,58 @@ def jpl_lookup(req):
 def jpl_redirect(req, jpl_url):
     from django.http import HttpResponseRedirect
     return HttpResponseRedirect('https://ssd.jpl.nasa.gov/' + jpl_url + '?' + req.META['QUERY_STRING'])
+
+def minor_planet_center_lookup(req):
+    import sys
+
+    import requests
+    from astrometry.util.starutil_numpy import ra2hmsstring, dec2dmsstring
+    from datetime import datetime
+
+    datestr = req.GET.get('date')
+    ra = float(req.GET.get('ra'))
+    dec = float(req.GET.get('dec'))
+    camera = req.GET.get('camera')
+
+    # MPC's observatory codes
+    obs_code = {
+        'decam': 'W84',
+        '90prime': 'V00',
+        'mosaic': '695',
+    }[camera]
+
+    rastr = ra2hmsstring(ra, separator=' ')
+    decstr = dec2dmsstring(dec, separator=' ')
+
+    datestr = datestr.replace(' ', 'T')
+    datestr = datestr[:19]
+    date = datetime.strptime(datestr, "%Y-%m-%dT%H:%M:%S")
+    print('Date:', date)
+    # MPC uses fractional days...
+    fracday = (date.hour / 24. + date.minute / (24*60) + date.second / (24*3600))
+
+    payload = dict(
+        year = date.year,
+        month = date.month,
+        day = '%.2f' % (date.day + fracday),
+        which = 'pos',
+        ra = rastr,
+        decl = decstr,
+        TextArea = '',
+        radius = "1", # arcminute
+        limit = '24.0', # V mag
+        oc = obs_code,
+        sort = 'd',
+        mot = 'h',
+        tmot = 's',
+        pdes = 'u',
+        needed = 'f',
+        ps = 'n',
+        type = 'p',
+    )
+    r = requests.post('https://minorplanetcenter.net/cgi-bin/mpcheck.cgi', data=payload)
+    #print('Text result:', r.text)
+    return HttpResponse(r.text)
 
 def _get_ccd(expnum, ccdname, name=None, survey=None):
     if survey is None:
@@ -10048,7 +10113,8 @@ if __name__ == '__main__':
     #r = c.get('/ls-dr11/1/12/533/2113.jpg')
     #r = c.get('/cutout.jpg?ra=54.4717&dec=-19.0242&layer=ls-dr11&pixscale=0.13')
     #r = c.get('/cutout.fits?ra=202.3730&dec=17.2006&layer=ls-dr11-south&pixscale=1.00&bands=i')
-    r = c.get('/ls-dr11/1/1/1/0.jpg')
+    r = c.get('/minor_planet_center_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
+
     f = open('out.jpg', 'wb')
     for x in r:
         f.write(x)

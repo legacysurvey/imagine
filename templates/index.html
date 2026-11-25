@@ -950,6 +950,20 @@ var SdssSpectraCatalog = CatalogOverlay.extend({
     },
 });
 
+var SdssDR20SpectraCatalog = SdssSpectraCatalog.extend({
+    getLabel: function(json, i) {
+        zw = '';
+        zwval = json['zwarning'][i];
+        //console.log('zwarning: ' + zwval);
+        if (zwval > 0) {
+            zw = ' (Zwarn=0x' + zwval.toString(16) + ')';
+        }
+        var label = '<a href="https://dr20.sdss.org/zora/target/' + json.sdss_id[i] + '">' +
+            json.name[i] + zw + ' SDSS_ID=' + json.sdss_id[i] + '</a>';
+        return label;
+    },
+});
+
 var Deep2SpectraCatalog = CatalogOverlay.extend({
     getLabel: function(json, i) {
         var label = json.name[i];
@@ -1261,7 +1275,7 @@ var TiledOverlay = CatalogOverlay.extend({
     },
 });
 
-var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
+var decals_getLayer = function(name, result, radius, defaultcolor, tooltipStyle) {
     var rdlist = result['rd'];
     var objtype = result['sourcetype'];
     var fluxes = result['fluxes'];
@@ -1342,6 +1356,7 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
         circ.ra = r;
         circ.dec = d;
         circ.type = typ;
+        circ.catalog_name = name;
         circ.fluxes = (fluxes ? fluxes[i] : {});
         circ.nobs   = (nobs   ? nobs  [i] : {});
         circ.brickname = bricknames ? bricknames[i] : '';
@@ -1355,7 +1370,7 @@ var decals_getLayer = function(result, radius, defaultcolor, tooltipStyle) {
 // DECaLS catalog
 var DecalsCatalogLayer = TiledOverlay.extend({
     getLayer: function(result) {
-        return decals_getLayer(result, 1);
+        return decals_getLayer(this._name, result, 1);
     },
 
     /* Consider accessing list of available tiles directly via MyTileLayer.getTiles()
@@ -1427,39 +1442,31 @@ function onSourceClick(e) {
     console.log('onSourceClick');
     src = e.target;
     fluxstr = '';
-    if ('g' in src.fluxes) {
-        fluxstr += 'g=' + fluxToMag(src.fluxes.g).toFixed(2);
-    }
-    if ('r' in src.fluxes) {
-        fluxstr += ', r=' + fluxToMag(src.fluxes.r).toFixed(2);
-    }
-    if ('i' in src.fluxes) {
-        if (src.fluxes.i != 0 && src.nobs.i > 0) {
-            fluxstr += ', i=' + fluxToMag(src.fluxes.i).toFixed(2);
+
+    var all_bands = ['g', 'r', 'i', 'z',
+                     'M411', 'M438', 'M464', 'M490', 'M517',
+                    ];
+    var fluxwords = [];
+    for (var band of all_bands) {
+        if (band in src.fluxes) {
+            fluxwords.push(band + '=' + fluxToMag(src.fluxes[band]).toFixed(2));
         }
     }
-    if ('z' in src.fluxes) {
-        fluxstr += ', z=' + fluxToMag(src.fluxes.z).toFixed(2);
+    var fluxstr = fluxwords.join(', ');
+
+    var nobswords = [];
+    for (var band of all_bands) {
+        if (band in src.nobs) {
+            nobswords.push(band + '=' + src.nobs[band]);
+        }
     }
-    nobsstr = '';
-    if ('g' in src.nobs) {
-	    nobsstr += 'g=' + src.nobs.g;
-    }
-    if ('r' in src.nobs) {
-	    nobsstr += ', r=' + src.nobs.r;
-    }
-    if ('i' in src.nobs) {
-	    nobsstr += ', i=' + src.nobs.i;
-    }
-    if ('z' in src.nobs) {
-	    nobsstr += ', z=' + src.nobs.z;
-    }
-    console.log('layer_name ' + layer_name);
+    var nobsstr = nobswords.join(', ');
+
     txt = 'Source RA,Dec = ' + exposures_radec_link(src.ra, src.dec) +
         '<br/>Source type: ' + src.type +
         '<br/>Mags: ' + fluxstr +
         '<br/>Brick: ' + src.brickname + ', Objid: ' +
-        '<a href="' + "{% url 'cat-table' "XXX" %}".replace("XXX", layer_name) +
+        '<a href="' + "{% url 'cat-table' "XXX" %}".replace("XXX", src.catalog_name) +
         '?ralo=' + (src.ra - 0.001).toFixed(4) + '&rahi=' + (src.ra + 0.001).toFixed(4) +
         '&declo=' + (src.dec - 0.001).toFixed(4) + '&dechi=' + (src.dec + 0.001).toFixed(4) +
         '&objid=' + src.objid + '">' +
@@ -1803,7 +1810,7 @@ testLayers.push(namedLayers['{{name}}']);
 {% endif %}
 
 // initialize layers
-
+  
 {% if enable_dr9 or enable_dr10 %}
 findlayer('ls-dr9-north');
 findlayer('ls-dr9-north-model');
@@ -3429,6 +3436,15 @@ var dr11northcat = new DecalsCatalogLayer(tileWatcher,
                                            'urlTerm': 'sources-dr11-north'});
 {% endif %}
 
+{% if enable_ibis %}
+var ibis_dr1_cat = new DecalsCatalogLayer(tileWatcher,
+                                          'ibis-dr1',
+                                          'IBIS DR1 Catalog',
+                                          {'url': cat_url,
+                                           'minZoom': 12,
+                                           'urlTerm': 'sources-ibis-dr1'});
+{% endif %}
+  
 var bright = new BrightCatalog('bright', 'Bright stars', {});
 
 var tycho2 = new CatalogOverlay('tycho2', 'Tycho-2 stars', {'minZoom':10});
@@ -3634,17 +3650,6 @@ var sdsscat = new SdssCatalog('sdss-cat', 'SDSS catalog',
                               'radius': 100,
                               });
 
-{% if enable_cfis %}
-var cfiscat = new CFISCatalog('cfis-dr2', 'CFIS DR2 catalog',
-                             {'url_name': 'cfis-dr2',
-                              'minZoom': 11,
-                              'labelsMinZoom': 11,
-                              'urlTerm': 'cfis-dr2',
-                              'radius': 100,
-			                  'url': '{{cfis_cat_url|safe}}',
-                              });
-{% endif %}
-
 {% if enable_phat %}
 var phat_clusters = new PhatClusterCatalog('phat-clusters', 'PHAT clusters',
                              {'url_name': 'phat-clusters',
@@ -3759,6 +3764,14 @@ var spec = new SdssSpectraCatalog('spec', 'SDSS Spectra (DR16)',
                                    'minZoom': 8,
                                    'urlTerm': 'spectra'});
 
+var sdssdr20 = new SdssDR20SpectraCatalog('sdss-dr20', 'SDSS DR20 spectroscopy (BOSS)',
+                             {'url_name': 'sdss-dr20',
+                              'minZoom': 11,
+                              'labelsMinZoom': 11,
+                              'urlTerm': 'sdss-dr20',
+                              'radius': 600,
+                              });
+
 var manga = new MangaCatalog('manga', 'MaNGa IFU Spectra',
                                   {'url': url,
                                    'radius': 300,
@@ -3827,6 +3840,9 @@ var decamfoot = new DecamOverlay('decam-footprint', 'DECam Footprint', {});
 decamfoot._url_term = 'decamfoot';
 
 var overlays = [
+    {% if enable_ibis %}
+    ibis_dr1_cat,
+    {% endif %}
     {% if enable_cfis %}
     cfiscat,
     {% endif %}
@@ -3935,6 +3951,7 @@ var overlays = [
     sdsscat,
     {% if enable_spectra %}
     manga, spec, plateOverlay, specDeep2,
+    sdssdr20,
     {% endif %}
     {% if enable_desi_targets %}
     //desi_sv_targets8,
@@ -4199,6 +4216,24 @@ baseTree1 = baseTree1.concat([
           findlayer('ibis-3-wide-m517', "IBIS (v3) Wide M517"),
       ] },
     {% endif %}    
+    {% if enable_mdw %}
+    findlayer('mdw-halpha', 'MDW H-alpha'),
+    {% endif %}
+
+    {% if enable_dr11 %}
+    findlayer('ls-dr11', [
+    findlayer('ls-dr11-model'),
+    findlayer('ls-dr11-resid'),
+    findlayer('ls-dr11-south', [
+      findlayer('ls-dr11-south-model'),
+      findlayer('ls-dr11-south-resid'),
+    ]),
+    findlayer('ls-dr11-north', [
+      findlayer('ls-dr11-north-model'),
+      findlayer('ls-dr11-north-resid'),
+      ]),
+    ]),
+    {% endif %}
 
     {% if enable_dr10 %}
     findlayer('ls-dr10', [
@@ -4469,6 +4504,9 @@ var overlayTree = [];
      findoverlay('phat-clusters'),
      {% endif %}    
 
+     {% if enable_ibis %}
+     findoverlay('ibis-dr1'),
+     {% endif %}
      {% if enable_dr11_overlays %}
      findoverlay('ls-dr11'),
      findoverlay('ls-dr11-north'),
@@ -4530,6 +4568,7 @@ var overlayTree = [];
        children: [
            findoverlay('manga'),
            findoverlay('spec'),
+           findoverlay('sdss-dr20'),
            findoverlay('sdss-plates'),
            findoverlay('spec-deep2'),
        ],

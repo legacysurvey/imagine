@@ -149,6 +149,9 @@ urlpatterns = ([
     # SDSS Catalog
     re_path(r'^sdss-cat/(\d+)/cat.json', cats.cat_sdss),
 
+    # SDSS DR20 spectra
+    re_path(r'^sdss-dr20/(\d+)/cat.json', cats.cat_sdss_dr20),
+
     # PS1 catalog test
     re_path(r'^ps1/(\d+)/cat.json', cats.cat_ps1),
 
@@ -240,6 +243,7 @@ urlpatterns = ([
     # re_path(r'^jpl_lookup/?$', views.jpl_lookup),
     # # Redirect to other URLs on the JPL site.
     # re_path(r'^jpl_lookup/(?P<jpl_url>.*)', views.jpl_redirect),
+    re_path(r'^minor_planet_center_lookup/?$', views.minor_planet_center_lookup),
 
     # bricks: list of polygons
     re_path(r'^bricks/', views.brick_list, name='brick-list'),

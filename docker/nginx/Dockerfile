@@ -1,4 +1,4 @@
-FROM nginxinc/nginx-unprivileged
+FROM nginx/nginx-unprivileged
 
 USER root
 RUN apt update && \
@@ -21,3 +21,4 @@ RUN echo "cosmo:x:58191" >> /etc/group \
  && chmod -R g+w /etc/nginx
 
 USER $UID
+

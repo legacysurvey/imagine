@@ -1,3 +1,3 @@
 #! /bin/bash
 
-docker build -t legacysurvey/cutouts:v1.2 .
+docker build -t legacysurvey/cutouts:v1.4.5 .

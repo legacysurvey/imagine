@@ -72,6 +72,7 @@ catversions = {
     'gaia-dr2': [1,],
     'gaia-edr3': [1,],
     'sdss-cat': [1,],
+    'sdss-dr20': [1,],
     'phat-clusters': [1,],
     'ps1': [1,],
     'desi-tiles': [1,],
@@ -94,6 +95,7 @@ catversions = {
     'ls-dr11': [1,],
     'ls-dr11-south': [1,],
     'ls-dr11-north': [1,],
+    'ibis-dr1': [1,],
 }
 
 test_cats = []
@@ -2872,6 +2874,39 @@ def cat_hsc_dr2_cosmos(req, ver):
     return HttpResponse(json.dumps(dict(rd=rd, name=names, color=color)),
                         content_type='application/json')
 
+def cat_sdss_dr20(req, ver):
+    import json
+    import numpy as np
+    '''
+    This file was generated with notebook Untitled535.ipynb
+    '''
+    fn = os.path.join(settings.DATA_DIR, 'sdss-dr20', 'sdss-dr20-vi.kd.fits')
+    T = cat_kd(req, ver, 'sdss-dr20', [fn], racol='fiber_ra', deccol='fiber_dec')
+    if T is None:
+        return HttpResponse(json.dumps(dict(rd=[], name=[], sdss_id=[], zwarning=[])),
+                            content_type='application/json')
+    if len(T) > 5000:
+        T = T[:5000]
+
+    rd = list((float(r),float(d)) for r,d in zip(T.fiber_ra, T.fiber_dec))
+    names = []
+    #color = []
+    for has_vi, z_vi, zconf, clazz, z_pipe in zip(T.vi_has_vi, T.vi_z_best, T.vi_z_conf_best,
+                                                  T.vi_class_best, T.z):
+        z = z_vi
+        if not np.isfinite(z_vi):
+            z = z_pipe
+        if has_vi:
+            s = 'z=%.3f %s (VI, conf %i)' % (z, clazz, zconf)
+        else:
+            s = 'z=%.3f %s (conf %i)' % (z, clazz, zconf)
+        names.append(s)
+    # JSON doesn't deal with int64 very well - convert to string!
+    sdss_id = ['%i'%i for i in T.sdss_id]
+    zw = [int(i) for i in T.zwarning]
+    return HttpResponse(json.dumps(dict(rd=rd, name=names, sdss_id=sdss_id, zwarning=zw)),
+                        content_type='application/json')
+
 def cat_kd(req, ver, tag, fns, racol=None, deccol=None):
     from astrometry.util.fits import merge_tables
     ralo = float(req.GET['ralo'])
@@ -3409,11 +3444,14 @@ def cat_decals(req, ver, zoom, x, y, tag='decals', docache=True):
         havefluxes = []
         havenobs = []
         cols = cat.get_columns()
-        for band in 'griz':
-            if 'flux_'+band in cols:
+        for band in ['g','r','i','z',
+                     # IBIS
+                     'M411', 'M438', 'M464', 'M490', 'M517',
+                     ]:
+            if 'flux_'+band.lower() in cols:
                 havebands.append(band)
-                havefluxes.append(cat.get('flux_' + band))
-                havenobs.append(cat.get('nobs_' + band))
+                havefluxes.append(cat.get('flux_' + band.lower()))
+                havenobs.append(cat.get('nobs_' + band.lower()))
         fluxes = []
         for F in zip(*havefluxes):
             fluxes.append(dict([(b,float(f)) for b,f in zip(havebands, F)]))
@@ -3606,8 +3644,9 @@ if __name__ == '__main__':
     #r = c.get('/masks-dr9/1/cat.json?ralo=208.8730&rahi=209.0030&declo=25.1696&dechi=25.2365')
     #r = c.get('/ls-dr11/1/14/6419/5642.cat.json')
     #r = c.get('/desi-spectrum/dr1/targetid2847664538386432')
-    r = c.get('/sga2025-south/1/cat.json?ralo=39.7231&rahi=39.9830&declo=2.6545&dechi=2.8031')
-
+    #r = c.get('/sga2025-south/1/cat.json?ralo=39.7231&rahi=39.9830&declo=2.6545&dechi=2.8031')
+    r = c.get('/ibis-dr1/1/14/9574/8114.cat.json')
+    #r = c.get('/ibis-dr1/1/14/9574/8114.cat.json
     # import bokeh
     # print('bokeh', bokeh.__version__)
     # import prospect
