@@ -1,2 +1,2 @@
 #! /bin/bash
-docker build -t legacysurvey/imagine-nginx:3 .
+docker build -t legacysurvey/imagine-nginx:4 .

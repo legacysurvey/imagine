@@ -1,4 +1,4 @@
-FROM nginxinc/nginx-unprivileged
+FROM nginx/nginx-unprivileged
 
 USER root
 RUN apt update && \
