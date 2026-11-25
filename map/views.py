@@ -321,6 +321,24 @@ def _index(req,
     
     if settings.ENABLE_IBIS:
         for tag,label in [
+                ('ibis-dr1-coadd', "IBIS DR1 Color"),
+                ('ibis-dr1-coadd-model', "IBIS DR1 Color model"),
+                ('ibis-dr1-coadd-resid', "IBIS DR1 Color resid"),
+                ('ibis-dr1-coadd-m411', "IBIS DR1 M411"),
+                ('ibis-dr1-coadd-m411-model', "IBIS DR1 M411 model"),
+                ('ibis-dr1-coadd-m411-resid', "IBIS DR1 M411 resid"),
+                ('ibis-dr1-coadd-m438', "IBIS DR1 M438"),
+                ('ibis-dr1-coadd-m438-model', "IBIS DR1 M438 model"),
+                ('ibis-dr1-coadd-m438-resid', "IBIS DR1 M438 resid"),
+                ('ibis-dr1-coadd-m464', "IBIS DR1 M464"),
+                ('ibis-dr1-coadd-m464-model', "IBIS DR1 M464 model"),
+                ('ibis-dr1-coadd-m464-resid', "IBIS DR1 M464 resid"),
+                ('ibis-dr1-coadd-m490', "IBIS DR1 M490"),
+                ('ibis-dr1-coadd-m490-model', "IBIS DR1 M490 model"),
+                ('ibis-dr1-coadd-m490-resid', "IBIS DR1 M490 resid"),
+                ('ibis-dr1-coadd-m517', "IBIS DR1 M517"),
+                ('ibis-dr1-coadd-m517-model', "IBIS DR1 M517 model"),
+                ('ibis-dr1-coadd-m517-resid', "IBIS DR1 M517 resid"),
                 ('ibis-4', "IBIS (v4) COSMOS Color"),
                 ('ibis-4-model', "IBIS (v4) COSMOS Color model"),
                 ('ibis-4-resid', "IBIS (v4) COSMOS Color resid"),
@@ -6956,6 +6974,10 @@ def get_survey(name):
 
     #print('dirnm', dirnm, 'exists?', os.path.exists(dirnm))
 
+    elif name.startswith('ibis-dr1-coadd-m'):
+        # IBIS DR1 single-band layers (ibis-dr1-coadd-m464[-model|-resid]) -> data/ibis-dr1-coadd
+        dirnm = os.path.join(basedir, 'ibis-dr1-coadd')
+
     elif name in ['ibis-3-m411', 'ibis-3-m438', 'ibis-3-m464', 'ibis-3-m490', 'ibis-3-m517',
                   'ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
                   'ibis-3-wide-m490', 'ibis-3-wide-m517',
@@ -9171,6 +9193,38 @@ def get_layer(name, default=None):
         layers[sname + '-' + band.lower()           ] = image
         layers[sname + '-' + band.lower() + '-model'] = model
         layers[sname + '-' + band.lower() + '-resid'] = resid
+        layer = layers[name]
+
+    elif name in ['ibis-dr1-coadd', 'ibis-dr1-coadd-model', 'ibis-dr1-coadd-resid']:
+        # IBIS DR1 (reductions/ibis-dr1, legacypipe ibis-1.8): COSMOS + XMM, 780 bricks
+        sname = 'ibis-dr1-coadd'
+        survey = get_survey(sname)
+        image = Ibis3Layer(sname, 'image', survey)
+        model = Ibis3ModelLayer(sname + '-model', 'model', survey, drname=sname)
+        resid = Ibis3ResidLayer(image, model, sname + '-resid', 'resid', survey, drname=sname)
+        layers[sname           ] = image
+        layers[sname + '-model'] = model
+        layers[sname + '-resid'] = resid
+        layer = layers[name]
+
+    elif (name.startswith('ibis-dr1-coadd-m') and
+          name.replace('-model', '').replace('-resid', '')[-4:].upper() in ['M411', 'M438', 'M464', 'M490', 'M517']):
+        sname = 'ibis-dr1-coadd'
+        basename = name.replace('-model', '').replace('-resid', '')
+        band = basename[-4:].upper()
+        survey = get_survey(sname)
+        image = Ibis3Layer(basename, 'image', survey, drname=sname)
+        image.bands = [band]
+        image.rgb_plane = 2
+        model = Ibis3ModelLayer(basename + '-model', 'model', survey, drname=sname)
+        model.bands = [band]
+        model.rgb_plane = 2
+        resid = Ibis3ResidLayer(image, model, basename + '-resid', 'resid', survey, drname=sname)
+        resid.bands = [band]
+        resid.rgb_plane = 2
+        layers[basename           ] = image
+        layers[basename + '-model'] = model
+        layers[basename + '-resid'] = resid
         layer = layers[name]
 
     elif name in ['ibis-3-wide-m411', 'ibis-3-wide-m438', 'ibis-3-wide-m464',
