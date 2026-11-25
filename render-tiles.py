@@ -706,6 +706,33 @@ def main():
             opt.maxra = 360
         if opt.minra is None:
             opt.minra = 0
+
+    elif opt.kind in ['pandas']:
+        if opt.bands is None:
+            if opt.kind.endswith('-griz'):
+                opt.bands = 'griz'
+            else:
+                opt.bands = 'grz'
+        if opt.maxdec is None:
+            opt.maxdec = 40
+        if opt.mindec is None:
+            opt.mindec = -90
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
+
+    elif opt.kind in ['ls-dr11-north', 'ls-dr11-north-model', 'ls-dr11-north-resid','ls-dr11-early-north']:
+        if opt.bands is None:
+            opt.bands = 'grz'
+        if opt.maxdec is None:
+            opt.maxdec = 90
+        if opt.mindec is None:
+            opt.mindec = -5
+        if opt.maxra is None:
+            opt.maxra = 360
+        if opt.minra is None:
+            opt.minra = 0
      
     elif opt.kind in ['pandas']:
         if opt.bands is None:

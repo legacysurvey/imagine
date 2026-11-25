@@ -6972,7 +6972,12 @@ def get_survey(name):
         survey = LegacySurveyData(survey_dir=dirnm, cache_dir=cachedir)
         survey.bricksize = 0.025
 
-    #print('dirnm', dirnm, 'exists?', os.path.exists(dirnm))
+    elif name in ['ls-dr11']:
+        north = get_survey('ls-dr11-north')
+        north.layer = 'ls-dr11-north'
+        south = get_survey('ls-dr11-south')
+        south.layer = 'ls-dr11-south'
+        survey = SplitSurveyData(north, south)
 
     elif name.startswith('ibis-dr1-coadd-m'):
         # IBIS DR1 single-band layers (ibis-dr1-coadd-m464[-model|-resid]) -> data/ibis-dr1-coadd
