@@ -42,7 +42,11 @@ FORCE_SCRIPT_NAME = ROOT_URL
 
 SUBDOMAINS = ['a','b','c','d']
 
-STATIC_TILE_URL_B = 'https://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+# The old static tile server ({s}.imagine.legacysurvey.org -> sanjaya.tuc.noirlab.edu) no
+# longer answers, so the zoomed-out tiles of SDSS, GALEX, SFD, Halpha, WSSA, DECaLS DR5/DR7,
+# MzLS+BASS DR6, unWISE NEO4, ... were blank.  The main NERSC viewer serves them at all zooms.
+#STATIC_TILE_URL_B = 'https://{s}.imagine.legacysurvey.org/static/tiles/{id}/{ver}/{z}/{x}/{y}.jpg'
+STATIC_TILE_URL_B = 'https://{s}.legacysurvey.org/viewer/{id}/{ver}/{z}/{x}/{y}.jpg'
 SUBDOMAINS_B = SUBDOMAINS
 
 # no CORS -- so don't use subdomains, or specify hostname (www.legacysurvey.org vs legacysurvey.org)
