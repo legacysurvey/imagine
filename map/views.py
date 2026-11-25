@@ -7672,6 +7672,10 @@ def format_jpl_url(req, ra, dec, ccd):
     return ('%s?ra=%.4f&dec=%.4f&date=%s&camera=%s' %
             (jpl_url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip()))
 
+def format_mpc_url(req, ra, dec, ccd):
+    url = my_reverse(req, minor_planet_center_lookup)
+    return ('%s?ra=%.4f&dec=%.4f&date=%s&camera=%s' %
+            (url, ra, dec, ccd.date_obs + ' ' + ccd.ut, ccd.camera.strip()))
 
 def ccds_overlapping_html(req, ccds, layer, ra=None, dec=None, ccd_link=True,
                           img_url=None, dq_url=None, iv_url=None, img_ooi_url=None):
@@ -8129,6 +8133,8 @@ def exposures_common(req, tgz, copsf):
             #    format_jpl_url(req, ra, dec, ccd)),
             '<small><a href="%s">Direct link to JPL query</a></small>' % (
                 jpl_direct_url(ra, dec, ccd)),
+            '<small><a href="%s">Look up in Minor Planet Center</a></small>' % (
+                format_mpc_url(req, ra, dec, ccd)),
         ])
         ccds_list.append((ccdstr,) + tuple(contents))
                       
@@ -8300,6 +8306,58 @@ def jpl_lookup(req):
 def jpl_redirect(req, jpl_url):
     from django.http import HttpResponseRedirect
     return HttpResponseRedirect('https://ssd.jpl.nasa.gov/' + jpl_url + '?' + req.META['QUERY_STRING'])
+
+def minor_planet_center_lookup(req):
+    import sys
+
+    import requests
+    from astrometry.util.starutil_numpy import ra2hmsstring, dec2dmsstring
+    from datetime import datetime
+
+    datestr = req.GET.get('date')
+    ra = float(req.GET.get('ra'))
+    dec = float(req.GET.get('dec'))
+    camera = req.GET.get('camera')
+
+    # MPC's observatory codes
+    obs_code = {
+        'decam': 'W84',
+        '90prime': 'V00',
+        'mosaic': '695',
+    }[camera]
+
+    rastr = ra2hmsstring(ra, separator=' ')
+    decstr = dec2dmsstring(dec, separator=' ')
+
+    datestr = datestr.replace(' ', 'T')
+    datestr = datestr[:19]
+    date = datetime.strptime(datestr, "%Y-%m-%dT%H:%M:%S")
+    print('Date:', date)
+    # MPC uses fractional days...
+    fracday = (date.hour / 24. + date.minute / (24*60) + date.second / (24*3600))
+
+    payload = dict(
+        year = date.year,
+        month = date.month,
+        day = '%.2f' % (date.day + fracday),
+        which = 'pos',
+        ra = rastr,
+        decl = decstr,
+        TextArea = '',
+        radius = "1", # arcminute
+        limit = '24.0', # V mag
+        oc = obs_code,
+        sort = 'd',
+        mot = 'h',
+        tmot = 's',
+        pdes = 'u',
+        needed = 'f',
+        ps = 'n',
+        type = 'p',
+    )
+    r = requests.post('https://minorplanetcenter.net/cgi-bin/mpcheck.cgi', data=payload)
+    #print('Text result:', r.text)
+    return HttpResponse(r.text)
 
 def _get_ccd(expnum, ccdname, name=None, survey=None):
     if survey is None:
@@ -10032,7 +10090,8 @@ if __name__ == '__main__':
     #r = c.get('/namequery/?obj=TARGETID%2039627595494462307')
 
     #r = c.get('/ls-dr11/1/12/533/2113.jpg')
-    r = c.get('/cutout.jpg?ra=54.4717&dec=-19.0242&layer=ls-dr11&pixscale=0.13')
+    #r = c.get('/cutout.jpg?ra=54.4717&dec=-19.0242&layer=ls-dr11&pixscale=0.13')
+    r = c.get('/minor_planet_center_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
     f = open('out.jpg', 'wb')
     for x in r:
         f.write(x)

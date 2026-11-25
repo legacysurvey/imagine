@@ -243,6 +243,7 @@ urlpatterns = ([
     # re_path(r'^jpl_lookup/?$', views.jpl_lookup),
     # # Redirect to other URLs on the JPL site.
     # re_path(r'^jpl_lookup/(?P<jpl_url>.*)', views.jpl_redirect),
+    re_path(r'^minor_planet_center_lookup/?$', views.minor_planet_center_lookup),
 
     # bricks: list of polygons
     re_path(r'^bricks/', views.brick_list, name='brick-list'),
