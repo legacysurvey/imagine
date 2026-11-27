@@ -7888,6 +7888,12 @@ def exposures_common(req, tgz, copsf):
                                        old_calibs_ok=True)
             if tim is None:
                 continue
+            H,W = tim.shape
+            x0 = tim.x0
+            y0 = tim.y0
+            x1 = tim.x0 + W
+            y1 = tim.y0 + H
+
             psf = tim.getPsf()
             th,tw = tim.shape
             psfimg = psf.getImage(tw/2, th/2)
@@ -10150,7 +10156,9 @@ if __name__ == '__main__':
 
     #r = c.get('/ls-dr11/1/12/533/2113.jpg')
     #r = c.get('/cutout.jpg?ra=54.4717&dec=-19.0242&layer=ls-dr11&pixscale=0.13')
-    r = c.get('/minor_planet_center_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
+    #r = c.get('/minor_planet_center_lookup/?ra=218.6086&dec=-1.0385&date=2015-04-11%2005:58:36.111660&camera=decam')
+    #r = c.get('/exposures/?ra=150.0457&dec=2.1234&layer=ls-dr10')
+    r = c.get('/exposures-tgz/?ra=150.0457&dec=2.1234&size=100&layer=ls-dr10')
     f = open('out.jpg', 'wb')
     for x in r:
         f.write(x)
